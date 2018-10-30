@@ -6,4 +6,6 @@ metadata:
   name: stack-sample
 spec:
   # Add fields here
-  foo: bar
+  version: "v6.4.1"
+  elasticsearch:
+    node_count: 3

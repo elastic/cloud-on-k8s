@@ -21,6 +21,14 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            elasticsearch:
+              properties:
+                image:
+                  type: string
+              type: object
+            version:
+              type: string
           type: object
         status:
           type: object
