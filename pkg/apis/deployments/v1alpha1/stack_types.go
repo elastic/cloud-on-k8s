@@ -11,6 +11,21 @@ import (
 type StackSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Version represents the version of the stack
+	Version string `json:"version,omitempty"`
+
+	// Elasticsearch specific configuration for the stack.
+	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
+}
+
+// ElasticsearchSpec defines the desired state of an Elasticsearch deployment.
+type ElasticsearchSpec struct {
+	// Image represents the docker image that will be used.
+	Image string `json:"image,omitempty"`
+
+	// NodeCount defines how many nodes the Elasticsearch Cluster must have.
+	NodeCount int32 `json:"nodeCount,omitempty"`
 }
 
 // StackStatus defines the observed state of Stack

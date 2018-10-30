@@ -21,6 +21,17 @@ spec:
         metadata:
           type: object
         spec:
+          properties:
+            elasticsearch:
+              properties:
+                image:
+                  type: string
+                nodeCount:
+                  format: int32
+                  type: integer
+              type: object
+            version:
+              type: string
           type: object
         status:
           type: object
