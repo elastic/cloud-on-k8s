@@ -8,4 +8,4 @@ spec:
   # Add fields here
   version: "v6.4.1"
   elasticsearch:
-    node_count: 3
+    nodeCount: 3
