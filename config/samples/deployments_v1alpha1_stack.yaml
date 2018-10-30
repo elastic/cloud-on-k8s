@@ -1,0 +1,9 @@
+apiVersion: deployments.k8s.elastic.co/v1alpha1
+kind: Stack
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: stack-sample
+spec:
+  # Add fields here
+  foo: bar
