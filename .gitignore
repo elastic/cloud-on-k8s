@@ -22,3 +22,6 @@ bin
 *.swp
 *.swo
 *~
+
+# ignore vendor/
+vendor/
