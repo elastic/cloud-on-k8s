@@ -72,6 +72,9 @@ var _ reconcile.Reconciler = &ReconcileStack{}
 type ReconcileStack struct {
 	client.Client
 	scheme *runtime.Scheme
+
+	// iteration is the number of times this controller has run its Reconcile method
+	iteration int64
 }
 
 // Reconcile reads that state of the cluster for a Stack object and makes changes based on the state read
@@ -82,6 +85,8 @@ type ReconcileStack struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	r.iteration += 1
+
 	// Fetch the Stack instance
 	instance := &deploymentsv1alpha1.Stack{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)
@@ -129,7 +134,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	found := &appsv1.Deployment{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
+		log.Printf("[%d] Creating Deployment %s/%s\n", r.iteration, deploy.Namespace, deploy.Name)
 		err = r.Create(context.TODO(), deploy)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -139,7 +144,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
+		log.Printf("[%d] Updating Deployment %s/%s\n", r.iteration, deploy.Namespace, deploy.Name)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err
