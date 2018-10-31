@@ -29,7 +29,7 @@ spec:
                 nodeCount:
                   format: int32
                   type: integer
-                shouldSetVmMaxMapCount:
+                setVmMaxMapCount:
                   type: boolean
               type: object
             version:

@@ -29,7 +29,7 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: deploymentsv1alpha1.StackSpec{
 			Elasticsearch: deploymentsv1alpha1.ElasticsearchSpec{
-				ShouldSetVmMaxMapCount: false,
+				SetVmMaxMapCount: false,
 			},
 		},
 	}

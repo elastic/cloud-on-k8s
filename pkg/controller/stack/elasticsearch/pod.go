@@ -64,10 +64,10 @@ type NewPodSpecParams struct {
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
 
-	// ShouldSetVmMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// SetVmMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	ShouldSetVmMaxMapCount bool
+	SetVmMaxMapCount bool
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
@@ -140,7 +140,7 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 	}
 
-	if p.ShouldSetVmMaxMapCount {
+	if p.SetVmMaxMapCount {
 		initContainerPrivileged := defaultInitContainerPrivileged
 		initContainerRunAsUser := defaultInitContainerRunAsUser
 
