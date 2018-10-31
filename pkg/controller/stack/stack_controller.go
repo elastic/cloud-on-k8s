@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	"log"
 	"reflect"
 
@@ -95,6 +96,14 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO(user): Change this to be the object type created by your controller
+	esPodSpecParams := elasticsearch.NewPodSpecParams{
+		Version:                        instance.Spec.Version,
+		CustomImageName:                instance.Spec.Elasticsearch.Image,
+		ClusterName:                    instance.Name,
+		DiscoveryZenMinimumMasterNodes: 1,
+		DiscoveryServiceName:           "localhost",
+	}
+
 	// Define the desired Deployment object
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -107,14 +116,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
+				Spec:       elasticsearch.NewPodSpec(esPodSpecParams),
 			},
 		},
 	}

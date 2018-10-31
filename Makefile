@@ -64,6 +64,7 @@ DEP := $(shell command -v dep)
 
 KUBECTL_CONFIG ?= minikube
 MINIKUBE_KUBERNETES_VERSION ?= v1.12.0
+MINIKUBE_MEMORY ?= 8192
 
 .PHONY: requisites
 requisites:
@@ -95,7 +96,7 @@ dev: minikube vendor all install samples
 minikube: requisites
 ifneq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
 	@ echo "-> Starting minikube..."
-	@ minikube start --kubernetes-version $(KUBERNETES_VERSION)
+	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY}
 else
 	@ echo "-> minikube already started, skipping..."
 endif
