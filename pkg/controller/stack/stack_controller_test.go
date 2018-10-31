@@ -72,7 +72,10 @@ func TestReconcile(t *testing.T) {
 	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
 		Should(gomega.Succeed())
 
-	// Manually delete Deployment since GC isn't enabled in the test control plane
-	g.Expect(c.Delete(context.TODO(), deploy)).To(gomega.Succeed())
-
+	// Manually delete Deployment since GC might not be enabled in the test control plane
+	err = c.Delete(context.TODO(), deploy)
+	// If the resource is already deleted, we don't care, but any other error is important
+	if !apierrors.IsNotFound(err) {
+		g.Expect(err).NotTo(gomega.HaveOccurred())
+	}
 }
