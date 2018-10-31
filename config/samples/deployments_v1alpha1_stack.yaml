@@ -9,3 +9,4 @@ spec:
   version: "6.4.2"
   elasticsearch:
     nodeCount: 3
+    shouldSetVmMaxMapCount: true
