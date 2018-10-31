@@ -8,8 +8,10 @@ import (
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -19,7 +21,9 @@ import (
 var c client.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var depKey = types.NamespacedName{Name: "foo-deployment", Namespace: "default"}
+var depKey = types.NamespacedName{Name: "foo-es", Namespace: "default"}
+var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
+var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
 
 const timeout = time.Second * 5
 
@@ -62,18 +66,40 @@ func TestReconcile(t *testing.T) {
 	defer c.Delete(context.TODO(), instance)
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 
+	// Deployment should be created
 	deploy := &appsv1.Deployment{}
 	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
 		Should(gomega.Succeed())
-
-	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
-	g.Expect(c.Delete(context.TODO(), deploy)).NotTo(gomega.HaveOccurred())
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
+	// Services should be created
+	discoveryService := &corev1.Service{}
+	g.Eventually(func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) }, timeout).
+		Should(gomega.Succeed())
+	publicService := &corev1.Service{}
+	g.Eventually(func() error { return c.Get(context.TODO(), publicServiceKey, publicService) }, timeout).
 		Should(gomega.Succeed())
 
-	// Manually delete Deployment since GC might not be enabled in the test control plane
-	err = c.Delete(context.TODO(), deploy)
+	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
+	checkResourceDeletionTriggersReconcile(g, requests, depKey, deploy)
+	// Same for services
+	// TODO: fixit, this does not seem to work as expected for services?
+	checkResourceDeletionTriggersReconcile(g, requests, discoveryServiceKey, discoveryService)
+	checkResourceDeletionTriggersReconcile(g, requests, publicServiceKey, publicService)
+
+	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
+	clean(g, deploy)
+	clean(g, discoveryService)
+	clean(g, publicService)
+}
+
+func checkResourceDeletionTriggersReconcile(g *gomega.GomegaWithT, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
+	g.Expect(c.Delete(context.TODO(), obj)).NotTo(gomega.HaveOccurred())
+	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
+	g.Eventually(func() error { return c.Get(context.TODO(), objKey, obj) }, timeout).
+		Should(gomega.Succeed())
+}
+
+func clean(g *gomega.GomegaWithT, obj runtime.Object) {
+	err := c.Delete(context.TODO(), obj)
 	// If the resource is already deleted, we don't care, but any other error is important
 	if !apierrors.IsNotFound(err) {
 		g.Expect(err).NotTo(gomega.HaveOccurred())

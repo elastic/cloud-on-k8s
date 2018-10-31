@@ -9,6 +9,11 @@ import (
 )
 
 const (
+	// HTTPPort used by Elasticsearch for the REST API
+	HTTPPort = 9200
+	// TransportPort used by Elasticsearch for the Transport protocol
+	TransportPort = 9300
+
 	// defaultImageRepositoryAndName is the default image name without a tag
 	defaultImageRepositoryAndName string = "docker.elastic.co/elasticsearch/elasticsearch"
 
@@ -106,8 +111,8 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "elasticsearch",
 			Ports: []corev1.ContainerPort{
-				{Name: "http", ContainerPort: 9200, Protocol: corev1.ProtocolTCP},
-				{Name: "transport", ContainerPort: 9300, Protocol: corev1.ProtocolTCP},
+				{Name: "http", ContainerPort: HTTPPort, Protocol: corev1.ProtocolTCP},
+				{Name: "transport", ContainerPort: TransportPort, Protocol: corev1.ProtocolTCP},
 			},
 			// TODO: Hardcoded resource limits and requests
 			Resources: corev1.ResourceRequirements{

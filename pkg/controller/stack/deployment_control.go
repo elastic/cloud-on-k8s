@@ -15,21 +15,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+type DeploymentParams struct {
+	Name      string
+	Namespace string
+	Selector  map[string]string
+	Labels    map[string]string
+	Replicas  int32
+	PodSpec   corev1.PodSpec
+}
+
 // NewDeployment creates a Deployment API struct with the given PodSpec.
-func NewDeployment(name string, namespace string, spec corev1.PodSpec) appsv1.Deployment {
+func NewDeployment(params DeploymentParams) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name + "-deployment",
-			Namespace: namespace,
+			Name:      params.Name,
+			Namespace: params.Namespace,
+			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": name + "-deployment"},
+				MatchLabels: params.Selector,
 			},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": name + "-deployment"}},
-				Spec:       spec,
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: params.Labels,
+				},
+				Spec: params.PodSpec,
 			},
+			Replicas: &params.Replicas,
 		},
 	}
 }
