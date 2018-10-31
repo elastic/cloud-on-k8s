@@ -96,7 +96,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO(user): Change this to be the object type created by your controller
-	cb := elasticsearch.ClusterBuilder{
+	esPodSpecParams := elasticsearch.NewPodSpecParams{
 		Version:                        instance.Spec.Version,
 		CustomImageName:                instance.Spec.Elasticsearch.Image,
 		ClusterName:                    instance.Name,
@@ -116,7 +116,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec:       cb.NewElasticsearchPodSpec(),
+				Spec:       elasticsearch.NewPodSpec(esPodSpecParams),
 			},
 		},
 	}
