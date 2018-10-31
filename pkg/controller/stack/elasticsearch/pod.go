@@ -63,6 +63,11 @@ type NewPodSpecParams struct {
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
+
+	// SetVmMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+	// Setting this to true requires the kubelet to allow running privileged containers.
+	SetVmMaxMapCount bool
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
@@ -73,14 +78,11 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 		imageName = p.CustomImageName
 	}
 
-	initContainerPrivileged := defaultInitContainerPrivileged
-	initContainerRunAsUser := defaultInitContainerRunAsUser
-
 	terminationGracePeriodSeconds := defaultTerminationGracePeriodSeconds
 
 	// TODO: Volumes, Security Context, Optional init container
 
-	return corev1.PodSpec{
+	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Env: []corev1.EnvVar{
 				{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -134,7 +136,15 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 				},
 			},
 		}},
-		InitContainers: []corev1.Container{{
+		InitContainers:                []corev1.Container{},
+		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+	}
+
+	if p.SetVmMaxMapCount {
+		initContainerPrivileged := defaultInitContainerPrivileged
+		initContainerRunAsUser := defaultInitContainerRunAsUser
+
+		initContainerConfigureSysCtl := corev1.Container{
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "configure-sysctl",
@@ -143,7 +153,10 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 				RunAsUser:  &initContainerRunAsUser,
 			},
 			Command: []string{"sysctl", "-w", "vm.max_map_count=262144"},
-		}},
-		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+		}
+
+		podSpec.InitContainers = append(podSpec.InitContainers, initContainerConfigureSysCtl)
 	}
+
+	return podSpec
 }

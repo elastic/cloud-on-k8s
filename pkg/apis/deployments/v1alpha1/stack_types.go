@@ -26,6 +26,11 @@ type ElasticsearchSpec struct {
 
 	// NodeCount defines how many nodes the Elasticsearch Cluster must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
+
+	// SetVmMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+	// Setting this to true requires the kubelet to allow running privileged containers.
+	SetVmMaxMapCount bool `json:"setVmMaxMapCount,omitempty"`
 }
 
 // StackStatus defines the observed state of Stack

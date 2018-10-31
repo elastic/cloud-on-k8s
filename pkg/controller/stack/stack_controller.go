@@ -102,6 +102,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		ClusterName:                    instance.Name,
 		DiscoveryZenMinimumMasterNodes: 1,
 		DiscoveryServiceName:           "localhost",
+		SetVmMaxMapCount:               instance.Spec.Elasticsearch.SetVmMaxMapCount,
 	}
 
 	// Define the desired Deployment object
