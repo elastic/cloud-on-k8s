@@ -2,8 +2,8 @@ package stack
 
 import (
 	"context"
+	"fmt"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
-	"log"
 	"reflect"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -19,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -26,6 +27,8 @@ import (
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
+
+var log = logf.Log.WithName("stack-controller")
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -135,7 +138,10 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	found := &appsv1.Deployment{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Printf("[%d] Creating Deployment %s/%s\n", r.iteration, deploy.Namespace, deploy.Name)
+		log.Info(
+			fmt.Sprintf("Creating Deployment %s/%s", deploy.Namespace, deploy.Name),
+			"iteration", r.iteration,
+		)
 		err = r.Create(context.TODO(), deploy)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -145,7 +151,10 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
-		log.Printf("[%d] Updating Deployment %s/%s\n", r.iteration, deploy.Namespace, deploy.Name)
+		log.Info(
+			fmt.Sprintf("Updating Deployment %s/%s", deploy.Namespace, deploy.Name),
+			"iteration", r.iteration,
+		)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err

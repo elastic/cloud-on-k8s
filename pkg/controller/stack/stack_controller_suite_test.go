@@ -1,7 +1,6 @@
 package stack
 
 import (
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,7 +25,7 @@ func TestMain(m *testing.M) {
 
 	var err error
 	if cfg, err = t.Start(); err != nil {
-		log.Fatal(err)
+		log.Error(err, "Start failed")
 	}
 
 	code := m.Run()
