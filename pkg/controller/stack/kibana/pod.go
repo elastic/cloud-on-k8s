@@ -21,7 +21,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 
 	probe := &corev1.Probe{
 		InitialDelaySeconds: 10,
-		PeriodSeconds: 30,
+		PeriodSeconds:       30,
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(port),

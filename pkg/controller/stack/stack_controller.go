@@ -120,7 +120,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	err = r.List(context.TODO(), client.MatchingLabels(deploy.Spec.Template.ObjectMeta.Labels), pods)
 	if err != nil || len(pods.Items) == 0 {
 		log.Info(fmt.Sprintf("Pods %s not found. Re-queueing", deploy.Spec.Template.ObjectMeta.Labels))
-		return reconcile.Result{Requeue:true}, err
+		return reconcile.Result{Requeue: true}, err
 	}
 
 	host := pods.Items[0].Status.PodIP
