@@ -43,7 +43,7 @@ type KibanaSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// NodeCount defines how many nodes the Elasticsearch Cluster must have.
+	// NodeCount defines how many nodes the Kibana deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 }
 
