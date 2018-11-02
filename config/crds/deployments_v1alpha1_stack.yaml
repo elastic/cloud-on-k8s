@@ -44,19 +44,6 @@ spec:
               type: string
           type: object
         status:
-          properties:
-            elasticsearch:
-              properties:
-                additions:
-                  format: int32
-                  type: integer
-                deletions:
-                  format: int32
-                  type: integer
-                nodes:
-                  format: int32
-                  type: integer
-              type: object
           type: object
   version: v1alpha1
 status:

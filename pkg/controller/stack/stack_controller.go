@@ -3,8 +3,9 @@ package stack
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strconv"
 	"sync/atomic"
-	"time"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
@@ -14,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -69,7 +69,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// TODO(user): Modify this to be the types you create
-	// Uncomment watch pods created by Stack - change this for objects you create
+	// watch any pods created by Stack - change this for objects you create
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &deploymentsv1alpha1.Stack{},
@@ -158,62 +158,137 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (*deploymentsv1alph
 	return &stackInstance, nil
 }
 
-// CreateElasticsearchPods performs the creation of any number of pods in order
+// GetPodList returns PodList in the current
+func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, fieldSelectors map[string]string) (corev1.PodList, error) {
+	var podList corev1.PodList
+	stackInstance, err := r.GetStack(request)
+	if err != nil {
+		return podList, err
+	}
+
+	var rawLabelSelectors = fmt.Sprint("cluster=", stackInstance.Name)
+	for k, v := range labelSelectors {
+		rawLabelSelectors = fmt.Sprint(rawLabelSelectors, ",", k, "=", v)
+	}
+
+	var rawFieldSelectors string
+	for k, v := range fieldSelectors {
+		if rawFieldSelectors != "" {
+			rawFieldSelectors = fmt.Sprint(rawFieldSelectors, ",")
+		}
+		rawFieldSelectors = fmt.Sprint(rawFieldSelectors, k, "=", v)
+	}
+
+	var listOpts = client.ListOptions{
+		Namespace: request.Namespace,
+		Raw: &metav1.ListOptions{
+			LabelSelector: rawLabelSelectors,
+			FieldSelector: rawFieldSelectors,
+		},
+	}
+
+	if err := r.List(context.TODO(), &listOpts, &podList); err != nil {
+		return podList, err
+	}
+
+	return podList, nil
+}
+
+// CreateElasticsearchPods Performs the creation of any number of pods in order
 // to match the Stack definition.
+// TODO: Document tradeoffs of this way of _reconciling_.
 func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	currentPods, err := r.GetPodList(request, elasticsearch.TypeFilter, nil)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	var podSpecParams = elasticsearch.BuildNewPodSpecParams(*stackInstance)
+	var proposedPods []corev1.Pod
+
 	// Create any missing instances
-	var current = stackInstance.Status.Elasticsearch.Nodes
-	var desired = stackInstance.Spec.Elasticsearch.NodeCount
-	for index := current; index < desired; index++ {
+	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
 		pod := corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      elasticsearch.NextNodeName(*stackInstance),
+				Name:      elasticsearch.NewNodeName(stackInstance.Name),
 				Namespace: stackInstance.Namespace,
+				Labels: map[string]string{
+					"cluster": stackInstance.Name,
+					"hash":    podSpecParams.Hash(),
+					"type":    "elasticsearch",
+				},
 			},
-			Spec: elasticsearch.NewPodSpec(elasticsearch.NewPodSpecParams{
-				Version:                        stackInstance.Spec.Version,
-				CustomImageName:                stackInstance.Spec.Elasticsearch.Image,
-				ClusterName:                    stackInstance.Name,
-				DiscoveryZenMinimumMasterNodes: 1,
-				DiscoveryServiceName:           "localhost",
-				SetVmMaxMapCount:               stackInstance.Spec.Elasticsearch.SetVmMaxMapCount,
-			}),
+			Spec: elasticsearch.NewPodSpec(podSpecParams),
 		}
 
 		if err := controllerutil.SetControllerReference(stackInstance, &pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// Check if the pod already exists
-		var found corev1.Pod
-		var namespaceFilter = types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
-		// If the pod exists, continue with the loop.
-		if err = r.Get(context.TODO(), namespaceFilter, &found); err == nil {
+		proposedPods = append(proposedPods, pod)
+	}
+
+	// Any pods with different spec hashes, need to be recreated.
+	for _, pod := range currentPods.Items {
+		h, ok := pod.Labels["hash"]
+		if !ok {
+			return reconcile.Result{}, nil
+		}
+
+		// On equal hashes return, all is good!
+		if h == podSpecParams.Hash() || pod.Status.Phase != corev1.PodRunning {
 			continue
 		}
 
-		log.Info(
-			fmt.Sprint("Creating Pod ", pod.Namespace, pod.Name),
-			"iteration", atomic.LoadInt64(&r.iteration),
-		)
-		err = r.Create(context.TODO(), &pod)
-		if err != nil {
+		if tainted, ok := pod.Labels["tainted"]; ok {
+			if t, _ := strconv.ParseBool(tainted); t {
+				continue
+			}
+		}
+
+		// Mark the pod as tainted.
+		pod.Labels["tainted"] = "true"
+		if err := r.Update(context.TODO(), &pod); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		stackInstance.Status.Elasticsearch.NodeAdded()
-		if err := r.Update(context.TODO(), stackInstance); err != nil {
+		newPod := corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      elasticsearch.NewNodeName(stackInstance.Name),
+				Namespace: stackInstance.Namespace,
+				Labels: map[string]string{
+					"cluster": stackInstance.Name,
+					"hash":    podSpecParams.Hash(),
+					"type":    "elasticsearch",
+				},
+			},
+			Spec: elasticsearch.NewPodSpec(podSpecParams),
+		}
+		if err := controllerutil.SetControllerReference(stackInstance, &newPod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		// We don't update pods in place.
-		// TODO: Decide what to do when container settings are updated.
-		// Find a good comparable way to compare instances.
+		proposedPods = append(proposedPods, newPod)
+	}
+
+	// Trim the # of proposed pods to the node count, we can't more nodes
+	// being created > NodeCount. This is required to not do work in vain when
+	// There's a decrease in the number of nodes in the topology and a hash
+	// change.
+	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount {
+		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount]
+	}
+
+	for _, pod := range proposedPods {
+		if err := r.Create(context.TODO(), &pod); err != nil {
+			return reconcile.Result{}, err
+		}
+		log.Info(fmt.Sprint("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 	}
 
 	return reconcile.Result{}, err
@@ -226,47 +301,39 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	var desired = stackInstance.Spec.Elasticsearch.NodeCount
-	var current = stackInstance.Status.Elasticsearch.Nodes
-	for index := desired; index < current; index++ {
-		var pod corev1.Pod
-		var key = types.NamespacedName{
-			Name:      elasticsearch.FirstNodName(*stackInstance),
-			Namespace: stackInstance.Namespace,
-		}
+	// Get the current list of instances
+	currentPods, err := r.GetPodList(request, elasticsearch.TypeFilter, nil)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
-		if err := r.Get(context.TODO(), key, &pod); err != nil {
-			log.Info("No pods to delete", "iteration", atomic.LoadInt64(&r.iteration))
-			if err := r.Update(context.TODO(), stackInstance); err != nil {
-				return reconcile.Result{}, err
-			}
+	// Sort pods by age.
+	sort.SliceStable(currentPods.Items, func(i, j int) bool {
+		return currentPods.Items[i].CreationTimestamp.Before(&currentPods.Items[j].CreationTimestamp)
+	})
+
+	// Delete the difference between the running and desired pods.
+	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
+	for i := int32(0); i < orphanPodNumber; i++ {
+		var pod = currentPods.Items[i]
+		if pod.DeletionTimestamp != nil {
 			return reconcile.Result{}, nil
 		}
-
-		// TODO: Handle migration here.
-		for _, c := range pod.Status.Conditions {
-			if c.Type == corev1.PodReady {
-				if c.Status == corev1.ConditionFalse {
-					log.Info(
-						fmt.Sprint("Pod ", pod.Name, " is not ready, requeuing..."),
-						"iteration", atomic.LoadInt64(&r.iteration),
-					)
-					// TODO: Create circuit breaker (M).
-					return reconcile.Result{Requeue: true, RequeueAfter: time.Second}, nil
+		if pod.Status.Phase == corev1.PodRunning {
+			// TODO: Handle migration here before we delete the pod.
+			for _, c := range pod.Status.Conditions {
+				// Return when the pod is not Ready (API Unreachable).
+				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
+					return reconcile.Result{}, nil
 				}
 			}
+
+			if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
+			log.Info(fmt.Sprint("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 		}
 
-		log.Info(fmt.Sprint("Deleting Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		if err := r.Delete(context.TODO(), &pod); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		log.Info(fmt.Sprint("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		stackInstance.Status.Elasticsearch.NodeDeleted()
-		if err := r.Update(context.TODO(), stackInstance); err != nil {
-			return reconcile.Result{}, err
-		}
 	}
 	return reconcile.Result{}, nil
 }
@@ -278,7 +345,7 @@ func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack,
 		ClusterName:                    stackID,
 		DiscoveryZenMinimumMasterNodes: elasticsearch.ComputeMinimumMasterNodes(int(stack.Spec.Elasticsearch.NodeCount)),
 		DiscoveryServiceName:           elasticsearch.DiscoveryServiceName(stack.Name),
-		SetVmMaxMapCount:               stack.Spec.Elasticsearch.SetVmMaxMapCount,
+		SetVMMaxMapCount:               stack.Spec.Elasticsearch.SetVMMaxMapCount,
 	}
 
 	labels := elasticsearch.NewLabelsWithStackID(stackID)

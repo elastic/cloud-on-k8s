@@ -3,17 +3,30 @@ package elasticsearch
 import (
 	"fmt"
 
-	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// NextNodeName forms an Elasticsearch node name. Returning the proposed next
-// node name to be used for the Elaticsearch cluster node.
-func NextNodeName(stack deploymentsv1alpha1.Stack) string {
-	return fmt.Sprint(stack.Name, "-elasticsearch-", stack.Status.Elasticsearch.Additions)
-}
+const (
+	typeSuffix = "-es"
 
-// FirstNodName forms an Elasticsearch node name. Returning the current oldest
-// node name for the Elaticsearch cluster.
-func FirstNodName(stack deploymentsv1alpha1.Stack) string {
-	return fmt.Sprint(stack.Name, "-elasticsearch-", stack.Status.Elasticsearch.Deletions)
+	randomSuffixLength = 10
+	// k8s object name has a maximum length
+	maxNameLength = 63 - randomSuffixLength - 1 - 3
+)
+
+var (
+	// TypeFilter represents the Elasticsearch type filter that is present in a
+	// Pod's labels.
+	TypeFilter = map[string]string{"type": "elasticsearch"}
+)
+
+// NewNodeName forms an Elasticsearch node name. Returning a unique node
+// node name to be used for the Elaticsearch cluster node.
+func NewNodeName(clusterName string) string {
+	var prefix = fmt.Sprint(clusterName)
+	var suffix = rand.String(randomSuffixLength - (len(typeSuffix)))
+	if len(prefix) > maxNameLength {
+		prefix = prefix[:maxNameLength]
+	}
+	return fmt.Sprint(prefix, "-es-", suffix)
 }

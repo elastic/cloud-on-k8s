@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/mitchellh/hashstructure"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -57,6 +59,18 @@ fi
 `
 )
 
+// BuildNewPodSpecParams creates a NewPodSpecParams from a Stack definition.
+func BuildNewPodSpecParams(s deploymentsv1alpha1.Stack) NewPodSpecParams {
+	return NewPodSpecParams{
+		Version:                        s.Spec.Version,
+		CustomImageName:                s.Spec.Elasticsearch.Image,
+		ClusterName:                    s.Name,
+		DiscoveryZenMinimumMasterNodes: 1,
+		DiscoveryServiceName:           "localhost",
+		SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
+	}
+}
+
 // NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
 type NewPodSpecParams struct {
 	// Version is the Elasticsearch version
@@ -70,10 +84,16 @@ type NewPodSpecParams struct {
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
 
-	// SetVmMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVmMaxMapCount bool
+	SetVMMaxMapCount bool
+}
+
+// Hash computes a unique hash with the current NewPodSpecParams
+func (params NewPodSpecParams) Hash() string {
+	hash, _ := hashstructure.Hash(params, nil)
+	return strconv.FormatUint(hash, 10)
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
@@ -146,7 +166,7 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 	}
 
-	if p.SetVmMaxMapCount {
+	if p.SetVMMaxMapCount {
 		initContainerPrivileged := defaultInitContainerPrivileged
 		initContainerRunAsUser := defaultInitContainerRunAsUser
 
