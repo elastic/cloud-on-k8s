@@ -14,10 +14,19 @@ const (
 type PodSpecParams struct {
 	Version          string
 	ElasticsearchUrl string
+	CustomImageName  string
+}
+
+func imageWithVersion(image string, version string) string {
+	return fmt.Sprintf("%s:%s", image, version)
 }
 
 func NewPodSpec(p PodSpecParams) corev1.PodSpec {
-	imageName := fmt.Sprintf("%s:%s", defaultImageRepositoryAndName, p.Version)
+	imageName := p.CustomImageName
+	if p.CustomImageName == "" {
+		imageName = imageWithVersion(defaultImageRepositoryAndName, p.Version)
+	}
+
 	port := 5601
 
 	probe := &corev1.Probe{
