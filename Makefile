@@ -47,7 +47,7 @@ generate:
 	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build: unit-test
+docker-build: unit
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
