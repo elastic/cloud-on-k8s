@@ -5,7 +5,7 @@ import (
 	"time"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
-	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -26,9 +26,50 @@ var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespa
 var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
 
 const timeout = time.Second * 5
+const retryInterval = time.Millisecond * 100
+
+func retryUntilSuccess(t *testing.T, timeout <-chan time.Time, retryInterval time.Duration, f func() bool) {
+	resp := make(chan (bool))
+	go func() {
+		resp <- f()
+	}()
+	select {
+	case <-timeout:
+		assert.Fail(t, "Timeout reached")
+	case fSuccess := <-resp:
+		if fSuccess {
+			return
+		}
+		select {
+		case <-time.After(retryInterval):
+			retryUntilSuccess(t, timeout, retryInterval, f)
+		case <-timeout:
+			assert.Fail(t, "Timeout reached")
+		}
+	}
+}
+
+// eventually is a wrapper around retryUntilSuccess with default values
+func eventually(t *testing.T, f func() bool) {
+	retryUntilSuccess(t, time.After(timeout), retryInterval, f)
+}
+
+func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
+	select {
+	case req := <-requests:
+		assert.Equal(t, req, expectedRequest)
+	case <-time.After(timeout):
+		assert.Fail(t, "No request received after %s", timeout)
+	}
+}
+
+func checkResourceDeletionTriggersReconcile(t *testing.T, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
+	assert.NoError(t, c.Delete(context.TODO(), obj))
+	checkReconcileCalled(t, requests)
+	eventually(t, func() bool { return c.Get(context.TODO(), objKey, obj) != nil })
+}
 
 func TestReconcile(t *testing.T) {
-	g := gomega.NewGomegaWithT(t)
 	instance := &deploymentsv1alpha1.Stack{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: deploymentsv1alpha1.StackSpec{
@@ -41,13 +82,13 @@ func TestReconcile(t *testing.T) {
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
 	mgr, err := manager.New(cfg, manager.Options{})
-	g.Expect(err).NotTo(gomega.HaveOccurred())
+	assert.NoError(t, err)
 	c = mgr.GetClient()
 
 	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	g.Expect(add(mgr, recFn)).NotTo(gomega.HaveOccurred())
+	assert.NoError(t, add(mgr, recFn))
 
-	stopMgr, mgrStopped := StartTestManager(mgr, g)
+	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
 	defer func() {
 		close(stopMgr)
@@ -62,45 +103,37 @@ func TestReconcile(t *testing.T) {
 		t.Logf("failed to create object, got an invalid object error: %v", err)
 		return
 	}
-	g.Expect(err).NotTo(gomega.HaveOccurred())
+	assert.NoError(t, err)
 	defer c.Delete(context.TODO(), instance)
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
+
+	checkReconcileCalled(t, requests)
 
 	// Deployment should be created
 	deploy := &appsv1.Deployment{}
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
-		Should(gomega.Succeed())
+	eventually(t, func() bool { return c.Get(context.TODO(), depKey, deploy) == nil })
+
 	// Services should be created
 	discoveryService := &corev1.Service{}
-	g.Eventually(func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) }, timeout).
-		Should(gomega.Succeed())
+	eventually(t, func() bool { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) == nil })
 	publicService := &corev1.Service{}
-	g.Eventually(func() error { return c.Get(context.TODO(), publicServiceKey, publicService) }, timeout).
-		Should(gomega.Succeed())
+	eventually(t, func() bool { return c.Get(context.TODO(), publicServiceKey, publicService) == nil })
 
 	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
-	checkResourceDeletionTriggersReconcile(g, requests, depKey, deploy)
+	checkResourceDeletionTriggersReconcile(t, requests, depKey, deploy)
 	// Same for services
-	checkResourceDeletionTriggersReconcile(g, requests, discoveryServiceKey, discoveryService)
-	checkResourceDeletionTriggersReconcile(g, requests, publicServiceKey, publicService)
+	checkResourceDeletionTriggersReconcile(t, requests, publicServiceKey, publicService)
+	checkResourceDeletionTriggersReconcile(t, requests, discoveryServiceKey, discoveryService)
 
 	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
-	clean(g, deploy)
-	clean(g, discoveryService)
-	clean(g, publicService)
+	clean(t, deploy)
+	clean(t, publicService)
+	clean(t, discoveryService)
 }
 
-func checkResourceDeletionTriggersReconcile(g *gomega.GomegaWithT, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
-	g.Expect(c.Delete(context.TODO(), obj)).NotTo(gomega.HaveOccurred())
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
-	g.Eventually(func() error { return c.Get(context.TODO(), objKey, obj) }, timeout).
-		Should(gomega.Succeed())
-}
-
-func clean(g *gomega.GomegaWithT, obj runtime.Object) {
+func clean(t *testing.T, obj runtime.Object) {
 	err := c.Delete(context.TODO(), obj)
 	// If the resource is already deleted, we don't care, but any other error is important
 	if !apierrors.IsNotFound(err) {
-		g.Expect(err).NotTo(gomega.HaveOccurred())
+		assert.NoError(t, err)
 	}
 }
