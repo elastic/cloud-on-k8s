@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func NewDeployment(name string, namespace string, spec corev1.PodSpec) *appsv1.Deployment {
-	return &appsv1.Deployment{
+func NewDeployment(name string, namespace string, spec corev1.PodSpec) appsv1.Deployment {
+	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name + "-deployment",
 			Namespace: namespace,
@@ -32,8 +32,8 @@ func NewDeployment(name string, namespace string, spec corev1.PodSpec) *appsv1.D
 	}
 }
 
-func (r *ReconcileStack) ReconcileDeployment(deploy *appsv1.Deployment, instance *deploymentsv1alpha1.Stack) (reconcile.Result, error) {
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
+func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) (reconcile.Result, error) {
+	if err := controllerutil.SetControllerReference(&instance, &deploy, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -45,7 +45,7 @@ func (r *ReconcileStack) ReconcileDeployment(deploy *appsv1.Deployment, instance
 			fmt.Sprintf("Creating Deployment %s/%s", deploy.Namespace, deploy.Name),
 			"iteration", r.iteration,
 		)
-		err = r.Create(context.TODO(), deploy)
+		err = r.Create(context.TODO(), &deploy)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

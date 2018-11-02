@@ -1,5 +1,5 @@
 package kibana
 
-func GetKibanaName(stackName string) string {
+func NewDeploymentName(stackName string) string {
 	return stackName + "-kibana"
 }

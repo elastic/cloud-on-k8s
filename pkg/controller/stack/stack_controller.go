@@ -111,7 +111,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// Define the desired Deployment object
 	deploy := NewDeployment(instance.Name, instance.Namespace, elasticsearch.NewPodSpec(esPodSpecParams))
-	if result, err := r.ReconcileDeployment(deploy, instance); err != nil {
+	if result, err := r.ReconcileDeployment(deploy, *instance); err != nil {
 		return result, err
 	}
 
@@ -131,9 +131,9 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		ElasticsearchUrl: elasticsearchUrl,
 	}
 	deploy = NewDeployment(
-		kibana.GetKibanaName(instance.Name),
+		kibana.NewDeploymentName(instance.Name),
 		instance.Namespace,
 		kibana.NewPodSpec(kibanaPodSpecParams))
-	return r.ReconcileDeployment(deploy, instance)
+	return r.ReconcileDeployment(deploy, *instance)
 
 }
