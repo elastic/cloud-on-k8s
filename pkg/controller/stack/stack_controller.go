@@ -3,6 +3,7 @@ package stack
 import (
 	"context"
 	"fmt"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"

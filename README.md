@@ -6,6 +6,7 @@ within a Kubernetes cluster.
 ## Requirements
 
 * [go](https://golang.org/dl/)
+* [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
