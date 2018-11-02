@@ -160,6 +160,7 @@ func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack,
 func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, stackID string) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
+		CustomImageName:  stack.Spec.Kibana.Image,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
 	}
 	labels := kibana.NewLabelsWithStackID(stackID)
