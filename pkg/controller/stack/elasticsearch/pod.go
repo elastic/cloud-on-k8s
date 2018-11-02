@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/hashstructure"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -59,14 +60,27 @@ fi
 `
 )
 
+// NewPod constructs a pod from the Stack definition.
+func NewPod(s deploymentsv1alpha1.Stack) corev1.Pod {
+	var podSpecParams = BuildNewPodSpecParams(s)
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      NewNodeName(s.Name),
+			Namespace: s.Namespace,
+			Labels:    NewLabels(s, true),
+		},
+		Spec: NewPodSpec(podSpecParams),
+	}
+}
+
 // BuildNewPodSpecParams creates a NewPodSpecParams from a Stack definition.
 func BuildNewPodSpecParams(s deploymentsv1alpha1.Stack) NewPodSpecParams {
 	return NewPodSpecParams{
 		Version:                        s.Spec.Version,
 		CustomImageName:                s.Spec.Elasticsearch.Image,
 		ClusterName:                    s.Name,
-		DiscoveryZenMinimumMasterNodes: 1,
-		DiscoveryServiceName:           "localhost",
+		DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(int(s.Spec.Elasticsearch.NodeCount)),
+		DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 		SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
 	}
 }
@@ -82,7 +96,7 @@ type NewPodSpecParams struct {
 	// DiscoveryServiceName is the name of the Service that should be used for discovery.
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
-	DiscoveryZenMinimumMasterNodes int
+	DiscoveryZenMinimumMasterNodes int `hash:"ignore"`
 
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.

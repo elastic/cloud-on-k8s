@@ -17,7 +17,7 @@ const (
 var (
 	// TypeFilter represents the Elasticsearch type filter that is present in a
 	// Pod's labels.
-	TypeFilter = map[string]string{"type": "elasticsearch"}
+	TypeFilter = map[string]string{TypeLabelName: "elasticsearch"}
 )
 
 // NewNodeName forms an Elasticsearch node name. Returning a unique node

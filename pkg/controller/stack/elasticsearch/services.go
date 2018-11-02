@@ -3,6 +3,7 @@ package elasticsearch
 import (
 	"fmt"
 
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -15,15 +16,15 @@ func DiscoveryServiceName(stackName string) string {
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
-func NewDiscoveryService(namespace string, stackName string, stackID string) *corev1.Service {
+func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      DiscoveryServiceName(stackName),
-			Labels:    NewLabelsWithStackID(stackID),
+			Namespace: s.Namespace,
+			Name:      DiscoveryServiceName(s.Name),
+			Labels:    NewLabels(s, false),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithStackID(stackID),
+			Selector: NewLabels(s, false),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -53,15 +54,15 @@ func PublicServiceURL(stackName string) string {
 
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewPublicService(namespace string, stackName string, stackID string) *corev1.Service {
+func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      PublicServiceName(stackName),
-			Labels:    NewLabelsWithStackID(stackID),
+			Namespace: s.Namespace,
+			Name:      PublicServiceName(s.Name),
+			Labels:    NewLabels(s, false),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithStackID(stackID),
+			Selector: NewLabels(s, false),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,

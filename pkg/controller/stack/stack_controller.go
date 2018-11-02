@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
@@ -116,26 +117,15 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	clusterID := elasticsearch.ClusterID(stack.Namespace, stack.Name)
-	res, err = r.reconcileEsDeployment(stack, clusterID)
+	res, err = r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileService(stack, elasticsearch.NewDiscoveryService(stack.Namespace, stack.Name, stackID))
+	res, err = r.reconcileService(&stack, elasticsearch.NewPublicService(stack))
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileService(stack, elasticsearch.NewPublicService(stack.Namespace, stack.Name, stackID))
-	if err != nil {
-		return res, err
-	}
-	res, err = r.reconcileKibanaDeployment(stack, stackID)
-	if err != nil {
-		return res, err
-	}
-
-	res, err = r.reconcileService(stack, kibana.NewService(stack.Namespace, stack.Name, stackID))
+	res, err = r.reconcileKibanaDeployment(&stack)
 	if err != nil {
 		return res, err
 	}
@@ -144,29 +134,31 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 }
 
 // GetStack obtains the stack from the backend kubernetes API.
-func (r *ReconcileStack) GetStack(request reconcile.Request) (*deploymentsv1alpha1.Stack, error) {
+func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha1.Stack, error) {
 	var stackInstance deploymentsv1alpha1.Stack
 	if err := r.Get(context.TODO(), request.NamespacedName, &stackInstance); err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
-			return nil, nil
+			return stackInstance, nil
 		}
 		// Error reading the object - requeue the request.
-		return nil, err
+		return stackInstance, err
 	}
-	return &stackInstance, nil
+	return stackInstance, nil
 }
 
 // GetPodList returns PodList in the current
 func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, fieldSelectors map[string]string) (corev1.PodList, error) {
 	var podList corev1.PodList
-	stackInstance, err := r.GetStack(request)
+	stack, err := r.GetStack(request)
 	if err != nil {
 		return podList, err
 	}
 
-	var rawLabelSelectors = fmt.Sprint("cluster=", stackInstance.Name)
+	var rawLabelSelectors = fmt.Sprint(
+		elasticsearch.ClusterIDLabelName, "=", common.StackID(stack),
+	)
 	for k, v := range labelSelectors {
 		rawLabelSelectors = fmt.Sprint(rawLabelSelectors, ",", k, "=", v)
 	}
@@ -182,9 +174,12 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, f
 	var listOpts = client.ListOptions{
 		Namespace: request.Namespace,
 		Raw: &metav1.ListOptions{
-			LabelSelector: rawLabelSelectors,
 			FieldSelector: rawFieldSelectors,
 		},
+	}
+
+	if err := listOpts.SetLabelSelector(rawLabelSelectors); err != nil {
+		return podList, err
 	}
 
 	if err := r.List(context.TODO(), &listOpts, &podList); err != nil {
@@ -196,7 +191,6 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, f
 
 // CreateElasticsearchPods Performs the creation of any number of pods in order
 // to match the Stack definition.
-// TODO: Document tradeoffs of this way of _reconciling_.
 func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
@@ -208,25 +202,14 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	var podSpecParams = elasticsearch.BuildNewPodSpecParams(*stackInstance)
+	var podSpecParams = elasticsearch.BuildNewPodSpecParams(stackInstance)
 	var proposedPods []corev1.Pod
 
 	// Create any missing instances
 	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
-		pod := corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      elasticsearch.NewNodeName(stackInstance.Name),
-				Namespace: stackInstance.Namespace,
-				Labels: map[string]string{
-					"cluster": stackInstance.Name,
-					"hash":    podSpecParams.Hash(),
-					"type":    "elasticsearch",
-				},
-			},
-			Spec: elasticsearch.NewPodSpec(podSpecParams),
-		}
+		pod := elasticsearch.NewPod(stackInstance)
 
-		if err := controllerutil.SetControllerReference(stackInstance, &pod, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(&stackInstance, &pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -235,7 +218,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 
 	// Any pods with different spec hashes, need to be recreated.
 	for _, pod := range currentPods.Items {
-		h, ok := pod.Labels["hash"]
+		h, ok := pod.Labels[elasticsearch.HashLabelName]
 		if !ok {
 			return reconcile.Result{}, nil
 		}
@@ -245,31 +228,20 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 			continue
 		}
 
-		if tainted, ok := pod.Labels["tainted"]; ok {
+		if tainted, ok := pod.Labels[elasticsearch.TaintedLabelName]; ok {
 			if t, _ := strconv.ParseBool(tainted); t {
 				continue
 			}
 		}
 
 		// Mark the pod as tainted.
-		pod.Labels["tainted"] = "true"
+		pod.Labels[elasticsearch.TaintedLabelName] = "true"
 		if err := r.Update(context.TODO(), &pod); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		newPod := corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      elasticsearch.NewNodeName(stackInstance.Name),
-				Namespace: stackInstance.Namespace,
-				Labels: map[string]string{
-					"cluster": stackInstance.Name,
-					"hash":    podSpecParams.Hash(),
-					"type":    "elasticsearch",
-				},
-			},
-			Spec: elasticsearch.NewPodSpec(podSpecParams),
-		}
-		if err := controllerutil.SetControllerReference(stackInstance, &newPod, r.scheme); err != nil {
+		newPod := elasticsearch.NewPod(stackInstance)
+		if err := controllerutil.SetControllerReference(&stackInstance, &newPod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -338,39 +310,13 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack, stackID string) (reconcile.Result, error) {
-	esPodSpecParams := elasticsearch.NewPodSpecParams{
-		Version:                        stack.Spec.Version,
-		CustomImageName:                stack.Spec.Elasticsearch.Image,
-		ClusterName:                    stackID,
-		DiscoveryZenMinimumMasterNodes: elasticsearch.ComputeMinimumMasterNodes(int(stack.Spec.Elasticsearch.NodeCount)),
-		DiscoveryServiceName:           elasticsearch.DiscoveryServiceName(stack.Name),
-		SetVMMaxMapCount:               stack.Spec.Elasticsearch.SetVMMaxMapCount,
-	}
-
-	labels := elasticsearch.NewLabelsWithStackID(stackID)
-	deploy := NewDeployment(DeploymentParams{
-		Name:      stack.Name + "-es",
-		Namespace: stack.Namespace,
-		Selector:  labels,
-		Labels:    labels,
-		Replicas:  stack.Spec.Elasticsearch.NodeCount,
-		PodSpec:   elasticsearch.NewPodSpec(esPodSpecParams),
-	})
-	res, err := r.ReconcileDeployment(deploy, *stack)
-	if err != nil {
-		return res, err
-	}
-	return res, nil
-}
-
-func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, stackID string) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
 	}
-	labels := kibana.NewLabelsWithStackID(stackID)
+	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
