@@ -36,6 +36,7 @@ func TestGlobalTimeoutOnFirstCall(t *testing.T) {
 		return nil
 	}
 	assert.EqualError(t, UntilSuccess(f, timeout, 0*time.Second), "timeout reached after 1ms")
+	close(stopChan)
 }
 
 func TestGlobalTimeoutAfterFailures(t *testing.T) {
