@@ -1,4 +1,4 @@
-// +build !unit
+// +build integration
 
 package v1alpha1
 

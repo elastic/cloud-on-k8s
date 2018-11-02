@@ -4,14 +4,14 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 
-all: all-tests manager
+all: unit integration manager
 
 # Run tests
-unit-tests: generate fmt vet manifests
-	go test -tags=unit ./pkg/... ./cmd/... -coverprofile cover.out
-
-all-tests: generate fmt vet manifests
+unit:
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration: generate fmt vet manifests
+	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
@@ -95,7 +95,7 @@ endif
 
 # dev
 .PHONY: dev
-dev: minikube vendor unit-tests manager install samples
+dev: minikube vendor unit manager install samples
 	@ echo "-> Development environment started"
 	@ echo "-> Run \"make run\" to start the manager process localy"
 
