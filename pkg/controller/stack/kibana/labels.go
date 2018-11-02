@@ -1,8 +1,8 @@
 package kibana
 
-// clusterIDLabelName used to represent a cluster in k8s resources
-const clusterIDLabelName = "kibana.stack.k8s.elastic.co/cluster-id"
+// stackIDLabelName used to represent a Kibana in k8s resources
+const stackIDLabelName = "kibana.stack.k8s.elastic.co/id"
 
-func NewLabelsWithClusterID(clusterID string) map[string]string {
-	return map[string]string{clusterIDLabelName: clusterID}
+func NewLabelsWithStackID(stackID string) map[string]string {
+	return map[string]string{stackIDLabelName: stackID}
 }

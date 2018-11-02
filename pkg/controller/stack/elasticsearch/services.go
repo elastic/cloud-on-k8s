@@ -15,15 +15,15 @@ func DiscoveryServiceName(stackName string) string {
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
-func NewDiscoveryService(namespace string, stackName string, clusterID string) *corev1.Service {
+func NewDiscoveryService(namespace string, stackName string, stackID string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      DiscoveryServiceName(stackName),
-			Labels:    NewLabelsWithClusterID(clusterID),
+			Labels:    NewLabelsWithStackID(stackID),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithClusterID(clusterID),
+			Selector: NewLabelsWithStackID(stackID),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -53,15 +53,15 @@ func PublicServiceURL(stackName string) string {
 
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewPublicService(namespace string, stackName string, clusterID string) *corev1.Service {
+func NewPublicService(namespace string, stackName string, stackID string) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      PublicServiceName(stackName),
-			Labels:    NewLabelsWithClusterID(clusterID),
+			Labels:    NewLabelsWithStackID(stackID),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithClusterID(clusterID),
+			Selector: NewLabelsWithStackID(stackID),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -71,7 +71,7 @@ func NewPublicService(namespace string, stackName string, clusterID string) *cor
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
-			Type: corev1.ServiceTypeNodePort,
+			Type:                  corev1.ServiceTypeNodePort,
 			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}

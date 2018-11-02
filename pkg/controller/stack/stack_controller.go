@@ -104,21 +104,26 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	clusterID := elasticsearch.ClusterID(stack.Namespace, stack.Name)
+	stackID := StackID(stack.Namespace, stack.Name)
 
-	res, err := r.reconcileEsDeployment(stack, clusterID)
+	res, err := r.reconcileEsDeployment(stack, stackID)
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileService(stack, elasticsearch.NewDiscoveryService(stack.Namespace, stack.Name, clusterID))
+	res, err = r.reconcileService(stack, elasticsearch.NewDiscoveryService(stack.Namespace, stack.Name, stackID))
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileService(stack, elasticsearch.NewPublicService(stack.Namespace, stack.Name, clusterID))
+	res, err = r.reconcileService(stack, elasticsearch.NewPublicService(stack.Namespace, stack.Name, stackID))
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileKibanaDeployment(stack, clusterID)
+	res, err = r.reconcileKibanaDeployment(stack, stackID)
+	if err != nil {
+		return res, err
+	}
+
+	res, err = r.reconcileService(stack, kibana.NewService(stack.Namespace, stack.Name, stackID))
 	if err != nil {
 		return res, err
 	}
@@ -126,17 +131,17 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack, clusterID string) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack, stackID string) (reconcile.Result, error) {
 	esPodSpecParams := elasticsearch.NewPodSpecParams{
 		Version:                        stack.Spec.Version,
 		CustomImageName:                stack.Spec.Elasticsearch.Image,
-		ClusterName:                    clusterID,
+		ClusterName:                    stackID,
 		DiscoveryZenMinimumMasterNodes: elasticsearch.ComputeMinimumMasterNodes(int(stack.Spec.Elasticsearch.NodeCount)),
 		DiscoveryServiceName:           elasticsearch.DiscoveryServiceName(stack.Name),
 		SetVmMaxMapCount:               stack.Spec.Elasticsearch.SetVmMaxMapCount,
 	}
 
-	labels := elasticsearch.NewLabelsWithClusterID(clusterID)
+	labels := elasticsearch.NewLabelsWithStackID(stackID)
 	deploy := NewDeployment(DeploymentParams{
 		Name:      stack.Name + "-es",
 		Namespace: stack.Namespace,
@@ -152,12 +157,12 @@ func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack,
 	return res, nil
 }
 
-func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, clusterID string) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, stackID string) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
 	}
-	labels := kibana.NewLabelsWithClusterID(clusterID)
+	labels := kibana.NewLabelsWithStackID(stackID)
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
