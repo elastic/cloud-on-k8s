@@ -15,8 +15,14 @@ type StackSpec struct {
 	// Version represents the version of the stack
 	Version string `json:"version,omitempty"`
 
+	//TODO the new deployments API in EC(E) supports sequences of
+	//Kibanas and Elasticsearch clusters per stack deployment
+
 	// Elasticsearch specific configuration for the stack.
 	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
+
+	//Kibana spec for this stack
+	Kibana KibanaSpec `json:"kibana,omitempty"`
 }
 
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.
@@ -31,6 +37,14 @@ type ElasticsearchSpec struct {
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
 	SetVmMaxMapCount bool `json:"setVmMaxMapCount,omitempty"`
+}
+
+type KibanaSpec struct {
+	// Image represents the docker image that will be used.
+	Image string `json:"image,omitempty"`
+
+	// NodeCount defines how many nodes the Kibana deployment must have.
+	NodeCount int32 `json:"nodeCount,omitempty"`
 }
 
 // StackStatus defines the observed state of Stack

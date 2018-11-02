@@ -3,19 +3,15 @@ package stack
 import (
 	"context"
 	"fmt"
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
-	"reflect"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
+	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -114,52 +110,30 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec:       elasticsearch.NewPodSpec(esPodSpecParams),
-			},
-		},
-	}
-	if err := controllerutil.SetControllerReference(instance, deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	deploy := NewDeployment(instance.Name, instance.Namespace, elasticsearch.NewPodSpec(esPodSpecParams))
+	if result, err := r.ReconcileDeployment(deploy, *instance); err != nil {
+		return result, err
 	}
 
-	// TODO(user): Change this for the object type created by your controller
-	// Check if the Deployment already exists
-	found := &appsv1.Deployment{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info(
-			fmt.Sprintf("Creating Deployment %s/%s", deploy.Namespace, deploy.Name),
-			"iteration", r.iteration,
-		)
-		err = r.Create(context.TODO(), deploy)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	} else if err != nil {
-		return reconcile.Result{}, err
-	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		// Update the found object and write the result back if there are any changes
-		found.Spec = deploy.Spec
-		log.Info(
-			fmt.Sprintf("Updating Deployment %s/%s", deploy.Namespace, deploy.Name),
-			"iteration", r.iteration,
-		)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	//TODO use a service
+	pods := &corev1.PodList{}
+	err = r.List(context.TODO(), client.MatchingLabels(deploy.Spec.Template.ObjectMeta.Labels), pods)
+	if err != nil || len(pods.Items) == 0 {
+		log.Info(fmt.Sprintf("Pods %s not found. Re-queueing", deploy.Spec.Template.ObjectMeta.Labels))
+		return reconcile.Result{Requeue: true}, err
 	}
 
-	return reconcile.Result{}, nil
+	host := pods.Items[0].Status.PodIP
+
+	elasticsearchUrl := fmt.Sprintf("http://%s:9200", host)
+	kibanaPodSpecParams := kibana.PodSpecParams{
+		Version:          instance.Spec.Version,
+		ElasticsearchUrl: elasticsearchUrl,
+	}
+	deploy = NewDeployment(
+		kibana.NewDeploymentName(instance.Name),
+		instance.Namespace,
+		kibana.NewPodSpec(kibanaPodSpecParams))
+	return r.ReconcileDeployment(deploy, *instance)
+
 }
