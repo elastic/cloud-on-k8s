@@ -29,10 +29,10 @@ var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "d
 const timeout = time.Second * 5
 const retryInterval = time.Millisecond * 100
 
-func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.Duration, f func() bool) {
+func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.Duration, f func() error) {
 	timeoutChan := time.After(timeout)
 	for {
-		resp := make(chan (bool))
+		resp := make(chan (error))
 		go func() {
 			resp <- f()
 		}()
@@ -41,14 +41,14 @@ func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.D
 			assert.Fail(t, fmt.Sprintf("%s timeout reached", timeout))
 			return
 		case fSuccess := <-resp:
-			if fSuccess {
+			if fSuccess == nil {
 				return
 			}
 			select {
 			case <-time.After(retryInterval):
 				continue
 			case <-timeoutChan:
-				assert.Fail(t, fmt.Sprintf("%s timeout reached", timeout))
+				assert.Fail(t, fmt.Sprintf("%s timeout reached. Error: %s", timeout, fSuccess.Error()))
 				return
 			}
 		}
@@ -56,7 +56,7 @@ func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.D
 }
 
 // eventually is a wrapper around retryUntilSuccess with default values
-func eventually(t *testing.T, f func() bool) {
+func eventually(t *testing.T, f func() error) {
 	retryUntilSuccess(t, timeout, retryInterval, f)
 }
 
@@ -72,7 +72,7 @@ func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
 func checkResourceDeletionTriggersReconcile(t *testing.T, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
 	assert.NoError(t, c.Delete(context.TODO(), obj))
 	checkReconcileCalled(t, requests)
-	eventually(t, func() bool { return c.Get(context.TODO(), objKey, obj) != nil })
+	eventually(t, func() error { return c.Get(context.TODO(), objKey, obj) })
 }
 
 func TestReconcile(t *testing.T) {
@@ -116,13 +116,13 @@ func TestReconcile(t *testing.T) {
 
 	// Deployment should be created
 	deploy := &appsv1.Deployment{}
-	eventually(t, func() bool { return c.Get(context.TODO(), depKey, deploy) == nil })
+	eventually(t, func() error { return c.Get(context.TODO(), depKey, deploy) })
 
 	// Services should be created
 	discoveryService := &corev1.Service{}
-	eventually(t, func() bool { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) == nil })
+	eventually(t, func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) })
 	publicService := &corev1.Service{}
-	eventually(t, func() bool { return c.Get(context.TODO(), publicServiceKey, publicService) == nil })
+	eventually(t, func() error { return c.Get(context.TODO(), publicServiceKey, publicService) })
 
 	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
 	checkResourceDeletionTriggersReconcile(t, requests, depKey, deploy)
