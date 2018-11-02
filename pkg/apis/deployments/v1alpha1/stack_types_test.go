@@ -5,7 +5,7 @@ package v1alpha1
 import (
 	"testing"
 
-	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,24 +21,24 @@ func TestStorageStack(t *testing.T) {
 			Name:      "foo",
 			Namespace: "default",
 		}}
-	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
 	fetched := &Stack{}
-	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(created))
+	assert.NoError(t, c.Create(context.TODO(), created))
+
+	assert.NoError(t, c.Get(context.TODO(), key, fetched))
+	assert.Equal(t, created, fetched)
 
 	// Test Updating the Labels
 	updated := fetched.DeepCopy()
 	updated.Labels = map[string]string{"hello": "world"}
-	g.Expect(c.Update(context.TODO(), updated)).NotTo(gomega.HaveOccurred())
+	assert.NoError(t, c.Update(context.TODO(), updated))
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(updated))
+	assert.NoError(t, c.Get(context.TODO(), key, fetched))
+	assert.Equal(t, fetched, updated)
 
 	// Test Delete
-	g.Expect(c.Delete(context.TODO(), fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(c.Get(context.TODO(), key, fetched)).To(gomega.HaveOccurred())
+	assert.NoError(t, c.Delete(context.TODO(), fetched))
+	assert.Error(t, c.Get(context.TODO(), key, fetched))
 }
