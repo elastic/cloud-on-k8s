@@ -8,6 +8,9 @@ import (
 )
 
 const (
+	//HTTPPort is the (default) port used by Kibana
+	HTTPPort = 5601
+
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
@@ -27,14 +30,12 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		imageName = imageWithVersion(defaultImageRepositoryAndName, p.Version)
 	}
 
-	port := 5601
-
 	probe := &corev1.Probe{
 		InitialDelaySeconds: 10,
 		PeriodSeconds:       30,
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(port),
+				Port:   intstr.FromInt(HTTPPort),
 				Path:   "/",
 				Scheme: corev1.URISchemeHTTP,
 			},
@@ -50,7 +51,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "kibana",
 			Ports: []corev1.ContainerPort{
-				{Name: "http", ContainerPort: int32(port), Protocol: corev1.ProtocolTCP},
+				{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 			},
 			LivenessProbe:  probe,
 			ReadinessProbe: probe,
