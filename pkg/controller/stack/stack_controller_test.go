@@ -65,7 +65,7 @@ func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
 	case req := <-requests:
 		assert.Equal(t, req, expectedRequest)
 	case <-time.After(timeout):
-		assert.Fail(t, "No request received after %s", timeout)
+		assert.Fail(t, fmt.Sprintf("No request received after %s", timeout))
 	}
 }
 
