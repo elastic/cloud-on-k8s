@@ -4,11 +4,14 @@
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
 
-all: test manager
+all: unit integration manager
 
 # Run tests
-test: generate fmt vet manifests
+unit:
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
+
+integration: generate fmt vet manifests
+	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
 # Build manager binary
 manager: generate fmt vet
@@ -44,7 +47,7 @@ generate:
 	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build: test
+docker-build: unit
 	docker build . -t ${IMG}
 	@echo "updating kustomize image patch file for manager resource"
 	sed -i'' -e 's@image: .*@image: '"${IMG}"'@' ./config/default/manager_image_patch.yaml
@@ -92,7 +95,7 @@ endif
 
 # dev
 .PHONY: dev
-dev: minikube vendor all install samples
+dev: minikube vendor unit manager install samples
 	@ echo "-> Development environment started"
 	@ echo "-> Run \"make run\" to start the manager process localy"
 
