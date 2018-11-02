@@ -6,6 +6,7 @@ import (
 	"time"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
@@ -26,55 +27,19 @@ var depKey = types.NamespacedName{Name: "foo-es", Namespace: "default"}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
 var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
 
-const timeout = time.Second * 5
-const retryInterval = time.Millisecond * 100
-
-func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.Duration, f func() error) {
-	timeoutChan := time.After(timeout)
-	var lastErr error
-	for {
-		resp := make(chan (error))
-		go func() {
-			resp <- f()
-		}()
-		select {
-		case <-timeoutChan:
-			assert.Fail(t, fmt.Sprintf("timeout reached after %s, last error was %s", timeout, lastErr))
-			return
-		case err := <-resp:
-			if err == nil {
-				return
-			}
-			lastErr = err
-			select {
-			case <-time.After(retryInterval):
-				continue
-			case <-timeoutChan:
-				assert.Fail(t, fmt.Sprintf("timeout reached after %s, last error was %s", timeout, lastErr))
-				return
-			}
-		}
-	}
-}
-
-// eventually is a wrapper around retryUntilSuccess with default values
-func eventually(t *testing.T, f func() error) {
-	retryUntilSuccess(t, timeout, retryInterval, f)
-}
-
 func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
 	select {
 	case req := <-requests:
 		assert.Equal(t, req, expectedRequest)
-	case <-time.After(timeout):
-		assert.Fail(t, fmt.Sprintf("No request received after %s", timeout))
+	case <-time.After(test.Timeout):
+		assert.Fail(t, fmt.Sprintf("No request received after %s", test.Timeout))
 	}
 }
 
 func checkResourceDeletionTriggersReconcile(t *testing.T, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
 	assert.NoError(t, c.Delete(context.TODO(), obj))
 	checkReconcileCalled(t, requests)
-	eventually(t, func() error { return c.Get(context.TODO(), objKey, obj) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), objKey, obj) })
 }
 
 func TestReconcile(t *testing.T) {
@@ -118,13 +83,13 @@ func TestReconcile(t *testing.T) {
 
 	// Deployment should be created
 	deploy := &appsv1.Deployment{}
-	eventually(t, func() error { return c.Get(context.TODO(), depKey, deploy) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), depKey, deploy) })
 
 	// Services should be created
 	discoveryService := &corev1.Service{}
-	eventually(t, func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) })
 	publicService := &corev1.Service{}
-	eventually(t, func() error { return c.Get(context.TODO(), publicServiceKey, publicService) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), publicServiceKey, publicService) })
 
 	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
 	checkResourceDeletionTriggersReconcile(t, requests, depKey, deploy)
