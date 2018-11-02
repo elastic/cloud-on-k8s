@@ -14,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// NewDeployment creates a Deployment API struct with the given PodSpec.
 func NewDeployment(name string, namespace string, spec corev1.PodSpec) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -32,6 +33,7 @@ func NewDeployment(name string, namespace string, spec corev1.PodSpec) appsv1.De
 	}
 }
 
+// ReconcileDeployment upserts the given deployment for the specified stack.
 func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) (reconcile.Result, error) {
 	if err := controllerutil.SetControllerReference(&instance, &deploy, r.scheme); err != nil {
 		return reconcile.Result{}, err
