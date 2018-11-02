@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"fmt"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
@@ -53,8 +52,8 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
-	// Uncomment watch a Deployment created by Stack - change this for objects you create
+	// TODO: filter those types to make sure we don't watch *all* deployments and services in the cluster
+	// Watch deployments
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &deploymentsv1alpha1.Stack{},
@@ -62,6 +61,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err != nil {
 		return err
 	}
+	// Watch services
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &deploymentsv1alpha1.Stack{},
+	})
 
 	return nil
 }
@@ -88,8 +92,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	r.iteration += 1
 
 	// Fetch the Stack instance
-	instance := &deploymentsv1alpha1.Stack{}
-	err := r.Get(context.TODO(), request.NamespacedName, instance)
+	stack := &deploymentsv1alpha1.Stack{}
+	err := r.Get(context.TODO(), request.NamespacedName, stack)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -100,41 +104,67 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	// TODO(user): Change this to be the object type created by your controller
+	clusterID := elasticsearch.ClusterID(stack.Namespace, stack.Name)
+
+	res, err := r.reconcileEsDeployment(stack, clusterID)
+	if err != nil {
+		return res, err
+	}
+	res, err = r.reconcileService(stack, elasticsearch.NewDiscoveryService(stack.Namespace, stack.Name, clusterID))
+	if err != nil {
+		return res, err
+	}
+	res, err = r.reconcileService(stack, elasticsearch.NewPublicService(stack.Namespace, stack.Name, clusterID))
+	if err != nil {
+		return res, err
+	}
+	res, err = r.reconcileKibanaDeployment(stack, clusterID)
+	if err != nil {
+		return res, err
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileStack) reconcileEsDeployment(stack *deploymentsv1alpha1.Stack, clusterID string) (reconcile.Result, error) {
 	esPodSpecParams := elasticsearch.NewPodSpecParams{
-		Version:                        instance.Spec.Version,
-		CustomImageName:                instance.Spec.Elasticsearch.Image,
-		ClusterName:                    instance.Name,
-		DiscoveryZenMinimumMasterNodes: 1,
-		DiscoveryServiceName:           "localhost",
-		SetVmMaxMapCount:               instance.Spec.Elasticsearch.SetVmMaxMapCount,
+		Version:                        stack.Spec.Version,
+		CustomImageName:                stack.Spec.Elasticsearch.Image,
+		ClusterName:                    clusterID,
+		DiscoveryZenMinimumMasterNodes: elasticsearch.ComputeMinimumMasterNodes(int(stack.Spec.Elasticsearch.NodeCount)),
+		DiscoveryServiceName:           elasticsearch.DiscoveryServiceName(stack.Name),
+		SetVmMaxMapCount:               stack.Spec.Elasticsearch.SetVmMaxMapCount,
 	}
 
-	// Define the desired Deployment object
-	deploy := NewDeployment(instance.Name, instance.Namespace, elasticsearch.NewPodSpec(esPodSpecParams))
-	if result, err := r.ReconcileDeployment(deploy, *instance); err != nil {
-		return result, err
+	labels := elasticsearch.NewLabelsWithClusterID(clusterID)
+	deploy := NewDeployment(DeploymentParams{
+		Name:      stack.Name + "-es",
+		Namespace: stack.Namespace,
+		Selector:  labels,
+		Labels:    labels,
+		Replicas:  stack.Spec.Elasticsearch.NodeCount,
+		PodSpec:   elasticsearch.NewPodSpec(esPodSpecParams),
+	})
+	res, err := r.ReconcileDeployment(deploy, *stack)
+	if err != nil {
+		return res, err
 	}
+	return res, nil
+}
 
-	//TODO use a service
-	pods := &corev1.PodList{}
-	err = r.List(context.TODO(), client.MatchingLabels(deploy.Spec.Template.ObjectMeta.Labels), pods)
-	if err != nil || len(pods.Items) == 0 {
-		log.Info(fmt.Sprintf("Pods %s not found. Re-queueing", deploy.Spec.Template.ObjectMeta.Labels))
-		return reconcile.Result{Requeue: true}, err
-	}
-
-	host := pods.Items[0].Status.PodIP
-
-	elasticsearchUrl := fmt.Sprintf("http://%s:9200", host)
+func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, clusterID string) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
-		Version:          instance.Spec.Version,
-		ElasticsearchUrl: elasticsearchUrl,
+		Version:          stack.Spec.Version,
+		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
 	}
-	deploy = NewDeployment(
-		kibana.NewDeploymentName(instance.Name),
-		instance.Namespace,
-		kibana.NewPodSpec(kibanaPodSpecParams))
-	return r.ReconcileDeployment(deploy, *instance)
-
+	labels := kibana.NewLabelsWithClusterID(clusterID)
+	deploy := NewDeployment(DeploymentParams{
+		Name:      kibana.NewDeploymentName(stack.Name),
+		Namespace: stack.Namespace,
+		Replicas:  1,
+		Selector:  labels,
+		Labels:    labels,
+		PodSpec:   kibana.NewPodSpec(kibanaPodSpecParams),
+	})
+	return r.ReconcileDeployment(deploy, *stack)
 }
