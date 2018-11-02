@@ -31,6 +31,7 @@ const retryInterval = time.Millisecond * 100
 
 func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.Duration, f func() error) {
 	timeoutChan := time.After(timeout)
+	var lastErr error
 	for {
 		resp := make(chan (error))
 		go func() {
@@ -38,17 +39,18 @@ func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.D
 		}()
 		select {
 		case <-timeoutChan:
-			assert.Fail(t, fmt.Sprintf("%s timeout reached", timeout))
+			assert.Fail(t, fmt.Sprintf("timeout reached after %s, last error was %s", timeout, lastErr))
 			return
-		case fSuccess := <-resp:
-			if fSuccess == nil {
+		case err := <-resp:
+			if err == nil {
 				return
 			}
+			lastErr = err
 			select {
 			case <-time.After(retryInterval):
 				continue
 			case <-timeoutChan:
-				assert.Fail(t, fmt.Sprintf("%s timeout reached. Error: %s", timeout, fSuccess.Error()))
+				assert.Fail(t, fmt.Sprintf("timeout reached after %s, last error was %s", timeout, lastErr))
 				return
 			}
 		}
