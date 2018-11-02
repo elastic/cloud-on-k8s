@@ -1,6 +1,7 @@
 package stack
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,30 +29,35 @@ var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "d
 const timeout = time.Second * 5
 const retryInterval = time.Millisecond * 100
 
-func retryUntilSuccess(t *testing.T, timeout <-chan time.Time, retryInterval time.Duration, f func() bool) {
-	resp := make(chan (bool))
-	go func() {
-		resp <- f()
-	}()
-	select {
-	case <-timeout:
-		assert.Fail(t, "Timeout reached")
-	case fSuccess := <-resp:
-		if fSuccess {
-			return
-		}
+func retryUntilSuccess(t *testing.T, timeout time.Duration, retryInterval time.Duration, f func() bool) {
+	timeoutChan := time.After(timeout)
+	for {
+		resp := make(chan (bool))
+		go func() {
+			resp <- f()
+		}()
 		select {
-		case <-time.After(retryInterval):
-			retryUntilSuccess(t, timeout, retryInterval, f)
-		case <-timeout:
-			assert.Fail(t, "Timeout reached")
+		case <-timeoutChan:
+			assert.Fail(t, fmt.Sprintf("%s timeout reached", timeout))
+			return
+		case fSuccess := <-resp:
+			if fSuccess {
+				return
+			}
+			select {
+			case <-time.After(retryInterval):
+				continue
+			case <-timeoutChan:
+				assert.Fail(t, fmt.Sprintf("%s timeout reached", timeout))
+				return
+			}
 		}
 	}
 }
 
 // eventually is a wrapper around retryUntilSuccess with default values
 func eventually(t *testing.T, f func() bool) {
-	retryUntilSuccess(t, time.After(timeout), retryInterval, f)
+	retryUntilSuccess(t, timeout, retryInterval, f)
 }
 
 func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
