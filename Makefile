@@ -33,7 +33,7 @@ manifests:
 
 # Run go fmt against code
 fmt:
-	go fmt ./pkg/... ./cmd/...
+	goimports -w pkg cmd
 
 # Run go vet against code
 vet:
@@ -57,6 +57,7 @@ docker-push:
 
 INSTALL_HELP = "please refer to the README.md for how to install it."
 GO := $(shell command -v go)
+GOIMPORTS := $(shell command -v goimports)
 MINIKUBE := $(shell command -v minikube)
 KUBECTL := $(shell command -v kubectl)
 KUBEBUILDER := $(shell command -v kubebuilder)
@@ -70,6 +71,10 @@ MINIKUBE_MEMORY ?= 8192
 requisites:
 ifndef GO
 	@ echo "-> go binary missing, $(INSTALL_HELP)"
+	@ exit 1
+endif
+ifndef GOIMPORTS
+	@ echo "-> goimports binary missing, $(INSTALL_HELP)"
 	@ exit 1
 endif
 ifndef MINIKUBE
