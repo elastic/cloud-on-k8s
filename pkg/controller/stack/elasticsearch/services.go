@@ -20,10 +20,10 @@ func NewDiscoveryService(namespace string, stackName string, clusterID string) *
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      DiscoveryServiceName(stackName),
-			Labels:    ClusterIDLabels(clusterID),
+			Labels:    NewLabelsWithClusterID(clusterID),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: ClusterIDLabels(clusterID),
+			Selector: NewLabelsWithClusterID(clusterID),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -47,7 +47,8 @@ func PublicServiceName(stackName string) string {
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stackName string) string {
-	return fmt.Sprintf("%s:%d", PublicServiceName(stackName), HTTPPort)
+	scheme := "http"
+	return fmt.Sprintf("%s://%s:%d", scheme, PublicServiceName(stackName), HTTPPort)
 }
 
 // NewPublicService returns the public service associated to the given cluster
@@ -57,10 +58,10 @@ func NewPublicService(namespace string, stackName string, clusterID string) *cor
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
 			Name:      PublicServiceName(stackName),
-			Labels:    ClusterIDLabels(clusterID),
+			Labels:    NewLabelsWithClusterID(clusterID),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: ClusterIDLabels(clusterID),
+			Selector: NewLabelsWithClusterID(clusterID),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
