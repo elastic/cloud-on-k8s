@@ -81,7 +81,6 @@ func TestReconcile(t *testing.T) {
 	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
 	checkResourceDeletionTriggersReconcile(g, requests, depKey, deploy)
 	// Same for services
-	// TODO: fixit, this does not seem to work as expected for services?
 	checkResourceDeletionTriggersReconcile(g, requests, discoveryServiceKey, discoveryService)
 	checkResourceDeletionTriggersReconcile(g, requests, publicServiceKey, publicService)
 
