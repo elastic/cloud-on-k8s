@@ -1,8 +1,7 @@
 package kibana
 
 import (
-	"fmt"
-
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -21,7 +20,7 @@ type PodSpecParams struct {
 }
 
 func imageWithVersion(image string, version string) string {
-	return fmt.Sprintf("%s:%s", image, version)
+	return common.Concat(image, ":", version)
 }
 
 func NewPodSpec(p PodSpecParams) corev1.PodSpec {

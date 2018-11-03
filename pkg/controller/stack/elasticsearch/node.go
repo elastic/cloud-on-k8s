@@ -1,17 +1,22 @@
 package elasticsearch
 
 import (
-	"fmt"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
+	// typeSuffix represents the Elasticsearch shortened suffix that is
+	// interpolated in NewNodeName.
 	typeSuffix = "-es"
-
+	// randomSuffixLength represents the length of the random suffix that is
+	// appended in NewNodeName.
 	randomSuffixLength = 10
-	// k8s object name has a maximum length
-	maxNameLength = 63 - randomSuffixLength - 1 - 3
+	// k8s object name has a maximum length of 63, we're substracting the
+	// randomSuffix and the interpolated type suffix +1 which accounts
+	// for the extra `-` in the interpolation.
+	maxPrefixLength = 63 - randomSuffixLength - 1 - len(typeSuffix)
 )
 
 var (
@@ -23,10 +28,14 @@ var (
 // NewNodeName forms an Elasticsearch node name. Returning a unique node
 // node name to be used for the Elaticsearch cluster node.
 func NewNodeName(clusterName string) string {
-	var prefix = fmt.Sprint(clusterName)
-	var suffix = rand.String(randomSuffixLength - (len(typeSuffix)))
-	if len(prefix) > maxNameLength {
-		prefix = prefix[:maxNameLength]
+	var prefix = clusterName
+	if len(prefix) > maxPrefixLength {
+		prefix = prefix[:maxPrefixLength]
 	}
-	return fmt.Sprint(prefix, "-es-", suffix)
+	var nodeName strings.Builder
+	nodeName.WriteString(prefix)
+	nodeName.WriteString(typeSuffix)
+	nodeName.WriteString("-")
+	nodeName.WriteString(rand.String(randomSuffixLength))
+	return nodeName.String()
 }

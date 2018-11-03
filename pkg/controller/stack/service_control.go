@@ -2,10 +2,10 @@ package stack
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +23,7 @@ func (r *ReconcileStack) reconcileService(stack *deploymentsv1alpha1.Stack, serv
 	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// Create if needed
-		log.Info(fmt.Sprintf("Creating service %s/%s\n", expected.Namespace, expected.Name),
+		log.Info(common.Concat("Creating service ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
 
@@ -57,7 +57,7 @@ func (r *ReconcileStack) reconcileService(stack *deploymentsv1alpha1.Stack, serv
 	// Update if needed
 	if !reflect.DeepEqual(expected.Spec, found.Spec) {
 		log.Info(
-			fmt.Sprintf("Updating service %s/%s\n", expected.Namespace, expected.Name),
+			common.Concat("Updating service ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
 		found.Spec = expected.Spec // only update spec, keep the rest

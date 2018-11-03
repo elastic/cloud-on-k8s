@@ -1,9 +1,10 @@
 package elasticsearch
 
 import (
-	"fmt"
+	"strconv"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -11,7 +12,7 @@ import (
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(stackName string) string {
-	return stackName + "-es-discovery"
+	return common.Concat(stackName, "-es-discovery")
 }
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
@@ -43,13 +44,13 @@ func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 // PublicServiceName returns the name for the public service
 // associated to this cluster
 func PublicServiceName(stackName string) string {
-	return stackName + "-es-public"
+	return common.Concat(stackName, "-es-public")
 }
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stackName string) string {
 	scheme := "http"
-	return fmt.Sprintf("%s://%s:%d", scheme, PublicServiceName(stackName), HTTPPort)
+	return common.Concat(scheme, "://", PublicServiceName(stackName), ":", strconv.Itoa(HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster

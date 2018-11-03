@@ -2,9 +2,9 @@ package stack
 
 import (
 	"context"
-	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 	"sync/atomic"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -14,7 +14,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -148,7 +147,8 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 	return stackInstance, nil
 }
 
-// GetPodList returns PodList in the current
+// GetPodList returns PodList in the current namespace with a specific set of
+// filters (labels and fields).
 func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, fieldSelectors map[string]string) (corev1.PodList, error) {
 	var podList corev1.PodList
 	stack, err := r.GetStack(request)
@@ -156,30 +156,36 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, f
 		return podList, err
 	}
 
-	var rawLabelSelectors = fmt.Sprint(
-		elasticsearch.ClusterIDLabelName, "=", common.StackID(stack),
-	)
+	var rawLabelSelectors strings.Builder
+	rawLabelSelectors.WriteString(elasticsearch.ClusterIDLabelName)
+	rawLabelSelectors.WriteString("=")
+	rawLabelSelectors.WriteString(common.StackID(stack))
 	for k, v := range labelSelectors {
-		rawLabelSelectors = fmt.Sprint(rawLabelSelectors, ",", k, "=", v)
+		rawLabelSelectors.WriteString(",")
+		rawLabelSelectors.WriteString(k)
+		rawLabelSelectors.WriteString("=")
+		rawLabelSelectors.WriteString(v)
 	}
 
-	var rawFieldSelectors string
+	var rawFieldSelectors strings.Builder
 	for k, v := range fieldSelectors {
-		if rawFieldSelectors != "" {
-			rawFieldSelectors = fmt.Sprint(rawFieldSelectors, ",")
+		if rawFieldSelectors.Len() > 0 {
+			rawFieldSelectors.WriteString(",")
 		}
-		rawFieldSelectors = fmt.Sprint(rawFieldSelectors, k, "=", v)
+		rawLabelSelectors.WriteString(k)
+		rawLabelSelectors.WriteString("=")
+		rawLabelSelectors.WriteString(v)
 	}
 
-	var listOpts = client.ListOptions{
-		Namespace: request.Namespace,
-		Raw: &metav1.ListOptions{
-			FieldSelector: rawFieldSelectors,
-		},
-	}
-
-	if err := listOpts.SetLabelSelector(rawLabelSelectors); err != nil {
+	var listOpts = client.ListOptions{Namespace: request.Namespace}
+	if err := listOpts.SetLabelSelector(rawLabelSelectors.String()); err != nil {
 		return podList, err
+	}
+
+	if rawFieldSelectors.Len() > 0 {
+		if err := listOpts.SetFieldSelector(rawFieldSelectors.String()); err != nil {
+			return podList, err
+		}
 	}
 
 	if err := r.List(context.TODO(), &listOpts, &podList); err != nil {
@@ -216,7 +222,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 		proposedPods = append(proposedPods, pod)
 	}
 
-	// Any pods with different spec hashes, need to be recreated.
+	// Any pods with different spec hashes need to be recreated.
 	for _, pod := range currentPods.Items {
 		h, ok := pod.Labels[elasticsearch.HashLabelName]
 		if !ok {
@@ -248,9 +254,9 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 		proposedPods = append(proposedPods, newPod)
 	}
 
-	// Trim the # of proposed pods to the node count, we can't more nodes
+	// Trim the # of proposed pods to the node count, we can't have more nodes
 	// being created > NodeCount. This is required to not do work in vain when
-	// There's a decrease in the number of nodes in the topology and a hash
+	// there's a decrease in the number of nodes in the topology and a hash
 	// change.
 	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount {
 		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount]
@@ -260,7 +266,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 		if err := r.Create(context.TODO(), &pod); err != nil {
 			return reconcile.Result{}, err
 		}
-		log.Info(fmt.Sprint("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+		log.Info(common.Concat("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 	}
 
 	return reconcile.Result{}, err
@@ -303,7 +309,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 			if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
 				return reconcile.Result{}, err
 			}
-			log.Info(fmt.Sprint("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+			log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 		}
 
 	}

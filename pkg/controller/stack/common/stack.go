@@ -8,5 +8,5 @@ import (
 // based on the given namespace and stack name, following
 // the convention: <namespace>-<stack name>
 func StackID(s deploymentsv1alpha1.Stack) string {
-	return s.Namespace + "-" + s.Name
+	return Concat(s.Namespace, "-", s.Name)
 }
