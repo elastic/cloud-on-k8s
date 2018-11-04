@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -8,21 +9,68 @@ import (
 
 var log = logf.Log.WithName("migrate-data")
 
-//IsMigrating Data looks only at the presence of shards on a given node
-// TODO check global allocation filters
-func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
-	shards, e := c.CatShards()
-	if e != nil {
-		return true, e
+func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
+	if toMigrate.IsRelocating() || toMigrate.IsInitializing(){
+		return true //being migrated away or weirdly just initializing
 	}
+	found := others != nil
+	if toMigrate.IsStarted() {
+		if !found {
+			return true //not running anywhere else
+		}
+		for _, other := range others {
+			if other.IsStarted() {
+				return false // found another shard copy
+			}
+		}
+		return true // we assume other copies are initializing
+
+	}
+	return false //we assume no migration is happening at this point
+}
+
+func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
+	othersByShard := make(map[string][]client.Shard)
+	candidates := make([]client.Shard, 0)
+
+	log.Info("hello")
 
 	for _, shard := range shards {
-		if shard.Node == pod.Name {
-			return true, nil
+
+		if shard.Node == nodeName {
+			candidates = append(candidates, shard)
+		} else {
+			key := shard.Key()
+			others, found := othersByShard[key]
+			if !found {
+				othersByShard[key] = []client.Shard{shard}
+			} else {
+				othersByShard[key] = append(others, shard)
+			}
 		}
 	}
 
-	return false, nil
+	log.Info(fmt.Sprintf("others by shard %v", othersByShard))
+	log.Info(fmt.Sprintf("candidates %v", candidates))
+	for _, toMigrate := range candidates {
+		migrating := shardIsMigrating(toMigrate, othersByShard[toMigrate.Key()])
+		if migrating {
+			return true
+		}
+	}
+	return false
+
+}
+
+//IsMigrating Data looks only at the presence of shards on a given node in
+// and checks if there is at least one other copy of the shard in the cluster
+// that is started and not relocating.
+func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
+	shards, err := c.CatShards()
+	if err != nil {
+		return true, err
+	}
+	return nodeIsMigratingData(pod.Name, shards), nil
 }
 
 //MigrateData sets allocation filters for the given pod

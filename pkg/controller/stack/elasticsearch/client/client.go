@@ -13,24 +13,7 @@ type Client struct {
 	Endpoint string
 } //TODO credentials, TLS
 
-type Shard struct {
-	Index  string `json:"index"`
-	Shard  string `json:"shard"`
-	Prirep string `json:"prirep"`
-	State  string `json:"state"`
-	Store  string `json:"string"`
-	IP     string `json:"ip"`
-	Node   string `json:"node"`
-}
 
-type TransientSettings struct {
-	ExcludeName string `json:"cluster.routing.allocation.exclude._name"`
-	Enable      string `json:"cluster.routing.allocation.enable"`
-} //TODO awareness settings
-
-type ClusterRoutingAllocation struct {
-	Transient TransientSettings `json:"transient"`
-}
 
 func checkError(response *http.Response) error {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
