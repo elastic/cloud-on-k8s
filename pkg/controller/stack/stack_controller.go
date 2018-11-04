@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
+	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -145,6 +147,13 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 		return stackInstance, err
 	}
 	return stackInstance, nil
+}
+
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) *esclient.Client {
+	return &esclient.Client{
+		Endpoint: elasticsearch.ExternalServiceURL(stack.Name),
+		HTTP:     &http.Client{},
+	}
 }
 
 // GetPodList returns PodList in the current namespace with a specific set of
@@ -290,6 +299,9 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		return currentPods.Items[i].CreationTimestamp.Before(&currentPods.Items[j].CreationTimestamp)
 	})
 
+	//create an Elasticsearch client
+	esClient := NewElasticsearchClient(&stackInstance)
+
 	// Delete the difference between the running and desired pods.
 	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
 	for i := int32(0); i < orphanPodNumber; i++ {
@@ -304,6 +316,18 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
 					continue
 				}
+			}
+			if err = elasticsearch.MigrateData(esClient, pod); err != nil {
+				log.Error(err, "error during migrate data")
+				return reconcile.Result{}, err
+			}
+			isMigratingData, e := elasticsearch.IsMigratingData(esClient, pod)
+			if e != nil {
+				return reconcile.Result{}, e
+			}
+			if isMigratingData {
+				log.Info(common.Concat("Migrating data, skipping delete for", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+				return reconcile.Result{Requeue: true}, nil
 			}
 
 			if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
