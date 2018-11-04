@@ -1,21 +1,28 @@
 package client
 
-import "github.com/elastic/stack-operators/pkg/controller/stack/common"
+import (
+	"strconv"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
+)
 
 const (
 	STARTED      = "STARTED"
 	INITIALIZING = "INITIALIZING"
 	RELOCATING   = "RELOCATING"
+	UNASSIGNED   = "UNASSIGNED"
 )
 
+// Shard models a hybrid of _cat/shards shard and routing table shard
+// Node is the node name from cluster state as in _cat/shards
+// but it will never contain any relocation information.
+// Primary is a boolean as in cluster state.
 type Shard struct {
-	Index  string `json:"index"`
-	Shard  string `json:"shard"`
-	Prirep string `json:"prirep"`
-	State  string `json:"state"`
-	Store  string `json:"string"`
-	IP     string `json:"ip"`
-	Node   string `json:"node"`
+	Index   string `json:"index"`
+	Shard   int    `json:"shard"`
+	Primary bool   `json:"primary"`
+	State   string `json:"state"`
+	Node    string `json:"node"`
 }
 
 func (s Shard) IsRelocating() bool {
@@ -30,7 +37,7 @@ func (s Shard) IsInitializing() bool {
 }
 
 func (s Shard) Key() string {
-	return common.Concat(s.Index, "/", s.Shard)
+	return common.Concat(s.Index, "/", strconv.Itoa(s.Shard))
 }
 
 type TransientSettings struct {

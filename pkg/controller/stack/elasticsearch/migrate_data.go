@@ -64,7 +64,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
 func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
-	shards, err := c.CatShards()
+	shards, err := c.GetShards()
 	if err != nil {
 		return true, err
 	}
