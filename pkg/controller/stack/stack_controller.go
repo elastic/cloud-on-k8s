@@ -304,6 +304,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 
 	// Delete the difference between the running and desired pods.
 	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
+	var toDelete []corev1.Pod
 	for i := int32(0); i < orphanPodNumber; i++ {
 		var pod = currentPods.Items[i]
 		if pod.DeletionTimestamp != nil {
@@ -317,26 +318,37 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 					continue
 				}
 			}
-			if err = elasticsearch.MigrateData(esClient, pod); err != nil {
-				log.Error(err, "error during migrate data")
-				return reconcile.Result{}, err
-			}
-			isMigratingData, e := elasticsearch.IsMigratingData(esClient, pod)
-			if e != nil {
-				return reconcile.Result{}, e
-			}
-			if isMigratingData {
-				log.Info(common.Concat("Migrating data, skipping delete for", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-				return reconcile.Result{Requeue: true}, nil
-			}
-
-			if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-			log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+			toDelete = append(toDelete, pod)
 		}
 
 	}
+
+	var nodeNames []string
+	for _, pod := range toDelete {
+		nodeNames = append(nodeNames, pod.Name)
+	}
+	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
+		log.Error(err, "error during migrate data")
+		return reconcile.Result{}, err
+	}
+
+	for _, pod := range toDelete {
+		isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if isMigratingData {
+			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+			return reconcile.Result{Requeue: true}, nil
+		}
+
+		if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+
+	}
+
 	return reconcile.Result{}, nil
 }
 

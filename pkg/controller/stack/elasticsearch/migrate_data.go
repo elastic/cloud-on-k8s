@@ -1,7 +1,9 @@
 package elasticsearch
 
 import (
-	"fmt"
+	"strings"
+	"time"
+
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -10,7 +12,7 @@ import (
 var log = logf.Log.WithName("migrate-data")
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
-	if toMigrate.IsRelocating() || toMigrate.IsInitializing(){
+	if toMigrate.IsRelocating() || toMigrate.IsInitializing() {
 		return true //being migrated away or weirdly just initializing
 	}
 	found := others != nil
@@ -33,8 +35,6 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 	othersByShard := make(map[string][]client.Shard)
 	candidates := make([]client.Shard, 0)
 
-	log.Info("hello")
-
 	for _, shard := range shards {
 
 		if shard.Node == nodeName {
@@ -50,8 +50,6 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 		}
 	}
 
-	log.Info(fmt.Sprintf("others by shard %v", othersByShard))
-	log.Info(fmt.Sprintf("candidates %v", candidates))
 	for _, toMigrate := range candidates {
 		migrating := shardIsMigrating(toMigrate, othersByShard[toMigrate.Key()])
 		if migrating {
@@ -74,8 +72,16 @@ func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
 }
 
 //MigrateData sets allocation filters for the given pod
-func MigrateData(client *client.Client, pod v1.Pod) error {
+func MigrateData(client *client.Client, leavingNodes []string) error {
+	var exclusions string
+	if len(leavingNodes) == 0 {
+		exclusions = "none_excluded"
+	} else {
+		// See https://github.com/elastic/elasticsearch/issues/28316
+		withBugfix := append(leavingNodes, time.Now().String())
+		exclusions = strings.Join(withBugfix, ",")
+	}
 	//update allocation exclusions
-	e := client.ExcludeFromShardAllocation(pod.Name)
+	e := client.ExcludeFromShardAllocation(exclusions)
 	return e
 }

@@ -1,9 +1,10 @@
 package elasticsearch
 
 import (
+	"testing"
+
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestEnoughRedundancy(t *testing.T) {
@@ -23,7 +24,6 @@ func TestNothingToMigrate(t *testing.T) {
 	assert.False(t, nodeIsMigratingData("A", shards), "no data on node A")
 }
 
-
 func TestOnlyCopyNeedsMigration(t *testing.T) {
 	shards := []client.Shard{
 		client.Shard{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
@@ -34,7 +34,7 @@ func TestOnlyCopyNeedsMigration(t *testing.T) {
 }
 
 func TestRelocationIsMigration(t *testing.T) {
-		shards := []client.Shard{
+	shards := []client.Shard{
 		client.Shard{Index: "index-1", Shard: "0", State: client.RELOCATING, Node: "A"},
 		client.Shard{Index: "index-1", Shard: "0", State: client.INITIALIZING, Node: "B"},
 	}
@@ -42,13 +42,9 @@ func TestRelocationIsMigration(t *testing.T) {
 }
 
 func TestCopyIsInitializing(t *testing.T) {
-		shards := []client.Shard{
+	shards := []client.Shard{
 		client.Shard{Index: "index-1", Shard: "0", State: client.STARTED, Node: "A"},
 		client.Shard{Index: "index-1", Shard: "0", State: client.INITIALIZING, Node: "B"},
 	}
 	assert.True(t, nodeIsMigratingData("A", shards), "shard copy exists but is still initializing")
 }
-
-
-
-

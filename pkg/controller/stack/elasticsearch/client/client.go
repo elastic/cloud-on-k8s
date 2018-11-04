@@ -13,8 +13,6 @@ type Client struct {
 	Endpoint string
 } //TODO credentials, TLS
 
-
-
 func checkError(response *http.Response) error {
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return errors.New(fmt.Sprintf("%s returned %s, %v", response.Request.URL, response.Status, response.Header))
@@ -38,8 +36,8 @@ func (c *Client) CatShards() ([]Shard, error) {
 	return result, json.NewDecoder(resp.Body).Decode(&result)
 }
 
-func (c *Client) ExcludeFromShardAllocation(node string) error {
-	allocationSetting := ClusterRoutingAllocation{TransientSettings{ExcludeName: node, Enable: "all"}}
+func (c *Client) ExcludeFromShardAllocation(nodes string) error {
+	allocationSetting := ClusterRoutingAllocation{TransientSettings{ExcludeName: nodes, Enable: "all"}}
 	body, err := json.Marshal(allocationSetting)
 	if err != nil {
 		return err

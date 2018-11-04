@@ -3,10 +3,9 @@ package client
 import "github.com/elastic/stack-operators/pkg/controller/stack/common"
 
 const (
-	STARTED = "STARTED"
+	STARTED      = "STARTED"
 	INITIALIZING = "INITIALIZING"
-	RELOCATING = "RELOCATING"
-
+	RELOCATING   = "RELOCATING"
 )
 
 type Shard struct {
