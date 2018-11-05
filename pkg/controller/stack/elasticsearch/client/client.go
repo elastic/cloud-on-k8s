@@ -46,7 +46,10 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 	for k1, v := range indices {
 		index, ok := v.(map[string]interface{})
 		if !ok {
-			return result, errors.New(common.Concat("Unexpected type ", reflect.TypeOf(index).String(), " at [", k1, "]"))
+			return result, errors.New(common.Concat(
+				"Unexpected type ",
+				reflect.TypeOf(index).String(),
+				" at [", k1, "]"))
 		}
 		for k2, shardMap := range index {
 			shards, ok := shardMap.(map[string]interface{})
@@ -80,8 +83,6 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 								parsedShard.Node = nodes[val.(string)].(map[string]interface{})["name"].(string) //panics
 							case "index":
 								parsedShard.Index = val.(string)
-							case "shard":
-
 							default:
 								//ignore
 							}
@@ -97,7 +98,6 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 							//if val != nil {
 							//	fmt.Printf("Ignoring %v (%s) -> %v", k4, reflect.TypeOf(val).String(), val)
 							//}
-
 							//ignore
 						}
 
