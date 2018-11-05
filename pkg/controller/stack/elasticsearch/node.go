@@ -19,12 +19,6 @@ const (
 	maxPrefixLength = 63 - randomSuffixLength - 1 - len(typeSuffix)
 )
 
-var (
-	// TypeFilter represents the Elasticsearch type filter that is present in a
-	// Pod's labels.
-	TypeFilter = map[string]string{TypeLabelName: "elasticsearch"}
-)
-
 // NewNodeName forms an Elasticsearch node name. Returning a unique node
 // node name to be used for the Elaticsearch cluster node.
 func NewNodeName(clusterName string) string {
