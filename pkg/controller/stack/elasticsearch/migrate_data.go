@@ -6,10 +6,7 @@ import (
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"k8s.io/api/core/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
-
-var log = logf.Log.WithName("migrate-data")
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
 	if toMigrate.IsRelocating() || toMigrate.IsInitializing() {
@@ -60,7 +57,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 
 }
 
-// IsMigrating Data looks only at the presence of shards on a given node 
+// IsMigrating Data looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
 func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {

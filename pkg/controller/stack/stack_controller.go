@@ -2,12 +2,13 @@ package stack
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
+
+	"github.com/pkg/errors"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
