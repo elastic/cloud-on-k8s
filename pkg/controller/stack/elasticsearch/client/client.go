@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 )
@@ -14,13 +13,14 @@ type Client struct {
 } //TODO credentials, TLS
 
 func checkError(response *http.Response) error {
+	if response == nil {
+		return fmt.Errorf("received a <nil> response")
+	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return errors.New(fmt.Sprintf("%s returned %s, %v", response.Request.URL, response.Status, response.Header))
+		return fmt.Errorf("%s returned %s, %v", response.Request.URL, response.Status, response.Header)
 	}
 	return nil
 }
-
-
 
 func parseRoutingTable(raw ClusterState) ([]Shard, error) {
 	var result []Shard
@@ -60,7 +60,7 @@ func (c *Client) GetShards() ([]Shard, error) {
 	return parseRoutingTable(clusterState)
 }
 
-// ExludeFromShardAllocation takes a comma-separated string of node names and
+// ExcludeFromShardAllocation takes a comma-separated string of node names and
 // configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}

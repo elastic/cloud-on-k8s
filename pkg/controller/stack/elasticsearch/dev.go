@@ -6,27 +6,23 @@ import (
 	"strings"
 )
 
+// ExternalServiceURL is the environment specific public Elasticsearch URL.
 func ExternalServiceURL(stackName string) string {
-	if IsRunningInKubernetes() {
-		return PublicServiceURL(stackName)
+	if useMinikube() {
+		url, err := getMinikubeServiceUrl(PublicServiceName(stackName))
+		if err != nil {
+			panic(err)
+		}
+		return url
 	}
-	url, err := GetMinikubeServiceUrl(PublicServiceName(stackName))
-	if err != nil {
-		panic(err)
-	}
-	return url
-
+	return PublicServiceURL(stackName)
 }
 
-func IsRunningInKubernetes() bool {
-	host, port := os.Getenv("KUBERNETES_SERVICE_HOST"), os.Getenv("KUBERNETES_SERVICE_PORT")
-	if len(host) == 0 || len(port) == 0 {
-		return false
-	}
-	return true
+func useMinikube() bool {
+	return len(os.Getenv("USE_MINIKUBE")) > 0
 }
 
-func GetMinikubeServiceUrl(service string) (string, error) {
+func getMinikubeServiceUrl(service string) (string, error) {
 	res, err := exec.Command("minikube", "service", "--url", service).Output()
 	if err != nil {
 		return "", err

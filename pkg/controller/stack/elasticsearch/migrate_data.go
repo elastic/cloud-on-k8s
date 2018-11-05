@@ -10,28 +10,28 @@ import (
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
 	if toMigrate.IsRelocating() || toMigrate.IsInitializing() {
-		return true //being migrated away or weirdly just initializing
+		return true // being migrated away or weirdly just initializing
 	}
-	found := others != nil
-	if toMigrate.IsStarted() {
-		if !found {
-			return true //not running anywhere else
-		}
-		for _, other := range others {
-			if other.IsStarted() {
-				return false // found another shard copy
-			}
-		}
-		return true // we assume other copies are initializing
-
+	if !toMigrate.IsStarted() {
+		return false // early return as we are interested only in started shards for migration purposes
 	}
-	return false //we assume no migration is happening at this point
+	for _, otherCopy := range others {
+		if otherCopy.IsStarted() {
+			return false // found another shard copy
+		}
+	}
+	return true // we assume other copies are initializing or there are no other copies
 }
 
+// nodeIsMigratingData is the core of IsMigratingData just with any I/O
+// removed to facilitate testing. See IsMigratingData for a high-level description.
 func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
+	// all other shards not living on the node that is about to go away mapped to their corresponding shard keys
 	othersByShard := make(map[string][]client.Shard)
+	// all shard copies currently living on the node leaving the cluster
 	candidates := make([]client.Shard, 0)
 
+	// divide all shards into the to groups: migration candidate or other shard copy
 	for _, shard := range shards {
 
 		if shard.Node == nodeName {
@@ -47,6 +47,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 		}
 	}
 
+	// check if there is at least one shard on this node that is migrating or needs to migrate
 	for _, toMigrate := range candidates {
 		migrating := shardIsMigrating(toMigrate, othersByShard[toMigrate.Key()])
 		if migrating {
@@ -70,10 +71,8 @@ func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
 
 //MigrateData sets allocation filters for the given pod
 func MigrateData(client *client.Client, leavingNodes []string) error {
-	var exclusions string
-	if len(leavingNodes) == 0 {
-		exclusions = "none_excluded"
-	} else {
+	exclusions := "none_excluded"
+	if len(leavingNodes) > 0 {
 		// See https://github.com/elastic/elasticsearch/issues/28316
 		withBugfix := append(leavingNodes, time.Now().String())
 		exclusions = strings.Join(withBugfix, ",")

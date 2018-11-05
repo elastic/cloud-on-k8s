@@ -307,13 +307,13 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	// Delete the difference between the running and desired pods.
 	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
 	var toDelete []corev1.Pod
+	var nodeNames []string
 	for i := int32(0); i < orphanPodNumber; i++ {
 		var pod = currentPods.Items[i]
 		if pod.DeletionTimestamp != nil {
 			continue
 		}
 		if pod.Status.Phase == corev1.PodRunning {
-			// TODO: Handle migration here before we delete the pod.
 			for _, c := range pod.Status.Conditions {
 				// Return when the pod is not Ready (API Unreachable).
 				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
@@ -321,14 +321,11 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 				}
 			}
 			toDelete = append(toDelete, pod)
+			nodeNames = append(nodeNames, pod.Name)
 		}
 
 	}
 
-	var nodeNames []string
-	for _, pod := range toDelete {
-		nodeNames = append(nodeNames, pod.Name)
-	}
 	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Error during migrate data")
 	}

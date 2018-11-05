@@ -35,10 +35,10 @@ type Shards struct {
 
 // ClusterState partially models Elasticsearch cluster state.
 type ClusterState struct {
-	ClusterName           string `json:"cluster_name"`
-	ClusterUUID           string `json:"cluster_uuid"`
-	Version               int    `json:"version"`
-	MasterNode            string `json:"master_node"`
+	ClusterName  string          `json:"cluster_name"`
+	ClusterUUID  string          `json:"cluster_uuid"`
+	Version      int             `json:"version"`
+	MasterNode   string          `json:"master_node"`
 	Nodes        map[string]Node `json:"nodes"`
 	RoutingTable struct {
 		Indices map[string]Shards `json:"indices"`
@@ -46,15 +46,14 @@ type ClusterState struct {
 }
 
 // Shard models a hybrid of _cat/shards shard and routing table shard.
-// Node is the node name from cluster state as in _cat/shards
-// but it will never contain any relocation information.
-// Primary is a boolean as in cluster state.
 type Shard struct {
-	Index   string `json:"index"`
-	Shard   int    `json:"shard"`
+	Index string `json:"index"`
+	Shard int    `json:"shard"`
+	// Primary is a boolean as in cluster state.
 	Primary bool   `json:"primary"`
 	State   string `json:"state"`
-	Node    string `json:"node"`
+	// Node is the node name not the Node id
+	Node string `json:"node"`
 }
 
 //IsRelocating is true if the shard is relocating to another node.
