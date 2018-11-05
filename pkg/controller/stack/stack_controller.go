@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,7 +16,7 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -138,7 +139,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha1.Stack, error) {
 	var stackInstance deploymentsv1alpha1.Stack
 	if err := r.Get(context.TODO(), request.NamespacedName, &stackInstance); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return stackInstance, nil
@@ -328,8 +329,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		nodeNames = append(nodeNames, pod.Name)
 	}
 	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
-		log.Error(err, "error during migrate data")
-		return reconcile.Result{}, err
+		return reconcile.Result{}, errors.Wrap(err, "Error during migrate data")
 	}
 
 	for _, pod := range toDelete {
@@ -342,7 +342,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 			return reconcile.Result{Requeue: true}, nil
 		}
 
-		if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
+		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 			return reconcile.Result{}, err
 		}
 		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))

@@ -82,6 +82,5 @@ func MigrateData(client *client.Client, leavingNodes []string) error {
 		exclusions = strings.Join(withBugfix, ",")
 	}
 	//update allocation exclusions
-	e := client.ExcludeFromShardAllocation(exclusions)
-	return e
+	return client.ExcludeFromShardAllocation(exclusions)
 }
