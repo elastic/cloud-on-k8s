@@ -173,13 +173,13 @@ func TestParseRoutingTable(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		var unstructured interface{}
+		var clusterState ClusterState
 		b := []byte(tt.args)
-		err := json.Unmarshal(b, &unstructured)
+		err := json.Unmarshal(b, &clusterState)
 		if err != nil {
 			t.Error(err)
 		}
-		shards, e := parseRoutingTable(unstructured)
+		shards, e := parseRoutingTable(clusterState)
 		assert.NoError(t, e, "should parse without error")
 		assert.True(t, len(shards) == len(tt.want))
 		sort.SliceStable(shards, func(i, j int) bool {

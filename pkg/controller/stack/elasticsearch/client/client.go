@@ -6,9 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
-
-	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 )
 
 type Client struct {
@@ -23,90 +20,18 @@ func checkError(response *http.Response) error {
 	return nil
 }
 
-func parseRoutingTable(raw interface{}) ([]Shard, error) {
+
+
+func parseRoutingTable(raw ClusterState) ([]Shard, error) {
 	var result []Shard
-	table, ok := raw.(map[string]interface{})
-	if !ok {
-		return result, errors.New("cluster state was not a map")
-	}
-	nodes, ok := table["nodes"].(map[string]interface{})
-	if !ok {
-		return result, errors.New("cluster state did not contain nodes")
-	}
-	routingTable, ok := table["routing_table"].(map[string]interface{})
-	if !ok {
-		return result, errors.New("cluster state did not contain routing table")
-	}
-
-	indices, ok := routingTable["indices"].(map[string]interface{})
-	if !ok {
-		return result, nil // no indices
-	}
-
-	for k1, v := range indices {
-		index, ok := v.(map[string]interface{})
-		if !ok {
-			return result, errors.New(common.Concat(
-				"Unexpected type ",
-				reflect.TypeOf(index).String(),
-				" at [", k1, "]"))
-		}
-		for k2, shardMap := range index {
-			shards, ok := shardMap.(map[string]interface{})
-			if !ok {
-				return result, errors.New(common.Concat(
-					"Expected a shard map at [",
-					k1, "/", k2,
-					"] but was [",
-					reflect.TypeOf(shardMap).String(), "]"))
+	for _, index := range raw.RoutingTable.Indices {
+		for _, shards := range index.Shards {
+			for _, shard := range shards {
+				shard.Node = raw.Nodes[shard.Node].Name
+				result = append(result, shard)
 			}
-			for k3, shardArray := range shards {
-				rawShards, ok := shardArray.([]interface{})
-				if !ok {
-					return result, errors.New(common.Concat(
-						"Expected a shard map at [",
-						k1, "/", k2, "/", k3,
-						"] but was [",
-						reflect.TypeOf(shardArray).String(), "]"))
-				}
-
-				for _, rawShard := range rawShards {
-					shardMap := rawShard.(map[string]interface{})
-					parsedShard := Shard{}
-					for k4, val := range shardMap {
-						switch val.(type) {
-						case string:
-							switch k4 {
-							case "state":
-								parsedShard.State = val.(string)
-							case "node":
-								parsedShard.Node = nodes[val.(string)].(map[string]interface{})["name"].(string)
-							case "index":
-								parsedShard.Index = val.(string)
-							default:
-								//ignore
-							}
-						case float64:
-							if k4 == "shard" {
-								parsedShard.Shard = int(val.(float64))
-							}
-						case bool:
-							if k4 == "primary" {
-								parsedShard.Primary = val.(bool)
-							}
-						default:
-							//ignore
-						}
-
-					}
-					result = append(result, parsedShard)
-
-				}
-			}
-
 		}
 	}
-
 	return result, nil
 
 }
@@ -127,17 +52,18 @@ func (c *Client) GetShards() ([]Shard, error) {
 	}
 
 	defer resp.Body.Close()
-	var raw interface{}
-	err = json.NewDecoder(resp.Body).Decode(&raw)
+	var clusterState ClusterState
+	err = json.NewDecoder(resp.Body).Decode(&clusterState)
 	if err != nil {
 		return result, err
 	}
-	return parseRoutingTable(raw)
+	return parseRoutingTable(clusterState)
 }
+
 // ExludeFromShardAllocation takes a comma-separated string of node names and
 // configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(nodes string) error {
-	allocationSetting := ClusterRoutingAllocation{TransientSettings{ExcludeName: nodes, Enable: "all"}}
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
 	body, err := json.Marshal(allocationSetting)
 	if err != nil {
 		return err
