@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/pkg/errors"
 
@@ -151,6 +154,7 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 	return stackInstance, nil
 }
 
+// NewElasticsearchClient creates a new client bound to the given stack instance.
 func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) *esclient.Client {
 	return &esclient.Client{
 		Endpoint: elasticsearch.ExternalServiceURL(stack.Name),
@@ -337,7 +341,8 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		}
 		if isMigratingData {
 			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-			return reconcile.Result{Requeue: true}, nil
+			r := time.Duration(rand.Intn(60)) * time.Second // TODO make this dependent on the amount of data to migrate
+			return reconcile.Result{Requeue: true, RequeueAfter: r}, nil
 		}
 
 		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {

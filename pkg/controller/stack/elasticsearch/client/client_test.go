@@ -1,7 +1,10 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"sort"
 	"testing"
 
@@ -191,4 +194,68 @@ func TestParseRoutingTable(t *testing.T) {
 
 	}
 
+}
+
+type RoundTripFunc func(req *http.Request) *http.Response
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+func NewMockClient(fn RoundTripFunc) Client {
+	return Client{
+		HTTP: &http.Client{
+			Transport: RoundTripFunc(fn),
+		},
+		Endpoint: "http//does-not-matter.com",
+	}
+}
+
+func errorResponses(statusCodes []int) RoundTripFunc {
+	i := 0
+	return func(req *http.Request) *http.Response {
+		nextCode := statusCodes[i%len(statusCodes)]
+		i++
+		return &http.Response{
+			StatusCode: nextCode,
+			Body:       nil,
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	}
+
+}
+
+func requestAssertion(test func(req *http.Request)) RoundTripFunc {
+	return func(req *http.Request) *http.Response {
+		test(req)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(bytes.NewBufferString(`{}`)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	}
+}
+
+func TestClientErrorHandling(t *testing.T) {
+	// 303 would lead to a redirect to another error response if we would also set the Location header
+	codes := []int{100, 303, 400, 404, 500}
+	testClient := NewMockClient(errorResponses(codes))
+
+	for range codes {
+		_, err := testClient.GetShards()
+		assert.Error(t, err, "GetShards should return an error for anything not 2xx")
+		err = testClient.ExcludeFromShardAllocation("")
+		assert.Error(t, err, "ExcludeFromShardAllocation should return an error for anything not 2xx")
+	}
+
+}
+
+func TestClientUsesJsonContentType(t *testing.T) {
+	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
+	}))
+	testClient.GetShards()
+	testClient.ExcludeFromShardAllocation("")
 }

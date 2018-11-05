@@ -49,8 +49,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 
 	// check if there is at least one shard on this node that is migrating or needs to migrate
 	for _, toMigrate := range candidates {
-		migrating := shardIsMigrating(toMigrate, othersByShard[toMigrate.Key()])
-		if migrating {
+		if shardIsMigrating(toMigrate, othersByShard[toMigrate.Key()]) {
 			return true
 		}
 	}
@@ -58,7 +57,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 
 }
 
-// IsMigrating Data looks only at the presence of shards on a given node
+// IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
 func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {

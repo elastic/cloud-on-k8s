@@ -6,6 +6,7 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 )
 
+// These are possible shard states
 const (
 	STARTED      = "STARTED"
 	INITIALIZING = "INITIALIZING"
@@ -56,34 +57,34 @@ type Shard struct {
 	Node string `json:"node"`
 }
 
-//IsRelocating is true if the shard is relocating to another node.
+// IsRelocating is true if the shard is relocating to another node.
 func (s Shard) IsRelocating() bool {
 	return s.State == RELOCATING
 }
 
-//IsStarted is true if the shard is started on its current node.
+// IsStarted is true if the shard is started on its current node.
 func (s Shard) IsStarted() bool {
 	return s.State == STARTED
 }
 
-//IsInitializing is true if the shard is currently initializing on the node.
+// IsInitializing is true if the shard is currently initializing on the node.
 func (s Shard) IsInitializing() bool {
 	return s.State == INITIALIZING
 }
 
-//Key is a composite key of index name and shard number that identifies all
+// Key is a composite key of index name and shard number that identifies all
 // copies of a shard across nodes.
 func (s Shard) Key() string {
 	return common.Concat(s.Index, "/", strconv.Itoa(s.Shard))
 }
 
-//AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.
+// AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.
 type AllocationSettings struct {
 	ExcludeName string `json:"cluster.routing.allocation.exclude._name"`
 	Enable      string `json:"cluster.routing.allocation.enable"`
 } //TODO awareness settings
 
-//ClusterRoutingAllocation models a subset of transient allocation settings for an Elasticsearch cluster.
+// ClusterRoutingAllocation models a subset of transient allocation settings for an Elasticsearch cluster.
 type ClusterRoutingAllocation struct {
 	Transient AllocationSettings `json:"transient"`
 }

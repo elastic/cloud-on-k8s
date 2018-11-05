@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client struct {
 	HTTP     *http.Client
 	Endpoint string
@@ -36,17 +37,28 @@ func parseRoutingTable(raw ClusterState) ([]Shard, error) {
 
 }
 
+func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
+	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	response, err := c.HTTP.Do(request)
+	if err != nil {
+		return response, err
+	}
+	err = checkError(response)
+	return response, err
+}
+
 // GetShards reads all shards from cluster state,
 // similar to what _cat/shards does but it is consistent in
 // its output.
 func (c *Client) GetShards() ([]Shard, error) {
 	result := []Shard{}
-	resp, err := c.HTTP.Get(fmt.Sprintf("%s/_cluster/state", c.Endpoint))
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/state", c.Endpoint), nil)
 	if err != nil {
 		return result, err
 	}
 
-	err = checkError(resp)
+	resp, err := c.makeRequest(req)
 	if err != nil {
 		return result, err
 	}
@@ -74,16 +86,6 @@ func (c *Client) ExcludeFromShardAllocation(nodes string) error {
 		return err
 	}
 
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
-
-	response, err := c.HTTP.Do(request)
-	if err != nil {
-		return err
-	}
-
-	err = checkError(response)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = c.makeRequest(request)
+	return err
 }
