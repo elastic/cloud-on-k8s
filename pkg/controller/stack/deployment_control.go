@@ -2,10 +2,10 @@ package stack
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -58,7 +58,7 @@ func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance 
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(
-			fmt.Sprintf("Creating Deployment %s/%s", deploy.Namespace, deploy.Name),
+			common.Concat("Creating Deployment ", deploy.Namespace, "/", deploy.Name),
 			"iteration", r.iteration,
 		)
 		err = r.Create(context.TODO(), &deploy)
@@ -66,13 +66,13 @@ func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance 
 			return reconcile.Result{}, err
 		}
 	} else if err != nil {
-		log.Info(fmt.Sprintf("searched deployment with %s found %s", deploy.Name, found))
+		log.Info(common.Concat("searched deployment ", deploy.Name, " found ", found.Name))
 		return reconcile.Result{}, err
 	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
 		log.Info(
-			fmt.Sprintf("Updating Deployment %s/%s", deploy.Namespace, deploy.Name),
+			common.Concat("Updating Deployment ", deploy.Namespace, "/", deploy.Name),
 			"iteration", r.iteration,
 		)
 		err = r.Update(context.TODO(), found)

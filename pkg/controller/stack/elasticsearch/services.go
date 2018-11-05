@@ -1,8 +1,10 @@
 package elasticsearch
 
 import (
-	"fmt"
+	"strconv"
 
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -10,20 +12,20 @@ import (
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(stackName string) string {
-	return stackName + "-es-discovery"
+	return common.Concat(stackName, "-es-discovery")
 }
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
-func NewDiscoveryService(namespace string, stackName string, stackID string) *corev1.Service {
+func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      DiscoveryServiceName(stackName),
-			Labels:    NewLabelsWithStackID(stackID),
+			Namespace: s.Namespace,
+			Name:      DiscoveryServiceName(s.Name),
+			Labels:    NewLabels(s, false),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithStackID(stackID),
+			Selector: NewLabels(s, false),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -42,26 +44,26 @@ func NewDiscoveryService(namespace string, stackName string, stackID string) *co
 // PublicServiceName returns the name for the public service
 // associated to this cluster
 func PublicServiceName(stackName string) string {
-	return stackName + "-es-public"
+	return common.Concat(stackName, "-es-public")
 }
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stackName string) string {
 	scheme := "http"
-	return fmt.Sprintf("%s://%s:%d", scheme, PublicServiceName(stackName), HTTPPort)
+	return common.Concat(scheme, "://", PublicServiceName(stackName), ":", strconv.Itoa(HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewPublicService(namespace string, stackName string, stackID string) *corev1.Service {
+func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
-			Name:      PublicServiceName(stackName),
-			Labels:    NewLabelsWithStackID(stackID),
+			Namespace: s.Namespace,
+			Name:      PublicServiceName(s.Name),
+			Labels:    NewLabels(s, false),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithStackID(stackID),
+			Selector: NewLabels(s, false),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,

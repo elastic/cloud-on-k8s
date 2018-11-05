@@ -1,19 +1,32 @@
 package elasticsearch
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestComputeMinimumMasterNodes(t *testing.T) {
-	test := func(nodeCount, expected int) {
-		actual := ComputeMinimumMasterNodes(nodeCount)
-		if actual != expected {
-			t.Errorf("With nodeCount=%d: expected %d, actual %d", nodeCount, expected, actual)
-		}
+	type args struct {
+		nodeCount int
 	}
-	test(1, 1)
-	test(2, 2)
-	test(3, 2)
-	test(4, 3)
-	test(5, 3)
-	test(6, 4)
-	test(100, 51)
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{args: args{nodeCount: 1}, want: 1},
+		{args: args{nodeCount: 2}, want: 2},
+		{args: args{nodeCount: 3}, want: 2},
+		{args: args{nodeCount: 4}, want: 3},
+		{args: args{nodeCount: 5}, want: 3},
+		{args: args{nodeCount: 6}, want: 4},
+		{args: args{nodeCount: 100}, want: 51},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mmn := ComputeMinimumMasterNodes(tt.args.nodeCount)
+			assert.Equal(t, tt.want, mmn, "Unmatching minimum master nodes")
+		})
+	}
 }

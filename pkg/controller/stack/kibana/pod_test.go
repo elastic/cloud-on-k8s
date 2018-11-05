@@ -1,6 +1,10 @@
 package kibana
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestNewPodSpecDefaults(t *testing.T) {
 	actual := NewPodSpec(PodSpecParams{})
@@ -20,5 +24,32 @@ func TestNewPodSpecOverrides(t *testing.T) {
 		if c.Image != expected {
 			t.Errorf("NewPodSpec with custom image: expected %s, actual %s", expected, c.Image)
 		}
+	}
+}
+
+func Test_imageWithVersion(t *testing.T) {
+	type args struct {
+		image   string
+		version string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			args: args{image: "someimage", version: "6.4.2"},
+			want: "someimage:6.4.2",
+		},
+		{
+			args: args{image: "differentimage", version: "6.4.1"},
+			want: "differentimage:6.4.1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := imageWithVersion(tt.args.image, tt.args.version)
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }
