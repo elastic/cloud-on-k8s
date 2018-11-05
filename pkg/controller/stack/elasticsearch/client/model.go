@@ -13,7 +13,7 @@ const (
 	UNASSIGNED   = "UNASSIGNED"
 )
 
-// Shard models a hybrid of _cat/shards shard and routing table shard
+// Shard models a hybrid of _cat/shards shard and routing table shard.
 // Node is the node name from cluster state as in _cat/shards
 // but it will never contain any relocation information.
 // Primary is a boolean as in cluster state.
@@ -28,6 +28,7 @@ type Shard struct {
 func (s Shard) IsRelocating() bool {
 	return s.State == RELOCATING
 }
+
 func (s Shard) IsStarted() bool {
 	return s.State == STARTED
 }
