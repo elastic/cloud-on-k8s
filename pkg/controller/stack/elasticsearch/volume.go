@@ -14,15 +14,6 @@ const (
 	defaultLogsSubDir = "logs"
 )
 
-// Volume is a storage unit for an ES node,
-// to be mounted into the pod
-type Volume interface {
-	Volume() corev1.Volume
-	VolumeMount() corev1.VolumeMount
-	DataPath() string
-	LogsPath() string
-}
-
 // EmptyDirVolume used to store ES data on the node main disk
 // Its lifecycle is bound to the pod lifecycle on the node.
 type EmptyDirVolume struct {
