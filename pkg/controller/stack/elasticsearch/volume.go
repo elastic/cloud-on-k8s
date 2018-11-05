@@ -1,7 +1,7 @@
 package elasticsearch
 
 import (
-	"path/filepath"
+	"path"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -62,10 +62,10 @@ func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 
 // DataPath returns the absolute path to the directory storing ES data
 func (v EmptyDirVolume) DataPath() string {
-	return filepath.Join(v.mountPath, v.dataSubDir)
+	return path.Join(v.mountPath, v.dataSubDir)
 }
 
 // LogsPath returns the absolute path to the directory storing ES logs
 func (v EmptyDirVolume) LogsPath() string {
-	return filepath.Join(v.mountPath, v.logsSubDir)
+	return path.Join(v.mountPath, v.logsSubDir)
 }
