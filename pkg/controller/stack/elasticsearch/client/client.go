@@ -111,6 +111,9 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 
 }
 
+// GetShards reads all shards from cluster state,
+// similar to what _cat/shards does but it is consistent in
+// its output.
 func (c *Client) GetShards() ([]Shard, error) {
 	result := []Shard{}
 	resp, err := c.HTTP.Get(fmt.Sprintf("%s/_cluster/state", c.Endpoint))
@@ -131,7 +134,8 @@ func (c *Client) GetShards() ([]Shard, error) {
 	}
 	return parseRoutingTable(raw)
 }
-
+// ExludeFromShardAllocation takes a comma-separated string of node names and
+// configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{TransientSettings{ExcludeName: nodes, Enable: "all"}}
 	body, err := json.Marshal(allocationSetting)
