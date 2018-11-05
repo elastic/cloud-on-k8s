@@ -33,7 +33,7 @@ type EmptyDirVolume struct {
 }
 
 // NewDefaultEmptyDirVolume creates an EmptyDirVolume with default values
-func NewDefaultEmptyDirVolume() Volume {
+func NewDefaultEmptyDirVolume() EmptyDirVolume {
 	return EmptyDirVolume{
 		name:       defaultVolumeName,
 		mountPath:  defaultMountPath,
