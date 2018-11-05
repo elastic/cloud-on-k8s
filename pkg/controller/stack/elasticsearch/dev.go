@@ -3,13 +3,14 @@ package elasticsearch
 import (
 	"os"
 	"os/exec"
+	"strings"
 )
 
 func ExternalServiceURL(stackName string) string {
 	if IsRunningInKubernetes() {
 		return PublicServiceURL(stackName)
 	}
-	url, err := GetDevServiceURL(PublicServiceName(stackName))
+	url, err := GetMinikubeServiceUrl(PublicServiceName(stackName))
 	if err != nil {
 		panic(err)
 	}
@@ -25,7 +26,10 @@ func IsRunningInKubernetes() bool {
 	return true
 }
 
-func GetDevServiceURL(service string) (string, error) {
+func GetMinikubeServiceUrl(service string) (string, error) {
 	res, err := exec.Command("minikube", "service", "--url", service).Output()
-	return string(res[:(len(res) - 1)]), err //drop newline at the end
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSuffix(string(res), "\n"), err
 }
