@@ -16,7 +16,7 @@ func TestPublicServiceURL(t *testing.T) {
 		want string
 	}{
 		{
-			name: "A ervice URL",
+			name: "A service URL",
 			args: args{stackName: "a-stack-name"},
 			want: "http://a-stack-name-es-public:9200",
 		},

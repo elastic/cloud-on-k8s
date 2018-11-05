@@ -226,7 +226,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 	for _, pod := range currentPods.Items {
 		h, ok := pod.Labels[elasticsearch.HashLabelName]
 		if !ok {
-			return reconcile.Result{}, nil
+			continue
 		}
 
 		// On equal hashes return, all is good!
@@ -295,14 +295,14 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	for i := int32(0); i < orphanPodNumber; i++ {
 		var pod = currentPods.Items[i]
 		if pod.DeletionTimestamp != nil {
-			return reconcile.Result{}, nil
+			continue
 		}
 		if pod.Status.Phase == corev1.PodRunning {
 			// TODO: Handle migration here before we delete the pod.
 			for _, c := range pod.Status.Conditions {
 				// Return when the pod is not Ready (API Unreachable).
 				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
-					return reconcile.Result{}, nil
+					continue
 				}
 			}
 
