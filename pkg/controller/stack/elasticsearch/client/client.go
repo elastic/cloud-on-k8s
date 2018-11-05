@@ -80,7 +80,7 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 							case "state":
 								parsedShard.State = val.(string)
 							case "node":
-								parsedShard.Node = nodes[val.(string)].(map[string]interface{})["name"].(string) //panics
+								parsedShard.Node = nodes[val.(string)].(map[string]interface{})["name"].(string)
 							case "index":
 								parsedShard.Index = val.(string)
 							default:
@@ -95,9 +95,6 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 								parsedShard.Primary = val.(bool)
 							}
 						default:
-							//if val != nil {
-							//	fmt.Printf("Ignoring %v (%s) -> %v", k4, reflect.TypeOf(val).String(), val)
-							//}
 							//ignore
 						}
 
