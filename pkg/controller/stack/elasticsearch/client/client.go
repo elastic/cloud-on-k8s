@@ -30,16 +30,16 @@ func parseRoutingTable(raw interface{}) ([]Shard, error) {
 		return result, errors.New("cluster state was not a map")
 	}
 	nodes, ok := table["nodes"].(map[string]interface{})
-	if nodes == nil || !ok {
+	if !ok {
 		return result, errors.New("cluster state did not contain nodes")
 	}
 	routingTable, ok := table["routing_table"].(map[string]interface{})
-	if routingTable == nil || !ok {
+	if !ok {
 		return result, errors.New("cluster state did not contain routing table")
 	}
 
 	indices, ok := routingTable["indices"].(map[string]interface{})
-	if indices == nil || !ok {
+	if !ok {
 		return result, nil // no indices
 	}
 
