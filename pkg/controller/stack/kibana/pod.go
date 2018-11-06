@@ -3,6 +3,7 @@ package kibana
 import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -59,6 +60,9 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		SecurityContext:               new(corev1.PodSecurityContext),
 		SchedulerName:                 defaultSchedulerName,
 		Containers: []corev1.Container{{
+			Resources: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+			},
 			TerminationMessagePath:   defaultTerminationMessagePath,
 			TerminationMessagePolicy: defaultTerminationMessagePolicy,
 			Env: []corev1.EnvVar{
