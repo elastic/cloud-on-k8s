@@ -156,7 +156,7 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 			VolumeMounts: []corev1.VolumeMount{volume.VolumeMount()},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes: []corev1.Volume{volume.Volume()},
+		Volumes:                       []corev1.Volume{volume.Volume()},
 	}
 
 	if !p.SetVMMaxMapCount {

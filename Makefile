@@ -18,6 +18,7 @@ manager: generate fmt vet
 	go build -o bin/manager github.com/elastic/stack-operators/cmd/manager
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+run: export USE_MINIKUBE = true
 run: generate fmt vet
 	go run ./cmd/manager/main.go
 

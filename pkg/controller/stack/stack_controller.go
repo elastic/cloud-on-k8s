@@ -2,17 +2,25 @@ package stack
 
 import (
 	"context"
+	"net/http"
 	"sort"
 	"strconv"
 	"sync/atomic"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/rand"
+
+	"github.com/pkg/errors"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
+	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -138,7 +146,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha1.Stack, error) {
 	var stackInstance deploymentsv1alpha1.Stack
 	if err := r.Get(context.TODO(), request.NamespacedName, &stackInstance); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
 			return stackInstance, nil
@@ -147,6 +155,15 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 		return stackInstance, err
 	}
 	return stackInstance, nil
+}
+
+// NewElasticsearchClient creates a new client bound to the given stack instance.
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client, error) {
+	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
+	return &esclient.Client{
+		Endpoint: esURL,
+		HTTP:     &http.Client{},
+	}, err
 }
 
 // GetPodList returns PodList in the current namespace with a specific set of
@@ -275,27 +292,54 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 
 	// Delete the difference between the running and desired pods.
 	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
+	var toDelete []corev1.Pod
+	var nodeNames []string
 	for i := int32(0); i < orphanPodNumber; i++ {
 		var pod = currentPods.Items[i]
 		if pod.DeletionTimestamp != nil {
 			continue
 		}
 		if pod.Status.Phase == corev1.PodRunning {
-			// TODO: Handle migration here before we delete the pod.
 			for _, c := range pod.Status.Conditions {
 				// Return when the pod is not Ready (API Unreachable).
 				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
 					continue
 				}
 			}
-
-			if err := r.Delete(context.TODO(), &pod); err != nil && !errors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-			log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+			toDelete = append(toDelete, pod)
+			nodeNames = append(nodeNames, pod.Name)
 		}
 
 	}
+
+	//create an Elasticsearch client
+	esClient, err := NewElasticsearchClient(&stackInstance)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
+	}
+
+	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "Error during migrate data")
+	}
+
+	for _, pod := range toDelete {
+		isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if isMigratingData {
+			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+			r := time.Duration(rand.Intn(60)) * time.Second // TODO make this dependent on the amount of data to migrate
+			return reconcile.Result{Requeue: true, RequeueAfter: r}, nil
+		}
+
+		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+
+	}
+
 	return reconcile.Result{}, nil
 }
 
