@@ -4,7 +4,6 @@ import (
 	"context"
 	"sort"
 	"strconv"
-	"strings"
 	"sync/atomic"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -14,7 +13,10 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -149,43 +151,24 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 
 // GetPodList returns PodList in the current namespace with a specific set of
 // filters (labels and fields).
-func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors, fieldSelectors map[string]string) (corev1.PodList, error) {
+func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors labels.Selector, fieldSelectors fields.Selector) (corev1.PodList, error) {
 	var podList corev1.PodList
 	stack, err := r.GetStack(request)
 	if err != nil {
 		return podList, err
 	}
 
-	var rawLabelSelectors strings.Builder
-	rawLabelSelectors.WriteString(elasticsearch.ClusterIDLabelName)
-	rawLabelSelectors.WriteString("=")
-	rawLabelSelectors.WriteString(common.StackID(stack))
-	for k, v := range labelSelectors {
-		rawLabelSelectors.WriteString(",")
-		rawLabelSelectors.WriteString(k)
-		rawLabelSelectors.WriteString("=")
-		rawLabelSelectors.WriteString(v)
-	}
-
-	var rawFieldSelectors strings.Builder
-	for k, v := range fieldSelectors {
-		if rawFieldSelectors.Len() > 0 {
-			rawFieldSelectors.WriteString(",")
-		}
-		rawLabelSelectors.WriteString(k)
-		rawLabelSelectors.WriteString("=")
-		rawLabelSelectors.WriteString(v)
-	}
-
-	var listOpts = client.ListOptions{Namespace: request.Namespace}
-	if err := listOpts.SetLabelSelector(rawLabelSelectors.String()); err != nil {
+	// add a label for the cluster ID
+	clusterIDReq, err := labels.NewRequirement(elasticsearch.ClusterIDLabelName, selection.Equals, []string{common.StackID(stack)})
+	if err != nil {
 		return podList, err
 	}
+	labelSelectors.Add(*clusterIDReq)
 
-	if rawFieldSelectors.Len() > 0 {
-		if err := listOpts.SetFieldSelector(rawFieldSelectors.String()); err != nil {
-			return podList, err
-		}
+	listOpts := client.ListOptions{
+		Namespace:     request.Namespace,
+		LabelSelector: labelSelectors,
+		FieldSelector: fieldSelectors,
 	}
 
 	if err := r.List(context.TODO(), &listOpts, &podList); err != nil {
@@ -203,7 +186,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	currentPods, err := r.GetPodList(request, elasticsearch.TypeFilter, nil)
+	currentPods, err := r.GetPodList(request, elasticsearch.TypeSelector, nil)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -280,7 +263,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	}
 
 	// Get the current list of instances
-	currentPods, err := r.GetPodList(request, elasticsearch.TypeFilter, nil)
+	currentPods, err := r.GetPodList(request, elasticsearch.TypeSelector, nil)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
