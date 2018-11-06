@@ -155,11 +155,12 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 }
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) *esclient.Client {
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client, error) {
+	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
 	return &esclient.Client{
-		Endpoint: elasticsearch.ExternalServiceURL(stack.Name),
+		Endpoint: esURL,
 		HTTP:     &http.Client{},
-	}
+	}, err
 }
 
 // GetPodList returns PodList in the current namespace with a specific set of
@@ -305,9 +306,6 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		return currentPods.Items[i].CreationTimestamp.Before(&currentPods.Items[j].CreationTimestamp)
 	})
 
-	//create an Elasticsearch client
-	esClient := NewElasticsearchClient(&stackInstance)
-
 	// Delete the difference between the running and desired pods.
 	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
 	var toDelete []corev1.Pod
@@ -328,6 +326,12 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 			nodeNames = append(nodeNames, pod.Name)
 		}
 
+	}
+
+	//create an Elasticsearch client
+	esClient, err := NewElasticsearchClient(&stackInstance)
+	if err != nil {
+		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
 	}
 
 	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {

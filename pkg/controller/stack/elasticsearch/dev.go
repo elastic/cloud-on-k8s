@@ -7,15 +7,15 @@ import (
 )
 
 // ExternalServiceURL is the environment specific public Elasticsearch URL.
-func ExternalServiceURL(stackName string) string {
+func ExternalServiceURL(stackName string) (string, error) {
 	if useMinikube() {
 		url, err := getMinikubeServiceURL(PublicServiceName(stackName))
 		if err != nil {
-			panic(err)
+			return "", err
 		}
-		return url
+		return url, nil
 	}
-	return PublicServiceURL(stackName)
+	return PublicServiceURL(stackName), nil
 }
 
 func useMinikube() bool {
