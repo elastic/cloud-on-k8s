@@ -139,6 +139,11 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
+	res, err = r.reconcileService(&stack, kibana.NewService(stack))
+	if err != nil {
+		return res, err
+	}
+
 	return r.DeleteElasticsearchPods(request)
 }
 
