@@ -2,16 +2,36 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
+const (
+	userContextKey = "api-user"
+)
+
+type ApiUser struct {
+	Name     string
+	Password string
+}
+
+func (u ApiUser) WithUser(ctx context.Context) context.Context {
+	return context.WithValue(ctx, userContextKey, u)
+}
+
+func GetApiUser(ctx context.Context) (ApiUser, bool) {
+	u, ok := ctx.Value(userContextKey).(ApiUser)
+	return u, ok
+}
+
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client struct {
+	Context  context.Context
 	HTTP     *http.Client
 	Endpoint string
-} //TODO credentials, TLS
+} //TODO TLS
 
 func checkError(response *http.Response) error {
 	if response == nil {
@@ -38,9 +58,18 @@ func parseRoutingTable(raw ClusterState) ([]Shard, error) {
 }
 
 func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	response, err := c.HTTP.Do(request)
+	withContext := request.WithContext(c.Context)
+	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	user, ok := GetApiUser(withContext.Context())
+	if ok {
+		withContext.SetBasicAuth(user.Name, user.Password)
+	}
+
+
+
+	response, err := c.HTTP.Do(withContext)
 	if err != nil {
 		return response, err
 	}

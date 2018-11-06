@@ -163,6 +163,7 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client,
 	return &esclient.Client{
 		Endpoint: esURL,
 		HTTP:     &http.Client{},
+		Context: context.TODO(),
 	}, err
 }
 

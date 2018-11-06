@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -208,6 +209,7 @@ func NewMockClient(fn RoundTripFunc) Client {
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http//does-not-matter.com",
+		Context: context.TODO(),
 	}
 }
 
