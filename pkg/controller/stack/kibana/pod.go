@@ -10,7 +10,14 @@ const (
 	//HTTPPort is the (default) port used by Kibana
 	HTTPPort = 5601
 
-	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
+	defaultImageRepositoryAndName        string = "docker.elastic.co/kibana/kibana"
+	defaultTerminationGracePeriodSeconds int64  = 20
+
+	defaultRestartPolicy            = "Always"
+	defaultDNSPolicy                = "ClusterFirst"
+	defaultSchedulerName            = "default-scheduler"
+	defaultTerminationMessagePolicy = "File"
+	defaultTerminationMessagePath   = "/dev/termination-log"
 )
 
 type PodSpecParams struct {
@@ -30,8 +37,11 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 	}
 
 	probe := &corev1.Probe{
+		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
-		PeriodSeconds:       30,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			HTTPGet: &corev1.HTTPGetAction{
 				Port:   intstr.FromInt(HTTPPort),
@@ -41,8 +51,16 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		},
 	}
 
+	var terminationGracePeriod = defaultTerminationGracePeriodSeconds
 	return corev1.PodSpec{
+		TerminationGracePeriodSeconds: &terminationGracePeriod,
+		RestartPolicy:                 defaultRestartPolicy,
+		DNSPolicy:                     defaultDNSPolicy,
+		SecurityContext:               new(corev1.PodSecurityContext),
+		SchedulerName:                 defaultSchedulerName,
 		Containers: []corev1.Container{{
+			TerminationMessagePath:   defaultTerminationMessagePath,
+			TerminationMessagePolicy: defaultTerminationMessagePolicy,
 			Env: []corev1.EnvVar{
 				{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
 			},
