@@ -209,7 +209,7 @@ func NewMockClient(fn RoundTripFunc) Client {
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http//does-not-matter.com",
-		Context: context.TODO(),
+		Context:  context.TODO(),
 	}
 }
 
@@ -260,4 +260,46 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	}))
 	testClient.GetShards()
 	testClient.ExcludeFromShardAllocation("")
+}
+
+func TestClientSupportsBasicAuth(t *testing.T) {
+
+	type expected struct {
+		user        User
+		authPresent bool
+	}
+
+	tests := []struct {
+		name string
+		args context.Context
+		want expected
+	}{
+		{
+			name: "Context with user information should be respected",
+			args: WithUser(context.TODO(), User{Name: "elastic", Password: "changeme"}),
+			want: expected{
+				user:        User{Name: "elastic", Password: "changeme"},
+				authPresent: true,
+			},
+		},
+		{
+			name: "Context w/o user information is ok too",
+			args: context.TODO(),
+			want: expected{user: User{Name: "", Password: ""}, authPresent: false},
+		},
+	}
+
+	for _, tt := range tests {
+		testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+			username, password, ok := req.BasicAuth()
+			assert.Equal(t, tt.want.authPresent, ok)
+			assert.Equal(t, tt.want.user.Name, username)
+			assert.Equal(t, tt.want.user.Password, password)
+		}))
+		testClient.Context = tt.args
+		testClient.GetShards()
+		testClient.ExcludeFromShardAllocation("")
+
+	}
+
 }

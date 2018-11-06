@@ -8,21 +8,26 @@ import (
 	"net/http"
 )
 
+type userContextKeyType string
+
 const (
-	userContextKey = "api-user"
+	userContextKey userContextKeyType = "api-user"
 )
 
-type ApiUser struct {
+// User captures Elasticsearch user credentials.
+type User struct {
 	Name     string
 	Password string
 }
 
-func (u ApiUser) WithUser(ctx context.Context) context.Context {
+// WithUser adds a user to a context.
+func WithUser(ctx context.Context, u User) context.Context {
 	return context.WithValue(ctx, userContextKey, u)
 }
 
-func GetApiUser(ctx context.Context) (ApiUser, bool) {
-	u, ok := ctx.Value(userContextKey).(ApiUser)
+// GetUser extracts a user from a context if present.
+func GetUser(ctx context.Context) (User, bool) {
+	u, ok := ctx.Value(userContextKey).(User)
 	return u, ok
 }
 
@@ -62,7 +67,7 @@ func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
 	withContext := request.WithContext(c.Context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	user, ok := GetApiUser(withContext.Context())
+	user, ok := GetUser(withContext.Context())
 	if ok {
 		withContext.SetBasicAuth(user.Name, user.Password)
 	}
