@@ -117,15 +117,22 @@ type ReconcileStack struct {
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
 	atomic.AddInt64(&r.iteration, 1)
-	res, err := r.CreateElasticsearchPods(request)
-	if err != nil {
-		return res, err
-	}
 
 	stack, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	res, err := r.reconcileUsers(&stack)
+	if err != nil {
+		return res, err
+	}
+
+	res, err = r.CreateElasticsearchPods(request)
+	if err != nil {
+		return res, err
+	}
+
 	res, err = r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
 	if err != nil {
 		return res, err
@@ -163,7 +170,7 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client,
 	return &esclient.Client{
 		Endpoint: esURL,
 		HTTP:     &http.Client{},
-		Context: context.TODO(),
+		Context:  esclient.WithUser(context.TODO(), esclient.User{Name: "elastic-internal", Password: "TODO-random-string"}),
 	}, err
 }
 
