@@ -97,7 +97,10 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 
 	terminationGracePeriodSeconds := defaultTerminationGracePeriodSeconds
 
-	// TODO: Volumes, Security Context, Optional init container
+	// TODO: quota support
+	volume := NewDefaultEmptyDirVolume()
+
+	// TODO: Security Context, Optional init container
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Env: []corev1.EnvVar{
@@ -108,6 +111,8 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 				{Name: "cluster.name", Value: p.ClusterName},
 				{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
 				{Name: "network.host", Value: "0.0.0.0"},
+				{Name: "path.data", Value: volume.DataPath()},
+				{Name: "path.logs", Value: volume.LogsPath()},
 
 				// TODO: the JVM options are hardcoded, but should be configurable
 				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
@@ -148,8 +153,10 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 					},
 				},
 			},
+			VolumeMounts: []corev1.VolumeMount{volume.VolumeMount()},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
+		Volumes: []corev1.Volume{volume.Volume()},
 	}
 
 	if !p.SetVMMaxMapCount {
