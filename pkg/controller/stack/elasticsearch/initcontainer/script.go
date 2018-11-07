@@ -6,7 +6,7 @@ import (
 )
 
 // List of plugins to be installed on the ES instance
-var pluginsToInstall = []string{
+var defaultInstalledPlugins = []string{
 	"repository-s3",  // S3 snapshots
 	"repository-gcs", // gcp snapshots
 }
@@ -21,8 +21,7 @@ type TemplateParams struct {
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
 func RenderScriptTemplate(params TemplateParams) (string, error) {
 	tplBuffer := bytes.Buffer{}
-	err := scriptTemplate.Execute(&tplBuffer, params)
-	if err != nil {
+	if err := scriptTemplate.Execute(&tplBuffer, params); err != nil {
 		return "", err
 	}
 	return tplBuffer.String(), nil

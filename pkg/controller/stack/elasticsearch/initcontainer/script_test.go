@@ -17,7 +17,7 @@ func TestRenderScriptTemplate(t *testing.T) {
 			name: "Standard script rendering",
 			params: TemplateParams{
 				SetVMMaxMapCount: true,
-				Plugins:          pluginsToInstall,
+				Plugins:          defaultInstalledPlugins,
 				SharedVolumes:    SharedVolumes,
 			},
 			wantSubstr: []string{
@@ -33,7 +33,7 @@ func TestRenderScriptTemplate(t *testing.T) {
 			name: "No vm.max_map_count",
 			params: TemplateParams{
 				SetVMMaxMapCount: false,
-				Plugins:          pluginsToInstall,
+				Plugins:          defaultInstalledPlugins,
 				SharedVolumes:    SharedVolumes,
 			},
 			dontWantSubstr: []string{

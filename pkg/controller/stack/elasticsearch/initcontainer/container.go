@@ -19,7 +19,7 @@ func NewInitContainer(imageName string, setVMMaxMapCount bool) (corev1.Container
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
 		SetVMMaxMapCount: setVMMaxMapCount,
-		Plugins:          pluginsToInstall,
+		Plugins:          defaultInstalledPlugins,
 		SharedVolumes:    SharedVolumes,
 	})
 	if err != nil {
