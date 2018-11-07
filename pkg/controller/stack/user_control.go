@@ -20,7 +20,7 @@ type InternalUsers struct {
 	KibanaUser     client.User
 }
 
-// ReconcileUsers aggregates secrets into a ES readable secret.
+// ReconcileUsers aggregates secrets into an ES readable secret.
 func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (InternalUsers, error) {
 
 	internalUsers := InternalUsers{}

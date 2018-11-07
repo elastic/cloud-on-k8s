@@ -24,6 +24,7 @@ const (
 )
 
 var (
+	// LinkedFiles describe how the user related secrets are mapped into the pod's filesystem.
 	LinkedFiles = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			initcontainer.LinkedFile{
@@ -85,22 +86,26 @@ func ElasticUsersSecretName(ownerName string) string {
 // for the given users.
 func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (corev1.Secret, error) {
 	hashedCreds, roles := strings.Builder{}, strings.Builder{}
-	prefix, _ := roles.WriteString("superuser:") //TODO all superusers -> role mappings
-	for _, user := range users {
+	roles.WriteString("superuser:") //TODO all superusers -> role mappings
+	for i, user := range users {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return corev1.Secret{}, err
 		}
+
+		notLast := i+1 < len(users)
+
 		hashedCreds.WriteString(user.Name)
 		hashedCreds.WriteString(":")
 		hashedCreds.Write(hash)
-		hashedCreds.WriteString("\n")
+		if notLast {
+			hashedCreds.WriteString("\n")
+		}
 
-		rolesIndex := roles.Len()
-		if rolesIndex > prefix {
+		roles.WriteString(user.Name)
+		if notLast {
 			roles.WriteString(",")
 		}
-		roles.WriteString(user.Name)
 	}
 
 	return corev1.Secret{
