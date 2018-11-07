@@ -123,12 +123,12 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	res, err := r.reconcileUsers(&stack)
+	esUser, err := r.reconcileUsers(&stack)
 	if err != nil {
-		return res, err
+		return reconcile.Result{}, err
 	}
 
-	res, err = r.CreateElasticsearchPods(request)
+	res, err := r.CreateElasticsearchPods(request)
 	if err != nil {
 		return res, err
 	}
@@ -146,7 +146,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	return r.DeleteElasticsearchPods(request)
+	return r.DeleteElasticsearchPods(request, esUser)
 }
 
 // GetStack obtains the stack from the backend kubernetes API.
@@ -165,12 +165,12 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 }
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client, error) {
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User) (*esclient.Client, error) {
 	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
 	return &esclient.Client{
 		Endpoint: esURL,
 		HTTP:     &http.Client{},
-		Context:  esclient.WithUser(context.TODO(), esclient.User{Name: "elastic-internal", Password: "TODO-random-string"}),
+		Context:  esclient.WithUser(context.TODO(), esUser),
 	}, err
 }
 
@@ -281,7 +281,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 }
 
 // DeleteElasticsearchPods removes running pods to match the Stack definition.
-func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUser esclient.User) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -321,7 +321,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	}
 
 	//create an Elasticsearch client
-	esClient, err := NewElasticsearchClient(&stackInstance)
+	esClient, err := NewElasticsearchClient(&stackInstance, esUser)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
 	}

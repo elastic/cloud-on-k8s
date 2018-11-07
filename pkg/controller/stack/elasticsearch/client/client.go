@@ -72,8 +72,6 @@ func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
 		withContext.SetBasicAuth(user.Name, user.Password)
 	}
 
-
-
 	response, err := c.HTTP.Do(withContext)
 	if err != nil {
 		return response, err

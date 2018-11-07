@@ -17,6 +17,7 @@ const (
 	InternalUserName  = "elastic-internal"
 )
 
+// NewInternalUserSecret creates a secret for the ES user used by the controller
 func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -31,20 +32,18 @@ func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 	}
 }
 
-func NewUsersFromSecret(secret corev1.Secret) ([]client.User, error) {
+// NewUsersFromSecret maps a given secret into a User struct.
+func NewUsersFromSecret(secret corev1.Secret) []client.User {
 
 	var result []client.User
 	for user, pw := range secret.Data {
-		// TODO should this be base64 encoded?
-		//decoded, err := base64.StdEncoding.DecodeString(string(pw))
-		//if err != nil {
-		//	return result, err
-		//}
 		result = append(result, client.User{Name: user, Password: string(pw)})
 	}
-	return result, nil
+	return result
 }
 
+// NewElasticUsersSecret creates a k8s secret with user credentials and roles readable by ES
+// for the given users.
 func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (corev1.Secret, error) {
 	hashedCreds, roles := strings.Builder{}, strings.Builder{}
 	prefix, _ := roles.WriteString("superuser:") //TODO all superusers -> role mappings
@@ -64,11 +63,6 @@ func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (co
 		}
 		roles.WriteString(user.Name)
 	}
-
-	//TODO don't use string builder build into byte[] directly
-
-	//userContent := base64.StdEncoding.EncodeToString([]byte(hashedCreds.String()))
-	//roleContent := base64.StdEncoding.EncodeToString([]byte(roles.String()))
 
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
