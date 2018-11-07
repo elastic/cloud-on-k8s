@@ -24,7 +24,6 @@ type InternalUsers struct {
 func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (InternalUsers, error) {
 
 	internalUsers := InternalUsers{}
-	//TODO watch secrets
 	internalSecrets := elasticsearch.NewInternalUserSecret(*stack)
 	err := r.reconcileSecret(stack, &internalSecrets, true)
 	if err != nil {
@@ -39,6 +38,16 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (Inter
 		if user.Name == elasticsearch.InternalKibanaServerUserName {
 			internalUsers.KibanaUser = user
 		}
+	}
+
+	externalSecrets := elasticsearch.NewExternalUserSecret(*stack)
+	err = r.reconcileSecret(stack, &externalSecrets, true)
+	if err != nil {
+		return internalUsers, err
+	}
+
+	for _, u := range elasticsearch.NewUsersFromSecret(externalSecrets) {
+		users = append(users, u)
 	}
 
 	elasticUsersSecret, err := elasticsearch.NewElasticUsersSecret(*stack, users)
@@ -62,7 +71,7 @@ func keysEqual(v1, v2 map[string][]byte) bool {
 	return true
 }
 
-//ReconcileSecret creates or updates the a given secret.
+// ReconcileSecret creates or updates the a given secret.
 // Use keyPresenceOnly to avoid overwriting randomly generated secrets unnecessarily.
 func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expected *corev1.Secret, keyPresenceOnly bool) error {
 	if err := controllerutil.SetControllerReference(stack, expected, r.scheme); err != nil {

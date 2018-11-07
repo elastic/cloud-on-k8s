@@ -127,8 +127,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	res, err := r.CreateElasticsearchPods(request)
+	
+	res, err := r.CreateElasticsearchPods(request, internalUsers.ControllerUser)
 	if err != nil {
 		return res, err
 	}
@@ -210,7 +210,7 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors la
 
 // CreateElasticsearchPods Performs the creation of any number of pods in order
 // to match the Stack definition.
-func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user esclient.User) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -226,7 +226,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 
 	// Create any missing instances
 	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
-		pod := elasticsearch.NewPod(stackInstance)
+		pod := elasticsearch.NewPod(stackInstance, user)
 
 		if err := controllerutil.SetControllerReference(&stackInstance, &pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
@@ -259,7 +259,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 			return reconcile.Result{}, err
 		}
 
-		newPod := elasticsearch.NewPod(stackInstance)
+		newPod := elasticsearch.NewPod(stackInstance, user)
 		if err := controllerutil.SetControllerReference(&stackInstance, &newPod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}

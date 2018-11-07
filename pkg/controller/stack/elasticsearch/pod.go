@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"strconv"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/mitchellh/hashstructure"
@@ -37,7 +39,7 @@ var (
 )
 
 // NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack) corev1.Pod {
+func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) corev1.Pod {
 	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      NewNodeName(s.Name),
@@ -45,7 +47,7 @@ func NewPod(s deploymentsv1alpha1.Stack) corev1.Pod {
 			Labels:    NewLabels(s, true),
 		},
 		Spec: NewPodSpec(
-			BuildNewPodSpecParams(s),
+			BuildNewPodSpecParams(s), probeUser,
 		),
 	}
 }
@@ -88,7 +90,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -99,6 +101,7 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 
 	// TODO: quota support
 	volume := NewDefaultEmptyDirVolume()
+	usersSecret := NewSecretVolume(p.ClusterName+"-users", "users")
 
 	// TODO: Security Context, Optional init container
 	podSpec := corev1.PodSpec{
@@ -121,10 +124,18 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 				{Name: "node.master", Value: "true"},
 				{Name: "node.data", Value: "true"},
 				{Name: "node.ingest", Value: "true"},
+
+				{Name: "xpack.security.enabled", Value: "true"},
+				{Name: "xpack.license.self_generated.type", Value: "trial"},
+				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
+				{Name: "PROBE_USERNAME", Value: probeUser.Name},
+				{Name: "PROBE_PASSWORD", Value: probeUser.Password},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "elasticsearch",
+			Command:         []string{"/bin/sh"},
+			Args:            []string{"-c", "ln -sf /usr/share/elasticsearch/secrets/users /usr/share/elasticsearch/config/users; ln -sf /usr/share/elasticsearch/secrets/users_roles /usr/share/elasticsearch/config/users_roles; /usr/local/bin/docker-entrypoint.sh eswrapper"},
 			Ports:           defaultContainerPorts,
 			// TODO: Hardcoded resource limits and requests
 			Resources: corev1.ResourceRequirements{
@@ -153,10 +164,10 @@ func NewPodSpec(p NewPodSpecParams) corev1.PodSpec {
 					},
 				},
 			},
-			VolumeMounts: []corev1.VolumeMount{volume.VolumeMount()},
+			VolumeMounts: []corev1.VolumeMount{volume.VolumeMount(), usersSecret.VolumeMount()},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       []corev1.Volume{volume.Volume()},
+		Volumes:                       []corev1.Volume{volume.Volume(), usersSecret.Volume()},
 	}
 
 	if !p.SetVMMaxMapCount {

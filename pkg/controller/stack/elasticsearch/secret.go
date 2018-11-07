@@ -16,6 +16,7 @@ import (
 const (
 	ElasticUsers                 = "users"
 	ElasticUsersRoles            = "users_roles"
+	ExternalUserName             = "elastic"
 	InternalControllerUserName   = "elastic-internal"
 	InternalKibanaServerUserName = "elastic-internal-kibana"
 )
@@ -25,13 +26,26 @@ func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
-			Name:      common.Concat(s.Name, "-internal-user-secret"),
+			Name:      common.Concat(s.Name, "-internal-users"),
 			Labels:    NewLabels(s, false),
 		},
-		// TODO should this hold multiple internal users?
 		Data: map[string][]byte{
 			InternalControllerUserName:   []byte(rand.String(24)),
 			InternalKibanaServerUserName: []byte(rand.String(24)),
+		},
+	}
+}
+
+// NewExternalUserSecret creates a secret for the Elastic user to be used by external users.
+func NewExternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
+	return corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: s.Namespace,
+			Name:      common.Concat(s.Name, "-elastic-user"),
+			Labels:    NewLabels(s, false),
+		},
+		Data: map[string][]byte{
+			ExternalUserName: []byte(rand.String(24)),
 		},
 	}
 }
