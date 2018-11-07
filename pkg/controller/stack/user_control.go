@@ -14,10 +14,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ReconcileUsers aggregates secrets into a ES readable secret.
-func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (client.User, error) {
+type InternalUsers struct {
+	ControllerUser client.User
+	KibanaUser     client.User
+}
 
-	internalUser := client.User{}
+// ReconcileUsers aggregates secrets into a ES readable secret.
+func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (InternalUsers, error) {
+
+	internalUsers := InternalUsers{}
 	//TODO watch secrets
 	expected := elasticsearch.NewInternalUserSecret(*stack)
 	internalSecrets := &corev1.Secret{}
@@ -28,26 +33,29 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (clien
 		)
 		err = r.Create(context.TODO(), &expected)
 		if err != nil {
-			return internalUser, err
+			return internalUsers, err
 		}
 		internalSecrets = &expected
 	} else if err != nil {
-		return internalUser, err
+		return internalUsers, err
 	}
 
 	users := elasticsearch.NewUsersFromSecret(*internalSecrets)
 	for _, user := range users {
-		if user.Name == elasticsearch.InternalUserName {
-			internalUser = user
+		if user.Name == elasticsearch.InternalControllerUserName {
+			internalUsers.ControllerUser = user
+		}
+		if user.Name == elasticsearch.InternalKibanaServerUserName {
+			internalUsers.KibanaUser = user
 		}
 	}
 
 	elasticUsersSecret, err := elasticsearch.NewElasticUsersSecret(*stack, users)
 	if err != nil {
-		return internalUser, err
+		return internalUsers, err
 	}
 	err = r.reconcileSecret(stack, elasticUsersSecret)
-	return internalUser, err
+	return internalUsers, err
 }
 
 //ReconcileSecret creates or updates the a given secret.

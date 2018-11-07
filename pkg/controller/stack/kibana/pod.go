@@ -2,6 +2,7 @@ package kibana
 
 import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -25,6 +26,7 @@ type PodSpecParams struct {
 	Version          string
 	ElasticsearchUrl string
 	CustomImageName  string
+	User             client.User
 }
 
 func imageWithVersion(image string, version string) string {
@@ -67,6 +69,8 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 			TerminationMessagePolicy: defaultTerminationMessagePolicy,
 			Env: []corev1.EnvVar{
 				{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
+				{Name: "ELASTICSEARCH_USERNAME", Value: p.User.Name},
+				{Name: "ELASTICSEARCH_PASSWORD", Value: p.User.Password},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,

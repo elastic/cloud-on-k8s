@@ -123,7 +123,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	esUser, err := r.reconcileUsers(&stack)
+	internalUsers, err := r.reconcileUsers(&stack)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -141,7 +141,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileKibanaDeployment(&stack)
+	res, err = r.reconcileKibanaDeployment(&stack, internalUsers.KibanaUser)
 	if err != nil {
 		return res, err
 	}
@@ -151,7 +151,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	return r.DeleteElasticsearchPods(request, esUser)
+	return r.DeleteElasticsearchPods(request, internalUsers.ControllerUser)
 }
 
 // GetStack obtains the stack from the backend kubernetes API.
@@ -356,11 +356,12 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUs
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, user esclient.User) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
+		User:             user,
 	}
 	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{

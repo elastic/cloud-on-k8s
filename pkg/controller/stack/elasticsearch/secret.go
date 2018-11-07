@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	ElasticUsers      = "users"
-	ElasticUsersRoles = "users_roles"
-	InternalUserName  = "elastic-internal"
+	ElasticUsers                 = "users"
+	ElasticUsersRoles            = "users_roles"
+	InternalControllerUserName   = "elastic-internal"
+	InternalKibanaServerUserName = "elastic-internal-kibana"
 )
 
 // NewInternalUserSecret creates a secret for the ES user used by the controller
@@ -29,7 +30,8 @@ func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 		},
 		// TODO should this hold multiple internal users?
 		StringData: map[string]string{
-			InternalUserName: rand.String(24),
+			InternalControllerUserName:   rand.String(24),
+			InternalKibanaServerUserName: rand.String(24),
 		},
 	}
 }
