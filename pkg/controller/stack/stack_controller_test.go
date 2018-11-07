@@ -28,6 +28,7 @@ var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Nam
 var kibanaDeploymentKey = types.NamespacedName{Name: "foo-kibana", Namespace: "default"}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
 var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
+var kibanaServcieKey = types.NamespacedName{Name: "foo-kb", Namespace: "default"}
 
 func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
 	select {
@@ -102,6 +103,8 @@ func TestReconcile(t *testing.T) {
 	// Kibana deployment should be created
 	deploy := &appsv1.Deployment{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), kibanaDeploymentKey, deploy) })
+	kibanaService := &corev1.Service{}
+	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), kibanaServcieKey, kibanaService) })
 
 	// Services should be created
 	discoveryService := &corev1.Service{}
@@ -122,12 +125,14 @@ func TestReconcile(t *testing.T) {
 	})
 	// Kibana
 	checkResourceDeletionTriggersReconcile(t, requests, kibanaDeploymentKey, deploy)
+	checkResourceDeletionTriggersReconcile(t, requests, kibanaServcieKey, kibanaService)
 	// Services
 	checkResourceDeletionTriggersReconcile(t, requests, publicServiceKey, publicService)
 	checkResourceDeletionTriggersReconcile(t, requests, discoveryServiceKey, discoveryService)
 
 	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
 	clean(t, deploy)
+	clean(t, kibanaService)
 	clean(t, publicService)
 	clean(t, discoveryService)
 }
