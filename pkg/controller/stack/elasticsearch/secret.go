@@ -60,6 +60,10 @@ func NewUsersFromSecret(secret corev1.Secret) []client.User {
 	return result
 }
 
+func ElasticUsersSecretName(ownerName string) string {
+	return common.Concat(ownerName, "-users")
+}
+
 // NewElasticUsersSecret creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
 func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (corev1.Secret, error) {
@@ -85,7 +89,7 @@ func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (co
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
-			Name:      common.Concat(s.Name, "-users"),
+			Name:      ElasticUsersSecretName(s.Name),
 			Labels:    NewLabels(s, false),
 		},
 		Data: map[string][]byte{

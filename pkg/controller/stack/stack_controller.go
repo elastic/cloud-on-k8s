@@ -127,7 +127,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	
+
 	res, err := r.CreateElasticsearchPods(request, internalUsers.ControllerUser)
 	if err != nil {
 		return res, err

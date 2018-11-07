@@ -101,7 +101,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 
 	// TODO: quota support
 	volume := NewDefaultEmptyDirVolume()
-	usersSecret := NewSecretVolume(p.ClusterName+"-users", "users")
+	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 
 	// TODO: Security Context, Optional init container
 	podSpec := corev1.PodSpec{
