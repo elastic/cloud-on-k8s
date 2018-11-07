@@ -1,7 +1,11 @@
 package initcontainer
 
-import "html/template"
+import (
+	"bytes"
+	"html/template"
+)
 
+// List of plugins to be installed on the ES instance
 var pluginsToInstall = []string{
 	"repository-s3",  // S3 snapshots
 	"repository-gcs", // gcp snapshots
@@ -11,9 +15,21 @@ var pluginsToInstall = []string{
 type TemplateParams struct {
 	SetVMMaxMapCount bool              // Set vm.max_map_count=262144
 	Plugins          []string          // List of plugins to install
-	SharedVolumes    SharedVolumeArray // Volumes and directories that should be persisted
+	SharedVolumes    SharedVolumeArray // Directories to persist in shared volumes
 }
 
+// RenderScriptTemplate renders scriptTemplate using the given TemplateParams
+func RenderScriptTemplate(params TemplateParams) (string, error) {
+	tplBuffer := bytes.Buffer{}
+	err := scriptTemplate.Execute(&tplBuffer, params)
+	if err != nil {
+		return "", err
+	}
+	return tplBuffer.String(), nil
+}
+
+// scriptTemplate is the main script to be run
+// in the init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
 

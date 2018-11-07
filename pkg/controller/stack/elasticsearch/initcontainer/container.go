@@ -1,8 +1,6 @@
 package initcontainer
 
 import (
-	"bytes"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -19,13 +17,11 @@ const (
 func NewInitContainer(imageName string, setVMMaxMapCount bool) (corev1.Container, error) {
 	initContainerPrivileged := defaultInitContainerPrivileged
 	initContainerRunAsUser := defaultInitContainerRunAsUser
-	params := TemplateParams{
+	script, err := RenderScriptTemplate(TemplateParams{
 		SetVMMaxMapCount: setVMMaxMapCount,
 		Plugins:          pluginsToInstall,
 		SharedVolumes:    SharedVolumes,
-	}
-	tplBuffer := bytes.Buffer{}
-	err := scriptTemplate.Execute(&tplBuffer, params)
+	})
 	if err != nil {
 		return corev1.Container{}, err
 	}
@@ -37,7 +33,7 @@ func NewInitContainer(imageName string, setVMMaxMapCount bool) (corev1.Container
 			Privileged: &initContainerPrivileged,
 			RunAsUser:  &initContainerRunAsUser,
 		},
-		Command:      []string{"bash", "-c", tplBuffer.String()},
+		Command:      []string{"bash", "-c", script},
 		VolumeMounts: SharedVolumes.InitContainerVolumeMounts(),
 	}
 	return container, nil
