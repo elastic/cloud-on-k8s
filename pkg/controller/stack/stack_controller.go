@@ -8,23 +8,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/pkg/errors"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -218,7 +215,10 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 
 	// Create any missing instances
 	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
-		pod := elasticsearch.NewPod(stackInstance)
+		pod, err := elasticsearch.NewPod(stackInstance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		if err := controllerutil.SetControllerReference(&stackInstance, &pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
@@ -251,7 +251,10 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 			return reconcile.Result{}, err
 		}
 
-		newPod := elasticsearch.NewPod(stackInstance)
+		newPod, err := elasticsearch.NewPod(stackInstance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 		if err := controllerutil.SetControllerReference(&stackInstance, &newPod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}

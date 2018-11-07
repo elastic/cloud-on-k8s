@@ -30,7 +30,7 @@ func NewService(s deploymentsv1alpha1.Stack) *corev1.Service {
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
-			Type:                  corev1.ServiceTypeNodePort,
+			Type: corev1.ServiceTypeNodePort,
 			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}
