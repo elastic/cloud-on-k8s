@@ -83,7 +83,7 @@ func NewExternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 	}
 }
 
-// NewUsersFromSecret maps a given secret into a User struct.
+// NewUsersFromSecret maps a given secret into an array of  users.
 func NewUsersFromSecret(secret corev1.Secret) []client.User {
 	var result []client.User
 	for user, pw := range secret.Data {
