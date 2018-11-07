@@ -97,7 +97,7 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 		// for generated secrets as long as the key exists we can work with it. Rotate secrets by deleting them (?)
 		updateNeeded = !keysEqual(expected.Data, found.Data)
 	} else {
-		// TODO this will trigger everytime because of bcrypt, be smarter here and check the bcrypt hash 
+		// TODO this will trigger everytime because of bcrypt, be smarter here and check the bcrypt hash
 		updateNeeded = !reflect.DeepEqual(expected.Data, found.Data)
 	}
 

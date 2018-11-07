@@ -1,10 +1,12 @@
 package elasticsearch
 
 import (
+	"sort"
+	"testing"
+
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -47,6 +49,7 @@ func TestNewUserSecrets(t *testing.T) {
 		for k, _ := range tt.subject.Data {
 			keys = append(keys, k)
 		}
+		sort.Strings(keys)
 		assert.EqualValues(t, tt.expectedKes, keys)
 	}
 
