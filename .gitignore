@@ -25,3 +25,6 @@ bin
 
 # ignore vendor/
 vendor/
+
+# gnore devenv file
+.devenv
