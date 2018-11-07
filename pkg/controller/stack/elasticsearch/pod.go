@@ -56,7 +56,7 @@ func BuildNewPodSpecParams(s deploymentsv1alpha1.Stack) NewPodSpecParams {
 		Version:                        s.Spec.Version,
 		CustomImageName:                s.Spec.Elasticsearch.Image,
 		ClusterName:                    s.Name,
-		DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(int(s.Spec.Elasticsearch.NodeCount)),
+		DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(int(s.Spec.Elasticsearch.NodeCount())),
 		DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 		SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
 	}

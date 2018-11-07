@@ -214,7 +214,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 	var proposedPods []corev1.Pod
 
 	// Create any missing instances
-	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
+	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount(); i++ {
 		pod, err := elasticsearch.NewPod(stackInstance)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -266,8 +266,8 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 	// being created > NodeCount. This is required to not do work in vain when
 	// there's a decrease in the number of nodes in the topology and a hash
 	// change.
-	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount {
-		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount]
+	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount() {
+		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount()]
 	}
 
 	for _, pod := range proposedPods {
@@ -299,7 +299,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	})
 
 	// Delete the difference between the running and desired pods.
-	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
+	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount()
 	var toDelete []corev1.Pod
 	var nodeNames []string
 	for i := int32(0); i < orphanPodNumber; i++ {
