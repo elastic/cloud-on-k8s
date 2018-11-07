@@ -17,7 +17,7 @@ spec:
       resources:
         limits:
           mem: 1Gi
-          disk: 1GB
+          storage: 1GB
           cpu: 800m
       nodeCount: 3
   kibana:
