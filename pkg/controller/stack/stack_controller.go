@@ -40,6 +40,8 @@ import (
 * business logic.  Delete these comments after modifying this file.*
  */
 
+var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+
 var log = logf.Log.WithName("stack-controller")
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -282,6 +284,19 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
+	}
+
+	esReachable, err := r.IsPublicServiceReady(stackInstance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !esReachable {
+		// We cannot manipulate ES allocation exclude settings if the ES cluster
+		// cannot be reached, hence we cannot delete pods.
+		// Probably it was just created and is not ready yet.
+		// Let's retry in a while.
+		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
+		return defaultRequeue, nil
 	}
 
 	// Get the current list of instances
