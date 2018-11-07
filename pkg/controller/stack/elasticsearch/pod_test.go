@@ -87,8 +87,12 @@ func TestBuildNewPodSpecParams(t *testing.T) {
 					Spec: deploymentsv1alpha1.StackSpec{
 						Version: "6.4.2",
 						Elasticsearch: deploymentsv1alpha1.ElasticsearchSpec{
-							NodeCount:        2,
 							SetVMMaxMapCount: true,
+							Topologies: []deploymentsv1alpha1.ElasticsearchTopologySpec{
+								deploymentsv1alpha1.ElasticsearchTopologySpec{
+									NodeCount: 2,
+								},
+							},
 						},
 					},
 				},
@@ -112,8 +116,12 @@ func TestBuildNewPodSpecParams(t *testing.T) {
 					Spec: deploymentsv1alpha1.StackSpec{
 						Version: "6.4.2",
 						Elasticsearch: deploymentsv1alpha1.ElasticsearchSpec{
-							Image:            fmt.Sprintf("%s:%s", defaultImageRepositoryAndName, "6.4.2"),
-							NodeCount:        2,
+							Image: fmt.Sprintf("%s:%s", defaultImageRepositoryAndName, "6.4.2"),
+							Topologies: []deploymentsv1alpha1.ElasticsearchTopologySpec{
+								deploymentsv1alpha1.ElasticsearchTopologySpec{
+									NodeCount: 2,
+								},
+							},
 							SetVMMaxMapCount: true,
 						},
 					},
