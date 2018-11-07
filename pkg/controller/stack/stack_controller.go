@@ -8,23 +8,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/pkg/errors"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -317,7 +314,12 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 
 	}
 
-	//create an Elasticsearch client
+	if len(toDelete) == 0 {
+		// Nothing to delete!
+		return reconcile.Result{}, nil
+	}
+
+	// Create an Elasticsearch client
 	esClient, err := NewElasticsearchClient(&stackInstance)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
