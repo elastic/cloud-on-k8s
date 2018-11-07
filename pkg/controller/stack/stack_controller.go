@@ -117,9 +117,6 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	stack, err := r.GetStack(request)
 	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
 			// For additional cleanup logic use finalizers.
