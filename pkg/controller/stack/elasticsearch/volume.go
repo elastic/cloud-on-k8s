@@ -10,7 +10,7 @@ import (
 const (
 	defaultVolumeName      = "volume"
 	defaultMountPath       = "/volume"
-	defaultConfigMountPath = "/usr/share/elasticsearch/secrets"
+	defaultSecretMountPath = "/secrets"
 	defaultDataSubDir      = "data"
 	defaultLogsSubDir      = "logs"
 )
@@ -73,7 +73,7 @@ type SecretVolume struct {
 func NewSecretVolume(secretName string, name string) SecretVolume {
 	return SecretVolume{
 		name:       name,
-		mountPath:  defaultConfigMountPath,
+		mountPath:  defaultSecretMountPath,
 		secretName: secretName,
 	}
 }

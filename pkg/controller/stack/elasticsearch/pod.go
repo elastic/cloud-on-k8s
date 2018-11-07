@@ -7,6 +7,7 @@ import (
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/initcontainer"
 	"github.com/mitchellh/hashstructure"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -24,10 +25,6 @@ const (
 
 	// defaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
 	defaultTerminationGracePeriodSeconds int64 = 120
-	// defaultInitContainerPrivileged determines if the init container should be privileged
-	defaultInitContainerPrivileged bool = true
-	// defaultInitContainerRunAsUser is the user id the init container should run as
-	defaultInitContainerRunAsUser int64 = 0
 )
 
 var (
@@ -39,17 +36,20 @@ var (
 )
 
 // NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) corev1.Pod {
-	return corev1.Pod{
+func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, error) {
+	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser)
+	if err != nil {
+		return corev1.Pod{}, err
+	}
+	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      NewNodeName(s.Name),
 			Namespace: s.Namespace,
 			Labels:    NewLabels(s, true),
 		},
-		Spec: NewPodSpec(
-			BuildNewPodSpecParams(s), probeUser,
-		),
+		Spec: podSpec,
 	}
+	return pod, nil
 }
 
 // BuildNewPodSpecParams creates a NewPodSpecParams from a Stack definition.
@@ -90,7 +90,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -100,10 +100,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 	terminationGracePeriodSeconds := defaultTerminationGracePeriodSeconds
 
 	// TODO: quota support
-	volume := NewDefaultEmptyDirVolume()
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
+	dataVolume := NewDefaultEmptyDirVolume()
 
-	// TODO: Security Context, Optional init container
+	// TODO: Security Context
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Env: []corev1.EnvVar{
@@ -114,8 +114,8 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 				{Name: "cluster.name", Value: p.ClusterName},
 				{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
 				{Name: "network.host", Value: "0.0.0.0"},
-				{Name: "path.data", Value: volume.DataPath()},
-				{Name: "path.logs", Value: volume.LogsPath()},
+				{Name: "path.data", Value: dataVolume.DataPath()},
+				{Name: "path.logs", Value: dataVolume.LogsPath()},
 
 				// TODO: the JVM options are hardcoded, but should be configurable
 				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
@@ -134,8 +134,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            "elasticsearch",
-			Command:         []string{"/bin/sh"},
-			Args:            []string{"-c", "ln -sf /usr/share/elasticsearch/secrets/users /usr/share/elasticsearch/config/users; ln -sf /usr/share/elasticsearch/secrets/users_roles /usr/share/elasticsearch/config/users_roles; /usr/local/bin/docker-entrypoint.sh eswrapper"},
 			Ports:           defaultContainerPorts,
 			// TODO: Hardcoded resource limits and requests
 			Resources: corev1.ResourceRequirements{
@@ -164,30 +162,17 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) corev1.PodSpec {
 					},
 				},
 			},
-			VolumeMounts: []corev1.VolumeMount{volume.VolumeMount(), usersSecret.VolumeMount()},
+			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount(), usersSecret.VolumeMount()),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       []corev1.Volume{volume.Volume(), usersSecret.Volume()},
+		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
 	}
 
-	if !p.SetVMMaxMapCount {
-		return podSpec
+	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount, LinkedFiles)
+	if err != nil {
+		return corev1.PodSpec{}, err
 	}
+	podSpec.InitContainers = append(podSpec.InitContainers, initContainer)
 
-	initContainerPrivileged := defaultInitContainerPrivileged
-	initContainerRunAsUser := defaultInitContainerRunAsUser
-	initContainerConfigureSysCtl := corev1.Container{
-		Image:           imageName,
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            "configure-sysctl",
-		SecurityContext: &corev1.SecurityContext{
-			Privileged: &initContainerPrivileged,
-			RunAsUser:  &initContainerRunAsUser,
-		},
-		Command: []string{"sysctl", "-w", "vm.max_map_count=262144"},
-	}
-
-	podSpec.InitContainers = append(podSpec.InitContainers, initContainerConfigureSysCtl)
-
-	return podSpec
+	return podSpec, nil
 }

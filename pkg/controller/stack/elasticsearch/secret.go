@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"strings"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/initcontainer"
+
 	"k8s.io/apimachinery/pkg/util/rand"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -19,6 +21,21 @@ const (
 	ExternalUserName             = "elastic"
 	InternalControllerUserName   = "elastic-internal"
 	InternalKibanaServerUserName = "elastic-internal-kibana"
+)
+
+var (
+	LinkedFiles = initcontainer.LinkedFilesArray{
+		Array: []initcontainer.LinkedFile{
+			initcontainer.LinkedFile{
+				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsers),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsers),
+			},
+			initcontainer.LinkedFile{
+				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersRoles),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersRoles),
+			},
+		},
+	}
 )
 
 // NewInternalUserSecret creates a secret for the ES user used by the controller
