@@ -16,10 +16,15 @@ import (
 )
 
 const (
-	ElasticUsers                 = "users"
-	ElasticUsersRoles            = "users_roles"
-	ExternalUserName             = "elastic"
-	InternalControllerUserName   = "elastic-internal"
+	// ElasticUsersFile is the name of the users file in the ES config dir.
+	ElasticUsersFile = "users"
+	// ElasticUsersRolesFile is the name of the users_roles file in the ES config dir.
+	ElasticUsersRolesFile = "users_roles"
+	// ExternalUserName also known as the 'elastic' user.
+	ExternalUserName = "elastic"
+	// InternalControllerUserName a user to be used from this controller when interacting with ES.
+	InternalControllerUserName = "elastic-internal"
+	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
 	InternalKibanaServerUserName = "elastic-internal-kibana"
 )
 
@@ -28,12 +33,12 @@ var (
 	LinkedFiles = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsers),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsers),
+				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersFile),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersFile),
 			},
 			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersRoles),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersRoles),
+				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersRolesFile),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersRolesFile),
 			},
 		},
 	}
@@ -80,7 +85,6 @@ func NewExternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 
 // NewUsersFromSecret maps a given secret into a User struct.
 func NewUsersFromSecret(secret corev1.Secret) []client.User {
-
 	var result []client.User
 	for user, pw := range secret.Data {
 		result = append(result, client.User{Name: user, Password: string(pw)})
@@ -121,8 +125,8 @@ func NewElasticUsersSecret(s deploymentsv1alpha1.Stack, users []client.User) (co
 			Labels:    NewLabels(s, false),
 		},
 		Data: map[string][]byte{
-			ElasticUsers:      []byte(hashedCreds.String()),
-			ElasticUsersRoles: []byte(roles.String()),
+			ElasticUsersFile:      []byte(hashedCreds.String()),
+			ElasticUsersRolesFile: []byte(roles.String()),
 		},
 	}, nil
 }

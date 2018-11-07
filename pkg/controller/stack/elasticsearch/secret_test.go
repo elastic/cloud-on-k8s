@@ -46,7 +46,7 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      elasticUsers,
 			expectedName: "my-stack-users",
-			expectedKeys: []string{ElasticUsers, ElasticUsersRoles},
+			expectedKeys: []string{ElasticUsersFile, ElasticUsersRolesFile},
 		},
 	}
 
@@ -65,9 +65,9 @@ func TestNewUserSecrets(t *testing.T) {
 func TestNewElasticUsersSecret(t *testing.T) {
 	secret, err := NewElasticUsersSecret(mockStack, testUser)
 	assert.NoError(t, err)
-	assert.Equal(t, "superuser:foo", string(secret.Data[ElasticUsersRoles]))
+	assert.Equal(t, "superuser:foo", string(secret.Data[ElasticUsersRolesFile]))
 
-	for _, user := range strings.Split(string(secret.Data[ElasticUsers]), "\n") {
+	for _, user := range strings.Split(string(secret.Data[ElasticUsersFile]), "\n") {
 		userPw := strings.Split(user, ":")
 		assert.Equal(t, "foo", userPw[0])
 		assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(userPw[1]), []byte("bar")))
