@@ -37,6 +37,8 @@ import (
 * business logic.  Delete these comments after modifying this file.*
  */
 
+var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+
 var log = logf.Log.WithName("stack-controller")
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -220,7 +222,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 	var proposedPods []corev1.Pod
 
 	// Create any missing instances
-	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount; i++ {
+	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount(); i++ {
 		pod, err := elasticsearch.NewPod(stackInstance, user)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -271,8 +273,8 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 	// being created > NodeCount. This is required to not do work in vain when
 	// there's a decrease in the number of nodes in the topology and a hash
 	// change.
-	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount {
-		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount]
+	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount() {
+		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount()]
 	}
 
 	for _, pod := range proposedPods {
@@ -292,6 +294,19 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUs
 		return reconcile.Result{}, err
 	}
 
+	esReachable, err := r.IsPublicServiceReady(stackInstance)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !esReachable {
+		// We cannot manipulate ES allocation exclude settings if the ES cluster
+		// cannot be reached, hence we cannot delete pods.
+		// Probably it was just created and is not ready yet.
+		// Let's retry in a while.
+		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
+		return defaultRequeue, nil
+	}
+
 	// Get the current list of instances
 	currentPods, err := r.GetPodList(request, elasticsearch.TypeSelector, nil)
 	if err != nil {
@@ -304,7 +319,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUs
 	})
 
 	// Delete the difference between the running and desired pods.
-	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount
+	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount()
 	var toDelete []corev1.Pod
 	var nodeNames []string
 	for i := int32(0); i < orphanPodNumber; i++ {

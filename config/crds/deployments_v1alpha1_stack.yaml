@@ -26,11 +26,37 @@ spec:
               properties:
                 image:
                   type: string
-                nodeCount:
-                  format: int32
-                  type: integer
                 setVmMaxMapCount:
                   type: boolean
+                topologies:
+                  items:
+                    properties:
+                      nodeCount:
+                        format: int32
+                        type: integer
+                      nodeTypes:
+                        properties:
+                          data:
+                            type: boolean
+                          ingest:
+                            type: boolean
+                          master:
+                            type: boolean
+                        type: object
+                      resources:
+                        properties:
+                          limits:
+                            properties:
+                              cpu:
+                                type: string
+                              memory:
+                                type: string
+                              storage:
+                                type: string
+                            type: object
+                        type: object
+                    type: object
+                  type: array
               type: object
             kibana:
               properties:
@@ -39,6 +65,18 @@ spec:
                 nodeCount:
                   format: int32
                   type: integer
+                resources:
+                  properties:
+                    limits:
+                      properties:
+                        cpu:
+                          type: string
+                        memory:
+                          type: string
+                        storage:
+                          type: string
+                      type: object
+                  type: object
               type: object
             version:
               type: string

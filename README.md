@@ -11,6 +11,7 @@ within a Kubernetes cluster.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [gcloud](https://cloud.google.com/sdk/gcloud/)
 
 ## Development
 
@@ -57,11 +58,21 @@ stack.deployments.k8s.elastic.co/stack-sample unchanged
 * `make samples`: Updates the samples.
 * `make minikube`: Ensures that minikube is started.
 * `make vendor`: Runs `dep ensure`
+* `make set-dev-gke`: Sets the development environment to target GKE.
+* `make set-dev-minikube`: Sets the development environment to run in `minikube`.
 
 ### Makefile variables
 
 * `KUBECTL_CONFIG`: Sets up the config on which to work (defaults to `minikube`.
 * `MINIKUBE_KUBERNETES_VERSION`: Configures the Kubernetes version that `minikube` will use for the VM.
+* `GCLOUD_PROJECT`: Sets the gcloud project to run aginst (defaults to `elastic-cloud-dev`).
+* `GCLOUD_CLUSTER_NAME`: Sets the GKE cluster name to be created (defaults to `${USER}-dev-cluster`).
+* `GKE_CLUSTER_REGION`: Sets the gcloud region to run aginst (defaults to `europe-west3`).
+* `GKE_ADMIN_USERNAME`: Sets the GKE cluster administrative user (defaults to `admin`).
+* `GKE_CLUSTER_VERSION`: Sets the GKE kubernetes version to use (defaults to `1.11.2-gke.15`).
+* `GKE_MACHINE_TYPE`: Sets the GCP instance types to use (defaults to `n1-highmem-4`).
+* `GKE_LOCAL_SSD_COUNT`: Sets the number of locally attached SSD disks attached to each GCP instance (defaults to `1`). Each disk is 375GB.
+* `GKE_NODE_COUNT_PER_ZONE`: Sets the amount of nodes per GCP zone (defaults to `1`). By default the GKE cluster is spun accross 3 zones.
 
 ## Recommended reading
 
