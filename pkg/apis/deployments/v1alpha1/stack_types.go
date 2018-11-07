@@ -92,8 +92,8 @@ type ResourcesSpec struct {
 type LimitsSpec struct {
 	// Memory is the maximum amount of memory to allocate
 	Memory string `json:"memory,omitempty"`
-	// Disk is the maximum amount of disk to allocate
-	Disk string `json:"disk,omitempty"`
+	// Storage is the maximum amount of storage to allocate
+	Storage string `json:"storage,omitempty"`
 	// CPU is the maximum amount of CPU to allocate
 	CPU string `json:"cpu,omitempty"`
 }

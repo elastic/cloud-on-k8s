@@ -49,9 +49,9 @@ spec:
                             properties:
                               cpu:
                                 type: string
-                              disk:
-                                type: string
                               memory:
+                                type: string
+                              storage:
                                 type: string
                             type: object
                         type: object
@@ -71,9 +71,9 @@ spec:
                       properties:
                         cpu:
                           type: string
-                        disk:
-                          type: string
                         memory:
+                          type: string
+                        storage:
                           type: string
                       type: object
                   type: object
