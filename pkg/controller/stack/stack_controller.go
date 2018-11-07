@@ -117,14 +117,20 @@ type ReconcileStack struct {
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
 	atomic.AddInt64(&r.iteration, 1)
-	res, err := r.CreateElasticsearchPods(request)
-	if err != nil {
-		return res, err
-	}
 
 	stack, err := r.GetStack(request)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// Object not found, return.  Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			return reconcile.Result{}, nil
+		}
 		return reconcile.Result{}, err
+	}
+
+	res, err := r.CreateElasticsearchPods(request)
+	if err != nil {
+		return res, err
 	}
 	res, err = r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
 	if err != nil {
@@ -151,12 +157,6 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha1.Stack, error) {
 	var stackInstance deploymentsv1alpha1.Stack
 	if err := r.Get(context.TODO(), request.NamespacedName, &stackInstance); err != nil {
-		if apierrors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return stackInstance, nil
-		}
-		// Error reading the object - requeue the request.
 		return stackInstance, err
 	}
 	return stackInstance, nil
