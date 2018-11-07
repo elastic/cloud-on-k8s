@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"strings"
 
+	"k8s.io/apimachinery/pkg/util/rand"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -27,7 +29,7 @@ func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 		},
 		// TODO should this hold multiple internal users?
 		StringData: map[string]string{
-			InternalUserName: "TODO-random-string",
+			InternalUserName: rand.String(24),
 		},
 	}
 }
