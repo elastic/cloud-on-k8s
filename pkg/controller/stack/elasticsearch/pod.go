@@ -129,7 +129,14 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 				{Name: "xpack.license.self_generated.type", Value: "trial"},
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: probeUser.Name},
-				{Name: "PROBE_PASSWORD", Value: probeUser.Password},
+				{Name: "PROBE_PASSWORD", ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: ElasticInternalUsersSecretName(p.ClusterName),
+						},
+						Key: probeUser.Name,
+					},
+				}},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,

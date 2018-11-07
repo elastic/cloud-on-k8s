@@ -39,12 +39,22 @@ var (
 	}
 )
 
+// ElasticUsersSecretName is the name of the secret containing all users credentials in ES format.
+func ElasticUsersSecretName(ownerName string) string {
+	return common.Concat(ownerName, "-users")
+}
+
+// ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials
+func ElasticInternalUsersSecretName(ownerName string) string {
+	return common.Concat(ownerName, "-internal-users")
+}
+
 // NewInternalUserSecret creates a secret for the ES user used by the controller
 func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 	return corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
-			Name:      common.Concat(s.Name, "-internal-users"),
+			Name:      ElasticInternalUsersSecretName(s.Name),
 			Labels:    NewLabels(s, false),
 		},
 		Data: map[string][]byte{
@@ -76,10 +86,6 @@ func NewUsersFromSecret(secret corev1.Secret) []client.User {
 		result = append(result, client.User{Name: user, Password: string(pw)})
 	}
 	return result
-}
-
-func ElasticUsersSecretName(ownerName string) string {
-	return common.Concat(ownerName, "-users")
 }
 
 // NewElasticUsersSecret creates a k8s secret with user credentials and roles readable by ES
