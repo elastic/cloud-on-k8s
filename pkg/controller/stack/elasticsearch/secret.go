@@ -29,9 +29,9 @@ func NewInternalUserSecret(s deploymentsv1alpha1.Stack) corev1.Secret {
 			Labels:    NewLabels(s, false),
 		},
 		// TODO should this hold multiple internal users?
-		StringData: map[string]string{
-			InternalControllerUserName:   rand.String(24),
-			InternalKibanaServerUserName: rand.String(24),
+		Data: map[string][]byte{
+			InternalControllerUserName:   []byte(rand.String(24)),
+			InternalKibanaServerUserName: []byte(rand.String(24)),
 		},
 	}
 }

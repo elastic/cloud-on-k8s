@@ -5,6 +5,7 @@ import (
 	"reflect"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
@@ -24,23 +25,13 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (Inter
 
 	internalUsers := InternalUsers{}
 	//TODO watch secrets
-	expected := elasticsearch.NewInternalUserSecret(*stack)
-	internalSecrets := &corev1.Secret{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, internalSecrets)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info(common.Concat("Creating secret ", expected.Namespace, "/", expected.Name),
-			"iteration", r.iteration,
-		)
-		err = r.Create(context.TODO(), &expected)
-		if err != nil {
-			return internalUsers, err
-		}
-		internalSecrets = &expected
-	} else if err != nil {
+	internalSecrets := elasticsearch.NewInternalUserSecret(*stack)
+	err := r.reconcileSecret(stack, &internalSecrets, true)
+	if err != nil {
 		return internalUsers, err
 	}
 
-	users := elasticsearch.NewUsersFromSecret(*internalSecrets)
+	users := elasticsearch.NewUsersFromSecret(internalSecrets)
 	for _, user := range users {
 		if user.Name == elasticsearch.InternalControllerUserName {
 			internalUsers.ControllerUser = user
@@ -54,19 +45,36 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (Inter
 	if err != nil {
 		return internalUsers, err
 	}
-	err = r.reconcileSecret(stack, elasticUsersSecret)
+	err = r.reconcileSecret(stack, &elasticUsersSecret, false)
 	return internalUsers, err
 }
 
+func keysEqual(v1, v2 map[string][]byte) bool {
+	if len(v1) != len(v2) {
+		return false
+	}
+
+	for k, _ := range v1 {
+		if _, ok := v2[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 //ReconcileSecret creates or updates the a given secret.
-func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expected corev1.Secret) error {
+// Use keyPresenceOnly to avoid overwriting randomly generated secrets unnecessarily.
+func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expected *corev1.Secret, keyPresenceOnly bool) error {
+	if err := controllerutil.SetControllerReference(stack, expected, r.scheme); err != nil {
+		return err
+	}
 	found := &corev1.Secret{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(common.Concat("Creating secret ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
-		err = r.Create(context.TODO(), &expected)
+		err = r.Create(context.TODO(), expected)
 		if err != nil {
 			return err
 		}
@@ -74,7 +82,14 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 		return err
 	}
 
-	if !reflect.DeepEqual(expected.Data, found.Data) {
+	var updateNeeded bool
+	if keyPresenceOnly {
+		updateNeeded = !keysEqual(expected.Data, found.Data)
+	} else {
+		updateNeeded = !reflect.DeepEqual(expected.Data, found.Data)
+	}
+
+	if updateNeeded {
 		log.Info(
 			common.Concat("Updating secret ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
@@ -84,6 +99,8 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 		if err != nil {
 			return err
 		}
+	} else if keyPresenceOnly {
+		expected.Data = found.Data //make sure expected reflects the state on the API server
 	}
 	return nil
 }
