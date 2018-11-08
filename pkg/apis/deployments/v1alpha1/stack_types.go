@@ -98,10 +98,51 @@ type LimitsSpec struct {
 	CPU string `json:"cpu,omitempty"`
 }
 
+type ElasticSearchHealth string
+
+const (
+	ElasticsearchRed    ElasticSearchHealth = "Red"
+	ElasticsearchYellow ElasticSearchHealth = "Yellow"
+	ElasticsearchGreen  ElasticSearchHealth = "Green"
+)
+
+type ReconcilerStatus struct {
+	AvailableNodes int
+}
+
+type ElasticsearchOrchestrationPhase string
+
+const (
+	ElasticsearchOperational       ElasticsearchOrchestrationPhase = "operational"
+	ElasticsearchMaintenance       ElasticsearchOrchestrationPhase = "maintenance"
+	ElasticsearchMigratingData     ElasticsearchOrchestrationPhase = "migrating-data"
+	ElasticsearchRestoringSnapshot ElasticsearchOrchestrationPhase = "restoring-snapshot"
+)
+
+type ElasticsearchStatus struct {
+	ReconcilerStatus
+	Health ElasticSearchHealth
+	Phase  ElasticsearchOrchestrationPhase
+}
+
+type KibanaHealth string
+
+const (
+	KibanaRed   KibanaHealth = "Red"
+	KibanaGreen KibanaHealth = "Green"
+)
+
+type KibanaStatus struct {
+	ReconcilerStatus
+	Health KibanaHealth
+}
+
 // StackStatus defines the observed state of Stack
 type StackStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Elasticsearch ElasticsearchStatus
+	Kibana        KibanaStatus
 }
 
 // +genclient
@@ -109,6 +150,7 @@ type StackStatus struct {
 
 // Stack is the Schema for the stacks API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type Stack struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

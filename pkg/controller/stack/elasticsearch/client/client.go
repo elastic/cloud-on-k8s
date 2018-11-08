@@ -48,6 +48,21 @@ func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
 	return response, err
 }
 
+func (c *Client) makeRequestAndUnmarshal(request *http.Request, out interface{}) error {
+	resp, err := c.makeRequest(request)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(out)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // GetShards reads all shards from cluster state,
 // similar to what _cat/shards does but it is consistent in
 // its output.
@@ -88,4 +103,13 @@ func (c *Client) ExcludeFromShardAllocation(nodes string) error {
 
 	_, err = c.makeRequest(request)
 	return err
+}
+
+func (c *Client) GetClusterHealth() (Health, error) {
+	var result Health
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/health", c.Endpoint), nil)
+	if err != nil {
+		return result, err
+	}
+	return result, c.makeRequestAndUnmarshal(request, &result)
 }
