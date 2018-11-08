@@ -91,7 +91,7 @@ func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 	return !keysEqual(c.secret.Data, other.Data)
 }
 
-// Users returns new slice of used based on secret as source of truth
+// Users returns a slice of users based on secret as source of truth
 func (c *ClearTextCredentials) Users() []client.User {
 	var result []client.User
 	for user, pw := range c.secret.Data {

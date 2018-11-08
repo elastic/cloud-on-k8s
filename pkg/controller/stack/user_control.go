@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// InternalUsers are Elasticsearch intended for system use.
+// InternalUsers are Elasticsearch users intended for system use.
 type InternalUsers struct {
 	ControllerUser client.User
 	KibanaUser     client.User
