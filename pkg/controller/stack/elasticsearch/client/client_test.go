@@ -209,7 +209,6 @@ func NewMockClient(fn RoundTripFunc) Client {
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http//does-not-matter.com",
-		Context:  context.TODO(),
 	}
 }
 
@@ -246,9 +245,9 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(errorResponses(codes))
 
 	for range codes {
-		_, err := testClient.GetShards()
+		_, err := testClient.GetShards(context.TODO())
 		assert.Error(t, err, "GetShards should return an error for anything not 2xx")
-		err = testClient.ExcludeFromShardAllocation("")
+		err = testClient.ExcludeFromShardAllocation(context.TODO(), "")
 		assert.Error(t, err, "ExcludeFromShardAllocation should return an error for anything not 2xx")
 	}
 
@@ -258,8 +257,8 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
-	testClient.GetShards()
-	testClient.ExcludeFromShardAllocation("")
+	testClient.GetShards(context.TODO())
+	testClient.ExcludeFromShardAllocation(context.TODO(), "")
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -271,12 +270,12 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 	tests := []struct {
 		name string
-		args context.Context
+		args User
 		want expected
 	}{
 		{
 			name: "Context with user information should be respected",
-			args: WithUser(context.TODO(), User{Name: "elastic", Password: "changeme"}),
+			args: User{Name: "elastic", Password: "changeme"},
 			want: expected{
 				user:        User{Name: "elastic", Password: "changeme"},
 				authPresent: true,
@@ -284,8 +283,11 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		},
 		{
 			name: "Context w/o user information is ok too",
-			args: context.TODO(),
-			want: expected{user: User{Name: "", Password: ""}, authPresent: false},
+			args: User{},
+			want: expected{
+				user:        User{Name: "", Password: ""},
+				authPresent: false,
+			},
 		},
 	}
 
@@ -296,9 +298,9 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 			assert.Equal(t, tt.want.user.Name, username)
 			assert.Equal(t, tt.want.user.Password, password)
 		}))
-		testClient.Context = tt.args
-		testClient.GetShards()
-		testClient.ExcludeFromShardAllocation("")
+		testClient.User = tt.args
+		testClient.GetShards(context.TODO())
+		testClient.ExcludeFromShardAllocation(context.TODO(), "")
 
 	}
 

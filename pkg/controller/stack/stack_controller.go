@@ -172,7 +172,7 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.Us
 	return &esclient.Client{
 		Endpoint: esURL,
 		HTTP:     &http.Client{},
-		Context:  esclient.WithUser(context.TODO(), esUser),
+		User:     esUser,
 	}, err
 }
 
