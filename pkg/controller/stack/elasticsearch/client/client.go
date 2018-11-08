@@ -8,12 +8,6 @@ import (
 	"net/http"
 )
 
-type userContextKeyType string
-
-const (
-	userContextKey userContextKeyType = "api-user"
-)
-
 // User captures Elasticsearch user credentials.
 type User struct {
 	Name     string
