@@ -20,7 +20,15 @@ type InternalUsers struct {
 	KibanaUser     client.User
 }
 
-// ReconcileUsers aggregates secrets into an ES readable secret.
+// ReconcileUsers aggregates two clear-text secrets into an ES readable secret.
+// The 'internal-users' secret contains credentials for use by other stack components like
+// Kibana and for use by the controller or liveliness probes.
+// The 'elastic-user' secret contains credentials for the reserved bootstrap user 'elastic'
+// which needs to be known by users in order to be able to interact with the cluster.
+// The aggregated secret is used to mount a 'users' file consisting of a sequence of username:bcrypt hashes
+// into the Elasticsearch config directory which the file realm of ES security can directly understand.
+// A second file called 'users_roles' is contained in this third secret as well which describes
+// role assignments for the users specified in the first file.
 func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (InternalUsers, error) {
 
 	internalUsers := InternalUsers{}
