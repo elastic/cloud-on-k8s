@@ -32,6 +32,7 @@ func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 					Port:     TransportPort,
 				},
 			},
+			ClusterIP:       "None",
 			SessionAffinity: corev1.ServiceAffinityNone,
 			Type:            corev1.ServiceTypeClusterIP,
 			// Nodes need to discover themselves before the pod is considered ready,

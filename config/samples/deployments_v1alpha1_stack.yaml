@@ -7,6 +7,9 @@ metadata:
 spec:
   # Add fields here
   version: "6.4.2"
+  featureFlags:
+    internalTLS:
+      enabled: true
   elasticsearch:
     setVmMaxMapCount: true
     topologies:
@@ -19,6 +22,6 @@ spec:
           mem: 1Gi
           storage: 1GB
           cpu: 800m
-      nodeCount: 3
+      nodeCount: 1
   kibana:
     nodeCount: 1

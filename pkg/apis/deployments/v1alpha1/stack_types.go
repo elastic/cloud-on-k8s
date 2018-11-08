@@ -15,6 +15,9 @@ type StackSpec struct {
 	// Version represents the version of the stack
 	Version string `json:"version,omitempty"`
 
+	// FeatureFlags are stack-specific flags that enable or disable specific experimental features
+	FeatureFlags FeatureFlags `json:"featureFlags,omitempty"`
+
 	//TODO the new deployments API in EC(E) supports sequences of
 	//Kibanas and Elasticsearch clusters per stack deployment
 
@@ -23,6 +26,43 @@ type StackSpec struct {
 
 	//Kibana spec for this stack
 	Kibana KibanaSpec `json:"kibana,omitempty"`
+}
+
+// FeatureFlags is a collection of feature flags and their associated state
+type FeatureFlags map[FeatureFlag]FeatureFlagState
+
+// Get returns a FeatureFlag from the map, or its default state if it's not set.
+func (f *FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
+	if state, ok := (*f)[flag]; ok {
+		return state
+	}
+
+	switch flag {
+	case FeatureFlagInternalTLS:
+		return FeatureFlagInternalTLSDefaultState
+	}
+
+	return FeatureFlagState{}
+}
+
+// FeatureFlag is a unique identifier used for feature flags
+type FeatureFlag string
+
+const (
+	// FeatureFlagInternalTLS configures whether we configure tls between nodes. The fact that it's called internal
+	// is a bit of a misnomer, as it also includes encryption for HTTP as well.
+	FeatureFlagInternalTLS = FeatureFlag("internalTLS")
+)
+
+var (
+	// FeatureFlagInternalTLSDefaultState is the default state for the FeatureFlagInternalTLS feature flag.
+	FeatureFlagInternalTLSDefaultState = FeatureFlagState{Enabled: false}
+)
+
+// FeatureFlagState contains the configured state of a FeatureFlag
+type FeatureFlagState struct {
+	// Enabled enables this feature flag.
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.

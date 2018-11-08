@@ -1,7 +1,11 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 
@@ -19,6 +23,8 @@ const (
 	HTTPPort = 9200
 	// TransportPort used by Elasticsearch for the Transport protocol
 	TransportPort = 9300
+	// TransportClientPort used by Elasticsearch for the Transport protocol for client-only connections
+	TransportClientPort = 9400
 
 	// defaultImageRepositoryAndName is the default image name without a tag
 	defaultImageRepositoryAndName string = "docker.elastic.co/elasticsearch/elasticsearch"
@@ -32,12 +38,13 @@ var (
 	defaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: TransportPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport-client", ContainerPort: TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 
 // NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, error) {
-	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser)
+func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.Pod, error) {
+	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser, extraFilesRef)
 	if err != nil {
 		return corev1.Pod{}, err
 	}
@@ -49,6 +56,88 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, err
 		},
 		Spec: podSpec,
 	}
+
+	if s.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagInternalTLS).Enabled {
+		log.Info(
+			fmt.Sprintf(
+				"internal tls feature flag enabled, so injecting certificate volume into container for pod: %s",
+				pod.Name,
+			),
+		)
+
+		optional := false
+		defaultMode := int32(0644)
+
+		volumeName := "node-certificates"
+		volumePath := "/usr/share/elasticsearch/config/node-certs"
+
+		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				Secret: &corev1.SecretVolumeSource{
+					SecretName:  pod.Name,
+					DefaultMode: &defaultMode,
+					Optional:    &optional,
+				},
+			},
+		})
+
+		for i, container := range podSpec.InitContainers {
+			podSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      volumeName,
+				MountPath: volumePath,
+			})
+		}
+
+		for i, container := range podSpec.Containers {
+			podSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+				Name:      volumeName,
+				MountPath: volumePath,
+				ReadOnly:  true,
+			})
+
+			for _, proto := range []string{"http", "transport"} {
+				podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
+					corev1.EnvVar{
+						Name:  fmt.Sprintf("xpack.security.%s.ssl.enabled", proto),
+						Value: "true",
+					},
+					corev1.EnvVar{
+						Name:  fmt.Sprintf("xpack.security.%s.ssl.key", proto),
+						Value: strings.Join([]string{volumePath, "node.key"}, "/"),
+					},
+					corev1.EnvVar{
+						Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate", proto),
+						Value: strings.Join([]string{volumePath, "cert.pem"}, "/"),
+					},
+					corev1.EnvVar{
+						Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate_authorities", proto),
+						Value: strings.Join([]string{volumePath, "ca.pem"}, "/"),
+					},
+				)
+			}
+
+			podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
+				corev1.EnvVar{
+					Name:  "xpack.security.transport.ssl.verification_mode",
+					Value: "none",
+				},
+				corev1.EnvVar{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+				corev1.EnvVar{Name: "xpack.security.enabled", Value: "true"},
+				corev1.EnvVar{Name: "xpack.license.self_generated.type", Value: "trial"},
+				// very secure, much recommended
+				corev1.EnvVar{Name: "xpack.security.authc.anonymous.roles", Value: "superuser"},
+
+				// client profiles
+				corev1.EnvVar{Name: "transport.profiles.client.xpack.security.type", Value: "client"},
+				corev1.EnvVar{Name: "transport.profiles.client.xpack.security.ssl.client_authentication", Value: "none"},
+			)
+
+		}
+
+		pod.Spec = podSpec
+	}
+
 	return pod, nil
 }
 
@@ -90,7 +179,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, error) {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -103,6 +192,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 	dataVolume := NewDefaultEmptyDirVolume()
 
+	optionalFalse := false
+	extraFilesVolumeName := "extrafiles"
+	extraFilesVolumeMountPath := "/usr/share/elasticsearch/config/extrafiles"
+
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{{
@@ -114,9 +207,16 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 				{Name: "cluster.name", Value: p.ClusterName},
 				{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
 				{Name: "network.host", Value: "0.0.0.0"},
+				{Name: "network.publish_host", Value: "", ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+				}},
+
 				{Name: "path.data", Value: dataVolume.DataPath()},
 				{Name: "path.logs", Value: dataVolume.LogsPath()},
-
+				{
+					Name:  "xpack.security.transport.ssl.trust_restrictions.path",
+					Value: fmt.Sprintf("%s/trust.yml", extraFilesVolumeMountPath),
+				},
 				// TODO: the JVM options are hardcoded, but should be configurable
 				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
 
@@ -137,6 +237,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 						Key: probeUser.Name,
 					},
 				}},
+				{Name: "transport.profiles.client.port", Value: strconv.Itoa(TransportClientPort)},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
@@ -169,10 +270,32 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 					},
 				},
 			},
-			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount(), usersSecret.VolumeMount()),
+			VolumeMounts: append(
+				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				dataVolume.VolumeMount(),
+				usersSecret.VolumeMount(),
+				corev1.VolumeMount{
+					Name:      extraFilesVolumeName,
+					ReadOnly:  true,
+					MountPath: extraFilesVolumeMountPath,
+				},
+			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
+		Volumes: append(
+			initcontainer.SharedVolumes.Volumes(),
+			dataVolume.Volume(),
+			usersSecret.Volume(),
+			corev1.Volume{
+				Name: extraFilesVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: extraFilesRef.Name,
+						Optional:   &optionalFalse,
+					},
+				},
+			},
+		),
 	}
 
 	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount, LinkedFiles)
