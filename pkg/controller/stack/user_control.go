@@ -46,8 +46,7 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (Inter
 
 	internalSecrets := elasticsearch.NewInternalUserCredentials(*stack)
 
-	err := r.reconcileSecret(stack, internalSecrets)
-	if err != nil {
+	if err := r.reconcileSecret(stack, internalSecrets); err != nil {
 		return InternalUsers{}, err
 	}
 
@@ -55,8 +54,7 @@ func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (Inter
 	internalUsers := NewInternalUsersFrom(users)
 	externalSecrets := elasticsearch.NewExternalUserCredentials(*stack)
 
-	err = r.reconcileSecret(stack, externalSecrets)
-	if err != nil {
+	if err := r.reconcileSecret(stack, externalSecrets); err != nil {
 		return internalUsers, err
 	}
 
@@ -100,6 +98,6 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 			return err
 		}
 	}
-	expectedCreds.ResetTo(*found)
+	expectedCreds.Reset(*found)
 	return nil
 }

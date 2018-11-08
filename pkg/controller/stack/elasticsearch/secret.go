@@ -58,7 +58,7 @@ func ElasticInternalUsersSecretName(ownerName string) string {
 type UserCredentials interface {
 	Users() []client.User
 	Secret() corev1.Secret
-	ResetTo(secret corev1.Secret)
+	Reset(secret corev1.Secret)
 	NeedsUpdate(other corev1.Secret) bool
 }
 
@@ -80,8 +80,8 @@ func keysEqual(v1, v2 map[string][]byte) bool {
 	return true
 }
 
-// ResetTo resets the source of truth for these credentials.
-func (c *ClearTextCredentials) ResetTo(secret corev1.Secret) {
+// Reset resets the source of truth for these credentials.
+func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 	c.secret = secret
 }
 
@@ -111,15 +111,14 @@ type HashedCredentials struct {
 	secret corev1.Secret
 }
 
-// ResetTo resets the secrets of these credentials. Source of truth are the users though.
-func (hc *HashedCredentials) ResetTo(secret corev1.Secret) {
+// Reset resets the secrets of these credentials. Source of truth are the users though.
+func (hc *HashedCredentials) Reset(secret corev1.Secret) {
 	hc.secret = secret
 }
 
 // NeedsUpdate checks whether the secret data in other matches the user information in these credentials.
 func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
-	sameKeys := keysEqual(hc.secret.Data, other.Data)
-	if !sameKeys {
+	if !keysEqual(hc.secret.Data, other.Data) {
 		return true
 	}
 
