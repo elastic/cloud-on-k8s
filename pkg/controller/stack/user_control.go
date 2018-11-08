@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"reflect"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -15,9 +14,23 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// InternalUsers are Elasticsearch intended for system use.
 type InternalUsers struct {
 	ControllerUser client.User
 	KibanaUser     client.User
+}
+
+func NewInternalUsersFrom(users []client.User) InternalUsers {
+	internalUsers := InternalUsers{}
+	for _, user := range users {
+		if user.Name == elasticsearch.InternalControllerUserName {
+			internalUsers.ControllerUser = user
+		}
+		if user.Name == elasticsearch.InternalKibanaServerUserName {
+			internalUsers.KibanaUser = user
+		}
+	}
+	return internalUsers
 }
 
 // ReconcileUsers aggregates two clear-text secrets into an ES readable secret.
@@ -31,59 +44,38 @@ type InternalUsers struct {
 // role assignments for the users specified in the first file.
 func (r *ReconcileStack) reconcileUsers(stack *deploymentsv1alpha1.Stack) (InternalUsers, error) {
 
-	internalUsers := InternalUsers{}
-	internalSecrets := elasticsearch.NewInternalUserSecret(*stack)
-	err := r.reconcileSecret(stack, &internalSecrets, true)
+	internalSecrets := elasticsearch.NewInternalUserCredentials(*stack)
+
+	err := r.reconcileSecret(stack, internalSecrets)
+	if err != nil {
+		return InternalUsers{}, err
+	}
+
+	users := internalSecrets.Users()
+	internalUsers := NewInternalUsersFrom(users)
+	externalSecrets := elasticsearch.NewExternalUserCredentials(*stack)
+
+	err = r.reconcileSecret(stack, externalSecrets)
 	if err != nil {
 		return internalUsers, err
 	}
 
-	users := elasticsearch.NewUsersFromSecret(internalSecrets)
-	for _, user := range users {
-		if user.Name == elasticsearch.InternalControllerUserName {
-			internalUsers.ControllerUser = user
-		}
-		if user.Name == elasticsearch.InternalKibanaServerUserName {
-			internalUsers.KibanaUser = user
-		}
-	}
-
-	externalSecrets := elasticsearch.NewExternalUserSecret(*stack)
-
-	err = r.reconcileSecret(stack, &externalSecrets, true)
-	if err != nil {
-		return internalUsers, err
-	}
-
-	for _, u := range elasticsearch.NewUsersFromSecret(externalSecrets) {
+	for _, u := range externalSecrets.Users() {
 		users = append(users, u)
 	}
 
-	elasticUsersSecret, err := elasticsearch.NewElasticUsersSecret(*stack, users)
+	elasticUsersSecret, err := elasticsearch.NewElasticUsersCredentials(*stack, users)
 	if err != nil {
 		return internalUsers, err
 	}
-	err = r.reconcileSecret(stack, &elasticUsersSecret, false)
+	err = r.reconcileSecret(stack, elasticUsersSecret)
 	return internalUsers, err
 }
 
-func keysEqual(v1, v2 map[string][]byte) bool {
-	if len(v1) != len(v2) {
-		return false
-	}
-
-	for k, _ := range v1 {
-		if _, ok := v2[k]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-// ReconcileSecret creates or updates the a given secret.
-// Use keyPresenceOnly to avoid overwriting randomly generated secrets unnecessarily.
-func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expected *corev1.Secret, keyPresenceOnly bool) error {
-	if err := controllerutil.SetControllerReference(stack, expected, r.scheme); err != nil {
+// ReconcileSecret creates or updates the given credentials.
+func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expectedCreds elasticsearch.UserCredentials) error {
+	expected := expectedCreds.Secret()
+	if err := controllerutil.SetControllerReference(stack, &expected, r.scheme); err != nil {
 		return err
 	}
 	found := &corev1.Secret{}
@@ -92,24 +84,12 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 		log.Info(common.Concat("Creating secret ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
-		err = r.Create(context.TODO(), expected)
-		if err != nil {
-			return err
-		}
+		return r.Create(context.TODO(), &expected)
 	} else if err != nil {
 		return err
 	}
 
-	var updateNeeded bool
-	if keyPresenceOnly {
-		// for generated secrets as long as the key exists we can work with it. Rotate secrets by deleting them (?)
-		updateNeeded = !keysEqual(expected.Data, found.Data)
-	} else {
-		// TODO this will trigger everytime because of bcrypt, be smarter here and check the bcrypt hash
-		updateNeeded = !reflect.DeepEqual(expected.Data, found.Data)
-	}
-
-	if updateNeeded {
+	if expectedCreds.NeedsUpdate(*found) {
 		log.Info(
 			common.Concat("Updating secret ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
@@ -119,8 +99,7 @@ func (r *ReconcileStack) reconcileSecret(stack *deploymentsv1alpha1.Stack, expec
 		if err != nil {
 			return err
 		}
-	} else if keyPresenceOnly {
-		expected.Data = found.Data //make sure expected reflects the state on the API server
 	}
+	expectedCreds.ResetTo(*found)
 	return nil
 }
