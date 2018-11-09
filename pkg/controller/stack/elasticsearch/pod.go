@@ -156,7 +156,7 @@ func NewPodSpec(p NewPodSpecParams) (corev1.PodSpec, error) {
 			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount()),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes: append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume()),
+		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume()),
 	}
 
 	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount)

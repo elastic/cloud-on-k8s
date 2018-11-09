@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/state"
 
 	"k8s.io/apimachinery/pkg/types"
 
@@ -24,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -142,9 +142,13 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileKibanaDeployment(&stack)
+
+	//currently we don't need any state information from the functions above, so state collections starts here
+	state := state.NewReconcileState(request, &stack)
+
+	state, err = r.reconcileKibanaDeployment(state)
 	if err != nil {
-		return res, err
+		return state.Result, err
 	}
 
 	res, err = r.reconcileService(&stack, kibana.NewService(stack))
@@ -152,11 +156,11 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	res, err = r.DeleteElasticsearchPods(request)
+	state, err = r.DeleteElasticsearchPods(state)
 	if err != nil {
-		return res, err
+		return state.Result, err
 	}
-	return r.updateStatus(&stack, res)
+	return r.updateStatus(state)
 }
 
 // GetStack obtains the stack from the backend kubernetes API.
@@ -290,15 +294,21 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 }
 
 // DeleteElasticsearchPods removes running pods to match the Stack definition.
-func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
-	stackInstance, err := r.GetStack(request.NamespacedName)
+func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState) (state.ReconcileState, error) {
+	stackInstance, err := r.GetStack(state.Request.NamespacedName)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, err
 	}
 
-	esReachable, err := r.IsPublicServiceReady(types.NamespacedName{Namespace: stackInstance.Namespace, Name: elasticsearch.PublicServiceName(stackInstance.Name)})
+	// Get the current list of instances
+	currentPods, err := r.GetPodList(state.Request.NamespacedName, elasticsearch.TypeSelector, nil)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, err
+	}
+
+	esReachable, err := r.IsPublicServiceReady(common.NewNamespacedName(stackInstance.Namespace, elasticsearch.PublicServiceName(stackInstance.Name)))
+	if err != nil {
+		return state, err
 	}
 	if !esReachable {
 		// We cannot manipulate ES allocation exclude settings if the ES cluster
@@ -306,13 +316,8 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		return defaultRequeue, nil
-	}
-
-	// Get the current list of instances
-	currentPods, err := r.GetPodList(request.NamespacedName, elasticsearch.TypeSelector, nil)
-	if err != nil {
-		return reconcile.Result{}, err
+		state.UpdateElasticsearchPending(defaultRequeue, currentPods.Items)
+		return state, nil
 	}
 
 	// Sort pods by age.
@@ -345,35 +350,35 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	//create an Elasticsearch client
 	esClient, err := NewElasticsearchClient(&stackInstance)
 	if err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
+		return state, errors.Wrap(err, "Could not create ES client")
 	}
 
 	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
-		return reconcile.Result{}, errors.Wrap(err, "Error during migrate data")
+		return state, errors.Wrap(err, "Error during migrate data")
 	}
 
 	for _, pod := range toDelete {
 		isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
 		if err != nil {
-			return reconcile.Result{}, err
+			return state, err
 		}
 		if isMigratingData {
 			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-			r := time.Duration(rand.Intn(60)) * time.Second // TODO make this dependent on the amount of data to migrate
-			return reconcile.Result{Requeue: true, RequeueAfter: r}, nil
+			state.UpdateElasticsearchMigrating(defaultRequeue, currentPods.Items)
+			return state, nil
 		}
 
 		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
-			return reconcile.Result{}, err
+			return state, err
 		}
 		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-
 	}
-
-	return reconcile.Result{}, nil
+	state.UpdateElasticsearchState(currentPods.Items, esClient)
+	return state, nil
 }
 
-func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState) (state.ReconcileState, error) {
+	stack := state.Stack
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
@@ -388,48 +393,15 @@ func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.St
 		Labels:    labels,
 		PodSpec:   kibana.NewPodSpec(kibanaPodSpecParams),
 	})
-	return r.ReconcileDeployment(deploy, *stack)
+	result, err := r.ReconcileDeployment(deploy, *stack)
+	if err != nil {
+		return state, err
+	}
+	state.UpdateKibanaState(result)
+	return state, nil
 }
-func (r *ReconcileStack) updateStatus(stack *deploymentsv1alpha1.Stack, result reconcile.Result) (reconcile.Result, error) {
-	elasticsearchClient, err := NewElasticsearchClient(stack)
-	if err != nil {
-		return result, err
-	}
-	health, err := elasticsearchClient.GetClusterHealth()
-	if err != nil {
-		return result, err
-	}
 
-	currentPods, err := r.GetPodList(types.NamespacedName{Name: stack.Name, Namespace: stack.Namespace}, elasticsearch.TypeSelector, nil)
-	if err != nil {
-		return result, err
-	}
-
-	nodesAvailable := 0
-	for _, pod := range currentPods.Items {
-		conditionsTrue := 0
-		for _, cond := range pod.Status.Conditions {
-			if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
-				conditionsTrue++
-			}
-		}
-		if conditionsTrue == 2 {
-			nodesAvailable++
-		}
-	}
-
-	kibanaReady, err := r.IsPublicServiceReady(types.NamespacedName{Namespace: stack.Namespace, Name: kibana.ServiceName(stack.Name)})
-
-	status := deploymentsv1alpha1.StackStatus{}
-
-	status.Elasticsearch.Health = deploymentsv1alpha1.ElasticSearchHealth(strings.Title(health.Status))
-	status.Elasticsearch.AvailableNodes = nodesAvailable
-	if kibanaReady {
-		status.Kibana.Health = deploymentsv1alpha1.KibanaGreen
-	} else {
-		status.Kibana.Health = deploymentsv1alpha1.KibanaRed
-	}
+func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Result, error) {
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	stack.Status = status
-	return result, r.Status().Update(context.Background(), stack)
+	return state.Result, r.Status().Update(context.Background(), state.Stack)
 }

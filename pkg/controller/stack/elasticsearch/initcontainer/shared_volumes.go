@@ -8,19 +8,19 @@ var (
 		Array: []SharedVolume{
 			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
 			SharedVolume{
-				Name: "config-volume",
+				Name:                   "config-volume",
 				InitContainerMountPath: "/volume/config",
 				EsContainerMountPath:   "/usr/share/elasticsearch/config",
 			},
 			// Contains plugins data
 			SharedVolume{
-				Name: "plugins-volume",
+				Name:                   "plugins-volume",
 				InitContainerMountPath: "/volume/plugins",
 				EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
 			},
 			// Plugins may have binaries installed in /bin
 			SharedVolume{
-				Name: "bin-volume",
+				Name:                   "bin-volume",
 				InitContainerMountPath: "/volume/bin",
 				EsContainerMountPath:   "/usr/share/elasticsearch/bin",
 			},

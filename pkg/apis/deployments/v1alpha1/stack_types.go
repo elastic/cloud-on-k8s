@@ -113,10 +113,9 @@ type ReconcilerStatus struct {
 type ElasticsearchOrchestrationPhase string
 
 const (
-	ElasticsearchOperational       ElasticsearchOrchestrationPhase = "operational"
-	ElasticsearchMaintenance       ElasticsearchOrchestrationPhase = "maintenance"
-	ElasticsearchMigratingData     ElasticsearchOrchestrationPhase = "migrating-data"
-	ElasticsearchRestoringSnapshot ElasticsearchOrchestrationPhase = "restoring-snapshot"
+	ElasticsearchOperational   ElasticsearchOrchestrationPhase = "Operational"
+	ElasticsearchPending       ElasticsearchOrchestrationPhase = "Pending"
+	ElasticsearchMigratingData ElasticsearchOrchestrationPhase = "MigratingData"
 )
 
 type ElasticsearchStatus struct {
