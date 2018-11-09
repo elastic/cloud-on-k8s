@@ -78,8 +78,8 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 }
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
-func (s ReconcileState) UpdateElasticsearchMigrating(result reconcile.Result, pods []corev1.Pod) {
+func (s ReconcileState) UpdateElasticsearchMigrating(result reconcile.Result, pods []corev1.Pod, esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingData
 	s.Result = result
-
+	return s.UpdateElasticsearchState(pods, esClient)
 }

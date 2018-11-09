@@ -369,8 +369,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 		}
 		if isMigratingData {
 			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-			state.UpdateElasticsearchMigrating(defaultRequeue, currentPods.Items)
-			return state, nil
+			return state, state.UpdateElasticsearchMigrating(defaultRequeue, currentPods.Items, esClient)
 		}
 
 		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
