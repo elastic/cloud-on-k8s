@@ -35,12 +35,12 @@ const (
 	LabelAssociatedPod = "nodecerts.stack.k8s.elastic.co/associated-pod"
 
 	// LabelSecretUsage is a label key that specifies what the secret is used for
-	LabelSecretUsage                 = "nodecerts.stack.k8s.elastic.co/secret-usage"
+	LabelSecretUsage = "nodecerts.stack.k8s.elastic.co/secret-usage"
 	// LabelSecretUsageNodeCertificates is the LabelSecretUsage value used for node certificates
 	LabelSecretUsageNodeCertificates = "node-certificates"
 
 	// LabelNodeCertificateType is a label key indicating what the node-certificates secret is used for
-	LabelNodeCertificateType                 = "nodecerts.stack.k8s.elastic.co/node-certificate-type"
+	LabelNodeCertificateType = "nodecerts.stack.k8s.elastic.co/node-certificate-type"
 	// LabelNodeCertificateTypeElasticsearchAll is the LabelNodeCertificateType value used for Elasticsearch
 	LabelNodeCertificateTypeElasticsearchAll = "elasticsearch.all"
 )

@@ -31,7 +31,7 @@ type Ca struct {
 	// privateKey is the CA private key
 	privateKey *rsa.PrivateKey
 	// Cert is the certificate used to issue new certificates
-	Cert       *x509.Certificate
+	Cert *x509.Certificate
 }
 
 // NewSelfSignedCa creates a new Ca that uses a self-signed certificate.

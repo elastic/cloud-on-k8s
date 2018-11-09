@@ -75,9 +75,14 @@ type SecretVolume struct {
 
 // NewSecretVolume creates a new SecretVolume with default mount path.
 func NewSecretVolume(secretName string, name string) SecretVolume {
+	return NewSecretVolumeWithMountPath(secretName, name, defaultSecretMountPath)
+}
+
+// NewSecretVolumeNewSecretVolumeWithMountPath creates a new SecretVolume
+func NewSecretVolumeWithMountPath(secretName string, name string, mountPath string) SecretVolume {
 	return SecretVolume{
 		name:       name,
-		mountPath:  defaultSecretMountPath,
+		mountPath:  mountPath,
 		secretName: secretName,
 	}
 }

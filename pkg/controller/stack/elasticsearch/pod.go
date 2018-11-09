@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
+
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -68,36 +70,21 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 			),
 		)
 
-		optional := false
-		defaultMode := int32(0644)
+		nodeCertificatesVolume := NewSecretVolumeWithMountPath(
+			"node-certificates",
+			"/usr/share/elasticsearch/config/node-certs",
+			nodecerts.NodeCertificateSecretObjectKeyForPod(pod).Name,
+		)
 
-		volumeName := "node-certificates"
-		volumePath := "/usr/share/elasticsearch/config/node-certs"
-
-		podSpec.Volumes = append(podSpec.Volumes, corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName:  pod.Name,
-					DefaultMode: &defaultMode,
-					Optional:    &optional,
-				},
-			},
-		})
+		podSpec.Volumes = append(podSpec.Volumes, nodeCertificatesVolume.Volume())
 
 		for i, container := range podSpec.InitContainers {
-			podSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: volumePath,
-			})
+			podSpec.InitContainers[i].VolumeMounts =
+				append(container.VolumeMounts, nodeCertificatesVolume.VolumeMount())
 		}
 
 		for i, container := range podSpec.Containers {
-			podSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: volumePath,
-				ReadOnly:  true,
-			})
+			podSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, nodeCertificatesVolume.VolumeMount())
 
 			for _, proto := range []string{"http", "transport"} {
 				podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
@@ -107,15 +94,15 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 					},
 					corev1.EnvVar{
 						Name:  fmt.Sprintf("xpack.security.%s.ssl.key", proto),
-						Value: strings.Join([]string{volumePath, "node.key"}, "/"),
+						Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
 					},
 					corev1.EnvVar{
 						Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate", proto),
-						Value: strings.Join([]string{volumePath, "cert.pem"}, "/"),
+						Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
 					},
 					corev1.EnvVar{
 						Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate_authorities", proto),
-						Value: strings.Join([]string{volumePath, "ca.pem"}, "/"),
+						Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
 					},
 				)
 			}
@@ -190,10 +177,11 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 	// TODO: quota support
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 	dataVolume := NewDefaultEmptyDirVolume()
-
-	optionalFalse := false
-	extraFilesVolumeName := "extrafiles"
-	extraFilesVolumeMountPath := "/usr/share/elasticsearch/config/extrafiles"
+	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
+		"extrafiles",
+		"/usr/share/elasticsearch/config/extrafiles",
+		extraFilesRef.Name,
+	)
 
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
@@ -214,7 +202,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 				{Name: "path.logs", Value: dataVolume.LogsPath()},
 				{
 					Name:  "xpack.security.transport.ssl.trust_restrictions.path",
-					Value: fmt.Sprintf("%s/trust.yml", extraFilesVolumeMountPath),
+					Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
 				},
 				// TODO: the JVM options are hardcoded, but should be configurable
 				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
@@ -273,11 +261,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				dataVolume.VolumeMount(),
 				usersSecret.VolumeMount(),
-				corev1.VolumeMount{
-					Name:      extraFilesVolumeName,
-					ReadOnly:  true,
-					MountPath: extraFilesVolumeMountPath,
-				},
+				extraFilesSecretVolume.VolumeMount(),
 			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
@@ -285,15 +269,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 			initcontainer.SharedVolumes.Volumes(),
 			dataVolume.Volume(),
 			usersSecret.Volume(),
-			corev1.Volume{
-				Name: extraFilesVolumeName,
-				VolumeSource: corev1.VolumeSource{
-					Secret: &corev1.SecretVolumeSource{
-						SecretName: extraFilesRef.Name,
-						Optional:   &optionalFalse,
-					},
-				},
-			},
+			extraFilesSecretVolume.Volume(),
 		),
 	}
 

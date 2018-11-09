@@ -533,36 +533,20 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 		// TODO: use kibanaCa to generate cert for deployment
 		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
 
-		volumeName := "elasticsearch-certs"
-		volumePath := "/usr/share/kibana/config/elasticsearch-certs"
+		esCertsVolume := elasticsearch.NewSecretVolumeWithMountPath(
+			esClusterCAPublicSecretObjectKey.Name,
+			"elasticsearch-certs",
+			"/usr/share/kibana/config/elasticsearch-certs",
+		)
 
-		optional := false
-		defaultMode := int32(0644)
-
-		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					SecretName:  esClusterCAPublicSecretObjectKey.Name,
-					DefaultMode: &defaultMode,
-					Optional:    &optional,
-				},
-			},
-		})
+		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
 		for i, container := range kibanaPodSpec.InitContainers {
-			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: volumePath,
-			})
+			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
 		}
 
 		for i, container := range kibanaPodSpec.Containers {
-			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: volumePath,
-				ReadOnly:  true,
-			})
+			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
 		}
 
 		for i := range kibanaPodSpec.Containers {
@@ -570,7 +554,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 				kibanaPodSpec.Containers[i].Env,
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: strings.Join([]string{volumePath, "ca.pem"}, "/"),
+					Value: strings.Join([]string{esCertsVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
 				},
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
