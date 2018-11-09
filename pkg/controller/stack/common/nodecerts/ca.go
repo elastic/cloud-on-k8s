@@ -22,15 +22,19 @@ import (
 )
 
 var (
+	// SerialNumberLimit is the maximum number used as a certificate serial number
 	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 )
 
+// Ca is a simple certificate authority
 type Ca struct {
+	// privateKey is the CA private key
 	privateKey *rsa.PrivateKey
+	// Cert is the certificate used to issue new certificates
 	Cert       *x509.Certificate
-	CertPool   *x509.CertPool
 }
 
+// NewSelfSignedCa creates a new Ca that uses a self-signed certificate.
 func NewSelfSignedCa(cn string) (*Ca, error) {
 	// TODO: constructor that takes the key?
 	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
@@ -69,13 +73,9 @@ func NewSelfSignedCa(cn string) (*Ca, error) {
 		return nil, err
 	}
 
-	certPool := x509.NewCertPool()
-	certPool.AddCert(cert)
-
 	return &Ca{
 		privateKey: key,
 		Cert:       cert,
-		CertPool:   certPool,
 	}, nil
 }
 
@@ -103,6 +103,8 @@ func (c *Ca) CreateCertificateForValidatedCertificateTemplate(
 	return certData, err
 }
 
+// ReconcileCaPublicCerts ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
+// objectKey
 func (c *Ca) ReconcileCaPublicCerts(
 	cl client.Client,
 	objectKey types.NamespacedName,

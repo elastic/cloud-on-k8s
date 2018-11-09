@@ -31,30 +31,24 @@ var (
 )
 
 const (
+	// LabelAssociatedPod is a label key that indicates the resource is supposed to have a named associated pod
 	LabelAssociatedPod = "nodecerts.stack.k8s.elastic.co/associated-pod"
 
+	// LabelSecretUsage is a label key that specifies what the secret is used for
 	LabelSecretUsage                 = "nodecerts.stack.k8s.elastic.co/secret-usage"
+	// LabelSecretUsageNodeCertificates is the LabelSecretUsage value used for node certificates
 	LabelSecretUsageNodeCertificates = "node-certificates"
 
+	// LabelNodeCertificateType is a label key indicating what the node-certificates secret is used for
 	LabelNodeCertificateType                 = "nodecerts.stack.k8s.elastic.co/node-certificate-type"
+	// LabelNodeCertificateTypeElasticsearchAll is the LabelNodeCertificateType value used for Elasticsearch
 	LabelNodeCertificateTypeElasticsearchAll = "elasticsearch.all"
 )
-
-// final intended workflow
-// 1. create placeholder secret for node cert + ca
-// 2. pod creates CSR-like, pushes to api server
-// 3. validate csr originates from pod (TODO: how?)
-// 4. issue certificate based on csr, fill in placeholder secret
-// 5. whenever our basis for the issued cert changes, update placeholder secret
-
-// 1. create placeholder secret for node cert + ca
-// 2. cant wait for a csr, so pretend we have one..
-// 3. issue certificate based on csr
-// 3. fill in placeholder secret with node cert + ca + private keys (ugh)
 
 // NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
+	// TODO: trim and suffix?
 	return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
 }
 
@@ -98,6 +92,7 @@ func EnsureNodeCertificateSecretExists(
 	return nil
 }
 
+// ReconcileNodeCertificateSecret ensures that
 func ReconcileNodeCertificateSecret(
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
@@ -105,12 +100,15 @@ func ReconcileNodeCertificateSecret(
 	ca *Ca,
 	c client.Client,
 ) (reconcile.Result, error) {
+	// TODO: method should not generate the private key
+	// TODO: method should take a CSR argument instead of creating it
+
 	// a placeholder secret may have a nil secret.Data, so create it if it does not exist
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
 
-	// be a little crazy, live a little. push private keys over the network.
+	// XXX: be a little crazy, live a little. push private keys over the network.
 	if _, ok := secret.Data["node.key"]; !ok {
 		key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 		if err != nil {

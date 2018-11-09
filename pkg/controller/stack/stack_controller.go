@@ -478,8 +478,10 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUs
 
 	}
 
-	//create an Elasticsearch client
-	esClient, err := NewElasticsearchClient(&stackInstance, esUser, r.esCa.CertPool)
+	// create an Elasticsearch client
+	certPool := x509.NewCertPool()
+	certPool.AddCert(r.esCa.Cert)
+	esClient, err := NewElasticsearchClient(&stackInstance, esUser, certPool)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
 	}
