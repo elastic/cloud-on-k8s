@@ -212,3 +212,8 @@ start-port-forward:
 stop-port-forward:
 	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
 	@ echo "-> Stopped."
+
+.PHONY: show-credentials
+show-credentials:
+	@ echo "elastic:"$$(kubectl get secret $(DEV_STACK_NAME)-elastic-user -o json | jq -r '.data.elastic' | base64  -D)
+
