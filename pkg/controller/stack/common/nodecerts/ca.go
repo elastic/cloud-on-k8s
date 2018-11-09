@@ -1,0 +1,138 @@
+package nodecerts
+
+import (
+	"context"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"fmt"
+	"math/big"
+	"time"
+
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+var (
+	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
+)
+
+type Ca struct {
+	privateKey *rsa.PrivateKey
+	Cert       *x509.Certificate
+	CertPool   *x509.CertPool
+}
+
+func NewSelfSignedCa(cn string) (*Ca, error) {
+	// TODO: constructor that takes the key?
+	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+	if err != nil {
+		return nil, fmt.Errorf("unable to generate the private key: %s", err)
+	}
+
+	// create a self-signed certificate for ourselves:
+
+	// generate a serial number
+	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	certificateTemplate := x509.Certificate{
+		SerialNumber: serial,
+		Subject: pkix.Name{
+			CommonName: cn,
+		},
+		NotBefore:          time.Now().Add(-1 * time.Minute),
+		NotAfter:           time.Now().Add(24 * 365 * time.Hour),
+		SignatureAlgorithm: x509.SHA256WithRSA,
+		IsCA:               true,
+		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+	}
+
+	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, key.Public(), key)
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := x509.ParseCertificate(certData)
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	certPool.AddCert(cert)
+
+	return &Ca{
+		privateKey: key,
+		Cert:       cert,
+		CertPool:   certPool,
+	}, nil
+}
+
+// CreateCertificateForValidatedCertificateTemplate signs and creates a new certificate
+// Important note: the certificate template is assumed to have passed validation.
+func (c *Ca) CreateCertificateForValidatedCertificateTemplate(
+	validatedCertificateTemplate x509.Certificate,
+) ([]byte, error) {
+	// generate a serial number
+	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to generate serial number for new certificate")
+	}
+	validatedCertificateTemplate.SerialNumber = serial
+	validatedCertificateTemplate.Issuer = c.Cert.Issuer
+
+	certData, err := x509.CreateCertificate(
+		cryptorand.Reader,
+		&validatedCertificateTemplate,
+		c.Cert,
+		validatedCertificateTemplate.PublicKey,
+		c.privateKey,
+	)
+
+	return certData, err
+}
+
+func (c *Ca) ReconcileCaPublicCerts(
+	cl client.Client,
+	objectKey types.NamespacedName,
+	owner v1.Object,
+	scheme *runtime.Scheme,
+) error {
+	// TODO: how to do rotation of certs here? cross signing possible?
+
+	var clusterCASecret corev1.Secret
+	if err := cl.Get(context.TODO(), objectKey, &clusterCASecret); err != nil && !apierrors.IsNotFound(err) {
+		return err
+	} else if apierrors.IsNotFound(err) {
+		clusterCASecret = corev1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      objectKey.Name,
+				Namespace: objectKey.Namespace,
+			},
+			Data: map[string][]byte{
+				"ca.pem": pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Cert.Raw}),
+			},
+		}
+
+		if err := controllerutil.SetControllerReference(owner, &clusterCASecret, scheme); err != nil {
+			return err
+		}
+
+		if err := cl.Create(context.TODO(), &clusterCASecret); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

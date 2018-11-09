@@ -15,6 +15,10 @@ const (
 	defaultLogsSubDir      = "logs"
 )
 
+var (
+	defaultOptional = false
+)
+
 // EmptyDirVolume used to store ES data on the node main disk
 // Its lifecycle is bound to the pod lifecycle on the node.
 type EmptyDirVolume struct {
@@ -94,6 +98,7 @@ func (sv SecretVolume) Volume() corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: sv.secretName,
+				Optional:   &defaultOptional,
 			},
 		},
 	}

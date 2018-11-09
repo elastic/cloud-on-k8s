@@ -8,7 +8,7 @@ spec:
   # Add fields here
   version: "6.4.2"
   featureFlags:
-    internalTLS:
+    nodeCertificates:
       enabled: true
   elasticsearch:
     setVmMaxMapCount: true

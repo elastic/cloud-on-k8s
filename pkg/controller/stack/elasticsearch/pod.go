@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -38,8 +39,10 @@ var (
 	defaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "transport-client", ContainerPort: TransportClientPort, Protocol: corev1.ProtocolTCP},
+		{Name: "client", ContainerPort: TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
+
+	log = logf.Log.WithName("pod")
 )
 
 // NewPod constructs a pod from the Stack definition.
@@ -57,10 +60,10 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 		Spec: podSpec,
 	}
 
-	if s.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagInternalTLS).Enabled {
+	if s.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		log.Info(
 			fmt.Sprintf(
-				"internal tls feature flag enabled, so injecting certificate volume into container for pod: %s",
+				"Node certificates feature flag enabled, so injecting certificate volume into container for pod: %s",
 				pod.Name,
 			),
 		)
@@ -123,10 +126,6 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 					Value: "none",
 				},
 				corev1.EnvVar{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
-				corev1.EnvVar{Name: "xpack.security.enabled", Value: "true"},
-				corev1.EnvVar{Name: "xpack.license.self_generated.type", Value: "trial"},
-				// very secure, much recommended
-				corev1.EnvVar{Name: "xpack.security.authc.anonymous.roles", Value: "superuser"},
 
 				// client profiles
 				corev1.EnvVar{Name: "transport.profiles.client.xpack.security.type", Value: "client"},

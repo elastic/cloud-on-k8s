@@ -1,4 +1,4 @@
-package elasticsearch
+package nodecerts
 
 import (
 	"context"
@@ -8,11 +8,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"math/big"
 	"net"
 	"time"
 
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/certutil"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts/certutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,15 +27,17 @@ import (
 )
 
 var (
-	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
-
-	log = logf.Log.WithName("stack-controller")
+	log = logf.Log.WithName("node-certs")
 )
 
 const (
-	LabelBelongsToPod                = "elasticsearch.k8s.elastic.co/belongs-to-pod"
-	LabelSecretUsage                 = "elasticsearch.k8s.elastic.co/secret-usage"
+	LabelAssociatedPod = "nodecerts.stack.k8s.elastic.co/associated-pod"
+
+	LabelSecretUsage                 = "nodecerts.stack.k8s.elastic.co/secret-usage"
 	LabelSecretUsageNodeCertificates = "node-certificates"
+
+	LabelNodeCertificateType                 = "nodecerts.stack.k8s.elastic.co/node-certificate-type"
+	LabelNodeCertificateTypeElasticsearchAll = "elasticsearch.all"
 )
 
 // final intended workflow
@@ -51,17 +52,22 @@ const (
 // 3. issue certificate based on csr
 // 3. fill in placeholder secret with node cert + ca + private keys (ugh)
 
-func NodeCerificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
+// NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
+// a given pod.
+func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 	return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
 }
 
+// EnsureNodeCertificateSecretExists ensures that the secret containing the node certificate is present in the
+// apiserver
 func EnsureNodeCertificateSecretExists(
 	c client.Client,
 	scheme *runtime.Scheme,
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
+	nodeCertificateType string,
 ) error {
-	secretObjectKey := NodeCerificateSecretObjectKeyForPod(pod)
+	secretObjectKey := NodeCertificateSecretObjectKeyForPod(pod)
 
 	var secret corev1.Secret
 	if err := c.Get(context.TODO(), secretObjectKey, &secret); err != nil && !apierrors.IsNotFound(err) {
@@ -73,8 +79,9 @@ func EnsureNodeCertificateSecretExists(
 				Namespace: secretObjectKey.Namespace,
 
 				Labels: map[string]string{
-					LabelBelongsToPod: pod.Name,
-					LabelSecretUsage:  LabelSecretUsageNodeCertificates,
+					LabelAssociatedPod:       pod.Name,
+					LabelSecretUsage:         LabelSecretUsageNodeCertificates,
+					LabelNodeCertificateType: nodeCertificateType,
 				},
 			},
 		}
@@ -95,10 +102,10 @@ func ReconcileNodeCertificateSecret(
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
 	secret corev1.Secret,
-	caCert *x509.Certificate,
-	caKeys *rsa.PrivateKey,
+	ca *Ca,
 	c client.Client,
 ) (reconcile.Result, error) {
+	// a placeholder secret may have a nil secret.Data, so create it if it does not exist
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
@@ -126,16 +133,21 @@ func ReconcileNodeCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		certData, err := issueCertificate(caCert, caKeys, s, pod, csr)
+		validatedCertificateTemplate, err := createValidatedCertificateTemplate(s, pod, csr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		certData, err := ca.CreateCertificateForValidatedCertificateTemplate(*validatedCertificateTemplate)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 
 		secret.Data["node.key"] = pemKeyBytes
-		secret.Data["ca.pem"] = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})
+		secret.Data["ca.pem"] = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Cert.Raw})
 		secret.Data["cert.pem"] = append(
 			pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certData}),
-			pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})...,
+			pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Cert.Raw})...,
 		)
 
 		if err := c.Update(context.TODO(), &secret); err != nil {
@@ -146,20 +158,13 @@ func ReconcileNodeCertificateSecret(
 	return reconcile.Result{}, nil
 }
 
-func issueCertificate(
-	caCert *x509.Certificate,
-	caKeys *rsa.PrivateKey,
+// createValidatedCertificateTemplate validates a CSR and creates a certificate template
+func createValidatedCertificateTemplate(
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
 	csr *x509.CertificateRequest,
-) ([]byte, error) {
-	// generate a serial number
-	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate serial number for new certificate")
-	}
-
-	commonName := fmt.Sprintf("%s.node.%s.cluster.local", pod.Name, s.Name)
+) (*x509.Certificate, error) {
+	commonName := fmt.Sprintf("%s.node.%s.es.%s.namespace.local", pod.Name, s.Name, s.Namespace)
 	commonNameUTF8OtherName := &cryptutil.UTF8StringValuedOtherName{
 		OID:   cryptutil.CommonNameObjectIdentifier,
 		Value: commonName,
@@ -172,7 +177,7 @@ func issueCertificate(
 	generalNames := []cryptutil.GeneralName{{OtherName: *commonNameOtherName}}
 	generalNamesBytes, err := cryptutil.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// TODO: csr signature is not checked, common name not verified
@@ -180,7 +185,6 @@ func issueCertificate(
 	// TODO: add pod ip when it's available (e.g when we're doing this for real)
 
 	certificateTemplate := x509.Certificate{
-		SerialNumber: serial,
 		Subject: pkix.Name{
 			CommonName:         commonName,
 			OrganizationalUnit: []string{s.Name},
@@ -207,13 +211,9 @@ func issueCertificate(
 		Signature:          csr.Signature,
 		SignatureAlgorithm: csr.SignatureAlgorithm,
 
-		Issuer: caCert.Subject,
-
 		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 
-	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, caCert, csr.PublicKey, caKeys)
-
-	return certData, err
+	return &certificateTemplate, nil
 }
