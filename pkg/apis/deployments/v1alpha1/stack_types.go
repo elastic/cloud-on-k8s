@@ -118,9 +118,9 @@ type ElasticsearchOrchestrationPhase string
 
 const (
 	// ElasticsearchOperational is operating at the desired spec.
-	ElasticsearchOperational   ElasticsearchOrchestrationPhase = "Operational"
+	ElasticsearchOperational ElasticsearchOrchestrationPhase = "Operational"
 	// ElasticsearchPending controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchPending       ElasticsearchOrchestrationPhase = "Pending"
+	ElasticsearchPending ElasticsearchOrchestrationPhase = "Pending"
 	// ElasticsearchMigratingData Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingData ElasticsearchOrchestrationPhase = "MigratingData"
 )
@@ -137,7 +137,7 @@ type KibanaHealth string
 
 const (
 	// KibanaRed means no instance is currently available.
-	KibanaRed   KibanaHealth = "Red"
+	KibanaRed KibanaHealth = "Red"
 	// KibanaGreen means at least one instance is available.
 	KibanaGreen KibanaHealth = "Green"
 )
