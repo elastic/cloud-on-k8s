@@ -16,6 +16,11 @@ const (
 // - install extra plugins
 func NewInitContainer(imageName string, setVMMaxMapCount bool, linkedFiles LinkedFilesArray) (corev1.Container, error) {
 	initContainerPrivileged := defaultInitContainerPrivileged
+	if !setVMMaxMapCount {
+		// No need to run as privileged container if VMMaxMapCount
+		// should not be tweaked
+		initContainerPrivileged = false
+	}
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
 		SetVMMaxMapCount: setVMMaxMapCount,
