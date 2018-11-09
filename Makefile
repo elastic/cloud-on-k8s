@@ -75,7 +75,7 @@ MINIKUBE_KUBERNETES_VERSION ?= v1.12.0
 MINIKUBE_MEMORY ?= 8192
 
 GCLOUD_PROJECT ?= elastic-cloud-dev
-GCLOUD_CLUSTER_NAME ?= $(USER)-dev-cluster
+GCLOUD_CLUSTER_NAME ?= $(subst _,,$(USER))-dev-cluster
 
 GKE_CLUSTER_REGION ?= europe-west3
 GKE_ADMIN_USERNAME ?= admin
