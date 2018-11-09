@@ -14,13 +14,14 @@ const (
 // NewInitContainer creates an init container to handle things such as:
 // - tweak OS settings
 // - install extra plugins
-func NewInitContainer(imageName string, setVMMaxMapCount bool) (corev1.Container, error) {
+func NewInitContainer(imageName string, setVMMaxMapCount bool, linkedFiles LinkedFilesArray) (corev1.Container, error) {
 	initContainerPrivileged := defaultInitContainerPrivileged
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
 		SetVMMaxMapCount: setVMMaxMapCount,
 		Plugins:          defaultInstalledPlugins,
 		SharedVolumes:    SharedVolumes,
+		LinkedFiles:      linkedFiles,
 	})
 	if err != nil {
 		return corev1.Container{}, err

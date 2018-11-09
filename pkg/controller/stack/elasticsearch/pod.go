@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"strconv"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/initcontainer"
@@ -34,8 +36,8 @@ var (
 )
 
 // NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack) (corev1.Pod, error) {
-	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s))
+func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, error) {
+	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser)
 	if err != nil {
 		return corev1.Pod{}, err
 	}
@@ -88,7 +90,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams) (corev1.PodSpec, error) {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -98,6 +100,7 @@ func NewPodSpec(p NewPodSpecParams) (corev1.PodSpec, error) {
 	terminationGracePeriodSeconds := defaultTerminationGracePeriodSeconds
 
 	// TODO: quota support
+	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 	dataVolume := NewDefaultEmptyDirVolume()
 
 	// TODO: Security Context
@@ -121,6 +124,19 @@ func NewPodSpec(p NewPodSpecParams) (corev1.PodSpec, error) {
 				{Name: "node.master", Value: "true"},
 				{Name: "node.data", Value: "true"},
 				{Name: "node.ingest", Value: "true"},
+
+				{Name: "xpack.security.enabled", Value: "true"},
+				{Name: "xpack.license.self_generated.type", Value: "trial"},
+				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
+				{Name: "PROBE_USERNAME", Value: probeUser.Name},
+				{Name: "PROBE_PASSWORD", ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: ElasticInternalUsersSecretName(p.ClusterName),
+						},
+						Key: probeUser.Name,
+					},
+				}},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
@@ -153,13 +169,13 @@ func NewPodSpec(p NewPodSpecParams) (corev1.PodSpec, error) {
 					},
 				},
 			},
-			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount()),
+			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount(), usersSecret.VolumeMount()),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume()),
+		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount)
+	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount, LinkedFiles)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

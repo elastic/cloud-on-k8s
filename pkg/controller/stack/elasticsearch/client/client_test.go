@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -244,9 +245,9 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(errorResponses(codes))
 
 	for range codes {
-		_, err := testClient.GetShards()
+		_, err := testClient.GetShards(context.TODO())
 		assert.Error(t, err, "GetShards should return an error for anything not 2xx")
-		err = testClient.ExcludeFromShardAllocation("")
+		err = testClient.ExcludeFromShardAllocation(context.TODO(), "")
 		assert.Error(t, err, "ExcludeFromShardAllocation should return an error for anything not 2xx")
 	}
 
@@ -256,6 +257,51 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
-	testClient.GetShards()
-	testClient.ExcludeFromShardAllocation("")
+	testClient.GetShards(context.TODO())
+	testClient.ExcludeFromShardAllocation(context.TODO(), "")
+}
+
+func TestClientSupportsBasicAuth(t *testing.T) {
+
+	type expected struct {
+		user        User
+		authPresent bool
+	}
+
+	tests := []struct {
+		name string
+		args User
+		want expected
+	}{
+		{
+			name: "Context with user information should be respected",
+			args: User{Name: "elastic", Password: "changeme"},
+			want: expected{
+				user:        User{Name: "elastic", Password: "changeme"},
+				authPresent: true,
+			},
+		},
+		{
+			name: "Context w/o user information is ok too",
+			args: User{},
+			want: expected{
+				user:        User{Name: "", Password: ""},
+				authPresent: false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+			username, password, ok := req.BasicAuth()
+			assert.Equal(t, tt.want.authPresent, ok)
+			assert.Equal(t, tt.want.user.Name, username)
+			assert.Equal(t, tt.want.user.Password, password)
+		}))
+		testClient.User = tt.args
+		testClient.GetShards(context.TODO())
+		testClient.ExcludeFromShardAllocation(context.TODO(), "")
+
+	}
+
 }

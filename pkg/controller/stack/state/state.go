@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"strings"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -56,7 +57,7 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticSearchHealth("Unknown")
-	health, err := esClient.GetClusterHealth()
+	health, err := esClient.GetClusterHealth(context.TODO())
 	if err == nil {
 		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticSearchHealth(strings.Title(health.Status))
 	}

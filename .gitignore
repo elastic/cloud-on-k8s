@@ -28,3 +28,4 @@ vendor/
 
 # ignore devenv file
 .devenv
+portfwd.log
