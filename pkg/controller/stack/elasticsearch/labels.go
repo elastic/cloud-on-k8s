@@ -9,8 +9,6 @@ import (
 const (
 	// ClusterIDLabelName used to represent a cluster in k8s resources
 	ClusterIDLabelName = "elasticsearch.stack.k8s.elastic.co/cluster-id"
-	// HashLabelName used to represent a hash in k8s resources
-	HashLabelName = "elasticsearch.stack.k8s.elastic.co/confighash"
 	// TypeLabelName used to represent a resource type in k8s resources
 	TypeLabelName = "stack.k8s.elastic.co/type"
 	// Type represents the elasticsearch type
@@ -27,10 +25,6 @@ func NewLabels(s deploymentsv1alpha1.Stack, hash bool) map[string]string {
 	var labels = map[string]string{
 		ClusterIDLabelName: common.StackID(s),
 		TypeLabelName:      Type,
-	}
-
-	if hash {
-		labels[HashLabelName] = BuildNewPodSpecParams(s).Hash()
 	}
 
 	return labels
