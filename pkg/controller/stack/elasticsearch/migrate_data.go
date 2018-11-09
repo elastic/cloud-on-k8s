@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -61,7 +62,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
 func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
-	shards, err := c.GetShards()
+	shards, err := c.GetShards(context.TODO())
 	if err != nil {
 		return true, err
 	}
@@ -77,5 +78,5 @@ func MigrateData(client *client.Client, leavingNodes []string) error {
 		exclusions = strings.Join(withBugfix, ",")
 	}
 	//update allocation exclusions
-	return client.ExcludeFromShardAllocation(exclusions)
+	return client.ExcludeFromShardAllocation(context.TODO(), exclusions)
 }

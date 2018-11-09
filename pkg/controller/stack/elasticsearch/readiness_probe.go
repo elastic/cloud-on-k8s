@@ -9,8 +9,8 @@ START_FILE=/tmp/.es_start_file
 
 http () {
 local path="${1}"
-if [ -n "${ELASTIC_USERNAME}" ] && [ -n "${ELASTIC_PASSWORD}" ]; then
-  BASIC_AUTH="-u ${ELASTIC_USERNAME}:${ELASTIC_PASSWORD}"
+if [ -n "${PROBE_USERNAME}" ] && [ -n "${PROBE_PASSWORD}" ]; then
+  BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
 else
   BASIC_AUTH=''
 fi

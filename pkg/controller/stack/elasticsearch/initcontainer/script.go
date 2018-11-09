@@ -16,6 +16,7 @@ type TemplateParams struct {
 	SetVMMaxMapCount bool              // Set vm.max_map_count=262144
 	Plugins          []string          // List of plugins to install
 	SharedVolumes    SharedVolumeArray // Directories to persist in shared volumes
+	LinkedFiles      LinkedFilesArray  // Files to link individually
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -76,6 +77,20 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	$PLUGIN_BIN list
 
 	echo "Plugins installation duration: $(duration $plugins_start) sec."
+
+	######################
+	#  Config linking    #
+	######################
+
+	# Link individual files from their mount location into the config dir
+	# to a volume, to be used by the ES container
+	ln_start=$(date +%s)
+	{{range .LinkedFiles.Array}}
+		echo "Linking {{.Source}} to {{.Target}}"
+		ln -sf {{.Source}} {{.Target}}
+	{{end}}
+	echo "File linking duration: $(duration $ln_start) sec."
+
 
 	######################
 	#  Files persistence #

@@ -2,16 +2,24 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
+// User captures Elasticsearch user credentials.
+type User struct {
+	Name     string
+	Password string
+}
+
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client struct {
+	User     User
 	HTTP     *http.Client
 	Endpoint string
-} //TODO credentials, TLS
+} //TODO TLS
 
 func checkError(response *http.Response) error {
 	if response == nil {
@@ -37,10 +45,16 @@ func parseRoutingTable(raw ClusterState) ([]Shard, error) {
 
 }
 
-func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
+func (c *Client) makeRequest(context context.Context, request *http.Request) (*http.Response, error) {
 
-	response, err := c.HTTP.Do(request)
+	withContext := request.WithContext(context)
+	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	if c.User != (User{}) {
+		withContext.SetBasicAuth(c.User.Name, c.User.Password)
+	}
+
+	response, err := c.HTTP.Do(withContext)
 	if err != nil {
 		return response, err
 	}
@@ -51,14 +65,14 @@ func (c *Client) makeRequest(request *http.Request) (*http.Response, error) {
 // GetShards reads all shards from cluster state,
 // similar to what _cat/shards does but it is consistent in
 // its output.
-func (c *Client) GetShards() ([]Shard, error) {
+func (c *Client) GetShards(context context.Context) ([]Shard, error) {
 	result := []Shard{}
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/state", c.Endpoint), nil)
 	if err != nil {
 		return result, err
 	}
 
-	resp, err := c.makeRequest(req)
+	resp, err := c.makeRequest(context, req)
 	if err != nil {
 		return result, err
 	}
@@ -74,7 +88,7 @@ func (c *Client) GetShards() ([]Shard, error) {
 
 // ExcludeFromShardAllocation takes a comma-separated string of node names and
 // configures transient allocation excludes for the given nodes.
-func (c *Client) ExcludeFromShardAllocation(nodes string) error {
+func (c *Client) ExcludeFromShardAllocation(context context.Context, nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
 	body, err := json.Marshal(allocationSetting)
 	if err != nil {
@@ -86,6 +100,6 @@ func (c *Client) ExcludeFromShardAllocation(nodes string) error {
 		return err
 	}
 
-	_, err = c.makeRequest(request)
+	_, err = c.makeRequest(context, request)
 	return err
 }

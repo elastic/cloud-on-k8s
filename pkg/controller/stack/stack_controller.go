@@ -127,7 +127,12 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	res, err := r.CreateElasticsearchPods(request)
+	internalUsers, err := r.reconcileUsers(&stack)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	res, err := r.CreateElasticsearchPods(request, internalUsers.ControllerUser)
 	if err != nil {
 		return res, err
 	}
@@ -139,7 +144,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return res, err
 	}
-	res, err = r.reconcileKibanaDeployment(&stack)
+	res, err = r.reconcileKibanaDeployment(&stack, internalUsers.KibanaUser)
 	if err != nil {
 		return res, err
 	}
@@ -149,7 +154,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	return r.DeleteElasticsearchPods(request)
+	return r.DeleteElasticsearchPods(request, internalUsers.ControllerUser)
 }
 
 // GetStack obtains the stack from the backend kubernetes API.
@@ -162,11 +167,12 @@ func (r *ReconcileStack) GetStack(request reconcile.Request) (deploymentsv1alpha
 }
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack) (*esclient.Client, error) {
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User) (*esclient.Client, error) {
 	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
 	return &esclient.Client{
 		Endpoint: esURL,
 		HTTP:     &http.Client{},
+		User:     esUser,
 	}, err
 }
 
@@ -201,7 +207,7 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors la
 
 // CreateElasticsearchPods Performs the creation of any number of pods in order
 // to match the Stack definition.
-func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user esclient.User) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -217,11 +223,10 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 
 	// Create any missing instances
 	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount(); i++ {
-		pod, err := elasticsearch.NewPod(stackInstance)
+		pod, err := elasticsearch.NewPod(stackInstance, user)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
 		if err := controllerutil.SetControllerReference(&stackInstance, &pod, r.scheme); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -253,7 +258,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 			return reconcile.Result{}, err
 		}
 
-		newPod, err := elasticsearch.NewPod(stackInstance)
+		newPod, err := elasticsearch.NewPod(stackInstance, user)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -283,7 +288,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request) (rec
 }
 
 // DeleteElasticsearchPods removes running pods to match the Stack definition.
-func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request, esUser esclient.User) (reconcile.Result, error) {
 	stackInstance, err := r.GetStack(request)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -336,7 +341,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	}
 
 	//create an Elasticsearch client
-	esClient, err := NewElasticsearchClient(&stackInstance)
+	esClient, err := NewElasticsearchClient(&stackInstance, esUser)
 	if err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "Could not create ES client")
 	}
@@ -366,11 +371,12 @@ func (r *ReconcileStack) DeleteElasticsearchPods(request reconcile.Request) (rec
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack) (reconcile.Result, error) {
+func (r *ReconcileStack) reconcileKibanaDeployment(stack *deploymentsv1alpha1.Stack, user esclient.User) (reconcile.Result, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
+		User:             user,
 	}
 	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{

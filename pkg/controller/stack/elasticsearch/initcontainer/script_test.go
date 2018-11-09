@@ -19,6 +19,11 @@ func TestRenderScriptTemplate(t *testing.T) {
 				SetVMMaxMapCount: true,
 				Plugins:          defaultInstalledPlugins,
 				SharedVolumes:    SharedVolumes,
+				LinkedFiles: LinkedFilesArray{
+					Array: []LinkedFile{
+						LinkedFile{
+							Source: "/secrets/users",
+							Target: "/usr/share/elasticsearch/users"}}},
 			},
 			wantSubstr: []string{
 				"sysctl -w vm.max_map_count=262144",
@@ -27,6 +32,7 @@ func TestRenderScriptTemplate(t *testing.T) {
 				"mv /usr/share/elasticsearch/config/* /volume/config/",
 				"mv /usr/share/elasticsearch/bin/* /volume/bin/",
 				"mv /usr/share/elasticsearch/plugins/* /volume/plugins/",
+				"ln -sf /secrets/users /usr/share/elasticsearch/users",
 			},
 		},
 		{

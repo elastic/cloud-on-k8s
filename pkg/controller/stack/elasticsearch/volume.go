@@ -8,10 +8,11 @@ import (
 
 // Default values for the volume name and paths
 const (
-	defaultVolumeName = "volume"
-	defaultMountPath  = "/volume"
-	defaultDataSubDir = "data"
-	defaultLogsSubDir = "logs"
+	defaultVolumeName      = "volume"
+	defaultMountPath       = "/volume"
+	defaultSecretMountPath = "/secrets"
+	defaultDataSubDir      = "data"
+	defaultLogsSubDir      = "logs"
 )
 
 // EmptyDirVolume used to store ES data on the node main disk
@@ -59,4 +60,41 @@ func (v EmptyDirVolume) DataPath() string {
 // LogsPath returns the absolute path to the directory storing ES logs
 func (v EmptyDirVolume) LogsPath() string {
 	return path.Join(v.mountPath, v.logsSubDir)
+}
+
+// SecretVolume captures a subset of data of the k8s secrete volume/mount type.
+type SecretVolume struct {
+	name       string
+	mountPath  string
+	secretName string
+}
+
+// NewSecretVolume creates a new SecretVolume with default mount path.
+func NewSecretVolume(secretName string, name string) SecretVolume {
+	return SecretVolume{
+		name:       name,
+		mountPath:  defaultSecretMountPath,
+		secretName: secretName,
+	}
+}
+
+// VolumeMount returns the k8s volume mount.
+func (sv SecretVolume) VolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      sv.name,
+		MountPath: sv.mountPath,
+		ReadOnly:  true,
+	}
+}
+
+// Volume returns the k8s volume.
+func (sv SecretVolume) Volume() corev1.Volume {
+	return corev1.Volume{
+		Name: sv.name,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: sv.secretName,
+			},
+		},
+	}
 }
