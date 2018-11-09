@@ -579,6 +579,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	})
 	return r.ReconcileDeployment(deploy, *stack)
 }
+
 func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 	stack deploymentsv1alpha1.Stack,
 	nodeCertificateSecrets []corev1.Secret,
