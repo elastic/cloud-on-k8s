@@ -6,6 +6,7 @@ import (
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -72,9 +73,11 @@ func (r *ReconcileStack) reconcileService(stack *deploymentsv1alpha1.Stack, serv
 // IsPublicServiceReady checks if Elasticsearch public service is ready,
 // so that the ES cluster can respond to HTTP requests.
 // Here we just check that the service has endpoints to route requests to.
-func (r *ReconcileStack) IsPublicServiceReady(name types.NamespacedName) (bool, error) {
+func (r *ReconcileStack) IsPublicServiceReady(s deploymentsv1alpha1.Stack) (bool, error) {
 	endpoints := corev1.Endpoints{}
-	err := r.Get(context.TODO(), name, &endpoints)
+	publicService := elasticsearch.NewPublicService(s).ObjectMeta
+	namespacedName := types.NamespacedName{Namespace: publicService.Namespace, Name: publicService.Name}
+	err := r.Get(context.TODO(), namespacedName, &endpoints)
 	if err != nil {
 		return false, err
 	}

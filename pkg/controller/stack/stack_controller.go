@@ -306,7 +306,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState) (st
 		return state, err
 	}
 
-	esReachable, err := r.IsPublicServiceReady(common.NewNamespacedName(stackInstance.Namespace, elasticsearch.PublicServiceName(stackInstance.Name)))
+	esReachable, err := r.IsPublicServiceReady(stackInstance)
 	if err != nil {
 		return state, err
 	}
