@@ -526,9 +526,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 
 		for i, container := range kibanaPodSpec.Containers {
 			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-		}
 
-		for i := range kibanaPodSpec.Containers {
 			kibanaPodSpec.Containers[i].Env = append(
 				kibanaPodSpec.Containers[i].Env,
 				corev1.EnvVar{
@@ -592,7 +590,7 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 			}
 		}
 
-		log.Info("Secret has an associated pod that exist, will reconcile the secret", "secret", secret.Name)
+		log.Info("Secret has an associated pod that exists, will reconcile the secret", "secret", secret.Name)
 
 		if certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]; !ok {
 			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)

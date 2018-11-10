@@ -72,8 +72,8 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 
 		nodeCertificatesVolume := NewSecretVolumeWithMountPath(
 			"node-certificates",
-			"/usr/share/elasticsearch/config/node-certs",
 			nodecerts.NodeCertificateSecretObjectKeyForPod(pod).Name,
+			"/usr/share/elasticsearch/config/node-certs",
 		)
 
 		podSpec.Volumes = append(podSpec.Volumes, nodeCertificatesVolume.Volume())
@@ -179,8 +179,8 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		"extrafiles",
-		"/usr/share/elasticsearch/config/extrafiles",
 		extraFilesRef.Name,
+		"/usr/share/elasticsearch/config/extrafiles",
 	)
 
 	// TODO: Security Context
