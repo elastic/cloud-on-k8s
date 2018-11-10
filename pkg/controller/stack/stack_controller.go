@@ -194,13 +194,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	log.Info("Discovering node certificate secrets")
-	nodeCertificateSecrets, err := r.FindNodeCertificateSecretsElasticsearch(request)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	res, err = r.ReconcileNodeCertificateSecrets(stack, nodeCertificateSecrets)
+	res, err = r.ReconcileNodeCertificateSecrets(stack)
 	if err != nil {
 		return res, err
 	}
@@ -267,23 +261,6 @@ func (r *ReconcileStack) GetPodList(request reconcile.Request, labelSelectors la
 	}
 
 	return podList, nil
-}
-
-func (r *ReconcileStack) FindNodeCertificateSecretsElasticsearch(request reconcile.Request) ([]corev1.Secret, error) {
-	var nodeCertificateSecrets corev1.SecretList
-	listOptions := client.ListOptions{
-		Namespace: request.Namespace,
-		LabelSelector: labels.Set(map[string]string{
-			nodecerts.LabelSecretUsage:         nodecerts.LabelSecretUsageNodeCertificates,
-			nodecerts.LabelNodeCertificateType: nodecerts.LabelNodeCertificateTypeElasticsearchAll,
-		}).AsSelector(),
-	}
-
-	if err := r.List(context.TODO(), &listOptions, &nodeCertificateSecrets); err != nil {
-		return nil, err
-	}
-
-	return nodeCertificateSecrets.Items, nil
 }
 
 // CreateElasticsearchPods Performs the creation of any number of pods in order
@@ -403,6 +380,8 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 		if stackInstance.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 			log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
 
+			// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+			// originating from the pod after it has started and produced a CSR
 			if err := nodecerts.EnsureNodeCertificateSecretExists(
 				r,
 				r.scheme,
@@ -582,9 +561,15 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 
 func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 	stack deploymentsv1alpha1.Stack,
-	nodeCertificateSecrets []corev1.Secret,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
+
+	log.Info("Discovering node certificate secrets")
+	nodeCertificateSecrets, err := r.findNodeCertificateSecrets(stack)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	for _, secret := range nodeCertificateSecrets {
 		log.Info("Looking at secret", "secret", secret.Name)
 		// todo: error checking if label does not exist
@@ -607,15 +592,43 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 			}
 		}
 
-		log.Info("Secret has an associated pod that exist, will reconcile the secret", "secret", podName)
+		log.Info("Secret has an associated pod that exist, will reconcile the secret", "secret", secret.Name)
 
-		if res, err := nodecerts.ReconcileNodeCertificateSecret(
-			stack, pod, secret, r.esCa, r,
-		); err != nil {
-			return res, err
+		if certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]; !ok {
+			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
+		} else {
+			switch certificateType {
+			case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
+				if res, err := nodecerts.ReconcileNodeCertificateSecret(
+					stack, pod, secret, r.esCa, r,
+				); err != nil {
+					return res, err
+				}
+			default:
+				log.Error(
+					errors.New("unsupported certificate type"),
+					fmt.Sprintf("Unsupported cerificate type: %s", certificateType),
+				)
+			}
 		}
 	}
 
 	log.Info("Node certificate secrets reconciled")
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileStack) findNodeCertificateSecrets(stack deploymentsv1alpha1.Stack) ([]corev1.Secret, error) {
+	var nodeCertificateSecrets corev1.SecretList
+	listOptions := client.ListOptions{
+		Namespace: stack.Namespace,
+		LabelSelector: labels.Set(map[string]string{
+			nodecerts.LabelSecretUsage: nodecerts.LabelSecretUsageNodeCertificates,
+		}).AsSelector(),
+	}
+
+	if err := r.List(context.TODO(), &listOptions, &nodeCertificateSecrets); err != nil {
+		return nil, err
+	}
+
+	return nodeCertificateSecrets.Items, nil
 }

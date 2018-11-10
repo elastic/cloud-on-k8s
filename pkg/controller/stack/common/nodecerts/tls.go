@@ -45,6 +45,22 @@ const (
 	LabelNodeCertificateTypeElasticsearchAll = "elasticsearch.all"
 )
 
+const (
+	// SecretCAKey is used for the CA Certificates inside a secret
+	SecretCAKey = "ca.pem"
+	// SecretCertKey is used for the Certificates inside a secret
+	SecretCertKey = "cert.pem"
+	// SecretPrivateKeyKey is used for the private keys inside a secret
+	SecretPrivateKeyKey = "node.key"
+)
+
+const (
+	// BlockTypeRSAPrivateKey is the PEM preamble type for an RSA private key
+	BlockTypeRSAPrivateKey = "RSA PRIVATE KEY"
+	// BlockTypeCertificate is the PEM preamble type for an X509 certificate
+	BlockTypeCertificate = "CERTIFICATE"
+)
+
 // NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
@@ -52,8 +68,8 @@ func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 	return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
 }
 
-// EnsureNodeCertificateSecretExists ensures that the secret containing the node certificate is present in the
-// apiserver
+// EnsureNodeCertificateSecretExists ensures that the corev1.Secret that at a later point in time will contain the node
+// certificates is present exists.
 func EnsureNodeCertificateSecretExists(
 	c client.Client,
 	scheme *runtime.Scheme,
@@ -73,6 +89,7 @@ func EnsureNodeCertificateSecretExists(
 				Namespace: secretObjectKey.Namespace,
 
 				Labels: map[string]string{
+					// store the pod that this Secret will be mounted to so we can traverse from secret -> pod
 					LabelAssociatedPod:       pod.Name,
 					LabelSecretUsage:         LabelSecretUsageNodeCertificates,
 					LabelNodeCertificateType: nodeCertificateType,
@@ -92,7 +109,11 @@ func EnsureNodeCertificateSecretExists(
 	return nil
 }
 
-// ReconcileNodeCertificateSecret ensures that
+// ReconcileNodeCertificateSecret ensures that the node certificate secret has the available and correct Data keys
+// provided.
+//
+// TODO: method should not generate the private key
+// TODO: method should take a CSR argument instead of creating it
 func ReconcileNodeCertificateSecret(
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
@@ -100,25 +121,66 @@ func ReconcileNodeCertificateSecret(
 	ca *Ca,
 	c client.Client,
 ) (reconcile.Result, error) {
-	// TODO: method should not generate the private key
-	// TODO: method should take a CSR argument instead of creating it
-
 	// a placeholder secret may have a nil secret.Data, so create it if it does not exist
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
 
 	// XXX: be a little crazy, live a little. push private keys over the network.
-	if _, ok := secret.Data["node.key"]; !ok {
+	if _, ok := secret.Data[SecretPrivateKeyKey]; !ok {
 		key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 		if err != nil {
 			return reconcile.Result{}, errors.Wrap(err, "unable to generate the private key")
 		}
 
 		pemKeyBytes := pem.EncodeToMemory(&pem.Block{
-			Type:  "RSA PRIVATE KEY",
+			Type:  BlockTypeRSAPrivateKey,
 			Bytes: x509.MarshalPKCS1PrivateKey(key),
 		})
+
+		secret.Data[SecretPrivateKeyKey] = pemKeyBytes
+	}
+
+	// could simplify this block to just checking if the ca.pem file contents would be the same, but it may be more
+	// likely that we'd like to embellish this logic further?
+	shouldIssueNewCertificate := false
+	if certData, ok := secret.Data[SecretCertKey]; !ok {
+		shouldIssueNewCertificate = true
+	} else if ok {
+		block, _ := pem.Decode(certData)
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		pool := x509.NewCertPool()
+		pool.AddCert(ca.Cert)
+
+		verifyOpts := x509.VerifyOptions{
+			DNSName:       pod.Name,
+			Roots:         pool,
+			Intermediates: pool,
+		}
+		if _, err := cert.Verify(verifyOpts); err != nil {
+			log.Info(
+				fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
+				"subject", cert.Subject,
+				"issuer", cert.Issuer,
+				"current_ca_subject", ca.Cert.Subject,
+			)
+			shouldIssueNewCertificate = true
+		}
+	}
+
+	if shouldIssueNewCertificate {
+		log.Info("Issuing new certificate", "secret", secret.Name)
+
+		block, _ := pem.Decode(secret.Data[SecretPrivateKeyKey])
+		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		cr := x509.CertificateRequest{}
 		csrBytes, err := x509.CreateCertificateRequest(cryptorand.Reader, &cr, key)
@@ -141,11 +203,10 @@ func ReconcileNodeCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		secret.Data["node.key"] = pemKeyBytes
-		secret.Data["ca.pem"] = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Cert.Raw})
-		secret.Data["cert.pem"] = append(
-			pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certData}),
-			pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca.Cert.Raw})...,
+		secret.Data[SecretCAKey] = pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})
+		secret.Data[SecretCertKey] = append(
+			pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
+			pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})...,
 		)
 
 		if err := c.Update(context.TODO(), &secret); err != nil {
@@ -162,6 +223,11 @@ func createValidatedCertificateTemplate(
 	pod corev1.Pod,
 	csr *x509.CertificateRequest,
 ) (*x509.Certificate, error) {
+	podIp := net.ParseIP(pod.Status.PodIP)
+	if podIp == nil {
+		return nil, fmt.Errorf("pod has currently has no IP valid ip, found: [%s]", pod.Status.PodIP)
+	}
+
 	commonName := fmt.Sprintf("%s.node.%s.es.%s.namespace.local", pod.Name, s.Name, s.Namespace)
 	commonNameUTF8OtherName := &cryptutil.UTF8StringValuedOtherName{
 		OID:   cryptutil.CommonNameObjectIdentifier,
@@ -172,7 +238,15 @@ func createValidatedCertificateTemplate(
 		return nil, errors.Wrap(err, "unable to create othername")
 	}
 
-	generalNames := []cryptutil.GeneralName{{OtherName: *commonNameOtherName}}
+	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
+	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
+	generalNames := []cryptutil.GeneralName{
+		{OtherName: *commonNameOtherName},
+		{DNSName: commonName},
+		{DNSName: pod.Name},
+		{IPAddress: maybeIPTo4(podIp)},
+		{IPAddress: net.ParseIP("127.0.0.1").To4()},
+	}
 	generalNamesBytes, err := cryptutil.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		return nil, err
@@ -180,21 +254,11 @@ func createValidatedCertificateTemplate(
 
 	// TODO: csr signature is not checked, common name not verified
 	// TODO: add services dns entries / ip addresses to cert?
-	// TODO: add pod ip when it's available (e.g when we're doing this for real)
 
 	certificateTemplate := x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         commonName,
 			OrganizationalUnit: []string{s.Name},
-		},
-
-		DNSNames: []string{
-			commonName,
-			pod.Name,
-		},
-		IPAddresses: []net.IP{
-			net.ParseIP(pod.Status.PodIP),
-			net.ParseIP("127.0.0.1"),
 		},
 
 		ExtraExtensions: []pkix.Extension{
@@ -214,4 +278,12 @@ func createValidatedCertificateTemplate(
 	}
 
 	return &certificateTemplate, nil
+}
+
+// maybeIPTo4 attempts to convert the provided net.IP to a 4-byte representation if possible, otherwise does nothing.
+func maybeIPTo4(ipAddress net.IP) net.IP {
+	if ip := ipAddress.To4(); ip != nil {
+		return ip
+	}
+	return ipAddress
 }

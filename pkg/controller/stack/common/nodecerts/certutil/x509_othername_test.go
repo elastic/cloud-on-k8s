@@ -18,11 +18,9 @@ package cryptutil
 import (
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"testing"
-
 	"fmt"
-
 	"reflect"
+	"testing"
 
 	"github.com/stretchr/testify/require"
 )

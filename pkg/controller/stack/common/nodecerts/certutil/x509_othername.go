@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("cryptutil")
+	log = logf.Log.WithName("certutil")
 
 	// SubjectAlternativeNamesObjectIdentifier is the OID for the Subject Alternative Name x509 extension
 	SubjectAlternativeNamesObjectIdentifier = asn1.ObjectIdentifier{2, 5, 29, 17}
@@ -63,6 +63,7 @@ The RFC defines the Subject Alternative Names value as follows:
 type GeneralName struct {
 	OtherName OtherName `asn1:"optional,tag:0"`
 	DNSName   string    `asn1:"optional,ia5,tag:2"`
+	IPAddress []byte    `asn1:"optional,tag:7"`
 }
 
 // OtherName is a record that contains custom data. The OID defines how the Value should be parsed.

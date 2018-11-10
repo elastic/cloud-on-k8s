@@ -1,6 +1,7 @@
 package nodecerts
 
 import (
+	"bytes"
 	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
@@ -17,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -53,14 +55,16 @@ func NewSelfSignedCa(cn string) (*Ca, error) {
 	certificateTemplate := x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName: cn,
+			CommonName:         cn,
+			OrganizationalUnit: []string{rand.String(16)},
 		},
-		NotBefore:          time.Now().Add(-1 * time.Minute),
-		NotAfter:           time.Now().Add(24 * 365 * time.Hour),
-		SignatureAlgorithm: x509.SHA256WithRSA,
-		IsCA:               true,
-		KeyUsage:           x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		ExtKeyUsage:        []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		NotBefore:             time.Now().Add(-1 * time.Minute),
+		NotAfter:              time.Now().Add(24 * 365 * time.Hour),
+		SignatureAlgorithm:    x509.SHA256WithRSA,
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 
 	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, key.Public(), key)
@@ -111,7 +115,8 @@ func (c *Ca) ReconcileCaPublicCerts(
 	owner v1.Object,
 	scheme *runtime.Scheme,
 ) error {
-	// TODO: how to do rotation of certs here? cross signing possible?
+	// TODO: how to do rotation of certs here? cross signing possible, likely not.
+	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Cert.Raw})
 
 	var clusterCASecret corev1.Secret
 	if err := cl.Get(context.TODO(), objectKey, &clusterCASecret); err != nil && !apierrors.IsNotFound(err) {
@@ -123,7 +128,7 @@ func (c *Ca) ReconcileCaPublicCerts(
 				Namespace: objectKey.Namespace,
 			},
 			Data: map[string][]byte{
-				"ca.pem": pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Cert.Raw}),
+				SecretCAKey: expectedCaKeyBytes,
 			},
 		}
 
@@ -131,9 +136,23 @@ func (c *Ca) ReconcileCaPublicCerts(
 			return err
 		}
 
-		if err := cl.Create(context.TODO(), &clusterCASecret); err != nil {
-			return err
-		}
+		log.Info(fmt.Sprintf(
+			"Creating CA public certs for secret %s in namespace %s", objectKey.Name, objectKey.Namespace,
+		))
+		return cl.Create(context.TODO(), &clusterCASecret)
+	}
+
+	if clusterCASecret.Data == nil {
+		clusterCASecret.Data = make(map[string][]byte)
+	}
+
+	if caKey, ok := clusterCASecret.Data[SecretCAKey]; !ok || !bytes.Equal(caKey, expectedCaKeyBytes) {
+		clusterCASecret.Data[SecretCAKey] = expectedCaKeyBytes
+
+		log.Info(fmt.Sprintf(
+			"Updating CA public certs for secret %s in namespace %s", objectKey.Name, objectKey.Namespace,
+		))
+		return cl.Update(context.TODO(), &clusterCASecret)
 	}
 
 	return nil
