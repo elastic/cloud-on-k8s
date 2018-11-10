@@ -229,8 +229,8 @@ func createValidatedCertificateTemplate(
 	}
 
 	commonName := fmt.Sprintf("%s.node.%s.es.%s.namespace.local", pod.Name, s.Name, s.Namespace)
-	commonNameUTF8OtherName := &cryptutil.UTF8StringValuedOtherName{
-		OID:   cryptutil.CommonNameObjectIdentifier,
+	commonNameUTF8OtherName := &certutil.UTF8StringValuedOtherName{
+		OID:   certutil.CommonNameObjectIdentifier,
 		Value: commonName,
 	}
 	commonNameOtherName, err := commonNameUTF8OtherName.ToOtherName()
@@ -240,14 +240,14 @@ func createValidatedCertificateTemplate(
 
 	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
 	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
-	generalNames := []cryptutil.GeneralName{
+	generalNames := []certutil.GeneralName{
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		{DNSName: pod.Name},
 		{IPAddress: maybeIPTo4(podIp)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}
-	generalNamesBytes, err := cryptutil.MarshalToSubjectAlternativeNamesData(generalNames)
+	generalNamesBytes, err := certutil.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func createValidatedCertificateTemplate(
 		},
 
 		ExtraExtensions: []pkix.Extension{
-			{Id: cryptutil.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
+			{Id: certutil.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
 		},
 		NotBefore: time.Now().Add(-10 * time.Minute),
 		NotAfter:  time.Now().Add(365 * 24 * time.Hour),

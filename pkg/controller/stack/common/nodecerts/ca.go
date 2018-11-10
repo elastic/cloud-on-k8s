@@ -43,7 +43,11 @@ func NewSelfSignedCa(cn string) (*Ca, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate the private key: %s", err)
 	}
+	return NewSelfSignedCaUsingKey(cn, key)
+}
 
+// NewSelfSignedCaUsingKey creates a new Ca that uses a self-signed certificate using the provided private key
+func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 	// create a self-signed certificate for ourselves:
 
 	// generate a serial number

@@ -13,7 +13,7 @@
 // this material is strictly forbidden unless prior written
 // permission is obtained from Elasticsearch B.V.
 
-package cryptutil
+package certutil
 
 import (
 	"crypto/x509"
