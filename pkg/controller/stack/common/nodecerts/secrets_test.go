@@ -34,7 +34,17 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 		PublicKey:          &rsaPrivateKey.PublicKey,
 	}
 
-	cert, err := createValidatedCertificateTemplate(stack, pod, &csr)
+	svc := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-service",
+			Namespace: "default",
+		},
+		Spec: v1.ServiceSpec{
+			ClusterIP: "2.2.3.3",
+		},
+	}
+
+	cert, err := createValidatedCertificateTemplate(stack, pod, []v1.Service{svc}, &csr)
 	require.NoError(t, err)
 
 	// roundtrip the certificate
@@ -46,6 +56,11 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	assert.Contains(t, certRT.DNSNames, pod.Name)
 	assert.Contains(t, certRT.IPAddresses, net.ParseIP(testIp).To4())
 	assert.Contains(t, certRT.IPAddresses, net.ParseIP("127.0.0.1").To4())
+
+	// service ip and hosts should be present in the cert
+	assert.Contains(t, certRT.IPAddresses, net.ParseIP(svc.Spec.ClusterIP).To4())
+	assert.Contains(t, certRT.DNSNames, svc.Name)
+	assert.Contains(t, certRT.DNSNames, getServiceFullyQualifiedHostname(svc))
 
 	// es specific othernames is a bit more difficult to get to, but should be present:
 	otherNames, err := certutil.ParseSANGeneralNamesOtherNamesOnly(certRT)

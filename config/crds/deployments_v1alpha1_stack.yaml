@@ -58,6 +58,8 @@ spec:
                     type: object
                   type: array
               type: object
+            featureFlags:
+              type: object
             kibana:
               properties:
                 image:

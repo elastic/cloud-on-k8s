@@ -10,6 +10,7 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,7 +78,9 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	c = mgr.GetClient()
 
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
+	rec, err := newReconciler(mgr)
+	require.NoError(t, err)
+	recFn, requests := SetupTestReconcile(rec)
 	assert.NoError(t, add(mgr, recFn))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)

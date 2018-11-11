@@ -41,7 +41,7 @@ func NewSelfSignedCa(cn string) (*Ca, error) {
 	// TODO: constructor that takes the key?
 	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	if err != nil {
-		return nil, fmt.Errorf("unable to generate the private key: %s", err)
+		return nil, errors.Wrap(err, "unable to generate the private key")
 	}
 	return NewSelfSignedCaUsingKey(cn, key)
 }
@@ -111,16 +111,16 @@ func (c *Ca) CreateCertificateForValidatedCertificateTemplate(
 	return certData, err
 }
 
-// ReconcileCaPublicCerts ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
+// ReconcilePublicCertsSecret ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
 // objectKey
-func (c *Ca) ReconcileCaPublicCerts(
+func (c *Ca) ReconcilePublicCertsSecret(
 	cl client.Client,
 	objectKey types.NamespacedName,
 	owner v1.Object,
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Cert.Raw})
+	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: c.Cert.Raw})
 
 	var clusterCASecret corev1.Secret
 	if err := cl.Get(context.TODO(), objectKey, &clusterCASecret); err != nil && !apierrors.IsNotFound(err) {
@@ -146,10 +146,12 @@ func (c *Ca) ReconcileCaPublicCerts(
 		return cl.Create(context.TODO(), &clusterCASecret)
 	}
 
+	// if Data is nil, create it in case we're starting with a poorly initialized secret
 	if clusterCASecret.Data == nil {
 		clusterCASecret.Data = make(map[string][]byte)
 	}
 
+	// if they secret does not contain our cert, update it
 	if caKey, ok := clusterCASecret.Data[SecretCAKey]; !ok || !bytes.Equal(caKey, expectedCaKeyBytes) {
 		clusterCASecret.Data[SecretCAKey] = expectedCaKeyBytes
 

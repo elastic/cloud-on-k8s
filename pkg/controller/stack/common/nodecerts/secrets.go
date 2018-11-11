@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("node-certs")
+	log = logf.Log.WithName("nodecerts")
 )
 
 const (
@@ -116,8 +116,9 @@ func EnsureNodeCertificateSecretExists(
 // TODO: method should take a CSR argument instead of creating it
 func ReconcileNodeCertificateSecret(
 	s deploymentsv1alpha1.Stack,
-	pod corev1.Pod,
 	secret corev1.Secret,
+	pod corev1.Pod,
+	svcs []corev1.Service,
 	ca *Ca,
 	c client.Client,
 ) (reconcile.Result, error) {
@@ -170,6 +171,8 @@ func ReconcileNodeCertificateSecret(
 				"current_ca_subject", ca.Cert.Subject,
 			)
 			shouldIssueNewCertificate = true
+		} else {
+			// TODO: verify expected SANs in certificate, otherwise we wont actually reconcile such changes
 		}
 	}
 
@@ -193,7 +196,7 @@ func ReconcileNodeCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		validatedCertificateTemplate, err := createValidatedCertificateTemplate(s, pod, csr)
+		validatedCertificateTemplate, err := createValidatedCertificateTemplate(s, pod, svcs, csr)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -221,11 +224,12 @@ func ReconcileNodeCertificateSecret(
 func createValidatedCertificateTemplate(
 	s deploymentsv1alpha1.Stack,
 	pod corev1.Pod,
+	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 ) (*x509.Certificate, error) {
 	podIp := net.ParseIP(pod.Status.PodIP)
 	if podIp == nil {
-		return nil, fmt.Errorf("pod has currently has no IP valid ip, found: [%s]", pod.Status.PodIP)
+		return nil, fmt.Errorf("pod has currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
 	commonName := fmt.Sprintf("%s.node.%s.es.%s.namespace.local", pod.Name, s.Name, s.Namespace)
@@ -244,11 +248,25 @@ func createValidatedCertificateTemplate(
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		{DNSName: pod.Name},
-		// XXX: current workaround, perhaps we should accept different resource names as well
-		{DNSName: s.Name + "-es-discovery"},
 		{IPAddress: maybeIPTo4(podIp)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}
+
+	if svcs != nil {
+		for _, svc := range svcs {
+			if ip := net.ParseIP(svc.Spec.ClusterIP); ip != nil {
+				generalNames = append(generalNames,
+					certutil.GeneralName{IPAddress: maybeIPTo4(ip)},
+				)
+			}
+
+			generalNames = append(generalNames,
+				certutil.GeneralName{DNSName: svc.Name},
+				certutil.GeneralName{DNSName: getServiceFullyQualifiedHostname(svc)},
+			)
+		}
+	}
+
 	generalNamesBytes, err := certutil.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		return nil, err
@@ -280,6 +298,12 @@ func createValidatedCertificateTemplate(
 	}
 
 	return &certificateTemplate, nil
+}
+
+// getServiceFullyQualifiedHostname returns the fully qualified DNS name for a service
+func getServiceFullyQualifiedHostname(svc corev1.Service) string {
+	// TODO: cluster.local suffix should be configurable
+	return fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
 }
 
 // maybeIPTo4 attempts to convert the provided net.IP to a 4-byte representation if possible, otherwise does nothing.

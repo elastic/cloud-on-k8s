@@ -168,7 +168,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// TODO: suffix with type (es?) and trim
 	clusterCAPublicSecretObjectKey := request.NamespacedName
-	if err := r.esCa.ReconcileCaPublicCerts(r, clusterCAPublicSecretObjectKey, &stack, r.scheme); err != nil {
+	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, &stack, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -569,6 +569,15 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 		return reconcile.Result{}, err
 	}
 
+	var esDiscoveryService corev1.Service
+	if err := r.Get(context.TODO(), types.NamespacedName{
+		Namespace: stack.Namespace,
+		Name:      elasticsearch.DiscoveryServiceName(stack.Name),
+	}, &esDiscoveryService); err != nil {
+		return reconcile.Result{}, err
+	}
+	esAllServices := []corev1.Service{esDiscoveryService}
+
 	for _, secret := range nodeCertificateSecrets {
 		log.Info("Looking at secret", "secret", secret.Name)
 		// todo: error checking if label does not exist
@@ -604,7 +613,7 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 			switch certificateType {
 			case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
 				if res, err := nodecerts.ReconcileNodeCertificateSecret(
-					stack, pod, secret, r.esCa, r,
+					stack, secret, pod, esAllServices, r.esCa, r,
 				); err != nil {
 					return res, err
 				}
