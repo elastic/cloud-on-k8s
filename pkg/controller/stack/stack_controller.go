@@ -289,6 +289,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 	); err != nil && !apierrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	} else if apierrors.IsNotFound(err) {
+		// TODO: handle reconciling Data section if it already exists
 		trustRootCfg := elasticsearch.TrustRootConfig{
 			Trust: elasticsearch.TrustConfig{
 				SubjectName: []string{fmt.Sprintf(
@@ -588,6 +589,11 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 			} else {
 				return reconcile.Result{}, nil
 			}
+		}
+
+		if pod.Status.PodIP == "" {
+			log.Info("Skipping secret because associated pod has no pod ip", "secret", secret.Name)
+			continue
 		}
 
 		log.Info("Secret has an associated pod that exists, will reconcile the secret", "secret", secret.Name)

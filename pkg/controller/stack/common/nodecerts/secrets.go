@@ -244,6 +244,8 @@ func createValidatedCertificateTemplate(
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		{DNSName: pod.Name},
+		// XXX: current workaround, perhaps we should accept different resource names as well
+		{DNSName: s.Name + "-es-discovery"},
 		{IPAddress: maybeIPTo4(podIp)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}

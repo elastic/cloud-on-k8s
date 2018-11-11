@@ -71,8 +71,8 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 		)
 
 		nodeCertificatesVolume := NewSecretVolumeWithMountPath(
-			"node-certificates",
 			nodecerts.NodeCertificateSecretObjectKeyForPod(pod).Name,
+			"node-certificates",
 			"/usr/share/elasticsearch/config/node-certs",
 		)
 
@@ -110,7 +110,7 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 			podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
 				corev1.EnvVar{
 					Name:  "xpack.security.transport.ssl.verification_mode",
-					Value: "none",
+					Value: "full",
 				},
 				corev1.EnvVar{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
 
@@ -178,8 +178,8 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
-		"extrafiles",
 		extraFilesRef.Name,
+		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
 
