@@ -110,7 +110,7 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef ty
 			podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
 				corev1.EnvVar{
 					Name:  "xpack.security.transport.ssl.verification_mode",
-					Value: "full",
+					Value: "certificate",
 				},
 				corev1.EnvVar{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
 

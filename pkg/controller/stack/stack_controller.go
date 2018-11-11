@@ -536,12 +536,8 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 				},
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-					Value: "none", // XXX: fix full verification (requires service dns to be added)
+					Value: "certificate",
 				},
-				//corev1.EnvVar{
-				//	Name:  "XPACK_SECURITY_ENABLED",
-				//	Value: "false", // XXX: no users, also breaks due to re-optimize
-				//},
 			)
 		}
 	}
