@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"math/big"
+	"encoding/pem"
 	"testing"
 	"time"
 
@@ -13,32 +13,42 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func bigFromString(s string) *big.Int {
-	ret := new(big.Int)
-	ret.SetString(s, 10)
-	return ret
-}
+// testPemPrivateKey is a private key that intended for testing
+const testPemPrivateKey = `
+-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQCxoeCUW5KJxNPxMp+KmCxKLc1Zv9Ny+4CFqcUXVUYH69L3mQ7v
+IWrJ9GBfcaA7BPQqUlWxWM+OCEQZH1EZNIuqRMNQVuIGCbz5UQ8w6tS0gcgdeGX7
+J7jgCQ4RK3F/PuCM38QBLaHx988qG8NMc6VKErBjctCXFHQt14lerd5KpQIDAQAB
+AoGAYrf6Hbk+mT5AI33k2Jt1kcweodBP7UkExkPxeuQzRVe0KVJw0EkcFhywKpr1
+V5eLMrILWcJnpyHE5slWwtFHBG6a5fLaNtsBBtcAIfqTQ0Vfj5c6SzVaJv0Z5rOd
+7gQF6isy3t3w9IF3We9wXQKzT6q5ypPGdm6fciKQ8RnzREkCQQDZwppKATqQ41/R
+vhSj90fFifrGE6aVKC1hgSpxGQa4oIdsYYHwMzyhBmWW9Xv/R+fPyr8ZwPxp2c12
+33QwOLPLAkEA0NNUb+z4ebVVHyvSwF5jhfJxigim+s49KuzJ1+A2RaSApGyBZiwS
+rWvWkB471POAKUYt5ykIWVZ83zcceQiNTwJBAMJUFQZX5GDqWFc/zwGoKkeR49Yi
+MTXIvf7Wmv6E++eFcnT461FlGAUHRV+bQQXGsItR/opIG7mGogIkVXa3E1MCQARX
+AAA7eoZ9AEHflUeuLn9QJI/r0hyQQLEtrpwv6rDT1GCWaLII5HJ6NUFVf4TTcqxo
+6vdM4QGKTJoO+SaCyP0CQFdpcxSAuzpFcKv0IlJ8XzS/cy+mweCMwyJ1PFEc4FX6
+wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
+-----END RSA PRIVATE KEY-----
+`
 
-// rsaPrivateKey is a private key used for testing
-var rsaPrivateKey = &rsa.PrivateKey{
-	PublicKey: rsa.PublicKey{
-		N: bigFromString("124737666279038955318614287965056875799409043964547386061640914307192830334599556034328900586693254156136128122194531292927142396093148164407300419162827624945636708870992355233833321488652786796134504707628792159725681555822420087112284637501705261187690946267527866880072856272532711620639179596808018872997"),
-		E: 65537,
-	},
-	D: bigFromString("69322600686866301945688231018559005300304807960033948687567105312977055197015197977971637657636780793670599180105424702854759606794705928621125408040473426339714144598640466128488132656829419518221592374964225347786430566310906679585739468938549035854760501049443920822523780156843263434219450229353270690889"),
-	Primes: []*big.Int{
-		bigFromString("11405025354575369741595561190164746858706645478381139288033759331174478411254205003127028642766986913445391069745480057674348716675323735886284176682955723"),
-		bigFromString("10937079261204603443118731009201819560867324167189758120988909645641782263430128449826989846631183550578761324239709121189827307416350485191350050332642639"),
-	},
-}
-
-var testCa *Ca
+var (
+	// testCa is a self-signed CA intended for testing
+	testCa *Ca
+	// testRSAPrivateKey is a preconfigured RSA private key intended for testing.
+	testRSAPrivateKey *rsa.PrivateKey
+)
 
 func init() {
 	var err error
-	testCa, err = NewSelfSignedCaUsingKey("test", rsaPrivateKey)
-	if err != nil {
-		panic(err)
+
+	block, _ := pem.Decode([]byte(testPemPrivateKey))
+	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
+		panic("Failed to parse private key: " + err.Error())
+	}
+
+	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+		panic("Failed to create new self signed CA: " + err.Error())
 	}
 	logf.SetLogger(logf.ZapLogger(false))
 }
@@ -53,7 +63,7 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 		NotAfter: time.Now().Add(365 * 24 * time.Hour),
 
 		PublicKeyAlgorithm: x509.RSA,
-		PublicKey:          &rsaPrivateKey.PublicKey,
+		PublicKey:          &testRSAPrivateKey.PublicKey,
 	}
 
 	bytes, err := testCa.CreateCertificateForValidatedCertificateTemplate(certificateTemplate)

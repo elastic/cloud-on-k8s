@@ -31,7 +31,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	}
 	csr := x509.CertificateRequest{
 		PublicKeyAlgorithm: x509.RSA,
-		PublicKey:          &rsaPrivateKey.PublicKey,
+		PublicKey:          &testRSAPrivateKey.PublicKey,
 	}
 
 	svc := v1.Service{
