@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"strings"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 
@@ -56,14 +55,14 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
-	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticSearchHealth("Unknown")
+	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth("Unknown")
 	health, err := esClient.GetClusterHealth(context.TODO())
 	if err == nil {
-		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticSearchHealth(strings.Title(health.Status))
+		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(health.Status)
 	}
 
 	if s.Stack.Status.Elasticsearch.Phase == "" {
-		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperational
+		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperationalPhase
 	}
 	return nil
 
@@ -72,14 +71,14 @@ func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *cl
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
 func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) {
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
-	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchPending
-	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchRed
+	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchPendingPhase
+	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchRedHealth
 	s.Result = result
 }
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s ReconcileState) UpdateElasticsearchMigrating(result reconcile.Result, pods []corev1.Pod, esClient *client.Client) error {
-	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingData
+	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
 	return s.UpdateElasticsearchState(pods, esClient)
 }

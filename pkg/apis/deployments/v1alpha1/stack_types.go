@@ -98,14 +98,14 @@ type LimitsSpec struct {
 	CPU string `json:"cpu,omitempty"`
 }
 
-// ElasticSearchHealth is the health of the cluster as returned by the health API.
-type ElasticSearchHealth string
+// ElasticsearchHealth is the health of the cluster as returned by the health API.
+type ElasticsearchHealth string
 
 //Possible traffic light states Elasticsearch health can have.
 const (
-	ElasticsearchRed    ElasticSearchHealth = "Red"
-	ElasticsearchYellow ElasticSearchHealth = "Yellow"
-	ElasticsearchGreen  ElasticSearchHealth = "Green"
+	ElasticsearchRedHealth    ElasticsearchHealth = "red"
+	ElasticsearchYellowHealth ElasticsearchHealth = "yellow"
+	ElasticsearchGreenHealth  ElasticsearchHealth = "green"
 )
 
 // ReconcilerStatus represents status information about desired/available nodes.
@@ -117,18 +117,18 @@ type ReconcilerStatus struct {
 type ElasticsearchOrchestrationPhase string
 
 const (
-	// ElasticsearchOperational is operating at the desired spec.
-	ElasticsearchOperational ElasticsearchOrchestrationPhase = "Operational"
-	// ElasticsearchPending controller is working towards a desired state, cluster can be unavailable.
-	ElasticsearchPending ElasticsearchOrchestrationPhase = "Pending"
-	// ElasticsearchMigratingData Elasticsearch is currently migrating data to another node.
-	ElasticsearchMigratingData ElasticsearchOrchestrationPhase = "MigratingData"
+	// ElasticsearchOperationalPhase is operating at the desired spec.
+	ElasticsearchOperationalPhase ElasticsearchOrchestrationPhase = "Operational"
+	// ElasticsearchPendingPhase controller is working towards a desired state, cluster can be unavailable.
+	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
+	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
+	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
 )
 
 // ElasticsearchStatus contains status information about the Elasticsearch cluster.
 type ElasticsearchStatus struct {
 	ReconcilerStatus
-	Health ElasticSearchHealth
+	Health ElasticsearchHealth
 	Phase  ElasticsearchOrchestrationPhase
 }
 
@@ -137,9 +137,9 @@ type KibanaHealth string
 
 const (
 	// KibanaRed means no instance is currently available.
-	KibanaRed KibanaHealth = "Red"
+	KibanaRed KibanaHealth = "red"
 	// KibanaGreen means at least one instance is available.
-	KibanaGreen KibanaHealth = "Green"
+	KibanaGreen KibanaHealth = "green"
 )
 
 // KibanaStatus contains status information about the Kibana instances in the stack deployment.
