@@ -2,15 +2,20 @@ package stack
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
 	"github.com/elastic/stack-operators/pkg/controller/stack/state"
-
-	"k8s.io/apimachinery/pkg/types"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
@@ -21,10 +26,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -39,21 +46,35 @@ import (
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
 * business logic.  Delete these comments after modifying this file.*
  */
-
-var defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-
-var log = logf.Log.WithName("stack-controller")
+var (
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+	log            = logf.Log.WithName("stack-controller")
+)
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 // USER ACTION REQUIRED: update cmd/manager/main.go to call this deployments.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+	r, err := newReconciler(mgr)
+	if err != nil {
+		return err
+	}
+	return add(mgr, r)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileStack{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
+	esCa, err := nodecerts.NewSelfSignedCa("stack-controller elasticsearch")
+	if err != nil {
+		return nil, err
+	}
+
+	kibanaCa, err := nodecerts.NewSelfSignedCa("stack-controller kibana")
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReconcileStack{Client: mgr.GetClient(), scheme: mgr.GetScheme(), esCa: esCa, kibanaCa: kibanaCa}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -95,6 +116,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		OwnerType:    &deploymentsv1alpha1.Stack{},
 	})
 
+	// Watch secrets
+	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &deploymentsv1alpha1.Stack{},
+	})
+
 	return nil
 }
 
@@ -104,6 +131,9 @@ var _ reconcile.Reconciler = &ReconcileStack{}
 type ReconcileStack struct {
 	client.Client
 	scheme *runtime.Scheme
+
+	esCa     *nodecerts.Ca
+	kibanaCa *nodecerts.Ca
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -135,6 +165,12 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
+	// TODO: suffix with type (es?) and trim
+	clusterCAPublicSecretObjectKey := request.NamespacedName
+	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, &stack, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	res, err := r.CreateElasticsearchPods(request, internalUsers.ControllerUser)
 	if err != nil {
 		return res, err
@@ -151,12 +187,17 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	//currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
 
-	state, err = r.reconcileKibanaDeployment(state, internalUsers.KibanaUser)
+	state, err = r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey)
 	if err != nil {
 		return state.Result, err
 	}
 
 	res, err = r.reconcileService(&stack, kibana.NewService(stack))
+	if err != nil {
+		return res, err
+	}
+
+	res, err = r.ReconcileNodeCertificateSecrets(stack)
 	if err != nil {
 		return res, err
 	}
@@ -178,12 +219,25 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 }
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User) (*esclient.Client, error) {
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) (*esclient.Client, error) {
 	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
+
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		esURL = strings.Replace(esURL, "http:", "https:", 1)
+	}
+
 	return &esclient.Client{
 		Endpoint: esURL,
-		HTTP:     &http.Client{},
 		User:     esUser,
+		HTTP: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: caPool,
+					// TODO: we can do better.
+					InsecureSkipVerify: true,
+				},
+			},
+		},
 	}, err
 }
 
@@ -229,12 +283,56 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 		return reconcile.Result{}, err
 	}
 
+	// TODO: suffix and trim
+	elasticsearchExtraFilesSecretObjectKey := types.NamespacedName{
+		Namespace: stackInstance.Namespace,
+		Name:      fmt.Sprintf("%s-extrafiles", stackInstance.Name),
+	}
+	var elasticsearchExtraFilesSecret corev1.Secret
+	if err := r.Get(
+		context.TODO(),
+		elasticsearchExtraFilesSecretObjectKey,
+		&elasticsearchExtraFilesSecret,
+	); err != nil && !apierrors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	} else if apierrors.IsNotFound(err) {
+		// TODO: handle reconciling Data section if it already exists
+		trustRootCfg := elasticsearch.TrustRootConfig{
+			Trust: elasticsearch.TrustConfig{
+				// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
+				// this needs to be kept in sync with nodecerts.buildCertificateCommonName
+				SubjectName: []string{fmt.Sprintf(
+					"*.node.%s.%s.es.cluster.local", stackInstance.Name, stackInstance.Namespace,
+				)},
+			},
+		}
+		trustRootCfgData, err := json.Marshal(&trustRootCfg)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		elasticsearchExtraFilesSecret = corev1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      elasticsearchExtraFilesSecretObjectKey.Name,
+				Namespace: elasticsearchExtraFilesSecretObjectKey.Namespace,
+			},
+			Data: map[string][]byte{
+				"trust.yml": trustRootCfgData,
+			},
+		}
+		controllerutil.SetControllerReference(&stackInstance, &elasticsearchExtraFilesSecret, r.scheme)
+
+		if err := r.Create(context.TODO(), &elasticsearchExtraFilesSecret); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
+
 	var podSpecParams = elasticsearch.BuildNewPodSpecParams(stackInstance)
 	var proposedPods []corev1.Pod
 
 	// Create any missing instances
 	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount(); i++ {
-		pod, err := elasticsearch.NewPod(stackInstance, user)
+		pod, err := elasticsearch.NewPod(stackInstance, user, elasticsearchExtraFilesSecretObjectKey)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -269,7 +367,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 			return reconcile.Result{}, err
 		}
 
-		newPod, err := elasticsearch.NewPod(stackInstance, user)
+		newPod, err := elasticsearch.NewPod(stackInstance, user, elasticsearchExtraFilesSecretObjectKey)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -289,6 +387,22 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 	}
 
 	for _, pod := range proposedPods {
+		if stackInstance.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+			log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
+
+			// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+			// originating from the pod after it has started and produced a CSR
+			if err := nodecerts.EnsureNodeCertificateSecretExists(
+				r,
+				r.scheme,
+				stackInstance,
+				pod,
+				nodecerts.LabelNodeCertificateTypeElasticsearchAll,
+			); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+
 		if err := r.Create(context.TODO(), &pod); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -352,8 +466,10 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 
 	}
 
-	//create an Elasticsearch client
-	esClient, err := NewElasticsearchClient(&stackInstance, esUser)
+	// create an Elasticsearch client
+	certPool := x509.NewCertPool()
+	certPool.AddCert(r.esCa.Cert)
+	esClient, err := NewElasticsearchClient(&stackInstance, esUser, certPool)
 	if err != nil {
 		return state, errors.Wrap(err, "Could not create ES client")
 	}
@@ -377,18 +493,61 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 		}
 		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 	}
-	state.UpdateElasticsearchState(currentPods.Items, esClient)
-	return state, nil
+	return state, state.UpdateElasticsearchState(currentPods.Items, esClient)
 }
 
-func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState, user esclient.User) (state.ReconcileState, error) {
-	stack := state.Stack
+func (r *ReconcileStack) reconcileKibanaDeployment(
+	state state.ReconcileState,
+	stack *deploymentsv1alpha1.Stack,
+	user esclient.User,
+	esClusterCAPublicSecretObjectKey types.NamespacedName,
+) (state.ReconcileState, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
 		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
 		User:             user,
 	}
+
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		kibanaPodSpecParams.ElasticsearchUrl = strings.Replace(kibanaPodSpecParams.ElasticsearchUrl, "http:", "https:", 1)
+	}
+
+	kibanaPodSpec := kibana.NewPodSpec(kibanaPodSpecParams)
+
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		// TODO: use kibanaCa to generate cert for deployment
+		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
+
+		esCertsVolume := elasticsearch.NewSecretVolumeWithMountPath(
+			esClusterCAPublicSecretObjectKey.Name,
+			"elasticsearch-certs",
+			"/usr/share/kibana/config/elasticsearch-certs",
+		)
+
+		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
+
+		for i, container := range kibanaPodSpec.InitContainers {
+			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+		}
+
+		for i, container := range kibanaPodSpec.Containers {
+			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+
+			kibanaPodSpec.Containers[i].Env = append(
+				kibanaPodSpec.Containers[i].Env,
+				corev1.EnvVar{
+					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
+					Value: strings.Join([]string{esCertsVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+				},
+				corev1.EnvVar{
+					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
+					Value: "certificate",
+				},
+			)
+		}
+	}
+
 	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
@@ -396,7 +555,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState, u
 		Replicas:  1,
 		Selector:  labels,
 		Labels:    labels,
-		PodSpec:   kibana.NewPodSpec(kibanaPodSpecParams),
+		PodSpec:   kibanaPodSpec,
 	})
 	result, err := r.ReconcileDeployment(deploy, *stack)
 	if err != nil {
@@ -407,6 +566,100 @@ func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState, u
 }
 
 func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Result, error) {
+	current, err := r.GetStack(state.Request.NamespacedName)
+	if err != nil {
+		return state.Result, err
+	}
+	if reflect.DeepEqual(current.Status, state.Stack.Status) {
+		return state.Result, nil
+	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(context.Background(), state.Stack)
+}
+
+func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
+	stack deploymentsv1alpha1.Stack,
+) (reconcile.Result, error) {
+	log.Info("Reconciling node certificate secrets")
+
+	nodeCertificateSecrets, err := r.findNodeCertificateSecrets(stack)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	var esDiscoveryService corev1.Service
+	if err := r.Get(context.TODO(), types.NamespacedName{
+		Namespace: stack.Namespace,
+		Name:      elasticsearch.DiscoveryServiceName(stack.Name),
+	}, &esDiscoveryService); err != nil {
+		return reconcile.Result{}, err
+	}
+	esAllServices := []corev1.Service{esDiscoveryService}
+
+	for _, secret := range nodeCertificateSecrets {
+		// todo: error checking if label does not exist
+		podName := secret.Labels[nodecerts.LabelAssociatedPod]
+
+		var pod corev1.Pod
+		if err := r.Get(context.TODO(), types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
+
+			// give some leniency in pods showing up only after a while.
+			if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
+				// if the secret has existed for too long without an associated pod, it's time to GC it
+				log.Info("Unable to find pod associated with secret, GCing", "secret", secret.Name)
+				if err := r.Delete(context.TODO(), &secret); err != nil {
+					return reconcile.Result{}, err
+				}
+			} else {
+				log.Info("Unable to find pod associated with secret, but secret is too young for GC", "secret", secret.Name)
+			}
+			continue
+		}
+
+		if pod.Status.PodIP == "" {
+			log.Info("Skipping secret because associated pod has no pod ip", "secret", secret.Name)
+			continue
+		}
+
+		certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]
+		if !ok {
+			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
+			continue
+		}
+
+		switch certificateType {
+		case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
+			if res, err := nodecerts.ReconcileNodeCertificateSecret(
+				stack, secret, pod, esAllServices, r.esCa, r,
+			); err != nil {
+				return res, err
+			}
+		default:
+			log.Error(
+				errors.New("unsupported certificate type"),
+				fmt.Sprintf("Unsupported cerificate type: %s found in %s, ignoring", certificateType, secret.Name),
+			)
+		}
+	}
+
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileStack) findNodeCertificateSecrets(stack deploymentsv1alpha1.Stack) ([]corev1.Secret, error) {
+	var nodeCertificateSecrets corev1.SecretList
+	listOptions := client.ListOptions{
+		Namespace: stack.Namespace,
+		LabelSelector: labels.Set(map[string]string{
+			nodecerts.LabelSecretUsage: nodecerts.LabelSecretUsageNodeCertificates,
+		}).AsSelector(),
+	}
+
+	if err := r.List(context.TODO(), &listOptions, &nodeCertificateSecrets); err != nil {
+		return nil, err
+	}
+
+	return nodeCertificateSecrets.Items, nil
 }

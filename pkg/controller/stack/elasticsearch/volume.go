@@ -16,6 +16,10 @@ const (
 	defaultLogsSubDir        = "logs"
 )
 
+var (
+	defaultOptional = false
+)
+
 // EmptyDirVolume used to store ES data on the node main disk
 // Its lifecycle is bound to the pod lifecycle on the node.
 type EmptyDirVolume struct {
@@ -68,15 +72,37 @@ type SecretVolume struct {
 	name       string
 	mountPath  string
 	secretName string
-	items      []string
+	items      []corev1.KeyToPath
 }
 
 // NewSecretVolume creates a new SecretVolume with default mount path.
-func NewSecretVolume(secretName string, mountPath string) SecretVolume {
+func NewSecretVolume(secretName string, name string) SecretVolume {
+	return NewSecretVolumeWithMountPath(secretName, name, defaultSecretMountPath)
+}
+
+// NewSecretVolumeWithMountPath creates a new SecretVolume
+func NewSecretVolumeWithMountPath(secretName string, name string, mountPath string) SecretVolume {
 	return SecretVolume{
-		name:       secretName,
+		name:       name,
 		mountPath:  mountPath,
 		secretName: secretName,
+	}
+}
+
+// NewSelectiveSecretVolumeWithMountPath creates a new SecretVolume that projects only the specified secrets into the file system.
+func NewSelectiveSecretVolumeWithMountPath(secretName string, name string, mountPath string, projectedSecrets []string) SecretVolume {
+	var keyToPaths []corev1.KeyToPath
+	for _, s := range projectedSecrets {
+		keyToPaths = append(keyToPaths, corev1.KeyToPath{
+			Key:  s,
+			Path: s,
+		})
+	}
+	return SecretVolume{
+		name:       name,
+		mountPath:  mountPath,
+		secretName: secretName,
+		items:      keyToPaths,
 	}
 }
 
@@ -91,19 +117,13 @@ func (sv SecretVolume) VolumeMount() corev1.VolumeMount {
 
 // Volume returns the k8s volume.
 func (sv SecretVolume) Volume() corev1.Volume {
-	var projectedSecrets []corev1.KeyToPath
-	for _, s := range sv.items {
-		projectedSecrets = append(projectedSecrets, corev1.KeyToPath{
-			Key:  s,
-			Path: s,
-		})
-	}
 	return corev1.Volume{
 		Name: sv.name,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: sv.secretName,
-				Items:      projectedSecrets,
+				Items:      sv.items,
+				Optional:   &defaultOptional,
 			},
 		},
 	}

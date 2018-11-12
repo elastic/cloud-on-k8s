@@ -18,9 +18,7 @@ func TestEmptyDirDefault(t *testing.T) {
 
 func TestSecretVolumeItemProjection(t *testing.T) {
 
-	testVolume := NewSecretVolume("secret", "secrets")
-	testVolume.items = []string{"foo"}
-
+	testVolume := NewSelectiveSecretVolumeWithMountPath("secret", "secrets", "/mnt", []string{"foo"})
 	tests := []struct {
 		volume   SecretVolume
 		expected []corev1.KeyToPath

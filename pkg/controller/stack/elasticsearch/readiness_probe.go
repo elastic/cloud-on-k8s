@@ -6,16 +6,16 @@ const defaultReadinessProbeScript string = `
 # If the node is starting up wait for the cluster to be green
 # Once it has started only check that the node itself is responding
 START_FILE=/tmp/.es_start_file
-PROBE_PASSWORD=$(cat /$PROBE_SECRET_MOUNT/$PROBE_USERNAME)
 
 http () {
 local path="${1}"
-if [ -n "${PROBE_USERNAME}" ] && [ -n "${PROBE_PASSWORD}" ]; then
+if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_FILE}" ]; then
+  PROBE_PASSWORD=$(<$PROBE_PASSWORD_FILE)
   BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
 else
   BASIC_AUTH=''
 fi
-curl -XGET -s -k --fail ${BASIC_AUTH} http://127.0.0.1:9200${path}
+curl -XGET -s -k --fail ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-http}://127.0.0.1:9200${path}
 }
 
 if [ -f "${START_FILE}" ]; then
