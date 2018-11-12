@@ -14,6 +14,7 @@ const (
 	varNodeMaster                             = "node.master"
 	varNodeData                               = "node.data"
 	varNodeIngest                             = "node.ingest"
+	varNodeML                                 = "node.ml"
 	varXPackSecurityEnabled                   = "xpack.security.enabled"
 	varXPackLicenseSelfGeneratedType          = "xpack.license.self_generated.type"
 	varXPackSecurityAuthcReservedRealmEnabled = "xpack.security.authc.reserved_realm.enabled"
@@ -31,6 +32,7 @@ var comparableEnvVars = []string{
 	varNodeMaster,
 	varNodeData,
 	varNodeIngest,
+	varNodeML,
 	varXPackSecurityEnabled,
 	varXPackLicenseSelfGeneratedType,
 	varXPackSecurityAuthcReservedRealmEnabled,
@@ -68,6 +70,7 @@ func NewEnvironmentVars(p NewPodSpecParams, dataVolume EmptyDirVolume, probeUser
 		{Name: varNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
 		{Name: varNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
 		{Name: varNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},
+		{Name: varNodeML, Value: fmt.Sprintf("%t", p.NodeTypes.ML)},
 
 		{Name: varXPackSecurityEnabled, Value: "true"},
 		{Name: varXPackLicenseSelfGeneratedType, Value: "trial"},
