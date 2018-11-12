@@ -175,11 +175,12 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
 	}
 
-	initContainer, err := initcontainer.NewInitContainer(imageName, p.SetVMMaxMapCount, LinkedFiles)
+	// Setup init containers
+	initContainers, err := initcontainer.NewInitContainers(imageName, LinkedFiles, p.SetVMMaxMapCount)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}
-	podSpec.InitContainers = append(podSpec.InitContainers, initContainer)
+	podSpec.InitContainers = initContainers
 
 	return podSpec, nil
 }
