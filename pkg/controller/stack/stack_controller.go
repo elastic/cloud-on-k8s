@@ -3,6 +3,7 @@ package stack
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"sort"
 	"strconv"
 	"sync/atomic"
@@ -377,8 +378,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 		}
 		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 	}
-	state.UpdateElasticsearchState(currentPods.Items, esClient)
-	return state, nil
+	return state, state.UpdateElasticsearchState(currentPods.Items, esClient)
 }
 
 func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState, user esclient.User) (state.ReconcileState, error) {
@@ -407,6 +407,13 @@ func (r *ReconcileStack) reconcileKibanaDeployment(state state.ReconcileState, u
 }
 
 func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Result, error) {
+	current, err := r.GetStack(state.Request.NamespacedName)
+	if err != nil {
+		return state.Result, err
+	}
+	if reflect.DeepEqual(current.Status, state.Stack.Status) {
+		return state.Result, nil
+	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(context.Background(), state.Stack)
 }
