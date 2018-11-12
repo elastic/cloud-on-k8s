@@ -44,11 +44,11 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 		},
 	}
 
-	cert, err := createValidatedCertificateTemplate(stack, pod, []v1.Service{svc}, &csr)
+	validatedCert, err := createValidatedCertificateTemplate(stack, pod, []v1.Service{svc}, &csr)
 	require.NoError(t, err)
 
 	// roundtrip the certificate
-	certRT, err := roundTripSerialize(cert)
+	certRT, err := roundTripSerialize(validatedCert)
 	require.NoError(t, err)
 	require.NotNil(t, certRT, "roundtripped certificate should not be nil")
 
@@ -81,8 +81,8 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
-func roundTripSerialize(cert *x509.Certificate) (*x509.Certificate, error) {
-	certData, err := testCa.CreateCertificateForValidatedCertificateTemplate(*cert)
+func roundTripSerialize(cert *ValidatedCertificateTemplate) (*x509.Certificate, error) {
+	certData, err := testCa.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
 	}

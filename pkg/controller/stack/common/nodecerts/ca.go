@@ -36,6 +36,10 @@ type Ca struct {
 	Cert *x509.Certificate
 }
 
+// ValidatedCertificateTemplate is a type alias used to convey that the certificate template has been validated and
+// should be considered trusted.
+type ValidatedCertificateTemplate x509.Certificate
+
 // NewSelfSignedCa creates a new Ca that uses a self-signed certificate.
 func NewSelfSignedCa(cn string) (*Ca, error) {
 	// TODO: constructor that takes the key?
@@ -87,10 +91,9 @@ func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 	}, nil
 }
 
-// CreateCertificateForValidatedCertificateTemplate signs and creates a new certificate
-// Important note: the certificate template is assumed to have passed validation.
-func (c *Ca) CreateCertificateForValidatedCertificateTemplate(
-	validatedCertificateTemplate x509.Certificate,
+// CreateCertificate signs and creates a new certificate for a validated template.
+func (c *Ca) CreateCertificate(
+	validatedCertificateTemplate ValidatedCertificateTemplate,
 ) ([]byte, error) {
 	// generate a serial number
 	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
@@ -100,9 +103,11 @@ func (c *Ca) CreateCertificateForValidatedCertificateTemplate(
 	validatedCertificateTemplate.SerialNumber = serial
 	validatedCertificateTemplate.Issuer = c.Cert.Issuer
 
+	certTemplate := x509.Certificate(validatedCertificateTemplate)
+
 	certData, err := x509.CreateCertificate(
 		cryptorand.Reader,
-		&validatedCertificateTemplate,
+		&certTemplate,
 		c.Cert,
 		validatedCertificateTemplate.PublicKey,
 		c.privateKey,
@@ -151,7 +156,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 		clusterCASecret.Data = make(map[string][]byte)
 	}
 
-	// if they secret does not contain our cert, update it
+	// if the secret does not contain our cert, update it
 	if caKey, ok := clusterCASecret.Data[SecretCAKey]; !ok || !bytes.Equal(caKey, expectedCaKeyBytes) {
 		clusterCASecret.Data[SecretCAKey] = expectedCaKeyBytes
 

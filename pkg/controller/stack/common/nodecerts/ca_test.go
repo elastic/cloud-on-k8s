@@ -13,7 +13,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-// testPemPrivateKey is a private key that intended for testing
+// testPemPrivateKey contains a private key intended for testing
 const testPemPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQCxoeCUW5KJxNPxMp+KmCxKLc1Zv9Ny+4CFqcUXVUYH69L3mQ7v
@@ -56,7 +56,7 @@ func init() {
 func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 	// create a certificate template for the csr
 	cn := "test-cn"
-	certificateTemplate := x509.Certificate{
+	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName: cn,
 		},
@@ -64,9 +64,9 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 
 		PublicKeyAlgorithm: x509.RSA,
 		PublicKey:          &testRSAPrivateKey.PublicKey,
-	}
+	})
 
-	bytes, err := testCa.CreateCertificateForValidatedCertificateTemplate(certificateTemplate)
+	bytes, err := testCa.CreateCertificate(certificateTemplate)
 	require.NoError(t, err)
 
 	cert, err := x509.ParseCertificate(bytes)

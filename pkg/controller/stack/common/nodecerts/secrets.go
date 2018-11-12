@@ -201,7 +201,7 @@ func ReconcileNodeCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		certData, err := ca.CreateCertificateForValidatedCertificateTemplate(*validatedCertificateTemplate)
+		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -226,7 +226,7 @@ func createValidatedCertificateTemplate(
 	pod corev1.Pod,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
-) (*x509.Certificate, error) {
+) (*ValidatedCertificateTemplate, error) {
 	podIp := net.ParseIP(pod.Status.PodIP)
 	if podIp == nil {
 		return nil, fmt.Errorf("pod has currently has no valid IP, found: [%s]", pod.Status.PodIP)
@@ -275,7 +275,7 @@ func createValidatedCertificateTemplate(
 	// TODO: csr signature is not checked, common name not verified
 	// TODO: add services dns entries / ip addresses to cert?
 
-	certificateTemplate := x509.Certificate{
+	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         commonName,
 			OrganizationalUnit: []string{s.Name},
@@ -295,7 +295,7 @@ func createValidatedCertificateTemplate(
 
 		KeyUsage:    x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-	}
+	})
 
 	return &certificateTemplate, nil
 }
