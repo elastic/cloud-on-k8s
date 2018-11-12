@@ -116,7 +116,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 
 	// TODO: quota support
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
-	probeSecret := NewSelectiveSecretVolumeWithMountPath(ElasticInternalUsersSecretName(p.ClusterName), "probe-user", probeUserSecretMountPath, []string{probeUser.Name})
+	probeSecret := NewSelectiveSecretVolumeWithMountPath(
+		ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		probeUserSecretMountPath, []string{probeUser.Name},
+	)
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraFilesRef.Name,
