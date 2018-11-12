@@ -93,12 +93,10 @@ func (params NewPodSpecParams) Hash() string {
 
 // CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
 func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]corev1.PodSpec, error) {
-	podSpecs := make([]corev1.PodSpec, s.Spec.Elasticsearch.NodeCount())
-	var err error
-	podSpecsIndex := 0
+	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
-		for i := int32(0); i < topology.NodeCount; i, podSpecsIndex = i+1, podSpecsIndex+1 {
-			podSpecs[podSpecsIndex], err = NewPodSpec(NewPodSpecParams{
+		for i := int32(0); i < topology.NodeCount; i++ {
+			podSpec, err := NewPodSpec(NewPodSpecParams{
 				Version:                        s.Spec.Version,
 				CustomImageName:                s.Spec.Elasticsearch.Image,
 				ClusterName:                    s.Name,
@@ -110,6 +108,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 			if err != nil {
 				return nil, err
 			}
+			podSpecs = append(podSpecs, podSpec)
 		}
 	}
 	return podSpecs, nil

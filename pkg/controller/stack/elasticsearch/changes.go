@@ -13,12 +13,10 @@ type Changes struct {
 	ToRemove []corev1.Pod
 }
 
-// PodByName can sort pods by name
-type PodByName []corev1.Pod
-
-func (p PodByName) Len() int           { return len(p) }
-func (p PodByName) Less(i, j int) bool { return p[i].Name < p[j].Name }
-func (p PodByName) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+// SortPodByName is a sort function for a list of pods
+func SortPodByName(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].Name < pods[j].Name }
+}
 
 // PodToAdd defines a pod to be added, along with
 // the reasons why it doesn't match any existing pod
@@ -73,8 +71,8 @@ func mutableCalculateChanges(expectedPodSpecs []corev1.PodSpec, actualPods []cor
 
 	// sort changes for idempotent processing
 	// TODO: smart sort  to process nodes in a particular order
-	sort.Sort(PodByName(changes.ToKeep))
-	sort.Sort(PodByName(changes.ToRemove))
+	sort.SliceStable(changes.ToKeep, SortPodByName(changes.ToKeep))
+	sort.SliceStable(changes.ToRemove, SortPodByName(changes.ToRemove))
 
 	return changes, nil
 }
