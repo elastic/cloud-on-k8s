@@ -13,10 +13,9 @@ var defaultInstalledPlugins = []string{
 
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
-	SetVMMaxMapCount bool              // Set vm.max_map_count=262144
-	Plugins          []string          // List of plugins to install
-	SharedVolumes    SharedVolumeArray // Directories to persist in shared volumes
-	LinkedFiles      LinkedFilesArray  // Files to link individually
+	Plugins       []string          // List of plugins to install
+	SharedVolumes SharedVolumeArray // Directories to persist in shared volumes
+	LinkedFiles   LinkedFilesArray  // Files to link individually
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -29,7 +28,7 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 }
 
 // scriptTemplate is the main script to be run
-// in the init container before ES starts
+// in the prepare-fs init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
 
@@ -50,16 +49,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	script_start=$(date +%s)
 
 	echo "Starting init script"
-
-	######################
-	#      OS Tweaks     #
-	######################
-
-	{{if .SetVMMaxMapCount}}
-		# Set vm.max_map_count to a larger value as recommended in https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html
-		echo "Setting vm.max_map_count"
-		sysctl -w vm.max_map_count=262144
-	{{end}}
 
 	######################
 	#       Plugins      #

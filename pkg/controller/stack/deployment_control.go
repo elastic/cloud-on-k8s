@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var (
@@ -65,9 +64,9 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 }
 
 // ReconcileDeployment upserts the given deployment for the specified stack.
-func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) (reconcile.Result, error) {
+func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) (appsv1.Deployment, error) {
 	if err := controllerutil.SetControllerReference(&instance, &deploy, r.scheme); err != nil {
-		return reconcile.Result{}, err
+		return deploy, err
 	}
 
 	// Check if the Deployment already exists
@@ -80,11 +79,11 @@ func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance 
 		)
 		err = r.Create(context.TODO(), &deploy)
 		if err != nil {
-			return reconcile.Result{}, err
+			return deploy, err
 		}
 	} else if err != nil {
 		log.Info(common.Concat("searched deployment ", deploy.Name, " found ", found.Name))
-		return reconcile.Result{}, err
+		return found, err
 	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
@@ -94,9 +93,9 @@ func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance 
 		)
 		err = r.Update(context.TODO(), &found)
 		if err != nil {
-			return reconcile.Result{}, err
+			return found, err
 		}
 	}
-	return reconcile.Result{}, nil
+	return found, nil
 
 }

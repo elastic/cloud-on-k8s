@@ -5,7 +5,7 @@
 # be specified.
 
 GCLOUD_PROJECT=${1:-elastic-cloud-dev}
-GKE_CLUSTER_NAME=${2:-${USER}-dev-cluster}
+GKE_CLUSTER_NAME=${2:-${USER//_}-dev-cluster}
 GKE_CLUSTER_REGION=${3:-europe-west3}
 GKE_ADMIN_USERNAME=${4:-admin}
 GKE_CLUSTER_VERSION=${5:-1.11.2-gke.15}
@@ -19,9 +19,6 @@ if gcloud beta container clusters --project "${GCLOUD_PROJECT}" describe --regio
     echo "-> GKE cluster is running."
     exit 0
 fi
-
-# Don't use the _stable_ API to be able to use beta features
-gcloud config set container/use_v1_api_client false
 
 # Create cluster
 echo "-> Creating GKE cluster..."

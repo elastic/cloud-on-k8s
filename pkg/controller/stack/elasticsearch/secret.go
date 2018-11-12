@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/initcontainer"
@@ -196,6 +197,10 @@ func NewExternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentia
 // NewElasticUsersCredentials creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
 func NewElasticUsersCredentials(s deploymentsv1alpha1.Stack, users []client.User) (*HashedCredentials, error) {
+	//sort to avoid unnecessary diffs and API resource updates
+	sort.SliceStable(users, func(i, j int) bool {
+		return users[i].Name < users[j].Name
+	})
 	hashedCreds, roles := strings.Builder{}, strings.Builder{}
 	roles.WriteString("superuser:") //TODO all superusers -> role mappings
 	for i, user := range users {
