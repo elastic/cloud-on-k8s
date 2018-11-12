@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var probeUser = client.User{Name: "username", Password: "supersecure"}
@@ -61,7 +62,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser)
+			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser, types.NamespacedName{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
 		})
@@ -85,19 +86,19 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := CreateExpectedPodSpecs(stack, probeUser)
+	podSpec, err := CreateExpectedPodSpecs(stack, probeUser, types.NamespacedName{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 	esPod := podSpec[0]
 	assert.Equal(t, 1, len(esPod.Containers))
 	assert.Equal(t, 2, len(esPod.InitContainers))
-	assert.Equal(t, 5, len(esPod.Volumes))
+	assert.Equal(t, 6, len(esPod.Volumes))
 	esContainer := esPod.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, defaultContainerPorts, esContainer.Ports)
-	assert.Equal(t, 5, len(esContainer.VolumeMounts))
+	assert.Equal(t, 6, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

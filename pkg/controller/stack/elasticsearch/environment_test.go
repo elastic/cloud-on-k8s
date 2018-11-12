@@ -11,9 +11,10 @@ import (
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
-		p          NewPodSpecParams
-		dataVolume EmptyDirVolume
-		probeUser  client.User
+		p                      NewPodSpecParams
+		dataVolume             EmptyDirVolume
+		probeUser              client.User
+		extraFilesSecretVolume SecretVolume
 	}
 	tests := []struct {
 		name          string
@@ -42,7 +43,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 					dataSubDir: "datasubdir",
 					logsSubDir: "logssubdir",
 				},
-				probeUser: client.User{Name: "name", Password: "zupersecure"},
+				probeUser:              client.User{Name: "name", Password: "zupersecure"},
+				extraFilesSecretVolume: SecretVolume{},
 			},
 			wantEnvSubset: []corev1.EnvVar{
 				corev1.EnvVar{Name: "discovery.zen.ping.unicast.hosts", Value: "discovery-service"},
@@ -65,7 +67,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewEnvironmentVars(tt.args.p, tt.args.dataVolume, tt.args.probeUser)
+			got := NewEnvironmentVars(tt.args.p, tt.args.dataVolume, tt.args.probeUser, tt.args.extraFilesSecretVolume)
 			for _, v := range tt.wantEnvSubset {
 				assert.Contains(t, got, v)
 			}
