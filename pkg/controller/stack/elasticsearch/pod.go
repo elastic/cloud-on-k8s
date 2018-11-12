@@ -1,6 +1,7 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -12,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -19,6 +22,8 @@ const (
 	HTTPPort = 9200
 	// TransportPort used by Elasticsearch for the Transport protocol
 	TransportPort = 9300
+	// TransportClientPort used by Elasticsearch for the Transport protocol for client-only connections
+	TransportClientPort = 9400
 
 	// defaultImageRepositoryAndName is the default image name without a tag
 	defaultImageRepositoryAndName string = "docker.elastic.co/elasticsearch/elasticsearch"
@@ -32,12 +37,15 @@ var (
 	defaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: TransportPort, Protocol: corev1.ProtocolTCP},
+		{Name: "client", ContainerPort: TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
+
+	log = logf.Log.WithName("pod")
 )
 
 // NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, error) {
-	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser)
+func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.Pod, error) {
+	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser, extraFilesRef)
 	if err != nil {
 		return corev1.Pod{}, err
 	}
@@ -49,6 +57,12 @@ func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User) (corev1.Pod, err
 		},
 		Spec: podSpec,
 	}
+
+	if s.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		log.Info("Node certificates feature flag enabled", "pod", pod.Name)
+		pod = configureNodeCertificates(pod)
+	}
+
 	return pod, nil
 }
 
@@ -90,7 +104,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, error) {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -102,6 +116,11 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 	// TODO: quota support
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
 	dataVolume := NewDefaultEmptyDirVolume()
+	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
+		extraFilesRef.Name,
+		"extrafiles",
+		"/usr/share/elasticsearch/config/extrafiles",
+	)
 
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
@@ -114,9 +133,16 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 				{Name: "cluster.name", Value: p.ClusterName},
 				{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
 				{Name: "network.host", Value: "0.0.0.0"},
+				{Name: "network.publish_host", Value: "", ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+				}},
+
 				{Name: "path.data", Value: dataVolume.DataPath()},
 				{Name: "path.logs", Value: dataVolume.LogsPath()},
-
+				{
+					Name:  "xpack.security.transport.ssl.trust_restrictions.path",
+					Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
+				},
 				// TODO: the JVM options are hardcoded, but should be configurable
 				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
 
@@ -137,6 +163,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 						Key: probeUser.Name,
 					},
 				}},
+				{Name: "transport.profiles.client.port", Value: strconv.Itoa(TransportClientPort)},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
@@ -169,10 +196,20 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 					},
 				},
 			},
-			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount(), usersSecret.VolumeMount()),
+			VolumeMounts: append(
+				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				dataVolume.VolumeMount(),
+				usersSecret.VolumeMount(),
+				extraFilesSecretVolume.VolumeMount(),
+			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
+		Volumes: append(
+			initcontainer.SharedVolumes.Volumes(),
+			dataVolume.Volume(),
+			usersSecret.Volume(),
+			extraFilesSecretVolume.Volume(),
+		),
 	}
 
 	// Setup init containers

@@ -14,7 +14,7 @@ if [ -n "${PROBE_USERNAME}" ] && [ -n "${PROBE_PASSWORD}" ]; then
 else
   BASIC_AUTH=''
 fi
-curl -XGET -s -k --fail ${BASIC_AUTH} http://127.0.0.1:9200${path}
+curl -XGET -s -k --fail ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-http}://127.0.0.1:9200${path}
 }
 
 if [ -f "${START_FILE}" ]; then
