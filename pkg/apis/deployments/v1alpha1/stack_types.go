@@ -108,6 +108,21 @@ const (
 	ElasticsearchGreenHealth  ElasticsearchHealth = "green"
 )
 
+// Less for ElasticsearchHealth means green > yellow > red
+func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
+
+	switch {
+	case h == other:
+		return false
+	case h == ElasticsearchGreenHealth:
+		return false
+	case h == ElasticsearchYellowHealth && other == ElasticsearchRedHealth:
+		return false
+	default:
+		return true
+	}
+}
+
 // ReconcilerStatus represents status information about desired/available nodes.
 type ReconcilerStatus struct {
 	AvailableNodes int
@@ -132,6 +147,11 @@ type ElasticsearchStatus struct {
 	Phase  ElasticsearchOrchestrationPhase
 }
 
+// IsDegraded returns true if the current status is worse than the previous.
+func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
+	return es.Health.Less(prev.Health)
+}
+
 // KibanaHealth expresses the status of the Kibana instances.
 type KibanaHealth string
 
@@ -146,6 +166,11 @@ const (
 type KibanaStatus struct {
 	ReconcilerStatus
 	Health KibanaHealth
+}
+
+// IsDegraded returns true if the current status is worse than the previous.
+func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
+	return prev.Health == KibanaGreen && ks.Health != KibanaGreen
 }
 
 // StackStatus defines the observed state of Stack

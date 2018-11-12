@@ -9,6 +9,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/events"
+	"k8s.io/client-go/tools/record"
+
 	"github.com/elastic/stack-operators/pkg/controller/stack/state"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -54,7 +57,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileStack{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileStack{Client: mgr.GetClient(), scheme: mgr.GetScheme(), recorder: mgr.GetRecorder("stack-controller")}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -104,7 +107,8 @@ var _ reconcile.Reconciler = &ReconcileStack{}
 // ReconcileStack reconciles a Stack object
 type ReconcileStack struct {
 	client.Client
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
+	recorder record.EventRecorder
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -293,7 +297,9 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 		if err := r.Create(context.TODO(), &pod); err != nil {
 			return reconcile.Result{}, err
 		}
-		log.Info(common.Concat("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+		msg := common.Concat("Created pod ", pod.Name)
+		r.recorder.Event(&stackInstance, corev1.EventTypeNormal, events.EventReasonCreated, msg)
+		log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 	}
 
 	return reconcile.Result{}, err
@@ -369,6 +375,7 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 			return state, err
 		}
 		if isMigratingData {
+			r.recorder.Event(&stackInstance, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 			return state, state.UpdateElasticsearchMigrating(defaultRequeue, currentPods.Items, esClient)
 		}
@@ -376,7 +383,9 @@ func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esU
 		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 			return state, err
 		}
-		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+		msg := common.Concat("Deleted Pod ", pod.Name)
+		r.recorder.Event(&stackInstance, corev1.EventTypeNormal, events.EventReasonDeleted, msg)
+		log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 	}
 	return state, state.UpdateElasticsearchState(currentPods.Items, esClient)
 }
@@ -413,6 +422,12 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 	}
 	if reflect.DeepEqual(current.Status, state.Stack.Status) {
 		return state.Result, nil
+	}
+	if state.Stack.Status.Elasticsearch.IsDegraded(current.Status.Elasticsearch) {
+		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch health degraded")
+	}
+	if state.Stack.Status.Kibana.IsDegraded(current.Status.Kibana) {
+		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(context.Background(), state.Stack)
