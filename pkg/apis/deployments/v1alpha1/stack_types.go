@@ -24,8 +24,13 @@ type StackSpec struct {
 	// Elasticsearch specific configuration for the stack.
 	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
 
-	//Kibana spec for this stack
+	// Kibana spec for this stack
 	Kibana KibanaSpec `json:"kibana,omitempty"`
+
+	// LoadBalance enable the creation of an Ingress load balancer that is up
+	// to the Cloud provider or Kubernetes running Ingress Controllers what to
+	// do with it.
+	LoadBalance bool `json:"loadBalance,omitempty"`
 }
 
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.

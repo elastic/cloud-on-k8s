@@ -405,7 +405,11 @@
   branch = "master"
   digest = "1:482ae811efe307bd9d00f66de80385fba51325054f8ff573e894185e72441f08"
   name = "golang.org/x/crypto"
-  packages = ["ssh/terminal"]
+  packages = [
+    "bcrypt",
+    "blowfish",
+    "ssh/terminal",
+  ]
   pruneopts = "T"
   revision = "4d3f4d9ffa16a13f451c3b2999e9c49e9750bf06"
 
@@ -855,6 +859,7 @@
     "github.com/mitchellh/hashstructure",
     "github.com/pkg/errors",
     "github.com/stretchr/testify/assert",
+    "golang.org/x/crypto/bcrypt",
     "golang.org/x/net/context",
     "k8s.io/api/apps/v1",
     "k8s.io/api/certificates/v1beta1",

@@ -84,6 +84,8 @@ spec:
                       type: object
                   type: object
               type: object
+            loadBalance:
+              type: boolean
             version:
               type: string
           type: object

@@ -12,17 +12,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/stack-operators/pkg/controller/stack/events"
-	"k8s.io/client-go/tools/record"
-
-	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
-	"github.com/elastic/stack-operators/pkg/controller/stack/state"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+	"github.com/elastic/stack-operators/pkg/controller/stack/events"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
+	"github.com/elastic/stack-operators/pkg/controller/stack/state"
 	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -153,7 +151,8 @@ type ReconcileStack struct {
 // a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=,resources=pods;endpoints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
 	atomic.AddInt64(&r.iteration, 1)
@@ -223,7 +222,7 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
 func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) (*esclient.Client, error) {
-	esURL, err := elasticsearch.ExternalServiceURL(stack.Name)
+	esURL, err := elasticsearch.ExternalServiceURL(*stack)
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		esURL = strings.Replace(esURL, "http:", "https:", 1)
@@ -479,7 +478,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
-		ElasticsearchUrl: elasticsearch.PublicServiceURL(stack.Name),
+		ElasticsearchUrl: elasticsearch.PublicServiceURL(*stack),
 		User:             user,
 	}
 

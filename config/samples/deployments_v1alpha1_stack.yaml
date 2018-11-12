@@ -5,6 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: stack-sample
 spec:
+  loadBalance: true
   # Add fields here
   version: "6.4.2"
   featureFlags:

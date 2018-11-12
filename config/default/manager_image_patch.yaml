@@ -8,5 +8,6 @@ spec:
     spec:
       containers:
       # Change the value of image field below to your controller image URL
-      - image: IMAGE_URL
+      - image: eu.gcr.io/elastic-cloud-dev/marc:4ee4c6855e8af35ff74147409681685082d82789
         name: manager
+        imagePullPolicy: Always

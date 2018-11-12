@@ -12,6 +12,11 @@ func ServiceName(stackName string) string {
 }
 
 func NewService(s deploymentsv1alpha1.Stack) *corev1.Service {
+	var serviceType = corev1.ServiceTypeNodePort
+	if s.Spec.LoadBalance {
+		serviceType = corev1.ServiceTypeLoadBalancer
+	}
+
 	stackID := common.StackID(s)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -30,7 +35,7 @@ func NewService(s deploymentsv1alpha1.Stack) *corev1.Service {
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
-			Type:                  corev1.ServiceTypeNodePort,
+			Type:                  serviceType,
 			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}
