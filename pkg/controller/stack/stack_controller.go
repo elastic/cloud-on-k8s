@@ -392,8 +392,6 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 			); err != nil {
 				return reconcile.Result{}, err
 			}
-		} else {
-			log.Info(fmt.Sprintf("Not ensuring that node certificate secret exists for pod %s", pod.Name))
 		}
 
 		if err := r.Create(context.TODO(), &pod); err != nil {
@@ -559,7 +557,6 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
 
-	log.Info("Discovering node certificate secrets")
 	nodeCertificateSecrets, err := r.findNodeCertificateSecrets(stack)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -581,19 +578,21 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 
 		var pod corev1.Pod
 		if err := r.Get(context.TODO(), types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
-			if apierrors.IsNotFound(err) {
-				if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
-					log.Info("Unable to find pod associated with secret, deleting", "secret", secret.Name)
-					if err := r.Delete(context.TODO(), &secret); err != nil {
-						return reconcile.Result{}, err
-					}
-				} else {
-					log.Info("Unable to find pod associated with secret, but secret is too young to be deleted", "secret", secret.Name)
-				}
-				continue
-			} else {
-				return reconcile.Result{}, nil
+			if !apierrors.IsNotFound(err) {
+				return reconcile.Result{}, err
 			}
+
+			// give some leniency in pods showing up only after a while.
+			if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
+				// if the secret has existed for too long without an associated pod, it's time to GC it
+				log.Info("Unable to find pod associated with secret, GCing", "secret", secret.Name)
+				if err := r.Delete(context.TODO(), &secret); err != nil {
+					return reconcile.Result{}, err
+				}
+			} else {
+				log.Info("Unable to find pod associated with secret, but secret is too young for GC", "secret", secret.Name)
+			}
+			continue
 		}
 
 		if pod.Status.PodIP == "" {
@@ -603,22 +602,24 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 
 		log.Info("Secret has an associated pod that exists, will reconcile the secret", "secret", secret.Name)
 
-		if certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]; !ok {
+		certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]
+		if !ok {
 			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
-		} else {
-			switch certificateType {
-			case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
-				if res, err := nodecerts.ReconcileNodeCertificateSecret(
-					stack, secret, pod, esAllServices, r.esCa, r,
-				); err != nil {
-					return res, err
-				}
-			default:
-				log.Error(
-					errors.New("unsupported certificate type"),
-					fmt.Sprintf("Unsupported cerificate type: %s", certificateType),
-				)
+			continue
+		}
+
+		switch certificateType {
+		case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
+			if res, err := nodecerts.ReconcileNodeCertificateSecret(
+				stack, secret, pod, esAllServices, r.esCa, r,
+			); err != nil {
+				return res, err
 			}
+		default:
+			log.Error(
+				errors.New("unsupported certificate type"),
+				fmt.Sprintf("Unsupported cerificate type: %s found in %s, ignoring", certificateType, secret.Name),
+			)
 		}
 	}
 
