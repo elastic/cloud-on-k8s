@@ -4,8 +4,8 @@ package v1alpha1
 type FeatureFlags map[FeatureFlag]FeatureFlagState
 
 // Get returns a FeatureFlag from the map, or its default state if it's not set.
-func (f *FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
-	if state, ok := (*f)[flag]; ok {
+func (f FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
+	if state, ok := f[flag]; ok {
 		return state
 	}
 
