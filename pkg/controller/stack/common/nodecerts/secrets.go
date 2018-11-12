@@ -69,7 +69,7 @@ func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 }
 
 // EnsureNodeCertificateSecretExists ensures that the corev1.Secret that at a later point in time will contain the node
-// certificates is present exists.
+// certificates exists.
 func EnsureNodeCertificateSecretExists(
 	c client.Client,
 	scheme *runtime.Scheme,
@@ -142,41 +142,9 @@ func ReconcileNodeCertificateSecret(
 		secret.Data[SecretPrivateKeyKey] = pemKeyBytes
 	}
 
-	// could simplify this block to just checking if the ca.pem file contents would be the same, but it may be more
-	// likely that we'd like to embellish this logic further?
-	shouldIssueNewCertificate := false
-	if certData, ok := secret.Data[SecretCertKey]; !ok {
-		shouldIssueNewCertificate = true
-	} else if ok {
-		block, _ := pem.Decode(certData)
+	issueNewCertificate := shouldIssueNewCertificate(secret, ca, pod)
 
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		pool := x509.NewCertPool()
-		pool.AddCert(ca.Cert)
-
-		verifyOpts := x509.VerifyOptions{
-			DNSName:       pod.Name,
-			Roots:         pool,
-			Intermediates: pool,
-		}
-		if _, err := cert.Verify(verifyOpts); err != nil {
-			log.Info(
-				fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
-				"subject", cert.Subject,
-				"issuer", cert.Issuer,
-				"current_ca_subject", ca.Cert.Subject,
-			)
-			shouldIssueNewCertificate = true
-		} else {
-			// TODO: verify expected SANs in certificate, otherwise we wont actually reconcile such changes
-		}
-	}
-
-	if shouldIssueNewCertificate {
+	if issueNewCertificate {
 		log.Info("Issuing new certificate", "secret", secret.Name)
 
 		block, _ := pem.Decode(secret.Data[SecretPrivateKeyKey])
@@ -220,6 +188,50 @@ func ReconcileNodeCertificateSecret(
 	return reconcile.Result{}, nil
 }
 
+// shouldIssueNewCertificate returns true if we should issue a new certificate.
+func shouldIssueNewCertificate(secret corev1.Secret, ca *Ca, pod corev1.Pod) bool {
+	// could simplify this block to just checking if the ca.pem file contents would be the same, but it may be more
+	// likely that we'd like to embellish this logic further?
+
+	if certData, ok := secret.Data[SecretCertKey]; !ok {
+		// certificate missing
+		return true
+	} else {
+		block, _ := pem.Decode(certData)
+		if block == nil {
+			log.Info("Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+			return true
+		} else {
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				log.Info("Invalid certificate found as first block, issuing new certificate", "secret", secret.Name)
+				return true
+			}
+
+			pool := x509.NewCertPool()
+			pool.AddCert(ca.Cert)
+
+			verifyOpts := x509.VerifyOptions{
+				DNSName:       pod.Name,
+				Roots:         pool,
+				Intermediates: pool,
+			}
+			if _, err := cert.Verify(verifyOpts); err != nil {
+				log.Info(
+					fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
+					"subject", cert.Subject,
+					"issuer", cert.Issuer,
+					"current_ca_subject", ca.Cert.Subject,
+				)
+				return true
+			} else {
+				// TODO: verify expected SANs in certificate, otherwise we wont actually reconcile such changes
+			}
+		}
+	}
+	return false
+}
+
 // createValidatedCertificateTemplate validates a CSR and creates a certificate template
 func createValidatedCertificateTemplate(
 	s deploymentsv1alpha1.Stack,
@@ -229,10 +241,10 @@ func createValidatedCertificateTemplate(
 ) (*ValidatedCertificateTemplate, error) {
 	podIp := net.ParseIP(pod.Status.PodIP)
 	if podIp == nil {
-		return nil, fmt.Errorf("pod has currently has no valid IP, found: [%s]", pod.Status.PodIP)
+		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
-	commonName := fmt.Sprintf("%s.node.%s.es.%s.namespace.local", pod.Name, s.Name, s.Namespace)
+	commonName := buildCertificateCommonName(pod, s)
 	commonNameUTF8OtherName := &certutil.UTF8StringValuedOtherName{
 		OID:   certutil.CommonNameObjectIdentifier,
 		Value: commonName,
@@ -298,6 +310,12 @@ func createValidatedCertificateTemplate(
 	})
 
 	return &certificateTemplate, nil
+}
+
+// buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
+// this needs to be kept in sync with the usage of trust_restrictions (see elasticsearch.TrustConfig)
+func buildCertificateCommonName(pod corev1.Pod, s deploymentsv1alpha1.Stack) string {
+	return fmt.Sprintf("%s.node.%s.%s.es.cluster.local", pod.Name, s.Name, s.Namespace)
 }
 
 // getServiceFullyQualifiedHostname returns the fully qualified DNS name for a service

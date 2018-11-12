@@ -15,10 +15,6 @@ import (
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
 
-	"k8s.io/apimachinery/pkg/types"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
@@ -28,10 +24,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -292,8 +290,10 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 		// TODO: handle reconciling Data section if it already exists
 		trustRootCfg := elasticsearch.TrustRootConfig{
 			Trust: elasticsearch.TrustConfig{
+				// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
+				// this needs to be kept in sync with nodecerts.buildCertificateCommonName
 				SubjectName: []string{fmt.Sprintf(
-					"*.node.%s.es.%s.namespace.local", stackInstance.Name, stackInstance.Namespace,
+					"*.node.%s.%s.es.cluster.local", stackInstance.Name, stackInstance.Namespace,
 				)},
 			},
 		}

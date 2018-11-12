@@ -32,6 +32,7 @@ func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 					Port:     TransportPort,
 				},
 			},
+			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
 			ClusterIP:       "None",
 			SessionAffinity: corev1.ServiceAffinityNone,
 			Type:            corev1.ServiceTypeClusterIP,

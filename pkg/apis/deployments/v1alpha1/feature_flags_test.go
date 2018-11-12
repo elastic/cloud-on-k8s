@@ -1,8 +1,9 @@
 package v1alpha1
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // testUnknownFeatureFlag is a feature flag that is unknown to the FeatureFlags.Get method
@@ -17,7 +18,7 @@ func TestFeatureFlags(t *testing.T) {
 
 	t.Run("when non-empty", func(t *testing.T) {
 		type test struct {
-			key FeatureFlag
+			key      FeatureFlag
 			expected FeatureFlagState
 		}
 		tests := []struct {
@@ -32,7 +33,7 @@ func TestFeatureFlags(t *testing.T) {
 					{key: FeatureFlagNodeCertificates, expected: FeatureFlagState{Enabled: true}},
 					{key: testUnknownFeatureFlag, expected: FeatureFlagNodeCertificatesDefaultState},
 				},
-			},{
+			}, {
 				flags: FeatureFlags(map[FeatureFlag]FeatureFlagState{
 					FeatureFlagNodeCertificates: {Enabled: false},
 				}),
