@@ -74,43 +74,56 @@ func TestNewElasticUsersSecret(t *testing.T) {
 
 }
 
+func newTestCredentials(t *testing.T, users []client.User) UserCredentials {
+	creds, err := NewElasticUsersCredentials(mockStack, users)
+	assert.NoError(t, err)
+	return creds
+
+}
+
 func TestNeedsUpdate(t *testing.T) {
 
-	elasticUsers1, err := NewElasticUsersCredentials(mockStack, testUser)
-	assert.NoError(t, err)
-	elasticUsers2, err := NewElasticUsersCredentials(mockStack, testUser) //different hash but same password
-	assert.NoError(t, err)
-	elasticUsers3, err := NewElasticUsersCredentials(mockStack, []client.User{client.User{Name: "foo", Password: "changed!"}})
-	assert.NoError(t, err)
+	otherUser := client.User{Name: "baz", Password: "secret"}
 
 	tests := []struct {
+		desc        string
 		subject1    UserCredentials
 		subject2    UserCredentials
 		needsUpdate bool
 	}{
 		{
+			desc:        "internal clear text creds don't need update even if they contain different passwords (secret is source of truth)",
 			subject1:    NewInternalUserCredentials(mockStack),
 			subject2:    NewInternalUserCredentials(mockStack),
 			needsUpdate: false,
 		},
 		{
+			desc:        "external clear text creds don't need update even if they contain different passwords (secret is source of truth)",
 			subject1:    NewExternalUserCredentials(mockStack),
 			subject2:    NewExternalUserCredentials(mockStack),
 			needsUpdate: false,
 		},
 		{
-			subject1:    elasticUsers1,
-			subject2:    elasticUsers2,
+			desc:        "hashed creds: different hash but same password does not warrant an update of the secret",
+			subject1:    newTestCredentials(t, testUser),
+			subject2:    newTestCredentials(t, testUser),
 			needsUpdate: false,
 		},
 		{
-			subject1:    elasticUsers1,
-			subject2:    elasticUsers3,
+			desc:        "hashed creds: changed password warrants an update of the secret",
+			subject1:    newTestCredentials(t, testUser),
+			subject2:    newTestCredentials(t, []client.User{client.User{Name: "foo", Password: "changed!"}}),
 			needsUpdate: true,
+		},
+		{
+			desc:        "hashed creds: order of user credentials should not matter",
+			subject1:    newTestCredentials(t, []client.User{testUser[0], otherUser}),
+			subject2:    newTestCredentials(t, []client.User{otherUser, testUser[0]}),
+			needsUpdate: false,
 		},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.needsUpdate, tt.subject1.NeedsUpdate(tt.subject2.Secret()))
+		assert.Equal(t, tt.needsUpdate, tt.subject1.NeedsUpdate(tt.subject2.Secret()), tt.desc)
 	}
 }
