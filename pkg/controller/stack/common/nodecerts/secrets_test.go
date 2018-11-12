@@ -67,7 +67,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	require.NoError(t, err)
 
 	// we expect this name to be used for both the common name as well as the es othername
-	cn := "test-pod-name.node.test-stack-name.es.test-namespace.namespace.local"
+	cn := "test-pod-name.node.test-stack-name.test-namespace.es.cluster.local"
 
 	otherName, err := (&certutil.UTF8StringValuedOtherName{
 		OID:   certutil.CommonNameObjectIdentifier,
