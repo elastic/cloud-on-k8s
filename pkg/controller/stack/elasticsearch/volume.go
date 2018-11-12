@@ -8,11 +8,12 @@ import (
 
 // Default values for the volume name and paths
 const (
-	defaultVolumeName      = "volume"
-	defaultMountPath       = "/volume"
-	defaultSecretMountPath = "/secrets"
-	defaultDataSubDir      = "data"
-	defaultLogsSubDir      = "logs"
+	defaultVolumeName        = "volume"
+	defaultMountPath         = "/volume"
+	defaultSecretMountPath   = "/secrets"
+	probeUserSecretMountPath = "/probe-user"
+	defaultDataSubDir        = "data"
+	defaultLogsSubDir        = "logs"
 )
 
 // EmptyDirVolume used to store ES data on the node main disk
@@ -67,13 +68,14 @@ type SecretVolume struct {
 	name       string
 	mountPath  string
 	secretName string
+	items      []string
 }
 
 // NewSecretVolume creates a new SecretVolume with default mount path.
-func NewSecretVolume(secretName string, name string) SecretVolume {
+func NewSecretVolume(secretName string, mountPath string) SecretVolume {
 	return SecretVolume{
-		name:       name,
-		mountPath:  defaultSecretMountPath,
+		name:       secretName,
+		mountPath:  mountPath,
 		secretName: secretName,
 	}
 }
@@ -89,11 +91,19 @@ func (sv SecretVolume) VolumeMount() corev1.VolumeMount {
 
 // Volume returns the k8s volume.
 func (sv SecretVolume) Volume() corev1.Volume {
+	var projectedSecrets []corev1.KeyToPath
+	for _, s := range sv.items {
+		projectedSecrets = append(projectedSecrets, corev1.KeyToPath{
+			Key:  s,
+			Path: s,
+		})
+	}
 	return corev1.Volume{
 		Name: sv.name,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: sv.secretName,
+				Items:      projectedSecrets,
 			},
 		},
 	}

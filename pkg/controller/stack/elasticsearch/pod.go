@@ -100,7 +100,9 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 	terminationGracePeriodSeconds := defaultTerminationGracePeriodSeconds
 
 	// TODO: quota support
-	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
+	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), defaultSecretMountPath)
+	probeSecret := NewSecretVolume(ElasticInternalUsersSecretName(p.ClusterName), probeUserSecretMountPath)
+	probeSecret.items = []string{probeUser.Name} // don't expose all internal users to the pod in clear text
 	dataVolume := NewDefaultEmptyDirVolume()
 
 	// TODO: Security Context
@@ -129,14 +131,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 				{Name: "xpack.license.self_generated.type", Value: "trial"},
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: probeUser.Name},
-				{Name: "PROBE_PASSWORD", ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: ElasticInternalUsersSecretName(p.ClusterName),
-						},
-						Key: probeUser.Name,
-					},
-				}},
+				{Name: "PROBE_SECRET_MOUNT", Value: probeUserSecretMountPath},
 			},
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
@@ -169,10 +164,20 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 					},
 				},
 			},
-			VolumeMounts: append(initcontainer.SharedVolumes.EsContainerVolumeMounts(), dataVolume.VolumeMount(), usersSecret.VolumeMount()),
+			VolumeMounts: append(
+				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				dataVolume.VolumeMount(),
+				usersSecret.VolumeMount(),
+				probeSecret.VolumeMount(),
+			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
-		Volumes:                       append(initcontainer.SharedVolumes.Volumes(), dataVolume.Volume(), usersSecret.Volume()),
+		Volumes: append(
+			initcontainer.SharedVolumes.Volumes(),
+			dataVolume.Volume(),
+			usersSecret.Volume(),
+			probeSecret.Volume(),
+		),
 	}
 
 	// Setup init containers
@@ -181,6 +186,5 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User) (corev1.PodSpec, erro
 		return corev1.PodSpec{}, err
 	}
 	podSpec.InitContainers = initContainers
-
 	return podSpec, nil
 }

@@ -6,6 +6,7 @@ const defaultReadinessProbeScript string = `
 # If the node is starting up wait for the cluster to be green
 # Once it has started only check that the node itself is responding
 START_FILE=/tmp/.es_start_file
+PROBE_PASSWORD=$(cat /$PROBE_SECRET_MOUNT/$PROBE_USERNAME)
 
 http () {
 local path="${1}"
