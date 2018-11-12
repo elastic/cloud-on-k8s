@@ -572,7 +572,6 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 	esAllServices := []corev1.Service{esDiscoveryService}
 
 	for _, secret := range nodeCertificateSecrets {
-		log.Info("Looking at secret", "secret", secret.Name)
 		// todo: error checking if label does not exist
 		podName := secret.Labels[nodecerts.LabelAssociatedPod]
 
@@ -600,8 +599,6 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 			continue
 		}
 
-		log.Info("Secret has an associated pod that exists, will reconcile the secret", "secret", secret.Name)
-
 		certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]
 		if !ok {
 			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
@@ -623,7 +620,6 @@ func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
 		}
 	}
 
-	log.Info("Node certificate secrets reconciled")
 	return reconcile.Result{}, nil
 }
 
