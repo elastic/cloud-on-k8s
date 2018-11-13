@@ -670,7 +670,7 @@ func (r *ReconcileStack) WithSnapshotCredentials(secret *corev1.Secret, repoConf
 	}
 
 	secretRef := repoConfig.Settings.Credentials
-	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Namespace}
+	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
 	if err := r.Get(context.TODO(), key, &userCreatedSecret); err != nil {
 		return result, err
 	}
