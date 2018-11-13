@@ -14,6 +14,8 @@ const (
 	probeUserSecretMountPath = "/probe-user"
 	defaultDataSubDir        = "data"
 	defaultLogsSubDir        = "logs"
+	// ExtraFilesSecretMountPath is where additional secret configfiles are mounted into ES pods.
+	ExtraFilesSecretMountPath = "/usr/share/elasticsearch/config/extrafiles"
 )
 
 var (

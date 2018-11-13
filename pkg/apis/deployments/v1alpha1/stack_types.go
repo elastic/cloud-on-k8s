@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -28,6 +29,25 @@ type StackSpec struct {
 	Kibana KibanaSpec `json:"kibana,omitempty"`
 }
 
+// SnapshotRepositoryType as in gcs, AWS s3, file etc.
+type SnapshotRepositoryType string
+
+const (
+	SnapshotRepositoryTypeGCS SnapshotRepositoryType = "gcs"
+)
+
+// SnapshotRepositorySettings are repository specific settings to create a snapshot repository.
+type SnapshotRepositorySettings struct {
+	BucketName  string
+	Credentials v1.SecretReference
+}
+
+// SnapshotRepository specifies that the user wants automatic snapshots to happen and where they should be stored.
+type SnapshotRepository struct {
+	Type     SnapshotRepositoryType
+	Settings SnapshotRepositorySettings
+}
+
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.
 type ElasticsearchSpec struct {
 	// Image represents the docker image that will be used.
@@ -40,6 +60,9 @@ type ElasticsearchSpec struct {
 
 	// Topologies represent a list of node topologies to be part of the cluster
 	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
+
+	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
+	SnapshotRepository SnapshotRepository
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

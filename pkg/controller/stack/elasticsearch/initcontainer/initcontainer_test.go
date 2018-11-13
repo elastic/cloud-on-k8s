@@ -1,6 +1,7 @@
 package initcontainer
 
 import (
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,7 @@ func TestNewInitContainers(t *testing.T) {
 		imageName        string
 		linkedFiles      LinkedFilesArray
 		SetVMMaxMapCount bool
+		keystoreSettings []keystore.Setting
 	}
 	tests := []struct {
 		name                       string
@@ -23,6 +25,7 @@ func TestNewInitContainers(t *testing.T) {
 				imageName:        "image",
 				linkedFiles:      LinkedFilesArray{},
 				SetVMMaxMapCount: true,
+
 			},
 			expectedNumberOfContainers: 2,
 		},
@@ -38,7 +41,7 @@ func TestNewInitContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers, err := NewInitContainers(tt.args.imageName, tt.args.linkedFiles, tt.args.SetVMMaxMapCount)
+			containers, err := NewInitContainers(tt.args.imageName, tt.args.linkedFiles, tt.args.keystoreSettings, tt.args.SetVMMaxMapCount)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
 		})
