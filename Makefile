@@ -18,7 +18,7 @@ GCLOUD_CLUSTER_NAME ?= $(subst _,,$(USER))-dev-cluster
 
 GKE_CLUSTER_REGION ?= europe-west3
 GKE_ADMIN_USERNAME ?= admin
-GKE_CLUSTER_VERSION = $(shell gcloud container get-server-config --region europe-west3 --format='value(validMasterVersions[0])' 2>/dev/null)
+GKE_CLUSTER_VERSION = $(shell gcloud container get-server-config --project=$(GCLOUD_PROJECT) --region $(GKE_CLUSTER_REGION) --format='value(validMasterVersions[0])' 2>/dev/null)
 GKE_MACHINE_TYPE ?= n1-highmem-4
 GKE_LOCAL_SSD_COUNT ?= 1
 GKE_NODE_COUNT_PER_ZONE ?= 1
