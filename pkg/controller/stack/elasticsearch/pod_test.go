@@ -92,13 +92,13 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPod := podSpec[0]
 	assert.Equal(t, 1, len(esPod.Containers))
 	assert.Equal(t, 2, len(esPod.InitContainers))
-	assert.Equal(t, 6, len(esPod.Volumes))
+	assert.Equal(t, 7, len(esPod.Volumes))
 	esContainer := esPod.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, defaultContainerPorts, esContainer.Ports)
-	assert.Equal(t, 6, len(esContainer.VolumeMounts))
+	assert.Equal(t, 7, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }
