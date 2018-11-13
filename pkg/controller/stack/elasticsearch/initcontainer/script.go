@@ -82,7 +82,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
     $KEYSTORE_BIN create --silent
 	{{range .KeyStoreSettings}}
 		echo "Installing key {{.}}"	
-		$KEYSTORE_BIN add {{.Key}} {{.ValueFilePath}}
+		$KEYSTORE_BIN add-file {{.Key}} {{.ValueFilePath}}
 	{{end}}
 
 	echo "Installed settings:"
