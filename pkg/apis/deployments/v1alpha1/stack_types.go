@@ -15,6 +15,9 @@ type StackSpec struct {
 	// Version represents the version of the stack
 	Version string `json:"version,omitempty"`
 
+	// FeatureFlags are stack-specific flags that enable or disable specific experimental features
+	FeatureFlags FeatureFlags `json:"featureFlags,omitempty"`
+
 	//TODO the new deployments API in EC(E) supports sequences of
 	//Kibanas and Elasticsearch clusters per stack deployment
 
