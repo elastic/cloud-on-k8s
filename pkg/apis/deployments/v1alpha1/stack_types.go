@@ -115,7 +115,6 @@ const (
 
 // Less for ElasticsearchHealth means green > yellow > red
 func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
-
 	switch {
 	case h == other:
 		return false
