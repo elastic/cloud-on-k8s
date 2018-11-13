@@ -25,3 +25,4 @@ spec:
       nodeCount: 3
   kibana:
     nodeCount: 1
+    expose: LoadBalancer

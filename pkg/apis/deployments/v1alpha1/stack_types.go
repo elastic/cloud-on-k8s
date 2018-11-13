@@ -24,7 +24,7 @@ type StackSpec struct {
 	// Elasticsearch specific configuration for the stack.
 	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
 
-	//Kibana spec for this stack
+	// Kibana spec for this stack
 	Kibana KibanaSpec `json:"kibana,omitempty"`
 }
 
@@ -37,6 +37,11 @@ type ElasticsearchSpec struct {
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
 	SetVMMaxMapCount bool `json:"setVmMaxMapCount,omitempty"`
+
+	// Expose determines which service type to use for this workload. The
+	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
+	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
+	Expose string `json:"expose,omitempty"`
 
 	// Topologies represent a list of node topologies to be part of the cluster
 	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
@@ -82,6 +87,11 @@ type KibanaSpec struct {
 
 	// NodeCount defines how many nodes the Kibana deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
+
+	// Expose determines which service type to use for this workload. The
+	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
+	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
+	Expose string `json:"expose,omitempty"`
 
 	// Resources to be allocated for this topology
 	Resources ResourcesSpec `json:"resources,omitempty"`

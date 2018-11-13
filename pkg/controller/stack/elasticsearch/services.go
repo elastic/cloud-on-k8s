@@ -9,6 +9,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	globalServiceSuffix = ".svc.cluster.local"
+)
+
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(stackName string) string {
@@ -50,15 +54,15 @@ func PublicServiceName(stackName string) string {
 }
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
-func PublicServiceURL(stackName string) string {
+func PublicServiceURL(stack deploymentsv1alpha1.Stack) string {
 	scheme := "http"
-	return common.Concat(scheme, "://", PublicServiceName(stackName), ":", strconv.Itoa(HTTPPort))
+	return common.Concat(scheme, "://", PublicServiceName(stack.Name), ".", stack.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
 func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
-	return &corev1.Service{
+	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      PublicServiceName(s.Name),
@@ -73,10 +77,11 @@ func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			// For now, expose the service as node port to ease development
-			// TODO: proper ingress forwarding
-			Type:                  corev1.ServiceTypeNodePort,
-			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
+			Type:            common.GetElasticsearchServiceType(s),
 		},
 	}
+	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
+		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
+	}
+	return &svc
 }

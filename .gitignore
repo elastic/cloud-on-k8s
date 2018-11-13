@@ -29,3 +29,4 @@ vendor/
 # ignore devenv file
 .devenv
 portfwd.log
+config/default/manager_image_patch.yaml
