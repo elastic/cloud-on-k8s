@@ -44,6 +44,8 @@ spec:
                             type: boolean
                           master:
                             type: boolean
+                          ml:
+                            type: boolean
                         type: object
                       resources:
                         properties:

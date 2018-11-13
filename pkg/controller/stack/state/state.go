@@ -22,7 +22,7 @@ type ReconcileState struct {
 // NewReconcileState creates a new reconcile state based on the given request and stack resource with the resource state
 // reset to empty.
 func NewReconcileState(request reconcile.Request, stack *v1alpha1.Stack) ReconcileState {
-	//reset status to reconstruct it during the reconcile cycle
+	// reset status to reconstruct it during the reconcile cycle
 	stack.Status = v1alpha1.StackStatus{}
 	return ReconcileState{Request: request, Stack: stack}
 }
@@ -53,19 +53,20 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 }
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
-func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *client.Client) error {
+func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *client.Client, retrieveHealth bool) error {
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth("unknown")
 	if s.Stack.Status.Elasticsearch.Phase == "" {
 		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperationalPhase
 	}
-	health, err := esClient.GetClusterHealth(context.TODO())
-	if err != nil {
-		return err
+	if retrieveHealth {
+		health, err := esClient.GetClusterHealth(context.TODO())
+		if err != nil {
+			return err
+		}
+		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(health.Status)
 	}
-	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(health.Status)
 	return nil
-
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
@@ -80,5 +81,5 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 func (s ReconcileState) UpdateElasticsearchMigrating(result reconcile.Result, pods []corev1.Pod, esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
-	return s.UpdateElasticsearchState(pods, esClient)
+	return s.UpdateElasticsearchState(pods, esClient, true)
 }

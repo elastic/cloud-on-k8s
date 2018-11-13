@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
-	"sort"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -171,11 +169,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	res, err := r.CreateElasticsearchPods(request, internalUsers.ControllerUser)
-	if err != nil {
-		return res, err
-	}
-	res, err = r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
+	res, err := r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
 	if err != nil {
 		return res, err
 	}
@@ -184,14 +178,18 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return res, err
 	}
 
-	//currently we don't need any state information from the functions above, so state collections starts here
+	// currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
+
+	state, err = r.reconcileElasticsearchPods(state, stack, internalUsers.ControllerUser)
+	if err != nil {
+		return state.Result, err
+	}
 
 	state, err = r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey)
 	if err != nil {
 		return state.Result, err
 	}
-
 	res, err = r.reconcileService(&stack, kibana.NewService(stack))
 	if err != nil {
 		return res, err
@@ -200,11 +198,6 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	res, err = r.ReconcileNodeCertificateSecrets(stack)
 	if err != nil {
 		return res, err
-	}
-
-	state, err = r.DeleteElasticsearchPods(state, internalUsers.ControllerUser)
-	if err != nil {
-		return state.Result, err
 	}
 	return r.updateStatus(state)
 }
@@ -270,23 +263,26 @@ func (r *ReconcileStack) GetPodList(name types.NamespacedName, labelSelectors la
 	return podList, nil
 }
 
-// CreateElasticsearchPods Performs the creation of any number of pods in order
-// to match the Stack definition.
-func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user esclient.User) (reconcile.Result, error) {
-	stackInstance, err := r.GetStack(request.NamespacedName)
+func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, stack deploymentsv1alpha1.Stack, controllerUser esclient.User) (state.ReconcileState, error) {
+	allPods, err := r.GetPodList(state.Request.NamespacedName, elasticsearch.TypeSelector, nil)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, err
 	}
 
-	currentPods, err := r.GetPodList(request.NamespacedName, elasticsearch.TypeSelector, nil)
-	if err != nil {
-		return reconcile.Result{}, err
+	currentPods := make([]corev1.Pod, 0, len(allPods.Items))
+	// filter out pods scheduled for deletion
+	for _, p := range allPods.Items {
+		if p.DeletionTimestamp != nil {
+			log.Info(fmt.Sprintf("Ignoring pod %s scheduled for deletion", p.Name))
+			continue
+		}
+		currentPods = append(currentPods, p)
 	}
 
 	// TODO: suffix and trim
 	elasticsearchExtraFilesSecretObjectKey := types.NamespacedName{
-		Namespace: stackInstance.Namespace,
-		Name:      fmt.Sprintf("%s-extrafiles", stackInstance.Name),
+		Namespace: stack.Namespace,
+		Name:      fmt.Sprintf("%s-extrafiles", stack.Name),
 	}
 	var elasticsearchExtraFilesSecret corev1.Secret
 	if err := r.Get(
@@ -294,7 +290,7 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 		elasticsearchExtraFilesSecretObjectKey,
 		&elasticsearchExtraFilesSecret,
 	); err != nil && !apierrors.IsNotFound(err) {
-		return reconcile.Result{}, err
+		return state, err
 	} else if apierrors.IsNotFound(err) {
 		// TODO: handle reconciling Data section if it already exists
 		trustRootCfg := elasticsearch.TrustRootConfig{
@@ -302,13 +298,13 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 				// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
 				// this needs to be kept in sync with nodecerts.buildCertificateCommonName
 				SubjectName: []string{fmt.Sprintf(
-					"*.node.%s.%s.es.cluster.local", stackInstance.Name, stackInstance.Namespace,
+					"*.node.%s.%s.es.cluster.local", stack.Name, stack.Namespace,
 				)},
 			},
 		}
 		trustRootCfgData, err := json.Marshal(&trustRootCfg)
 		if err != nil {
-			return reconcile.Result{}, err
+			return state, err
 		}
 
 		elasticsearchExtraFilesSecret = corev1.Secret{
@@ -320,180 +316,142 @@ func (r *ReconcileStack) CreateElasticsearchPods(request reconcile.Request, user
 				"trust.yml": trustRootCfgData,
 			},
 		}
-		controllerutil.SetControllerReference(&stackInstance, &elasticsearchExtraFilesSecret, r.scheme)
+		err = controllerutil.SetControllerReference(&stack, &elasticsearchExtraFilesSecret, r.scheme)
+		if err != nil {
+			return state, err
+		}
 
 		if err := r.Create(context.TODO(), &elasticsearchExtraFilesSecret); err != nil {
-			return reconcile.Result{}, err
+			return state, err
 		}
 	}
 
-	var podSpecParams = elasticsearch.BuildNewPodSpecParams(stackInstance)
-	var proposedPods []corev1.Pod
-
-	// Create any missing instances
-	for i := int32(len(currentPods.Items)); i < stackInstance.Spec.Elasticsearch.NodeCount(); i++ {
-		pod, err := elasticsearch.NewPod(stackInstance, user, elasticsearchExtraFilesSecretObjectKey)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := controllerutil.SetControllerReference(&stackInstance, &pod, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		proposedPods = append(proposedPods, pod)
-	}
-
-	// Any pods with different spec hashes need to be recreated.
-	for _, pod := range currentPods.Items {
-		h, ok := pod.Labels[elasticsearch.HashLabelName]
-		if !ok {
-			continue
-		}
-
-		// On equal hashes return, all is good!
-		if h == podSpecParams.Hash() || pod.Status.Phase != corev1.PodRunning {
-			continue
-		}
-
-		if tainted, ok := pod.Labels[elasticsearch.TaintedLabelName]; ok {
-			if t, _ := strconv.ParseBool(tainted); t {
-				continue
-			}
-		}
-
-		// Mark the pod as tainted.
-		pod.Labels[elasticsearch.TaintedLabelName] = "true"
-		if err := r.Update(context.TODO(), &pod); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		newPod, err := elasticsearch.NewPod(stackInstance, user, elasticsearchExtraFilesSecretObjectKey)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-		if err := controllerutil.SetControllerReference(&stackInstance, &newPod, r.scheme); err != nil {
-			return reconcile.Result{}, err
-		}
-
-		proposedPods = append(proposedPods, newPod)
-	}
-
-	// Trim the # of proposed pods to the node count, we can't have more nodes
-	// being created > NodeCount. This is required to not do work in vain when
-	// there's a decrease in the number of nodes in the topology and a hash
-	// change.
-	if int32(len(proposedPods)) > stackInstance.Spec.Elasticsearch.NodeCount() {
-		proposedPods = proposedPods[:stackInstance.Spec.Elasticsearch.NodeCount()]
-	}
-
-	for _, pod := range proposedPods {
-		if stackInstance.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
-			log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
-
-			// create the node certificates secret for this pod, which is our promise that we will sign a CSR
-			// originating from the pod after it has started and produced a CSR
-			if err := nodecerts.EnsureNodeCertificateSecretExists(
-				r,
-				r.scheme,
-				stackInstance,
-				pod,
-				nodecerts.LabelNodeCertificateTypeElasticsearchAll,
-			); err != nil {
-				return reconcile.Result{}, err
-			}
-		}
-
-		if err := r.Create(context.TODO(), &pod); err != nil {
-			return reconcile.Result{}, err
-		}
-		log.Info(common.Concat("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-	}
-
-	return reconcile.Result{}, err
-}
-
-// DeleteElasticsearchPods removes running pods to match the Stack definition.
-func (r *ReconcileStack) DeleteElasticsearchPods(state state.ReconcileState, esUser esclient.User) (state.ReconcileState, error) {
-	stackInstance, err := r.GetStack(state.Request.NamespacedName)
+	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, elasticsearchExtraFilesSecretObjectKey)
 	if err != nil {
 		return state, err
 	}
 
-	// Get the current list of instances
-	currentPods, err := r.GetPodList(state.Request.NamespacedName, elasticsearch.TypeSelector, nil)
+	certPool := x509.NewCertPool()
+	certPool.AddCert(r.esCa.Cert)
+	esClient, err := NewElasticsearchClient(&stack, controllerUser, certPool)
+	if err != nil {
+		return state, errors.Wrap(err, "Could not create ES client")
+	}
+
+	changes, err := elasticsearch.CalculateChanges(expectedPodSpecs, currentPods)
 	if err != nil {
 		return state, err
 	}
 
-	esReachable, err := r.IsPublicServiceReady(stackInstance)
+	esReachable, err := r.IsPublicServiceReady(stack)
 	if err != nil {
 		return state, err
 	}
+
+	if !changes.ShouldMigrate() {
+		// Current state matches expected state
+		if err := state.UpdateElasticsearchState(allPods.Items, esClient, esReachable); err != nil {
+			return state, err
+		}
+		return state, nil
+	}
+
+	log.Info("Going to apply the following topology changes",
+		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToRemove:", len(changes.ToRemove),
+		"iteration", atomic.LoadInt64(&r.iteration))
+
+	// Grow cluster with missing pods
+	for _, newPod := range changes.ToAdd {
+		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
+		if err := r.CreateElasticsearchPod(stack, newPod.PodSpec); err != nil {
+			return state, err
+		}
+	}
+
 	if !esReachable {
 		// We cannot manipulate ES allocation exclude settings if the ES cluster
 		// cannot be reached, hence we cannot delete pods.
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		state.UpdateElasticsearchPending(defaultRequeue, currentPods.Items)
+		state.UpdateElasticsearchPending(defaultRequeue, currentPods)
 		return state, nil
 	}
 
-	// Sort pods by age.
-	sort.SliceStable(currentPods.Items, func(i, j int) bool {
-		return currentPods.Items[i].CreationTimestamp.Before(&currentPods.Items[j].CreationTimestamp)
-	})
-
-	// Delete the difference between the running and desired pods.
-	var orphanPodNumber = int32(len(currentPods.Items)) - stackInstance.Spec.Elasticsearch.NodeCount()
-	var toDelete []corev1.Pod
-	var nodeNames []string
-	for i := int32(0); i < orphanPodNumber; i++ {
-		var pod = currentPods.Items[i]
-		if pod.DeletionTimestamp != nil {
-			continue
-		}
-		if pod.Status.Phase == corev1.PodRunning {
-			for _, c := range pod.Status.Conditions {
-				// Return when the pod is not Ready (API Unreachable).
-				if c.Type == corev1.PodReady && c.Status == corev1.ConditionFalse {
-					continue
-				}
-			}
-			toDelete = append(toDelete, pod)
-			nodeNames = append(nodeNames, pod.Name)
-		}
-
+	// Start migrating data away from all pods to be removed
+	namesToRemove := make([]string, len(changes.ToRemove))
+	for i, pod := range changes.ToRemove {
+		namesToRemove[i] = pod.Name
 	}
-
-	// create an Elasticsearch client
-	certPool := x509.NewCertPool()
-	certPool.AddCert(r.esCa.Cert)
-	esClient, err := NewElasticsearchClient(&stackInstance, esUser, certPool)
-	if err != nil {
-		return state, errors.Wrap(err, "Could not create ES client")
-	}
-
-	if err = elasticsearch.MigrateData(esClient, nodeNames); err != nil {
+	if err = elasticsearch.MigrateData(esClient, namesToRemove); err != nil {
 		return state, errors.Wrap(err, "Error during migrate data")
 	}
 
-	for _, pod := range toDelete {
-		isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+	// Shrink clusters by deleting deprecated pods
+	for _, pod := range changes.ToRemove {
+		state, err = r.DeleteElasticsearchPod(state, pod, esClient)
 		if err != nil {
 			return state, err
 		}
-		if isMigratingData {
-			log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-			return state, state.UpdateElasticsearchMigrating(defaultRequeue, currentPods.Items, esClient)
-		}
-
-		if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
-			return state, err
-		}
-		log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 	}
-	return state, state.UpdateElasticsearchState(currentPods.Items, esClient)
+
+	if err := state.UpdateElasticsearchState(allPods.Items, esClient, esReachable); err != nil {
+		return state, err
+	}
+
+	return state, nil
+}
+
+// CreateElasticsearchPod creates the given elasticsearch pod
+func (r *ReconcileStack) CreateElasticsearchPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) error {
+	pod, err := elasticsearch.NewPod(stack, podSpec)
+	if err != nil {
+		return err
+	}
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
+
+		// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+		// originating from the pod after it has started and produced a CSR
+		if err := nodecerts.EnsureNodeCertificateSecretExists(
+			r,
+			r.scheme,
+			stack,
+			pod,
+			nodecerts.LabelNodeCertificateTypeElasticsearchAll,
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := controllerutil.SetControllerReference(&stack, &pod, r.scheme); err != nil {
+		return err
+	}
+	if err := r.Create(context.TODO(), &pod); err != nil {
+		return err
+	}
+	log.Info(common.Concat("Created Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+	return nil
+}
+
+// DeleteElasticsearchPod deletes the given elasticsearch pod,
+// unless a data migration is in progress
+func (r *ReconcileStack) DeleteElasticsearchPod(state state.ReconcileState, pod corev1.Pod, esClient *esclient.Client) (state.ReconcileState, error) {
+	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+	if err != nil {
+		return state, err
+	}
+	if isMigratingData {
+		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+		return state, state.UpdateElasticsearchMigrating(defaultRequeue, []corev1.Pod{pod}, esClient)
+	}
+
+	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
+		return state, err
+	}
+	log.Info(common.Concat("Deleted Pod ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
+
+	return state, nil
 }
 
 func (r *ReconcileStack) reconcileKibanaDeployment(
@@ -574,7 +532,7 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 		return state.Result, nil
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(context.Background(), state.Stack)
+	return state.Result, r.Status().Update(context.TODO(), state.Stack)
 }
 
 func (r *ReconcileStack) ReconcileNodeCertificateSecrets(
