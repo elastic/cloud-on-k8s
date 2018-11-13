@@ -2,7 +2,6 @@ package elasticsearch
 
 import (
 	"context"
-	"strconv"
 	"testing"
 	"time"
 
@@ -69,33 +68,33 @@ func (m *mockClient) getAndReset() []string {
 }
 
 func TestMigrateData(t *testing.T) {
-	now := time.Now()
+	now := time.Date(2018, 11, 15, 0, 9, 0, 0, time.UTC) //1542240540
 	tests := []struct {
 		name  string
 		input []string
 		want  string
 	}{
 		{
-			name:  "no indices to migrate",
+			name:  "no nodes to migrate",
 			input: []string{},
 			want:  "none_excluded",
 		},
 		{
-			name:  "one index to migrate",
-			input: []string{"test-index"},
-			want:  "test-index," + strconv.FormatInt(now.Unix(), 10),
+			name:  "one node to migrate",
+			input: []string{"test-node"},
+			want:  "test-node,1542240540",
 		},
 		{
-			name:  "multiple indices to migrate",
-			input: []string{"test-index1", "test-index2"},
-			want:  "test-index1,test-index2," + strconv.FormatInt(now.Unix(), 10),
+			name:  "multiple node to migrate",
+			input: []string{"test-node1", "test-node2"},
+			want:  "test-node1,test-node2,1542240540",
 		},
 
 	}
 
 	for _, tt := range tests {
-		client := &mockClient{t: t,}
-		setAllocationExcludes(client, tt.input, now)
-		assert.Contains(t, client.getAndReset(), tt.want)
+		esClient := &mockClient{t: t,}
+		setAllocationExcludes(esClient, tt.input, now)
+		assert.Contains(t, esClient.getAndReset(), tt.want)
 	}
 }
