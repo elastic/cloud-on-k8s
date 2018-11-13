@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -115,6 +116,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 
 	// TODO: quota support
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
+	probeSecret := NewSelectiveSecretVolumeWithMountPath(
+		ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		probeUserSecretMountPath, []string{probeUser.Name},
+	)
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraFilesRef.Name,
@@ -155,14 +160,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 				{Name: "xpack.license.self_generated.type", Value: "trial"},
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: probeUser.Name},
-				{Name: "PROBE_PASSWORD", ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: ElasticInternalUsersSecretName(p.ClusterName),
-						},
-						Key: probeUser.Name,
-					},
-				}},
+				{Name: "PROBE_PASSWORD_FILE", Value: path.Join(probeUserSecretMountPath, probeUser.Name)},
 				{Name: "transport.profiles.client.port", Value: strconv.Itoa(TransportClientPort)},
 			},
 			Image:           imageName,
@@ -200,6 +198,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				dataVolume.VolumeMount(),
 				usersSecret.VolumeMount(),
+				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 			),
 		}},
@@ -208,6 +207,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 			initcontainer.SharedVolumes.Volumes(),
 			dataVolume.Volume(),
 			usersSecret.Volume(),
+			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 		),
 	}
@@ -218,6 +218,5 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 		return corev1.PodSpec{}, err
 	}
 	podSpec.InitContainers = initContainers
-
 	return podSpec, nil
 }
