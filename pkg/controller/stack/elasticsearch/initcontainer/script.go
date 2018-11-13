@@ -2,8 +2,9 @@ package initcontainer
 
 import (
 	"bytes"
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 	"html/template"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 )
 
 // List of plugins to be installed on the ES instance

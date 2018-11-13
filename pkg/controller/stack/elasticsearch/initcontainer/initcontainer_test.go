@@ -1,8 +1,9 @@
 package initcontainer
 
 import (
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 	"testing"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -25,7 +26,6 @@ func TestNewInitContainers(t *testing.T) {
 				imageName:        "image",
 				linkedFiles:      LinkedFilesArray{},
 				SetVMMaxMapCount: true,
-
 			},
 			expectedNumberOfContainers: 2,
 		},

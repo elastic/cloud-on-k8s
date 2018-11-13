@@ -14,9 +14,9 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray, k
 	privileged := false
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
-		Plugins:       defaultInstalledPlugins,
-		SharedVolumes: SharedVolumes,
-		LinkedFiles:   linkedFiles,
+		Plugins:          defaultInstalledPlugins,
+		SharedVolumes:    SharedVolumes,
+		LinkedFiles:      linkedFiles,
 		KeyStoreSettings: keystoreSettings,
 	})
 	if err != nil {

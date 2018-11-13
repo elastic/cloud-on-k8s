@@ -1,8 +1,9 @@
 package elasticsearch
 
 import (
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 	"strconv"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 

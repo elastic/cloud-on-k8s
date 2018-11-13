@@ -6,14 +6,15 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
 	"net/http"
 	"path"
 	"reflect"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/events"
 	"k8s.io/client-go/tools/record"
@@ -683,7 +684,7 @@ func (r *ReconcileStack) WithSnapshotCredentials(secret *corev1.Secret, repoConf
 		result = append(
 			result,
 			keystore.Setting{
-				Key: snapshots.RepositoryCredentialsKey(repoConfig),
+				Key:           snapshots.RepositoryCredentialsKey(repoConfig),
 				ValueFilePath: path.Join(elasticsearch.ExtraFilesSecretMountPath, snapshots.ServiceAccountFileName),
 			})
 	}
