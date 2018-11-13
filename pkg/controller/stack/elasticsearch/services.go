@@ -62,11 +62,6 @@ func PublicServiceURL(stack deploymentsv1alpha1.Stack) string {
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
 func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
-	var serviceType = corev1.ServiceTypeNodePort
-	if s.Spec.LoadBalance {
-		serviceType = corev1.ServiceTypeLoadBalancer
-	}
-
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
@@ -84,7 +79,7 @@ func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
-			Type:                  serviceType,
+			Type:                  common.GetElasticsearchServiceType(s),
 			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
 		},
 	}
