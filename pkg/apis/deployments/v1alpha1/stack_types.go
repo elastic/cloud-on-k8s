@@ -71,6 +71,8 @@ type NodeTypesSpec struct {
 	Data bool `json:"data,omitempty"`
 	// Ingest represents an ingest node
 	Ingest bool `json:"ingest,omitempty"`
+	// ML represents a machine learning node
+	ML bool `json:"ml,omitempty"`
 }
 
 // KibanaSpec defines a Kibana deployment spec

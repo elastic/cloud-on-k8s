@@ -9,7 +9,8 @@ START_FILE=/tmp/.es_start_file
 
 http () {
 local path="${1}"
-if [ -n "${PROBE_USERNAME}" ] && [ -n "${PROBE_PASSWORD}" ]; then
+if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_FILE}" ]; then
+  PROBE_PASSWORD=$(<$PROBE_PASSWORD_FILE)
   BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
 else
   BASIC_AUTH=''

@@ -1,7 +1,6 @@
 package elasticsearch
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -30,6 +29,9 @@ const (
 
 	// defaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
 	defaultTerminationGracePeriodSeconds int64 = 120
+
+	// containerName is the name of the elasticsearch container
+	containerName = "elasticsearch"
 )
 
 var (
@@ -43,39 +45,23 @@ var (
 	log = logf.Log.WithName("pod")
 )
 
-// NewPod constructs a pod from the Stack definition.
-func NewPod(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.Pod, error) {
-	podSpec, err := NewPodSpec(BuildNewPodSpecParams(s), probeUser, extraFilesRef)
-	if err != nil {
-		return corev1.Pod{}, err
-	}
+// NewPod constructs a pod from the given parameters.
+func NewPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) (corev1.Pod, error) {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NewNodeName(s.Name),
-			Namespace: s.Namespace,
-			Labels:    NewLabels(s, true),
+			Name:      NewNodeName(stack.Name),
+			Namespace: stack.Namespace,
+			Labels:    NewLabels(stack, true),
 		},
 		Spec: podSpec,
 	}
 
-	if s.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		log.Info("Node certificates feature flag enabled", "pod", pod.Name)
 		pod = configureNodeCertificates(pod)
 	}
 
 	return pod, nil
-}
-
-// BuildNewPodSpecParams creates a NewPodSpecParams from a Stack definition.
-func BuildNewPodSpecParams(s deploymentsv1alpha1.Stack) NewPodSpecParams {
-	return NewPodSpecParams{
-		Version:                        s.Spec.Version,
-		CustomImageName:                s.Spec.Elasticsearch.Image,
-		ClusterName:                    s.Name,
-		DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(int(s.Spec.Elasticsearch.NodeCount())),
-		DiscoveryServiceName:           DiscoveryServiceName(s.Name),
-		SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
-	}
 }
 
 // NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
@@ -90,6 +76,8 @@ type NewPodSpecParams struct {
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int `hash:"ignore"`
+	// NodeTypes defines the type (master/data/ingest) associated to the ES node
+	NodeTypes deploymentsv1alpha1.NodeTypesSpec
 
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
@@ -101,6 +89,29 @@ type NewPodSpecParams struct {
 func (params NewPodSpecParams) Hash() string {
 	hash, _ := hashstructure.Hash(params, nil)
 	return strconv.FormatUint(hash, 10)
+}
+
+// CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
+func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]corev1.PodSpec, error) {
+	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
+	for _, topology := range s.Spec.Elasticsearch.Topologies {
+		for i := int32(0); i < topology.NodeCount; i++ {
+			podSpec, err := NewPodSpec(NewPodSpecParams{
+				Version:                        s.Spec.Version,
+				CustomImageName:                s.Spec.Elasticsearch.Image,
+				ClusterName:                    s.Name,
+				DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(s.Spec.Elasticsearch.Topologies),
+				DiscoveryServiceName:           DiscoveryServiceName(s.Name),
+				NodeTypes:                      topology.NodeTypes,
+				SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
+			}, probeUser, extraFilesRef)
+			if err != nil {
+				return nil, err
+			}
+			podSpecs = append(podSpecs, podSpec)
+		}
+	}
+	return podSpecs, nil
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
@@ -115,6 +126,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 
 	// TODO: quota support
 	usersSecret := NewSecretVolume(ElasticUsersSecretName(p.ClusterName), "users")
+	probeSecret := NewSelectiveSecretVolumeWithMountPath(
+		ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		probeUserSecretMountPath, []string{probeUser.Name},
+	)
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraFilesRef.Name,
@@ -125,49 +140,10 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{{
-			Env: []corev1.EnvVar{
-				{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-				}},
-				{Name: "discovery.zen.ping.unicast.hosts", Value: p.DiscoveryServiceName},
-				{Name: "cluster.name", Value: p.ClusterName},
-				{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
-				{Name: "network.host", Value: "0.0.0.0"},
-				{Name: "network.publish_host", Value: "", ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-				}},
-
-				{Name: "path.data", Value: dataVolume.DataPath()},
-				{Name: "path.logs", Value: dataVolume.LogsPath()},
-				{
-					Name:  "xpack.security.transport.ssl.trust_restrictions.path",
-					Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
-				},
-				// TODO: the JVM options are hardcoded, but should be configurable
-				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
-
-				// TODO: dedicated node types support
-				{Name: "node.master", Value: "true"},
-				{Name: "node.data", Value: "true"},
-				{Name: "node.ingest", Value: "true"},
-
-				{Name: "xpack.security.enabled", Value: "true"},
-				{Name: "xpack.license.self_generated.type", Value: "trial"},
-				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
-				{Name: "PROBE_USERNAME", Value: probeUser.Name},
-				{Name: "PROBE_PASSWORD", ValueFrom: &corev1.EnvVarSource{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: ElasticInternalUsersSecretName(p.ClusterName),
-						},
-						Key: probeUser.Name,
-					},
-				}},
-				{Name: "transport.profiles.client.port", Value: strconv.Itoa(TransportClientPort)},
-			},
+			Env:             NewEnvironmentVars(p, dataVolume, probeUser, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            "elasticsearch",
+			Name:            containerName,
 			Ports:           defaultContainerPorts,
 			// TODO: Hardcoded resource limits and requests
 			Resources: corev1.ResourceRequirements{
@@ -200,6 +176,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				dataVolume.VolumeMount(),
 				usersSecret.VolumeMount(),
+				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 			),
 		}},
@@ -208,6 +185,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 			initcontainer.SharedVolumes.Volumes(),
 			dataVolume.Volume(),
 			usersSecret.Volume(),
+			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 		),
 	}
@@ -218,6 +196,5 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 		return corev1.PodSpec{}, err
 	}
 	podSpec.InitContainers = initContainers
-
 	return podSpec, nil
 }
