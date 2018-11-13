@@ -22,7 +22,7 @@ type Client struct {
 	Endpoint string
 } //TODO TLS
 
-//CompoundError is the sum of multiple errors e.g. for validation purposes.
+//APIError is a non 2xx response from the Elasticsearch API
 type APIError struct {
 	response *http.Response
 }
@@ -32,6 +32,7 @@ func (e *APIError) Error() string {
 	return e.response.Status
 }
 
+// IsNotFound checks whether the error was a HTTP 404 error.
 func IsNotFound(err error) bool {
 	switch err := err.(type) {
 	case *APIError:
