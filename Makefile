@@ -135,8 +135,9 @@ dev: dev-cluster vendor unit manager install samples
 	@ echo "-> Development environment started"
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ echo "-> Run \"make run\" to build, push and deploy the controller in a docker image."
-endif
+else
 	@ echo "-> Run \"make run\" to start the manager process localy"
+endif
 
 .PHONY: dev-cluster
 dev-cluster:
