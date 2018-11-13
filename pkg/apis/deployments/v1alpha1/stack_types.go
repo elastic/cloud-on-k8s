@@ -38,14 +38,16 @@ const (
 
 // SnapshotRepositorySettings are repository specific settings to create a snapshot repository.
 type SnapshotRepositorySettings struct {
-	BucketName  string
-	Credentials v1.SecretReference
+	BucketName  string             `json:"bucketName,omitempty"`
+	Credentials v1.SecretReference `json:"credentials,omitempty"`
 }
 
 // SnapshotRepository specifies that the user wants automatic snapshots to happen and where they should be stored.
 type SnapshotRepository struct {
-	Type     SnapshotRepositoryType
-	Settings SnapshotRepositorySettings
+	//Type of repository
+	Type SnapshotRepositoryType `json:"type"`
+	//Settings are provider specific repository settings
+	Settings SnapshotRepositorySettings `json:"settings"`
 }
 
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.
@@ -62,7 +64,7 @@ type ElasticsearchSpec struct {
 	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
 
 	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
-	SnapshotRepository SnapshotRepository
+	SnapshotRepository SnapshotRepository `json:"snapshotRepository,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
