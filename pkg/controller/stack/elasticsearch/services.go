@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	globalServicePrefix = ".svc.cluster.local"
+	globalServiceSuffix = ".svc.cluster.local"
 )
 
 // DiscoveryServiceName returns the name for the discovery service
@@ -56,7 +56,7 @@ func PublicServiceName(stackName string) string {
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stack deploymentsv1alpha1.Stack) string {
 	scheme := "http"
-	return common.Concat(scheme, "://", PublicServiceName(stack.Name), ".", stack.Namespace, globalServicePrefix, ":", strconv.Itoa(HTTPPort))
+	return common.Concat(scheme, "://", PublicServiceName(stack.Name), ".", stack.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
