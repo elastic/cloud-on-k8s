@@ -226,3 +226,8 @@ purge-gcr-images:
 .PHONY: show-credentials
 show-credentials:
 	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
+
+# Run end-to-end tests with the current kubectl k8s cluster
+.PHONY: end-to-end
+end-to-end:
+	./end-to-end/end-to-end.sh
