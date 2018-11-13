@@ -29,3 +29,6 @@ gcloud beta container --project ${GCLOUD_PROJECT} clusters create ${GKE_CLUSTER_
     --enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing \
     --no-enable-autoupgrade --no-enable-autorepair --network "projects/elastic-cloud-dev/global/networks/default" \
     --subnetwork "projects/elastic-cloud-dev/regions/europe-west3/subnetworks/default"
+
+# Create required role binding between the GCP account and the K8s cluster.
+kubectl create clusterrolebinding stack-operators--manager-rolebinding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")

@@ -21,6 +21,7 @@ rules:
   resources:
   - pods
   - endpoints
+  - events
   verbs:
   - get
   - list
