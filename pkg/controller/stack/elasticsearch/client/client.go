@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -21,12 +22,34 @@ type Client struct {
 	Endpoint string
 } //TODO TLS
 
+//CompoundError is the sum of multiple errors e.g. for validation purposes.
+type APIError struct {
+	response *http.Response
+}
+
+// Error() implements the error interface.
+func (e *APIError) Error() string {
+	return e.response.Status
+}
+
+func IsNotFound(err error) bool {
+	switch err := err.(type) {
+	case *APIError:
+		return err.response.StatusCode == http.StatusNotFound
+	default:
+		return false
+	}
+
+}
+
 func checkError(response *http.Response) error {
 	if response == nil {
 		return fmt.Errorf("received a <nil> response")
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("%s returned %s, %v", response.Request.URL, response.Status, response.Header)
+		return &APIError{
+			response: response,
+		}
 	}
 	return nil
 }
@@ -77,6 +100,22 @@ func (c *Client) makeRequestAndUnmarshal(context context.Context, request *http.
 	return nil
 }
 
+func (c *Client) marshalAndRequest(context context.Context, payload interface{}, newRequest func(at io.Reader) (*http.Request, error)) error {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	request, err := newRequest(bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+
+	_, err = c.makeRequest(context, request)
+	return err
+
+}
+
 // GetShards reads all shards from cluster state,
 // similar to what _cat/shards does but it is consistent in
 // its output.
@@ -99,20 +138,13 @@ func (c *Client) GetShards(context context.Context) ([]Shard, error) {
 // configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(context context.Context, nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
-	body, err := json.Marshal(allocationSetting)
-	if err != nil {
-		return err
-	}
 
-	request, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_cluster/settings", c.Endpoint), bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	_, err = c.makeRequest(context, request)
-	return err
+	return c.marshalAndRequest(context, allocationSetting, func(body io.Reader) (*http.Request, error) {
+		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_cluster/settings", c.Endpoint), body)
+	})
 }
 
+// GetClusterHealth calls the _clsuter/health api.
 func (c *Client) GetClusterHealth(context context.Context) (Health, error) {
 	var result Health
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/health", c.Endpoint), nil)
@@ -120,4 +152,21 @@ func (c *Client) GetClusterHealth(context context.Context) (Health, error) {
 		return result, err
 	}
 	return result, c.makeRequestAndUnmarshal(context, request, &result)
+}
+
+// GetSnapshotRepository retrieve the currently configured snapshot repository with the given name.
+func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
+	var result map[string]SnapshotRepository
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), nil)
+	if err != nil {
+		return result[name], err
+	}
+	return result[name], c.makeRequestAndUnmarshal(ctx, request, &result)
+}
+
+// UpsertSnapshotRepository insert or update the given snapshot repository
+func (c *Client) UpsertSnapshotRepository(context context.Context, name string, repository SnapshotRepository) error {
+	return c.marshalAndRequest(context, repository, func(body io.Reader) (*http.Request, error) {
+		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), body)
+	})
 }

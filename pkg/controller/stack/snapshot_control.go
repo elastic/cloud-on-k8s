@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"fmt"
 	"path"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -50,7 +49,6 @@ func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1al
 	}
 	result.KeystoreSettings = settings
 	result.KeystoreSecretRef = secretRef
-	log.Info(fmt.Sprintf("Keystore init will be %v", result))
 	return result, nil
 
 }

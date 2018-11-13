@@ -87,7 +87,7 @@ type NewPodSpecParams struct {
 	SetVMMaxMapCount bool
 }
 
-// NewPodNonSpecParams are parameters used to construct a pod that should not be taken into during change calculation
+// NewPodNonSpecParams are parameters used to construct a pod that should not be taken into account during change calculation.
 type NewPodNonSpecParams struct {
 	ExtraFilesRef  types.NamespacedName
 	KeystoreConfig keystore.Config

@@ -46,9 +46,7 @@ func TestValidateSnapshotCredentials(t *testing.T) {
 				"something-missing": []byte("~?~"),
 			},
 			want: errors.New("gcs secrets need to be JSON, PKCS12 is not supported: invalid character '~' looking for beginning of value"),
-
 		},
-
 	}
 
 	for _, tt := range tests {

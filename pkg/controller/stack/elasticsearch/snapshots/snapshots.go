@@ -1,23 +1,27 @@
 package snapshots
 
 import (
+	"context"
 	"encoding/json"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+
 	"github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/pkg/errors"
 )
 
 const (
-	ServiceAccountFileName = "service-account.json"
+	SnapshotRepositoryName = "elastic-snapshots"
+	//TODO randomize name to avoid collisions with user created repos
+	SnapshotClientName = "elastic-internal"
 )
 
 // RepositoryCredentialsKey returns a provider specific keystore key for the corresponding credentials.
 func RepositoryCredentialsKey(repoConfig v1alpha1.SnapshotRepository) string {
 	switch repoConfig.Type {
 	case "gcs":
-		//TODO randomize name to avoid collisions with user created repos
-		return "gcs.client.elastic-internal.credentials_file"
-
+		return common.Concat("gcs.client.", SnapshotClientName, ".credentials_file")
 	}
 	return ""
 }
@@ -70,4 +74,24 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 	default:
 		return errors.New(common.Concat("Unsupported snapshot repository type ", string(kind)))
 	}
+}
+
+//EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
+func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alpha1.SnapshotRepository) error {
+	expected := client.SnapshotRepository{
+		Type: string(repo.Type),
+		Settings: client.SnapshotRepositorySetttings{
+			Bucket: repo.Settings.BucketName,
+			Client: SnapshotClientName,
+		},
+	}
+	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
+	if err != nil && !client.IsNotFound(err) {
+		return err
+	}
+	if current != expected {
+		return es.UpsertSnapshotRepository(ctx, SnapshotRepositoryName, expected)
+	}
+	return nil
+
 }

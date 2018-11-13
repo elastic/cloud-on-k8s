@@ -4,7 +4,7 @@ import "strings"
 
 //CompoundError is the sum of multiple errors e.g. for validation purposes.
 type CompoundError struct {
-	message string
+	message  string
 	elements []error
 }
 
@@ -21,12 +21,12 @@ func NewCompoundError(errs []error) error {
 	msg := strings.Builder{}
 	for i, err := range errs {
 		msg.WriteString(err.Error())
-		if i + 1 < len(errs) {
+		if i+1 < len(errs) {
 			msg.WriteString("; ")
 		}
 	}
 	return &CompoundError{
-		message: msg.String(),
+		message:  msg.String(),
 		elements: errs,
 	}
 }

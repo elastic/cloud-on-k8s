@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
+
 	"github.com/elastic/stack-operators/pkg/controller/stack/events"
 	"k8s.io/client-go/tools/record"
 
@@ -347,8 +349,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		KeystoreConfig: keystoreConfig,
 	}
 
-	log.Info(fmt.Sprintf("extra params will be %v", nonSpecParams))
-
 	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, nonSpecParams)
 	if err != nil {
 		return state, err
@@ -369,6 +369,16 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 	esReachable, err := r.IsPublicServiceReady(stack)
 	if err != nil {
 		return state, err
+	}
+
+	if esReachable { //TODO this needs to happen outside of reconcileElasticsearchPods
+		err = snapshots.EnsureSnapshotRepository(context.TODO(), esClient, stack.Spec.Elasticsearch.SnapshotRepository)
+		if err != nil {
+			//TODO decide should this be a reason to stop this reconciliation loop?
+			msg := "Could not ensure snapshot repository"
+			r.recorder.Event(&stack, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, "Could not ensure snapshot repository", "iteration", atomic.LoadInt64(&r.iteration))
+		}
 	}
 
 	if !changes.ShouldMigrate() {
