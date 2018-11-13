@@ -15,7 +15,11 @@ within a Kubernetes cluster.
 
 ## Development
 
-After installing the [requirements](#requirements), you can jump straing to development with `make dev`:
+After installing the [requirements](#requirements), you can jump straing to development with `make dev`.
+By default it will use `minikube` as the environment to develop against, if you wish to use a GKE cluster use
+`make set-dev-gke`. After, you can run `make dev` and the creation of the environment will be taken care of.
+
+### Minikube
 
 ```console
 $ make dev
@@ -53,6 +57,14 @@ stack.deployments.k8s.elastic.co/stack-sample unchanged
 -> Run "make run" to start the manager process localy
 ```
 
+### GKE Development workflow
+
+When selecting GKE as your development environment note that the controller will be packed in a docker image,
+tagged using a hash of the pkg/ directory as a tag and uploaded to a GCP docker image repository. After your GKE
+cluster has been created you can build the docker image and deploy the controller by typing `make run`.
+
+After you've performed changes in the controller code you can re-deploy the image by running `make run` again.
+
 ### Useful development targets
 
 * `make samples`: Updates the samples.
@@ -65,13 +77,7 @@ stack.deployments.k8s.elastic.co/stack-sample unchanged
 * `make purge-env`: Deletes all the resources from the configured Kubernetes cluster on the `default` namespace.
 * `make run`: Builds, pushes and deploys the controller's docker image to the GKE cluster or runs the manager locally against the local Minikube environment.
 
-### GKE Development workflow
 
-When selecting GKE as your development environment note that the controller will be packed in a docker image,
-tagged using a hash of the pkg/ directory as a tag and uploaded to a GCP docker image repository. After your GKE
-cluster has been created you can build the docker image and deploy the controller by typing `make run`.
-
-After you've performed changes in the controller code you can re-deploy the image by running `make run` again.
 
 ### Makefile variables
 
