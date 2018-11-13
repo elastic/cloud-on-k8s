@@ -222,3 +222,7 @@ purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(IMG) | tail +3 | awk '{print $$2}'); \
 		do gcloud container images untag $(IMG):$$i; \
 	done
+
+.PHONY: show-credentials
+show-credentials:
+	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
