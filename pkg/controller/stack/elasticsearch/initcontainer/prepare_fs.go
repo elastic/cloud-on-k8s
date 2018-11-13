@@ -5,6 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+//KeyStoreInit contains keystore initialisation configuraation for the init container
 type KeyStoreInit struct {
 	Settings    []keystore.Setting
 	VolumeMount corev1.VolumeMount
