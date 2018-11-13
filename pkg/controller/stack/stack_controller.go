@@ -7,14 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
 	"reflect"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/events"
 	"k8s.io/client-go/tools/record"
@@ -298,7 +294,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		Namespace: stack.Namespace,
 		Name:      fmt.Sprintf("%s-extrafiles", stack.Name),
 	}
-	var keystoreSettings []keystore.Setting
 	var elasticsearchExtraFilesSecret corev1.Secret
 	if err := r.Get(
 		context.TODO(),
@@ -332,11 +327,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 			},
 		}
 
-		keystoreSettings, err = r.WithSnapshotCredentials(&elasticsearchExtraFilesSecret, stack.Spec.Elasticsearch.SnapshotRepository)
-		if err != nil {
-			return state, err
-		}
-
 		err = controllerutil.SetControllerReference(&stack, &elasticsearchExtraFilesSecret, r.scheme)
 		if err != nil {
 			return state, err
@@ -347,10 +337,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		}
 	}
 
-	nonSpecParams := elasticsearch.NewPodNonSpecParams{
-		ExtraFilesRef:    elasticsearchExtraFilesSecretObjectKey,
-		KeystoreSettings: keystoreSettings,
+	keystoreConfig, err := r.ReconcileSnapshotCredentials(stack.Spec.Elasticsearch.SnapshotRepository)
+	if err != nil {
+		return state, err
 	}
+
+	nonSpecParams := elasticsearch.NewPodNonSpecParams{
+		ExtraFilesRef:  elasticsearchExtraFilesSecretObjectKey,
+		KeystoreConfig: keystoreConfig,
+	}
+
+	log.Info(fmt.Sprintf("extra params will be %v", nonSpecParams))
 
 	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, nonSpecParams)
 	if err != nil {
@@ -658,36 +655,4 @@ func (r *ReconcileStack) findNodeCertificateSecrets(stack deploymentsv1alpha1.St
 	}
 
 	return nodeCertificateSecrets.Items, nil
-}
-
-func (r *ReconcileStack) WithSnapshotCredentials(secret *corev1.Secret, repoConfig deploymentsv1alpha1.SnapshotRepository) ([]keystore.Setting, error) {
-
-	var result []keystore.Setting
-	empty := corev1.SecretReference{}
-	userCreatedSecret := corev1.Secret{}
-	if repoConfig.Settings.Credentials == empty {
-		return result, nil
-	}
-
-	secretRef := repoConfig.Settings.Credentials
-	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
-	if err := r.Get(context.TODO(), key, &userCreatedSecret); err != nil {
-		return result, err
-	}
-
-	if len(userCreatedSecret.Data) != 1 {
-		return result, errors.New("Secret specified in snapshot repository needs to contain exactly one data element")
-	}
-
-	for _, value := range userCreatedSecret.Data {
-		secret.Data[snapshots.ServiceAccountFileName] = value
-		result = append(
-			result,
-			keystore.Setting{
-				Key:           snapshots.RepositoryCredentialsKey(repoConfig),
-				ValueFilePath: path.Join(elasticsearch.ExtraFilesSecretMountPath, snapshots.ServiceAccountFileName),
-			})
-	}
-	return result, nil
-
 }

@@ -89,8 +89,8 @@ type NewPodSpecParams struct {
 
 // NewPodNonSpecParams are parameters used to construct a pod that should not be taken into during change calculation
 type NewPodNonSpecParams struct {
-	ExtraFilesRef    types.NamespacedName
-	KeystoreSettings []keystore.Setting
+	ExtraFilesRef  types.NamespacedName
+	KeystoreConfig keystore.Config
 }
 
 // Hash computes a unique hash with the current NewPodSpecParams
@@ -142,7 +142,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodNon
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraParams.ExtraFilesRef.Name,
 		"extrafiles",
-		ExtraFilesSecretMountPath,
+		"/usr/share/elasticsearch/config/extrafiles",
 	)
 
 	// TODO: Security Context
@@ -198,9 +198,21 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodNon
 		),
 	}
 
+	//keystore init is optional
+	keyStoreInit := initcontainer.KeyStoreInit{Settings: extraParams.KeystoreConfig.KeystoreSettings}
+	if !extraParams.KeystoreConfig.IsEmpty() {
+		keystoreVolume := NewSecretVolumeWithMountPath(
+			extraParams.KeystoreConfig.KeystoreSecretRef.Name,
+			"keystore-init",
+			KeystoreSecretMountPath)
+
+		podSpec.Volumes = append(podSpec.Volumes, keystoreVolume.Volume())
+		keyStoreInit.VolumeMount = keystoreVolume.VolumeMount()
+	}
+
 	// Setup init containers
 	initContainers, err := initcontainer.NewInitContainers(
-		imageName, LinkedFiles, extraParams.KeystoreSettings, p.SetVMMaxMapCount,
+		imageName, LinkedFiles, keyStoreInit, p.SetVMMaxMapCount,
 	)
 	if err != nil {
 		return corev1.PodSpec{}, err

@@ -1,7 +1,6 @@
 package initcontainer
 
 import (
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -9,7 +8,7 @@ import (
 const defaultInitContainerRunAsUser int64 = 0
 
 // NewInitContainers creates init containers according to the given parameters
-func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreSettings []keystore.Setting, SetVMMaxMapCount bool) ([]corev1.Container, error) {
+func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreConfig KeyStoreInit, SetVMMaxMapCount bool) ([]corev1.Container, error) {
 	containers := []corev1.Container{}
 	if SetVMMaxMapCount {
 		// Only create the privileged init container if needed
@@ -19,7 +18,7 @@ func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreS
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles, keystoreSettings)
+	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles, keystoreConfig)
 	if err != nil {
 		return nil, err
 	}

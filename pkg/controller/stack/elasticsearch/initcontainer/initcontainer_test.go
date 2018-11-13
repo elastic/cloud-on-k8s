@@ -3,8 +3,6 @@ package initcontainer
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +11,7 @@ func TestNewInitContainers(t *testing.T) {
 		imageName        string
 		linkedFiles      LinkedFilesArray
 		SetVMMaxMapCount bool
-		keystoreSettings []keystore.Setting
+		keystoreSettings KeyStoreInit
 	}
 	tests := []struct {
 		name                       string
