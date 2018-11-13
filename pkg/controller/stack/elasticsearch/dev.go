@@ -4,18 +4,20 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 )
 
 // ExternalServiceURL is the environment specific public Elasticsearch URL.
-func ExternalServiceURL(stackName string) (string, error) {
+func ExternalServiceURL(stack deploymentsv1alpha1.Stack) (string, error) {
 	if useMinikube() {
-		url, err := getMinikubeServiceURL(PublicServiceName(stackName))
+		url, err := getMinikubeServiceURL(PublicServiceName(stack.Name))
 		if err != nil {
 			return "", err
 		}
 		return url, nil
 	}
-	return PublicServiceURL(stackName), nil
+	return PublicServiceURL(stack), nil
 }
 
 func useMinikube() bool {

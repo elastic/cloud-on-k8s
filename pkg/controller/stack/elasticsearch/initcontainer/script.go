@@ -9,8 +9,9 @@ import (
 
 // List of plugins to be installed on the ES instance
 var defaultInstalledPlugins = []string{
-	"repository-s3",  // S3 snapshots
-	"repository-gcs", // gcp snapshots
+	// TODO: enable when useful :)
+	// "repository-s3",  // S3 snapshots
+	// "repository-gcs", // gcp snapshots
 }
 
 // TemplateParams are the parameters manipulated in the scriptTemplate

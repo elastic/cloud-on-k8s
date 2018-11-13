@@ -13,7 +13,7 @@ func ServiceName(stackName string) string {
 
 func NewService(s deploymentsv1alpha1.Stack) *corev1.Service {
 	stackID := common.StackID(s)
-	return &corev1.Service{
+	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      ServiceName(s.Name),
@@ -30,9 +30,11 @@ func NewService(s deploymentsv1alpha1.Stack) *corev1.Service {
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
-			Type:                  corev1.ServiceTypeNodePort,
-			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeCluster,
+			Type: common.GetKibanaServiceType(s),
 		},
 	}
-
+	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
+		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
+	}
+	return &svc
 }

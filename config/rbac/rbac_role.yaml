@@ -17,9 +17,24 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - deployments.k8s.elastic.co
   resources:
   - stacks
+  - stacks/status
   verbs:
   - get
   - list

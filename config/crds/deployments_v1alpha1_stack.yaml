@@ -26,6 +26,12 @@ spec:
           properties:
             elasticsearch:
               properties:
+                expose:
+                  enum:
+                  - ClusterIP
+                  - LoadBalancer
+                  - NodePort
+                  type: string
                 image:
                   type: string
                 setVmMaxMapCount:
@@ -81,6 +87,12 @@ spec:
               type: object
             kibana:
               properties:
+                expose:
+                  enum:
+                  - ClusterIP
+                  - LoadBalancer
+                  - NodePort
+                  type: string
                 image:
                   type: string
                 nodeCount:

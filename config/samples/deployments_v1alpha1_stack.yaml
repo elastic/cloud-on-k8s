@@ -32,3 +32,4 @@ spec:
           name: "gcs-repo-account"
   kibana:
     nodeCount: 1
+    expose: LoadBalancer
