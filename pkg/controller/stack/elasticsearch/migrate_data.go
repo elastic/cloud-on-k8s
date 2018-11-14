@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -69,14 +70,24 @@ func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
 	return nodeIsMigratingData(pod.Name, shards), nil
 }
 
-//MigrateData sets allocation filters for the given pod
-func MigrateData(client *client.Client, leavingNodes []string) error {
+// AllocationSettings captures Elasticsearch API calls around allocation filtering.
+type AllocationSettings interface {
+	ExcludeFromShardAllocation(context context.Context, nodes string) error
+}
+
+//setAllocationExcludes sets allocation filters for the given nodes.
+func setAllocationExcludes(client AllocationSettings, leavingNodes []string, now time.Time) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
 		// See https://github.com/elastic/elasticsearch/issues/28316
-		withBugfix := append(leavingNodes, time.Now().String())
+		withBugfix := append(leavingNodes, strconv.FormatInt(now.Unix(), 10))
 		exclusions = strings.Join(withBugfix, ",")
 	}
 	//update allocation exclusions
 	return client.ExcludeFromShardAllocation(context.TODO(), exclusions)
+}
+
+//MigrateData sets allocation filters for the given nodes.
+func MigrateData(client AllocationSettings, leavingNodes []string) error {
+	return setAllocationExcludes(client, leavingNodes, time.Now())
 }
