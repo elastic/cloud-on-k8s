@@ -5,6 +5,8 @@ GOIMPORTS := $(shell command -v goimports)
 MINIKUBE := $(shell command -v minikube)
 KUBECTL := $(shell command -v kubectl)
 KUBEBUILDER := $(shell command -v kubebuilder)
+KUSTOMIZE := $(shell command -v kustomize)
+SHA1SUM := $(shell command -v sha1sum)
 DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
 
@@ -131,6 +133,16 @@ ifndef KUBEBUILDER
 	@ echo "-> kubebuilder binary missing, $(INSTALL_HELP)"
 	@ exit 4
 endif
+ifndef KUSTOMIZE
+	@ echo "-> kustomize binary missing, $(INSTALL_HELP)"
+	@ exit 7
+endif
+ifndef SHA1SUM
+	@ echo "-> sha1sum binary missing, $(INSTALL_HELP)"
+	@ exit 8
+endif
+
+
 
 # dev
 .PHONY: dev
