@@ -132,11 +132,11 @@ ifndef KUBEBUILDER
 endif
 ifndef KUSTOMIZE
 	@ echo "-> kustomize binary missing, $(INSTALL_HELP)"
-	@ exit 4
+	@ exit 7
 endif
 ifndef SHA1SUM
 	@ echo "-> sha1sum binary missing, $(INSTALL_HELP)"
-	@ exit 4
+	@ exit 8
 endif
 
 
