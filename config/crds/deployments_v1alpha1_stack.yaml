@@ -46,6 +46,8 @@ spec:
                           type: object
                       type: object
                     type:
+                      enum:
+                      - gcs
                       type: string
                   required:
                   - type

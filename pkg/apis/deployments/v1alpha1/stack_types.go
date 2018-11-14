@@ -48,6 +48,7 @@ type SnapshotRepositorySettings struct {
 // SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
 type SnapshotRepository struct {
 	// Type of repository
+	// +kubebuilder:validation:Enum=gcs
 	Type SnapshotRepositoryType `json:"type"`
 	// Settings are provider specific repository settings
 	Settings SnapshotRepositorySettings `json:"settings"`
