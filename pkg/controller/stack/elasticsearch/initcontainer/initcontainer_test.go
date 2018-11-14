@@ -11,7 +11,7 @@ func TestNewInitContainers(t *testing.T) {
 		imageName        string
 		linkedFiles      LinkedFilesArray
 		SetVMMaxMapCount bool
-		keystoreSettings KeyStoreInit
+		keystoreSettings KeystoreInit
 	}
 	tests := []struct {
 		name                       string

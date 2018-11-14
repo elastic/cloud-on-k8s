@@ -8,7 +8,7 @@ import (
 const defaultInitContainerRunAsUser int64 = 0
 
 // NewInitContainers creates init containers according to the given parameters
-func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreConfig KeyStoreInit, SetVMMaxMapCount bool) ([]corev1.Container, error) {
+func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreInit KeystoreInit, SetVMMaxMapCount bool) ([]corev1.Container, error) {
 	containers := []corev1.Container{}
 	if SetVMMaxMapCount {
 		// Only create the privileged init container if needed
@@ -18,7 +18,7 @@ func NewInitContainers(imageName string, linkedFiles LinkedFilesArray, keystoreC
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles, keystoreConfig)
+	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles, keystoreInit)
 	if err != nil {
 		return nil, err
 	}

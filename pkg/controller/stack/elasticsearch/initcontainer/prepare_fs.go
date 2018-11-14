@@ -5,8 +5,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-//KeyStoreInit contains keystore initialisation configuraation for the init container
-type KeyStoreInit struct {
+//KeystoreInit contains keystore initialisation configuration for the init container
+type KeystoreInit struct {
 	Settings    []keystore.Setting
 	VolumeMount corev1.VolumeMount
 }
@@ -14,16 +14,16 @@ type KeyStoreInit struct {
 // NewPrepareFSInitContainer creates an init container to handle things such as:
 // - plugins installation
 // - configuration changes
-// Modified directories and files are meant to be persisted for reuse in the actual ES conainer.
+// Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
-func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray, keystoreConfig KeyStoreInit) (corev1.Container, error) {
+func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray, keystoreInit KeystoreInit) (corev1.Container, error) {
 	privileged := false
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
 		Plugins:          defaultInstalledPlugins,
 		SharedVolumes:    SharedVolumes,
 		LinkedFiles:      linkedFiles,
-		KeyStoreSettings: keystoreConfig.Settings,
+		KeyStoreSettings: keystoreInit.Settings,
 	})
 	if err != nil {
 		return corev1.Container{}, err
@@ -40,8 +40,8 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray, k
 		VolumeMounts: SharedVolumes.InitContainerVolumeMounts(),
 	}
 
-	if len(keystoreConfig.Settings) > 0 {
-		container.VolumeMounts = append(container.VolumeMounts, keystoreConfig.VolumeMount)
+	if len(keystoreInit.Settings) > 0 {
+		container.VolumeMounts = append(container.VolumeMounts, keystoreInit.VolumeMount)
 	}
 	return container, nil
 }

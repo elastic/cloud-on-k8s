@@ -39,7 +39,7 @@ const (
 // SnapshotRepositorySettings specify a storage location for snapshots.
 type SnapshotRepositorySettings struct {
 	// BucketName is the name of the provider specific storage bucket to use.
-	BucketName  string             `json:"bucketName,omitempty"`
+	BucketName string `json:"bucketName,omitempty"`
 	// Credentials is a reference to a secret containing credentials for the storage provider.
 	Credentials v1.SecretReference `json:"credentials,omitempty"`
 }
