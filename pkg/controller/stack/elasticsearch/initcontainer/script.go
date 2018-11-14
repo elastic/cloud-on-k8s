@@ -11,7 +11,7 @@ import (
 var defaultInstalledPlugins = []string{
 	// TODO: enable when useful :)
 	// "repository-s3",  // S3 snapshots
-	// "repository-gcs", // gcp snapshots
+	"repository-gcs", // gcp snapshots
 }
 
 // TemplateParams are the parameters manipulated in the scriptTemplate
