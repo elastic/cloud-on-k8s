@@ -8,6 +8,7 @@ type Config struct {
 	KeystoreSettings  []Setting
 }
 
+// IsEmpty is true when Config does not contain any config.
 func (c Config) IsEmpty() bool {
 	return len(c.KeystoreSettings) == 0
 }
