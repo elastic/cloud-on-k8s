@@ -90,7 +90,10 @@ docker-build: unit
 	docker build . -t $(IMG):$(IMG_TAG)
 	@echo "updating kustomize image patch file for manager resource"
 	@ cp config/default/manager_image_patch.orig.yaml config/default/manager_image_patch.yaml
-	sed -i '' 's@image: .*@image: '"$(IMG):$(IMG_TAG)"'@' config/default/manager_image_patch.yaml
+ifeq ($(shell uname -s),Linux)
+override EXTRASEDFLAG = "-e"
+endif
+	 sed -i '' $(EXTRASEDFLAG) 's@image: .*@image: '"$(IMG):$(IMG_TAG)"'@' config/default/manager_image_patch.yaml
 
 # Push the docker image
 docker-push:
