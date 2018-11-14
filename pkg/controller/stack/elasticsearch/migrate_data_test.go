@@ -89,11 +89,10 @@ func TestMigrateData(t *testing.T) {
 			input: []string{"test-node1", "test-node2"},
 			want:  "test-node1,test-node2,1542240540",
 		},
-
 	}
 
 	for _, tt := range tests {
-		esClient := &mockClient{t: t,}
+		esClient := &mockClient{t: t}
 		setAllocationExcludes(esClient, tt.input, now)
 		assert.Contains(t, esClient.getAndReset(), tt.want)
 	}

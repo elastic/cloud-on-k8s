@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ReconcileSnapshotCredentials checks the snapshot repository config for user provided, valid
+// ReconcileSnapshotCredentials checks the snapshot repository config for user provided, validates
 // snapshot repository configuration and transforms it into a keystore.Config to initialise
 // an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
 // created by the user containing valid snapshot repository credentials for the specified
@@ -37,7 +37,7 @@ func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1al
 		return result, err
 	}
 
-	var settings []keystore.Setting
+	settings := make([]keystore.Setting, 0, len(userCreatedSecret.Data))
 	for k := range userCreatedSecret.Data {
 		settings = append(
 			settings,

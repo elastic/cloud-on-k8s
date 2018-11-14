@@ -40,7 +40,6 @@ func IsNotFound(err error) bool {
 	default:
 		return false
 	}
-
 }
 
 func checkError(response *http.Response) error {
@@ -145,7 +144,7 @@ func (c *Client) ExcludeFromShardAllocation(context context.Context, nodes strin
 	})
 }
 
-// GetClusterHealth calls the _clsuter/health api.
+// GetClusterHealth calls the _cluster/health api.
 func (c *Client) GetClusterHealth(context context.Context) (Health, error) {
 	var result Health
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/health", c.Endpoint), nil)

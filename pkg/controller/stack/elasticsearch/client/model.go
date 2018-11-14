@@ -108,7 +108,7 @@ type ClusterRoutingAllocation struct {
 	Transient AllocationSettings `json:"transient"`
 }
 
-// SnapshotRepositorySetttings the settings section of the repository definition. Provider specific.
+// SnapshotRepositorySetttings is the settings section of the repository definition. Provider specific.
 type SnapshotRepositorySetttings struct {
 	Bucket string `json:"bucket"`
 	Client string `json:"client"`

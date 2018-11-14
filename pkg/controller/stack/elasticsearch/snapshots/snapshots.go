@@ -12,15 +12,17 @@ import (
 )
 
 const (
+	// SnapshotRepositoryName is the name of the snapshot repository managed by this controller.
 	SnapshotRepositoryName = "elastic-snapshots"
-	//TODO randomize name to avoid collisions with user created repos
+	// SnapshotClientName is the name of the Elasticsearch repository client.
+	// TODO randomize name to avoid collisions with user created repos
 	SnapshotClientName = "elastic-internal"
 )
 
 // RepositoryCredentialsKey returns a provider specific keystore key for the corresponding credentials.
 func RepositoryCredentialsKey(repoConfig v1alpha1.SnapshotRepository) string {
 	switch repoConfig.Type {
-	case "gcs":
+	case v1alpha1.SnapshotRepositoryTypeGCS:
 		return common.Concat("gcs.client.", SnapshotClientName, ".credentials_file")
 	}
 	return ""
@@ -40,16 +42,16 @@ func validateGcsKeyFile(fileName string, credentials map[string]string) error {
 		"client_x509_cert_url",
 	}
 	var missing []string
-	var result error
+	var err error
 	for _, k := range expected {
 		if _, ok := credentials[k]; !ok {
 			missing = append(missing, k)
 		}
 	}
 	if len(missing) > 0 {
-		result = errors.Errorf("Expected keys %v not found in %s gcs credential file", missing, fileName)
+		err = errors.Errorf("Expected keys %v not found in %s gcs credential file", missing, fileName)
 	}
-	return result
+	return err
 
 }
 
