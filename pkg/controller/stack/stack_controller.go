@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	"github.com/elastic/stack-operators/pkg/controller/stack/state"
 	"github.com/pkg/errors"
-	"k8s.io/client-go/tools/record"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -33,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -371,7 +371,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		return state, err
 	}
 
-	if esReachable { //TODO this needs to happen outside of reconcileElasticsearchPods
+	if esReachable { //TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
 		err = snapshots.EnsureSnapshotRepository(context.TODO(), esClient, stack.Spec.Elasticsearch.SnapshotRepository)
 		if err != nil {
 			//TODO decide should this be a reason to stop this reconciliation loop?
