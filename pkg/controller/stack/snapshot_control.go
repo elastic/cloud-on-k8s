@@ -14,7 +14,7 @@ import (
 )
 
 // ReconcileSnapshotCredentials checks the snapshot repository config for user provided, valid
-// snapshot repository configuration and transforms them into a keystore.Config to initialise
+// snapshot repository configuration and transforms it into a keystore.Config to initialise
 // an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
 // created by the user containing valid snapshot repository credentials for the specified
 // repository provider.
