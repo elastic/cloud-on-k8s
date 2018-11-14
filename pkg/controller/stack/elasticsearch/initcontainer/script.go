@@ -37,9 +37,9 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
 
 	ES_DIR="/usr/share/elasticsearch"
-    CONFIG_DIR=$ES_DIR/config
+	CONFIG_DIR=$ES_DIR/config
 	PLUGIN_BIN=$ES_DIR/bin/elasticsearch-plugin
-    KEYSTORE_BIN=$ES_DIR/bin/elasticsearch-keystore 
+	KEYSTORE_BIN=$ES_DIR/bin/elasticsearch-keystore 
 
 	# compute time in seconds since the given start time
 	function duration() {
@@ -79,8 +79,8 @@ var scriptTemplate = template.Must(template.New("").Parse(
 
 	keystore_start=$(date +%s)
 	# 
-    rm -rf $CONFIG_DIR/elasticsearch.keystore
-    $KEYSTORE_BIN create --silent
+	rm -rf $CONFIG_DIR/elasticsearch.keystore
+	$KEYSTORE_BIN create --silent
 	{{range .KeyStoreSettings}}
 		echo "Installing key {{.}}"	
 		$KEYSTORE_BIN add-file {{.Key}} {{.ValueFilePath}}
