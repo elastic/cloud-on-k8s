@@ -36,13 +36,13 @@ const (
 	SnapshotRepositoryTypeGCS SnapshotRepositoryType = "gcs"
 )
 
-// SnapshotRepositorySettings are repository specific settings to create a snapshot repository.
+// SnapshotRepositorySettings specify a storage location for snapshots.
 type SnapshotRepositorySettings struct {
 	BucketName  string             `json:"bucketName,omitempty"`
 	Credentials v1.SecretReference `json:"credentials,omitempty"`
 }
 
-// SnapshotRepository specifies that the user wants automatic snapshots to happen and where they should be stored.
+// SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
 type SnapshotRepository struct {
 	//Type of repository
 	Type SnapshotRepositoryType `json:"type"`
