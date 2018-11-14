@@ -15,7 +15,7 @@ const (
 	defaultDataSubDir        = "data"
 	defaultLogsSubDir        = "logs"
 	//Mountpath for keystore secrets in init container.
-	KeystoreSecretMountPath  = "/keystore-secrets"
+	KeystoreSecretMountPath = "/keystore-secrets"
 )
 
 var (

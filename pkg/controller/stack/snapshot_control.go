@@ -19,15 +19,14 @@ import (
 // created by the user containing valid snapshot repository credentials for the specified
 // repository provider.
 func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1alpha1.SnapshotRepository) (keystore.Config, error) {
-
 	var result keystore.Config
 	empty := corev1.SecretReference{}
-	userCreatedSecret := corev1.Secret{}
 	if repoConfig.Settings.Credentials == empty {
 		return result, nil
 	}
 
 	secretRef := repoConfig.Settings.Credentials
+	userCreatedSecret := corev1.Secret{}
 	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
 	if err := r.Get(context.TODO(), key, &userCreatedSecret); err != nil {
 		return result, errors.Wrap(err, "configured snapshot secret could not be retrieved")
