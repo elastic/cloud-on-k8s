@@ -62,7 +62,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard, exclusions map[
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
-func IsMigratingData(c *client.Client, node corev1.Pod, exclusions []corev1.Pod) (bool, error) {
+func IsMigratingData(c *client.Client, pod corev1.Pod, exclusions []corev1.Pod) (bool, error) {
 	shards, err := c.GetShards(context.TODO())
 	if err != nil {
 		return true, err
@@ -71,7 +71,7 @@ func IsMigratingData(c *client.Client, node corev1.Pod, exclusions []corev1.Pod)
 	for _, n := range exclusions {
 		excludedNodes[n.Name] = struct{}{}
 	}
-	return nodeIsMigratingData(node.Name, shards, excludedNodes), nil
+	return nodeIsMigratingData(pod.Name, shards, excludedNodes), nil
 }
 
 // AllocationSettings captures Elasticsearch API calls around allocation filtering.
