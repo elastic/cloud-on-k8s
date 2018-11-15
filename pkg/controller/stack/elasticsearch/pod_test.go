@@ -61,7 +61,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser, NewPodNonSpecParams{})
+			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser, NewPodExtraParams{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
 		})
@@ -85,7 +85,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := CreateExpectedPodSpecs(stack, probeUser, NewPodNonSpecParams{})
+	podSpec, err := CreateExpectedPodSpecs(stack, probeUser, NewPodExtraParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 	esPod := podSpec[0]

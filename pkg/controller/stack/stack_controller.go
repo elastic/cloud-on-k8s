@@ -344,7 +344,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		return state, err
 	}
 
-	nonSpecParams := elasticsearch.NewPodNonSpecParams{
+	nonSpecParams := elasticsearch.NewPodExtraParams{
 		ExtraFilesRef:  elasticsearchExtraFilesSecretObjectKey,
 		KeystoreConfig: keystoreConfig,
 	}

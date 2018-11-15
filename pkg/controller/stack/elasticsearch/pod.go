@@ -87,8 +87,8 @@ type NewPodSpecParams struct {
 	SetVMMaxMapCount bool
 }
 
-// NewPodNonSpecParams are parameters used to construct a pod that should not be taken into account during change calculation.
-type NewPodNonSpecParams struct {
+// NewPodExtraParams are parameters used to construct a pod that should not be taken into account during change calculation.
+type NewPodExtraParams struct {
 	ExtraFilesRef  types.NamespacedName
 	KeystoreConfig keystore.Config
 }
@@ -100,7 +100,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
-func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraParams NewPodNonSpecParams) ([]corev1.PodSpec, error) {
+func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraParams NewPodExtraParams) ([]corev1.PodSpec, error) {
 	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
@@ -123,7 +123,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodNonSpecParams) (corev1.PodSpec, error) {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExtraParams) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
