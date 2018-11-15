@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
@@ -27,7 +27,7 @@ func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
 
 // nodeIsMigratingData is the core of IsMigratingData just with any I/O
 // removed to facilitate testing. See IsMigratingData for a high-level description.
-func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
+func nodeIsMigratingData(nodeName string, shards []client.Shard, exclusions map[string]struct{}) bool {
 	// all other shards not living on the node that is about to go away mapped to their corresponding shard keys
 	othersByShard := make(map[string][]client.Shard)
 	// all shard copies currently living on the node leaving the cluster
@@ -35,10 +35,10 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 
 	// divide all shards into the to groups: migration candidate or other shard copy
 	for _, shard := range shards {
-
+		_, ignore := exclusions[shard.Node]
 		if shard.Node == nodeName {
 			candidates = append(candidates, shard)
-		} else {
+		} else if !ignore {
 			key := shard.Key()
 			others, found := othersByShard[key]
 			if !found {
@@ -62,12 +62,16 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard) bool {
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
-func IsMigratingData(c *client.Client, pod v1.Pod) (bool, error) {
+func IsMigratingData(c *client.Client, node corev1.Pod, exclusions []corev1.Pod) (bool, error) {
 	shards, err := c.GetShards(context.TODO())
 	if err != nil {
 		return true, err
 	}
-	return nodeIsMigratingData(pod.Name, shards), nil
+	excludedNodes := make(map[string]struct{})
+	for _, n := range exclusions {
+		excludedNodes[n.Name] = struct{}{}
+	}
+	return nodeIsMigratingData(node.Name, shards, excludedNodes), nil
 }
 
 // AllocationSettings captures Elasticsearch API calls around allocation filtering.
