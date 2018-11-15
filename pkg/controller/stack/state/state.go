@@ -29,7 +29,7 @@ func NewReconcileState(request reconcile.Request, stack *v1alpha1.Stack) Reconci
 
 // UpdateKibanaState updates the Kibana section of the stack resource status based on the given deployment.
 func (s ReconcileState) UpdateKibanaState(deployment v1.Deployment) {
-	s.Stack.Status.Kibana.AvailableNodes = int(deployment.Status.AvailableReplicas) //TODO lossy type conversion
+	s.Stack.Status.Kibana.AvailableNodes = int(deployment.Status.AvailableReplicas) // TODO lossy type conversion
 	s.Stack.Status.Kibana.Health = v1alpha1.KibanaRed
 	if deployment.Status.AvailableReplicas == deployment.Status.Replicas {
 		s.Stack.Status.Kibana.Health = v1alpha1.KibanaGreen

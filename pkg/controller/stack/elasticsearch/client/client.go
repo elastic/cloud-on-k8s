@@ -20,7 +20,7 @@ type Client struct {
 	User     User
 	HTTP     *http.Client
 	Endpoint string
-} //TODO TLS
+}
 
 //APIError is a non 2xx response from the Elasticsearch API
 type APIError struct {

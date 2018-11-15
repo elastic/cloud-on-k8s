@@ -75,7 +75,7 @@ type AllocationSettings interface {
 	ExcludeFromShardAllocation(context context.Context, nodes string) error
 }
 
-//setAllocationExcludes sets allocation filters for the given nodes.
+// setAllocationExcludes sets allocation filters for the given nodes.
 func setAllocationExcludes(client AllocationSettings, leavingNodes []string, now time.Time) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
@@ -83,11 +83,11 @@ func setAllocationExcludes(client AllocationSettings, leavingNodes []string, now
 		withBugfix := append(leavingNodes, strconv.FormatInt(now.Unix(), 10))
 		exclusions = strings.Join(withBugfix, ",")
 	}
-	//update allocation exclusions
+	// update allocation exclusions
 	return client.ExcludeFromShardAllocation(context.TODO(), exclusions)
 }
 
-//MigrateData sets allocation filters for the given nodes.
+// MigrateData sets allocation filters for the given nodes.
 func MigrateData(client AllocationSettings, leavingNodes []string) error {
 	return setAllocationExcludes(client, leavingNodes, time.Now())
 }

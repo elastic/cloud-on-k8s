@@ -78,7 +78,7 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 	}
 }
 
-//EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
+// EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
 func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alpha1.SnapshotRepository) error {
 	expected := client.SnapshotRepository{
 		Type: string(repo.Type),

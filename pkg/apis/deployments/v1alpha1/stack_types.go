@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -19,8 +19,8 @@ type StackSpec struct {
 	// FeatureFlags are stack-specific flags that enable or disable specific experimental features
 	FeatureFlags FeatureFlags `json:"featureFlags,omitempty"`
 
-	//TODO the new deployments API in EC(E) supports sequences of
-	//Kibanas and Elasticsearch clusters per stack deployment
+	// TODO the new deployments API in EC(E) supports sequences of
+	// Kibanas and Elasticsearch clusters per stack deployment
 
 	// Elasticsearch specific configuration for the stack.
 	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
@@ -42,7 +42,7 @@ type SnapshotRepositorySettings struct {
 	// BucketName is the name of the provider specific storage bucket to use.
 	BucketName string `json:"bucketName,omitempty"`
 	// Credentials is a reference to a secret containing credentials for the storage provider.
-	Credentials v1.SecretReference `json:"credentials,omitempty"`
+	Credentials corev1.SecretReference `json:"credentials,omitempty"`
 }
 
 // SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
@@ -145,7 +145,7 @@ type LimitsSpec struct {
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
 type ElasticsearchHealth string
 
-//Possible traffic light states Elasticsearch health can have.
+// Possible traffic light states Elasticsearch health can have.
 const (
 	ElasticsearchRedHealth    ElasticsearchHealth = "red"
 	ElasticsearchYellowHealth ElasticsearchHealth = "yellow"

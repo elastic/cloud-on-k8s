@@ -198,7 +198,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 		),
 	}
 
-	//keystore init is optional
+	// keystore init is optional
 	keyStoreInit := initcontainer.KeystoreInit{Settings: extraParams.KeystoreConfig.KeystoreSettings}
 	if !extraParams.KeystoreConfig.IsEmpty() {
 		keystoreVolume := NewSecretVolumeWithMountPath(

@@ -2,7 +2,7 @@ package common
 
 import "strings"
 
-//CompoundError is the sum of multiple errors e.g. for validation purposes.
+// CompoundError is the sum of multiple errors e.g. for validation purposes.
 type CompoundError struct {
 	message  string
 	elements []error
@@ -13,7 +13,7 @@ func (e *CompoundError) Error() string {
 	return e.message
 }
 
-//NewCompoundError creates a compound error from the given slice of errors.
+// NewCompoundError creates a compound error from the given slice of errors.
 func NewCompoundError(errs []error) error {
 	if len(errs) == 0 {
 		return nil
