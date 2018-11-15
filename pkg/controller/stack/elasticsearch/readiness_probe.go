@@ -2,7 +2,7 @@ package elasticsearch
 
 // defaultReadinessProbeScript is the verbatim shell script that acts as a readiness probe
 const defaultReadinessProbeScript string = `
-#!/usr/bin/env bash -e
+#!/usr/bin/env bash
 # Consider a node to be healthy if it has a master registered
 CURL_TIMEOUT=3
 
@@ -14,7 +14,7 @@ if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_FILE}" ]; then
 else
   BASIC_AUTH=''
 fi
-curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k --fail ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-http}://127.0.0.1:9200${path}
+curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-http}://127.0.0.1:9200${path}
 }
 
 status=$(http_status_code "/_cat/master")
