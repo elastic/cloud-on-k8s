@@ -377,7 +377,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 			// TODO decide should this be a reason to stop this reconciliation loop?
 			msg := "Could not ensure snapshot repository"
 			r.recorder.Event(&stack, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, "Could not ensure snapshot repository", "iteration", atomic.LoadInt64(&r.iteration))
+			log.Error(err, msg, "iteration", atomic.LoadInt64(&r.iteration))
 		}
 	}
 

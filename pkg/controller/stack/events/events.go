@@ -10,6 +10,6 @@ const (
 	EventReasonDelayed = "Delayed"
 	// EventReasonUnhealthy describes events where a stack deployments health was affected negatively.
 	EventReasonUnhealthy = "Unhealthy"
-	// EventReasonUnexpected describes events that were not anticipated or happen at an unexpected time.
+	// EventReasonUnexpected describes events that were not anticipated or happened at an unexpected time.
 	EventReasonUnexpected = "Unexpected"
 )

@@ -22,7 +22,7 @@ type Client struct {
 	Endpoint string
 }
 
-//APIError is a non 2xx response from the Elasticsearch API
+// APIError is a non 2xx response from the Elasticsearch API
 type APIError struct {
 	response *http.Response
 }
@@ -154,7 +154,7 @@ func (c *Client) GetClusterHealth(context context.Context) (Health, error) {
 	return result, c.makeRequestAndUnmarshal(context, request, &result)
 }
 
-// GetSnapshotRepository retrieve the currently configured snapshot repository with the given name.
+// GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
 func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
 	var result map[string]SnapshotRepository
 	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), nil)
@@ -164,7 +164,7 @@ func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (Snapsh
 	return result[name], c.makeRequestAndUnmarshal(ctx, request, &result)
 }
 
-// UpsertSnapshotRepository insert or update the given snapshot repository
+// UpsertSnapshotRepository inserts or updates the given snapshot repository
 func (c *Client) UpsertSnapshotRepository(context context.Context, name string, repository SnapshotRepository) error {
 	return c.marshalAndRequest(context, repository, func(body io.Reader) (*http.Request, error) {
 		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), body)

@@ -78,7 +78,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	######################
 
 	keystore_start=$(date +%s)
-	# 
+
 	rm -rf $CONFIG_DIR/elasticsearch.keystore
 	$KEYSTORE_BIN create --silent
 	{{range .KeyStoreSettings}}
@@ -90,7 +90,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	$KEYSTORE_BIN list
 
 	echo "Keystore initialisation duration: $(duration $keystore_start) sec."
-
 
 	######################
 	#  Config linking    #
