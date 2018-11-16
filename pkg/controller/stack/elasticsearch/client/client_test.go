@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -243,12 +244,24 @@ func TestClientErrorHandling(t *testing.T) {
 	// 303 would lead to a redirect to another error response if we would also set the Location header
 	codes := []int{100, 303, 400, 404, 500}
 	testClient := NewMockClient(errorResponses(codes))
+	requests := []func() (string, error){
+		func() (string, error) {
+			_, err := testClient.GetShards(context.TODO())
+			return "GetShards", err
+		},
+		func() (string, error) {
+			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.TODO(), "")
+		},
+		func() (string, error) {
+			return "UpsertSnapshotRepository", testClient.UpsertSnapshotRepository(context.TODO(), "test", SnapshotRepository{})
+		},
+	}
 
 	for range codes {
-		_, err := testClient.GetShards(context.TODO())
-		assert.Error(t, err, "GetShards should return an error for anything not 2xx")
-		err = testClient.ExcludeFromShardAllocation(context.TODO(), "")
-		assert.Error(t, err, "ExcludeFromShardAllocation should return an error for anything not 2xx")
+		for _, f := range requests {
+			name, err := f()
+			assert.Error(t, err, fmt.Sprintf("%s should return an error for anything not 2xx", name))
+		}
 	}
 
 }
@@ -301,6 +314,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		testClient.User = tt.args
 		testClient.GetShards(context.TODO())
 		testClient.ExcludeFromShardAllocation(context.TODO(), "")
+		testClient.UpsertSnapshotRepository(context.TODO(), "", SnapshotRepository{})
 
 	}
 

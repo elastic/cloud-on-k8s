@@ -3,6 +3,8 @@ package elasticsearch
 import (
 	"strconv"
 
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
+
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
@@ -85,6 +87,12 @@ type NewPodSpecParams struct {
 	SetVMMaxMapCount bool
 }
 
+// NewPodExtraParams are parameters used to construct a pod that should not be taken into account during change calculation.
+type NewPodExtraParams struct {
+	ExtraFilesRef  types.NamespacedName
+	KeystoreConfig keystore.Config
+}
+
 // Hash computes a unique hash with the current NewPodSpecParams
 func (params NewPodSpecParams) Hash() string {
 	hash, _ := hashstructure.Hash(params, nil)
@@ -92,7 +100,7 @@ func (params NewPodSpecParams) Hash() string {
 }
 
 // CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
-func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]corev1.PodSpec, error) {
+func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraParams NewPodExtraParams) ([]corev1.PodSpec, error) {
 	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
@@ -104,7 +112,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 				DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 				NodeTypes:                      topology.NodeTypes,
 				SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
-			}, probeUser, extraFilesRef)
+			}, probeUser, extraParams)
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +123,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 }
 
 // NewPodSpec creates a new PodSpec for an Elasticsearch instance in this cluster.
-func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.NamespacedName) (corev1.PodSpec, error) {
+func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExtraParams) (corev1.PodSpec, error) {
 	// TODO: validate version?
 	imageName := common.Concat(defaultImageRepositoryAndName, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -132,7 +140,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 	)
 	dataVolume := NewDefaultEmptyDirVolume()
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
-		extraFilesRef.Name,
+		extraParams.ExtraFilesRef.Name,
 		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
@@ -190,8 +198,22 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 		),
 	}
 
+	// keystore init is optional, will only happen if snapshots are requested in the stack resource
+	keyStoreInit := initcontainer.KeystoreInit{Settings: extraParams.KeystoreConfig.KeystoreSettings}
+	if !extraParams.KeystoreConfig.IsEmpty() {
+		keystoreVolume := NewSecretVolumeWithMountPath(
+			extraParams.KeystoreConfig.KeystoreSecretRef.Name,
+			"keystore-init",
+			KeystoreSecretMountPath)
+
+		podSpec.Volumes = append(podSpec.Volumes, keystoreVolume.Volume())
+		keyStoreInit.VolumeMount = keystoreVolume.VolumeMount()
+	}
+
 	// Setup init containers
-	initContainers, err := initcontainer.NewInitContainers(imageName, LinkedFiles, p.SetVMMaxMapCount)
+	initContainers, err := initcontainer.NewInitContainers(
+		imageName, LinkedFiles, keyStoreInit, p.SetVMMaxMapCount,
+	)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

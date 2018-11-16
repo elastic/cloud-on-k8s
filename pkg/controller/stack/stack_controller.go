@@ -17,10 +17,12 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
 	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/pkg/controller/stack/events"
 	"github.com/elastic/stack-operators/pkg/controller/stack/kibana"
 	"github.com/elastic/stack-operators/pkg/controller/stack/state"
 	"github.com/pkg/errors"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -325,6 +328,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 				"trust.yml": trustRootCfgData,
 			},
 		}
+
 		err = controllerutil.SetControllerReference(&stack, &elasticsearchExtraFilesSecret, r.scheme)
 		if err != nil {
 			return state, err
@@ -335,7 +339,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		}
 	}
 
-	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, elasticsearchExtraFilesSecretObjectKey)
+	keystoreConfig, err := r.ReconcileSnapshotCredentials(stack.Spec.Elasticsearch.SnapshotRepository)
+	if err != nil {
+		return state, err
+	}
+
+	nonSpecParams := elasticsearch.NewPodExtraParams{
+		ExtraFilesRef:  elasticsearchExtraFilesSecretObjectKey,
+		KeystoreConfig: keystoreConfig,
+	}
+
+	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, nonSpecParams)
 	if err != nil {
 		return state, err
 	}
@@ -355,6 +369,16 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 	esReachable, err := r.IsPublicServiceReady(stack)
 	if err != nil {
 		return state, err
+	}
+
+	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
+		err = snapshots.EnsureSnapshotRepository(context.TODO(), esClient, stack.Spec.Elasticsearch.SnapshotRepository)
+		if err != nil {
+			// TODO decide should this be a reason to stop this reconciliation loop?
+			msg := "Could not ensure snapshot repository"
+			r.recorder.Event(&stack, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg, "iteration", atomic.LoadInt64(&r.iteration))
+		}
 	}
 
 	if !changes.ShouldMigrate() {

@@ -7,7 +7,6 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 var probeUser = client.User{Name: "username", Password: "supersecure"}
@@ -62,7 +61,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser, types.NamespacedName{})
+			podSpecs, err := CreateExpectedPodSpecs(tt.stack, probeUser, NewPodExtraParams{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
 		})
@@ -86,7 +85,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := CreateExpectedPodSpecs(stack, probeUser, types.NamespacedName{})
+	podSpec, err := CreateExpectedPodSpecs(stack, probeUser, NewPodExtraParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 	esPod := podSpec[0]

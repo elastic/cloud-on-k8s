@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	//HTTPPort is the (default) port used by Kibana
+	// HTTPPort is the (default) port used by Kibana
 	HTTPPort = 5601
 
 	defaultImageRepositoryAndName        string = "docker.elastic.co/kibana/kibana"

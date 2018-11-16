@@ -3,20 +3,23 @@ package initcontainer
 import (
 	"bytes"
 	"html/template"
+
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/keystore"
 )
 
 // List of plugins to be installed on the ES instance
 var defaultInstalledPlugins = []string{
 	// TODO: enable when useful :)
 	// "repository-s3",  // S3 snapshots
-	// "repository-gcs", // gcp snapshots
+	"repository-gcs", // gcp snapshots
 }
 
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
-	Plugins       []string          // List of plugins to install
-	SharedVolumes SharedVolumeArray // Directories to persist in shared volumes
-	LinkedFiles   LinkedFilesArray  // Files to link individually
+	Plugins          []string           // List of plugins to install
+	SharedVolumes    SharedVolumeArray  // Directories to persist in shared volumes
+	LinkedFiles      LinkedFilesArray   // Files to link individually
+	KeyStoreSettings []keystore.Setting // Settings to add to the keystore
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -34,7 +37,9 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
 
 	ES_DIR="/usr/share/elasticsearch"
+	CONFIG_DIR=$ES_DIR/config
 	PLUGIN_BIN=$ES_DIR/bin/elasticsearch-plugin
+	KEYSTORE_BIN=$ES_DIR/bin/elasticsearch-keystore 
 
 	# compute time in seconds since the given start time
 	function duration() {
@@ -67,6 +72,24 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	$PLUGIN_BIN list
 
 	echo "Plugins installation duration: $(duration $plugins_start) sec."
+
+	######################
+	#       KeyStore     #
+	######################
+
+	keystore_start=$(date +%s)
+
+	rm -rf $CONFIG_DIR/elasticsearch.keystore
+	$KEYSTORE_BIN create --silent
+	{{range .KeyStoreSettings}}
+		echo "Installing key {{.}}"	
+		$KEYSTORE_BIN add-file {{.Key}} {{.ValueFilePath}}
+	{{end}}
+
+	echo "Installed settings:"
+	$KEYSTORE_BIN list
+
+	echo "Keystore initialisation duration: $(duration $keystore_start) sec."
 
 	######################
 	#  Config linking    #

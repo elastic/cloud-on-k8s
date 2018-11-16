@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,14 +19,39 @@ type StackSpec struct {
 	// FeatureFlags are stack-specific flags that enable or disable specific experimental features
 	FeatureFlags FeatureFlags `json:"featureFlags,omitempty"`
 
-	//TODO the new deployments API in EC(E) supports sequences of
-	//Kibanas and Elasticsearch clusters per stack deployment
+	// TODO the new deployments API in EC(E) supports sequences of
+	// Kibanas and Elasticsearch clusters per stack deployment
 
 	// Elasticsearch specific configuration for the stack.
 	Elasticsearch ElasticsearchSpec `json:"elasticsearch,omitempty"`
 
 	// Kibana spec for this stack
 	Kibana KibanaSpec `json:"kibana,omitempty"`
+}
+
+// SnapshotRepositoryType as in gcs, AWS s3, file etc.
+type SnapshotRepositoryType string
+
+// Supported repository types
+const (
+	SnapshotRepositoryTypeGCS SnapshotRepositoryType = "gcs"
+)
+
+// SnapshotRepositorySettings specify a storage location for snapshots.
+type SnapshotRepositorySettings struct {
+	// BucketName is the name of the provider specific storage bucket to use.
+	BucketName string `json:"bucketName,omitempty"`
+	// Credentials is a reference to a secret containing credentials for the storage provider.
+	Credentials corev1.SecretReference `json:"credentials,omitempty"`
+}
+
+// SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
+type SnapshotRepository struct {
+	// Type of repository
+	// +kubebuilder:validation:Enum=gcs
+	Type SnapshotRepositoryType `json:"type"`
+	// Settings are provider specific repository settings
+	Settings SnapshotRepositorySettings `json:"settings"`
 }
 
 // ElasticsearchSpec defines the desired state of an Elasticsearch deployment.
@@ -45,6 +71,9 @@ type ElasticsearchSpec struct {
 
 	// Topologies represent a list of node topologies to be part of the cluster
 	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
+
+	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
+	SnapshotRepository SnapshotRepository `json:"snapshotRepository,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -116,7 +145,7 @@ type LimitsSpec struct {
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
 type ElasticsearchHealth string
 
-//Possible traffic light states Elasticsearch health can have.
+// Possible traffic light states Elasticsearch health can have.
 const (
 	ElasticsearchRedHealth    ElasticsearchHealth = "red"
 	ElasticsearchYellowHealth ElasticsearchHealth = "yellow"

@@ -14,6 +14,8 @@ const (
 	probeUserSecretMountPath = "/probe-user"
 	defaultDataSubDir        = "data"
 	defaultLogsSubDir        = "logs"
+	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
+	KeystoreSecretMountPath = "/keystore-secrets"
 )
 
 var (
