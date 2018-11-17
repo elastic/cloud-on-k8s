@@ -121,6 +121,15 @@ type SnapshotRepository struct {
 	Settings SnapshotRepositorySetttings `json:"settings"`
 }
 
+// SnapshotStates as in Elasticsearch.
+const (
+	SnapshotStateSuccess      = "SUCCESS"
+	SnapshotStateFailed       = "FAILED"
+	SnapshotStateInProgress   = "IN_PROGRESS"
+	SnapshotStatePartial      = "PARTIAL"
+	SnapshotStateIncompatible = "INCOMPATIBLE"
+)
+
 // Snapshot represents a single snapshot.
 type Snapshot struct {
 	Snapshot          string        `json:"snapshot"`
@@ -144,28 +153,28 @@ type Snapshot struct {
 
 // IsSuccess is true when the snapshot succeeded.
 func (s Snapshot) IsSuccess() bool {
-	return s.State == "SUCCESS"
+	return s.State == SnapshotStateSuccess
 }
 
 // IsFailed is true if the snapshot failed.
 func (s Snapshot) IsFailed() bool {
-	return s.State == "FAILED"
+	return s.State == SnapshotStateFailed
 }
 
 // IsInProgress is true if the snapshot is still running.
 func (s Snapshot) IsInProgress() bool {
-	return s.State == "IN_PROGRESS"
+	return s.State == SnapshotStateInProgress
 }
 
 // IsPartial is true if only a subset of indices could be snapshotted.
 func (s Snapshot) IsPartial() bool {
-	return s.State == "PARTIAL"
+	return s.State == SnapshotStatePartial
 }
 
 // IsIncompatible is true if the snapshot was taken with an incompatible
 // version of Elasticsearch compared to the currently running version.
 func (s Snapshot) IsIncompatible() bool {
-	return s.State == "INCOMPATIBLE"
+	return s.State == SnapshotStateIncompatible
 }
 
 // IsComplete is true when a snapshot has reached one of its end states.
