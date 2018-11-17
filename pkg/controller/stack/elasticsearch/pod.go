@@ -46,14 +46,14 @@ var (
 )
 
 // NewPod constructs a pod from the given parameters.
-func NewPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) (corev1.Pod, error) {
+func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.Pod, error) {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      NewNodeName(stack.Name),
 			Namespace: stack.Namespace,
 			Labels:    NewLabels(stack, true),
 		},
-		Spec: podSpec,
+		Spec: podSpecCtx.PodSpec,
 	}
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
@@ -91,9 +91,14 @@ func (params NewPodSpecParams) Hash() string {
 	return strconv.FormatUint(hash, 10)
 }
 
+type PodSpecContext struct {
+	PodSpec      corev1.PodSpec
+	TopologySpec deploymentsv1alpha1.ElasticsearchTopologySpec
+}
+
 // CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
-func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]corev1.PodSpec, error) {
-	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
+func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]PodSpecContext, error) {
+	podSpecs := make([]PodSpecContext, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
 			podSpec, err := NewPodSpec(NewPodSpecParams{
@@ -108,7 +113,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 			if err != nil {
 				return nil, err
 			}
-			podSpecs = append(podSpecs, podSpec)
+			podSpecs = append(podSpecs, PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
 		}
 	}
 	return podSpecs, nil

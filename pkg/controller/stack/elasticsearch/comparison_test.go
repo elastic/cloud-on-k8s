@@ -11,47 +11,49 @@ import (
 )
 
 func ESPod(nodeDataEnv bool, image string, cpuLimit string) corev1.Pod {
-	return corev1.Pod{Spec: ESPodSpec(nodeDataEnv, image, cpuLimit)}
+	return corev1.Pod{Spec: ESPodSpecContext(nodeDataEnv, image, cpuLimit).PodSpec}
 }
 
-func ESPodSpec(nodeDataEnv bool, image string, cpuLimit string) corev1.PodSpec {
-	return corev1.PodSpec{
-		Containers: []corev1.Container{{
-			Env: []corev1.EnvVar{
-				corev1.EnvVar{Name: "node.data", Value: strconv.FormatBool(nodeDataEnv)},
-			},
-			Image:           image,
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            "elasticsearch",
-			Ports:           defaultContainerPorts,
-			// TODO: Hardcoded resource limits and requests
-			Resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse(cpuLimit),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
+func ESPodSpecContext(nodeDataEnv bool, image string, cpuLimit string) PodSpecContext {
+	return PodSpecContext{
+		PodSpec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Env: []corev1.EnvVar{
+					corev1.EnvVar{Name: "node.data", Value: strconv.FormatBool(nodeDataEnv)},
 				},
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("100m"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				Image:           image,
+				ImagePullPolicy: corev1.PullIfNotPresent,
+				Name:            "elasticsearch",
+				Ports:           defaultContainerPorts,
+				// TODO: Hardcoded resource limits and requests
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse(cpuLimit),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
 				},
-			},
-			ReadinessProbe: &corev1.Probe{
-				FailureThreshold:    3,
-				InitialDelaySeconds: 10,
-				PeriodSeconds:       10,
-				SuccessThreshold:    3,
-				TimeoutSeconds:      5,
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							"script here",
+				ReadinessProbe: &corev1.Probe{
+					FailureThreshold:    3,
+					InitialDelaySeconds: 10,
+					PeriodSeconds:       10,
+					SuccessThreshold:    3,
+					TimeoutSeconds:      5,
+					Handler: corev1.Handler{
+						Exec: &corev1.ExecAction{
+							Command: []string{
+								"sh",
+								"-c",
+								"script here",
+							},
 						},
 					},
 				},
-			},
-		}},
+			}},
+		},
 	}
 }
 
@@ -62,7 +64,7 @@ var defaultNodeData = true
 func Test_podMatchesSpec(t *testing.T) {
 	type args struct {
 		pod  corev1.Pod
-		spec corev1.PodSpec
+		spec PodSpecContext
 	}
 	tests := []struct {
 		name                      string
@@ -76,7 +78,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Call with invalid specs should return an error",
 			args: args{
 				pod:  corev1.Pod{},
-				spec: corev1.PodSpec{},
+				spec: PodSpecContext{PodSpec: corev1.PodSpec{}},
 			},
 			want:               false,
 			wantErr:            errors.New("No container named elasticsearch in the given pod"),
@@ -86,7 +88,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Matching pod should match",
 			args: args{
 				pod:  ESPod(defaultNodeData, defaultImage, defaultCPULimit),
-				spec: ESPodSpec(true, defaultImage, defaultCPULimit),
+				spec: ESPodSpecContext(true, defaultImage, defaultCPULimit),
 			},
 			want:               true,
 			wantErr:            nil,
@@ -96,7 +98,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Non-matching image should not match",
 			args: args{
 				pod:  ESPod(defaultNodeData, defaultImage, defaultCPULimit),
-				spec: ESPodSpec(defaultNodeData, "another-image", defaultCPULimit),
+				spec: ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit),
 			},
 			want:               false,
 			wantErr:            nil,
@@ -106,7 +108,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Non-matching comparable env var should not match",
 			args: args{
 				pod:  ESPod(defaultNodeData, defaultImage, defaultCPULimit),
-				spec: ESPodSpec(false, defaultImage, defaultCPULimit),
+				spec: ESPodSpecContext(false, defaultImage, defaultCPULimit),
 			},
 			want:               false,
 			wantErr:            nil,
@@ -116,7 +118,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Non-matching resources should match",
 			args: args{
 				pod:  ESPod(defaultNodeData, defaultImage, defaultCPULimit),
-				spec: ESPodSpec(defaultNodeData, defaultImage, "600m"),
+				spec: ESPodSpecContext(defaultNodeData, defaultImage, "600m"),
 			},
 			want:                      false,
 			wantErr:                   nil,

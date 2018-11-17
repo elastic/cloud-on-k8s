@@ -21,7 +21,7 @@ func SortPodByName(pods []corev1.Pod) func(i, j int) bool {
 // PodToAdd defines a pod to be added, along with
 // the reasons why it doesn't match any existing pod
 type PodToAdd struct {
-	PodSpec         corev1.PodSpec
+	PodSpecCtx      PodSpecContext
 	MismatchReasons map[string][]string
 }
 
@@ -31,25 +31,25 @@ func (c Changes) ShouldMigrate() bool {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expected []corev1.PodSpec, actual []corev1.Pod) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, actual []corev1.Pod) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
-	expectedCopy := make([]corev1.PodSpec, len(expected))
-	copy(expectedCopy, expected)
+	expectedCopy := make([]PodSpecContext, len(expectedPodSpecCtxs))
+	copy(expectedCopy, expectedPodSpecCtxs)
 	actualCopy := make([]corev1.Pod, len(actual))
 	copy(actualCopy, actual)
 
 	return mutableCalculateChanges(expectedCopy, actualCopy)
 }
 
-func mutableCalculateChanges(expectedPodSpecs []corev1.PodSpec, actualPods []corev1.Pod) (Changes, error) {
+func mutableCalculateChanges(expectedPodSpecCtxs []PodSpecContext, actualPods []corev1.Pod) (Changes, error) {
 	changes := Changes{
 		ToAdd:    []PodToAdd{},
 		ToKeep:   []corev1.Pod{},
 		ToRemove: []corev1.Pod{},
 	}
 
-	for _, expectedPodSpec := range expectedPodSpecs {
-		comparisonResult, err := getAndRemoveMatchingPod(expectedPodSpec, actualPods)
+	for _, expectedPodSpecCtx := range expectedPodSpecCtxs {
+		comparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods)
 		if err != nil {
 			return changes, err
 		}
@@ -61,7 +61,7 @@ func mutableCalculateChanges(expectedPodSpecs []corev1.PodSpec, actualPods []cor
 		} else {
 			// no matching pod, a new one should be added
 			changes.ToAdd = append(changes.ToAdd, PodToAdd{
-				PodSpec:         expectedPodSpec,
+				PodSpecCtx:      expectedPodSpecCtx,
 				MismatchReasons: comparisonResult.MismatchReasonsPerPod,
 			})
 		}
@@ -84,10 +84,11 @@ type PodComparisonResult struct {
 	RemainingPods         []corev1.Pod
 }
 
-func getAndRemoveMatchingPod(podSpec corev1.PodSpec, pods []corev1.Pod) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
+
 	for i, pod := range pods {
-		isMatch, mismatchReasons, err := podMatchesSpec(pod, podSpec)
+		isMatch, mismatchReasons, err := podMatchesSpec(pod, podSpecCtx)
 		if err != nil {
 			return PodComparisonResult{}, err
 		}

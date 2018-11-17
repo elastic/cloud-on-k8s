@@ -335,7 +335,9 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		}
 	}
 
-	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, elasticsearchExtraFilesSecretObjectKey)
+	expectedPodSpecCtxs, err := elasticsearch.CreateExpectedPodSpecs(
+		stack, controllerUser, elasticsearchExtraFilesSecretObjectKey,
+	)
 	if err != nil {
 		return state, err
 	}
@@ -347,7 +349,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		return state, errors.Wrap(err, "Could not create ES client")
 	}
 
-	changes, err := elasticsearch.CalculateChanges(expectedPodSpecs, currentPods)
+	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, currentPods)
 	if err != nil {
 		return state, err
 	}
@@ -372,7 +374,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 	// Grow cluster with missing pods
 	for _, newPod := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
-		if err := r.CreateElasticsearchPod(stack, newPod.PodSpec); err != nil {
+		if err := r.CreateElasticsearchPod(stack, newPod.PodSpecCtx); err != nil {
 			return state, err
 		}
 	}
@@ -412,8 +414,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 }
 
 // CreateElasticsearchPod creates the given elasticsearch pod
-func (r *ReconcileStack) CreateElasticsearchPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) error {
-	pod, err := elasticsearch.NewPod(stack, podSpec)
+func (r *ReconcileStack) CreateElasticsearchPod(
+	stack deploymentsv1alpha1.Stack,
+	podSpecCtx elasticsearch.PodSpecContext,
+) error {
+	pod, err := elasticsearch.NewPod(stack, podSpecCtx)
 	if err != nil {
 		return err
 	}

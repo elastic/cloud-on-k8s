@@ -71,15 +71,17 @@ func compareResources(actual corev1.ResourceRequirements, expected corev1.Resour
 	return ComparisonMatch
 }
 
-func podMatchesSpec(pod corev1.Pod, spec corev1.PodSpec) (bool, []string, error) {
+func podMatchesSpec(pod corev1.Pod, spec PodSpecContext) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err
 	}
-	expectedContainer, err := getEsContainer(spec.Containers)
+	expectedContainer, err := getEsContainer(spec.PodSpec.Containers)
 	if err != nil {
 		return false, nil, err
 	}
+
+	// TODO: compare volume claims?
 
 	comparisons := []Comparison{
 		NewStringComparison(expectedContainer.Image, actualContainer.Image, "Docker image"),
