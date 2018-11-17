@@ -179,7 +179,7 @@ func (s Snapshot) IsIncompatible() bool {
 
 // IsComplete is true when a snapshot has reached one of its end states.
 func (s Snapshot) IsComplete() bool {
-	return s.IsComplete() || s.IsFailed() || s.IsPartial()
+	return s.IsSuccess() || s.IsFailed() || s.IsPartial()
 }
 
 // EndedBefore returns true if the snapshot has and end time and that end time is further in the
