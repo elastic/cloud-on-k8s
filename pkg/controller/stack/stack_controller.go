@@ -2,11 +2,9 @@ package stack
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -225,25 +223,17 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
 func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) (*esclient.Client, error) {
+	var result *esclient.Client
 	esURL, err := elasticsearch.ExternalServiceURL(*stack)
+	if err != nil {
+		return result, err
+	}
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		esURL = strings.Replace(esURL, "http:", "https:", 1)
 	}
+	return esclient.NewElasticsearchClient(esURL, esUser, caPool), err
 
-	return &esclient.Client{
-		Endpoint: esURL,
-		User:     esUser,
-		HTTP: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: caPool,
-					// TODO: we can do better.
-					InsecureSkipVerify: true,
-				},
-			},
-		},
-	}, err
 }
 
 // GetPodList returns PodList in the current namespace with a specific set of

@@ -3,10 +3,13 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 )
 
 // User captures Elasticsearch user credentials.
@@ -20,6 +23,33 @@ type Client struct {
 	User     User
 	HTTP     *http.Client
 	Endpoint string
+}
+
+// NewElasticsearchClient creates a new client bound to the given stack instance.
+func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *Client {
+	return &Client{
+		Endpoint: esURL,
+		User:     esUser,
+		HTTP: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: caPool,
+					// TODO: we can do better.
+					InsecureSkipVerify: true,
+				},
+			},
+		},
+	}
+}
+
+// ValidUserName consists must begin with a letter or underscore and contain only letters
+// underscores and numbers.
+func ValidUserName(name string) bool {
+	valid, err := regexp.MatchString("^[a-zA-Z_]+[a-zA-Z0-9_]*$", name)
+	if err != nil {
+		return false
+	}
+	return valid
 }
 
 // APIError is a non 2xx response from the Elasticsearch API
@@ -169,4 +199,34 @@ func (c *Client) UpsertSnapshotRepository(context context.Context, name string, 
 	return c.marshalAndRequest(context, repository, func(body io.Reader) (*http.Request, error) {
 		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), body)
 	})
+}
+
+// GetAllSnapshots returns a list of all snapshots for the given repository.
+func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
+	var result SnapshotsList
+	request, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_snapshot/%s/_all", c.Endpoint, repo), nil)
+	if err != nil {
+		return result, err
+	}
+	return result, c.makeRequestAndUnmarshal(ctx, request, &result)
+}
+
+// TakeSnapshot takes a new cluster snapshot with the given name into the given repository
+func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
+	request, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_snapshot/%s/%s", c.Endpoint, repo, snapshot), nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.makeRequest(ctx, request)
+	return err
+}
+
+// DeleteSnapshot delete the given snapshot from the given repository.
+func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
+	request, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/_snapshot/%s/%s", c.Endpoint, repo, snapshot), nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.makeRequest(ctx, request)
+	return err
 }
