@@ -133,7 +133,7 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 	otherUsers := make(map[string][]byte)
 	for _, user := range strings.Split(string(other.Data[ElasticUsersFile]), "\n") {
 		userPw := strings.Split(user, ":")
-		if len(userPw) != 2 { //corrupted data needs update, should always be pairs
+		if len(userPw) != 2 { // corrupted data needs update, should always be pairs
 			return true
 		}
 		otherUsers[userPw[0]] = []byte(userPw[1])
@@ -197,12 +197,12 @@ func NewExternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentia
 // NewElasticUsersCredentials creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
 func NewElasticUsersCredentials(s deploymentsv1alpha1.Stack, users []client.User) (*HashedCredentials, error) {
-	//sort to avoid unnecessary diffs and API resource updates
+	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].Name < users[j].Name
 	})
 	hashedCreds, roles := strings.Builder{}, strings.Builder{}
-	roles.WriteString("superuser:") //TODO all superusers -> role mappings
+	roles.WriteString("superuser:") // TODO all superusers -> role mappings
 	for i, user := range users {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {

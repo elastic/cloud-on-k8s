@@ -38,6 +38,13 @@ spec:
       #    resources:
       #      requests:
       #        storage: 2Gi
+    snapshotRepository:
+      type: "gcs"
+      settings:
+        bucketName: "stack-sample-snapshot-repo"
+        credentials:
+          namespace: "default"
+          name: "gcs-repo-account"
   kibana:
     nodeCount: 1
     expose: LoadBalancer

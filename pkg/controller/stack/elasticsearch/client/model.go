@@ -101,9 +101,21 @@ func (s Shard) Key() string {
 type AllocationSettings struct {
 	ExcludeName string `json:"cluster.routing.allocation.exclude._name"`
 	Enable      string `json:"cluster.routing.allocation.enable"`
-} //TODO awareness settings
+} // TODO awareness settings
 
 // ClusterRoutingAllocation models a subset of transient allocation settings for an Elasticsearch cluster.
 type ClusterRoutingAllocation struct {
 	Transient AllocationSettings `json:"transient"`
+}
+
+// SnapshotRepositorySetttings is the settings section of the repository definition. Provider specific.
+type SnapshotRepositorySetttings struct {
+	Bucket string `json:"bucket"`
+	Client string `json:"client"`
+}
+
+// SnapshotRepository partially models Elasticsearch repository settings.
+type SnapshotRepository struct {
+	Type     string                      `json:"type"`
+	Settings SnapshotRepositorySetttings `json:"settings"`
 }

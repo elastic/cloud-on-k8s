@@ -36,6 +36,23 @@ spec:
                   type: string
                 setVmMaxMapCount:
                   type: boolean
+                snapshotRepository:
+                  properties:
+                    settings:
+                      properties:
+                        bucketName:
+                          type: string
+                        credentials:
+                          type: object
+                      type: object
+                    type:
+                      enum:
+                      - gcs
+                      type: string
+                  required:
+                  - type
+                  - settings
+                  type: object
                 topologies:
                   items:
                     properties:

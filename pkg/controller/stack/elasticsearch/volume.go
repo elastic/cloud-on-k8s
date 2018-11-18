@@ -8,6 +8,8 @@ import (
 const (
 	defaultSecretMountPath   = "/secrets"
 	probeUserSecretMountPath = "/probe-user"
+	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
+	KeystoreSecretMountPath = "/keystore-secrets"
 )
 
 var (
