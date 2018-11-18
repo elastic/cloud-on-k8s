@@ -1,11 +1,15 @@
 package snapshots
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestValidateSnapshotCredentials(t *testing.T) {
@@ -56,5 +60,240 @@ func TestValidateSnapshotCredentials(t *testing.T) {
 		} else {
 			assert.NoError(t, actual)
 		}
+	}
+}
+
+func TestRepositoryCredentialsKey(t *testing.T) {
+
+	tests := []struct {
+		name string
+		args v1alpha1.SnapshotRepository
+		want string
+	}{
+		{
+			name: "gcs is currently the only one",
+			args: v1alpha1.SnapshotRepository{
+				Type: v1alpha1.SnapshotRepositoryTypeGCS,
+			},
+			want: "gcs.client.elastic-internal.credentials_file",
+		},
+		{
+			name: "empty string is the default",
+			args: v1alpha1.SnapshotRepository{},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RepositoryCredentialsKey(tt.args); got != tt.want {
+				t.Errorf("RepositoryCredentialsKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSettings_NextPhase(t *testing.T) {
+	now := time.Date(2018, 11, 17, 0, 9, 0, 0, time.UTC)
+	settings := Settings{
+		Interval: 30 * time.Minute,
+	}
+
+	tests := []struct {
+		name string
+		args []client.Snapshot
+		want Phase
+	}{
+		{
+			name: "no snapshots means take one",
+			args: []client.Snapshot{},
+			want: PhaseTake,
+		},
+		{
+			name: "last snapshot too old means take a new one",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State:   client.SnapshotStateSuccess,
+					EndTime: now.Add(-1 * time.Hour),
+				},
+				client.Snapshot{
+					State:   client.SnapshotStateSuccess,
+					EndTime: now.Add(-2 * time.Hour),
+				},
+			},
+			want: PhaseTake,
+		},
+		{
+			name: "last snapshot recent enough means purge",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State:   client.SnapshotStateSuccess,
+					EndTime: now.Add(-29 * time.Minute),
+				},
+				client.Snapshot{
+					State:   client.SnapshotStateSuccess,
+					EndTime: now.Add(-1 * time.Hour),
+				},
+			},
+			want: PhasePurge,
+		},
+		{
+			name: "recent enough includes failures",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State:   client.SnapshotStateFailed,
+					EndTime: now.Add(-29 * time.Minute),
+				},
+			},
+			want: PhasePurge,
+		},
+		{
+			name: "last snapshot still running means wait",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State: client.SnapshotStateInProgress,
+				},
+			},
+			want: PhaseWait,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := settings.nextPhase(tt.args, now); got != tt.want {
+				t.Errorf("nextPhase was %v want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type mockClient struct {
+	mock.Mock
+}
+
+func (m *mockClient) GetAllSnapshots(ctx context.Context, repo string) (client.SnapshotsList, error) {
+	args := m.Called(ctx, repo)
+	return args.Get(0).(client.SnapshotsList), args.Error(1)
+}
+
+func (m *mockClient) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
+	args := m.Called(ctx, repo, snapshot)
+	return args.Error(0)
+}
+
+func (m *mockClient) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
+	args := m.Called(ctx, repo, snapshot)
+	return args.Error(0)
+}
+
+func TestMaintain(t *testing.T) {
+	now := time.Now()
+	settings := Settings{
+		Repository: "test-repo",
+		Max:        2,
+		Interval:   30 * time.Minute,
+	}
+
+	tests := []struct {
+		name    string
+		args    func() *mockClient
+		wantErr bool
+	}{
+		{
+			name: "no snapshots exist take one",
+			args: func() *mockClient {
+				m := new(mockClient)
+				m.On("GetAllSnapshots", mock.Anything, mock.Anything).Return(client.SnapshotsList{}, nil)
+				m.On("TakeSnapshot", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				return m
+			},
+		},
+		{
+			name: "most recent snapshot too old take a new one",
+			args: func() *mockClient {
+				m := new(mockClient)
+				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
+					Return(client.SnapshotsList{
+						Snapshots: []client.Snapshot{
+							client.Snapshot{
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-120 * time.Minute),
+								EndTime:   now.Add(-115 * time.Minute),
+							},
+							client.Snapshot{
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-60 * time.Minute),
+								EndTime:   now.Add(-55 * time.Minute),
+							},
+						},
+					}, nil)
+				m.On("TakeSnapshot", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+				return m
+			},
+		},
+		{
+			name: "most recent snapshot new enough, purge",
+			args: func() *mockClient {
+				m := new(mockClient)
+				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
+					Return(client.SnapshotsList{
+						// Purposely out of order to test sorting as well
+						Snapshots: []client.Snapshot{
+							client.Snapshot{
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-60 * time.Minute),
+								EndTime:   now.Add(-55 * time.Minute),
+							},
+							client.Snapshot{
+								Snapshot:  "delete-me",
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-150 * time.Minute),
+								EndTime:   now.Add(-145 * time.Minute),
+							},
+							client.Snapshot{
+								Snapshot:  "delete-me-too-just-not-yet",
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-120 * time.Minute),
+								EndTime:   now.Add(-115 * time.Minute),
+							},
+							client.Snapshot{
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-20 * time.Minute),
+								EndTime:   now.Add(-15 * time.Minute),
+							},
+						},
+					}, nil)
+				m.On("DeleteSnapshot", mock.Anything, mock.Anything, "delete-me").Return(nil)
+				return m
+			},
+		},
+		{
+			name: "ongoing snapshot just wait",
+			args: func() *mockClient {
+				m := new(mockClient)
+				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
+					Return(client.SnapshotsList{
+						Snapshots: []client.Snapshot{
+							client.Snapshot{
+								State:     client.SnapshotStateInProgress,
+								StartTime: now.Add(-30 * time.Minute),
+							},
+							client.Snapshot{
+								State:     client.SnapshotStateSuccess,
+								StartTime: now.Add(-60 * time.Minute),
+								EndTime:   now.Add(-55 * time.Minute),
+							},
+						},
+					}, nil)
+				return m
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mocked := tt.args()
+			if err := Maintain(mocked, settings); (err != nil) != tt.wantErr {
+				t.Errorf("Maintain() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			mocked.AssertExpectations(t)
+		})
 	}
 }

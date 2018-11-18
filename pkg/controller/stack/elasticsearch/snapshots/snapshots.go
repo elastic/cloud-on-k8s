@@ -22,6 +22,16 @@ const (
 	SnapshotClientName = "elastic-internal"
 )
 
+// SnapshotAPI contains Elasticsearch API calls related to snapshots.
+type SnapshotAPI interface {
+	// GetAllSnapshots returns a list of all snapshots for the given repository.
+	GetAllSnapshots(ctx context.Context, repo string) (client.SnapshotsList, error)
+	// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
+	TakeSnapshot(ctx context.Context, repo string, snapshot string) error
+	// DeleteSnapshot delete the given snapshot from the given repository.
+	DeleteSnapshot(ctx context.Context, repo string, snapshot string) error
+}
+
 // Settings define the how often, how long to keep and where to for snapshotting.
 type Settings struct {
 	Interval   time.Duration
@@ -46,12 +56,12 @@ func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
 	if len(snapshots) == 0 {
 		return PhaseTake
 	}
-	latest := snapshots[len(snapshots)-1]
+	latest := snapshots[0]
 	if latest.IsInProgress() {
 		// TODO  pending but stuck -> purge
 		return PhaseWait
 	}
-	if latest.IsComplete() && latest.EndedBefore(s.Interval, time.Now()) {
+	if latest.IsComplete() && latest.EndedBefore(s.Interval, now) {
 		return PhaseTake
 	}
 	return PhasePurge
@@ -77,7 +87,7 @@ func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapsh
 }
 
 // purge deletes of the given snapshots. Invariant: descending order is assumed.
-func (s *Settings) purge(esClient *client.Client, snapshots []client.Snapshot) error {
+func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) error {
 	// we delete only on snapshot at a time because we don't know what the underlying storage
 	// mechanism of the snapshot repository is. In case of s3 we want to space operations to reach
 	// consistency for example and avoid repository corruption.
@@ -98,7 +108,7 @@ func nextSnapshotName(now time.Time) string {
 // Maintain tries maintain the snapshot repository by either taking a new snapshot or if
 // the most recent one is younger than the configured snapshot interval by trying to purge
 // outdated snapshots.
-func Maintain(esClient *client.Client, settings Settings) error {
+func Maintain(esClient SnapshotAPI, settings Settings) error {
 	snapshotList, err := esClient.GetAllSnapshots(context.TODO(), settings.Repository)
 	if err != nil {
 		return err
@@ -116,7 +126,6 @@ func Maintain(esClient *client.Client, settings Settings) error {
 		return nil
 	case PhaseTake:
 		return esClient.TakeSnapshot(context.TODO(), settings.Repository, nextSnapshotName(time.Now()))
-
 	}
 	return nil
 }

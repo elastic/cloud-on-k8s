@@ -211,7 +211,7 @@ func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsLis
 	return result, c.makeRequestAndUnmarshal(ctx, request, &result)
 }
 
-// TakeSnapshot takes a new cluster snapshot with the given name into the given repository
+// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
 func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
 	request, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_snapshot/%s/%s", c.Endpoint, repo, snapshot), nil)
 	if err != nil {
