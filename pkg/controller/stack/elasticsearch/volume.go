@@ -8,9 +8,10 @@ import (
 
 // Default values for the volume name and paths
 const (
-	defaultVolumeName        = "volume"
-	defaultMountPath         = "/volume"
-	defaultSecretMountPath   = "/secrets"
+	defaultVolumeName = "volume"
+	defaultMountPath  = "/volume"
+	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
+	DefaultSecretMountPath   = "/secrets"
 	probeUserSecretMountPath = "/probe-user"
 	defaultDataSubDir        = "data"
 	defaultLogsSubDir        = "logs"
@@ -79,7 +80,7 @@ type SecretVolume struct {
 
 // NewSecretVolume creates a new SecretVolume with default mount path.
 func NewSecretVolume(secretName string, name string) SecretVolume {
-	return NewSecretVolumeWithMountPath(secretName, name, defaultSecretMountPath)
+	return NewSecretVolumeWithMountPath(secretName, name, DefaultSecretMountPath)
 }
 
 // NewSecretVolumeWithMountPath creates a new SecretVolume

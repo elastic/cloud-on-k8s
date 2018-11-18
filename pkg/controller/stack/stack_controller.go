@@ -209,6 +209,10 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return res, err
 	}
+	err = r.ReconcileSnapshotterCronJob(stack, internalUsers.ControllerUser)
+	if err != nil {
+		return res, err
+	}
 	return r.updateStatus(state)
 }
 

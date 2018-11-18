@@ -53,7 +53,7 @@ func NewPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) (corev1.Pod
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      NewNodeName(stack.Name),
 			Namespace: stack.Namespace,
-			Labels:    NewLabels(stack, true),
+			Labels:    NewLabels(stack),
 		},
 		Spec: podSpec,
 	}

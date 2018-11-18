@@ -34,11 +34,11 @@ var (
 	LinkedFiles = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersFile),
+				Source: common.Concat(DefaultSecretMountPath, "/", ElasticUsersFile),
 				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersFile),
 			},
 			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersRolesFile),
+				Source: common.Concat(DefaultSecretMountPath, "/", ElasticUsersRolesFile),
 				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersRolesFile),
 			},
 		},
@@ -168,7 +168,7 @@ func NewInternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentia
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      ElasticInternalUsersSecretName(s.Name),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				InternalControllerUserName:   []byte(rand.String(24)),
@@ -184,7 +184,7 @@ func NewExternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentia
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      common.Concat(s.Name, "-elastic-user"),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				ExternalUserName: []byte(rand.String(24)),
@@ -230,7 +230,7 @@ func NewElasticUsersCredentials(s deploymentsv1alpha1.Stack, users []client.User
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      ElasticUsersSecretName(s.Name),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				ElasticUsersFile:      []byte(hashedCreds.String()),

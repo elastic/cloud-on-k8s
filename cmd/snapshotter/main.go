@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/x509"
+	"time"
 
 	"io/ioutil"
 	"os"
@@ -51,7 +52,7 @@ func readUser(dir string, user *esclient.User) error {
 }
 
 func main() {
-
+	logf.SetLogger(logf.ZapLogger(false))
 	certCfg, ok := os.LookupEnv(certificateLocationVar)
 	if !ok {
 		unrecoverable(errors.New("No certificate config configured")) // TODO should this be actually optional?
@@ -80,7 +81,12 @@ func main() {
 	certPool.AppendCertsFromPEM(pemCerts)
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
-	var settings snapshots.Settings
+	// TODO read from config
+	settings := snapshots.Settings{
+		Interval:   30 * time.Minute,
+		Max:        100,
+		Repository: "elastic-snapshots",
+	}
 
 	err = snapshots.Maintain(apiClient, settings)
 	if err != nil {

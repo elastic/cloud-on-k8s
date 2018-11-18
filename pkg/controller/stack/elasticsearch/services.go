@@ -26,10 +26,10 @@ func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      DiscoveryServiceName(s.Name),
-			Labels:    NewLabels(s, false),
+			Labels:    NewLabels(s),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(s, false),
+			Selector: NewLabels(s),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -66,10 +66,10 @@ func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      PublicServiceName(s.Name),
-			Labels:    NewLabels(s, false),
+			Labels:    NewLabels(s),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(s, false),
+			Selector: NewLabels(s),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
