@@ -31,6 +31,7 @@ func NewLabels(s deploymentsv1alpha1.Stack, hash bool) map[string]string {
 	return labels
 }
 
+// NewLabelSelectorForStack returns a labels.Selector that matches the stack labels as constructed by NewLabels
 func NewLabelSelectorForStack(s deploymentsv1alpha1.Stack) (labels.Selector, error) {
 	req, err := labels.NewRequirement(
 		ClusterIDLabelName,

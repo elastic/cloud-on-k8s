@@ -21,7 +21,7 @@ type EmptyDirVolume struct {
 	mountPath string
 }
 
-// NewDefaultEmptyDirVolume creates an EmptyDirVolume with default values
+// NewEmptyDirVolume creates an EmptyDirVolume with default values
 func NewEmptyDirVolume(name, mountPath string) EmptyDirVolume {
 	return EmptyDirVolume{
 		name:      name,

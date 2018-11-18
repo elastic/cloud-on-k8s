@@ -102,13 +102,18 @@ func (params NewPodSpecParams) Hash() string {
 	return strconv.FormatUint(hash, 10)
 }
 
+// PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
 type PodSpecContext struct {
 	PodSpec      corev1.PodSpec
 	TopologySpec deploymentsv1alpha1.ElasticsearchTopologySpec
 }
 
-// CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
-func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraFilesRef types.NamespacedName) ([]PodSpecContext, error) {
+// CreateExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given stack
+func CreateExpectedPodSpecs(
+	s deploymentsv1alpha1.Stack,
+	probeUser client.User,
+	extraFilesRef types.NamespacedName,
+) ([]PodSpecContext, error) {
 	podSpecs := make([]PodSpecContext, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {

@@ -2,12 +2,15 @@ package elasticsearch
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"testing"
 
+	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ESPod(nodeDataEnv bool, image string, cpuLimit string) corev1.Pod {
@@ -19,7 +22,7 @@ func ESPodSpecContext(nodeDataEnv bool, image string, cpuLimit string) PodSpecCo
 		PodSpec: corev1.PodSpec{
 			Containers: []corev1.Container{{
 				Env: []corev1.EnvVar{
-					corev1.EnvVar{Name: "node.data", Value: strconv.FormatBool(nodeDataEnv)},
+					{Name: "node.data", Value: strconv.FormatBool(nodeDataEnv)},
 				},
 				Image:           image,
 				ImagePullPolicy: corev1.PullIfNotPresent,
@@ -125,6 +128,117 @@ func Test_podMatchesSpec(t *testing.T) {
 			wantErr:                   nil,
 			expectedMismatchesContain: "Different resource limits: expected ",
 		},
+		{
+			name: "Pod is missing a PVC",
+			args: args{
+				pod: ESPod(defaultNodeData, defaultImage, defaultCPULimit),
+				spec: PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: deploymentsv1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: v1.ObjectMeta{
+									Name: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			want:                      false,
+			wantErr:                   nil,
+			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes []",
+		},
+		{
+			name: "Pod is missing a PVC, but has another",
+			args: args{
+				pod: withPVCs(ESPod(defaultNodeData, defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				spec: PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: deploymentsv1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: v1.ObjectMeta{
+									Name: "test",
+								},
+							},
+						},
+					},
+				},
+				state: State{
+					PVCs: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+						},
+					},
+				},
+			},
+			want:                      false,
+			wantErr:                   nil,
+			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes [ foo]",
+		},
+		{
+			name: "Pod has matching PVC",
+			args: args{
+				pod: withPVCs(ESPod(defaultNodeData, defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				spec: PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: deploymentsv1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: v1.ObjectMeta{
+									Name: "foo",
+								},
+							},
+						},
+					},
+				},
+				state: State{
+					PVCs: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+						},
+					},
+				},
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			name: "Pod has matching PVC, but spec does not match",
+			args: args{
+				pod: withPVCs(ESPod(defaultNodeData, defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				spec: PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: deploymentsv1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: v1.ObjectMeta{
+									Name: "foo",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									Resources: corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											corev1.ResourceStorage: resource.MustParse("2Gi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				state: State{
+					PVCs: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+						},
+					},
+				},
+			},
+			want:                      false,
+			wantErr:                   nil,
+			expectedMismatchesContain: "Unmatched volumeClaimTemplate: foo has no match in volumes [ foo]",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,4 +257,28 @@ func Test_podMatchesSpec(t *testing.T) {
 			}
 		})
 	}
+}
+
+// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and clam names.
+func withPVCs(pod corev1.Pod, nameAndClaimNames ...string) corev1.Pod {
+	lenNameAndClaimNames := len(nameAndClaimNames)
+
+	if lenNameAndClaimNames%2 != 0 {
+		panic(fmt.Sprintf("odd number of arguments passed as key-value pairs to withPVCs"))
+	}
+
+	for i := 0; i < lenNameAndClaimNames; i += 2 {
+		volumeName := nameAndClaimNames[i]
+		claimName := nameAndClaimNames[i+1]
+
+		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: claimName,
+				},
+			},
+		})
+	}
+	return pod
 }

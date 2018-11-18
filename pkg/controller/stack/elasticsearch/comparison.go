@@ -71,7 +71,8 @@ func compareResources(actual corev1.ResourceRequirements, expected corev1.Resour
 	return ComparisonMatch
 }
 
-type actualVolumeAndPVC struct {
+// volumeAndPVC holds a volume and a PVC
+type volumeAndPVC struct {
 	volume corev1.Volume
 	pvc    corev1.PersistentVolumeClaim
 }
@@ -84,7 +85,7 @@ func comparePersistentVolumeClaims(
 ) Comparison {
 	// TODO: handle extra PVCs that are in volumes, but not in expected claim templates
 
-	var actualVolumeAndPVCs []actualVolumeAndPVC
+	var volumeAndPVCs []volumeAndPVC
 	for _, volume := range actual {
 		if volume.PersistentVolumeClaim == nil {
 			continue
@@ -94,24 +95,23 @@ func comparePersistentVolumeClaims(
 		pvc, err := state.FindPVCByName(claimName)
 		if err != nil {
 			// XXX: ugh, no pvc claim by that name found... what to do?
-			return ComparisonMismatch(fmt.Sprintf("Pod refers to unknown PVC: %s", claimName))
+			return ComparisonMismatch(fmt.Sprintf("Pod refers to unknown PVC: %s: %s", claimName, err))
 		}
 
-		actualVolumeAndPVCs = append(actualVolumeAndPVCs, actualVolumeAndPVC{volume: volume, pvc: pvc})
+		volumeAndPVCs = append(volumeAndPVCs, volumeAndPVC{volume: volume, pvc: pvc})
 	}
 
 ExpectedTemplates:
 	for _, pvcTemplate := range expected {
-		for i, actualPVC := range actualVolumeAndPVCs {
-			if pvcTemplate.Name != actualPVC.volume.Name {
+		for i, actualVolumeAndPVC := range volumeAndPVCs {
+			if pvcTemplate.Name != actualVolumeAndPVC.volume.Name {
 				// name from template does not match actual, no match
-				log.Info(fmt.Sprintf("name mismatch %s and %s", pvcTemplate.Name, actualPVC.volume.Name))
 				continue
 			}
 
 			// labels
 			for templateLabelKey, templateLabelValue := range pvcTemplate.Labels {
-				if actualValue, ok := actualPVC.pvc.Labels[templateLabelKey]; !ok {
+				if actualValue, ok := actualVolumeAndPVC.pvc.Labels[templateLabelKey]; !ok {
 					// actual is missing a key, no match
 					continue
 				} else if templateLabelValue != actualValue {
@@ -120,11 +120,11 @@ ExpectedTemplates:
 				}
 			}
 
-			if !reflect.DeepEqual(pvcTemplate.Spec.AccessModes, actualPVC.pvc.Spec.AccessModes) {
+			if !reflect.DeepEqual(pvcTemplate.Spec.AccessModes, actualVolumeAndPVC.pvc.Spec.AccessModes) {
 				continue
 			}
 
-			if !reflect.DeepEqual(pvcTemplate.Spec.Resources, actualPVC.pvc.Spec.Resources) {
+			if !reflect.DeepEqual(pvcTemplate.Spec.Resources, actualVolumeAndPVC.pvc.Spec.Resources) {
 				continue
 			}
 
@@ -132,32 +132,32 @@ ExpectedTemplates:
 			// may have been defaulted. this may cause an unintended match, which can be worked around by
 			// being explicit in the pvc template spec.
 			if pvcTemplate.Spec.StorageClassName != nil &&
-				!reflect.DeepEqual(pvcTemplate.Spec.StorageClassName, actualPVC.pvc.Spec.StorageClassName) {
+				!reflect.DeepEqual(pvcTemplate.Spec.StorageClassName, actualVolumeAndPVC.pvc.Spec.StorageClassName) {
 				continue
 			}
 
-			if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualPVC.pvc.Spec.VolumeMode) {
+			if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualVolumeAndPVC.pvc.Spec.VolumeMode) {
 				continue
 			}
 
-			if !reflect.DeepEqual(pvcTemplate.Spec.Selector, actualPVC.pvc.Spec.Selector) {
+			if !reflect.DeepEqual(pvcTemplate.Spec.Selector, actualVolumeAndPVC.pvc.Spec.Selector) {
 				continue
 			}
 
 			// specs are identical enough, match
-			actualVolumeAndPVCs = append(actualVolumeAndPVCs[:i], actualVolumeAndPVCs[i+1:]...)
+			volumeAndPVCs = append(volumeAndPVCs[:i], volumeAndPVCs[i+1:]...)
 			continue ExpectedTemplates
 		}
 
-		actualVolumeNames := make([]string, len(actualVolumeAndPVCs))
-		for _, avp := range actualVolumeAndPVCs {
-			actualVolumeNames = append(actualVolumeNames, avp.volume.Name)
+		volumeNames := make([]string, len(volumeAndPVCs))
+		for _, avp := range volumeAndPVCs {
+			volumeNames = append(volumeNames, avp.volume.Name)
 		}
 
 		return ComparisonMismatch(fmt.Sprintf(
-			"Unmatched persistent volume claim template: %s, remaining actual %v",
+			"Unmatched volumeClaimTemplate: %s has no match in volumes %v",
 			pvcTemplate.Name,
-			actualVolumeNames,
+			volumeNames,
 		))
 	}
 
