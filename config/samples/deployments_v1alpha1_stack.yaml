@@ -23,6 +23,21 @@ spec:
           storage: 1GB
           cpu: 800m
       nodeCount: 3
+      ## this shows how to add a custom label to all pods created for this topology element
+      #template:
+      #  metadata:
+      #    labels:
+      #      foo: bar
+      ## this shows how to request 2Gi of persistent data storage for pods in this topology element
+      #volumeClaimTemplates:
+      #- metadata:
+      #    name: data
+      #  spec:
+      #    accessModes:
+      #    - ReadWriteOnce
+      #    resources:
+      #      requests:
+      #        storage: 2Gi
   kibana:
     nodeCount: 1
     expose: LoadBalancer
