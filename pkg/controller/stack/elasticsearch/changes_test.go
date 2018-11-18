@@ -13,7 +13,7 @@ var defaultPodSpecCtx = ESPodSpecContext(defaultNodeData, defaultImage, defaultC
 func TestCalculateChanges(t *testing.T) {
 	type args struct {
 		expected []PodSpecContext
-		actual   []corev1.Pod
+		state    State
 	}
 	tests := []struct {
 		name string
@@ -24,7 +24,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "no changes",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}},
 		},
@@ -32,7 +32,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "2 new pods",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep: []corev1.Pod{defaultPod, defaultPod},
@@ -43,7 +43,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "2 less pods",
 			args: args{
 				expected: []PodSpecContext{},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToRemove: []corev1.Pod{defaultPod, defaultPod}},
 		},
@@ -51,7 +51,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "1 pod replaced",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
@@ -62,7 +62,7 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.actual)
+			got, err := CalculateChanges(tt.args.expected, tt.args.state)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToAdd), len(got.ToAdd))

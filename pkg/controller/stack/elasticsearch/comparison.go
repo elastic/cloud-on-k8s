@@ -33,7 +33,7 @@ func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("No container named %s in the given pod", containerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", containerName)
 }
 
 // envVarsByName turns the given list of env vars into a map: EnvVar.Name -> EnvVar
@@ -71,7 +71,100 @@ func compareResources(actual corev1.ResourceRequirements, expected corev1.Resour
 	return ComparisonMatch
 }
 
-func podMatchesSpec(pod corev1.Pod, spec PodSpecContext) (bool, []string, error) {
+type actualVolumeAndPVC struct {
+	volume corev1.Volume
+	pvc    corev1.PersistentVolumeClaim
+}
+
+// comparePersistentVolumeClaims returns true if the expected persistent volume claims is found in the list of volumes
+func comparePersistentVolumeClaims(
+	actual []corev1.Volume,
+	expected []corev1.PersistentVolumeClaim,
+	state State,
+) Comparison {
+	// TODO: handle extra PVCs that are in volumes, but not in expected claim templates
+
+	var actualVolumeAndPVCs []actualVolumeAndPVC
+	for _, volume := range actual {
+		if volume.PersistentVolumeClaim == nil {
+			continue
+		}
+		claimName := volume.PersistentVolumeClaim.ClaimName
+
+		pvc, err := state.FindPVCByName(claimName)
+		if err != nil {
+			// XXX: ugh, no pvc claim by that name found... what to do?
+			return ComparisonMismatch(fmt.Sprintf("Pod refers to unknown PVC: %s", claimName))
+		}
+
+		actualVolumeAndPVCs = append(actualVolumeAndPVCs, actualVolumeAndPVC{volume: volume, pvc: pvc})
+	}
+
+ExpectedTemplates:
+	for _, pvcTemplate := range expected {
+		for i, actualPVC := range actualVolumeAndPVCs {
+			if pvcTemplate.Name != actualPVC.volume.Name {
+				// name from template does not match actual, no match
+				log.Info(fmt.Sprintf("name mismatch %s and %s", pvcTemplate.Name, actualPVC.volume.Name))
+				continue
+			}
+
+			// labels
+			for templateLabelKey, templateLabelValue := range pvcTemplate.Labels {
+				if actualValue, ok := actualPVC.pvc.Labels[templateLabelKey]; !ok {
+					// actual is missing a key, no match
+					continue
+				} else if templateLabelValue != actualValue {
+					// values differ, no match
+					continue
+				}
+			}
+
+			if !reflect.DeepEqual(pvcTemplate.Spec.AccessModes, actualPVC.pvc.Spec.AccessModes) {
+				continue
+			}
+
+			if !reflect.DeepEqual(pvcTemplate.Spec.Resources, actualPVC.pvc.Spec.Resources) {
+				continue
+			}
+
+			// this may be set to nil to be defaulted, so here we're assuming that the storage class name
+			// may have been defaulted. this may cause an unintended match, which can be worked around by
+			// being explicit in the pvc template spec.
+			if pvcTemplate.Spec.StorageClassName != nil &&
+				!reflect.DeepEqual(pvcTemplate.Spec.StorageClassName, actualPVC.pvc.Spec.StorageClassName) {
+				continue
+			}
+
+			if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualPVC.pvc.Spec.VolumeMode) {
+				continue
+			}
+
+			if !reflect.DeepEqual(pvcTemplate.Spec.Selector, actualPVC.pvc.Spec.Selector) {
+				continue
+			}
+
+			// specs are identical enough, match
+			actualVolumeAndPVCs = append(actualVolumeAndPVCs[:i], actualVolumeAndPVCs[i+1:]...)
+			continue ExpectedTemplates
+		}
+
+		actualVolumeNames := make([]string, len(actualVolumeAndPVCs))
+		for _, avp := range actualVolumeAndPVCs {
+			actualVolumeNames = append(actualVolumeNames, avp.volume.Name)
+		}
+
+		return ComparisonMismatch(fmt.Sprintf(
+			"Unmatched persistent volume claim template: %s, remaining actual %v",
+			pvcTemplate.Name,
+			actualVolumeNames,
+		))
+	}
+
+	return ComparisonMatch
+}
+
+func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state State) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err
@@ -81,13 +174,12 @@ func podMatchesSpec(pod corev1.Pod, spec PodSpecContext) (bool, []string, error)
 		return false, nil, err
 	}
 
-	// TODO: compare volume claims?
-
 	comparisons := []Comparison{
 		NewStringComparison(expectedContainer.Image, actualContainer.Image, "Docker image"),
 		NewStringComparison(expectedContainer.Name, actualContainer.Name, "Container name"),
 		compareEnvironmentVariables(actualContainer.Env, expectedContainer.Env),
 		compareResources(actualContainer.Resources, expectedContainer.Resources),
+		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.TopologySpec.VolumeClaimTemplates, state),
 		// Non-exhaustive list of ignored stuff:
 		// - pod labels
 		// - node name

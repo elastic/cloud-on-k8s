@@ -47,11 +47,19 @@ var (
 
 // NewPod constructs a pod from the given parameters.
 func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.Pod, error) {
+	labels := NewLabels(stack, true)
+	for k, v := range podSpecCtx.TopologySpec.Template.Labels {
+		if _, ok := labels[k]; !ok {
+			labels[k] = v
+		}
+	}
+
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NewNodeName(stack.Name),
-			Namespace: stack.Namespace,
-			Labels:    NewLabels(stack, true),
+			Name:        NewNodeName(stack.Name),
+			Namespace:   stack.Namespace,
+			Labels:      labels,
+			Annotations: podSpecCtx.TopologySpec.Template.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
 	}
@@ -78,6 +86,9 @@ type NewPodSpecParams struct {
 	DiscoveryZenMinimumMasterNodes int `hash:"ignore"`
 	// NodeTypes defines the type (master/data/ingest) associated to the ES node
 	NodeTypes deploymentsv1alpha1.NodeTypesSpec
+
+	// Affinity is the pod's scheduling constraints
+	Affinity *corev1.Affinity
 
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
@@ -108,6 +119,7 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 				DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(s.Spec.Elasticsearch.Topologies),
 				DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 				NodeTypes:                      topology.NodeTypes,
+				Affinity:                       topology.Template.Spec.Affinity,
 				SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
 			}, probeUser, extraFilesRef)
 			if err != nil {
@@ -135,7 +147,11 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 		ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
 		probeUserSecretMountPath, []string{probeUser.Name},
 	)
-	dataVolume := NewDefaultEmptyDirVolume()
+
+	// TODO: these paths are repeated :(
+	dataVolume := NewEmptyDirVolume("data", "/usr/share/elasticsearch/data")
+	logsVolume := NewEmptyDirVolume("logs", "/usr/share/elasticsearch/logs")
+
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraFilesRef.Name,
 		"extrafiles",
@@ -144,8 +160,9 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
+		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             NewEnvironmentVars(p, dataVolume, probeUser, extraFilesSecretVolume),
+			Env:             NewEnvironmentVars(p, dataVolume, logsVolume, probeUser, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            containerName,
@@ -179,7 +196,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 			},
 			VolumeMounts: append(
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
-				dataVolume.VolumeMount(),
 				usersSecret.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
@@ -188,7 +204,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraFilesRef types.N
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(
 			initcontainer.SharedVolumes.Volumes(),
-			dataVolume.Volume(),
 			usersSecret.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),

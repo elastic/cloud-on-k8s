@@ -63,8 +63,9 @@ var defaultNodeData = true
 
 func Test_podMatchesSpec(t *testing.T) {
 	type args struct {
-		pod  corev1.Pod
-		spec PodSpecContext
+		pod   corev1.Pod
+		spec  PodSpecContext
+		state State
 	}
 	tests := []struct {
 		name                      string
@@ -127,7 +128,7 @@ func Test_podMatchesSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match, mismatchReasons, err := podMatchesSpec(tt.args.pod, tt.args.spec)
+			match, mismatchReasons, err := podMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
 			if tt.wantErr != nil {
 				assert.Error(t, err, tt.wantErr.Error())
 			} else {

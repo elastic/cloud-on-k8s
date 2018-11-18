@@ -4,6 +4,7 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 const (
@@ -28,4 +29,18 @@ func NewLabels(s deploymentsv1alpha1.Stack, hash bool) map[string]string {
 	}
 
 	return labels
+}
+
+func NewLabelSelectorForStack(s deploymentsv1alpha1.Stack) (labels.Selector, error) {
+	req, err := labels.NewRequirement(
+		ClusterIDLabelName,
+		selection.Equals,
+		[]string{common.StackID(s)},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sel := TypeSelector.DeepCopySelector().Add(*req)
+	return sel, nil
 }

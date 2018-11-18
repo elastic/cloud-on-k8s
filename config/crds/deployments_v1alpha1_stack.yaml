@@ -65,6 +65,20 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      template:
+                        properties:
+                          metadata:
+                            type: object
+                          spec:
+                            properties:
+                              affinity:
+                                type: object
+                            type: object
+                        type: object
+                      volumeClaimTemplates:
+                        items:
+                          type: object
+                        type: array
                     type: object
                   type: array
               type: object

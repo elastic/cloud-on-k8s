@@ -13,6 +13,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      NewPodSpecParams
 		dataVolume             EmptyDirVolume
+		logsVolume             EmptyDirVolume
 		probeUser              client.User
 		extraFilesSecretVolume SecretVolume
 	}
@@ -38,10 +39,12 @@ func TestNewEnvironmentVars(t *testing.T) {
 					Version:          "1.2.3",
 				},
 				dataVolume: EmptyDirVolume{
-					name:       "myvolume",
-					mountPath:  "/mount/path",
-					dataSubDir: "datasubdir",
-					logsSubDir: "logssubdir",
+					name:      "data",
+					mountPath: "/mnt/data",
+				},
+				logsVolume: EmptyDirVolume{
+					name:      "logs",
+					mountPath: "/mnt/logs",
 				},
 				probeUser:              client.User{Name: "name", Password: "zupersecure"},
 				extraFilesSecretVolume: SecretVolume{},
@@ -51,8 +54,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 				corev1.EnvVar{Name: "cluster.name", Value: "cluster"},
 				corev1.EnvVar{Name: "discovery.zen.minimum_master_nodes", Value: "3"},
 				corev1.EnvVar{Name: "network.host", Value: "0.0.0.0"},
-				corev1.EnvVar{Name: "path.data", Value: "/mount/path/datasubdir"},
-				corev1.EnvVar{Name: "path.logs", Value: "/mount/path/logssubdir"},
+				corev1.EnvVar{Name: "path.data", Value: "/mnt/data"},
+				corev1.EnvVar{Name: "path.logs", Value: "/mnt/logs"},
 				corev1.EnvVar{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
 				corev1.EnvVar{Name: "node.master", Value: "true"},
 				corev1.EnvVar{Name: "node.data", Value: "true"},
@@ -67,7 +70,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewEnvironmentVars(tt.args.p, tt.args.dataVolume, tt.args.probeUser, tt.args.extraFilesSecretVolume)
+			got := NewEnvironmentVars(
+				tt.args.p, tt.args.dataVolume, tt.args.logsVolume, tt.args.probeUser, tt.args.extraFilesSecretVolume,
+			)
 			for _, v := range tt.wantEnvSubset {
 				assert.Contains(t, got, v)
 			}

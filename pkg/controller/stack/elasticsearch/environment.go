@@ -42,7 +42,12 @@ var comparableEnvVars = []string{
 }
 
 // NewEnvironmentVars returns the environment vars to be associated to a pod
-func NewEnvironmentVars(p NewPodSpecParams, dataVolume EmptyDirVolume, probeUser client.User, extraFilesSecretVolume SecretVolume) []corev1.EnvVar {
+func NewEnvironmentVars(
+	p NewPodSpecParams,
+	dataVolume, logsVolume EmptyDirVolume,
+	probeUser client.User,
+	extraFilesSecretVolume SecretVolume,
+) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
@@ -55,8 +60,8 @@ func NewEnvironmentVars(p NewPodSpecParams, dataVolume EmptyDirVolume, probeUser
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
 
-		{Name: varPathData, Value: dataVolume.DataPath()},
-		{Name: varPathLogs, Value: dataVolume.LogsPath()},
+		{Name: varPathData, Value: dataVolume.VolumeMount().MountPath},
+		{Name: varPathLogs, Value: logsVolume.VolumeMount().MountPath},
 
 		{
 			Name:  "xpack.security.transport.ssl.trust_restrictions.path",

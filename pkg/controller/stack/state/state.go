@@ -3,9 +3,9 @@ package state
 import (
 	"context"
 
-	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
-
 	"github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -53,8 +53,12 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 }
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
-func (s ReconcileState) UpdateElasticsearchState(pods []corev1.Pod, esClient *client.Client, retrieveHealth bool) error {
-	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
+func (s ReconcileState) UpdateElasticsearchState(
+	state elasticsearch.State,
+	esClient *client.Client,
+	retrieveHealth bool,
+) error {
+	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(state.CurrentPods)
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth("unknown")
 	if s.Stack.Status.Elasticsearch.Phase == "" {
 		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperationalPhase
@@ -78,8 +82,11 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 }
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
-func (s ReconcileState) UpdateElasticsearchMigrating(result reconcile.Result, pods []corev1.Pod, esClient *client.Client) error {
+func (s ReconcileState) UpdateElasticsearchMigrating(
+	result reconcile.Result,
+	state elasticsearch.State,
+	esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
-	return s.UpdateElasticsearchState(pods, esClient, true)
+	return s.UpdateElasticsearchState(state, esClient, true)
 }

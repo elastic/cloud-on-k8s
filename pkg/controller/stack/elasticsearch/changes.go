@@ -31,17 +31,21 @@ func (c Changes) ShouldMigrate() bool {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, actual []corev1.Pod) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state State) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
-	actualCopy := make([]corev1.Pod, len(actual))
-	copy(actualCopy, actual)
+	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
+	copy(actualCopy, state.CurrentPods)
 
-	return mutableCalculateChanges(expectedCopy, actualCopy)
+	return mutableCalculateChanges(expectedCopy, actualCopy, state)
 }
 
-func mutableCalculateChanges(expectedPodSpecCtxs []PodSpecContext, actualPods []corev1.Pod) (Changes, error) {
+func mutableCalculateChanges(
+	expectedPodSpecCtxs []PodSpecContext,
+	actualPods []corev1.Pod,
+	state State,
+) (Changes, error) {
 	changes := Changes{
 		ToAdd:    []PodToAdd{},
 		ToKeep:   []corev1.Pod{},
@@ -49,7 +53,7 @@ func mutableCalculateChanges(expectedPodSpecCtxs []PodSpecContext, actualPods []
 	}
 
 	for _, expectedPodSpecCtx := range expectedPodSpecCtxs {
-		comparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods)
+		comparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods, state)
 		if err != nil {
 			return changes, err
 		}
@@ -84,11 +88,11 @@ type PodComparisonResult struct {
 	RemainingPods         []corev1.Pod
 }
 
-func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod, state State) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, pod := range pods {
-		isMatch, mismatchReasons, err := podMatchesSpec(pod, podSpecCtx)
+		isMatch, mismatchReasons, err := podMatchesSpec(pod, podSpecCtx, state)
 		if err != nil {
 			return PodComparisonResult{}, err
 		}

@@ -24,6 +24,18 @@ var (
 				InitContainerMountPath: "/volume/bin",
 				EsContainerMountPath:   "/usr/share/elasticsearch/bin",
 			},
+			// Data volume might need chowning during setup
+			SharedVolume{
+				Name:                   "data",
+				InitContainerMountPath: "/volume/data",
+				EsContainerMountPath:   "/usr/share/elasticsearch/data",
+			},
+			// Logs volume might need chowning during setup
+			SharedVolume{
+				Name:                   "logs",
+				InitContainerMountPath: "/volume/logs",
+				EsContainerMountPath:   "/usr/share/elasticsearch/logs",
+			},
 		},
 	}
 )

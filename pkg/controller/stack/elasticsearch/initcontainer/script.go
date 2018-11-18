@@ -96,6 +96,16 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	echo "Files copy duration: $(duration $mv_start) sec."
 
 	######################
+	#  Volumes chown     #
+	######################
+
+	# chown the data and logs volume to the elasticsearch user
+	mv_start=$(date +%s)
+	chown -v elasticsearch:elasticsearch /volume/data
+	chown -v elasticsearch:elasticsearch /volume/logs
+	echo "chown duration: $(duration $mv_start) sec."
+
+	######################
 	#         End        #
 	######################
 
