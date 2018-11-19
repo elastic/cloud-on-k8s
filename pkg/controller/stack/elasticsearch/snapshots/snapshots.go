@@ -98,7 +98,6 @@ func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alp
 			log.Info("Deleting existing snapshot repository")
 			return es.DeleteSnapshotRepository(ctx, SnapshotRepositoryName)
 		}
-		log.Info("No snapshot repository configured and none exists in ES")
 		return nil // we don't have one and we don't want one
 	}
 
