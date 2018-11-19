@@ -2,6 +2,7 @@ package snapshots
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -294,6 +295,93 @@ func TestMaintain(t *testing.T) {
 				t.Errorf("Maintain() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			mocked.AssertExpectations(t)
+		})
+	}
+}
+
+func TestSettings_snapshotsToPurge(t *testing.T) {
+	settings := Settings{
+		Max: 2,
+	}
+
+	tests := []struct {
+		name string
+		args []client.Snapshot
+		want []client.Snapshot
+	}{
+		{
+			name: "no snapshots: nothing to purge",
+			args: []client.Snapshot{},
+			want: nil,
+		},
+		{
+			name: "less than max snapshots: nothing to purge",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State: client.SnapshotStateSuccess,
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "exceeding max, delete extra snapshots",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State: client.SnapshotStateSuccess,
+				},
+				client.Snapshot{
+					State: client.SnapshotStateSuccess,
+				},
+				client.Snapshot{
+					Snapshot: "to-delete-1",
+					State:    client.SnapshotStateSuccess,
+				},
+
+				client.Snapshot{
+					Snapshot: "to-delete-2",
+					State:    client.SnapshotStateSuccess,
+				},
+			},
+			want: []client.Snapshot{
+				client.Snapshot{
+					Snapshot: "to-delete-1",
+					State:    client.SnapshotStateSuccess,
+				},
+
+				client.Snapshot{
+					Snapshot: "to-delete-2",
+					State:    client.SnapshotStateSuccess,
+				},
+			},
+		},
+		{
+			name: "exceeding max, but failures don't count",
+			args: []client.Snapshot{
+				client.Snapshot{
+					State: client.SnapshotStateSuccess,
+				},
+				client.Snapshot{
+					Snapshot: "to-delete-1",
+					State:    client.SnapshotStateFailed,
+				},
+
+				client.Snapshot{
+					Snapshot: "to-delete-2",
+					State:    client.SnapshotStatePartial,
+				},
+
+				client.Snapshot{
+					State: client.SnapshotStateSuccess,
+				},
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := settings.snapshotsToPurge(tt.args); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Settings.snapshotsToPurge() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

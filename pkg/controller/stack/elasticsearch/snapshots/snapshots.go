@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -12,6 +13,7 @@ import (
 	"github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/pkg/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -20,6 +22,10 @@ const (
 	// SnapshotClientName is the name of the Elasticsearch repository client.
 	// TODO randomize name to avoid collisions with user created repos
 	SnapshotClientName = "elastic-internal"
+)
+
+var (
+	log = logf.Log.WithName("snapshot")
 )
 
 // SnapshotAPI contains Elasticsearch API calls related to snapshots.
@@ -57,6 +63,7 @@ func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
 		return PhaseTake
 	}
 	latest := snapshots[0]
+	log.Info(fmt.Sprintf("Latest snapshot is %s state %s started %s ended %s ", latest.Snapshot, latest.State, latest.StartTime, latest.EndTime))
 	if latest.IsInProgress() {
 		// TODO  pending but stuck -> purge
 		return PhaseWait
@@ -96,6 +103,7 @@ func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) erro
 		return nil
 	}
 	toDelete := snapshots[len(snapshots)-1]
+	log.Info(common.Concat("About to delete ", toDelete.Snapshot))
 	//TODO how to keeep track of failed purges (k8s job?)
 	return esClient.DeleteSnapshot(context.TODO(), s.Repository, toDelete.Snapshot)
 
@@ -118,7 +126,9 @@ func Maintain(esClient SnapshotAPI, settings Settings) error {
 		return snapshots[i].StartTime.After(snapshots[j].StartTime)
 	})
 
+	log.Info(common.Concat("Found ", strconv.Itoa(len(snapshots)), " snapshots"))
 	next := settings.nextPhase(snapshots, time.Now())
+	log.Info(common.Concat("Next phase wil be ", string(next)))
 	switch next {
 	case PhasePurge:
 		return settings.purge(esClient, snapshots)
