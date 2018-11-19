@@ -42,7 +42,7 @@ func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *C
 	}
 }
 
-// ValidUserName consists must begin with a letter or underscore and contain only letters
+// ValidUserName must begin with a letter or underscore and contain only letters
 // underscores and numbers.
 func ValidUserName(name string) bool {
 	valid, err := regexp.MatchString("^[a-zA-Z_]+[a-zA-Z0-9_]*$", name)

@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	var rootCmd = &cobra.Command{Use: "stack-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
 	rootCmd.Execute()
