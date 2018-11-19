@@ -549,7 +549,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
-		Replicas:  1,
+		Replicas:  stack.Spec.Kibana.NodeCount,
 		Selector:  labels,
 		Labels:    labels,
 		PodSpec:   kibanaPodSpec,
