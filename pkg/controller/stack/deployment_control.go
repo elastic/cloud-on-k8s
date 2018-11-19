@@ -19,7 +19,7 @@ var (
 	defaultStrategy                appsv1.DeploymentStrategyType = "RollingUpdate"
 	default25Percent                                             = intstr.FromString("25%")
 	defaultProgressDeadlineSeconds int32                         = 600
-	defaultRevisionHIstoryLimit    int32                         = 10
+	defaultRevisionHistoryLimit    int32                         = 0
 )
 
 type DeploymentParams struct {
@@ -42,7 +42,7 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 		},
 		Spec: appsv1.DeploymentSpec{
 			ProgressDeadlineSeconds: common.Int32(defaultProgressDeadlineSeconds),
-			RevisionHistoryLimit:    common.Int32(defaultRevisionHIstoryLimit),
+			RevisionHistoryLimit:    common.Int32(defaultRevisionHistoryLimit),
 			Strategy: appsv1.DeploymentStrategy{
 				Type: defaultStrategy,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{
