@@ -93,6 +93,7 @@ After you've performed changes in the controller code you can re-deploy the imag
 * `GKE_NODE_COUNT_PER_ZONE`: Sets the amount of nodes per GCP zone (defaults to `1`). By default the GKE cluster is spun accross 3 zones.
 
 ### Using snapshot repositories
+
 * Currently only gcs is supported
 * Either create a new bucket/service account or reuse our dev bucket (see Keybase)
 * Create a secret with your [service account bucket credentials](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html#repository-gcs-using-service-account)
