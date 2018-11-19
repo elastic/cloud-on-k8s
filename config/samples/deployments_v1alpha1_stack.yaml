@@ -23,7 +23,7 @@ spec:
           storage: 1GB
           cpu: 800m
       nodeCount: 3
-    # Uncomment the following to use a snapshot repository
+    # See the following as an example of how to configure a snapshot repository
     # snapshotRepository:
     #   type: "gcs"
     #   settings:
