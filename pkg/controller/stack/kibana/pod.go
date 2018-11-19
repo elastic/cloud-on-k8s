@@ -62,7 +62,6 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 			},
-			LivenessProbe:  probe,
 			ReadinessProbe: probe,
 		}},
 	}

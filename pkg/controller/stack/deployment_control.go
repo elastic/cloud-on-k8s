@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	defaultRevisionHIstoryLimit int32 = 10
+	defaultRevisionHistoryLimit int32 = 0
 )
 
 type DeploymentParams struct {
@@ -37,7 +37,7 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			RevisionHistoryLimit: common.Int32(defaultRevisionHIstoryLimit),
+			RevisionHistoryLimit: common.Int32(defaultRevisionHistoryLimit),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},
