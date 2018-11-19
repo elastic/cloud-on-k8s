@@ -233,10 +233,6 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.Us
 	if err != nil {
 		return result, err
 	}
-
-	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		esURL = strings.Replace(esURL, "http:", "https:", 1)
-	}
 	return esclient.NewElasticsearchClient(esURL, esUser, caPool), err
 
 }

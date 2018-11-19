@@ -56,6 +56,9 @@ func PublicServiceName(stackName string) string {
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stack deploymentsv1alpha1.Stack) string {
 	scheme := "http"
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		scheme = "https"
+	}
 	return common.Concat(scheme, "://", PublicServiceName(stack.Name), ".", stack.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
 }
 
