@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -522,6 +523,18 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 			"/usr/share/kibana/config/elasticsearch-certs",
 		)
 
+		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
+		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
+		// updating the ca.pem file contents without restarting the process.
+		caChecksum := ""
+		var esPublicCASecret corev1.Secret
+		if err := r.Get(context.TODO(), esClusterCAPublicSecretObjectKey, &esPublicCASecret); err != nil {
+			return state, err
+		}
+		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
+			caChecksum = fmt.Sprintf("%x", sha256.Sum256(capem))
+		}
+
 		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
 		for i, container := range kibanaPodSpec.InitContainers {
@@ -540,6 +553,10 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
 					Value: "certificate",
+				},
+				corev1.EnvVar{
+					Name:  "CA_CONTENTS_CHECKSUM",
+					Value: caChecksum,
 				},
 			)
 		}
