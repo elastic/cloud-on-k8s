@@ -11,15 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
-	defaultStrategy                appsv1.DeploymentStrategyType = "RollingUpdate"
-	default25Percent                                             = intstr.FromString("25%")
-	defaultProgressDeadlineSeconds int32                         = 600
-	defaultRevisionHistoryLimit    int32                         = 0
+	defaultRevisionHistoryLimit int32 = 0
 )
 
 type DeploymentParams struct {
@@ -41,15 +37,7 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 			Labels:    params.Labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			ProgressDeadlineSeconds: common.Int32(defaultProgressDeadlineSeconds),
-			RevisionHistoryLimit:    common.Int32(defaultRevisionHistoryLimit),
-			Strategy: appsv1.DeploymentStrategy{
-				Type: defaultStrategy,
-				RollingUpdate: &appsv1.RollingUpdateDeployment{
-					MaxUnavailable: &default25Percent,
-					MaxSurge:       &default25Percent,
-				},
-			},
+			RevisionHistoryLimit: common.Int32(defaultRevisionHistoryLimit),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},
