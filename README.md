@@ -92,6 +92,26 @@ After you've performed changes in the controller code you can re-deploy the imag
 * `GKE_LOCAL_SSD_COUNT`: Sets the number of locally attached SSD disks attached to each GCP instance (defaults to `1`). Each disk is 375GB.
 * `GKE_NODE_COUNT_PER_ZONE`: Sets the amount of nodes per GCP zone (defaults to `1`). By default the GKE cluster is spun accross 3 zones.
 
+### Using snapshot repositories
+* Currently only gcs is supported
+* Either create a new bucket/service account or reuse our dev bucket (see Keybase)
+* Create a secret with your [service account bucket credentials](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html#repository-gcs-using-service-account)
+
+     `kubectl create secret generic gcs-repo-account --from-file service-account.json`
+
+* Specify in your stack resource that you want to use a repository like so:
+
+    ```
+     snapshotRepository:
+      type: "gcs"
+      settings:
+        bucketName: "stack-sample-snapshot-repo"
+        credentials:
+          namespace: "default"
+          name: "gcs-repo-account"
+    ```
+   
+
 ## Recommended reading
 
 * [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)
