@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/x509"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -87,6 +88,9 @@ func main() {
 		Repository: "elastic-snapshots",
 	}
 
+	log.Info(fmt.Sprintf("Snapshotter initialised with interval %v, max snapshots %d, repository %s",
+		settings.Interval, settings.Max, settings.Repository,
+	))
 	err = snapshots.Maintain(apiClient, settings)
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Error during snapshot maintenance"))

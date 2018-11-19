@@ -90,6 +90,7 @@ func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapsh
 			toDelete = append(toDelete, snap)
 		}
 	}
+	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", s.Max, len(toDelete)))
 	return toDelete
 }
 
@@ -126,12 +127,12 @@ func Maintain(esClient SnapshotAPI, settings Settings) error {
 		return snapshots[i].StartTime.After(snapshots[j].StartTime)
 	})
 
-	log.Info(common.Concat("Found ", strconv.Itoa(len(snapshots)), " snapshots"))
+	log.Info(common.Concat("Getting all snapshots. Found ", strconv.Itoa(len(snapshots)), " snapshots"))
 	next := settings.nextPhase(snapshots, time.Now())
 	log.Info(common.Concat("Next phase wil be ", string(next)))
 	switch next {
 	case PhasePurge:
-		return settings.purge(esClient, snapshots)
+		return settings.purge(esClient, settings.snapshotsToPurge(snapshots))
 	case PhaseWait:
 		return nil
 	case PhaseTake:
