@@ -67,7 +67,7 @@ func IsMigratingData(c *client.Client, pod corev1.Pod, exclusions []corev1.Pod) 
 	if err != nil {
 		return true, err
 	}
-	excludedNodes := make(map[string]struct{})
+	excludedNodes := make(map[string]struct{}, len(exclusions))
 	for _, n := range exclusions {
 		excludedNodes[n.Name] = struct{}{}
 	}
