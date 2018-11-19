@@ -93,6 +93,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 								},
 								Image:           params.SnapshotterImage,
 								ImagePullPolicy: corev1.PullIfNotPresent,
+								Args:            []string{"snapshotter"},
 								Name:            CronJobName(params.Parent),
 								VolumeMounts: []corev1.VolumeMount{
 									caCertSecret.VolumeMount(),

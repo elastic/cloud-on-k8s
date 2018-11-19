@@ -1,4 +1,4 @@
-package main
+package snapshotter
 
 import (
 	"crypto/x509"
@@ -11,6 +11,7 @@ import (
 
 	esclient "github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/snapshots"
+	"github.com/spf13/cobra"
 
 	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -25,6 +26,16 @@ const (
 
 var (
 	log = logf.Log.WithName("main")
+	// Cmd is the cobra command to start a snapshotter run
+	Cmd = &cobra.Command{
+		Use:   "snapshotter",
+		Short: "Start a run of the snapshotter",
+		Long: `snapshotter starts a run of the snapshotter process.
+This should typically be run in the context of some form of scheduler.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			execute()
+		},
+	}
 )
 
 func unrecoverable(err error) {
@@ -32,7 +43,7 @@ func unrecoverable(err error) {
 	os.Exit(1)
 }
 
-func main() {
+func execute() {
 	logf.SetLogger(logf.ZapLogger(false))
 	certCfg, ok := os.LookupEnv(certificateLocationVar)
 	if !ok {

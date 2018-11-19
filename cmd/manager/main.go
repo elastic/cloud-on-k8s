@@ -1,4 +1,4 @@
-package main
+package manager
 
 import (
 	"os"
@@ -6,14 +6,28 @@ import (
 	"github.com/elastic/stack-operators/pkg/apis"
 	"github.com/elastic/stack-operators/pkg/controller"
 	"github.com/elastic/stack-operators/pkg/webhook"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"github.com/spf13/cobra"
+
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func main() {
+var (
+	// Cmd is the cobra command to start the manager.
+	Cmd = &cobra.Command{
+		Use:   "manager",
+		Short: "Start the operator manager",
+		Long: `manager starts the manager for this operator,
+ which will in turn create the necessary controller .`,
+		Run: func(cmd *cobra.Command, args []string) {
+			execute()
+		},
+	}
+)
+
+func execute() {
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
 
