@@ -54,6 +54,10 @@ var (
 	log            = logf.Log.WithName("stack-controller")
 )
 
+const (
+	caChecksumLabelName = "kibana.stack.k8s.elastic.co/ca-file-checksum"
+)
+
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 // USER ACTION REQUIRED: update cmd/manager/main.go to call this deployments.Add(mgr) to install this Controller
@@ -512,6 +516,8 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	}
 
 	kibanaPodSpec := kibana.NewPodSpec(kibanaPodSpecParams)
+	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
+	podLabels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		// TODO: use kibanaCa to generate cert for deployment
@@ -532,8 +538,11 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 			return state, err
 		}
 		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
-			caChecksum = fmt.Sprintf("%x", sha256.Sum256(capem))
+			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
 		}
+		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+		// changes, which will trigger a rolling update)
+		podLabels[caChecksumLabelName] = caChecksum
 
 		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
@@ -554,21 +563,17 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
 					Value: "certificate",
 				},
-				corev1.EnvVar{
-					Name:  "CA_CONTENTS_CHECKSUM",
-					Value: caChecksum,
-				},
 			)
 		}
 	}
 
-	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
 		Replicas:  1,
 		Selector:  labels,
 		Labels:    labels,
+		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
 	})
 	result, err := r.ReconcileDeployment(deploy, *stack)
