@@ -68,7 +68,7 @@ func Test_podMatchesSpec(t *testing.T) {
 	type args struct {
 		pod   corev1.Pod
 		spec  PodSpecContext
-		state State
+		state ResourcesState
 	}
 	tests := []struct {
 		name                      string
@@ -165,7 +165,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: State{
+				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
@@ -193,7 +193,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: State{
+				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
@@ -227,7 +227,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: State{
+				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},

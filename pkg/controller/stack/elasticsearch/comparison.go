@@ -81,7 +81,7 @@ type volumeAndPVC struct {
 func comparePersistentVolumeClaims(
 	actual []corev1.Volume,
 	expected []corev1.PersistentVolumeClaim,
-	state State,
+	state ResourcesState,
 ) Comparison {
 	// TODO: handle extra PVCs that are in volumes, but not in expected claim templates
 
@@ -185,7 +185,7 @@ func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim,
 	return true
 }
 
-func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state State) (bool, []string, error) {
+func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state ResourcesState) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err

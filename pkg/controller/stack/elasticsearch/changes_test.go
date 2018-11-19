@@ -13,7 +13,7 @@ var defaultPodSpecCtx = ESPodSpecContext(defaultNodeData, defaultImage, defaultC
 func TestCalculateChanges(t *testing.T) {
 	type args struct {
 		expected []PodSpecContext
-		state    State
+		state    ResourcesState
 	}
 	tests := []struct {
 		name string
@@ -24,7 +24,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "no changes",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}},
 		},
@@ -32,7 +32,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "2 new pods",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep: []corev1.Pod{defaultPod, defaultPod},
@@ -43,7 +43,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "2 less pods",
 			args: args{
 				expected: []PodSpecContext{},
-				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToRemove: []corev1.Pod{defaultPod, defaultPod}},
 		},
@@ -51,7 +51,7 @@ func TestCalculateChanges(t *testing.T) {
 			name: "1 pod replaced",
 			args: args{
 				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)},
-				state:    State{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},

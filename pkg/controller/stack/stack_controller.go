@@ -250,7 +250,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	stack deploymentsv1alpha1.Stack,
 	controllerUser esclient.User,
 ) (state.ReconcileState, error) {
-	esState, err := elasticsearch.NewStateFromAPI(r, stack)
+	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack)
 	if err != nil {
 		return state, err
 	}
@@ -511,7 +511,7 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 // unless a data migration is in progress
 func (r *ReconcileStack) DeleteElasticsearchPod(
 	state state.ReconcileState,
-	esState elasticsearch.State,
+	esState elasticsearch.ResourcesState,
 	pod corev1.Pod,
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,

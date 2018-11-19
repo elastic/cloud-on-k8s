@@ -31,7 +31,7 @@ func (c Changes) ShouldMigrate() bool {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state State) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state ResourcesState) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
@@ -44,7 +44,7 @@ func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state State) (Change
 func mutableCalculateChanges(
 	expectedPodSpecCtxs []PodSpecContext,
 	actualPods []corev1.Pod,
-	state State,
+	state ResourcesState,
 ) (Changes, error) {
 	changes := Changes{
 		ToAdd:    []PodToAdd{},
@@ -88,7 +88,7 @@ type PodComparisonResult struct {
 	RemainingPods         []corev1.Pod
 }
 
-func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod, state State) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod, state ResourcesState) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, pod := range pods {

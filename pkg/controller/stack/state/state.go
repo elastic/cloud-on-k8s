@@ -54,7 +54,7 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s ReconcileState) UpdateElasticsearchState(
-	state elasticsearch.State,
+	state elasticsearch.ResourcesState,
 	esClient *client.Client,
 	retrieveHealth bool,
 ) error {
@@ -84,7 +84,7 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s ReconcileState) UpdateElasticsearchMigrating(
 	result reconcile.Result,
-	state elasticsearch.State,
+	state elasticsearch.ResourcesState,
 	esClient *client.Client) error {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result

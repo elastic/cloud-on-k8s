@@ -11,8 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// State contains information about a deployments resources.
-type State struct {
+// ResourcesState contains information about a deployments resources.
+type ResourcesState struct {
 	// AllPods are all the Elasticsearch pods related to the Elasticsearch cluster, including ones with a
 	// DeletionTimestamp tombstone set.
 	AllPods []corev1.Pod
@@ -22,8 +22,8 @@ type State struct {
 	PVCs []corev1.PersistentVolumeClaim
 }
 
-// NewStateFromAPI reflects the current State from the API
-func NewStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack) (*State, error) {
+// NewResourcesStateFromAPI reflects the current ResourcesState from the API
+func NewResourcesStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack) (*ResourcesState, error) {
 	labelSelector, err := NewLabelSelectorForStack(stack)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func NewStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack) (*State, 
 
 	pvcs, err := getPersistentVolumeClaims(c, stack, labelSelector, nil)
 
-	esState := State{
+	esState := ResourcesState{
 		AllPods:     allPods,
 		CurrentPods: currentPods,
 		PVCs:        pvcs,
@@ -56,7 +56,7 @@ func NewStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack) (*State, 
 }
 
 // FindPVCByName looks up a PVC by claim name.
-func (state State) FindPVCByName(name string) (corev1.PersistentVolumeClaim, error) {
+func (state ResourcesState) FindPVCByName(name string) (corev1.PersistentVolumeClaim, error) {
 	for _, pvc := range state.PVCs {
 		if pvc.Name == name {
 			return pvc, nil
