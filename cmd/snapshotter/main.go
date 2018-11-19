@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/x509"
+	"strconv"
 	"time"
 
 	"io/ioutil"
@@ -60,10 +61,29 @@ func main() {
 	certPool.AppendCertsFromPEM(pemCerts)
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
-	// TODO read from config
+	interval := 30 * time.Minute
+	intervalStr, _ := os.LookupEnv("INTERVAL")
+	if intervalStr != "" {
+		parsed, err := time.ParseDuration(intervalStr)
+		if err != nil {
+			log.Error(err, "could not parse interval: "+intervalStr)
+		}
+		interval = parsed
+	}
+
+	max := 100
+	maxStr, _ := os.LookupEnv("MAX")
+	if maxStr != "" {
+		parsed, err := strconv.Atoi(maxStr)
+		if err != nil {
+			log.Error(err, "could not parse max: "+maxStr)
+		}
+		max = parsed
+	}
+
 	settings := snapshots.Settings{
-		Interval:   30 * time.Minute,
-		Max:        100,
+		Interval:   interval,
+		Max:        max,
 		Repository: "elastic-snapshots",
 	}
 
