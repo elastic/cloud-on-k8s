@@ -34,8 +34,6 @@ rules:
   - ""
   resources:
   - persistentvolumeclaims
-  - endpoints
-  - events
   verbs:
   - get
   - list
