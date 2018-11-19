@@ -57,6 +57,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: meta,
 						Spec: corev1.PodSpec{
+							RestartPolicy: corev1.RestartPolicyNever,
 							Containers: []corev1.Container{{
 								Env: []corev1.EnvVar{
 									{Name: "CERTIFICATE_LOCATION", Value: certPath},
