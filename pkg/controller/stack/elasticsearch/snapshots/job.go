@@ -16,6 +16,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	// ClusterIDLabelName used to represent a cluster in k8s resources
+	ClusterIDLabelName = "elasticsearch.stack.k8s.elastic.co/cluster-id"
+	// TypeLabelName used to represent a resource type in k8s resources
+	TypeLabelName = "stack.k8s.elastic.co/type"
+	// Type represents the component here the snapshotter
+	Type = "snapshotter"
+)
+
 // CronJobParams describe parameters to construct a snapshotter job.
 type CronJobParams struct {
 	Parent types.NamespacedName
@@ -31,6 +40,16 @@ func CronJobName(parent types.NamespacedName) string {
 	return common.Concat(parent.Name, "-snapshotter")
 }
 
+// NewLabels constructs a new set of labels from a Stack definition.
+func NewLabels(s deploymentsv1alpha1.Stack) map[string]string {
+	var labels = map[string]string{
+		ClusterIDLabelName: common.StackID(s),
+		TypeLabelName:      Type,
+	}
+
+	return labels
+}
+
 // NewCronJob constructor for snapshotter cronjobs.
 func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	parallism := int32(1)
@@ -42,7 +61,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	meta := metav1.ObjectMeta{
 		Namespace: params.Parent.Namespace,
 		Name:      CronJobName(params.Parent),
-		Labels:    elasticsearch.NewLabels(params.Stack),
+		Labels:    NewLabels(params.Stack),
 	}
 
 	return &batchv1beta1.CronJob{
