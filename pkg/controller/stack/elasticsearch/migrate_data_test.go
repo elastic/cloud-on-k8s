@@ -15,7 +15,7 @@ func TestEnoughRedundancy(t *testing.T) {
 		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
 		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
-	assert.False(t, nodeIsMigratingData("A", shards), "valid copy exists elsewhere")
+	assert.False(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "valid copy exists elsewhere")
 }
 
 func TestNothingToMigrate(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNothingToMigrate(t *testing.T) {
 		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
 		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
-	assert.False(t, nodeIsMigratingData("A", shards), "no data on node A")
+	assert.False(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "no data on node A")
 }
 
 func TestOnlyCopyNeedsMigration(t *testing.T) {
@@ -32,7 +32,7 @@ func TestOnlyCopyNeedsMigration(t *testing.T) {
 		client.Shard{Index: "index-1", Shard: 1, State: client.STARTED, Node: "B"},
 		client.Shard{Index: "index-1", Shard: 2, State: client.STARTED, Node: "C"},
 	}
-	assert.True(t, nodeIsMigratingData("A", shards), "no copy somewhere else")
+	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "no copy somewhere else")
 }
 
 func TestRelocationIsMigration(t *testing.T) {
@@ -40,7 +40,7 @@ func TestRelocationIsMigration(t *testing.T) {
 		client.Shard{Index: "index-1", Shard: 0, State: client.RELOCATING, Node: "A"},
 		client.Shard{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
 	}
-	assert.True(t, nodeIsMigratingData("A", shards), "await shard copy being relocated")
+	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "await shard copy being relocated")
 }
 
 func TestCopyIsInitializing(t *testing.T) {
@@ -48,7 +48,33 @@ func TestCopyIsInitializing(t *testing.T) {
 		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
 		client.Shard{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
 	}
-	assert.True(t, nodeIsMigratingData("A", shards), "shard copy exists but is still initializing")
+	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "shard copy exists but is still initializing")
+}
+
+func TestIgnoresOtherMigrationCandidatesOtherCopyExists(t *testing.T) {
+	shards := []client.Shard{
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+	}
+	assert.False(t, nodeIsMigratingData("A", shards, exclusionMap([]string{"A", "B"})), "valid copy exists in C")
+}
+
+func TestIgnoresOtherMigrationCandidatesNoOtherCopy(t *testing.T) {
+	shards := []client.Shard{
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+	}
+	assert.True(t, nodeIsMigratingData("A", shards, exclusionMap([]string{"B", "C"})), "no valid copy all nodes are excluded")
+}
+
+func exclusionMap(exclusions []string) map[string]struct{} {
+	excludedNodes := make(map[string]struct{})
+	for _, n := range exclusions {
+		excludedNodes[n] = struct{}{}
+	}
+	return excludedNodes
 }
 
 type mockClient struct {

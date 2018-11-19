@@ -389,7 +389,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
-		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient)
+		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
 		if err != nil {
 			return state, err
 		}
@@ -514,8 +514,9 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	esState elasticsearch.State,
 	pod corev1.Pod,
 	esClient *esclient.Client,
+	allDeletions []corev1.Pod,
 ) (state.ReconcileState, error) {
-	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod, allDeletions)
 	if err != nil {
 		return state, err
 	}
