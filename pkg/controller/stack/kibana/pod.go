@@ -12,14 +12,7 @@ const (
 	// HTTPPort is the (default) port used by Kibana
 	HTTPPort = 5601
 
-	defaultImageRepositoryAndName        string = "docker.elastic.co/kibana/kibana"
-	defaultTerminationGracePeriodSeconds int64  = 20
-
-	defaultRestartPolicy            = "Always"
-	defaultDNSPolicy                = "ClusterFirst"
-	defaultSchedulerName            = "default-scheduler"
-	defaultTerminationMessagePolicy = "File"
-	defaultTerminationMessagePath   = "/dev/termination-log"
+	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
 type PodSpecParams struct {
@@ -54,27 +47,18 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		},
 	}
 
-	var terminationGracePeriod = defaultTerminationGracePeriodSeconds
 	return corev1.PodSpec{
-		TerminationGracePeriodSeconds: &terminationGracePeriod,
-		RestartPolicy:                 defaultRestartPolicy,
-		DNSPolicy:                     defaultDNSPolicy,
-		SecurityContext:               new(corev1.PodSecurityContext),
-		SchedulerName:                 defaultSchedulerName,
 		Containers: []corev1.Container{{
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
-			TerminationMessagePath:   defaultTerminationMessagePath,
-			TerminationMessagePolicy: defaultTerminationMessagePolicy,
 			Env: []corev1.EnvVar{
 				{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
 				{Name: "ELASTICSEARCH_USERNAME", Value: p.User.Name},
 				{Name: "ELASTICSEARCH_PASSWORD", Value: p.User.Password},
 			},
-			Image:           imageName,
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            "kibana",
+			Image: imageName,
+			Name:  "kibana",
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 			},
