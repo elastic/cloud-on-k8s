@@ -23,6 +23,18 @@ const (
 	TypeLabelName = "stack.k8s.elastic.co/type"
 	// Type represents the component here the snapshotter
 	Type = "snapshotter"
+	// CertificateLocationVar is the env variable holding a path where ca certs can be found.
+	CertificateLocationVar = "CERTIFICATE_LOCATION"
+	// UserNameVar is the env variable holding the name of the Es user to be used for snapshots.
+	UserNameVar = "USER"
+	// UserPasswordVar is the env variable holding the password of the user to be used for snapshots.
+	UserPasswordVar = "PASSWORD"
+	// EsURLVar is the env variable holding the URL of the Es cluster to take snapshots of.
+	EsURLVar = "ELASTICSEARCH_URL"
+	// IntervalVar is the env variable specifying the snapshot interval.
+	IntervalVar = "INTERVAL"
+	// MaxVar is the env variable specifying the maximum number of snapshots to retain.
+	MaxVar = "MAX"
 )
 
 // CronJobParams describe parameters to construct a snapshotter job.
@@ -46,7 +58,6 @@ func NewLabels(s deploymentsv1alpha1.Stack) map[string]string {
 		ClusterIDLabelName: common.StackID(s),
 		TypeLabelName:      Type,
 	}
-
 	return labels
 }
 
@@ -79,10 +90,10 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 							RestartPolicy: corev1.RestartPolicyNever,
 							Containers: []corev1.Container{{
 								Env: []corev1.EnvVar{
-									{Name: "CERTIFICATE_LOCATION", Value: certPath},
-									{Name: "ELASTICSEARCH_URL", Value: params.EsURL},
-									{Name: "USER", Value: params.User.Name},
-									{Name: "PASSWORD", ValueFrom: &corev1.EnvVarSource{
+									{Name: CertificateLocationVar, Value: certPath},
+									{Name: EsURLVar, Value: params.EsURL},
+									{Name: UserNameVar, Value: params.User.Name},
+									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: elasticsearch.ElasticInternalUsersSecretName(params.Parent.Name),
@@ -108,5 +119,4 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 			},
 		},
 	}
-
 }

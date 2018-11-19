@@ -61,12 +61,10 @@ func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1al
 	result.KeystoreSettings = settings
 	result.KeystoreSecretRef = secretRef
 	return result, nil
-
 }
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
 func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.Stack, user client.User) error {
-
 	image, ok := os.LookupEnv(SnapshotterImageVar)
 	if !ok {
 		return errors.New(common.Concat(SnapshotterImageVar, " env var is not set"))

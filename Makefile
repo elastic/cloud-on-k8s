@@ -48,10 +48,6 @@ integration: generate fmt vet manifests
 stack-operator: generate fmt vet
 	go build -o bin/stack-operator github.com/elastic/stack-operators/cmd
 
-# Build snapshotter binary
-snapshotter: generate fmt vet
-	go build -o bin/snapshotter github.com/elastic/stack-operators/cmd/snapshotter
-
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
@@ -151,12 +147,12 @@ endif
 
 # dev
 .PHONY: dev
-dev: dev-cluster vendor unit manager install samples
+dev: dev-cluster vendor unit stack-operator install samples
 	@ echo "-> Development environment started"
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ echo "-> Run \"make run\" to build, push and deploy the controller in a docker image."
 else
-	@ echo "-> Run \"make run\" to start the manager process localy"
+	@ echo "-> Run \"make run\" to start the manager process locally"
 endif
 
 .PHONY: dev-cluster
@@ -241,7 +237,7 @@ purge-env:
 purge-gcr-images:
 	@ for i in $(gcloud container images list-tags $(IMG) | tail +3 | awk '{print $$2}'); \
 		do gcloud container images untag $(IMG):$$i; \
-	done	
+	done
 
 .PHONY: show-credentials
 show-credentials:

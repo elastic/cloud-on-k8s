@@ -29,7 +29,7 @@ var (
 
 func execute() {
 	logf.SetLogger(logf.ZapLogger(false))
-	log := logf.Log.WithName("entrypoint")
+	log := logf.Log.WithName("manager")
 
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")

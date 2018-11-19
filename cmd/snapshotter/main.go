@@ -17,15 +17,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-const (
-	certificateLocationVar = "CERTIFICATE_LOCATION"
-	userNameVar            = "USER"
-	userPasswordVar        = "PASSWORD"
-	esURLVar               = "ELASTICSEARCH_URL"
-)
-
 var (
-	log = logf.Log.WithName("main")
+	log = logf.Log.WithName("snapshotter")
 	// Cmd is the cobra command to start a snapshotter run
 	Cmd = &cobra.Command{
 		Use:   "snapshotter",
@@ -45,24 +38,23 @@ func unrecoverable(err error) {
 
 func execute() {
 	logf.SetLogger(logf.ZapLogger(false))
-	certCfg, ok := os.LookupEnv(certificateLocationVar)
+	certCfg, ok := os.LookupEnv(snapshots.CertificateLocationVar)
 	if !ok {
 		unrecoverable(errors.New("No certificate config configured")) // TODO should this be actually optional?
 	}
-	esURL, ok := os.LookupEnv(esURLVar)
+	esURL, ok := os.LookupEnv(snapshots.EsURLVar)
 	if !ok {
 		unrecoverable(errors.New("No Elasticsearch URL configured"))
 	}
-	userName, ok := os.LookupEnv(userNameVar)
+	userName, ok := os.LookupEnv(snapshots.UserNameVar)
 	if !ok {
 		unrecoverable(errors.New("No Elasticsearch user configured"))
 	}
 
-	userPassword, ok := os.LookupEnv(userPasswordVar)
+	userPassword, ok := os.LookupEnv(snapshots.UserPasswordVar)
 	if !ok {
 		unrecoverable(errors.New("No password for Elasticsearch user configured"))
 	}
-
 	user := esclient.User{Name: userName, Password: userPassword}
 
 	pemCerts, err := ioutil.ReadFile(certCfg)
@@ -74,7 +66,7 @@ func execute() {
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
 	interval := 30 * time.Minute
-	intervalStr, _ := os.LookupEnv("INTERVAL")
+	intervalStr, _ := os.LookupEnv(snapshots.IntervalVar)
 	if intervalStr != "" {
 		parsed, err := time.ParseDuration(intervalStr)
 		if err != nil {
@@ -84,7 +76,7 @@ func execute() {
 	}
 
 	max := 100
-	maxStr, _ := os.LookupEnv("MAX")
+	maxStr, _ := os.LookupEnv(snapshots.MaxVar)
 	if maxStr != "" {
 		parsed, err := strconv.Atoi(maxStr)
 		if err != nil {

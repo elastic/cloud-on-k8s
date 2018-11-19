@@ -58,7 +58,6 @@ const (
 )
 
 func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
-
 	if len(snapshots) == 0 {
 		return PhaseTake
 	}
@@ -96,25 +95,23 @@ func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapsh
 
 // purge deletes of the given snapshots. Invariant: descending order is assumed.
 func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) error {
-	// we delete only on snapshot at a time because we don't know what the underlying storage
+	// we delete only one snapshot at a time because we don't know what the underlying storage
 	// mechanism of the snapshot repository is. In case of s3 we want to space operations to reach
 	// consistency for example and avoid repository corruption.
-
 	if len(snapshots) == 0 {
 		return nil
 	}
 	toDelete := snapshots[len(snapshots)-1]
 	log.Info(common.Concat("About to delete ", toDelete.Snapshot))
-	//TODO how to keeep track of failed purges (k8s job?)
+	//TODO how to keeep track of failed purges?
 	return esClient.DeleteSnapshot(context.TODO(), s.Repository, toDelete.Snapshot)
-
 }
 
 func nextSnapshotName(now time.Time) string {
 	return fmt.Sprintf("scheduled-%d", now.Unix())
 }
 
-// Maintain tries maintain the snapshot repository by either taking a new snapshot or if
+// Maintain tries to maintain the snapshot repository by either taking a new snapshot or if
 // the most recent one is younger than the configured snapshot interval by trying to purge
 // outdated snapshots.
 func Maintain(esClient SnapshotAPI, settings Settings) error {
