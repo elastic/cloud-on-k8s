@@ -471,7 +471,7 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 			return err
 		}
 
-		// override default volumes provided if name overlaps by deleting based on claim name first
+		// delete the volume with the same name as our claim template, we will add the expected one later
 		for i, volume := range pod.Spec.Volumes {
 			if volume.Name == claimTemplate.Name {
 				pod.Spec.Volumes = append(pod.Spec.Volumes[:i], pod.Spec.Volumes[i+1:]...)
@@ -479,6 +479,7 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 			}
 		}
 
+		// append our PVC to the list of volumes
 		pod.Spec.Volumes = append(
 			pod.Spec.Volumes,
 			corev1.Volume{

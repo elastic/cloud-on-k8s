@@ -4,6 +4,18 @@ import corev1 "k8s.io/api/core/v1"
 
 // Volumes that are shared between the init container and the ES container
 var (
+	DataSharedVolume = SharedVolume{
+		Name:                   "data",
+		InitContainerMountPath: "/volume/data",
+		EsContainerMountPath:   "/usr/share/elasticsearch/data",
+	}
+
+	LogsSharedVolume = SharedVolume{
+		Name:                   "logs",
+		InitContainerMountPath: "/volume/logs",
+		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
+	}
+
 	SharedVolumes = SharedVolumeArray{
 		Array: []SharedVolume{
 			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
@@ -24,18 +36,8 @@ var (
 				InitContainerMountPath: "/volume/bin",
 				EsContainerMountPath:   "/usr/share/elasticsearch/bin",
 			},
-			// Data volume might need chowning during setup
-			SharedVolume{
-				Name:                   "data",
-				InitContainerMountPath: "/volume/data",
-				EsContainerMountPath:   "/usr/share/elasticsearch/data",
-			},
-			// Logs volume might need chowning during setup
-			SharedVolume{
-				Name:                   "logs",
-				InitContainerMountPath: "/volume/logs",
-				EsContainerMountPath:   "/usr/share/elasticsearch/logs",
-			},
+			DataSharedVolume,
+			LogsSharedVolume,
 		},
 	}
 )

@@ -77,7 +77,7 @@ type volumeAndPVC struct {
 	pvc    corev1.PersistentVolumeClaim
 }
 
-// comparePersistentVolumeClaims returns true if the expected persistent volume claims is found in the list of volumes
+// comparePersistentVolumeClaims returns true if the expected persistent volume claims are found in the list of volumes
 func comparePersistentVolumeClaims(
 	actual []corev1.Volume,
 	expected []corev1.PersistentVolumeClaim,
@@ -94,8 +94,17 @@ func comparePersistentVolumeClaims(
 
 		pvc, err := state.FindPVCByName(claimName)
 		if err != nil {
-			// XXX: ugh, no pvc claim by that name found... what to do?
-			return ComparisonMismatch(fmt.Sprintf("Pod refers to unknown PVC: %s: %s", claimName, err))
+			// this is rather unexpected, and we have two options:
+			// 1. return the error to our caller (possibly changing our signature a little)
+			// 2. consider the pod not matching
+			// we usually expect all claims from a pod to exist, so we consider this case exceptional, but we chose to
+			// go with option 2 because we'd rather see the pod be replaced than potentially getting stuck in the
+			// reconciliation loop without being able to reconcile further. we also chose to log it as an error level
+			// to call more attention to the fact this was occurring because we would like to try to get a better
+			// understanding of the scenarios in which this may happen.
+			msg := "Volume is referring to unknown PVC"
+			log.Error(err, msg)
+			return ComparisonMismatch(fmt.Sprintf("%s: %s", msg, err))
 		}
 
 		volumeAndPVCs = append(volumeAndPVCs, volumeAndPVC{volume: volume, pvc: pvc})
@@ -104,50 +113,17 @@ func comparePersistentVolumeClaims(
 ExpectedTemplates:
 	for _, pvcTemplate := range expected {
 		for i, actualVolumeAndPVC := range volumeAndPVCs {
-			if pvcTemplate.Name != actualVolumeAndPVC.volume.Name {
-				// name from template does not match actual, no match
-				continue
-			}
+			if templateMatchesActualVolumeAndPvc(pvcTemplate, actualVolumeAndPVC) {
+				// remove the current from the remaining volumes so it cannot be used to match another template
+				volumeAndPVCs = append(volumeAndPVCs[:i], volumeAndPVCs[i+1:]...)
 
-			// labels
-			for templateLabelKey, templateLabelValue := range pvcTemplate.Labels {
-				if actualValue, ok := actualVolumeAndPVC.pvc.Labels[templateLabelKey]; !ok {
-					// actual is missing a key, no match
-					continue
-				} else if templateLabelValue != actualValue {
-					// values differ, no match
-					continue
-				}
+				// continue the outer loop because this pvc template had a match
+				continue ExpectedTemplates
 			}
-
-			if !reflect.DeepEqual(pvcTemplate.Spec.AccessModes, actualVolumeAndPVC.pvc.Spec.AccessModes) {
-				continue
-			}
-
-			if !reflect.DeepEqual(pvcTemplate.Spec.Resources, actualVolumeAndPVC.pvc.Spec.Resources) {
-				continue
-			}
-
-			// this may be set to nil to be defaulted, so here we're assuming that the storage class name
-			// may have been defaulted. this may cause an unintended match, which can be worked around by
-			// being explicit in the pvc template spec.
-			if pvcTemplate.Spec.StorageClassName != nil &&
-				!reflect.DeepEqual(pvcTemplate.Spec.StorageClassName, actualVolumeAndPVC.pvc.Spec.StorageClassName) {
-				continue
-			}
-
-			if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualVolumeAndPVC.pvc.Spec.VolumeMode) {
-				continue
-			}
-
-			if !reflect.DeepEqual(pvcTemplate.Spec.Selector, actualVolumeAndPVC.pvc.Spec.Selector) {
-				continue
-			}
-
-			// specs are identical enough, match
-			volumeAndPVCs = append(volumeAndPVCs[:i], volumeAndPVCs[i+1:]...)
-			continue ExpectedTemplates
 		}
+
+		// at this point, we were unable to match the template with any of the volumes, so the comparison should not
+		// match
 
 		volumeNames := make([]string, len(volumeAndPVCs))
 		for _, avp := range volumeAndPVCs {
@@ -162,6 +138,51 @@ ExpectedTemplates:
 	}
 
 	return ComparisonMatch
+}
+
+// templateMatchesActualVolumeAndPvc returns true if the pvc matches the volumeAndPVC
+func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim, actualVolumeAndPVC volumeAndPVC) bool {
+	if pvcTemplate.Name != actualVolumeAndPVC.volume.Name {
+		// name from template does not match actual, no match
+		return false
+	}
+
+	// labels
+	for templateLabelKey, templateLabelValue := range pvcTemplate.Labels {
+		if actualValue, ok := actualVolumeAndPVC.pvc.Labels[templateLabelKey]; !ok {
+			// actual is missing a key, no match
+			return false
+		} else if templateLabelValue != actualValue {
+			// values differ, no match
+			return false
+		}
+	}
+
+	if !reflect.DeepEqual(pvcTemplate.Spec.AccessModes, actualVolumeAndPVC.pvc.Spec.AccessModes) {
+		return false
+	}
+
+	if !reflect.DeepEqual(pvcTemplate.Spec.Resources, actualVolumeAndPVC.pvc.Spec.Resources) {
+		return false
+	}
+
+	// this may be set to nil to be defaulted, so here we're assuming that the storage class name
+	// may have been defaulted. this may cause an unintended match, which can be worked around by
+	// being explicit in the pvc template spec.
+	if pvcTemplate.Spec.StorageClassName != nil &&
+		!reflect.DeepEqual(pvcTemplate.Spec.StorageClassName, actualVolumeAndPVC.pvc.Spec.StorageClassName) {
+		return false
+	}
+
+	if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualVolumeAndPVC.pvc.Spec.VolumeMode) {
+		return false
+	}
+
+	if !reflect.DeepEqual(pvcTemplate.Spec.Selector, actualVolumeAndPVC.pvc.Spec.Selector) {
+		return false
+	}
+
+	return true
 }
 
 func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state State) (bool, []string, error) {

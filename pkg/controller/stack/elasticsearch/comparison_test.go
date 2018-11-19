@@ -259,7 +259,7 @@ func Test_podMatchesSpec(t *testing.T) {
 	}
 }
 
-// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and clam names.
+// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and claim names.
 func withPVCs(pod corev1.Pod, nameAndClaimNames ...string) corev1.Pod {
 	lenNameAndClaimNames := len(nameAndClaimNames)
 

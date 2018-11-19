@@ -24,6 +24,10 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray, k
 		SharedVolumes:    SharedVolumes,
 		LinkedFiles:      linkedFiles,
 		KeyStoreSettings: keystoreInit.Settings,
+		ChownToElasticsearch: []string{
+			DataSharedVolume.InitContainerMountPath,
+			LogsSharedVolume.InitContainerMountPath,
+		},
 	})
 	if err != nil {
 		return corev1.Container{}, err

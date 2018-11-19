@@ -94,7 +94,7 @@ func (in *ElasticsearchTopologySpec) DeepCopyInto(out *ElasticsearchTopologySpec
 	*out = *in
 	out.NodeTypes = in.NodeTypes
 	out.Resources = in.Resources
-	in.Template.DeepCopyInto(&out.Template)
+	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.VolumeClaimTemplates != nil {
 		in, out := &in.VolumeClaimTemplates, &out.VolumeClaimTemplates
 		*out = make([]v1.PersistentVolumeClaim, len(*in))

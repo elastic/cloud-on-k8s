@@ -50,7 +50,10 @@ var (
 // NewPod constructs a pod from the given parameters.
 func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.Pod, error) {
 	labels := NewLabels(stack, true)
-	for k, v := range podSpecCtx.TopologySpec.Template.Labels {
+
+	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
+	// issuing at least a warning in this case due to the potential for unexpected behavior
+	for k, v := range podSpecCtx.TopologySpec.PodTemplate.Labels {
 		if _, ok := labels[k]; !ok {
 			labels[k] = v
 		}
@@ -61,7 +64,7 @@ func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.
 			Name:        NewNodeName(stack.Name),
 			Namespace:   stack.Namespace,
 			Labels:      labels,
-			Annotations: podSpecCtx.TopologySpec.Template.Annotations,
+			Annotations: podSpecCtx.TopologySpec.PodTemplate.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
 	}
@@ -132,7 +135,7 @@ func CreateExpectedPodSpecs(
 				DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(s.Spec.Elasticsearch.Topologies),
 				DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 				NodeTypes:                      topology.NodeTypes,
-				Affinity:                       topology.Template.Spec.Affinity,
+				Affinity:                       topology.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
 			}, probeUser, extraParams)
 			if err != nil {
@@ -161,10 +164,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 		probeUserSecretMountPath, []string{probeUser.Name},
 	)
 
-	// TODO: these paths are repeated :(
-	dataVolume := NewEmptyDirVolume("data", "/usr/share/elasticsearch/data")
-	logsVolume := NewEmptyDirVolume("logs", "/usr/share/elasticsearch/logs")
-
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraParams.ExtraFilesRef.Name,
 		"extrafiles",
@@ -175,7 +174,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             NewEnvironmentVars(p, dataVolume, logsVolume, probeUser, extraFilesSecretVolume),
+			Env:             NewEnvironmentVars(p, probeUser, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            containerName,

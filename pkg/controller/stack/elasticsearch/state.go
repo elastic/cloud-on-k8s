@@ -13,9 +13,10 @@ import (
 
 // State contains information about a deployments resources.
 type State struct {
-	// AllPods are all the Elasticsearch pods in this deployment, including ones with a DeletionTimestamp
+	// AllPods are all the Elasticsearch pods related to the Elasticsearch cluster, including ones with a
+	// DeletionTimestamp tombstone set.
 	AllPods []corev1.Pod
-	// CurrentPods are all non-deleted Elasticsearch pods in this deployment
+	// CurrentPods are all non-deleted Elasticsearch pods related to the Elasticsearch cluster.
 	CurrentPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
@@ -87,7 +88,6 @@ func getPods(
 }
 
 // getPersistentVolumeClaims returns a list of PVCs in the current namespace with a specific set of selectors.
-//
 func getPersistentVolumeClaims(
 	c client.Client,
 	stack deploymentsv1alpha1.Stack,

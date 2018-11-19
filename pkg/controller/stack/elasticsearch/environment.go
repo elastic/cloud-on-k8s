@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
+	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/initcontainer"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -44,7 +45,6 @@ var comparableEnvVars = []string{
 // NewEnvironmentVars returns the environment vars to be associated to a pod
 func NewEnvironmentVars(
 	p NewPodSpecParams,
-	dataVolume, logsVolume EmptyDirVolume,
 	probeUser client.User,
 	extraFilesSecretVolume SecretVolume,
 ) []corev1.EnvVar {
@@ -60,8 +60,8 @@ func NewEnvironmentVars(
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
 
-		{Name: varPathData, Value: dataVolume.VolumeMount().MountPath},
-		{Name: varPathLogs, Value: logsVolume.VolumeMount().MountPath},
+		{Name: varPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
+		{Name: varPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		{
 			Name:  "xpack.security.transport.ssl.trust_restrictions.path",

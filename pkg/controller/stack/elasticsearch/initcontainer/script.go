@@ -16,10 +16,16 @@ var defaultInstalledPlugins = []string{
 
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
-	Plugins          []string           // List of plugins to install
-	SharedVolumes    SharedVolumeArray  // Directories to persist in shared volumes
-	LinkedFiles      LinkedFilesArray   // Files to link individually
-	KeyStoreSettings []keystore.Setting // Settings to add to the keystore
+	// Plugins is a list of plugins to install
+	Plugins []string
+	// SharedVolumes are directories to persist in shared volumes
+	SharedVolumes SharedVolumeArray
+	// LinkedFiles are files to link individually
+	LinkedFiles LinkedFilesArray
+	// KeyStoreSettings are settings to add to the keystore
+	KeyStoreSettings []keystore.Setting
+	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
+	ChownToElasticsearch []string
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -123,10 +129,12 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	######################
 
 	# chown the data and logs volume to the elasticsearch user
-	mv_start=$(date +%s)
-	chown -v elasticsearch:elasticsearch /volume/data
-	chown -v elasticsearch:elasticsearch /volume/logs
-	echo "chown duration: $(duration $mv_start) sec."
+	chown_start=$(date +%s)
+	{{range .ChownToElasticsearch}}
+		echo "chowning {{.}} to elasticsearch:elasticsearch"
+		chown -v elasticsearch:elasticsearch {{.}}
+	{{end}}
+	echo "chown duration: $(duration $chown_start) sec."
 
 	######################
 	#         End        #

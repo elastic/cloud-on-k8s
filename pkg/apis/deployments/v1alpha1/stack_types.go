@@ -96,16 +96,12 @@ type ElasticsearchTopologySpec struct {
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
-	// Template is the object that describes the pod that will be created if
-	// insufficient replicas are detected. Each pod stamped out by the controller
-	// will fulfill this Template.
+	// PodTemplate is the object that describes the Elasticsearch pods.
 	// +optional
-	Template ElasticsearchPodTemplateSpec `json:"template,omitempty"`
+	PodTemplate ElasticsearchPodTemplateSpec `json:"template,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
-	// The controller is responsible for mapping network identities to
-	// claims in a way that maintains the identity of a pod. Every claim in
-	// this list must have at least one matching (by name) volumeMount in one
+	// Every claim in this list must have at least one matching (by name) volumeMount in one
 	// container in the template. A claim in this list takes precedence over
 	// any volumes in the template, with the same name.
 	// TODO: Define the behavior if a claim already exists with the same name.
