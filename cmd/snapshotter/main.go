@@ -30,27 +30,6 @@ func unrecoverable(err error) {
 	os.Exit(1)
 }
 
-func readUser(dir string, user *esclient.User) error {
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		if file.IsDir() || !file.Mode().IsRegular() || !esclient.ValidUserName(file.Name()) {
-			continue
-		}
-		password, err := ioutil.ReadFile(file.Name())
-		if err != nil {
-			return err
-		}
-		// user the first user that works
-		user.Name = file.Name()
-		user.Password = string(password)
-		break
-	}
-	return nil
-}
-
 func main() {
 	logf.SetLogger(logf.ZapLogger(false))
 	certCfg, ok := os.LookupEnv(certificateLocationVar)
@@ -77,7 +56,7 @@ func main() {
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
 	}
-	var certPool *x509.CertPool
+	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(pemCerts)
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
