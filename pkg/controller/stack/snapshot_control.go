@@ -89,7 +89,14 @@ func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.S
 	}
 
 	found := &batchv1beta1.CronJob{}
+	empty := deploymentsv1alpha1.SnapshotRepository{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	if err == nil && stack.Spec.Elasticsearch.SnapshotRepository == empty {
+		log.Info(common.Concat("Deleting cron job ", found.Namespace, "/", found.Name),
+			"iteration", r.iteration,
+		)
+		return r.Delete(context.TODO(), found)
+	}
 	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(common.Concat("Creating cron job ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
