@@ -27,6 +27,7 @@ type DeploymentParams struct {
 	Namespace string
 	Selector  map[string]string
 	Labels    map[string]string
+	PodLabels map[string]string
 	Replicas  int32
 	PodSpec   corev1.PodSpec
 }
@@ -54,7 +55,7 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: params.Labels,
+					Labels: params.PodLabels,
 				},
 				Spec: params.PodSpec,
 			},
