@@ -1,20 +1,14 @@
 package elasticsearch
 
 import (
-	"path"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
 // Default values for the volume name and paths
 const (
-	defaultVolumeName = "volume"
-	defaultMountPath  = "/volume"
 	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
 	DefaultSecretMountPath   = "/secrets"
 	probeUserSecretMountPath = "/probe-user"
-	defaultDataSubDir        = "data"
-	defaultLogsSubDir        = "logs"
 	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
 	KeystoreSecretMountPath = "/keystore-secrets"
 )
@@ -26,19 +20,15 @@ var (
 // EmptyDirVolume used to store ES data on the node main disk
 // Its lifecycle is bound to the pod lifecycle on the node.
 type EmptyDirVolume struct {
-	name       string
-	mountPath  string
-	dataSubDir string
-	logsSubDir string
+	name      string
+	mountPath string
 }
 
-// NewDefaultEmptyDirVolume creates an EmptyDirVolume with default values
-func NewDefaultEmptyDirVolume() EmptyDirVolume {
+// NewEmptyDirVolume creates an EmptyDirVolume with default values
+func NewEmptyDirVolume(name, mountPath string) EmptyDirVolume {
 	return EmptyDirVolume{
-		name:       defaultVolumeName,
-		mountPath:  defaultMountPath,
-		dataSubDir: defaultDataSubDir,
-		logsSubDir: defaultLogsSubDir,
+		name:      name,
+		mountPath: mountPath,
 	}
 }
 
@@ -58,16 +48,6 @@ func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 		MountPath: v.mountPath,
 		Name:      v.name,
 	}
-}
-
-// DataPath returns the absolute path to the directory storing ES data
-func (v EmptyDirVolume) DataPath() string {
-	return path.Join(v.mountPath, v.dataSubDir)
-}
-
-// LogsPath returns the absolute path to the directory storing ES logs
-func (v EmptyDirVolume) LogsPath() string {
-	return path.Join(v.mountPath, v.logsSubDir)
 }
 
 // SecretVolume captures a subset of data of the k8s secrete volume/mount type.

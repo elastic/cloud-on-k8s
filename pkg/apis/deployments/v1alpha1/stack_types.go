@@ -95,6 +95,38 @@ type ElasticsearchTopologySpec struct {
 
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`
+
+	// PodTemplate is the object that describes the Elasticsearch pods.
+	// +optional
+	PodTemplate ElasticsearchPodTemplateSpec `json:"template,omitempty"`
+
+	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
+	// Every claim in this list must have at least one matching (by name) volumeMount in one
+	// container in the template. A claim in this list takes precedence over
+	// any volumes in the template, with the same name.
+	// TODO: Define the behavior if a claim already exists with the same name.
+	// TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
+	// +optional
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+}
+
+// ElasticsearchPodTemplateSpec describes the data a pod should have when created from a template
+type ElasticsearchPodTemplateSpec struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Specification of the desired behavior of the pod.
+	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
+	// +optional
+	Spec ElasticsearchPodSpec `json:"spec,omitempty"`
+}
+
+type ElasticsearchPodSpec struct {
+	// Affinity is the pod's scheduling constraints
+	// +optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
 }
 
 // NodeTypesSpec define the

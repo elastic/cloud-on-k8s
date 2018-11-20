@@ -8,12 +8,12 @@ import (
 )
 
 var defaultPod = ESPod(defaultNodeData, defaultImage, defaultCPULimit)
-var defaultPodSpec = ESPodSpec(defaultNodeData, defaultImage, defaultCPULimit)
+var defaultPodSpecCtx = ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit)
 
 func TestCalculateChanges(t *testing.T) {
 	type args struct {
-		expected []corev1.PodSpec
-		actual   []corev1.Pod
+		expected []PodSpecContext
+		state    ResourcesState
 	}
 	tests := []struct {
 		name string
@@ -23,39 +23,46 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "no changes",
 			args: args{
-				expected: []corev1.PodSpec{defaultPodSpec, defaultPodSpec},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "2 new pods",
 			args: args{
-				expected: []corev1.PodSpec{defaultPodSpec, defaultPodSpec, defaultPodSpec, defaultPodSpec},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
-			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpec: defaultPodSpec}, PodToAdd{PodSpec: defaultPodSpec}}},
+			want: Changes{
+				ToKeep: []corev1.Pod{defaultPod, defaultPod},
+				ToAdd:  []PodToAdd{{PodSpecCtx: defaultPodSpecCtx}, {PodSpecCtx: defaultPodSpecCtx}},
+			},
 		},
 		{
 			name: "2 less pods",
 			args: args{
-				expected: []corev1.PodSpec{},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				expected: []PodSpecContext{},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToRemove: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "1 pod replaced",
 			args: args{
-				expected: []corev1.PodSpec{defaultPodSpec, ESPodSpec(defaultNodeData, "another-image", defaultCPULimit)},
-				actual:   []corev1.Pod{defaultPod, defaultPod},
+				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
-			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToRemove: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpec: ESPodSpec(defaultNodeData, "another-image", defaultCPULimit)}}},
+			want: Changes{
+				ToKeep:   []corev1.Pod{defaultPod},
+				ToRemove: []corev1.Pod{defaultPod},
+				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)}},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.actual)
+			got, err := CalculateChanges(tt.args.expected, tt.args.state)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToAdd), len(got.ToAdd))

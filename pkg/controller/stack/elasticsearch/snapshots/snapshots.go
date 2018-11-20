@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/pkg/errors"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -199,6 +200,21 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 
 // EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
 func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alpha1.SnapshotRepository) error {
+
+	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
+	if err != nil && !client.IsNotFound(err) {
+		return err
+	}
+
+	empty := v1alpha1.SnapshotRepository{}
+	if repo == empty {
+		if err == nil { // we have a repository in ES delete it
+			log.Info("Deleting existing snapshot repository")
+			return es.DeleteSnapshotRepository(ctx, SnapshotRepositoryName)
+		}
+		return nil // we don't have one and we don't want one
+	}
+
 	expected := client.SnapshotRepository{
 		Type: string(repo.Type),
 		Settings: client.SnapshotRepositorySetttings{
@@ -206,11 +222,9 @@ func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alp
 			Client: SnapshotClientName,
 		},
 	}
-	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
-	if err != nil && !client.IsNotFound(err) {
-		return err
-	}
+
 	if current != expected {
+		log.Info("Updating snapshot repository")
 		return es.UpsertSnapshotRepository(ctx, SnapshotRepositoryName, expected)
 	}
 	return nil

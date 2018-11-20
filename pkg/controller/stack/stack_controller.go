@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -25,10 +26,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 
@@ -49,6 +48,10 @@ import (
 var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 	log            = logf.Log.WithName("stack-controller")
+)
+
+const (
+	caChecksumLabelName = "kibana.stack.k8s.elastic.co/ca-file-checksum"
 )
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -153,6 +156,7 @@ type ReconcileStack struct {
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=pods;endpoints;events,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -237,49 +241,14 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.Us
 
 }
 
-// GetPodList returns PodList in the current namespace with a specific set of
-// filters (labels and fields).
-func (r *ReconcileStack) GetPodList(name types.NamespacedName, labelSelectors labels.Selector, fieldSelectors fields.Selector) (corev1.PodList, error) {
-	var podList corev1.PodList
-	stack, err := r.GetStack(name)
-	if err != nil {
-		return podList, err
-	}
-
-	// add a label for the cluster ID
-	clusterIDReq, err := labels.NewRequirement(elasticsearch.ClusterIDLabelName, selection.Equals, []string{common.StackID(stack)})
-	if err != nil {
-		return podList, err
-	}
-	labelSelectors.Add(*clusterIDReq)
-
-	listOpts := client.ListOptions{
-		Namespace:     name.Namespace,
-		LabelSelector: labelSelectors,
-		FieldSelector: fieldSelectors,
-	}
-
-	if err := r.List(context.TODO(), &listOpts, &podList); err != nil {
-		return podList, err
-	}
-
-	return podList, nil
-}
-
-func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, stack deploymentsv1alpha1.Stack, controllerUser esclient.User) (state.ReconcileState, error) {
-	allPods, err := r.GetPodList(state.Request.NamespacedName, elasticsearch.TypeSelector, nil)
+func (r *ReconcileStack) reconcileElasticsearchPods(
+	state state.ReconcileState,
+	stack deploymentsv1alpha1.Stack,
+	controllerUser esclient.User,
+) (state.ReconcileState, error) {
+	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack)
 	if err != nil {
 		return state, err
-	}
-
-	currentPods := make([]corev1.Pod, 0, len(allPods.Items))
-	// filter out pods scheduled for deletion
-	for _, p := range allPods.Items {
-		if p.DeletionTimestamp != nil {
-			log.Info(fmt.Sprintf("Ignoring pod %s scheduled for deletion", p.Name))
-			continue
-		}
-		currentPods = append(currentPods, p)
 	}
 
 	// TODO: suffix and trim
@@ -340,7 +309,10 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		KeystoreConfig: keystoreConfig,
 	}
 
-	expectedPodSpecs, err := elasticsearch.CreateExpectedPodSpecs(stack, controllerUser, nonSpecParams)
+	expectedPodSpecCtxs, err := elasticsearch.CreateExpectedPodSpecs(
+		stack, controllerUser, nonSpecParams,
+	)
+
 	if err != nil {
 		return state, err
 	}
@@ -352,7 +324,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		return state, errors.Wrap(err, "Could not create ES client")
 	}
 
-	changes, err := elasticsearch.CalculateChanges(expectedPodSpecs, currentPods)
+	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
 		return state, err
 	}
@@ -374,7 +346,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 
 	if !changes.ShouldMigrate() {
 		// Current state matches expected state
-		if err := state.UpdateElasticsearchState(allPods.Items, esClient, esReachable); err != nil {
+		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
 			return state, err
 		}
 		return state, nil
@@ -387,7 +359,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 	// Grow cluster with missing pods
 	for _, newPod := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
-		if err := r.CreateElasticsearchPod(stack, newPod.PodSpec); err != nil {
+		if err := r.CreateElasticsearchPod(stack, newPod.PodSpecCtx); err != nil {
 			return state, err
 		}
 	}
@@ -398,7 +370,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		state.UpdateElasticsearchPending(defaultRequeue, currentPods)
+		state.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
 		return state, nil
 	}
 
@@ -413,13 +385,13 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
-		state, err = r.DeleteElasticsearchPod(state, pod, esClient)
+		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
 		if err != nil {
 			return state, err
 		}
 	}
 
-	if err := state.UpdateElasticsearchState(allPods.Items, esClient, esReachable); err != nil {
+	if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
 		return state, err
 	}
 
@@ -427,8 +399,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(state state.ReconcileState, 
 }
 
 // CreateElasticsearchPod creates the given elasticsearch pod
-func (r *ReconcileStack) CreateElasticsearchPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) error {
-	pod, err := elasticsearch.NewPod(stack, podSpec)
+func (r *ReconcileStack) CreateElasticsearchPod(
+	stack deploymentsv1alpha1.Stack,
+	podSpecCtx elasticsearch.PodSpecContext,
+) error {
+	pod, err := elasticsearch.NewPod(stack, podSpecCtx)
 	if err != nil {
 		return err
 	}
@@ -448,6 +423,73 @@ func (r *ReconcileStack) CreateElasticsearchPod(stack deploymentsv1alpha1.Stack,
 		}
 	}
 
+	// when can we re-use a v1.PersistentVolumeClaim?
+	// - It is the same size, storageclass etc, or resizable as such
+	// 		(https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims)
+	// - If a local volume: when we know it's going to the same node
+	//   - How can we tell?
+	//     - Only guaranteed if a required node affinity specifies a specific, singular node.
+	//       - Usually they are more generic, yielding a range of possible target nodes
+	// - If an EBS and non-regional PDs (GCP) volume: when we know it's going to the same AZ:
+	// 	 - How can we tell?
+	//     - Only guaranteed if a required node affinity specifies a specific availability zone
+	//       - Often
+	//     - This is /hard/
+	// - Other persistent
+	//
+	// - Limitations
+	//   - Node-specific volume limits: https://kubernetes.io/docs/concepts/storage/storage-limits/
+	//
+	// How to technically re-use a volume:
+	// - Re-use the same name for the PVC.
+	//   - E.g, List PVCs, if a PVC we want to use exist
+
+	for _, claimTemplate := range podSpecCtx.TopologySpec.VolumeClaimTemplates {
+		pvc := claimTemplate.DeepCopy()
+		// generate unique name for this pvc.
+		// TODO: this may become too long?
+		pvc.Name = pod.Name + "-" + claimTemplate.Name
+		pvc.Namespace = pod.Namespace
+
+		// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
+		// reflecting state from K8s.
+		pvc.Labels = pod.Labels
+		pvc.Annotations = pod.Annotations
+		// TODO: add more labels or annotations?
+
+		log.Info(fmt.Sprintf("Creating PVC for pod %s: %s", pod.Name, pvc.Name))
+
+		if err := controllerutil.SetControllerReference(&stack, pvc, r.scheme); err != nil {
+			return err
+		}
+
+		if err := r.Create(context.TODO(), pvc); err != nil && !apierrors.IsAlreadyExists(err) {
+			return err
+		}
+
+		// delete the volume with the same name as our claim template, we will add the expected one later
+		for i, volume := range pod.Spec.Volumes {
+			if volume.Name == claimTemplate.Name {
+				pod.Spec.Volumes = append(pod.Spec.Volumes[:i], pod.Spec.Volumes[i+1:]...)
+				break
+			}
+		}
+
+		// append our PVC to the list of volumes
+		pod.Spec.Volumes = append(
+			pod.Spec.Volumes,
+			corev1.Volume{
+				Name: claimTemplate.Name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvc.Name,
+						// TODO: support read only pvcs
+					},
+				},
+			},
+		)
+	}
+
 	if err := controllerutil.SetControllerReference(&stack, &pod, r.scheme); err != nil {
 		return err
 	}
@@ -463,15 +505,39 @@ func (r *ReconcileStack) CreateElasticsearchPod(stack deploymentsv1alpha1.Stack,
 
 // DeleteElasticsearchPod deletes the given elasticsearch pod,
 // unless a data migration is in progress
-func (r *ReconcileStack) DeleteElasticsearchPod(state state.ReconcileState, pod corev1.Pod, esClient *esclient.Client) (state.ReconcileState, error) {
-	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod)
+func (r *ReconcileStack) DeleteElasticsearchPod(
+	state state.ReconcileState,
+	esState elasticsearch.ResourcesState,
+	pod corev1.Pod,
+	esClient *esclient.Client,
+	allDeletions []corev1.Pod,
+) (state.ReconcileState, error) {
+	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod, allDeletions)
 	if err != nil {
 		return state, err
 	}
 	if isMigratingData {
 		r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		return state, state.UpdateElasticsearchMigrating(defaultRequeue, []corev1.Pod{pod}, esClient)
+		return state, state.UpdateElasticsearchMigrating(defaultRequeue, esState, esClient)
+	}
+
+	// delete all PVCs associated with this pod
+	// TODO: perhaps this is better to reconcile after the fact?
+	for _, volume := range pod.Spec.Volumes {
+		if volume.PersistentVolumeClaim == nil {
+			continue
+		}
+
+		// TODO: perhaps not assuming all PVCs will be managed by us? and maybe we should not categorically delete?
+		pvc, err := esState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
+		if err != nil {
+			return state, err
+		}
+
+		if err := r.Delete(context.TODO(), &pvc); err != nil && !apierrors.IsNotFound(err) {
+			return state, err
+		}
 	}
 
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
@@ -502,6 +568,8 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	}
 
 	kibanaPodSpec := kibana.NewPodSpec(kibanaPodSpecParams)
+	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
+	podLabels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		// TODO: use kibanaCa to generate cert for deployment
@@ -512,6 +580,21 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 			"elasticsearch-certs",
 			"/usr/share/kibana/config/elasticsearch-certs",
 		)
+
+		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
+		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
+		// updating the ca.pem file contents without restarting the process.
+		caChecksum := ""
+		var esPublicCASecret corev1.Secret
+		if err := r.Get(context.TODO(), esClusterCAPublicSecretObjectKey, &esPublicCASecret); err != nil {
+			return state, err
+		}
+		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
+			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
+		}
+		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+		// changes, which will trigger a rolling update)
+		podLabels[caChecksumLabelName] = caChecksum
 
 		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
@@ -536,13 +619,13 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 		}
 	}
 
-	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
-		Replicas:  1,
+		Replicas:  stack.Spec.Kibana.NodeCount,
 		Selector:  labels,
 		Labels:    labels,
+		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
 	})
 	result, err := r.ReconcileDeployment(deploy, *stack)
