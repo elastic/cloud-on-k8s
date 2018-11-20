@@ -23,14 +23,29 @@ spec:
           storage: 1GB
           cpu: 800m
       nodeCount: 3
-    # See the following as an example of how to configure a snapshot repository
-    # snapshotRepository:
-    #   type: "gcs"
-    #   settings:
-    #     bucketName: "stack-sample-snapshot-repo"
-    #     credentials:
-    #       namespace: "default"
-    #       name: "gcs-repo-account"
+      ## this shows how to add a custom label to all pods created for this topology element
+      #template:
+      #  metadata:
+      #    labels:
+      #      foo: bar
+      ## this shows how to request 2Gi of persistent data storage for pods in this topology element
+      #volumeClaimTemplates:
+      #- metadata:
+      #    name: data
+      #  spec:
+      #    accessModes:
+      #    - ReadWriteOnce
+      #    resources:
+      #      requests:
+      #        storage: 2Gi
+    ## See the following as an example of how to configure a snapshot repository
+    #snapshotRepository:
+    #  type: "gcs"
+    #  settings:
+    #    bucketName: "stack-sample-snapshot-repo"
+    #    credentials:
+    #      namespace: "default"
+    #      name: "gcs-repo-account"
   kibana:
     nodeCount: 1
     expose: LoadBalancer

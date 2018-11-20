@@ -48,14 +48,25 @@ var (
 )
 
 // NewPod constructs a pod from the given parameters.
-func NewPod(stack deploymentsv1alpha1.Stack, podSpec corev1.PodSpec) (corev1.Pod, error) {
+func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.Pod, error) {
+	labels := NewLabels(stack, true)
+
+	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
+	// issuing at least a warning in this case due to the potential for unexpected behavior
+	for k, v := range podSpecCtx.TopologySpec.PodTemplate.Labels {
+		if _, ok := labels[k]; !ok {
+			labels[k] = v
+		}
+	}
+
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      NewNodeName(stack.Name),
-			Namespace: stack.Namespace,
-			Labels:    NewLabels(stack, true),
+			Name:        NewNodeName(stack.Name),
+			Namespace:   stack.Namespace,
+			Labels:      labels,
+			Annotations: podSpecCtx.TopologySpec.PodTemplate.Annotations,
 		},
-		Spec: podSpec,
+		Spec: podSpecCtx.PodSpec,
 	}
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
@@ -81,6 +92,9 @@ type NewPodSpecParams struct {
 	// NodeTypes defines the type (master/data/ingest) associated to the ES node
 	NodeTypes deploymentsv1alpha1.NodeTypesSpec
 
+	// Affinity is the pod's scheduling constraints
+	Affinity *corev1.Affinity
+
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
@@ -99,9 +113,19 @@ func (params NewPodSpecParams) Hash() string {
 	return strconv.FormatUint(hash, 10)
 }
 
-// CreateExpectedPodSpecs creates PodSpec for all Elasticsearch nodes in the given stack
-func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, extraParams NewPodExtraParams) ([]corev1.PodSpec, error) {
-	podSpecs := make([]corev1.PodSpec, 0, s.Spec.Elasticsearch.NodeCount())
+// PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
+type PodSpecContext struct {
+	PodSpec      corev1.PodSpec
+	TopologySpec deploymentsv1alpha1.ElasticsearchTopologySpec
+}
+
+// CreateExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given stack
+func CreateExpectedPodSpecs(
+	s deploymentsv1alpha1.Stack,
+	probeUser client.User,
+	extraParams NewPodExtraParams,
+) ([]PodSpecContext, error) {
+	podSpecs := make([]PodSpecContext, 0, s.Spec.Elasticsearch.NodeCount())
 	for _, topology := range s.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
 			podSpec, err := NewPodSpec(NewPodSpecParams{
@@ -111,12 +135,13 @@ func CreateExpectedPodSpecs(s deploymentsv1alpha1.Stack, probeUser client.User, 
 				DiscoveryZenMinimumMasterNodes: ComputeMinimumMasterNodes(s.Spec.Elasticsearch.Topologies),
 				DiscoveryServiceName:           DiscoveryServiceName(s.Name),
 				NodeTypes:                      topology.NodeTypes,
+				Affinity:                       topology.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:               s.Spec.Elasticsearch.SetVMMaxMapCount,
 			}, probeUser, extraParams)
 			if err != nil {
 				return nil, err
 			}
-			podSpecs = append(podSpecs, podSpec)
+			podSpecs = append(podSpecs, PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
 		}
 	}
 	return podSpecs, nil
@@ -138,7 +163,7 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 		ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
 		probeUserSecretMountPath, []string{probeUser.Name},
 	)
-	dataVolume := NewDefaultEmptyDirVolume()
+
 	extraFilesSecretVolume := NewSecretVolumeWithMountPath(
 		extraParams.ExtraFilesRef.Name,
 		"extrafiles",
@@ -147,8 +172,9 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
+		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             NewEnvironmentVars(p, dataVolume, probeUser, extraFilesSecretVolume),
+			Env:             NewEnvironmentVars(p, probeUser, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            containerName,
@@ -182,7 +208,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 			},
 			VolumeMounts: append(
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
-				dataVolume.VolumeMount(),
 				usersSecret.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
@@ -191,7 +216,6 @@ func NewPodSpec(p NewPodSpecParams, probeUser client.User, extraParams NewPodExt
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(
 			initcontainer.SharedVolumes.Volumes(),
-			dataVolume.Volume(),
 			usersSecret.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
