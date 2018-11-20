@@ -90,7 +90,7 @@ func execute() {
 		Repository: "elastic-snapshots",
 	}
 
-	log.Info(fmt.Sprintf("Snapshotter initialised with interval %v, max snapshots %d, repository %s",
+	log.Info(fmt.Sprintf("Snapshotter initialised with interval: [%v], max snapshots: [%d], repository: [%s]",
 		settings.Interval, settings.Max, settings.Repository,
 	))
 	err = snapshots.Maintain(apiClient, settings)
