@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 )
 
 // User captures Elasticsearch user credentials.
@@ -40,16 +39,6 @@ func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *C
 			},
 		},
 	}
-}
-
-// ValidUserName must begin with a letter or underscore and contain only letters
-// underscores and numbers.
-func ValidUserName(name string) bool {
-	valid, err := regexp.MatchString("^[a-zA-Z_]+[a-zA-Z0-9_]*$", name)
-	if err != nil {
-		return false
-	}
-	return valid
 }
 
 // APIError is a non 2xx response from the Elasticsearch API
