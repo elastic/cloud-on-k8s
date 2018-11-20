@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestValidateSnapshotCredentials(t *testing.T) {
@@ -167,23 +166,26 @@ func TestSettings_NextPhase(t *testing.T) {
 }
 
 type mockClient struct {
-	mock.Mock
+	Snapshots client.SnapshotsList
+	Deleted   []string
+	Taken     []string
 }
 
 func (m *mockClient) GetAllSnapshots(ctx context.Context, repo string) (client.SnapshotsList, error) {
-	args := m.Called(ctx, repo)
-	return args.Get(0).(client.SnapshotsList), args.Error(1)
+	return m.Snapshots, nil
 }
 
 func (m *mockClient) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
-	args := m.Called(ctx, repo, snapshot)
-	return args.Error(0)
+	m.Taken = append(m.Taken, snapshot)
+	return nil
 }
 
 func (m *mockClient) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
-	args := m.Called(ctx, repo, snapshot)
-	return args.Error(0)
+	m.Deleted = append(m.Deleted, snapshot)
+	return nil
 }
+
+type clientAssertion func(m mockClient)
 
 func TestMaintain(t *testing.T) {
 	now := time.Now()
@@ -194,107 +196,116 @@ func TestMaintain(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		args    func() *mockClient
-		wantErr bool
+		name string
+		args func() *mockClient
+		want clientAssertion
 	}{
 		{
 			name: "no snapshots exist take one",
 			args: func() *mockClient {
-				m := new(mockClient)
-				m.On("GetAllSnapshots", mock.Anything, mock.Anything).Return(client.SnapshotsList{}, nil)
-				m.On("TakeSnapshot", mock.Anything, mock.Anything, mock.Anything).Return(nil)
-				return m
+				return new(mockClient)
+			},
+			want: func(m mockClient) {
+				assert.Empty(t, m.Deleted)
+				assert.Len(t, m.Taken, 1)
 			},
 		},
 		{
 			name: "most recent snapshot too old take a new one",
 			args: func() *mockClient {
 				m := new(mockClient)
-				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
-					Return(client.SnapshotsList{
-						Snapshots: []client.Snapshot{
-							client.Snapshot{
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-120 * time.Minute),
-								EndTime:   now.Add(-115 * time.Minute),
-							},
-							client.Snapshot{
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-60 * time.Minute),
-								EndTime:   now.Add(-55 * time.Minute),
-							},
+				m.Snapshots = client.SnapshotsList{
+					Snapshots: []client.Snapshot{
+						client.Snapshot{
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-120 * time.Minute),
+							EndTime:   now.Add(-115 * time.Minute),
 						},
-					}, nil)
-				m.On("TakeSnapshot", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+						client.Snapshot{
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-60 * time.Minute),
+							EndTime:   now.Add(-55 * time.Minute),
+						},
+					},
+				}
 				return m
+			},
+			want: func(m mockClient) {
+				assert.Empty(t, m.Deleted)
+				assert.Len(t, m.Taken, 1)
+
 			},
 		},
 		{
 			name: "most recent snapshot new enough, purge",
 			args: func() *mockClient {
 				m := new(mockClient)
-				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
-					Return(client.SnapshotsList{
-						// Purposely out of order to test sorting as well
-						Snapshots: []client.Snapshot{
-							client.Snapshot{
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-60 * time.Minute),
-								EndTime:   now.Add(-55 * time.Minute),
-							},
-							client.Snapshot{
-								Snapshot:  "delete-me",
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-150 * time.Minute),
-								EndTime:   now.Add(-145 * time.Minute),
-							},
-							client.Snapshot{
-								Snapshot:  "delete-me-too-just-not-yet",
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-120 * time.Minute),
-								EndTime:   now.Add(-115 * time.Minute),
-							},
-							client.Snapshot{
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-20 * time.Minute),
-								EndTime:   now.Add(-15 * time.Minute),
-							},
+				m.Snapshots = client.SnapshotsList{
+					// Purposely out of order to test sorting as well
+					Snapshots: []client.Snapshot{
+						client.Snapshot{
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-60 * time.Minute),
+							EndTime:   now.Add(-55 * time.Minute),
 						},
-					}, nil)
-				m.On("DeleteSnapshot", mock.Anything, mock.Anything, "delete-me").Return(nil)
+						client.Snapshot{
+							Snapshot:  "delete-me",
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-150 * time.Minute),
+							EndTime:   now.Add(-145 * time.Minute),
+						},
+						client.Snapshot{
+							Snapshot:  "delete-me-too-just-not-yet",
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-120 * time.Minute),
+							EndTime:   now.Add(-115 * time.Minute),
+						},
+						client.Snapshot{
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-20 * time.Minute),
+							EndTime:   now.Add(-15 * time.Minute),
+						},
+					},
+				}
 				return m
+			},
+			want: func(m mockClient) {
+				assert.Empty(t, m.Taken)
+				assert.Equal(t, []string{"delete-me"}, m.Deleted)
 			},
 		},
 		{
 			name: "ongoing snapshot just wait",
 			args: func() *mockClient {
 				m := new(mockClient)
-				m.On("GetAllSnapshots", mock.Anything, mock.Anything).
-					Return(client.SnapshotsList{
-						Snapshots: []client.Snapshot{
-							client.Snapshot{
-								State:     client.SnapshotStateInProgress,
-								StartTime: now.Add(-30 * time.Minute),
-							},
-							client.Snapshot{
-								State:     client.SnapshotStateSuccess,
-								StartTime: now.Add(-60 * time.Minute),
-								EndTime:   now.Add(-55 * time.Minute),
-							},
+				m.Snapshots = client.SnapshotsList{
+					Snapshots: []client.Snapshot{
+						client.Snapshot{
+							State:     client.SnapshotStateInProgress,
+							StartTime: now.Add(-30 * time.Minute),
 						},
-					}, nil)
+						client.Snapshot{
+							State:     client.SnapshotStateSuccess,
+							StartTime: now.Add(-60 * time.Minute),
+							EndTime:   now.Add(-55 * time.Minute),
+						},
+					},
+				}
 				return m
+			},
+			want: func(m mockClient) {
+				assert.Empty(t, m.Taken)
+				assert.Empty(t, m.Deleted)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mocked := tt.args()
-			if err := Maintain(mocked, settings); (err != nil) != tt.wantErr {
-				t.Errorf("Maintain() error = %v, wantErr %v", err, tt.wantErr)
+			if err := Maintain(mocked, settings); err != nil {
+				t.Errorf("Maintain() error = %v", err)
 			}
-			mocked.AssertExpectations(t)
+			tt.want(*mocked)
 		})
 	}
 }
