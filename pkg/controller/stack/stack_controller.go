@@ -2,6 +2,7 @@ package stack
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -49,6 +50,10 @@ import (
 var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 	log            = logf.Log.WithName("stack-controller")
+)
+
+const (
+	caChecksumLabelName = "kibana.stack.k8s.elastic.co/ca-file-checksum"
 )
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -572,6 +577,8 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	}
 
 	kibanaPodSpec := kibana.NewPodSpec(kibanaPodSpecParams)
+	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
+	podLabels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		// TODO: use kibanaCa to generate cert for deployment
@@ -582,6 +589,21 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 			"elasticsearch-certs",
 			"/usr/share/kibana/config/elasticsearch-certs",
 		)
+
+		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
+		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
+		// updating the ca.pem file contents without restarting the process.
+		caChecksum := ""
+		var esPublicCASecret corev1.Secret
+		if err := r.Get(context.TODO(), esClusterCAPublicSecretObjectKey, &esPublicCASecret); err != nil {
+			return state, err
+		}
+		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
+			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
+		}
+		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+		// changes, which will trigger a rolling update)
+		podLabels[caChecksumLabelName] = caChecksum
 
 		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
@@ -606,13 +628,13 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 		}
 	}
 
-	labels := kibana.NewLabelsWithStackID(common.StackID(*stack))
 	deploy := NewDeployment(DeploymentParams{
 		Name:      kibana.NewDeploymentName(stack.Name),
 		Namespace: stack.Namespace,
-		Replicas:  1,
+		Replicas:  stack.Spec.Kibana.NodeCount,
 		Selector:  labels,
 		Labels:    labels,
+		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
 	})
 	result, err := r.ReconcileDeployment(deploy, *stack)

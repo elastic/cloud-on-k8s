@@ -164,6 +164,16 @@ func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (Snapsh
 	return result[name], c.makeRequestAndUnmarshal(ctx, request, &result)
 }
 
+// DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
+func (c *Client) DeleteSnapshotRepository(ctx context.Context, name string) error {
+	request, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/_snapshot/%s", c.Endpoint, name), nil)
+	if err != nil {
+		return err
+	}
+	_, err = c.makeRequest(ctx, request)
+	return err
+}
+
 // UpsertSnapshotRepository inserts or updates the given snapshot repository
 func (c *Client) UpsertSnapshotRepository(context context.Context, name string, repository SnapshotRepository) error {
 	return c.marshalAndRequest(context, repository, func(body io.Reader) (*http.Request, error) {
