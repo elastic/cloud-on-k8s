@@ -14,6 +14,7 @@ import (
 	"time"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/pkg/controller/stack/action"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/pkg/controller/stack/common/nodecerts"
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch"
@@ -185,17 +186,31 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	res, err := r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
-	if err != nil {
-		return res, err
-	}
-	res, err = r.reconcileService(&stack, elasticsearch.NewPublicService(stack))
-	if err != nil {
-		return res, err
-	}
-
 	// currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
+	var actions []action.Interface
+	actionFns := []func() (action.Interface, error){
+		func() (action.Interface, error) {
+			return r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
+		},
+		func() (action.Interface, error) {
+			return r.reconcileService(&stack, elasticsearch.NewPublicService(stack))
+		},
+		func() (action.Interface, error) {
+			return r.reconcileService(&stack, kibana.NewService(stack))
+		},
+	}
+
+	for _, fn := range actionFns {
+		action, err := fn()
+		if err != nil {
+			return state.Result, err
+		}
+		actions = append(actions, action)
+	}
+
+	ctx := action.Context{State: state, Iteration: atomic.LoadInt64(&r.iteration), Client: r}
+	state = action.Apply(ctx, actions)
 
 	state, err = r.reconcileElasticsearchPods(state, stack, internalUsers.ControllerUser)
 	if err != nil {
@@ -206,12 +221,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return state.Result, err
 	}
-	res, err = r.reconcileService(&stack, kibana.NewService(stack))
-	if err != nil {
-		return res, err
-	}
 
-	res, err = r.ReconcileNodeCertificateSecrets(stack)
+	res, err := r.ReconcileNodeCertificateSecrets(stack)
 	if err != nil {
 		return res, err
 	}
