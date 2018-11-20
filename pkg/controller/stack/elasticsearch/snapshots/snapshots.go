@@ -26,7 +26,7 @@ const (
 )
 
 var (
-	log = logf.Log.WithName("snapshot")
+	log = logf.Log.WithName("snapshots")
 )
 
 // SnapshotAPI contains Elasticsearch API calls related to snapshots.

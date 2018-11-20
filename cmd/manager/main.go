@@ -28,7 +28,6 @@ var (
 )
 
 func execute() {
-	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("manager")
 
 	// Get a config to talk to the apiserver

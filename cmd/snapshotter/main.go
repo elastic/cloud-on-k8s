@@ -37,7 +37,6 @@ func unrecoverable(err error) {
 }
 
 func execute() {
-	logf.SetLogger(logf.ZapLogger(false))
 	certCfg, ok := os.LookupEnv(snapshots.CertificateLocationVar)
 	if !ok {
 		unrecoverable(errors.New("No certificate config configured")) // TODO should this be actually optional?
