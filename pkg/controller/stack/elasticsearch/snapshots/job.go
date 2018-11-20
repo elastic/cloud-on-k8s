@@ -26,7 +26,7 @@ const (
 	// CertificateLocationVar is the env variable holding a path where ca certs can be found.
 	CertificateLocationVar = "CERTIFICATE_LOCATION"
 	// UserNameVar is the env variable holding the name of the Es user to be used for snapshots.
-	UserNameVar = "USER"
+	UserNameVar = "USERNAME"
 	// UserPasswordVar is the env variable holding the password of the user to be used for snapshots.
 	UserPasswordVar = "PASSWORD"
 	// EsURLVar is the env variable holding the URL of the Es cluster to take snapshots of.

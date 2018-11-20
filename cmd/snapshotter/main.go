@@ -41,10 +41,12 @@ func execute() {
 	if !ok {
 		unrecoverable(errors.New("No certificate config configured")) // TODO should this be actually optional?
 	}
+
 	esURL, ok := os.LookupEnv(snapshots.EsURLVar)
 	if !ok {
 		unrecoverable(errors.New("No Elasticsearch URL configured"))
 	}
+
 	userName, ok := os.LookupEnv(snapshots.UserNameVar)
 	if !ok {
 		unrecoverable(errors.New("No Elasticsearch user configured"))
@@ -60,6 +62,7 @@ func execute() {
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
 	}
+
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(pemCerts)
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
