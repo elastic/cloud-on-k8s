@@ -63,7 +63,7 @@ func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
 		return PhaseTake
 	}
 	latest := snapshots[0]
-	log.Info(fmt.Sprintf("Latest snapshot is %s state %s started %s ended %s ", latest.Snapshot, latest.State, latest.StartTime, latest.EndTime))
+	log.Info(fmt.Sprintf("Latest snapshot is: [%s] state: [%s] started: [%s] ended: [%s]", latest.Snapshot, latest.State, latest.StartTime, latest.EndTime))
 	if latest.IsInProgress() {
 		// TODO  pending but stuck -> purge
 		return PhaseWait
