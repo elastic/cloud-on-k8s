@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/elastic/stack-operators/pkg/controller/stack/elasticsearch/client"
@@ -103,7 +102,7 @@ func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) erro
 		return nil
 	}
 	toDelete := snapshots[len(snapshots)-1]
-	log.Info(common.Concat("About to delete ", toDelete.Snapshot))
+	log.Info(fmt.Sprintf("Deleting snapshot [%s]", toDelete.Snapshot))
 	//TODO how to keeep track of failed purges?
 	return esClient.DeleteSnapshot(context.TODO(), s.Repository, toDelete.Snapshot)
 }
@@ -125,9 +124,9 @@ func Maintain(esClient SnapshotAPI, settings Settings) error {
 		return snapshots[i].StartTime.After(snapshots[j].StartTime)
 	})
 
-	log.Info(common.Concat("Getting all snapshots. Found ", strconv.Itoa(len(snapshots)), " snapshots"))
+	log.Info(fmt.Sprintf("Getting all snapshots. Found [%d] snapshots", (len(snapshots))))
 	next := settings.nextPhase(snapshots, time.Now())
-	log.Info(common.Concat("Next phase wil be ", string(next)))
+	log.Info(fmt.Sprintf("Operation is [%s]", string(next)))
 	switch next {
 	case PhasePurge:
 		return settings.purge(esClient, settings.snapshotsToPurge(snapshots))
