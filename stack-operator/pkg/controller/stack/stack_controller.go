@@ -228,8 +228,8 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 }
 
 // NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) (*esclient.Client, error) {
-	esURL, err := elasticsearch.ExternalServiceURL(*stack)
+func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) *esclient.Client {
+	esURL := elasticsearch.PublicServiceURL(*stack)
 
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		esURL = strings.Replace(esURL, "http:", "https:", 1)
@@ -247,7 +247,7 @@ func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.Us
 				},
 			},
 		},
-	}, err
+	}
 }
 
 func (r *ReconcileStack) reconcileElasticsearchPods(
@@ -328,10 +328,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
-	esClient, err := NewElasticsearchClient(&stack, controllerUser, certPool)
-	if err != nil {
-		return state, errors.Wrap(err, "Could not create ES client")
-	}
+	esClient := NewElasticsearchClient(&stack, controllerUser, certPool)
 
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
