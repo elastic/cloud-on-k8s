@@ -1,3 +1,0 @@
-version: "1"
-domain: k8s.elastic.co
-repo: github.com/elastic/stack-operators
