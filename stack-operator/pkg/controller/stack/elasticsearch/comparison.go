@@ -3,8 +3,17 @@ package elasticsearch
 import (
 	"fmt"
 	"reflect"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+)
+
+const (
+	// TaintedAnnotationName used to represent a tainted resource in k8s resources
+	TaintedAnnotationName = "elasticsearch.stack.k8s.elastic.co/tainted"
+
+	// TaintedReason message
+	TaintedReason = "mismatch due to tainted node"
 )
 
 type Comparison struct {
@@ -183,6 +192,13 @@ func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim,
 	}
 
 	return true
+}
+func IsTainted(pod corev1.Pod) bool {
+	if v, ok := pod.Annotations[TaintedAnnotationName]; ok {
+		tainted, _ := strconv.ParseBool(v)
+		return tainted
+	}
+	return false
 }
 
 func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state ResourcesState) (bool, []string, error) {

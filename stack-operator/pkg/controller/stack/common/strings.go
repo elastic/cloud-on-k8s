@@ -13,3 +13,13 @@ func Concat(args ...string) string {
 	}
 	return result.String()
 }
+
+// StringInSlice returns true if the given string is found in the provided slice, else returns false
+func StringInSlice(str string, list []string) bool {
+	for _, s := range list {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}

@@ -133,6 +133,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		OwnerType:    &deploymentsv1alpha1.Stack{},
 	})
 
+	// Watch nodes
+	err = c.Watch(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -159,10 +165,20 @@ type ReconcileStack struct {
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=pods;endpoints;events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=,resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
 	atomic.AddInt64(&r.iteration, 1)
+
+	// Non namespaced requests are used for K8s nodes, so when the namespace
+	// is empty, we can reconcile the nodes and return directly. Any actions
+	// that need to be performed after the ES pods have been tainted will take
+	// place in a future reconcile cycle. Any infrastructure-bound logic can
+	// happen within the conditional.
+	if request.Namespace == "" {
+		return r.reconcileNodes()
+	}
 
 	stack, err := r.GetStack(request.NamespacedName)
 	if err != nil {
