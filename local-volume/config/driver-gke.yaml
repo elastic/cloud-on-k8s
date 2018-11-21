@@ -1,0 +1,53 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: elastic-local-driver
+  namespace: elastic-local
+spec:
+  template:
+    metadata:
+      name: elastic-local-driver
+      labels:
+        app: elastic-local-driver
+    spec:
+      serviceAccountName: elastic-local
+      containers:
+      - image: eu.gcr.io/elastic-cloud-dev/elastic-local-seb:latest
+        imagePullPolicy: Always
+        name: elastic-local-driver
+        args: ["driver"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - mountPath: /flexbin
+          name: flexbin
+        - mountPath: /var/run/elastic-local
+          name: socket
+        - mountPath: /mnt/disks
+          name: volumes
+        - mountPath: /var/lib/kubelet/pods
+          name: kubelet-pods
+        - mountPath: /hostprocns
+          name: hostprocns
+      volumes:
+      - name: flexbin
+        # directory where to copy the driver client binary, to be called by kubelet
+        hostPath:
+          path: /home/kubernetes/flexvolume
+      - name: socket
+        # directory where a socket will be created, to handle client-daemon communication
+        hostPath:
+          path: /var/run/elastic-local
+      - name: volumes
+        # one directory per persistent volume will be created there
+        hostPath:
+          path: /mnt/disks
+      - name: kubelet-pods
+        # persistent volumes will be bind-mounted into the pod FS
+        hostPath:
+          path: /var/lib/kubelet/pods
+      - name: hostprocns
+        # in order to bind-mount on the underlying host from within a container,
+        # we need to access the host mount namespace
+        hostPath:
+          path: /proc/1/ns         
