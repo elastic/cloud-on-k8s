@@ -14,15 +14,13 @@ const (
 	TypeLabelName = "stack.k8s.elastic.co/type"
 	// Type represents the elasticsearch type
 	Type = "elasticsearch"
-	// TaintedLabelName used to represent a tainted resource in k8s resources
-	TaintedLabelName = "elasticsearch.stack.k8s.elastic.co/tainted"
 )
 
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels
 var TypeSelector = labels.Set(map[string]string{TypeLabelName: Type}).AsSelector()
 
 // NewLabels constructs a new set of labels from a Stack definition.
-func NewLabels(s deploymentsv1alpha1.Stack, hash bool) map[string]string {
+func NewLabels(s deploymentsv1alpha1.Stack) map[string]string {
 	var labels = map[string]string{
 		ClusterIDLabelName: common.StackID(s),
 		TypeLabelName:      Type,

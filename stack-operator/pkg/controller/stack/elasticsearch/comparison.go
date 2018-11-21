@@ -29,11 +29,11 @@ func NewStringComparison(expected string, actual string, name string) Comparison
 // getEsContainer returns the elasticsearch container in the given pod
 func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 	for _, c := range containers {
-		if c.Name == containerName {
+		if c.Name == DefaultContainerName {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", containerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", DefaultContainerName)
 }
 
 // envVarsByName turns the given list of env vars into a map: EnvVar.Name -> EnvVar

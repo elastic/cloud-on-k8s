@@ -85,12 +85,14 @@ var scriptTemplate = template.Must(template.New("").Parse(
 
 	keystore_start=$(date +%s)
 
+	KEYSTORE_PATH=$CONFIG_DIR/elasticsearch.keystore
 	rm -rf $CONFIG_DIR/elasticsearch.keystore
 	$KEYSTORE_BIN create --silent
 	{{range .KeyStoreSettings}}
 		echo "Installing key {{.}}"	
 		$KEYSTORE_BIN add-file {{.Key}} {{.ValueFilePath}}
 	{{end}}
+	chown elasticsearch:elasticsearch $KEYSTORE_PATH
 
 	echo "Installed settings:"
 	$KEYSTORE_BIN list

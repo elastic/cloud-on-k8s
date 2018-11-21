@@ -8,8 +8,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// configureNodeCertificates configures node certificates for the provided pod
-func configureNodeCertificates(pod corev1.Pod) corev1.Pod {
+// ConfigureNodeCertificates configures node certificates for the provided pod
+func ConfigureNodeCertificates(pod corev1.Pod) corev1.Pod {
 	nodeCertificatesVolume := NewSecretVolumeWithMountPath(
 		nodecerts.NodeCertificateSecretObjectKeyForPod(pod).Name,
 		"node-certificates",

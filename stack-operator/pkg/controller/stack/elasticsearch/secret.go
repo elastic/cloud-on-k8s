@@ -4,16 +4,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/initcontainer"
-
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
@@ -27,22 +24,6 @@ const (
 	InternalControllerUserName = "elastic-internal"
 	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
 	InternalKibanaServerUserName = "elastic-internal-kibana"
-)
-
-var (
-	// LinkedFiles describe how the user related secrets are mapped into the pod's filesystem.
-	LinkedFiles = initcontainer.LinkedFilesArray{
-		Array: []initcontainer.LinkedFile{
-			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersFile),
-			},
-			initcontainer.LinkedFile{
-				Source: common.Concat(defaultSecretMountPath, "/", ElasticUsersRolesFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", ElasticUsersRolesFile),
-			},
-		},
-	}
 )
 
 // ElasticUsersSecretName is the name of the secret containing all users credentials in ES format.
@@ -162,13 +143,12 @@ func (hc *HashedCredentials) Users() []client.User {
 
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
 func NewInternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentials {
-
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      ElasticInternalUsersSecretName(s.Name),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				InternalControllerUserName:   []byte(rand.String(24)),
@@ -184,7 +164,7 @@ func NewExternalUserCredentials(s deploymentsv1alpha1.Stack) *ClearTextCredentia
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      common.Concat(s.Name, "-elastic-user"),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				ExternalUserName: []byte(rand.String(24)),
@@ -230,7 +210,7 @@ func NewElasticUsersCredentials(s deploymentsv1alpha1.Stack, users []client.User
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: s.Namespace,
 				Name:      ElasticUsersSecretName(s.Name),
-				Labels:    NewLabels(s, false),
+				Labels:    NewLabels(s),
 			},
 			Data: map[string][]byte{
 				ElasticUsersFile:      []byte(hashedCreds.String()),

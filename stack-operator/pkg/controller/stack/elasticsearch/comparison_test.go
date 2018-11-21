@@ -27,7 +27,7 @@ func ESPodSpecContext(nodeDataEnv bool, image string, cpuLimit string) PodSpecCo
 				Image:           image,
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				Name:            "elasticsearch",
-				Ports:           defaultContainerPorts,
+				Ports:           DefaultContainerPorts,
 				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{

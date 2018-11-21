@@ -6,8 +6,8 @@ import (
 
 // Default values for the volume name and paths
 const (
-	defaultSecretMountPath   = "/secrets"
-	probeUserSecretMountPath = "/probe-user"
+	DefaultSecretMountPath   = "/secrets"
+	ProbeUserSecretMountPath = "/probe-user"
 	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
 	KeystoreSecretMountPath = "/keystore-secrets"
 )
@@ -59,7 +59,7 @@ type SecretVolume struct {
 
 // NewSecretVolume creates a new SecretVolume with default mount path.
 func NewSecretVolume(secretName string, name string) SecretVolume {
-	return NewSecretVolumeWithMountPath(secretName, name, defaultSecretMountPath)
+	return NewSecretVolumeWithMountPath(secretName, name, DefaultSecretMountPath)
 }
 
 // NewSecretVolumeWithMountPath creates a new SecretVolume
