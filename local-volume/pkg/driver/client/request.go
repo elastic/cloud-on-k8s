@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/elastic/localvolume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 )
 
 const protocol = "unix"

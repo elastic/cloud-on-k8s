@@ -1,7 +1,7 @@
 package provisioner
 
 import (
-	drivermodel "github.com/elastic/localvolume/pkg/driver/model"
+	drivermodel "github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"

@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/localvolume/pkg/driver/daemon"
-	"github.com/elastic/localvolume/pkg/driver/daemon/bindmount"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/bindmount"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

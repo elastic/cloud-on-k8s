@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/localvolume/pkg/provisioner"
+	"github.com/elastic/stack-operators/local-volume/pkg/provisioner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

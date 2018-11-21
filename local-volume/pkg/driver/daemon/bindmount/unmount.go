@@ -3,7 +3,7 @@ package bindmount
 import (
 	"os/exec"
 
-	"github.com/elastic/localvolume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 	log "github.com/sirupsen/logrus"
 )
 

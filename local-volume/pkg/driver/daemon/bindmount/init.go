@@ -1,6 +1,6 @@
 package bindmount
 
-import "github.com/elastic/localvolume/pkg/driver/model"
+import "github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 
 // Init returns a successful response when the driver is ready
 func (d *Driver) Init() model.Response {

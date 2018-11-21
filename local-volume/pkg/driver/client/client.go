@@ -3,7 +3,7 @@ package client
 import (
 	"encoding/json"
 
-	"github.com/elastic/localvolume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 )
 
 func Init() string {

@@ -3,9 +3,9 @@ package daemon
 import (
 	"fmt"
 
-	"github.com/elastic/localvolume/pkg/driver/daemon/bindmount"
-	"github.com/elastic/localvolume/pkg/driver/daemon/lvm"
-	"github.com/elastic/localvolume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/bindmount"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/lvm"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
 )
 
 // DriverKind represents a driver implementation name

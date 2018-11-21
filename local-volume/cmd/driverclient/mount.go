@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/elastic/localvolume/pkg/driver/client"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/client"
 	"github.com/spf13/cobra"
 )
 
