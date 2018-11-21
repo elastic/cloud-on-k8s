@@ -56,6 +56,10 @@ stack.deployments.k8s.elastic.co/stack-sample unchanged
 -> Run "make run" to start the manager process localy
 ```
 
+After that you can run `make start-port-forward` to start forwarding any services you want to interact with from your local controller. This will also create some entries in your `/etc/hosts` file.
+
+`make stop-port-forward` will end the forwarding. 
+
 ### GKE Development workflow
 
 When selecting GKE as your development environment note that the controller will be packed in a docker image,

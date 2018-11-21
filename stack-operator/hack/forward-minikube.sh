@@ -3,7 +3,7 @@ set -e
 
 SVCS=`kubectl get service -o json | jq -r '.items | map(select(.metadata.ownerReferences)) | map(select(any(.metadata.ownerReferences[]; .kind == "Stack") and .spec.clusterIP != "None") | "\(.metadata.name):\(.spec.ports[0].port)" ) | @sh '`
 
-SUDOMESSAGE="Please enter your sudo password to modify the hosts file tee"
+SUDOMESSAGE="Please enter your sudo password to modify the hosts file"
 
 echo > portfwd.log
 for i in $SVCS; do
