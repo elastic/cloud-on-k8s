@@ -182,8 +182,8 @@ func (s Snapshot) IsComplete() bool {
 	return s.IsSuccess() || s.IsFailed() || s.IsPartial()
 }
 
-// EndedBefore returns true if the snapshot has and end time and that end time is further in the
-// past relativ to the given now than duration d.
+// EndedBefore returns true if the snapshot has an end time and that end time is further in the
+// past relative to the given now than duration d.
 func (s Snapshot) EndedBefore(d time.Duration, now time.Time) bool {
 	if s.EndTime.IsZero() {
 		return false

@@ -76,24 +76,24 @@ func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
 // snapshotsToPurge calculates the snapshots to delete based on the current settings.
 // Invariant: snapshots should be sorted in descending order.
 func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapshot {
-	var toDelete []client.Snapshot
+	var toPurge []client.Snapshot
 	successes := 0
 	for _, snap := range snapshots {
 		if successes < s.Max {
 			if snap.IsSuccess() {
 				successes++
 			}
-			//don't delete failures in the range of snapshots to keep
+			// failures don't count towards the retention limit
 		} else {
 			//we have kept the most recent n snapshots delete the rest
-			toDelete = append(toDelete, snap)
+			toPurge = append(toPurge, snap)
 		}
 	}
-	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", s.Max, len(toDelete)))
-	return toDelete
+	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", s.Max, len(toPurge)))
+	return toPurge
 }
 
-// purge deletes of the given snapshots. Invariant: descending order is assumed.
+// purge deletes the oldest of the given snapshots. Invariant: descending order is assumed.
 func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) error {
 	// we delete only one snapshot at a time because we don't know what the underlying storage
 	// mechanism of the snapshot repository is. In case of s3 we want to space operations to reach
@@ -111,10 +111,10 @@ func nextSnapshotName(now time.Time) string {
 	return fmt.Sprintf("scheduled-%d", now.Unix())
 }
 
-// Maintain tries to maintain the snapshot repository by either taking a new snapshot or if
+// ExecuteNextPhase tries to maintain the snapshot repository by either taking a new snapshot or if
 // the most recent one is younger than the configured snapshot interval by trying to purge
 // outdated snapshots.
-func Maintain(esClient SnapshotAPI, settings Settings) error {
+func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
 	snapshotList, err := esClient.GetAllSnapshots(context.TODO(), settings.Repository)
 	if err != nil {
 		return err

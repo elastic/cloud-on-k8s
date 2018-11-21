@@ -302,7 +302,7 @@ func TestMaintain(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mocked := tt.args()
-			if err := Maintain(mocked, settings); err != nil {
+			if err := ExecuteNextPhase(mocked, settings); err != nil {
 				t.Errorf("Maintain() error = %v", err)
 			}
 			tt.want(*mocked)

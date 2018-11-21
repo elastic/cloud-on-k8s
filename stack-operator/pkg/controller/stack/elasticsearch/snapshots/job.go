@@ -17,10 +17,6 @@ import (
 )
 
 const (
-	// ClusterIDLabelName used to represent a cluster in k8s resources
-	ClusterIDLabelName = "elasticsearch.stack.k8s.elastic.co/cluster-id"
-	// TypeLabelName used to represent a resource type in k8s resources
-	TypeLabelName = "stack.k8s.elastic.co/type"
 	// Type represents the component here the snapshotter
 	Type = "snapshotter"
 	// CertificateLocationVar is the env variable holding a path where ca certs can be found.
@@ -55,15 +51,15 @@ func CronJobName(parent types.NamespacedName) string {
 // NewLabels constructs a new set of labels from a Stack definition.
 func NewLabels(s deploymentsv1alpha1.Stack) map[string]string {
 	var labels = map[string]string{
-		ClusterIDLabelName: common.StackID(s),
-		TypeLabelName:      Type,
+		elasticsearch.ClusterIDLabelName: common.StackID(s),
+		elasticsearch.TypeLabelName:      Type,
 	}
 	return labels
 }
 
 // NewCronJob constructor for snapshotter cronjobs.
 func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
-	parallism := int32(1)
+	parallelism := int32(1)
 	completions := int32(1)
 	// TODO brittle, by convention currently called like the stack
 	caCertSecret := elasticsearch.NewSecretVolume(params.Parent.Name, "ca")
@@ -82,7 +78,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 			JobTemplate: batchv1beta1.JobTemplateSpec{
 				ObjectMeta: meta,
 				Spec: batchv1.JobSpec{
-					Parallelism: &parallism,
+					Parallelism: &parallelism,
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: meta,

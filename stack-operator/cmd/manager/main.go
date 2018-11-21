@@ -20,7 +20,7 @@ var (
 		Use:   "manager",
 		Short: "Start the operator manager",
 		Long: `manager starts the manager for this operator,
- which will in turn create the necessary controller .`,
+ which will in turn create the necessary controller.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			execute()
 		},

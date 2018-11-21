@@ -220,7 +220,7 @@ func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string)
 	return err
 }
 
-// DeleteSnapshot delete the given snapshot from the given repository.
+// DeleteSnapshot deletes the given snapshot from the given repository.
 func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
 	request, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("%s/_snapshot/%s/%s", c.Endpoint, repo, snapshot), nil)
 	if err != nil {
