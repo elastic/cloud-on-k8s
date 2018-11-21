@@ -53,7 +53,7 @@ const (
 	PhaseWait Phase = "wait"
 	// PhaseTake means a snapshot should be taken now.
 	PhaseTake Phase = "take"
-	// PhasePurge means we should start deleting snaphshots that are outside of the retention window.
+	// PhasePurge means we should start deleting snapshots that are outside of the retention window.
 	PhasePurge Phase = "purge"
 )
 
