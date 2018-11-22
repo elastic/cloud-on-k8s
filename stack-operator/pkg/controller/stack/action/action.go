@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	// NOOP action does nothign
+	// NOOP action does nothing
 	NOOP = noop{}
 	log  = logf.Log.WithName("action")
 )
@@ -67,7 +67,7 @@ func (b *Builder) Apply(ctx Context) (state.ReconcileState, error) {
 
 }
 
-// Info returns a descriptive string about this actoin builder.
+// Info returns a descriptive string about this action builder.
 func (b *Builder) Info() string {
 	var str strings.Builder
 
@@ -143,7 +143,10 @@ func (c Create) Name() string {
 	name := "Create"
 	meta, ok := c.Obj.(v1.Object)
 	if ok {
-		name = common.Concat(name, " ", c.Obj.GetObjectKind().GroupVersionKind().Kind, meta.GetNamespace(), "/", meta.GetName())
+		name = common.Concat(
+			name, " ", c.Obj.GetObjectKind().GroupVersionKind().Kind,
+			meta.GetNamespace(), "/", meta.GetName(),
+		)
 	}
 	return name
 }
@@ -165,7 +168,10 @@ func (c Update) Name() string {
 	name := "Update"
 	meta, ok := c.Obj.(v1.Object)
 	if ok {
-		name = common.Concat(name, " ", c.Obj.GetObjectKind().GroupVersionKind().Kind, meta.GetNamespace(), "/", meta.GetName())
+		name = common.Concat(
+			name, " ", c.Obj.GetObjectKind().GroupVersionKind().Kind,
+			meta.GetNamespace(), "/", meta.GetName(),
+		)
 	}
 	return name
 }
