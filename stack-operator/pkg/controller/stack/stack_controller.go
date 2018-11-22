@@ -187,39 +187,21 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
-	var actions []action.Interface
-	actionFns := []func() (action.Interface, error){
-		func() (action.Interface, error) {
-			return r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))
-		},
-		func() (action.Interface, error) {
-			return r.reconcileService(&stack, elasticsearch.NewPublicService(stack))
-		},
-		func() (action.Interface, error) {
-			return r.reconcileService(&stack, kibana.NewService(stack))
-		},
-	}
 
-	for _, fn := range actionFns {
-		action, err := fn()
-		if err != nil {
-			return state.Result, err
-		}
-		actions = append(actions, action)
-	}
+	actions := action.Builder{}
+	actions.Add(r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack)))
+	actions.Add(r.reconcileService(&stack, elasticsearch.NewPublicService(stack)))
+	actions.Add(r.reconcileService(&stack, kibana.NewService(stack)))
+	actions.AddN(r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey))
 
 	ctx := action.Context{State: state, Iteration: atomic.LoadInt64(&r.iteration), Client: r}
-	state, err = action.Apply(ctx, actions)
+	log.Info(actions.Info())
+	state, err = actions.Apply(ctx)
 	if err != nil {
 		return state.Result, err
 	}
 
 	state, err = r.reconcileElasticsearchPods(state, stack, internalUsers.ControllerUser)
-	if err != nil {
-		return state.Result, err
-	}
-
-	state, err = r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey)
 	if err != nil {
 		return state.Result, err
 	}
@@ -555,7 +537,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 	stack *deploymentsv1alpha1.Stack,
 	user esclient.User,
 	esClusterCAPublicSecretObjectKey types.NamespacedName,
-) (state.ReconcileState, error) {
+) ([]action.Interface, error) {
 	kibanaPodSpecParams := kibana.PodSpecParams{
 		Version:          stack.Spec.Version,
 		CustomImageName:  stack.Spec.Kibana.Image,
@@ -587,7 +569,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 		caChecksum := ""
 		var esPublicCASecret corev1.Secret
 		if err := r.Get(context.TODO(), esClusterCAPublicSecretObjectKey, &esPublicCASecret); err != nil {
-			return state, err
+			return []action.Interface{action.NOOP}, err
 		}
 		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
 			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
@@ -628,12 +610,7 @@ func (r *ReconcileStack) reconcileKibanaDeployment(
 		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
 	})
-	result, err := r.ReconcileDeployment(deploy, *stack)
-	if err != nil {
-		return state, err
-	}
-	state.UpdateKibanaState(result)
-	return state, nil
+	return r.ReconcileDeployment(deploy, *stack)
 }
 
 func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Result, error) {

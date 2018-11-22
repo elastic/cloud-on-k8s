@@ -5,7 +5,9 @@ import (
 	"reflect"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/action"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/kibana"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -18,6 +20,7 @@ var (
 	defaultRevisionHistoryLimit int32 = 0
 )
 
+// DeploymentParams describe the attributes of a deployment relevant for reconciliation.
 type DeploymentParams struct {
 	Name      string
 	Namespace string
@@ -53,38 +56,24 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 }
 
 // ReconcileDeployment upserts the given deployment for the specified stack.
-func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) (appsv1.Deployment, error) {
+func (r *ReconcileStack) ReconcileDeployment(deploy appsv1.Deployment, instance deploymentsv1alpha1.Stack) ([]action.Interface, error) {
+	var actions []action.Interface
 	if err := controllerutil.SetControllerReference(&instance, &deploy, r.scheme); err != nil {
-		return deploy, err
+		return actions, err
 	}
 
 	// Check if the Deployment already exists
 	found := appsv1.Deployment{}
+	actions = append(actions, kibana.UpdateKibanaStatus{Deployment: &found})
 	err := r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, &found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Info(
-			common.Concat("Creating Deployment ", deploy.Namespace, "/", deploy.Name),
-			"iteration", r.iteration,
-		)
-		err = r.Create(context.TODO(), &deploy)
-		if err != nil {
-			return deploy, err
-		}
+		actions = append(actions, action.Create{Obj: &deploy})
 	} else if err != nil {
-		log.Info(common.Concat("searched deployment ", deploy.Name, " found ", found.Name))
-		return found, err
+		return actions, err
 	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
-		log.Info(
-			common.Concat("Updating Deployment ", deploy.Namespace, "/", deploy.Name),
-			"iteration", r.iteration,
-		)
-		err = r.Update(context.TODO(), &found)
-		if err != nil {
-			return found, err
-		}
+		actions = append(actions, action.Update{Obj: &found})
 	}
-	return found, nil
-
+	return actions, nil
 }

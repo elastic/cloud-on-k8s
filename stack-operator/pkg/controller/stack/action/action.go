@@ -2,9 +2,11 @@ package action
 
 import (
 	"context"
+	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/state"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,11 +34,66 @@ type Interface interface {
 	Execute(ctx Context) (*reconcile.Result, error)
 }
 
-// Apply the given actions to the initial state
-func Apply(ctx Context, actions []Interface) (state.ReconcileState, error) {
+// Builder is a helper to create actions
+type Builder struct {
+	actions []Interface
+	errors  []error
+}
+
+// Add a action and check for errors.
+func (b *Builder) Add(action Interface, err error) {
+	if err != nil {
+		b.errors = append(b.errors, err)
+	}
+	b.actions = append(b.actions, action)
+}
+
+// Add multiple actions and check for errors
+func (b *Builder) AddN(actions []Interface, err error) {
+	if err != nil {
+		b.errors = append(b.errors, err)
+	}
+	b.actions = append(b.actions, actions...)
+}
+
+// Apply all the actions in this builder
+func (b *Builder) Apply(ctx Context) (state.ReconcileState, error) {
+	if len(b.errors) > 0 {
+		return ctx.State, common.NewCompoundError(b.errors)
+	}
+	return apply(ctx, b.actions)
+
+}
+
+// Info returns a descriptive string about this actoin builder.
+func (b *Builder) Info() string {
+	var str strings.Builder
+	if len(b.errors) > 0 {
+		for i, e := range b.errors {
+			str.WriteString(e.Error())
+			if i+1 < len(b.errors) {
+				str.WriteString(", ")
+			}
+		}
+	}
+	str.WriteString("Actions [")
+	for i, a := range b.actions {
+		if a == NOOP {
+			continue
+		}
+		str.WriteString(a.Name())
+		if i+1 < len(b.actions) {
+			str.WriteString(", ")
+		}
+	}
+	str.WriteString("]")
+	return str.String()
+
+}
+
+func apply(ctx Context, actions []Interface) (state.ReconcileState, error) {
 	var applied []Interface
 	for _, action := range actions {
-		log.Info("Running " + action.Name())
 		result, err := action.Execute(ctx)
 		if err != nil {
 			return ctx.State, err
