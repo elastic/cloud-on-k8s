@@ -68,14 +68,14 @@ func (b *Builder) Apply(ctx Context) (state.ReconcileState, error) {
 // Info returns a descriptive string about this actoin builder.
 func (b *Builder) Info() string {
 	var str strings.Builder
-	if len(b.errors) > 0 {
-		for i, e := range b.errors {
-			str.WriteString(e.Error())
-			if i+1 < len(b.errors) {
-				str.WriteString(", ")
-			}
+
+	for i, e := range b.errors {
+		str.WriteString(e.Error())
+		if i+1 < len(b.errors) {
+			str.WriteString(", ")
 		}
 	}
+
 	str.WriteString("Actions [")
 	for i, a := range b.actions {
 		if a == NOOP {
