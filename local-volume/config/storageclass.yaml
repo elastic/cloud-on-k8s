@@ -1,0 +1,6 @@
+apiVersion: storage.k8s.io/v1beta1
+kind: StorageClass
+metadata:
+  name: elastic-local
+provisioner: volumes.k8s.elastic.co/elastic-local
+# parameters:

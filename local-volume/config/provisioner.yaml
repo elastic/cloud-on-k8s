@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elastic-local-provisioner
+  namespace: elastic-local
+  labels:
+    app: elastic-local-provisioner
+spec:
+  selector:
+    matchLabels:
+      app: elastic-local-provisioner
+  template:
+    metadata:
+      name: elastic-local-provisioner
+      labels:
+        app: elastic-local-provisioner
+    spec:
+      serviceAccountName: elastic-local
+      containers:
+      - name: elastic-local-provisioner
+        image: localhost:5000/elastic-cloud-dev/elastic-local:latest
+        imagePullPolicy: Always
+        args: ["provisioner"]
