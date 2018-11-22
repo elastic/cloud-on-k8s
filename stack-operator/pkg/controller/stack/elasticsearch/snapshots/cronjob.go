@@ -33,7 +33,7 @@ const (
 	MaxVar = "MAX"
 )
 
-var cronSchedule = "*/2 * * * *"
+var cronSchedule = "*/10 * * * *"
 
 // CronJobParams describe parameters to construct a snapshotter job.
 type CronJobParams struct {
