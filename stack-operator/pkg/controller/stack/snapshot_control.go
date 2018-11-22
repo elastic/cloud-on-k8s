@@ -12,11 +12,17 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/snapshots"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+)
+
+const (
+	// SnapshotterImageFlag is the name of the flag/env-var containing the docker image of the snapshotter application.
+	SnapshotterImageFlag = "snapshotter_image"
 )
 
 // ReconcileSnapshotCredentials checks the snapshot repository config for user provided, validates
@@ -62,7 +68,7 @@ func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.S
 	params := snapshots.CronJobParams{
 		Parent:           types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name},
 		Stack:            stack,
-		SnapshotterImage: r.SnapshotterImage,
+		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
 		User:             user,
 		EsURL:            elasticsearch.PublicServiceURL(stack),
 	}

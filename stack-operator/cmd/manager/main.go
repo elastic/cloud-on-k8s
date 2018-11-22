@@ -1,12 +1,15 @@
 package manager
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -27,8 +30,20 @@ var (
 	}
 )
 
+func init() {
+	Cmd.Flags().StringP(stack.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	viper.BindPFlags(Cmd.Flags())
+	viper.AutomaticEnv()
+}
+
 func execute() {
 	log := logf.Log.WithName("manager")
+
+	if viper.GetString(stack.SnapshotterImageFlag) == "" {
+		log.Error(fmt.Errorf("%s is a required flag", stack.SnapshotterImageFlag),
+			"required configuration missing")
+		os.Exit(1)
+	}
 
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")
