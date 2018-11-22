@@ -93,21 +93,34 @@ func (b *Builder) Info() string {
 
 }
 
+func nextTakesPrecendence(current reconcile.Result, next reconcile.Result) bool {
+	if current == next {
+		return false // no need to replace the result
+	}
+	if next.Requeue && !current.Requeue && current.RequeueAfter <= 0 {
+		return true // next requests requeue current does not, next takes precendence
+	}
+	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
+		return true // next requests a requeue and current does not or wants it only later
+	}
+	return false //default case
+
+}
+
 func apply(ctx Context, actions []Interface) (state.ReconcileState, error) {
 	var applied []Interface
+	newState := ctx.State
 	for _, action := range actions {
-		result, err := action.Execute(ctx)
+		nextResult, err := action.Execute(ctx)
 		if err != nil {
 			return ctx.State, err
 		}
 		applied = append(applied, action)
-		if result != nil {
-			newState := ctx.State
-			newState.Result = *result
-			return newState, nil
+		if nextResult != nil && nextTakesPrecendence(newState.Result, *nextResult) {
+			newState.Result = *nextResult
 		}
 	}
-	return ctx.State, nil
+	return newState, nil
 }
 
 type noop struct{}
