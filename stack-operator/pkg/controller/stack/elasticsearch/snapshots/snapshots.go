@@ -3,6 +3,9 @@ package snapshots
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"sort"
+	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 
@@ -24,6 +27,116 @@ const (
 var (
 	log = logf.Log.WithName("snapshots")
 )
+
+// SnapshotAPI contains Elasticsearch API calls related to snapshots.
+type SnapshotAPI interface {
+	// GetAllSnapshots returns a list of all snapshots for the given repository.
+	GetAllSnapshots(ctx context.Context, repo string) (client.SnapshotsList, error)
+	// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
+	TakeSnapshot(ctx context.Context, repo string, snapshot string) error
+	// DeleteSnapshot delete the given snapshot from the given repository.
+	DeleteSnapshot(ctx context.Context, repo string, snapshot string) error
+}
+
+// Settings define the how often, how long to keep and where to for snapshotting.
+type Settings struct {
+	Interval   time.Duration
+	Max        int
+	Repository string
+}
+
+// Phase is the one of the three phases the snapshot job can be in.
+type Phase string
+
+const (
+	// PhaseWait means a snapshot is still running and we have to wait.
+	PhaseWait Phase = "wait"
+	// PhaseTake means a snapshot should be taken now.
+	PhaseTake Phase = "take"
+	// PhasePurge means we should start deleting snapshots that are outside of the retention window.
+	PhasePurge Phase = "purge"
+)
+
+func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
+	if len(snapshots) == 0 {
+		return PhaseTake
+	}
+	latest := snapshots[0]
+	log.Info(fmt.Sprintf("Latest snapshot is: [%s] state: [%s] started: [%s] ended: [%s]", latest.Snapshot, latest.State, latest.StartTime, latest.EndTime))
+	if latest.IsInProgress() {
+		// TODO  pending but stuck -> purge
+		return PhaseWait
+	}
+	if latest.IsComplete() && latest.EndedBefore(s.Interval, now) {
+		return PhaseTake
+	}
+	return PhasePurge
+}
+
+// snapshotsToPurge calculates the snapshots to delete based on the current settings.
+// Invariant: snapshots should be sorted in descending order.
+func snapshotsToPurge(snapshots []client.Snapshot, settings Settings) []client.Snapshot {
+	var toPurge []client.Snapshot
+	successes := 0
+	for _, snap := range snapshots {
+		if successes < settings.Max {
+			if snap.IsSuccess() {
+				successes++
+			}
+			// failures don't count towards the retention limit
+		} else {
+			//we have kept the most recent n snapshots delete the rest
+			toPurge = append(toPurge, snap)
+		}
+	}
+	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", settings.Max, len(toPurge)))
+	return toPurge
+}
+
+// purge deletes the oldest of the given snapshots. Invariant: descending order is assumed.
+func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) error {
+	// we delete only one snapshot at a time because we don't know what the underlying storage
+	// mechanism of the snapshot repository is. In case of s3 we want to space operations to reach
+	// consistency for example and avoid repository corruption.
+	if len(snapshots) == 0 {
+		return nil
+	}
+	toDelete := snapshots[len(snapshots)-1]
+	log.Info(fmt.Sprintf("Deleting snapshot [%s]", toDelete.Snapshot))
+	//TODO how to keeep track of failed purges?
+	return esClient.DeleteSnapshot(context.TODO(), s.Repository, toDelete.Snapshot)
+}
+
+func nextSnapshotName(now time.Time) string {
+	return fmt.Sprintf("scheduled-%d", now.Unix())
+}
+
+// ExecuteNextPhase tries to maintain the snapshot repository by either taking a new snapshot or if
+// the most recent one is younger than the configured snapshot interval by trying to purge
+// outdated snapshots.
+func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
+	snapshotList, err := esClient.GetAllSnapshots(context.TODO(), settings.Repository)
+	if err != nil {
+		return err
+	}
+	snapshots := snapshotList.Snapshots
+	sort.SliceStable(snapshots, func(i, j int) bool {
+		return snapshots[i].StartTime.After(snapshots[j].StartTime)
+	})
+
+	log.Info(fmt.Sprintf("Getting all snapshots. Found [%d] snapshots", (len(snapshots))))
+	next := settings.nextPhase(snapshots, time.Now())
+	log.Info(fmt.Sprintf("Operation is [%s]", string(next)))
+	switch next {
+	case PhasePurge:
+		return settings.purge(esClient, snapshotsToPurge(snapshots, settings))
+	case PhaseWait:
+		return nil
+	case PhaseTake:
+		return esClient.TakeSnapshot(context.TODO(), settings.Repository, nextSnapshotName(time.Now()))
+	}
+	return nil
+}
 
 // RepositoryCredentialsKey returns a provider specific keystore key for the corresponding credentials.
 func RepositoryCredentialsKey(repoConfig v1alpha1.SnapshotRepository) string {

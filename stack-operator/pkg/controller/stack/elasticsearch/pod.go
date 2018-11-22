@@ -49,7 +49,7 @@ var (
 
 // NewPod constructs a pod from the given parameters.
 func NewPod(stack deploymentsv1alpha1.Stack, podSpecCtx PodSpecContext) (corev1.Pod, error) {
-	labels := NewLabels(stack, true)
+	labels := NewLabels(stack)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior

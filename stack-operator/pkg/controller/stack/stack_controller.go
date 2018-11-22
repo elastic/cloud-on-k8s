@@ -3,11 +3,9 @@ package stack
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -160,6 +158,7 @@ type ReconcileStack struct {
 // +kubebuilder:rbac:groups=,resources=pods;endpoints;events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
 	atomic.AddInt64(&r.iteration, 1)
@@ -215,6 +214,10 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	if err != nil {
 		return res, err
 	}
+	err = r.ReconcileSnapshotterCronJob(stack, internalUsers.ControllerUser)
+	if err != nil {
+		return res, err
+	}
 	return r.updateStatus(state)
 }
 
@@ -225,29 +228,6 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 		return stackInstance, err
 	}
 	return stackInstance, nil
-}
-
-// NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) *esclient.Client {
-	esURL := elasticsearch.PublicServiceURL(*stack)
-
-	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		esURL = strings.Replace(esURL, "http:", "https:", 1)
-	}
-
-	return &esclient.Client{
-		Endpoint: esURL,
-		User:     esUser,
-		HTTP: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: caPool,
-					// TODO: we can do better.
-					InsecureSkipVerify: true,
-				},
-			},
-		},
-	}
 }
 
 func (r *ReconcileStack) reconcileElasticsearchPods(
@@ -328,7 +308,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
-	esClient := NewElasticsearchClient(&stack, controllerUser, certPool)
+	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
 
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {

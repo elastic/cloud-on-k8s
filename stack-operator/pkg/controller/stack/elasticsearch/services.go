@@ -26,10 +26,10 @@ func NewDiscoveryService(s deploymentsv1alpha1.Stack) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      DiscoveryServiceName(s.Name),
-			Labels:    NewLabels(s, false),
+			Labels:    NewLabels(s),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(s, false),
+			Selector: NewLabels(s),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -56,6 +56,9 @@ func PublicServiceName(stackName string) string {
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(stack deploymentsv1alpha1.Stack) string {
 	scheme := "http"
+	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
+		scheme = "https"
+	}
 	return common.Concat(scheme, "://", PublicServiceName(stack.Name), ".", stack.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
 }
 
@@ -66,10 +69,10 @@ func NewPublicService(s deploymentsv1alpha1.Stack) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: s.Namespace,
 			Name:      PublicServiceName(s.Name),
-			Labels:    NewLabels(s, false),
+			Labels:    NewLabels(s),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(s, false),
+			Selector: NewLabels(s),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
