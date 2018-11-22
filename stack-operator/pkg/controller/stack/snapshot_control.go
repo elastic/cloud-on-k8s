@@ -59,25 +59,21 @@ func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1al
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
 func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.Stack, user client.User) error {
-	url, err := elasticsearch.ExternalServiceURL(stack)
-	if err != nil {
-		return err
-	}
 	params := snapshots.CronJobParams{
 		Parent:           types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name},
 		Stack:            stack,
 		SnapshotterImage: r.SnapshotterImage,
 		User:             user,
-		EsURL:            url,
+		EsURL:            elasticsearch.PublicServiceURL(stack),
 	}
 	expected := snapshots.NewCronJob(params)
-	if err = controllerutil.SetControllerReference(&stack, expected, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&stack, expected, r.scheme); err != nil {
 		return err
 	}
 
 	found := &batchv1beta1.CronJob{}
 	empty := deploymentsv1alpha1.SnapshotRepository{}
-	err = r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
 	if err == nil && stack.Spec.Elasticsearch.SnapshotRepository == empty {
 		log.Info(common.Concat("Deleting cron job ", found.Namespace, "/", found.Name),
 			"iteration", r.iteration,

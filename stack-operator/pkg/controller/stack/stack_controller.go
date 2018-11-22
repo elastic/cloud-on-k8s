@@ -242,17 +242,6 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 	return stackInstance, nil
 }
 
-// NewElasticsearchClient creates a new client bound to the given stack instance.
-func NewElasticsearchClient(stack *deploymentsv1alpha1.Stack, esUser esclient.User, caPool *x509.CertPool) (*esclient.Client, error) {
-	var result *esclient.Client
-	esURL, err := elasticsearch.ExternalServiceURL(*stack)
-	if err != nil {
-		return result, err
-	}
-	return esclient.NewElasticsearchClient(esURL, esUser, caPool), err
-
-}
-
 func (r *ReconcileStack) reconcileElasticsearchPods(
 	state state.ReconcileState,
 	stack deploymentsv1alpha1.Stack,
@@ -331,10 +320,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
-	esClient, err := NewElasticsearchClient(&stack, controllerUser, certPool)
-	if err != nil {
-		return state, errors.Wrap(err, "Could not create ES client")
-	}
+	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
 
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
