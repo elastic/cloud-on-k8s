@@ -43,14 +43,6 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
   - deployments.k8s.elastic.co
   resources:
   - stacks
