@@ -188,11 +188,12 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	// currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
 
-	actions := action.Builder{}
-	actions.Add(r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack)))
-	actions.Add(r.reconcileService(&stack, elasticsearch.NewPublicService(stack)))
-	actions.Add(r.reconcileService(&stack, kibana.NewService(stack)))
-	actions.AddN(r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey))
+	var actions action.Builder
+	actions.
+		Add(r.reconcileService(&stack, elasticsearch.NewDiscoveryService(stack))).
+		Add(r.reconcileService(&stack, elasticsearch.NewPublicService(stack))).
+		Add(r.reconcileService(&stack, kibana.NewService(stack))).
+		AddN(r.reconcileKibanaDeployment(state, &stack, internalUsers.KibanaUser, clusterCAPublicSecretObjectKey))
 
 	ctx := action.Context{State: state, Iteration: atomic.LoadInt64(&r.iteration), Client: r}
 	log.Info(actions.Info())

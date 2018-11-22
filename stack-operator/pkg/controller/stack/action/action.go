@@ -41,19 +41,21 @@ type Builder struct {
 }
 
 // Add a action and check for errors.
-func (b *Builder) Add(action Interface, err error) {
+func (b *Builder) Add(action Interface, err error) *Builder {
 	if err != nil {
 		b.errors = append(b.errors, err)
 	}
 	b.actions = append(b.actions, action)
+	return b
 }
 
-// Add multiple actions and check for errors
-func (b *Builder) AddN(actions []Interface, err error) {
+// AddN adds multiple actions and checks for errors
+func (b *Builder) AddN(actions []Interface, err error) *Builder {
 	if err != nil {
 		b.errors = append(b.errors, err)
 	}
 	b.actions = append(b.actions, actions...)
+	return b
 }
 
 // Apply all the actions in this builder
