@@ -8,10 +8,11 @@ COPY cmd/    cmd/
 COPY vendor/ vendor/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager github.com/elastic/stack-operators/stack-operator/cmd/manager
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o stack-operator github.com/elastic/stack-operators/stack-operator/cmd
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest
 WORKDIR /root/
-COPY --from=builder /go/src/github.com/elastic/stack-operators/stack-operator/manager .
-ENTRYPOINT ["./manager"]
+COPY --from=builder /go/src/github.com/elastic/stack-operators/stack-operator/stack-operator .
+ENTRYPOINT ["./stack-operator"]
+CMD ["manager"]

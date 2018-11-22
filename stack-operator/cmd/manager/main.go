@@ -1,21 +1,49 @@
-package main
+package manager
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
-func main() {
-	logf.SetLogger(logf.ZapLogger(false))
-	log := logf.Log.WithName("entrypoint")
+var (
+	// Cmd is the cobra command to start the manager.
+	Cmd = &cobra.Command{
+		Use:   "manager",
+		Short: "Start the operator manager",
+		Long: `manager starts the manager for this operator,
+ which will in turn create the necessary controller.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			execute()
+		},
+	}
+)
+
+func init() {
+	Cmd.Flags().StringP(stack.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	viper.BindPFlags(Cmd.Flags())
+	viper.AutomaticEnv()
+}
+
+func execute() {
+	log := logf.Log.WithName("manager")
+
+	if viper.GetString(stack.SnapshotterImageFlag) == "" {
+		log.Error(fmt.Errorf("%s is a required flag", stack.SnapshotterImageFlag),
+			"required configuration missing")
+		os.Exit(1)
+	}
 
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")

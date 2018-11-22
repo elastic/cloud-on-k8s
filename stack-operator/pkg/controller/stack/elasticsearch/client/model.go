@@ -2,6 +2,7 @@ package client
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 )
@@ -118,4 +119,79 @@ type SnapshotRepositorySetttings struct {
 type SnapshotRepository struct {
 	Type     string                      `json:"type"`
 	Settings SnapshotRepositorySetttings `json:"settings"`
+}
+
+// SnapshotStates as in Elasticsearch.
+const (
+	SnapshotStateSuccess      = "SUCCESS"
+	SnapshotStateFailed       = "FAILED"
+	SnapshotStateInProgress   = "IN_PROGRESS"
+	SnapshotStatePartial      = "PARTIAL"
+	SnapshotStateIncompatible = "INCOMPATIBLE"
+)
+
+// Snapshot represents a single snapshot.
+type Snapshot struct {
+	Snapshot          string        `json:"snapshot"`
+	UUID              string        `json:"uuid"`
+	VersionID         int           `json:"version_id"`
+	Version           string        `json:"version"`
+	Indices           []string      `json:"indices"`
+	State             string        `json:"state"`
+	StartTime         time.Time     `json:"start_time"`
+	StartTimeInMillis int64         `json:"start_time_in_millis"`
+	EndTime           time.Time     `json:"end_time"`
+	EndTimeInMillis   int64         `json:"end_time_in_millis"`
+	DurationInMillis  int           `json:"duration_in_millis"`
+	Failures          []interface{} `json:"failures"`
+	Shards            struct {
+		Total      int `json:"total"`
+		Failed     int `json:"failed"`
+		Successful int `json:"successful"`
+	} `json:"shards"`
+}
+
+// IsSuccess is true when the snapshot succeeded.
+func (s Snapshot) IsSuccess() bool {
+	return s.State == SnapshotStateSuccess
+}
+
+// IsFailed is true if the snapshot failed.
+func (s Snapshot) IsFailed() bool {
+	return s.State == SnapshotStateFailed
+}
+
+// IsInProgress is true if the snapshot is still running.
+func (s Snapshot) IsInProgress() bool {
+	return s.State == SnapshotStateInProgress
+}
+
+// IsPartial is true if only a subset of indices could be snapshotted.
+func (s Snapshot) IsPartial() bool {
+	return s.State == SnapshotStatePartial
+}
+
+// IsIncompatible is true if the snapshot was taken with an incompatible
+// version of Elasticsearch compared to the currently running version.
+func (s Snapshot) IsIncompatible() bool {
+	return s.State == SnapshotStateIncompatible
+}
+
+// IsComplete is true when a snapshot has reached one of its end states.
+func (s Snapshot) IsComplete() bool {
+	return s.IsSuccess() || s.IsFailed() || s.IsPartial()
+}
+
+// EndedBefore returns true if the snapshot has an end time and that end time is further in the
+// past relative to the given now than duration d.
+func (s Snapshot) EndedBefore(d time.Duration, now time.Time) bool {
+	if s.EndTime.IsZero() {
+		return false
+	}
+	return now.Sub(s.EndTime) > d
+}
+
+// SnapshotsList models the list response from the _snaphshot API.
+type SnapshotsList struct {
+	Snapshots []Snapshot `json:"snapshots"`
 }

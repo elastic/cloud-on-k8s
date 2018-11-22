@@ -41,9 +41,7 @@ spec:
         controller-tools.k8s.io: "1.0"
     spec:
       containers:
-      - command:
-        - /root/manager
-        image: controller:latest
+      - image: controller:latest
         imagePullPolicy: Always
         name: manager
         env:
