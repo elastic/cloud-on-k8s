@@ -51,11 +51,6 @@ func init() {
 	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
 	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snaphshots retained")
 
-	Cmd.MarkFlagRequired(certificateLocationFlag)
-	Cmd.MarkFlagRequired(esURLFlag)
-	Cmd.MarkFlagRequired(userNameFlag)
-	Cmd.MarkFlagRequired(userPasswordFlag)
-
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
 }
@@ -67,14 +62,19 @@ func execute() {
 	user := esclient.User{Name: userName, Password: userPassword}
 
 	certCfg := viper.GetString(certificateLocationFlag)
-	pemCerts, err := ioutil.ReadFile(certCfg)
-	if err != nil {
-		unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
+	certPool := x509.NewCertPool()
+	if certCfg != "" {
+		pemCerts, err := ioutil.ReadFile(certCfg)
+		if err != nil {
+			unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
+		}
+		certPool.AppendCertsFromPEM(pemCerts)
 	}
 
-	certPool := x509.NewCertPool()
-	certPool.AppendCertsFromPEM(pemCerts)
 	esURL := viper.GetString(esURLFlag)
+	if esURL == "" {
+		unrecoverable(errors.New(fmt.Sprintf("%s is required", esURLFlag)))
+	}
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
 	interval := viper.GetDuration(intervalFlag)
@@ -86,7 +86,7 @@ func execute() {
 	}
 
 	log.Info(fmt.Sprintf("Snapshotter initialised with [%+v]", settings))
-	err = snapshots.ExecuteNextPhase(apiClient, settings)
+	err := snapshots.ExecuteNextPhase(apiClient, settings)
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Error during snapshot maintenance"))
 	}
