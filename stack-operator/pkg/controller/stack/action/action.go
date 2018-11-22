@@ -3,8 +3,8 @@ package action
 import (
 	"context"
 
-	"github.com/elastic/stack-operators/pkg/controller/stack/common"
-	"github.com/elastic/stack-operators/pkg/controller/stack/state"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/state"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
