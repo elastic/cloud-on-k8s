@@ -3,10 +3,9 @@ package version
 import (
 	"testing"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/version"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (

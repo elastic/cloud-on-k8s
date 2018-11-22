@@ -64,10 +64,14 @@ type NewPodSpecParams struct {
 	// Resources is the memory/cpu resources the pod wants
 	Resources deploymentsv1alpha1.ResourcesSpec
 
+	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume SecretVolume
-	ExtraFilesRef     types.NamespacedName
-	KeystoreConfig    keystore.Config
-	ProbeUser         client.User
+	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
+	ExtraFilesRef types.NamespacedName
+	// KeystoreConfig is configuration for the Elasticsearch key store setup
+	KeystoreConfig keystore.Config
+	// ProbeUser is the user that should be used for the readiness probes.
+	ProbeUser client.User
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

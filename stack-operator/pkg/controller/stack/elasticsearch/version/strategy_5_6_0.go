@@ -44,11 +44,18 @@ func (s strategy_5_6_0) NewExpectedPodSpecs(
 	stack v1alpha1.Stack,
 	paramsTmpl elasticsearch.NewPodSpecParams,
 ) ([]elasticsearch.PodSpecContext, error) {
+	// we currently mount the users secret volume as the x-pack folder. we cannot symlink these into the existing
+	// config/x-pack/ folder because of the Java Security Manager restrictions.
+	// in the future we might want to consider bind-mounting specific files instead to be less broad
 	paramsTmpl.UsersSecretVolume = elasticsearch.NewSecretVolumeWithMountPath(
 		elasticsearch.ElasticUsersSecretName(stack.Name),
 		"users",
 		"/usr/share/elasticsearch/config/x-pack",
 	)
+
+	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
+	// potentially bypasses x-pack security.
+
 	return newExpectedPodSpecs(stack, paramsTmpl, s.newEnvironmentVars, s.newInitContainers)
 }
 
@@ -66,7 +73,6 @@ func (s strategy_5_6_0) newEnvironmentVars(
 	p elasticsearch.NewPodSpecParams,
 	extraFilesSecretVolume elasticsearch.SecretVolume,
 ) []corev1.EnvVar {
-	// TODO: system key needs to go in here?
 	// TODO: require system key setting for 5.2 and up
 
 	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
@@ -150,7 +156,7 @@ func (s strategy_5_6_0) configureNodeCertificates(pod corev1.Pod) corev1.Pod {
 
 		podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
 			corev1.EnvVar{
-				Name:  "xpack.ssl.verification_mode",
+				Name:  "xpack.security.transport.ssl.verification_mode",
 				Value: "certificate",
 			},
 			corev1.EnvVar{

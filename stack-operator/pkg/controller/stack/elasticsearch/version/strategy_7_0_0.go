@@ -12,7 +12,8 @@ type strategy_7_0_0 struct {
 	versionHolder
 	versionedNewPodLabels
 	lowestHighestSupportedVersions
-	oldStrategy strategy_6_4_0
+	// previousStrategy is used to implement the interfaces because we currently require no customization
+	previousStrategy strategy_6_4_0
 }
 
 //noinspection GoSnakeCaseUsage
@@ -26,7 +27,7 @@ func newStrategy_7_0_0(v version.Version) strategy_7_0_0 {
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			highestSupportedVersion: version.MustParse("7.0.99"),
 		},
-		oldStrategy: newStrategy_6_4_0(v),
+		previousStrategy: newStrategy_6_4_0(v),
 	}
 	return strategy
 }
@@ -36,7 +37,7 @@ func (s strategy_7_0_0) NewExpectedPodSpecs(
 	stack v1alpha1.Stack,
 	paramsTmpl elasticsearch.NewPodSpecParams,
 ) ([]elasticsearch.PodSpecContext, error) {
-	return s.oldStrategy.NewExpectedPodSpecs(stack, paramsTmpl)
+	return s.previousStrategy.NewExpectedPodSpecs(stack, paramsTmpl)
 }
 
 // NewPod creates a new pod from the given parameters.
@@ -44,5 +45,5 @@ func (s strategy_7_0_0) NewPod(
 	stack v1alpha1.Stack,
 	podSpecCtx elasticsearch.PodSpecContext,
 ) (corev1.Pod, error) {
-	return s.oldStrategy.NewPod(stack, podSpecCtx)
+	return s.previousStrategy.NewPod(stack, podSpecCtx)
 }

@@ -86,7 +86,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	keystore_start=$(date +%s)
 
 	KEYSTORE_PATH=$CONFIG_DIR/elasticsearch.keystore
-	rm -rf $CONFIG_DIR/elasticsearch.keystore
+	rm -rf $KEYSTORE_PATH
 	$KEYSTORE_BIN create --silent
 	{{range .KeyStoreSettings}}
 		echo "Installing key {{.}}"	

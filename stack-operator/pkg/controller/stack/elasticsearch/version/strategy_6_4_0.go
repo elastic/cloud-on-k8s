@@ -58,6 +58,9 @@ func (s strategy_6_4_0) NewExpectedPodSpecs(
 	stack v1alpha1.Stack,
 	paramsTmpl elasticsearch.NewPodSpecParams,
 ) ([]elasticsearch.PodSpecContext, error) {
+	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
+	// creation below.
+	// TODO: make this association clearer.
 	paramsTmpl.UsersSecretVolume = elasticsearch.NewSecretVolume(
 		elasticsearch.ElasticUsersSecretName(stack.Name),
 		"users",
@@ -97,6 +100,9 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		{Name: elasticsearch.EnvPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
 		{Name: elasticsearch.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
+		// TODO: it would be great if we could move this out of "generic extra files" and into a more scoped secret
+		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
+		//       reusable component somehow.
 		{
 			Name:  "xpack.security.transport.ssl.trust_restrictions.path",
 			Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
