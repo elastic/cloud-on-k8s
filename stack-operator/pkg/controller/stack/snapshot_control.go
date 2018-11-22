@@ -2,7 +2,6 @@ package stack
 
 import (
 	"context"
-	"os"
 	"path"
 	"reflect"
 
@@ -18,11 +17,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-)
-
-const (
-	// SnapshotterImageVar is the name of the environment variable containing the docker image of the snapshotter application.
-	SnapshotterImageVar = "SNAPSHOTTER_IMAGE"
 )
 
 // ReconcileSnapshotCredentials checks the snapshot repository config for user provided, validates
@@ -65,11 +59,6 @@ func (r *ReconcileStack) ReconcileSnapshotCredentials(repoConfig deploymentsv1al
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
 func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.Stack, user client.User) error {
-	image, ok := os.LookupEnv(SnapshotterImageVar)
-	if !ok {
-		return errors.New(common.Concat(SnapshotterImageVar, " env var is not set"))
-	}
-
 	url, err := elasticsearch.ExternalServiceURL(stack)
 	if err != nil {
 		return err
@@ -77,7 +66,7 @@ func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.S
 	params := snapshots.CronJobParams{
 		Parent:           types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name},
 		Stack:            stack,
-		SnapshotterImage: image,
+		SnapshotterImage: r.SnapshotterImage,
 		User:             user,
 		EsURL:            url,
 	}

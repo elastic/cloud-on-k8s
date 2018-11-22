@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -52,6 +53,8 @@ var (
 
 const (
 	caChecksumLabelName = "kibana.stack.k8s.elastic.co/ca-file-checksum"
+	// SnapshotterImageVar is the name of the environment variable containing the docker image of the snapshotter application.
+	snapshotterImageVar = "SNAPSHOTTER_IMAGE"
 )
 
 // Add creates a new Stack Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -77,12 +80,18 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 		return nil, err
 	}
 
+	image, ok := os.LookupEnv(snapshotterImageVar)
+	if !ok {
+		return nil, errors.New(common.Concat(snapshotterImageVar, " env var is not set"))
+	}
+
 	return &ReconcileStack{
-		Client:   mgr.GetClient(),
-		scheme:   mgr.GetScheme(),
-		esCa:     esCa,
-		kibanaCa: kibanaCa,
-		recorder: mgr.GetRecorder("stack-controller"),
+		Client:           mgr.GetClient(),
+		scheme:           mgr.GetScheme(),
+		esCa:             esCa,
+		kibanaCa:         kibanaCa,
+		recorder:         mgr.GetRecorder("stack-controller"),
+		SnapshotterImage: image,
 	}, nil
 }
 
@@ -144,6 +153,9 @@ type ReconcileStack struct {
 
 	esCa     *nodecerts.Ca
 	kibanaCa *nodecerts.Ca
+
+	// image to be used in the snapshotter cronjob
+	SnapshotterImage string
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
