@@ -55,7 +55,7 @@ ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ $(MAKE) docker-build docker-push deploy
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
-	go run ./cmd/manager/main.go manager
+	go run ./cmd/main.go manager
 endif
 
 .PHONY: logs
