@@ -49,7 +49,7 @@ func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 
 	// TODO: we could parse options.Parameters here to do whatever custom we want
 
-	pv := &v1.PersistentVolume{
+	pv := v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: options.PVName,
 		},
@@ -72,7 +72,7 @@ func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 
 	log.Infof("Provisioning persistent volume %s", drivermodel.Name)
 
-	return pv, nil
+	return &pv, nil
 }
 
 // Delete moves the storage asset that was created by Provision represented by the given pv.

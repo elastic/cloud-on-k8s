@@ -1,8 +1,8 @@
-# TODO: variabilize for GKE
+# TODO: parametrize for GKE
 # IMG_TAG ?= $(shell find pkg -type f -print0 | xargs -0 sha1sum | sha1sum | awk '{print $$1}')
 IMG_TAG ?= latest
 REGISTRY ?= localhost:5000
-# TODO: variabilize for GKE
+# TODO: parametrize for GKE
 # REGISTRY ?= eu.gcr.io
 IMG = $(REGISTRY)/elastic-cloud-dev/elastic-local
 

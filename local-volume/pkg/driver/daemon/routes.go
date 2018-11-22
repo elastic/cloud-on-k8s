@@ -25,8 +25,10 @@ func InitHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 
 		resp := driver.Init()
 
-		output, _ := json.Marshal(resp)
-		w.Write(output)
+		err := json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			err500(w, err)
+		}
 	}
 }
 
@@ -50,8 +52,10 @@ func MountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 
 		resp := driver.Mount(params)
 
-		output, _ := json.Marshal(resp)
-		w.Write(output)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			err500(w, err)
+		}
 	}
 }
 
@@ -75,8 +79,10 @@ func UnmountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) 
 
 		resp := driver.Unmount(params)
 
-		jsonResp, _ := json.Marshal(resp)
-		w.Write(jsonResp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			err500(w, err)
+		}
 	}
 }
 

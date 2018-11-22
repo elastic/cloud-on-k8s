@@ -26,8 +26,7 @@ func Start(driverKind string) error {
 	}
 
 	// unlink the socket if already exists (previous pod)
-	err = syscall.Unlink(model.UnixSocket)
-	if err != nil {
+	if err := syscall.Unlink(model.UnixSocket); err != nil {
 		// ok to fail here
 		log.Info("No socket to unlink (it's probably ok, might not exit yet): ", err.Error())
 	}
@@ -49,8 +48,7 @@ func Start(driverKind string) error {
 	}()
 
 	// run forever (unless something is wrong)
-	err = server.Serve(unixListener)
-	if err != nil {
+	if err := server.Serve(unixListener); err != nil {
 		return err
 	}
 	unixListener.Close()

@@ -32,8 +32,7 @@ func (d *Driver) Mount(params model.MountRequest) model.Response {
 	}
 
 	// create bind mount
-	err := bindMount(sourceDir, targetDir)
-	if err != nil {
+	if err := bindMount(sourceDir, targetDir); err != nil {
 		return model.Response{
 			Status:  model.StatusFailure,
 			Message: fmt.Sprintf("cannot bind mount %s to %s: %s", sourceDir, targetDir, err.Error()),

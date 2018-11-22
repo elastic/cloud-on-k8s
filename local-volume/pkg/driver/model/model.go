@@ -6,14 +6,14 @@ const Name = "volumes.k8s.elastic.co/elastic-local"
 const (
 	// VolumesPath is the path into which volumes should be created
 	// Must match the driver pod host mount
-	// TODO: variabilize?
+	// TODO: parametrize?
 	VolumesPath = "/mnt/elastic-local-volumes"
 	// TODO: gke needs this
 	// VolumesPath = "/mnt/disks"
 
 	// UnixSocket used to communicate between client and server
 	// Must match the driver pod host mount
-	// TODO: variabilize?
+	// TODO: parametrize?
 	UnixSocket = "/var/run/elastic-local/socket"
 )
 
@@ -32,7 +32,7 @@ type Response struct {
 	Message string `json:"message"`
 	Device  string `json:"device,omitempty"`
 
-	Capabilities *Capabilities `json:"capabilities,omitempty"`
+	Capabilities Capabilities `json:"capabilities,omitempty"`
 }
 
 type Capabilities struct {

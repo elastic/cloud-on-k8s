@@ -12,8 +12,7 @@ import (
 var rootCmd = &cobra.Command{
 	Short: "Run the local volume provisioner",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := provisioner.Start()
-		if err != nil {
+		if err := provisioner.Start(); err != nil {
 			log.Error(err)
 		}
 	},
