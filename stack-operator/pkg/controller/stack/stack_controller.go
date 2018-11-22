@@ -209,7 +209,10 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	ctx := action.Context{State: state, Iteration: atomic.LoadInt64(&r.iteration), Client: r}
-	state = action.Apply(ctx, actions)
+	state, err = action.Apply(ctx, actions)
+	if err != nil {
+		return state.Result, err
+	}
 
 	state, err = r.reconcileElasticsearchPods(state, stack, internalUsers.ControllerUser)
 	if err != nil {

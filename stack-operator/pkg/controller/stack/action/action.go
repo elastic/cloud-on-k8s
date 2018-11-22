@@ -13,10 +13,13 @@ import (
 )
 
 var (
+	// NOOP action does nothign
 	NOOP = noop{}
 	log  = logf.Log.WithName("action")
 )
 
+// Context contains reconciliation loop iteration specific context
+// needed to execute an action
 type Context struct {
 	client.Client
 	State     state.ReconcileState
@@ -27,40 +30,25 @@ type Context struct {
 type Interface interface {
 	Name() string
 	Execute(ctx Context) (*reconcile.Result, error)
-	Compensate() error
-}
-
-// Unapply the given actions by calling their compensate function
-func Unapply(actions []Interface) {
-	for _, action := range actions {
-
-		if action.Compensate() != nil {
-			err := action.Compensate()
-			if err != nil {
-				panic(err) //what else to do here?
-			}
-		}
-	}
 }
 
 // Apply the given actions to the initial state
-func Apply(ctx Context, actions []Interface) state.ReconcileState {
+func Apply(ctx Context, actions []Interface) (state.ReconcileState, error) {
 	var applied []Interface
 	for _, action := range actions {
 		log.Info("Running " + action.Name())
 		result, err := action.Execute(ctx)
 		if err != nil {
-			Unapply(applied)
-			break
+			return ctx.State, err
 		}
 		applied = append(applied, action)
 		if result != nil {
 			newState := ctx.State
 			newState.Result = *result
-			return newState
+			return newState, nil
 		}
 	}
-	return ctx.State
+	return ctx.State, nil
 }
 
 type noop struct{}
@@ -73,13 +61,8 @@ func (n noop) Execute(ctx Context) (*reconcile.Result, error) {
 	return nil, nil
 }
 
-func (n noop) Compensate() error {
-	return nil
-}
-
 // Create action
 type Create struct {
-	Interface
 	Obj runtime.Object
 }
 
@@ -102,7 +85,6 @@ func (c Create) Execute(ctx Context) (*reconcile.Result, error) {
 
 // Update action
 type Update struct {
-	Interface
 	Obj runtime.Object
 }
 
