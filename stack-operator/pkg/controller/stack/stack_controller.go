@@ -177,7 +177,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	// place in a future reconcile cycle. Any infrastructure-bound logic can
 	// happen within the conditional.
 	if request.Namespace == "" {
-		return r.reconcileNodes()
+		return r.reconcileTaintedPods()
 	}
 
 	stack, err := r.GetStack(request.NamespacedName)
