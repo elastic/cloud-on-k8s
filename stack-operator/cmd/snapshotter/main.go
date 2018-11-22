@@ -3,7 +3,7 @@ package snapshotter
 import (
 	"crypto/x509"
 	"fmt"
-	"strconv"
+	"strings"
 	"time"
 
 	"io/ioutil"
@@ -12,13 +12,20 @@ import (
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/snapshots"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
-	log = logf.Log.WithName("snapshotter")
+	log                     = logf.Log.WithName("snapshotter")
+	certificateLocationFlag = strings.ToLower(snapshots.CertificateLocationVar)
+	userNameFlag            = strings.ToLower(snapshots.UserNameVar)
+	userPasswordFlag        = strings.ToLower(snapshots.UserPasswordVar)
+	intervalFlag            = strings.ToLower(snapshots.IntervalVar)
+	maxFlag                 = strings.ToLower(snapshots.MaxVar)
+	esURLFlag               = strings.ToLower(snapshots.EsURLVar)
 	// Cmd is the cobra command to start a snapshotter run
 	Cmd = &cobra.Command{
 		Use:   "snapshotter",
@@ -36,28 +43,30 @@ func unrecoverable(err error) {
 	os.Exit(1)
 }
 
+func init() {
+	Cmd.Flags().StringP(certificateLocationFlag, "c", "", "Location of cacerts in local filesystem")
+	Cmd.Flags().StringP(esURLFlag, "e", "", "Elasticsearch URL")
+	Cmd.Flags().StringP(userNameFlag, "u", "", "Elasticsearch user name")
+	Cmd.Flags().StringP(userPasswordFlag, "p", "", "Elasticsearch password")
+	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
+	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snaphshots retained")
+
+	Cmd.MarkFlagRequired(certificateLocationFlag)
+	Cmd.MarkFlagRequired(esURLFlag)
+	Cmd.MarkFlagRequired(userNameFlag)
+	Cmd.MarkFlagRequired(userPasswordFlag)
+
+	viper.BindPFlags(Cmd.Flags())
+	viper.AutomaticEnv()
+}
+
 func execute() {
-	certCfg, ok := os.LookupEnv(snapshots.CertificateLocationVar)
-	if !ok {
-		unrecoverable(errors.New("No certificate config configured")) // TODO should this be actually optional?
-	}
 
-	esURL, ok := os.LookupEnv(snapshots.EsURLVar)
-	if !ok {
-		unrecoverable(errors.New("No Elasticsearch URL configured"))
-	}
-
-	userName, ok := os.LookupEnv(snapshots.UserNameVar)
-	if !ok {
-		unrecoverable(errors.New("No Elasticsearch user configured"))
-	}
-
-	userPassword, ok := os.LookupEnv(snapshots.UserPasswordVar)
-	if !ok {
-		unrecoverable(errors.New("No password for Elasticsearch user configured"))
-	}
+	userName := viper.GetString(userNameFlag)
+	userPassword := viper.GetString(userPasswordFlag)
 	user := esclient.User{Name: userName, Password: userPassword}
 
+	certCfg := viper.GetString(certificateLocationFlag)
 	pemCerts, err := ioutil.ReadFile(certCfg)
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
@@ -65,28 +74,11 @@ func execute() {
 
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(pemCerts)
+	esURL := viper.GetString(esURLFlag)
 	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
 
-	interval := 30 * time.Minute
-	intervalStr, _ := os.LookupEnv(snapshots.IntervalVar)
-	if intervalStr != "" {
-		parsed, err := time.ParseDuration(intervalStr)
-		if err != nil {
-			log.Error(err, "could not parse interval: "+intervalStr)
-		}
-		interval = parsed
-	}
-
-	max := 100
-	maxStr, _ := os.LookupEnv(snapshots.MaxVar)
-	if maxStr != "" {
-		parsed, err := strconv.Atoi(maxStr)
-		if err != nil {
-			log.Error(err, "could not parse max: "+maxStr)
-		}
-		max = parsed
-	}
-
+	interval := viper.GetDuration(intervalFlag)
+	max := viper.GetInt(maxFlag)
 	settings := snapshots.Settings{
 		Interval:   interval,
 		Max:        max,
