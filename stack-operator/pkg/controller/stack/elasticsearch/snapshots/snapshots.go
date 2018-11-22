@@ -75,11 +75,11 @@ func (s *Settings) nextPhase(snapshots []client.Snapshot, now time.Time) Phase {
 
 // snapshotsToPurge calculates the snapshots to delete based on the current settings.
 // Invariant: snapshots should be sorted in descending order.
-func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapshot {
+func snapshotsToPurge(snapshots []client.Snapshot, settings Settings) []client.Snapshot {
 	var toPurge []client.Snapshot
 	successes := 0
 	for _, snap := range snapshots {
-		if successes < s.Max {
+		if successes < settings.Max {
 			if snap.IsSuccess() {
 				successes++
 			}
@@ -89,7 +89,7 @@ func (s *Settings) snapshotsToPurge(snapshots []client.Snapshot) []client.Snapsh
 			toPurge = append(toPurge, snap)
 		}
 	}
-	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", s.Max, len(toPurge)))
+	log.Info(fmt.Sprintf("With max snapshots being %d found %d to delete", settings.Max, len(toPurge)))
 	return toPurge
 }
 
@@ -129,7 +129,7 @@ func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
 	log.Info(fmt.Sprintf("Operation is [%s]", string(next)))
 	switch next {
 	case PhasePurge:
-		return settings.purge(esClient, settings.snapshotsToPurge(snapshots))
+		return settings.purge(esClient, snapshotsToPurge(snapshots, settings))
 	case PhaseWait:
 		return nil
 	case PhaseTake:
