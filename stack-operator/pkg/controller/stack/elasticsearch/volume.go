@@ -6,6 +6,7 @@ import (
 
 // Default values for the volume name and paths
 const (
+	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
 	DefaultSecretMountPath   = "/secrets"
 	ProbeUserSecretMountPath = "/probe-user"
 	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
