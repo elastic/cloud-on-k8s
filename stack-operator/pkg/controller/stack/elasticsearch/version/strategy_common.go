@@ -10,6 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	defaultMemoryLimits = resource.MustParse("1Gi")
+)
+
 // newExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given stack
 func newExpectedPodSpecs(
 	stack v1alpha1.Stack,
@@ -32,6 +36,7 @@ func newExpectedPodSpecs(
 				NodeTypes:            topology.NodeTypes,
 				Affinity:             topology.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     stack.Spec.Elasticsearch.SetVMMaxMapCount,
+				Resources:            topology.Resources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 				KeystoreConfig:       paramsTmpl.KeystoreConfig,
@@ -72,25 +77,27 @@ func newPodSpec(
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
 
+	resourceLimits := corev1.ResourceList{
+		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
+	}
+	if !p.Resources.Limits.Cpu().IsZero() {
+		resourceLimits[corev1.ResourceCPU] = *p.Resources.Limits.Cpu()
+	}
+
 	// TODO: Security Context
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
+
 		Containers: []corev1.Container{{
 			Env:             newEnvironmentVarsFn(p, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            elasticsearch.DefaultContainerName,
 			Ports:           elasticsearch.DefaultContainerPorts,
-			// TODO: Hardcoded resource limits and requests
 			Resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("800m"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
-				Requests: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("100m"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
+				Limits: resourceLimits,
+				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
+				// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 			},
 			ReadinessProbe: &corev1.Probe{
 				FailureThreshold:    3,
@@ -179,4 +186,23 @@ func newPod(
 	}
 
 	return pod, nil
+}
+
+// memoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
+func memoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
+	// use half the available memory as heap
+	return quantityToMegabytes(nonZeroQuantityOrDefault(memoryLimit, defaultMemoryLimits)) / 2
+}
+
+// nonZeroQuantityOrDefault returns q if it is nonzero, defaultQuantity otherwise
+func nonZeroQuantityOrDefault(q, defaultQuantity resource.Quantity) resource.Quantity {
+	if q.IsZero() {
+		return defaultQuantity
+	}
+	return q
+}
+
+// quantityToMegabytes returns the megabyte value of the provided resource.Quantity
+func quantityToMegabytes(q resource.Quantity) int {
+	return int(q.Value()) / 1024 / 1024
 }

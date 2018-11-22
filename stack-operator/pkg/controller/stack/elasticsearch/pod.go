@@ -61,6 +61,9 @@ type NewPodSpecParams struct {
 	// Setting this to true requires the kubelet to allow running privileged containers.
 	SetVMMaxMapCount bool
 
+	// Resources is the memory/cpu resources the pod wants
+	Resources deploymentsv1alpha1.ResourcesSpec
+
 	UsersSecretVolume SecretVolume
 	ExtraFilesRef     types.NamespacedName
 	KeystoreConfig    keystore.Config

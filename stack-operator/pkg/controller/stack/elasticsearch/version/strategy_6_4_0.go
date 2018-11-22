@@ -80,6 +80,8 @@ func (s strategy_6_4_0) newEnvironmentVars(
 	p elasticsearch.NewPodSpecParams,
 	extraFilesSecretVolume elasticsearch.SecretVolume,
 ) []corev1.EnvVar {
+	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
+
 	return []corev1.EnvVar{
 		{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
@@ -101,9 +103,8 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: elasticsearch.EnvEsJavaOpts, Value: "-Xms1g -Xmx1g"},
+		{Name: elasticsearch.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
 
-		// TODO: dedicated node types support
 		{Name: elasticsearch.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
 		{Name: elasticsearch.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
 		{Name: elasticsearch.EnvNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},

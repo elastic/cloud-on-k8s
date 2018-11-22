@@ -161,17 +161,7 @@ type KibanaSpec struct {
 // ResourcesSpec defines the resources to be allocated to a pod
 type ResourcesSpec struct {
 	// Limits represents the limits to considerate for these resources
-	Limits LimitsSpec `json:"limits,omitempty"`
-}
-
-// LimitsSpec define limit in resources allocated to a pod
-type LimitsSpec struct {
-	// Memory is the maximum amount of memory to allocate
-	Memory string `json:"memory,omitempty"`
-	// Storage is the maximum amount of storage to allocate
-	Storage string `json:"storage,omitempty"`
-	// CPU is the maximum amount of CPU to allocate
-	CPU string `json:"cpu,omitempty"`
+	Limits corev1.ResourceList `json:"limits,omitempty"`
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

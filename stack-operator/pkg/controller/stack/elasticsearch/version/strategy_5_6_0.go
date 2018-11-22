@@ -69,6 +69,8 @@ func (s strategy_5_6_0) newEnvironmentVars(
 	// TODO: system key needs to go in here?
 	// TODO: require system key setting for 5.2 and up
 
+	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
+
 	return []corev1.EnvVar{
 		{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
@@ -85,7 +87,7 @@ func (s strategy_5_6_0) newEnvironmentVars(
 		{Name: elasticsearch.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: elasticsearch.EnvEsJavaOpts, Value: "-Xms1g -Xmx1g"},
+		{Name: elasticsearch.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
 
 		// TODO: dedicated node types support
 		{Name: elasticsearch.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},

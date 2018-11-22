@@ -58,7 +58,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "network.host", Value: "0.0.0.0"},
 				{Name: "path.data", Value: "/usr/share/elasticsearch/data"},
 				{Name: "path.logs", Value: "/usr/share/elasticsearch/logs"},
-				{Name: "ES_JAVA_OPTS", Value: "-Xms1g -Xmx1g"},
+				{Name: "ES_JAVA_OPTS", Value: "-Xms512M -Xmx512M"},
 				{Name: "node.master", Value: "true"},
 				{Name: "node.data", Value: "true"},
 				{Name: "node.ingest", Value: "false"},
