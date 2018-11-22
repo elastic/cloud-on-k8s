@@ -33,6 +33,8 @@ const (
 	MaxVar = "MAX"
 )
 
+var cronSchedule = "*/2 * * * *"
+
 // CronJobParams describe parameters to construct a snapshotter job.
 type CronJobParams struct {
 	Parent types.NamespacedName
@@ -74,7 +76,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	return &batchv1beta1.CronJob{
 		ObjectMeta: meta,
 		Spec: batchv1beta1.CronJobSpec{
-			Schedule: "*/10 * * * *",
+			Schedule: cronSchedule,
 			JobTemplate: batchv1beta1.JobTemplateSpec{
 				ObjectMeta: meta,
 				Spec: batchv1.JobSpec{
@@ -99,7 +101,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 									}},
 								},
 								Image:           params.SnapshotterImage,
-								ImagePullPolicy: corev1.PullIfNotPresent,
+								ImagePullPolicy: corev1.PullAlways,
 								Args:            []string{"snapshotter"},
 								Name:            CronJobName(params.Parent),
 								VolumeMounts: []corev1.VolumeMount{
