@@ -28,7 +28,7 @@ type vgsOutput struct {
 	} `json:"report"`
 }
 
-// LookupVolumeGroup returns the volume group with the given name.
+// LookupVolumeGroup returns the volume group with the given name
 func LookupVolumeGroup(name string) (VolumeGroup, error) {
 	result := vgsOutput{}
 	cmd := cmdutil.NSEnterWrap("vgs", "--options=vg_name,vg_free", name,

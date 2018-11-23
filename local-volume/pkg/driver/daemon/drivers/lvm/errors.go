@@ -7,7 +7,7 @@ type simpleError string
 
 func (s simpleError) Error() string { return string(s) }
 
-// Usual LVM Errors
+// Known LVM Errors
 const (
 	ErrNoSpace                = simpleError("lvm: not enough free space")
 	ErrTooFewDisks            = simpleError("lvm: not enough underlying devices")
@@ -17,7 +17,7 @@ const (
 	ErrInvalidLVName          = simpleError("lvm: name contains invalid character, valid set includes: [A-Za-z0-9_+.-]")
 )
 
-// isVolumeGroupNotFound returns true if the error is due to the vg not found
+// isVolumeGroupNotFound returns true if the error is due to the vg not being found
 func isVolumeGroupNotFound(err error) bool {
 	const prefix = "Volume group"
 	const suffix = "not found"
@@ -43,7 +43,7 @@ func isInsufficientDevices(err error) bool {
 	return strings.Contains(err.Error(), "Insufficient suitable allocatable extents for logical volume")
 }
 
-// isVolumeGroupNotFound returns true if the error is due to the lv not found
+// isVolumeGroupNotFound returns true if the error is due to the lv not being found
 func isLogicalVolumeNotFound(err error) bool {
 	const prefix = "Failed to find logical volume"
 	lines := strings.Split(err.Error(), "\n")

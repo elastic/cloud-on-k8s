@@ -5,12 +5,11 @@ import (
 	"os/exec"
 )
 
-// HostProcNsPath is the path to directory /proc/1/ns directory mounted from the host
-// TODO: parametrize?
+// HostProcNsPath is the path to directory /proc/1/ns directory
+// mounted from the host
 const HostProcNsPath = "/hostprocns"
 const nsEnterCmd = "nsenter"
 
-// TODO change if hostprocns is parametrized
 var nsEnterArgs = []string{fmt.Sprintf("--mount=%s/mnt", HostProcNsPath), "--"}
 
 // NSEnterWrap wraps the given command with nsenter,

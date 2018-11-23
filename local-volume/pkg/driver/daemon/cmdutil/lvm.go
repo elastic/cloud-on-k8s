@@ -10,6 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// RunLVMCmd runs the given LVM-related command,
+// filters out known warnings from the output,
+// and returns a JSON-unmarshalled input into result if given
 func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
 	log.Infof("Running command: %v", cmd.Args)
 	stdout, stderr := new(bytes.Buffer), new(bytes.Buffer)
@@ -27,6 +30,7 @@ func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
 	return nil
 }
 
+// ignoreWarnings ignores some lvm warnings we don't care about
 func ignoreWarnings(str string) string {
 	lines := strings.Split(str, "\n")
 	result := make([]string, 0, len(lines))
@@ -37,10 +41,9 @@ func ignoreWarnings(str string) string {
 			continue
 		}
 		// Ignore warnings of the kind:
-		// "File descriptor 13 (pipe:[120900]) leaked on vgs invocation. Parent PID 2: ./csilvm"
+		// "File descriptor 13 (pipe:[120900]) leaked on vgs invocation."
 		// For some reason lvm2 decided to complain if there are open file descriptors
-		// that it didn't create when it exits. This doesn't play nice with the fact
-		// that csilvm gets launched by e.g., mesos-agent.
+		// that it didn't create when it exits.
 		if strings.HasPrefix(line, "File descriptor") {
 			log.Printf(line)
 			continue

@@ -9,10 +9,10 @@ import (
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 )
 
-// TODO: variabilize
+// TODO: parametrize
 const fsType = "ext4"
 
-// Mount mounts a formated LVM logical volume to the given path
+// Mount mounts a formated LVM logical volume according to the given params
 func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	// TODO: get size from params
 	requestedSize := uint64(1000000) // 1MB
@@ -30,7 +30,7 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	lvName := pathutil.ExtractPVCID(params.TargetDir)
 
 	// check if lv already exists, and reuse
-	// TODO LookupLogicalVolume()
+	// TODO: call LookupLogicalVolume()
 
 	lv, err := vg.CreateLogicalVolume(lvName, requestedSize)
 	if err != nil {
