@@ -11,6 +11,7 @@ import (
 )
 
 // Mount mounts a directory to be used as volume by a pod
+// The requested storage size is ignored here.
 func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	// sourceDir is where the directory will be created in the volumes dir
 	sourceDir := pathutil.BuildSourceDir(params.TargetDir)

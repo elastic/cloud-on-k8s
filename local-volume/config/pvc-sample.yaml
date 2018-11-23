@@ -7,5 +7,5 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 1Mi
+      storage: 17Mi
   storageClassName: elastic-local
