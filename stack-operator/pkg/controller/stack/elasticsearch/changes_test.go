@@ -11,6 +11,8 @@ var defaultPod = ESPod(defaultNodeData, defaultImage, defaultCPULimit)
 var defaultPodSpecCtx = ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit)
 
 func TestCalculateChanges(t *testing.T) {
+	var taintedPod = defaultPod
+	taintedPod.Annotations = map[string]string{TaintedAnnotationName: "true"}
 	type args struct {
 		expected []PodSpecContext
 		state    ResourcesState
@@ -58,6 +60,14 @@ func TestCalculateChanges(t *testing.T) {
 				ToRemove: []corev1.Pod{defaultPod},
 				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)}},
 			},
+		},
+		{
+			name: "1 pod replaced on pod tainted",
+			args: args{
+				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
+			},
+			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToRemove: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpecCtx: defaultPodSpecCtx}}},
 		},
 	}
 	for _, tt := range tests {
