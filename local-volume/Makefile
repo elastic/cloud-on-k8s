@@ -44,12 +44,16 @@ VG_NAME = elastic-local-vg
 minikube-create-vg:
 	minikube ssh "sudo pvcreate /dev/sdb && sudo vgcreate $(VG_NAME) /dev/sdb"
 
+redeploy-sample:
+	kubectl delete -f config/pvc-sample.yaml -f config/pod-sample.yaml
+	kubectl apply -f config/pvc-sample.yaml -f config/pod-sample.yaml
+
 redeploy:
 	kubectl delete -f config/provisioner.yaml -f config/driver.yaml
 	kubectl apply -f config/provisioner.yaml -f config/driver.yaml
 
 driver-logs:
-	kubectl -n elastic-local logs -f $$(kubectl -n elastic-local get pod | grep "elastic-local-driver" | head -n 1 |awk '{print $$1}')
+	kubectl -n elastic-local logs -f $$(kubectl -n elastic-local get pod | grep "elastic-local-driver" | grep "Running" | head -n 1 |awk '{print $$1}')
 
 provisioner-logs:
-	kubectl -n elastic-local logs -f $$(kubectl -n elastic-local get pod | grep "elastic-local-provisioner" | awk '{print $$1}')
+	kubectl -n elastic-local logs -f $$(kubectl -n elastic-local get pod | grep "elastic-local-provisioner" | grep "Running" | awk '{print $$1}')
