@@ -7,13 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 
-func Start(driverKind string) error {
+func Start(driverKind string, lvmVolumeGroup string) error {
 	// create a driver of the appropriate kind
-	driver, err := NewDriver(driverKind)
+	driver, err := drivers.NewDriver(driverKind, lvmVolumeGroup)
 	if err != nil {
 		return err
 	}
@@ -26,13 +27,13 @@ func Start(driverKind string) error {
 	}
 
 	// unlink the socket if already exists (previous pod)
-	if err := syscall.Unlink(model.UnixSocket); err != nil {
+	if err := syscall.Unlink(protocol.UnixSocket); err != nil {
 		// ok to fail here
 		log.Info("No socket to unlink (it's probably ok, might not exit yet): ", err.Error())
 	}
 
 	// bind to the unix domain socket
-	unixListener, err := net.Listen("unix", model.UnixSocket)
+	unixListener, err := net.Listen("unix", protocol.UnixSocket)
 	if err != nil {
 		return err
 	}

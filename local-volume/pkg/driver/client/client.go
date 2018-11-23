@@ -3,7 +3,7 @@ package client
 import (
 	"encoding/json"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 )
 
 func Init() string {
@@ -24,7 +24,7 @@ func Mount(args []string) string {
 		}
 	}
 	// make request
-	reqBody := &model.MountRequest{
+	reqBody := &protocol.MountRequest{
 		TargetDir: directory,
 		Options:   options,
 	}
@@ -39,7 +39,7 @@ func Unmount(args []string) string {
 	// parse args
 	directory := args[0]
 	// make request
-	reqBody := &model.UnmountRequest{
+	reqBody := &protocol.UnmountRequest{
 		TargetDir: directory,
 	}
 	output, err := Post("/unmount", reqBody)
