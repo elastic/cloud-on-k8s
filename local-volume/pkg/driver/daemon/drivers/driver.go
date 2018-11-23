@@ -24,7 +24,7 @@ type Options struct {
 	LVM lvm.Options
 }
 
-// NewDriver corresponding to the given driver kind
+// NewDriver creates a driver corresponding to the given driver kind and options
 func NewDriver(driverKind string, opts Options) (Driver, error) {
 	switch driverKind {
 	case bindmount.DriverKind:

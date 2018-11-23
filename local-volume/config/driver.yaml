@@ -16,6 +16,9 @@ spec:
         imagePullPolicy: Always
         name: elastic-local-driver
         args: ["driver"]
+        env:
+        - name: LVM_USE_THIN_VOLUMES
+          value: "true"
         securityContext:
           privileged: true
         env:

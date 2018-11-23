@@ -22,9 +22,9 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 		requestedSize = defaultSize
 	}
 
-	vg, err := LookupVolumeGroup(d.volumeGroupName)
+	vg, err := LookupVolumeGroup(d.options.VolumeGroupName)
 	if err != nil {
-		return flex.Failure(fmt.Sprintf("volume group %s does not seem to exist", d.volumeGroupName))
+		return flex.Failure(fmt.Sprintf("volume group %s does not seem to exist", d.options.VolumeGroupName))
 	}
 
 	if vg.bytesFree < requestedSize {
