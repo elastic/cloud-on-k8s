@@ -18,7 +18,7 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 
 		return corev1.Pod{
 			ObjectMeta: v1.ObjectMeta{
-				Labels: l.NewPodLabels(),
+				Labels: l.PodLabels(),
 			},
 		}
 	}

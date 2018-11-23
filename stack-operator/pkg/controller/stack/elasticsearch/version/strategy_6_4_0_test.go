@@ -128,7 +128,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := testStrategy_6_4_0.NewExpectedPodSpecs(
+			podSpecs, err := testStrategy_6_4_0.ExpectedPodSpecs(
 				tt.stack,
 				elasticsearch.NewPodSpecParams{ProbeUser: testProbeUser},
 			)
@@ -155,7 +155,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := testStrategy_6_4_0.NewExpectedPodSpecs(
+	podSpec, err := testStrategy_6_4_0.ExpectedPodSpecs(
 		stack,
 		elasticsearch.NewPodSpecParams{ProbeUser: testProbeUser},
 	)

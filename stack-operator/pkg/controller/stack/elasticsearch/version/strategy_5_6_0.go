@@ -39,8 +39,8 @@ func newStrategy_5_6_0(v version.Version) strategy_5_6_0 {
 	return strategy
 }
 
-// NewExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
-func (s strategy_5_6_0) NewExpectedPodSpecs(
+// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
+func (s strategy_5_6_0) ExpectedPodSpecs(
 	stack v1alpha1.Stack,
 	paramsTmpl elasticsearch.NewPodSpecParams,
 ) ([]elasticsearch.PodSpecContext, error) {
