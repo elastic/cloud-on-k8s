@@ -63,6 +63,7 @@ func NewLabels(s deploymentsv1alpha1.Stack) map[string]string {
 func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	parallelism := int32(1)
 	completions := int32(1)
+	backoffLimit := int32(0) // don't retry on failure
 	// TODO brittle, by convention currently called like the stack
 	caCertSecret := elasticsearch.NewSecretVolume(params.Parent.Name, "ca")
 	certPath := path.Join(elasticsearch.DefaultSecretMountPath, nodecerts.SecretCAKey)
@@ -76,12 +77,14 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	return &batchv1beta1.CronJob{
 		ObjectMeta: meta,
 		Spec: batchv1beta1.CronJobSpec{
-			Schedule: cronSchedule,
+			Schedule:          cronSchedule,
+			ConcurrencyPolicy: batchv1beta1.ForbidConcurrent,
 			JobTemplate: batchv1beta1.JobTemplateSpec{
 				ObjectMeta: meta,
 				Spec: batchv1.JobSpec{
-					Parallelism: &parallelism,
-					Completions: &completions,
+					Parallelism:  &parallelism,
+					Completions:  &completions,
+					BackoffLimit: &backoffLimit,
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: meta,
 						Spec: corev1.PodSpec{
