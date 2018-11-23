@@ -29,7 +29,7 @@ func NewResourcesStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack) 
 		return nil, err
 	}
 
-	allPods, err := GetPods(c, stack, labelSelector, nil)
+	allPods, err := getPods(c, stack, labelSelector, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +65,8 @@ func (state ResourcesState) FindPVCByName(name string) (corev1.PersistentVolumeC
 	return corev1.PersistentVolumeClaim{}, fmt.Errorf("no PVC named %s found", name)
 }
 
-// GetPods returns list of pods in the current namespace with a specific set of selectors.
-func GetPods(
+// getPods returns list of pods in the current namespace with a specific set of selectors.
+func getPods(
 	c client.Client,
 	stack deploymentsv1alpha1.Stack,
 	labelSelectors labels.Selector,
