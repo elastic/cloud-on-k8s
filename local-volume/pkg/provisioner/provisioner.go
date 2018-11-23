@@ -1,7 +1,7 @@
 package provisioner
 
 import (
-	drivermodel "github.com/elastic/stack-operators/local-volume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/provider"
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
@@ -32,7 +32,7 @@ func Start() error {
 	// run provisioner controller
 	pc := controller.NewProvisionController(
 		k8sClient,
-		drivermodel.Name,
+		provider.Name,
 		provisioner,
 		k8sVersion.String(),
 	)
@@ -61,7 +61,7 @@ func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				FlexVolume: &v1.FlexPersistentVolumeSource{
-					Driver: drivermodel.Name,
+					Driver: provider.Name,
 					// TODO: we can pass whatever we need to the driver here
 					// Options: map[string]string{
 					// },
@@ -70,7 +70,7 @@ func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 		},
 	}
 
-	log.Infof("Provisioning persistent volume %s", drivermodel.Name)
+	log.Infof("Provisioning persistent volume %s", provider.Name)
 
 	return &pv, nil
 }

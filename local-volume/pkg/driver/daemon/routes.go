@@ -5,12 +5,13 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 
 // SetupRoutes returns an http ServeMux to handle all our HTTP routes
-func SetupRoutes(driver Driver) *http.ServeMux {
+func SetupRoutes(driver drivers.Driver) *http.ServeMux {
 	handler := http.NewServeMux()
 	handler.HandleFunc("/init", InitHandler(driver))
 	handler.HandleFunc("/mount", MountHandler(driver))
@@ -19,11 +20,12 @@ func SetupRoutes(driver Driver) *http.ServeMux {
 }
 
 // InitHandler handles init HTTP calls
-func InitHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
+func InitHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Info("Driver init")
+		log.Info("Init request")
 
 		resp := driver.Init()
+		log.Infof("%+v", resp)
 
 		err := json.NewEncoder(w).Encode(resp)
 		if err != nil {
@@ -33,9 +35,9 @@ func InitHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 }
 
 // MountHandler handles mount HTTP calls
-func MountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
+func MountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Info("Driver mount")
+		log.Info("Mount request")
 
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -43,7 +45,7 @@ func MountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 			err500(w, err)
 			return
 		}
-		var params model.MountRequest
+		var params protocol.MountRequest
 		err = json.Unmarshal(body, &params)
 		if err != nil {
 			err500(w, err)
@@ -51,6 +53,7 @@ func MountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		resp := driver.Mount(params)
+		log.Infof("%+v", resp)
 
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
@@ -60,9 +63,9 @@ func MountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
 }
 
 // UnmountHandler handles unmount HTTP calls
-func UnmountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) {
+func UnmountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Info("Driver unmount")
+		log.Info("Unmount request")
 
 		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -70,7 +73,7 @@ func UnmountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) 
 			err500(w, err)
 			return
 		}
-		var params model.UnmountRequest
+		var params protocol.UnmountRequest
 		err = json.Unmarshal(body, &params)
 		if err != nil {
 			err500(w, err)
@@ -78,6 +81,7 @@ func UnmountHandler(driver Driver) func(w http.ResponseWriter, r *http.Request) 
 		}
 
 		resp := driver.Unmount(params)
+		log.Infof("%+v", resp)
 
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {

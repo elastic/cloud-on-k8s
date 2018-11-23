@@ -10,23 +10,23 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/model"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 )
 
-const protocol = "unix"
+const networkProtocol = "unix"
 
 func NewSocketHTTPClient() *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return net.Dial(protocol, model.UnixSocket)
+				return net.Dial(networkProtocol, protocol.UnixSocket)
 			},
 		},
 	}
 }
 
 func buildURL(urlPath string) string {
-	fullPath := path.Join(protocol, urlPath)
+	fullPath := path.Join(networkProtocol, urlPath)
 	return fmt.Sprintf("http://%s", fullPath)
 }
 
