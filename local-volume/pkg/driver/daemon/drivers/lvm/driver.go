@@ -1,5 +1,7 @@
 package lvm
 
+import "fmt"
+
 const DriverKind = "LVM"
 
 // Default driver options
@@ -9,16 +11,21 @@ const (
 	DefaultThinPoolName   = "elastic-local-thinpool"
 )
 
+// Driver handles LVM mounts
+type Driver struct {
+	options Options
+}
+
+// Info returns some information about the driver
+func (d *Driver) Info() string {
+	return fmt.Sprintf("LVM Driver: %+v", d)
+}
+
 // Options defines parameters for the LVM driver
 type Options struct {
 	VolumeGroupName string
 	UseThinVolumes  bool
 	ThinPoolName    string
-}
-
-// Driver handles LVM mounts
-type Driver struct {
-	options Options
 }
 
 // NewDriver creates a new lvm.Driver with the given options

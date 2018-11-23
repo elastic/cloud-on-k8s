@@ -14,6 +14,7 @@ type DriverKind string
 
 // Driver interface to be implemented by drivers
 type Driver interface {
+	Info() string
 	Init() flex.Response
 	Mount(params protocol.MountRequest) flex.Response
 	Unmount(params protocol.UnmountRequest) flex.Response
