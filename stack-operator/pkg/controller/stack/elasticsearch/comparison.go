@@ -38,11 +38,11 @@ func NewStringComparison(expected string, actual string, name string) Comparison
 // getEsContainer returns the elasticsearch container in the given pod
 func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 	for _, c := range containers {
-		if c.Name == containerName {
+		if c.Name == DefaultContainerName {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", containerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", DefaultContainerName)
 }
 
 // envVarsByName turns the given list of env vars into a map: EnvVar.Name -> EnvVar
@@ -71,11 +71,36 @@ func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVa
 
 // compareResources returns true if both resources match
 func compareResources(actual corev1.ResourceRequirements, expected corev1.ResourceRequirements) Comparison {
+	originalExpected := expected.DeepCopy()
+	// need to deal with the fact actual may have defaulted values
+	// we will assume for now that if expected is missing values that actual has, they will be the defaulted values
+	// in effect, this will not fail a comparison if you remove limits from the spec as we cannot detect the difference
+	// between a defaulted value and a missing one. moral of the story: you should definitely be explicit all the time.
+	for k, v := range actual.Limits {
+		if _, ok := expected.Limits[k]; !ok {
+			expected.Limits[k] = v
+		}
+	}
 	if !reflect.DeepEqual(actual.Limits, expected.Limits) {
-		return ComparisonMismatch(fmt.Sprintf("Different resource limits: expected %+v, actual %+v", actual.Limits, expected.Limits))
+		return ComparisonMismatch(
+			fmt.Sprintf("Different resource limits: expected %+v, actual %+v", expected.Limits, actual.Limits),
+		)
+	}
+
+	// If Requests is omitted for a container, it defaults to Limits if that is explicitly specified
+	if len(expected.Requests) == 0 {
+		expected.Requests = originalExpected.Limits
+	}
+	// see the discussion above re copying limits, which applies to defaulted requests as well
+	for k, v := range actual.Requests {
+		if _, ok := expected.Requests[k]; !ok {
+			expected.Requests[k] = v
+		}
 	}
 	if !reflect.DeepEqual(actual.Requests, expected.Requests) {
-		return ComparisonMismatch(fmt.Sprintf("Different resource requests: expected %+v, actual %+v", actual.Requests, expected.Requests))
+		return ComparisonMismatch(
+			fmt.Sprintf("Different resource requests: expected %+v, actual %+v", expected.Requests, actual.Requests),
+		)
 	}
 	return ComparisonMatch
 }

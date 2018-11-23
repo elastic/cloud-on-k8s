@@ -1,7 +1,7 @@
 package elasticsearch
 
-// defaultReadinessProbeScript is the verbatim shell script that acts as a readiness probe
-const defaultReadinessProbeScript string = `
+// DefaultReadinessProbeScript is the verbatim shell script that acts as a readiness probe
+const DefaultReadinessProbeScript string = `
 #!/usr/bin/env bash
 # Consider a node to be healthy if it has a master registered
 CURL_TIMEOUT=3

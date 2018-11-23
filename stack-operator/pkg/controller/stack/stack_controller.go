@@ -14,9 +14,11 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/snapshots"
+	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/kibana"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/state"
@@ -161,7 +163,12 @@ type ReconcileStack struct {
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// To support concurrent runs.
-	atomic.AddInt64(&r.iteration, 1)
+	currentIteration := atomic.AddInt64(&r.iteration, 1)
+	iterationStartTime := time.Now()
+	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	defer func() {
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+	}()
 
 	stack, err := r.GetStack(request.NamespacedName)
 	if err != nil {
@@ -170,6 +177,16 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			// For additional cleanup logic use finalizers.
 			return reconcile.Result{}, nil
 		}
+		return reconcile.Result{}, err
+	}
+
+	ver, err := version.Parse(stack.Spec.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	esVersionStrategy, err := esversion.LookupStrategy(*ver)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -196,7 +213,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	// currently we don't need any state information from the functions above, so state collections starts here
 	state := state.NewReconcileState(request, &stack)
 
-	state, err = r.reconcileElasticsearchPods(state, stack, internalUsers.ControllerUser)
+	state, err = r.reconcileElasticsearchPods(state, stack, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
 		return state.Result, err
 	}
@@ -233,10 +250,15 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 func (r *ReconcileStack) reconcileElasticsearchPods(
 	state state.ReconcileState,
 	stack deploymentsv1alpha1.Stack,
+	versionStrategy esversion.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
 ) (state.ReconcileState, error) {
 	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack)
 	if err != nil {
+		return state, err
+	}
+
+	if err := versionStrategy.VerifySupportsExistingPods(esState.CurrentPods); err != nil {
 		return state, err
 	}
 
@@ -293,13 +315,15 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		return state, err
 	}
 
-	nonSpecParams := elasticsearch.NewPodExtraParams{
+	podSpecParamsTemplate := elasticsearch.NewPodSpecParams{
 		ExtraFilesRef:  elasticsearchExtraFilesSecretObjectKey,
 		KeystoreConfig: keystoreConfig,
+		ProbeUser:      controllerUser,
 	}
 
-	expectedPodSpecCtxs, err := elasticsearch.CreateExpectedPodSpecs(
-		stack, controllerUser, nonSpecParams,
+	expectedPodSpecCtxs, err := versionStrategy.NewExpectedPodSpecs(
+		stack,
+		podSpecParamsTemplate,
 	)
 
 	if err != nil {
@@ -345,7 +369,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	// Grow cluster with missing pods
 	for _, newPod := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
-		if err := r.CreateElasticsearchPod(stack, newPod.PodSpecCtx); err != nil {
+		if err := r.CreateElasticsearchPod(stack, versionStrategy, newPod.PodSpecCtx); err != nil {
 			return state, err
 		}
 	}
@@ -387,9 +411,10 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 // CreateElasticsearchPod creates the given elasticsearch pod
 func (r *ReconcileStack) CreateElasticsearchPod(
 	stack deploymentsv1alpha1.Stack,
+	versionStrategy esversion.ElasticsearchVersionStrategy,
 	podSpecCtx elasticsearch.PodSpecContext,
 ) error {
-	pod, err := elasticsearch.NewPod(stack, podSpecCtx)
+	pod, err := versionStrategy.NewPod(stack, podSpecCtx)
 	if err != nil {
 		return err
 	}

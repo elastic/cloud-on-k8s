@@ -8,7 +8,7 @@ import (
 const (
 	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
 	DefaultSecretMountPath   = "/secrets"
-	probeUserSecretMountPath = "/probe-user"
+	ProbeUserSecretMountPath = "/probe-user"
 	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
 	KeystoreSecretMountPath = "/keystore-secrets"
 )
