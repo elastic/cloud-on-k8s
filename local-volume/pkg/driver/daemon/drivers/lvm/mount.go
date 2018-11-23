@@ -12,10 +12,15 @@ import (
 // TODO: parametrize
 const fsType = "ext4"
 
+const defaultSize uint64 = 1000000000 // 1GB, applies if storage size is not specified
+
 // Mount mounts a formated LVM logical volume according to the given params
 func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
-	// TODO: get size from params
-	requestedSize := uint64(1000000) // 1MB
+	// parse requested storage size, or use default
+	requestedSize := uint64(params.Options.SizeBytes)
+	if requestedSize == 0 {
+		requestedSize = defaultSize
+	}
 
 	vg, err := LookupVolumeGroup(d.volumeGroupName)
 	if err != nil {

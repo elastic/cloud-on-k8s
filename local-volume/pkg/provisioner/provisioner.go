@@ -1,6 +1,7 @@
 package provisioner
 
 import (
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 	"github.com/elastic/stack-operators/local-volume/pkg/provider"
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	log "github.com/sirupsen/logrus"
@@ -46,8 +47,12 @@ type flexProvisioner struct{}
 
 // Provision creates a storage asset and returns a pv object representing it.
 func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
-
-	// TODO: we could parse options.Parameters here to do whatever custom we want
+	// retrieve storage size, if specified, else default to 0
+	storageInBytes := int64(0)
+	requestedStorage, specified := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	if specified {
+		storageInBytes = requestedStorage.Value()
+	}
 
 	pv := v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{
@@ -57,14 +62,14 @@ func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.Persis
 			PersistentVolumeReclaimPolicy: options.PersistentVolumeReclaimPolicy,
 			AccessModes:                   options.PVC.Spec.AccessModes,
 			Capacity: v1.ResourceList{
-				v1.ResourceName(v1.ResourceStorage): options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)],
+				v1.ResourceName(v1.ResourceStorage): requestedStorage,
 			},
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				FlexVolume: &v1.FlexPersistentVolumeSource{
 					Driver: provider.Name,
-					// TODO: we can pass whatever we need to the driver here
-					// Options: map[string]string{
-					// },
+					Options: protocol.MountOptions{
+						SizeBytes: storageInBytes,
+					}.AsStrMap(),
 				},
 			},
 		},

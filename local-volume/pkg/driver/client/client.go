@@ -17,7 +17,7 @@ func Init() string {
 func Mount(args []string) string {
 	// parse args
 	directory := args[0]
-	var options map[string]string
+	var options protocol.MountOptions
 	if len(args) > 1 {
 		if err := json.Unmarshal([]byte(args[1]), &options); err != nil {
 			return err.Error()
