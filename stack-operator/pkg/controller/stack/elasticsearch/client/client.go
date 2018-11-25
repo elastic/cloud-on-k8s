@@ -229,3 +229,13 @@ func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot strin
 	_, err = c.makeRequest(ctx, request)
 	return err
 }
+
+func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
+	zenSettings := DiscoveryZenSettings{
+		Transient:  DiscoveryZen{MinimumMasterNodes: n},
+		Persistent: DiscoveryZen{MinimumMasterNodes: n},
+	}
+	return c.marshalAndRequest(ctx, zenSettings, func(body io.Reader) (*http.Request, error) {
+		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_cluster/settings", c.Endpoint), body)
+	})
+}

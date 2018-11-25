@@ -3,9 +3,12 @@ package version
 import (
 	"fmt"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch"
+
 	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -44,6 +47,8 @@ type ElasticsearchVersionStrategy interface {
 		stack v1alpha1.Stack,
 		podSpecCtx elasticsearch.PodSpecContext,
 	) (corev1.Pod, error)
+
+	UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error
 }
 
 var (

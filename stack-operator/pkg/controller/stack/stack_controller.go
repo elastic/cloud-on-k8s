@@ -366,10 +366,18 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToRemove:", len(changes.ToRemove),
 		"iteration", atomic.LoadInt64(&r.iteration))
 
+	newState := make([]corev1.Pod, len(esState.CurrentPods))
+	copy(newState, esState.CurrentPods)
+
 	// Grow cluster with missing pods
-	for _, newPod := range changes.ToAdd {
-		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
-		if err := r.CreateElasticsearchPod(stack, versionStrategy, newPod.PodSpecCtx); err != nil {
+	for _, newPodToAdd := range changes.ToAdd {
+		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
+		newPod, err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx, esClient)
+		if err != nil {
+			return state, err
+		}
+		newState = append(newState, newPod)
+		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
 			return state, err
 		}
 	}
@@ -399,6 +407,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		if err != nil {
 			return state, err
 		}
+		newState = remove(newState, pod)
+		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
+			return state, err
+		}
+
 	}
 
 	if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
@@ -408,15 +421,25 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	return state, nil
 }
 
+func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
+	for i, p := range pods {
+		if p.Name == pod.Name {
+			return append(pods[:i], pods[i+1:]...)
+		}
+	}
+	return pods
+}
+
 // CreateElasticsearchPod creates the given elasticsearch pod
 func (r *ReconcileStack) CreateElasticsearchPod(
 	stack deploymentsv1alpha1.Stack,
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	podSpecCtx elasticsearch.PodSpecContext,
-) error {
+	esClient *esclient.Client,
+) (corev1.Pod, error) {
 	pod, err := versionStrategy.NewPod(stack, podSpecCtx)
 	if err != nil {
-		return err
+		return pod, err
 	}
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
@@ -430,7 +453,7 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 			pod,
 			nodecerts.LabelNodeCertificateTypeElasticsearchAll,
 		); err != nil {
-			return err
+			return pod, err
 		}
 	}
 
@@ -471,11 +494,11 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 		log.Info(fmt.Sprintf("Creating PVC for pod %s: %s", pod.Name, pvc.Name))
 
 		if err := controllerutil.SetControllerReference(&stack, pvc, r.scheme); err != nil {
-			return err
+			return pod, err
 		}
 
 		if err := r.Create(context.TODO(), pvc); err != nil && !apierrors.IsAlreadyExists(err) {
-			return err
+			return pod, err
 		}
 
 		// delete the volume with the same name as our claim template, we will add the expected one later
@@ -502,16 +525,16 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 	}
 
 	if err := controllerutil.SetControllerReference(&stack, &pod, r.scheme); err != nil {
-		return err
+		return pod, err
 	}
 	if err := r.Create(context.TODO(), &pod); err != nil {
-		return err
+		return pod, err
 	}
 	msg := common.Concat("Created pod ", pod.Name)
 	r.recorder.Event(&stack, corev1.EventTypeNormal, events.EventReasonCreated, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
-	return nil
+	return pod, nil
 }
 
 // DeleteElasticsearchPod deletes the given elasticsearch pod,

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/nodecerts"
@@ -141,6 +143,10 @@ func (s strategy_6_4_0) NewPod(
 	}
 
 	return pod, nil
+}
+
+func (s strategy_6_4_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
+	return updateZen1Discovery(esClient, allPods)
 }
 
 // configureNodeCertificates configures node certificates for the provided pod

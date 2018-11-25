@@ -4,6 +4,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -46,4 +47,8 @@ func (s strategy_7_0_0) NewPod(
 	podSpecCtx elasticsearch.PodSpecContext,
 ) (corev1.Pod, error) {
 	return s.previousStrategy.NewPod(stack, podSpecCtx)
+}
+
+func (s strategy_7_0_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
+	return s.previousStrategy.UpdateDiscovery(esClient, allPods)
 }
