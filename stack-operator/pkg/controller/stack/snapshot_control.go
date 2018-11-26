@@ -87,6 +87,10 @@ func (r *ReconcileStack) ReconcileSnapshotterCronJob(stack deploymentsv1alpha1.S
 		return r.Delete(context.TODO(), found)
 	}
 	if err != nil && apierrors.IsNotFound(err) {
+		if stack.Spec.Elasticsearch.SnapshotRepository == empty {
+			return nil // we are done
+		}
+
 		log.Info(common.Concat("Creating cron job ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
