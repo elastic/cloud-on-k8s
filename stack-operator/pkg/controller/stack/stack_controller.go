@@ -356,6 +356,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	if !changes.ShouldMigrate() {
 		// Current state matches expected state
+		if esReachable {
+			if err := versionStrategy.UpdateDiscovery(esClient, esState.CurrentPods); err != nil {
+				return state, err
+			}
+		}
 		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
 			return state, err
 		}
@@ -376,9 +381,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		if err != nil {
 			return state, err
 		}
-		newState = append(newState, newPod)
-		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
-			return state, err
+		if esReachable {
+			newState = append(newState, newPod)
+			if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
+				return state, err
+			}
 		}
 	}
 
@@ -403,12 +410,12 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
-		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
-		if err != nil {
-			return state, err
-		}
 		newState = remove(newState, pod)
 		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
+			return state, err
+		}
+		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
+		if err != nil {
 			return state, err
 		}
 
