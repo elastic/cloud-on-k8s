@@ -260,6 +260,14 @@
   version = "v2.0.1"
 
 [[projects]]
+  digest = "1:256484dbbcd271f9ecebc6795b2df8cad4c458dd0f5fd82a8c2fa0c29f233411"
+  name = "github.com/pmezard/go-difflib"
+  packages = ["difflib"]
+  pruneopts = ""
+  revision = "792786c7400a136282c1664665ae0a8db921c6c2"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:8b2082f564fe20dbb43a621ee0d57ae2777656ab14111d100d3d92d1b5b958b9"
   name = "github.com/prometheus/client_golang"
   packages = [
@@ -362,6 +370,14 @@
   pruneopts = ""
   revision = "2c12c60302a5a0e62ee102ca9bc996277c2f64f5"
   version = "v1.2.1"
+
+[[projects]]
+  digest = "1:c587772fb8ad29ad4db67575dad25ba17a51f072ff18a22b4f0257a4d9c24f75"
+  name = "github.com/stretchr/testify"
+  packages = ["assert"]
+  pruneopts = ""
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"
@@ -749,6 +765,7 @@
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
+    "github.com/stretchr/testify/assert",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/util/wait",
