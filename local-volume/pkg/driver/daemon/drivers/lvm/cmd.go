@@ -1,4 +1,4 @@
-package cmdutil
+package lvm
 
 import (
 	"bytes"
@@ -20,7 +20,18 @@ func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
 	cmd.Stderr = stderr
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf(ignoreWarnings(stderr.String()))
+		switch {
+		case isInsufficientSpace(err):
+			return ErrNoSpace
+		case isInsufficientDevices(err):
+			return ErrTooFewDisks
+		case isLogicalVolumeNotFound(err):
+			return ErrLogicalVolumeNotFound
+		case isVolumeGroupNotFound(err):
+			return ErrVolumeGroupNotFound
+		default:
+			return fmt.Errorf(ignoreWarnings(stderr.String()))
+		}
 	}
 	if result != nil {
 		if err := json.Unmarshal(stdout.Bytes(), result); err != nil {

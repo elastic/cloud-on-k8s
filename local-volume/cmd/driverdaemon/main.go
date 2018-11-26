@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
-
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/lvm"

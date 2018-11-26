@@ -27,19 +27,15 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 		return flex.Failure(fmt.Sprintf("volume group %s does not seem to exist", d.options.VolumeGroupName))
 	}
 
-	if vg.bytesFree < requestedSize {
-		return flex.Failure(fmt.Sprintf("Not enough space left on volume group. Available: %d bytes. Requested: %d bytes.", vg.bytesFree, requestedSize))
-	}
-
 	// build logical volume name based on PVC name
 	lvName := pathutil.ExtractPVCID(params.TargetDir)
 
 	// check if lv already exists, and reuse
 	// TODO: call LookupLogicalVolume()
 
-	lv, err := vg.CreateLogicalVolume(lvName, requestedSize)
+	lv, err := d.CreateLV(vg, lvName, requestedSize)
 	if err != nil {
-		return flex.Failure(fmt.Sprintf("cannot create logical volume: %s", err.Error()))
+		return flex.Failure(err.Error())
 	}
 
 	lvPath, err := lv.Path()
@@ -57,4 +53,38 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	}
 
 	return flex.Success("successfully created the volume")
+}
+
+// CreateLV creates a logical volume from the given settings
+func (d *Driver) CreateLV(vg VolumeGroup, name string, size uint64) (LogicalVolume, error) {
+	if d.options.UseThinVolumes {
+		return d.createThinLV(vg, name, size)
+	}
+
+	return d.createStandardLV(vg, name, size)
+}
+
+// createThinLV creates a thin volume
+func (d *Driver) createThinLV(vg VolumeGroup, name string, virtualSize uint64) (LogicalVolume, error) {
+	thinPool, err := vg.GetOrCreateThinPool(d.options.ThinPoolName)
+	if err != nil {
+		return LogicalVolume{}, fmt.Errorf(fmt.Sprintf("cannot get or create thin pool %s: %s", d.options.ThinPoolName, err.Error()))
+	}
+	lv, err := thinPool.CreateThinVolume(name, virtualSize)
+	if err != nil {
+		return LogicalVolume{}, fmt.Errorf(fmt.Sprintf("cannot create thin volume: %s", err.Error()))
+	}
+	return lv, nil
+}
+
+// createThinLV creates a standard logical volume
+func (d *Driver) createStandardLV(vg VolumeGroup, name string, size uint64) (LogicalVolume, error) {
+	if vg.bytesFree < size {
+		return LogicalVolume{}, fmt.Errorf("not enough space left on volume group: available %d bytes, requested: %d bytes", vg.bytesFree, size)
+	}
+	lv, err := vg.CreateLogicalVolume(name, size)
+	if err != nil {
+		return LogicalVolume{}, fmt.Errorf("cannot create logical volume: %s", err.Error())
+	}
+	return lv, nil
 }
