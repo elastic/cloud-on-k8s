@@ -356,6 +356,12 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	if !changes.ShouldMigrate() {
 		// Current state matches expected state
+		if esReachable {
+			// Update discovery for any previously created pods that have come up (see also below in create pod)
+			if err := versionStrategy.UpdateDiscovery(esClient, esState.CurrentPods); err != nil {
+				log.Error(err, "Error during update discovery, continuing")
+			}
+		}
 		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
 			return state, err
 		}
@@ -367,11 +373,14 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		"iteration", atomic.LoadInt64(&r.iteration))
 
 	// Grow cluster with missing pods
-	for _, newPod := range changes.ToAdd {
-		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPod.MismatchReasons))
-		if err := r.CreateElasticsearchPod(stack, versionStrategy, newPod.PodSpecCtx); err != nil {
+	for _, newPodToAdd := range changes.ToAdd {
+		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
+		err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx)
+		if err != nil {
 			return state, err
 		}
+		// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
+		// settings change
 	}
 
 	if !esReachable {
@@ -393,8 +402,15 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		return state, errors.Wrap(err, "Error during migrate data")
 	}
 
+	newState := make([]corev1.Pod, len(esState.CurrentPods))
+	copy(newState, esState.CurrentPods)
+
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
+		newState = remove(newState, pod)
+		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
+			log.Error(err, "Error during update discovery, continuing")
+		}
 		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
 		if err != nil {
 			return state, err
@@ -406,6 +422,15 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	}
 
 	return state, nil
+}
+
+func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
+	for i, p := range pods {
+		if p.Name == pod.Name {
+			return append(pods[:i], pods[i+1:]...)
+		}
+	}
+	return pods
 }
 
 // CreateElasticsearchPod creates the given elasticsearch pod
