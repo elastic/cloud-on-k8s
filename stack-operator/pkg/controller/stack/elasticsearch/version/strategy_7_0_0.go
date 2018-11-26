@@ -49,6 +49,7 @@ func (s strategy_7_0_0) NewPod(
 	return s.previousStrategy.NewPod(stack, podSpecCtx)
 }
 
+// UpdateDiscovery configures discovery settings based on the give list of pods.
 func (s strategy_7_0_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
 	return s.previousStrategy.UpdateDiscovery(esClient, allPods)
 }

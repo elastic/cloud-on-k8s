@@ -48,6 +48,7 @@ type ElasticsearchVersionStrategy interface {
 		podSpecCtx elasticsearch.PodSpecContext,
 	) (corev1.Pod, error)
 
+	// UpdateDiscovery configures discovery settings based on the give list of pods.
 	UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error
 }
 
