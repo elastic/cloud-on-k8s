@@ -73,20 +73,6 @@ func checkError(response *http.Response) error {
 	return nil
 }
 
-func parseRoutingTable(raw ClusterState) ([]Shard, error) {
-	var result []Shard
-	for _, index := range raw.RoutingTable.Indices {
-		for _, shards := range index.Shards {
-			for _, shard := range shards {
-				shard.Node = raw.Nodes[shard.Node].Name
-				result = append(result, shard)
-			}
-		}
-	}
-	return result, nil
-
-}
-
 func (c *Client) makeRequest(context context.Context, request *http.Request) (*http.Response, error) {
 
 	withContext := request.WithContext(context)
@@ -135,22 +121,14 @@ func (c *Client) marshalAndRequest(context context.Context, payload interface{},
 
 }
 
-// GetShards reads all shards from cluster state,
-// similar to what _cat/shards does but it is consistent in
-// its output.
-func (c *Client) GetShards(context context.Context) ([]Shard, error) {
-	result := []Shard{}
+// GetClusterState returns the current cluster state
+func (c *Client) GetClusterState(context context.Context) (ClusterState, error) {
+	var clusterState ClusterState
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/state", c.Endpoint), nil)
 	if err != nil {
-		return result, err
+		return clusterState, err
 	}
-
-	var clusterState ClusterState
-	err = c.makeRequestAndUnmarshal(context, req, &clusterState)
-	if err != nil {
-		return result, err
-	}
-	return parseRoutingTable(clusterState)
+	return clusterState, c.makeRequestAndUnmarshal(context, req, &clusterState)
 }
 
 // ExcludeFromShardAllocation takes a comma-separated string of node names and

@@ -66,6 +66,36 @@ type ClusterState struct {
 	} `json:"routing_table"`
 }
 
+// IsEmpty returns true if this is an empty struct without data.
+func (cs ClusterState) IsEmpty() bool {
+	return cs.ClusterName == "" &&
+		cs.ClusterUUID == "" &&
+		cs.Version == 0 &&
+		cs.MasterNode == "" &&
+		len(cs.Nodes) == 0 &&
+		len(cs.RoutingTable.Indices) == 0
+}
+
+// GetShards reads all shards from cluster state,
+// similar to what _cat/shards does but it is consistent in
+// its output.
+func (cs ClusterState) GetShards() []Shard {
+	var result []Shard
+	for _, index := range cs.RoutingTable.Indices {
+		for _, shards := range index.Shards {
+			for _, shard := range shards {
+				shard.Node = cs.Nodes[shard.Node].Name
+				result = append(result, shard)
+			}
+		}
+	}
+	return result
+}
+
+func (cs ClusterState) MasterNodeName() string {
+	return cs.Nodes[cs.MasterNode].Name
+}
+
 // Shard models a hybrid of _cat/shards shard and routing table shard.
 type Shard struct {
 	Index string `json:"index"`

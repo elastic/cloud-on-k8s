@@ -253,7 +253,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
 ) (state.ReconcileState, error) {
-	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack)
+	certPool := x509.NewCertPool()
+	certPool.AddCert(r.esCa.Cert)
+	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
+
+	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack, esClient)
 	if err != nil {
 		return state, err
 	}
@@ -329,10 +333,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	if err != nil {
 		return state, err
 	}
-
-	certPool := x509.NewCertPool()
-	certPool.AddCert(r.esCa.Cert)
-	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
 
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
@@ -523,10 +523,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
 ) (state.ReconcileState, error) {
-	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod, allDeletions)
-	if err != nil {
-		return state, err
-	}
+	isMigratingData := elasticsearch.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
 		r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))

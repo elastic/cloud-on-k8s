@@ -58,6 +58,8 @@ func (s ReconcileState) UpdateElasticsearchState(
 	esClient *client.Client,
 	retrieveHealth bool,
 ) error {
+	s.Stack.Status.Elasticsearch.ClusterUUID = state.ClusterState.ClusterUUID
+	s.Stack.Status.Elasticsearch.MasterNode = state.ClusterState.MasterNodeName()
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(state.CurrentPods)
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth("unknown")
 	if s.Stack.Status.Elasticsearch.Phase == "" {

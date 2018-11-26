@@ -208,8 +208,10 @@ const (
 // ElasticsearchStatus contains status information about the Elasticsearch cluster.
 type ElasticsearchStatus struct {
 	ReconcilerStatus
-	Health ElasticsearchHealth
-	Phase  ElasticsearchOrchestrationPhase
+	Health      ElasticsearchHealth
+	Phase       ElasticsearchOrchestrationPhase
+	ClusterUUID string
+	MasterNode  string
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
