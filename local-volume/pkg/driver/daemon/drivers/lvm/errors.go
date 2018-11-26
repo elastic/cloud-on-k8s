@@ -43,7 +43,7 @@ func isInsufficientDevices(err error) bool {
 	return strings.Contains(err.Error(), "Insufficient suitable allocatable extents for logical volume")
 }
 
-// isVolumeGroupNotFound returns true if the error is due to the lv not being found
+// isLogicalVolumeNotFound returns true if the error is due to the lv not being found
 func isLogicalVolumeNotFound(err error) bool {
 	const prefix = "Failed to find logical volume"
 	lines := strings.Split(err.Error(), "\n")

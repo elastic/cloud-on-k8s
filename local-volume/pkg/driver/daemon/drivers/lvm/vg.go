@@ -3,8 +3,7 @@ package lvm
 import (
 	"fmt"
 	"os/exec"
-
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"strconv"
 )
 
 // VolumeGroup represents a volumegroup with a name
@@ -32,12 +31,13 @@ type vgsOutput struct {
 // LookupVolumeGroup returns the volume group with the given name
 func LookupVolumeGroup(name string) (VolumeGroup, error) {
 	result := vgsOutput{}
-	cmd := exec.Command("vgs", "--options=vg_name,vg_free", name,
-		"--reportformat=json", "--units=b", "--nosuffix")
-	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
-		if isVolumeGroupNotFound(err) {
-			return VolumeGroup{}, ErrVolumeGroupNotFound
-		}
+	cmd := exec.Command(
+		"vgs",
+		"--options=vg_name,vg_free",
+		"--reportformat=json", "--units=b", "--nosuffix",
+		name,
+	)
+	if err := RunLVMCmd(cmd, &result); err != nil {
 		return VolumeGroup{}, err
 	}
 	for _, report := range result.Report {
@@ -65,34 +65,63 @@ func (vg VolumeGroup) CreateLogicalVolume(name string, sizeInBytes uint64) (Logi
 	if err := ValidateLogicalVolumeName(name); err != nil {
 		return LogicalVolume{}, err
 	}
+
 	// size must be a multiple of 512
 	roundedSize := roundUpTo512(sizeInBytes)
 
-	cmd := exec.Command("lvcreate", fmt.Sprintf("--size=%db", roundedSize), fmt.Sprintf("--name=%s", name), vg.name)
-	if err := cmdutil.RunLVMCmd(cmd, nil); err != nil {
-		if isInsufficientSpace(err) {
-			return LogicalVolume{}, ErrNoSpace
-		}
-		if isInsufficientDevices(err) {
-			return LogicalVolume{}, ErrTooFewDisks
-		}
+	cmd := exec.Command(
+		"lvcreate",
+		fmt.Sprintf("--size=%db", roundedSize),
+		"--name", name,
+		vg.name,
+	)
+
+	if err := RunLVMCmd(cmd, nil); err != nil {
 		return LogicalVolume{}, err
 	}
 
 	return LogicalVolume{name, sizeInBytes, vg}, nil
 }
 
+// CreateThinPool creates a thin pool logical volume with the given name and size.
+func (vg VolumeGroup) CreateThinPool(name string) (ThinPool, error) {
+	if err := ValidateLogicalVolumeName(name); err != nil {
+		return ThinPool{}, err
+	}
+
+	cmd := exec.Command(
+		"lvcreate",
+		"--extents", "100%FREE", // use all available space in the vg
+		"--thinpool", name,
+		vg.name,
+	)
+
+	if err := RunLVMCmd(cmd, nil); err != nil {
+		return ThinPool{}, err
+	}
+
+	return vg.LookupThinPool(name)
+}
+
+func (vg VolumeGroup) lookupLV(name string) (lvsOutput, error) {
+	result := lvsOutput{}
+	cmd := exec.Command(
+		"lvs",
+		"--options=lv_name,lv_size,vg_name,lv_layout,data_percent",
+		"--reportformat=json", "--units=b", "--nosuffix",
+		vg.name)
+	if err := RunLVMCmd(cmd, &result); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
 // LookupLogicalVolume looks up the logical volume with the given name
 // in the current volume group
-func (vg VolumeGroup) LookupLogicalVolume(name string) (*LogicalVolume, error) {
-	result := lvsOutput{}
-	cmd := exec.Command("lvs", "--options=lv_name,lv_size,vg_name", vg.name,
-		"--reportformat=json", "--units=b", "--nosuffix")
-	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
-		if isLogicalVolumeNotFound(err) {
-			return nil, ErrLogicalVolumeNotFound
-		}
-		return nil, err
+func (vg VolumeGroup) LookupLogicalVolume(name string) (LogicalVolume, error) {
+	result, err := vg.lookupLV(name)
+	if err != nil {
+		return LogicalVolume{}, err
 	}
 	for _, report := range result.Report {
 		for _, lv := range report.Lv {
@@ -102,8 +131,54 @@ func (vg VolumeGroup) LookupLogicalVolume(name string) (*LogicalVolume, error) {
 			if lv.Name != name {
 				continue
 			}
-			return &LogicalVolume{lv.Name, lv.LvSize, vg}, nil
+			return LogicalVolume{lv.Name, lv.LvSize, vg}, nil
 		}
 	}
-	return nil, ErrLogicalVolumeNotFound
+	return LogicalVolume{}, ErrLogicalVolumeNotFound
+}
+
+// LookupThinPool returns the thinpool with the given name
+func (vg VolumeGroup) LookupThinPool(name string) (ThinPool, error) {
+	result, err := vg.lookupLV(name)
+	if err != nil {
+		return ThinPool{}, err
+	}
+	for _, report := range result.Report {
+		for _, lv := range report.Lv {
+			if lv.VgName != vg.name || lv.Name != name ||
+				lv.LvLayout != ThinPoolLayout {
+				continue
+			}
+			// parse data percent, which may look like "" or "12.20"
+			dataPercent := 0.0
+			if lv.DataPercent != "" {
+				dataPercent, err = strconv.ParseFloat(lv.DataPercent, 64)
+				if err != nil {
+					return ThinPool{}, err
+				}
+			}
+			return ThinPool{
+				LogicalVolume: LogicalVolume{
+					name:        lv.Name,
+					sizeInBytes: lv.LvSize,
+					vg:          vg,
+				},
+				dataPercent: dataPercent,
+			}, nil
+		}
+	}
+	return ThinPool{}, ErrLogicalVolumeNotFound
+}
+
+// GetOrCreateThinPool gets the thinpool with the given name,
+// or creates it if it does not exit
+func (vg VolumeGroup) GetOrCreateThinPool(name string) (ThinPool, error) {
+	thinPool, err := vg.LookupThinPool(name)
+	if err != nil {
+		if err == ErrLogicalVolumeNotFound {
+			return vg.CreateThinPool(name)
+		}
+		return ThinPool{}, err
+	}
+	return thinPool, nil
 }

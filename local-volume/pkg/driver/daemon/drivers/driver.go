@@ -14,6 +14,7 @@ type DriverKind string
 
 // Driver interface to be implemented by drivers
 type Driver interface {
+	Info() string
 	Init() flex.Response
 	Mount(params protocol.MountRequest) flex.Response
 	Unmount(params protocol.UnmountRequest) flex.Response
@@ -24,7 +25,7 @@ type Options struct {
 	LVM lvm.Options
 }
 
-// NewDriver corresponding to the given driver kind
+// NewDriver creates a driver corresponding to the given driver kind and options
 func NewDriver(driverKind string, opts Options) (Driver, error) {
 	switch driverKind {
 	case bindmount.DriverKind:

@@ -19,7 +19,7 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		return err
 	}
 
-	log.Infof("Starting %s driver daemon", driverKind)
+	log.Infof("Starting driver daemon %s", driver.Info())
 
 	// create the http server
 	server := http.Server{
