@@ -18,6 +18,10 @@ spec:
         args: ["driver"]
         securityContext:
           privileged: true
+        env:
+        # enable for using the BINDMOUNT driver instead of the LVM one
+        # - name: DRIVER_KIND
+        #   value: "BINDMOUNT"
         volumeMounts:
         - mountPath: /flexbin
           name: flexbin
@@ -27,9 +31,10 @@ spec:
           mountPath: /dev
         - name: run
           mountPath: /run
-        - mountPath: /mnt/elastic-local-volumes
-          name: volumes
-          mountPropagation: Bidirectional
+        # required for the BINDMOUNT driver only
+        # - mountPath: /mnt/elastic-local-volumes
+        #   name: volumes
+        #   mountPropagation: Bidirectional
         - mountPath: /var/lib/kubelet/pods
           name: kubelet-pods
           mountPropagation: Bidirectional
@@ -50,10 +55,11 @@ spec:
         # lock files for LVM
         hostPath:
           path: /run
-      - name: volumes
+      # - name: volumes
+        # required for the BINDMOUNT driver only
         # one directory per persistent volume will be created there
-        hostPath:
-          path: /mnt/elastic-local-volumes
+        # hostPath:
+        #   path: /mnt/elastic-local-volumes
       - name: kubelet-pods
         # persistent volumes will be bind-mounted into the pod FS
         hostPath:
