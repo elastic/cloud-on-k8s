@@ -2,13 +2,14 @@ package stack
 
 import (
 	"context"
+	"testing"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/snapshots"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
@@ -16,7 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
-
 
 func asObjectMeta(n types.NamespacedName) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
@@ -32,8 +32,8 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 		ObjectMeta: asObjectMeta(testName),
 	}
 	type args struct {
-		stack deploymentsv1alpha1.Stack
-		user  esClient.User
+		stack          deploymentsv1alpha1.Stack
+		user           esClient.User
 		initialObjects []runtime.Object
 	}
 
@@ -57,7 +57,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			args: args{
 				stackSample,
 				esClient.User{},
-				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta:asObjectMeta(cronName)}},
+				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: asObjectMeta(cronName)}},
 			},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
