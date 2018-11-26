@@ -1,0 +1,68 @@
+package pathutil
+
+import (
+	"path"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestExtractPVCID(t *testing.T) {
+	type args struct {
+		podVolumePath string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Extract Persistent Volume Claim ID",
+			args: args{
+				podVolumePath: "/var/lib/kubelet/pods/cb528df9-ecab-11e8-be23-080027de035f/volumes/volumes.k8s.elastic.co~elastic-local/pvc-cc6199eb-eca0-11e8-be23-080027de035f",
+			},
+			want: "pvc-cc6199eb-eca0-11e8-be23-080027de035f",
+		},
+		{
+			name: "Extract another Persistent Volume Claim ID",
+			args: args{
+				podVolumePath: "/var/lib/kubelet/pods/cb528df9-ecab-11e8-be23-080027de035f/volumes/volumes.k8s.elastic.co~elastic-local/pvc-cc6199eb-eca0-22222-be23-080027de035f",
+			},
+			want: "pvc-cc6199eb-eca0-22222-be23-080027de035f",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ExtractPVCID(tt.args.podVolumePath)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestBuildSourceDir(t *testing.T) {
+	type args struct {
+		targetDir string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Build source dir from path",
+			args: args{targetDir: path.Join("some", "path")},
+			want: "/mnt/elastic-local-volumes/path",
+		},
+		{
+			name: "Build source dir from another path",
+			args: args{targetDir: path.Join("some", "path", "that", "is", "different")},
+			want: "/mnt/elastic-local-volumes/different",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := BuildSourceDir(tt.args.targetDir)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

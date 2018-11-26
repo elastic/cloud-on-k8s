@@ -1,3 +1,4 @@
+DEP := $(shell command -v dep)
 # TODO: parametrize for GKE
 # IMG_TAG ?= $(shell find pkg -type f -print0 | xargs -0 sha1sum | sha1sum | awk '{print $$1}')
 IMG_TAG ?= latest
@@ -57,3 +58,16 @@ driver-logs:
 
 provisioner-logs:
 	kubectl -n elastic-local logs -f $$(kubectl -n elastic-local get pod | grep "elastic-local-provisioner" | grep "Running" | awk '{print $$1}')
+
+.PHONY: vendor
+vendor:
+ifndef DEP
+	@ echo "-> dep binary missing, $(INSTALL_HELP)"
+	@ exit 1
+endif
+	@ echo "-> Running dep..."
+	@ dep ensure
+
+.PHONY: unit
+unit:
+	@ go test -cover ./...

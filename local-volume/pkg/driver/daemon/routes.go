@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
@@ -27,8 +26,7 @@ func InitHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Requ
 		resp := driver.Init()
 		log.Infof("%+v", resp)
 
-		err := json.NewEncoder(w).Encode(resp)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			err500(w, err)
 		}
 	}
@@ -39,15 +37,9 @@ func MountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Req
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Mount request")
 
-		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
-		if err != nil {
-			err500(w, err)
-			return
-		}
 		var params protocol.MountRequest
-		err = json.Unmarshal(body, &params)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 			err500(w, err)
 			return
 		}
@@ -55,8 +47,7 @@ func MountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.Req
 		resp := driver.Mount(params)
 		log.Infof("%+v", resp)
 
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			err500(w, err)
 		}
 	}
@@ -67,15 +58,9 @@ func UnmountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.R
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Info("Unmount request")
 
-		body, err := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
-		if err != nil {
-			err500(w, err)
-			return
-		}
 		var params protocol.UnmountRequest
-		err = json.Unmarshal(body, &params)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 			err500(w, err)
 			return
 		}
@@ -83,8 +68,7 @@ func UnmountHandler(driver drivers.Driver) func(w http.ResponseWriter, r *http.R
 		resp := driver.Unmount(params)
 		log.Infof("%+v", resp)
 
-		err = json.NewEncoder(w).Encode(resp)
-		if err != nil {
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			err500(w, err)
 		}
 	}

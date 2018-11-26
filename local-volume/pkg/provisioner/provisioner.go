@@ -48,7 +48,7 @@ type flexProvisioner struct{}
 // Provision creates a storage asset and returns a pv object representing it.
 func (p flexProvisioner) Provision(options controller.VolumeOptions) (*v1.PersistentVolume, error) {
 	// retrieve storage size, if specified, else default to 0
-	storageInBytes := int64(0)
+	var storageInBytes int64
 	requestedStorage, specified := options.PVC.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
 	if specified {
 		storageInBytes = requestedStorage.Value()
