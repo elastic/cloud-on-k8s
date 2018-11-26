@@ -378,7 +378,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	// Grow cluster with missing pods
 	for _, newPodToAdd := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
-		err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx, esClient)
+		err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx)
 		if err != nil {
 			return state, err
 		}
@@ -438,7 +438,6 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 	stack deploymentsv1alpha1.Stack,
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	podSpecCtx elasticsearch.PodSpecContext,
-	esClient *esclient.Client,
 ) error {
 	pod, err := versionStrategy.NewPod(stack, podSpecCtx)
 	if err != nil {
