@@ -1,11 +1,8 @@
 package state
 
 import (
-	"context"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	"k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -57,8 +54,6 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s ReconcileState) UpdateElasticsearchState(
 	state elasticsearch.ResourcesState,
-	esClient *client.Client,
-	retrieveHealth bool,
 ) error {
 	s.Stack.Status.Elasticsearch.ClusterUUID = state.ClusterState.ClusterUUID
 	s.Stack.Status.Elasticsearch.MasterNode = state.ClusterState.MasterNodeName()
@@ -67,12 +62,8 @@ func (s ReconcileState) UpdateElasticsearchState(
 	if s.Stack.Status.Elasticsearch.Phase == "" {
 		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperationalPhase
 	}
-	if retrieveHealth {
-		health, err := esClient.GetClusterHealth(context.TODO())
-		if err != nil {
-			return err
-		}
-		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(health.Status)
+	if state.ClusterHealth.Status != "" {
+		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(state.ClusterHealth.Status)
 	}
 	return nil
 }
@@ -89,8 +80,8 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 func (s ReconcileState) UpdateElasticsearchMigrating(
 	result reconcile.Result,
 	state elasticsearch.ResourcesState,
-	esClient *client.Client) error {
+) error {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
-	return s.UpdateElasticsearchState(state, esClient, true)
+	return s.UpdateElasticsearchState(state)
 }

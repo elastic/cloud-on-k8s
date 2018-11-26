@@ -356,7 +356,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	if !changes.ShouldMigrate() {
 		// Current state matches expected state
-		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
+		if err := state.UpdateElasticsearchState(*esState); err != nil {
 			return state, err
 		}
 		return state, nil
@@ -401,7 +401,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		}
 	}
 
-	if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
+	if err := state.UpdateElasticsearchState(*esState); err != nil {
 		return state, err
 	}
 
@@ -527,7 +527,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	if isMigratingData {
 		r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		return state, state.UpdateElasticsearchMigrating(defaultRequeue, esState, esClient)
+		return state, state.UpdateElasticsearchMigrating(defaultRequeue, esState)
 	}
 
 	// delete all PVCs associated with this pod
@@ -551,7 +551,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 		return state, err
 	}
-	msg := common.Concat("Deleted Pod ", pod.Name)
+	msg := common.Concat("Deleted pod ", pod.Name)
 	r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDeleted, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
@@ -655,9 +655,14 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 	if state.Stack.Status.Elasticsearch.IsDegraded(current.Status.Elasticsearch) {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch health degraded")
 	}
-	newUUID := state.Stack.Status.Elasticsearch.ClusterUUID
 	oldUUID := current.Status.Elasticsearch.ClusterUUID
-	if newUUID != oldUUID && oldUUID != "" {
+	newUUID := state.Stack.Status.Elasticsearch.ClusterUUID
+	if newUUID == "" {
+		// don't record false positives when the cluster is temporarily unavailable
+		state.Stack.Status.Elasticsearch.ClusterUUID = oldUUID
+		newUUID = oldUUID
+	}
+	if newUUID != oldUUID {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnexpected,
 			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
 		)
