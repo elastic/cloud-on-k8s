@@ -358,7 +358,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		// Current state matches expected state
 		if esReachable {
 			if err := versionStrategy.UpdateDiscovery(esClient, esState.CurrentPods); err != nil {
-				return state, err
+				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
 		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
@@ -384,7 +384,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		if esReachable {
 			newState = append(newState, newPod)
 			if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
-				return state, err
+				log.Error(err, "Error during discovery update, continuing")
 			}
 		}
 	}
@@ -412,7 +412,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	for _, pod := range changes.ToRemove {
 		newState = remove(newState, pod)
 		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
-			return state, err
+			log.Error(err, "Error during update discovery, continuing")
 		}
 		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
 		if err != nil {
