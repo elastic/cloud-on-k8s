@@ -18,6 +18,10 @@ spec:
         args: ["driver"]
         securityContext:
           privileged: true
+        env:
+        # Enable for using bind mounted directories instead of LVM
+        # - name: DRIVER_KIND
+        #   value: "BINDMOUNT"
         volumeMounts:
         - mountPath: /flexbin
           name: flexbin
@@ -27,9 +31,10 @@ spec:
           mountPath: /dev
         - name: run
           mountPath: /run
-        - mountPath: /mnt/disks
-          name: volumes
-          mountPropagation: Bidirectional
+        # required for the BINDMOUNT driver only
+        # - mountPath: /mnt/disks
+        #   name: volumes
+        #   mountPropagation: Bidirectional
         - mountPath: /var/lib/kubelet/pods
           name: kubelet-pods
           mountPropagation: Bidirectional
@@ -51,6 +56,7 @@ spec:
         hostPath:
           path: /run
       - name: volumes
+        # Required for bind mount only,
         # one directory per persistent volume will be created there
         hostPath:
           path: /mnt/disks

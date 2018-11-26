@@ -2,16 +2,6 @@ package pathutil
 
 import "path"
 
-const (
-	// VolumesPath is the path into which volumes should be created
-	// Must match the driver pod host mount
-	// TODO: variabilize?
-	VolumesPath = "/mnt/elastic-local-volumes"
-	// TODO: gke needs this
-	// VolumesPath = "/mnt/disks"
-
-)
-
 // ExtractPVCID returns the last part of the pod volume path given by kubelet,
 // corresponding to the PVC ID
 //
@@ -24,7 +14,6 @@ func ExtractPVCID(podVolumePath string) string {
 
 // BuildSourceDir builds the path to create the volume into,
 // eg. /mnt/elastic-local-volumes/<pvc-name>
-//
-func BuildSourceDir(targetDir string) string {
-	return path.Join(VolumesPath, ExtractPVCID(targetDir))
+func BuildSourceDir(mountPath string, targetDir string) string {
+	return path.Join(mountPath, ExtractPVCID(targetDir))
 }

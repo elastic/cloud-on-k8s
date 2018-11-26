@@ -41,6 +41,7 @@ func TestExtractPVCID(t *testing.T) {
 
 func TestBuildSourceDir(t *testing.T) {
 	type args struct {
+		mountPath string
 		targetDir string
 	}
 	tests := []struct {
@@ -50,18 +51,24 @@ func TestBuildSourceDir(t *testing.T) {
 	}{
 		{
 			name: "Build source dir from path",
-			args: args{targetDir: path.Join("some", "path")},
-			want: "/mnt/elastic-local-volumes/path",
+			args: args{
+				mountPath: "/volumes/path",
+				targetDir: path.Join("some", "path"),
+			},
+			want: "/volumes/path/path",
 		},
 		{
 			name: "Build source dir from another path",
-			args: args{targetDir: path.Join("some", "path", "that", "is", "different")},
+			args: args{
+				mountPath: "/mnt/elastic-local-volumes",
+				targetDir: path.Join("some", "path", "that", "is", "different"),
+			},
 			want: "/mnt/elastic-local-volumes/different",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := BuildSourceDir(tt.args.targetDir)
+			got := BuildSourceDir(tt.args.mountPath, tt.args.targetDir)
 			assert.Equal(t, tt.want, got)
 		})
 	}

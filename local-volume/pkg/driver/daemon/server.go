@@ -12,9 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Start(driverKind string, lvmVolumeGroup string) error {
+func Start(driverKind string, driverOpts drivers.Options) error {
 	// create a driver of the appropriate kind
-	driver, err := drivers.NewDriver(driverKind, lvmVolumeGroup)
+	driver, err := drivers.NewDriver(driverKind, driverOpts)
 	if err != nil {
 		return err
 	}
