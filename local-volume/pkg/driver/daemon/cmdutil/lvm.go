@@ -24,7 +24,7 @@ func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
 	}
 	if result != nil {
 		if err := json.Unmarshal(stdout.Bytes(), result); err != nil {
-			return fmt.Errorf("Cannot parse cmd output: %s %s", err.Error(), stdout.String())
+			return fmt.Errorf("cannot parse cmd output: %s %s", err.Error(), stdout.String())
 		}
 	}
 	return nil

@@ -1,6 +1,7 @@
 package lvm
 
 import (
+	"os/exec"
 	"regexp"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
@@ -29,7 +30,7 @@ type lvsOutput struct {
 // Path returns the device path for the logical volume.
 func (lv LogicalVolume) Path() (string, error) {
 	result := lvsOutput{}
-	cmd := cmdutil.NSEnterWrap("lvs", "--options=lv_path", lv.vg.name+"/"+lv.name,
+	cmd := exec.Command("lvs", "--options=lv_path", lv.vg.name+"/"+lv.name,
 		"--reportformat=json", "--units=b", "--nosuffix")
 	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
 		if isLogicalVolumeNotFound(err) {
@@ -47,7 +48,7 @@ func (lv LogicalVolume) Path() (string, error) {
 
 // Remove the logical volume from the volume group
 func (lv LogicalVolume) Remove() error {
-	cmd := cmdutil.NSEnterWrap("lvremove", "-f", lv.vg.name+"/"+lv.name)
+	cmd := exec.Command("lvremove", "-f", lv.vg.name+"/"+lv.name)
 	if err := cmdutil.RunLVMCmd(cmd, nil); err != nil {
 		return err
 	}

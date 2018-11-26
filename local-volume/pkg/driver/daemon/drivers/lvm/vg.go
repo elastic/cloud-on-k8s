@@ -2,6 +2,7 @@ package lvm
 
 import (
 	"fmt"
+	"os/exec"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
@@ -31,7 +32,7 @@ type vgsOutput struct {
 // LookupVolumeGroup returns the volume group with the given name
 func LookupVolumeGroup(name string) (VolumeGroup, error) {
 	result := vgsOutput{}
-	cmd := cmdutil.NSEnterWrap("vgs", "--options=vg_name,vg_free", name,
+	cmd := exec.Command("vgs", "--options=vg_name,vg_free", name,
 		"--reportformat=json", "--units=b", "--nosuffix")
 	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
 		if isVolumeGroupNotFound(err) {
@@ -67,7 +68,7 @@ func (vg VolumeGroup) CreateLogicalVolume(name string, sizeInBytes uint64) (Logi
 	// size must be a multiple of 512
 	roundedSize := roundUpTo512(sizeInBytes)
 
-	cmd := cmdutil.NSEnterWrap("lvcreate", fmt.Sprintf("--size=%db", roundedSize), fmt.Sprintf("--name=%s", name), vg.name)
+	cmd := exec.Command("lvcreate", fmt.Sprintf("--size=%db", roundedSize), fmt.Sprintf("--name=%s", name), vg.name)
 	if err := cmdutil.RunLVMCmd(cmd, nil); err != nil {
 		if isInsufficientSpace(err) {
 			return LogicalVolume{}, ErrNoSpace
@@ -85,7 +86,7 @@ func (vg VolumeGroup) CreateLogicalVolume(name string, sizeInBytes uint64) (Logi
 // in the current volume group
 func (vg VolumeGroup) LookupLogicalVolume(name string) (*LogicalVolume, error) {
 	result := lvsOutput{}
-	cmd := cmdutil.NSEnterWrap("lvs", "--options=lv_name,lv_size,vg_name", vg.name,
+	cmd := exec.Command("lvs", "--options=lv_name,lv_size,vg_name", vg.name,
 		"--reportformat=json", "--units=b", "--nosuffix")
 	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
 		if isLogicalVolumeNotFound(err) {

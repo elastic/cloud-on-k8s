@@ -23,12 +23,16 @@ spec:
           name: flexbin
         - mountPath: /var/run/elastic-local
           name: socket
+        - name: dev
+          mountPath: /dev
+        - name: run
+          mountPath: /run
         - mountPath: /mnt/disks
           name: volumes
+          mountPropagation: Bidirectional
         - mountPath: /var/lib/kubelet/pods
           name: kubelet-pods
-        - mountPath: /hostprocns
-          name: hostprocns
+          mountPropagation: Bidirectional
       volumes:
       - name: flexbin
         # directory where to copy the driver client binary, to be called by kubelet
@@ -38,6 +42,14 @@ spec:
         # directory where a socket will be created, to handle client-daemon communication
         hostPath:
           path: /var/run/elastic-local
+      - name: dev
+        # used to manage lvm devices
+        hostPath:
+          path: /dev
+      - name: run
+        # lock files for LVM
+        hostPath:
+          path: /run
       - name: volumes
         # one directory per persistent volume will be created there
         hostPath:
@@ -46,8 +58,4 @@ spec:
         # persistent volumes will be bind-mounted into the pod FS
         hostPath:
           path: /var/lib/kubelet/pods
-      - name: hostprocns
-        # in order to bind-mount on the underlying host from within a container,
-        # we need to access the host mount namespace
-        hostPath:
-          path: /proc/1/ns         
+
