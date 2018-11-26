@@ -92,6 +92,7 @@ func (cs ClusterState) GetShards() []Shard {
 	return result
 }
 
+// MasterNodeName is the name of the current master node in the Elasticsearch cluster.
 func (cs ClusterState) MasterNodeName() string {
 	return cs.Nodes[cs.MasterNode].Name
 }

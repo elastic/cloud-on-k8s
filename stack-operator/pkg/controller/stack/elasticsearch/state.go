@@ -134,11 +134,13 @@ func getInternalElasticsearchState(esClient *esclient.Client) esState {
 	if err != nil {
 		// don't log this as error as this is expected when cluster is forming etc.
 		log.Info("Failed to retrieve Elasticsearch cluster state, continuing", "error", err.Error())
+		// but return early as to not waste more time on the second request
 		return result
 	}
 	result.ClusterState = clusterState
 	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
+	// TODO we could derive cluster health from the routing table and save this request
 	health, err := esClient.GetClusterHealth(ctx)
 	if err != nil {
 		// don't log this as error as this is expected when cluster is forming etc.
