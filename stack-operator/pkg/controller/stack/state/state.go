@@ -54,7 +54,7 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s ReconcileState) UpdateElasticsearchState(
 	state elasticsearch.ResourcesState,
-) error {
+) {
 	s.Stack.Status.Elasticsearch.ClusterUUID = state.ClusterState.ClusterUUID
 	s.Stack.Status.Elasticsearch.MasterNode = state.ClusterState.MasterNodeName()
 	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(state.CurrentPods)
@@ -65,7 +65,6 @@ func (s ReconcileState) UpdateElasticsearchState(
 	if state.ClusterHealth.Status != "" {
 		s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth(state.ClusterHealth.Status)
 	}
-	return nil
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
@@ -80,8 +79,8 @@ func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods
 func (s ReconcileState) UpdateElasticsearchMigrating(
 	result reconcile.Result,
 	state elasticsearch.ResourcesState,
-) error {
+) {
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
-	return s.UpdateElasticsearchState(state)
+	s.UpdateElasticsearchState(state)
 }

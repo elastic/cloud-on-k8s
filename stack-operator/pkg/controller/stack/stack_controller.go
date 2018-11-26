@@ -362,9 +362,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		if err := state.UpdateElasticsearchState(*esState); err != nil {
-			return state, err
-		}
+		state.UpdateElasticsearchState(*esState)
 		return state, nil
 	}
 
@@ -417,10 +415,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		}
 	}
 
-	if err := state.UpdateElasticsearchState(*esState); err != nil {
-		return state, err
-	}
-
+	state.UpdateElasticsearchState(*esState)
 	return state, nil
 }
 
@@ -552,7 +547,8 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	if isMigratingData {
 		r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		return state, state.UpdateElasticsearchMigrating(defaultRequeue, esState)
+		state.UpdateElasticsearchMigrating(defaultRequeue, esState)
+		return state, nil
 	}
 
 	// delete all PVCs associated with this pod
