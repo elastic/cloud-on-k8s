@@ -31,8 +31,10 @@ func NewReconcileState(request reconcile.Request, stack *v1alpha1.Stack) Reconci
 func (s ReconcileState) UpdateKibanaState(deployment v1.Deployment) {
 	s.Stack.Status.Kibana.AvailableNodes = int(deployment.Status.AvailableReplicas) // TODO lossy type conversion
 	s.Stack.Status.Kibana.Health = v1alpha1.KibanaRed
-	if deployment.Status.AvailableReplicas == deployment.Status.Replicas {
-		s.Stack.Status.Kibana.Health = v1alpha1.KibanaGreen
+	for _, c := range deployment.Status.Conditions {
+		if c.Type == v1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
+			s.Stack.Status.Kibana.Health = v1alpha1.KibanaGreen
+		}
 	}
 }
 

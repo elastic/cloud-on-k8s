@@ -12,4 +12,6 @@ const (
 	EventReasonUnhealthy = "Unhealthy"
 	// EventReasonUnexpected describes events that were not anticipated or happened at an unexpected time.
 	EventReasonUnexpected = "Unexpected"
+	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
+	EventReasonStateChange = "StateChange"
 )

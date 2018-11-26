@@ -655,6 +655,20 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 	if state.Stack.Status.Elasticsearch.IsDegraded(current.Status.Elasticsearch) {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch health degraded")
 	}
+	newUUID := state.Stack.Status.Elasticsearch.ClusterUUID
+	oldUUID := current.Status.Elasticsearch.ClusterUUID
+	if newUUID != oldUUID && oldUUID != "" {
+		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnexpected,
+			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
+		)
+	}
+	newMaster := state.Stack.Status.Elasticsearch.MasterNode
+	oldMaster := current.Status.Elasticsearch.MasterNode
+	if newMaster != oldMaster && newMaster != "" {
+		r.recorder.Event(&current, corev1.EventTypeNormal, events.EventReasonStateChange,
+			fmt.Sprintf("Master node is now %s", newMaster),
+		)
+	}
 	if state.Stack.Status.Kibana.IsDegraded(current.Status.Kibana) {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
