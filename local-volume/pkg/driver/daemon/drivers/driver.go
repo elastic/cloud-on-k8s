@@ -18,6 +18,11 @@ type Driver interface {
 	Init() flex.Response
 	Mount(params protocol.MountRequest) flex.Response
 	Unmount(params protocol.UnmountRequest) flex.Response
+
+	// ListKnownPVs should return the names of PVs that are known locally
+	ListKnownPVs() ([]string, error)
+	// Purge should delete the volume associated with the given PV name
+	Purge(pvName string) error
 }
 
 // Options defines parameters for the driver creation
