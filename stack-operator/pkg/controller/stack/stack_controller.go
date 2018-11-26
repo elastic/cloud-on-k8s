@@ -357,6 +357,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	if !changes.ShouldMigrate() {
 		// Current state matches expected state
 		if esReachable {
+			// Update discovery for any previously created pods that have come up (see also below in create pod)
 			if err := versionStrategy.UpdateDiscovery(esClient, esState.CurrentPods); err != nil {
 				log.Error(err, "Error during update discovery, continuing")
 			}
@@ -377,16 +378,12 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	// Grow cluster with missing pods
 	for _, newPodToAdd := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
-		newPod, err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx, esClient)
+		err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx, esClient)
 		if err != nil {
 			return state, err
 		}
-		if esReachable {
-			newState = append(newState, newPod)
-			if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
-				log.Error(err, "Error during discovery update, continuing")
-			}
-		}
+		// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
+		// settings change
 	}
 
 	if !esReachable {
@@ -418,7 +415,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		if err != nil {
 			return state, err
 		}
-
 	}
 
 	if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
@@ -443,10 +439,10 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	podSpecCtx elasticsearch.PodSpecContext,
 	esClient *esclient.Client,
-) (corev1.Pod, error) {
+) error {
 	pod, err := versionStrategy.NewPod(stack, podSpecCtx)
 	if err != nil {
-		return pod, err
+		return err
 	}
 	if stack.Spec.FeatureFlags.Get(deploymentsv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
@@ -460,7 +456,7 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 			pod,
 			nodecerts.LabelNodeCertificateTypeElasticsearchAll,
 		); err != nil {
-			return pod, err
+			return err
 		}
 	}
 
@@ -501,11 +497,11 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 		log.Info(fmt.Sprintf("Creating PVC for pod %s: %s", pod.Name, pvc.Name))
 
 		if err := controllerutil.SetControllerReference(&stack, pvc, r.scheme); err != nil {
-			return pod, err
+			return err
 		}
 
 		if err := r.Create(context.TODO(), pvc); err != nil && !apierrors.IsAlreadyExists(err) {
-			return pod, err
+			return err
 		}
 
 		// delete the volume with the same name as our claim template, we will add the expected one later
@@ -532,16 +528,16 @@ func (r *ReconcileStack) CreateElasticsearchPod(
 	}
 
 	if err := controllerutil.SetControllerReference(&stack, &pod, r.scheme); err != nil {
-		return pod, err
+		return err
 	}
 	if err := r.Create(context.TODO(), &pod); err != nil {
-		return pod, err
+		return err
 	}
 	msg := common.Concat("Created pod ", pod.Name)
 	r.recorder.Event(&stack, corev1.EventTypeNormal, events.EventReasonCreated, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
-	return pod, nil
+	return nil
 }
 
 // DeleteElasticsearchPod deletes the given elasticsearch pod,
