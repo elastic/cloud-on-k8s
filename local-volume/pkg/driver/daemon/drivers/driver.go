@@ -19,13 +19,18 @@ type Driver interface {
 	Unmount(params protocol.UnmountRequest) flex.Response
 }
 
+// Options defines parameters for the driver creation
+type Options struct {
+	LVM lvm.Options
+}
+
 // NewDriver corresponding to the given driver kind
-func NewDriver(driverKind string, lvmVolumeGroup string) (Driver, error) {
+func NewDriver(driverKind string, opts Options) (Driver, error) {
 	switch driverKind {
 	case bindmount.DriverKind:
 		return bindmount.NewDriver(), nil
 	case lvm.DriverKind:
-		return lvm.NewDriver(lvmVolumeGroup), nil
+		return lvm.NewDriver(opts.LVM), nil
 	default:
 		return nil, fmt.Errorf("Invalid driver kind: %s", driverKind)
 	}
