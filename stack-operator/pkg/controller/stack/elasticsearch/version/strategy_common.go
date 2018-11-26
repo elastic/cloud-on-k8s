@@ -1,9 +1,12 @@
 package version
 
 import (
+	"context"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/initcontainer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -186,6 +189,11 @@ func newPod(
 	}
 
 	return pod, nil
+}
+
+func updateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
+	minimumMasterNodes := elasticsearch.ComputeMinimumMasterNodesFromPods(allPods)
+	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
 }
 
 // memoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM

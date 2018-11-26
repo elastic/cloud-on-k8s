@@ -1,9 +1,8 @@
 package lvm
 
 import (
+	"os/exec"
 	"regexp"
-
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
 // LogicalVolume represents an LVM logical volume
@@ -17,11 +16,13 @@ type LogicalVolume struct {
 type lvsOutput struct {
 	Report []struct {
 		Lv []struct {
-			Name   string `json:"lv_name"`
-			VgName string `json:"vg_name"`
-			LvPath string `json:"lv_path"`
-			LvSize uint64 `json:"lv_size,string"`
-			LvTags string `json:"lv_tags"`
+			Name        string `json:"lv_name"`
+			VgName      string `json:"vg_name"`
+			LvPath      string `json:"lv_path"`
+			LvSize      uint64 `json:"lv_size,string"`
+			LvTags      string `json:"lv_tags"`
+			LvLayout    string `json:"lv_layout"`
+			DataPercent string `json:"data_percent"` // uint64 as string, that can be empty
 		} `json:"lv"`
 	} `json:"report"`
 }
@@ -29,12 +30,13 @@ type lvsOutput struct {
 // Path returns the device path for the logical volume.
 func (lv LogicalVolume) Path() (string, error) {
 	result := lvsOutput{}
-	cmd := cmdutil.NSEnterWrap("lvs", "--options=lv_path", lv.vg.name+"/"+lv.name,
-		"--reportformat=json", "--units=b", "--nosuffix")
-	if err := cmdutil.RunLVMCmd(cmd, &result); err != nil {
-		if isLogicalVolumeNotFound(err) {
-			return "", ErrLogicalVolumeNotFound
-		}
+	cmd := exec.Command(
+		"lvs",
+		"--options=lv_path",
+		"--reportformat=json", "--units=b", "--nosuffix",
+		lv.vg.name+"/"+lv.name,
+	)
+	if err := RunLVMCmd(cmd, &result); err != nil {
 		return "", err
 	}
 	for _, report := range result.Report {
@@ -47,8 +49,11 @@ func (lv LogicalVolume) Path() (string, error) {
 
 // Remove the logical volume from the volume group
 func (lv LogicalVolume) Remove() error {
-	cmd := cmdutil.NSEnterWrap("lvremove", "-f", lv.vg.name+"/"+lv.name)
-	if err := cmdutil.RunLVMCmd(cmd, nil); err != nil {
+	cmd := exec.Command(
+		"lvremove",
+		"-f", lv.vg.name+"/"+lv.name,
+	)
+	if err := RunLVMCmd(cmd, nil); err != nil {
 		return err
 	}
 	return nil

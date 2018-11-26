@@ -207,3 +207,14 @@ func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot strin
 	_, err = c.makeRequest(ctx, request)
 	return err
 }
+
+// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
+func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
+	zenSettings := DiscoveryZenSettings{
+		Transient:  DiscoveryZen{MinimumMasterNodes: n},
+		Persistent: DiscoveryZen{MinimumMasterNodes: n},
+	}
+	return c.marshalAndRequest(ctx, zenSettings, func(body io.Reader) (*http.Request, error) {
+		return http.NewRequest(http.MethodPut, fmt.Sprintf("%s/_cluster/settings", c.Endpoint), body)
+	})
+}

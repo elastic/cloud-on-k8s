@@ -16,19 +16,32 @@ spec:
         imagePullPolicy: Always
         name: elastic-local-driver
         args: ["driver"]
+        env:
+        # Enable to use LVM thin volumes
+        # - name: LVM_USE_THIN_VOLUMES
+        #   value: "true"
         securityContext:
           privileged: true
+        env:
+        # Enable for using bind mounted directories instead of LVM
+        # - name: DRIVER_KIND
+        #   value: "BINDMOUNT"
         volumeMounts:
         - mountPath: /flexbin
           name: flexbin
         - mountPath: /var/run/elastic-local
           name: socket
-        - mountPath: /mnt/disks
-          name: volumes
+        - name: dev
+          mountPath: /dev
+        - name: run
+          mountPath: /run
+        # required for the BINDMOUNT driver only
+        # - mountPath: /mnt/disks
+        #   name: volumes
+        #   mountPropagation: Bidirectional
         - mountPath: /var/lib/kubelet/pods
           name: kubelet-pods
-        - mountPath: /hostprocns
-          name: hostprocns
+          mountPropagation: Bidirectional
       volumes:
       - name: flexbin
         # directory where to copy the driver client binary, to be called by kubelet
@@ -38,7 +51,16 @@ spec:
         # directory where a socket will be created, to handle client-daemon communication
         hostPath:
           path: /var/run/elastic-local
+      - name: dev
+        # used to manage lvm devices
+        hostPath:
+          path: /dev
+      - name: run
+        # lock files for LVM
+        hostPath:
+          path: /run
       - name: volumes
+        # Required for bind mount only,
         # one directory per persistent volume will be created there
         hostPath:
           path: /mnt/disks
@@ -46,8 +68,4 @@ spec:
         # persistent volumes will be bind-mounted into the pod FS
         hostPath:
           path: /var/lib/kubelet/pods
-      - name: hostprocns
-        # in order to bind-mount on the underlying host from within a container,
-        # we need to access the host mount namespace
-        hostPath:
-          path: /proc/1/ns         
+

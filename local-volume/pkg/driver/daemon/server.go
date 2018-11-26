@@ -12,14 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Start(driverKind string, lvmVolumeGroup string) error {
+func Start(driverKind string, driverOpts drivers.Options) error {
 	// create a driver of the appropriate kind
-	driver, err := drivers.NewDriver(driverKind, lvmVolumeGroup)
+	driver, err := drivers.NewDriver(driverKind, driverOpts)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Starting %s driver daemon", driverKind)
+	log.Infof("Starting driver daemon %s", driver.Info())
 
 	// create the http server
 	server := http.Server{
