@@ -48,9 +48,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			args:    args{stackSample, esClient.User{}, []runtime.Object{}},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
-				cron := &batchv1beta1.CronJob{}
-				err := c.Get(context.TODO(), cronName, cron)
-				assert.True(t, errors.IsNotFound(err))
+				assert.True(t, errors.IsNotFound(c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{})))
 
 			},
 		},
@@ -63,9 +61,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
-				cron := &batchv1beta1.CronJob{}
-				err := c.Get(context.TODO(), cronName, cron)
-				assert.True(t, errors.IsNotFound(err))
+				assert.True(t, errors.IsNotFound(c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{})))
 			},
 		},
 		{
@@ -86,8 +82,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
-				cron := &batchv1beta1.CronJob{}
-				assert.NoError(t, c.Get(context.TODO(), cronName, cron))
+				assert.NoError(t, c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{}))
 			},
 		},
 	}
