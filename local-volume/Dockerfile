@@ -24,7 +24,7 @@ RUN cp /go/src/github.com/elastic/stack-operators/local-volume/bin/* . && \
 FROM centos:7 as base
 
 RUN yum install -y lvm2 e2fsprogs && \
-    # set udev_sync and udev_rules to 0 to let LVM handle volumes and device mounting itself without waiting for udev \
+    # set udev_sync and udev_rules to 0 to let LVM handle volumes and device mounting itself without waiting for udev
     sed -i -e 's/udev_sync = 1/udev_sync = 0/g' -e 's/udev_rules = 1/udev_rules = 0/g' /etc/lvm/lvm.conf
 
 # --
