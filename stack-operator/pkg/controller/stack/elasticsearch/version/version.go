@@ -16,7 +16,7 @@ type versionedNewPodLabels struct {
 	version version.Version
 }
 
-func (l versionedNewPodLabels) NewPodLabels() map[string]string {
+func (l versionedNewPodLabels) PodLabels() map[string]string {
 	labels := make(map[string]string, 1)
 	labels[ElasticsearchVersionLabelName] = l.version.String()
 	return labels

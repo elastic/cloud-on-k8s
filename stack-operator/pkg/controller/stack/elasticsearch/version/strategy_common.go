@@ -25,7 +25,7 @@ func newExpectedPodSpecs(
 
 	for _, topology := range stack.Spec.Elasticsearch.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
-			podSpec, err := newPodSpec(elasticsearch.NewPodSpecParams{
+			podSpec, err := podSpec(elasticsearch.NewPodSpecParams{
 				Version:         stack.Spec.Version,
 				CustomImageName: stack.Spec.Elasticsearch.Image,
 				ClusterName:     stack.Name,
@@ -53,8 +53,8 @@ func newExpectedPodSpecs(
 	return podSpecs, nil
 }
 
-// newPodSpec creates a new PodSpec for an Elasticsearch node
-func newPodSpec(
+// podSpec creates a new PodSpec for an Elasticsearch node
+func podSpec(
 	p elasticsearch.NewPodSpecParams,
 	newEnvironmentVarsFn func(elasticsearch.NewPodSpecParams, elasticsearch.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
@@ -163,7 +163,7 @@ func newPod(
 	labels := elasticsearch.NewLabels(stack)
 
 	// add labels from the version strategy
-	for k, v := range versionStrategy.NewPodLabels() {
+	for k, v := range versionStrategy.PodLabels() {
 		labels[k] = v
 	}
 

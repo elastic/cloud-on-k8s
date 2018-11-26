@@ -321,7 +321,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		ProbeUser:      controllerUser,
 	}
 
-	expectedPodSpecCtxs, err := versionStrategy.NewExpectedPodSpecs(
+	expectedPodSpecCtxs, err := versionStrategy.ExpectedPodSpecs(
 		stack,
 		podSpecParamsTemplate,
 	)

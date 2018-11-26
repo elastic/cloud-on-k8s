@@ -30,11 +30,12 @@ type ElasticsearchVersionStrategy interface {
 	Version() version.Version
 	// VerifySupportsExistingPods returns true if this strategy works for the given pods
 	VerifySupportsExistingPods(pods []corev1.Pod) error
-	// NewPodLabels returns version-related labels for new pods
-	NewPodLabels() map[string]string
+	// PodLabels returns version-related labels for new pods
+	PodLabels() map[string]string
 
-	// NewExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
-	NewExpectedPodSpecs(
+	// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
+	// paramsTmpl argument is
+	ExpectedPodSpecs(
 		stack v1alpha1.Stack,
 		paramsTmpl elasticsearch.NewPodSpecParams,
 	) ([]elasticsearch.PodSpecContext, error)

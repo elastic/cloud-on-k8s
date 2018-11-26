@@ -32,12 +32,12 @@ func newStrategy_7_0_0(v version.Version) strategy_7_0_0 {
 	return strategy
 }
 
-// NewExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
-func (s strategy_7_0_0) NewExpectedPodSpecs(
+// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the stack
+func (s strategy_7_0_0) ExpectedPodSpecs(
 	stack v1alpha1.Stack,
 	paramsTmpl elasticsearch.NewPodSpecParams,
 ) ([]elasticsearch.PodSpecContext, error) {
-	return s.previousStrategy.NewExpectedPodSpecs(stack, paramsTmpl)
+	return s.previousStrategy.ExpectedPodSpecs(stack, paramsTmpl)
 }
 
 // NewPod creates a new pod from the given parameters.
