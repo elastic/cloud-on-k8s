@@ -129,7 +129,7 @@ func (s strategy_5_6_0) NewPod(
 	return pod, nil
 }
 
-// UpdateDiscovery configures discovery settings based on the give list of pods.
+// UpdateDiscovery configures discovery settings based on the given list of pods.
 func (s strategy_5_6_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
 	return updateZen1Discovery(esClient, allPods)
 }

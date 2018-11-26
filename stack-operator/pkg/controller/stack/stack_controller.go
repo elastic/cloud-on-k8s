@@ -372,9 +372,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToRemove:", len(changes.ToRemove),
 		"iteration", atomic.LoadInt64(&r.iteration))
 
-	newState := make([]corev1.Pod, len(esState.CurrentPods))
-	copy(newState, esState.CurrentPods)
-
 	// Grow cluster with missing pods
 	for _, newPodToAdd := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
@@ -404,6 +401,9 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	if err = elasticsearch.MigrateData(esClient, namesToRemove); err != nil {
 		return state, errors.Wrap(err, "Error during migrate data")
 	}
+
+	newState := make([]corev1.Pod, len(esState.CurrentPods))
+	copy(newState, esState.CurrentPods)
 
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {

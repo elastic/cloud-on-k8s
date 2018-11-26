@@ -24,7 +24,7 @@ func ComputeMinimumMasterNodes(topologies []deploymentsv1alpha1.ElasticsearchTop
 	return quorum(nMasters)
 }
 
-// ComputeMinimumMasterNodesFromPods returns th minimum number of master nodes based on the
+// ComputeMinimumMasterNodesFromPods returns the minimum number of master nodes based on the
 // current topology of the cluster.
 func ComputeMinimumMasterNodesFromPods(cluster []corev1.Pod) int {
 	nMasters := 0
