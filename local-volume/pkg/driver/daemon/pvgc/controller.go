@@ -26,6 +26,7 @@ type reconcileVolumeArgs struct {
 // onReconcileHandler is a method used to verify reconcile arguments
 type onReconcileHandler func(reconcileVolumeArgs)
 
+// Controller handles purging local volumes from the driver once their PV API resource object is deleted.
 type Controller struct {
 	driver drivers.Driver
 
