@@ -32,6 +32,7 @@ rules:
   - "watch"
   - "create"
   - "delete"
+  - "update"
 - apiGroups:
   - ""
   resources:

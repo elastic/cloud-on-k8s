@@ -44,7 +44,15 @@ func (s *Server) MountHandler() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp := driver.Mount(params)
+		pvName := pathutil.ExtractPVCID(params.TargetDir)
+		log.Infof("Updating PV %s with affinity for node %s", pvName, s.nodeName)
+		if err := s.k8sClient.UpdatePVNodeAffinity(pvName, s.nodeName); err != nil {
+			log.WithError(err).Error("Cannot update Persistent Volume node affinity")
+			err500(w, err)
+		}
+
+		log.Info("Mounting volume to the host")
+		resp := s.driver.Mount(params)
 		log.Infof("%+v", resp)
 
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
