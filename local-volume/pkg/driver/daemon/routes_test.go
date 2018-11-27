@@ -59,8 +59,9 @@ func TestInitHandler(t *testing.T) {
 }
 
 func TestMountHandler(t *testing.T) {
+	pvcName := "pvc-name"
 	var mountReq = protocol.MountRequest{
-		TargetDir: "pvc-id",
+		TargetDir: "/path/" + pvcName,
 	}
 	mountReqBytes, _ := json.Marshal(mountReq)
 	println(string(mountReqBytes))
@@ -109,7 +110,7 @@ func TestMountHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			s := NewTestServer(NewPersistentVolumeStub("pvc-id"))
+			s := NewTestServer(NewPersistentVolumeStub(pvcName))
 			s.driver = tt.args.driver
 			handler := s.MountHandler()
 			handler(w, tt.args.req)
@@ -124,7 +125,7 @@ func TestMountHandler(t *testing.T) {
 			assert.Equal(t, tt.want, body)
 			if tt.want.Status == flex.StatusSuccess {
 				// make sure the PV node affinity was updated
-				pv, err := s.k8sClient.ClientSet.CoreV1().PersistentVolumes().Get("pvc-id", metav1.GetOptions{})
+				pv, err := s.k8sClient.ClientSet.CoreV1().PersistentVolumes().Get(pvcName, metav1.GetOptions{})
 				assert.NoError(t, err)
 				expectedAffinity := v1.NodeSelectorRequirement{
 					Key:      apis.LabelHostname,
