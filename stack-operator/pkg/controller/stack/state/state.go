@@ -35,8 +35,9 @@ func (s ReconcileState) UpdateKibanaState(deployment v1.Deployment) {
 	}
 }
 
-func availableElasticsearchNodes(pods []corev1.Pod) int {
-	nodesAvailable := 0
+// AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
+func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
+	var nodesAvailable []corev1.Pod
 	for _, pod := range pods {
 		conditionsTrue := 0
 		for _, cond := range pod.Status.Conditions {
@@ -45,7 +46,7 @@ func availableElasticsearchNodes(pods []corev1.Pod) int {
 			}
 		}
 		if conditionsTrue == 2 {
-			nodesAvailable++
+			nodesAvailable = append(nodesAvailable, pod)
 		}
 	}
 	return nodesAvailable
@@ -57,7 +58,7 @@ func (s ReconcileState) UpdateElasticsearchState(
 ) {
 	s.Stack.Status.Elasticsearch.ClusterUUID = state.ClusterState.ClusterUUID
 	s.Stack.Status.Elasticsearch.MasterNode = state.ClusterState.MasterNodeName()
-	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(state.CurrentPods)
+	s.Stack.Status.Elasticsearch.AvailableNodes = len(AvailableElasticsearchNodes(state.CurrentPods))
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchHealth("unknown")
 	if s.Stack.Status.Elasticsearch.Phase == "" {
 		s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchOperationalPhase
@@ -69,7 +70,7 @@ func (s ReconcileState) UpdateElasticsearchState(
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
 func (s ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) {
-	s.Stack.Status.Elasticsearch.AvailableNodes = availableElasticsearchNodes(pods)
+	s.Stack.Status.Elasticsearch.AvailableNodes = len(AvailableElasticsearchNodes(pods))
 	s.Stack.Status.Elasticsearch.Phase = v1alpha1.ElasticsearchPendingPhase
 	s.Stack.Status.Elasticsearch.Health = v1alpha1.ElasticsearchRedHealth
 	s.Result = result

@@ -248,7 +248,7 @@ func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha
 }
 
 func (r *ReconcileStack) reconcileElasticsearchPods(
-	state state.ReconcileState,
+	stackState state.ReconcileState,
 	stack deploymentsv1alpha1.Stack,
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
@@ -259,11 +259,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack, esClient)
 	if err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	if err := versionStrategy.VerifySupportsExistingPods(esState.CurrentPods); err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	// TODO: suffix and trim
@@ -277,7 +277,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		elasticsearchExtraFilesSecretObjectKey,
 		&elasticsearchExtraFilesSecret,
 	); err != nil && !apierrors.IsNotFound(err) {
-		return state, err
+		return stackState, err
 	} else if apierrors.IsNotFound(err) {
 		// TODO: handle reconciling Data section if it already exists
 		trustRootCfg := elasticsearch.TrustRootConfig{
@@ -291,7 +291,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		}
 		trustRootCfgData, err := json.Marshal(&trustRootCfg)
 		if err != nil {
-			return state, err
+			return stackState, err
 		}
 
 		elasticsearchExtraFilesSecret = corev1.Secret{
@@ -306,17 +306,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 
 		err = controllerutil.SetControllerReference(&stack, &elasticsearchExtraFilesSecret, r.scheme)
 		if err != nil {
-			return state, err
+			return stackState, err
 		}
 
 		if err := r.Create(context.TODO(), &elasticsearchExtraFilesSecret); err != nil {
-			return state, err
+			return stackState, err
 		}
 	}
 
 	keystoreConfig, err := r.ReconcileSnapshotCredentials(stack.Spec.Elasticsearch.SnapshotRepository)
 	if err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	podSpecParamsTemplate := elasticsearch.NewPodSpecParams{
@@ -331,17 +331,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	)
 
 	if err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	esReachable, err := r.IsPublicServiceReady(stack)
 	if err != nil {
-		return state, err
+		return stackState, err
 	}
 
 	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
@@ -354,16 +354,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		}
 	}
 
-	if !changes.ShouldMigrate() {
+	if changes.IsEmpty() {
 		// Current state matches expected state
 		if esReachable {
 			// Update discovery for any previously created pods that have come up (see also below in create pod)
-			if err := versionStrategy.UpdateDiscovery(esClient, esState.CurrentPods); err != nil {
+			err := versionStrategy.UpdateDiscovery(esClient, state.AvailableElasticsearchNodes(esState.CurrentPods))
+			if err != nil {
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		state.UpdateElasticsearchState(*esState)
-		return state, nil
+		stackState.UpdateElasticsearchState(*esState)
+		return stackState, nil
 	}
 
 	log.Info("Going to apply the following topology changes",
@@ -375,7 +376,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
 		err := r.CreateElasticsearchPod(stack, versionStrategy, newPodToAdd.PodSpecCtx)
 		if err != nil {
-			return state, err
+			return stackState, err
 		}
 		// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
 		// settings change
@@ -387,8 +388,8 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		state.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
-		return state, nil
+		stackState.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
+		return stackState, nil
 	}
 
 	// Start migrating data away from all pods to be removed
@@ -397,7 +398,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		namesToRemove[i] = pod.Name
 	}
 	if err = elasticsearch.MigrateData(esClient, namesToRemove); err != nil {
-		return state, errors.Wrap(err, "Error during migrate data")
+		return stackState, errors.Wrap(err, "Error during migrate data")
 	}
 
 	newState := make([]corev1.Pod, len(esState.CurrentPods))
@@ -406,17 +407,17 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
 		newState = remove(newState, pod)
-		if err := versionStrategy.UpdateDiscovery(esClient, newState); err != nil {
-			log.Error(err, "Error during update discovery, continuing")
+		preDelete := func() error {
+			return versionStrategy.UpdateDiscovery(esClient, newState)
 		}
-		state, err = r.DeleteElasticsearchPod(state, *esState, pod, esClient, changes.ToRemove)
+		stackState, err = r.DeleteElasticsearchPod(stackState, *esState, pod, esClient, changes.ToRemove, preDelete)
 		if err != nil {
-			return state, err
+			return stackState, err
 		}
 	}
 
-	state.UpdateElasticsearchState(*esState)
-	return state, nil
+	stackState.UpdateElasticsearchState(*esState)
+	return stackState, nil
 }
 
 func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
@@ -542,6 +543,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	pod corev1.Pod,
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
+	preDelete func() error,
 ) (state.ReconcileState, error) {
 	isMigratingData := elasticsearch.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
@@ -569,6 +571,9 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 		}
 	}
 
+	if err := preDelete(); err != nil {
+			return state, err
+	}
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 		return state, err
 	}

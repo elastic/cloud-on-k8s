@@ -2,6 +2,7 @@ package version
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/common"
@@ -193,6 +194,7 @@ func newPod(
 
 func updateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
 	minimumMasterNodes := elasticsearch.ComputeMinimumMasterNodesFromPods(allPods)
+	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
 	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
 }
 
