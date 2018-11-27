@@ -22,8 +22,6 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		return err
 	}
 
-	log.Infof("Starting PV GC controller", driverKind)
-
 	cfg, err := pvgc.GetConfig()
 	if err != nil {
 		return err
@@ -34,15 +32,22 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		return err
 	}
 
+	log.Infof("Starting PV GC controller", driverKind)
+
 	controller, err := pvgc.NewController(client, "", driver)
 	if err != nil {
 		return err
 	}
+
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
 	go func() {
 		if err := controller.Run(ctx); err != nil {
-			log.Error(err)
+			if ctx.Err() == context.Canceled {
+				log.Error(err)
+			} else {
+				log.Fatal(err)
+			}
 		}
 	}()
 

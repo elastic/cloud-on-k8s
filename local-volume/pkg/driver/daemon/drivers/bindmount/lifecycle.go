@@ -1,7 +1,6 @@
 package bindmount
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pathutil"
 	"io/ioutil"
 	"os"
 	"path"
@@ -9,7 +8,7 @@ import (
 
 // ListKnownPVs lists the volumes path to find the existing PVs
 func (d *Driver) ListKnownPVs() ([]string, error) {
-	fileinfos, err := ioutil.ReadDir(pathutil.VolumesPath)
+	fileinfos, err := ioutil.ReadDir(ContainerMountPath)
 	if err != nil {
 		return nil, err
 	}
@@ -24,5 +23,5 @@ func (d *Driver) ListKnownPVs() ([]string, error) {
 
 // Purge recursively deletes the local volume directory
 func (d *Driver) Purge(pvName string) error {
-	return os.RemoveAll(path.Join(pathutil.VolumesPath, pvName))
+	return os.RemoveAll(path.Join(ContainerMountPath, pvName))
 }
