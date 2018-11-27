@@ -27,8 +27,8 @@ type Caller struct {
 }
 
 // NewCaller returns a fully initialized HTTP Caller
-func NewCaller(c *http.Client) Caller {
-	return Caller{client: c}
+func NewCaller() Caller {
+	return Caller{client: NewSocketHTTPClient(nil)}
 }
 
 // NewSocketHTTPClient creates a new http.Client with either an explicit set of

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/client"
 	"github.com/spf13/cobra"
@@ -17,7 +16,7 @@ var unmountCmd = &cobra.Command{
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(
-			client.Unmount(client.NewCaller(&http.Client{}), args),
+			client.Unmount(client.NewCaller(), args),
 		)
 	},
 }
