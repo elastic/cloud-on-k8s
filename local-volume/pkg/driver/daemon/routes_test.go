@@ -139,7 +139,7 @@ func TestUnmountHandler(t *testing.T) {
 		wantErr *http.Response
 	}{
 		{
-			name: "Test Mount fails with empty response",
+			name: "Test unmount fails with empty response",
 			args: args{
 				driver: &empty.Driver{},
 				req:    httptest.NewRequest(http.MethodGet, "/unmount", nil),
@@ -159,14 +159,14 @@ func TestUnmountHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Test Mount Succeeds",
+			name: "Test unmount Succeeds",
 			args: args{
 				driver: &empty.Driver{
-					UnmountRes: flex.Success("successfully created the volume"),
+					UnmountRes: flex.Success("successfully unmounted the volume"),
 				},
 				req: httptest.NewRequest(http.MethodGet, "/unmount", bytes.NewReader(unmountReqBytes)),
 			},
-			want: flex.Success("successfully created the volume"),
+			want: flex.Success("successfully unmounted the volume"),
 		},
 	}
 	for _, tt := range tests {
