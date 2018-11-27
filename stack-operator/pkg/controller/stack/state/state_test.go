@@ -114,6 +114,6 @@ func TestNodesAvailable(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.expected, availableElasticsearchNodes(tt.input))
+		assert.Equal(t, tt.expected, len(AvailableElasticsearchNodes(tt.input)))
 	}
 }
