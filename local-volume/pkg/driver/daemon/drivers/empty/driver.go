@@ -14,7 +14,7 @@ type Driver struct {
 }
 
 func (d *Driver) Info() string {
-	panic("implement me")
+	return "Empty driver"
 }
 
 func (d *Driver) ListVolumes() ([]string, error) {

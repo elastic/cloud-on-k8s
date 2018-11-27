@@ -3,13 +3,14 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
@@ -42,8 +43,9 @@ func TestInitHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			s := NewTestServer()
 			w := httptest.NewRecorder()
-			handler := InitHandler(tt.args.driver)
+			handler := s.InitHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
@@ -54,7 +56,9 @@ func TestInitHandler(t *testing.T) {
 }
 
 func TestMountHandler(t *testing.T) {
-	var mountReq = protocol.MountRequest{}
+	var mountReq = protocol.MountRequest{
+		TargetDir: "pvc-id",
+	}
 	mountReqBytes, _ := json.Marshal(mountReq)
 	println(string(mountReqBytes))
 
@@ -102,7 +106,9 @@ func TestMountHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			handler := MountHandler(tt.args.driver)
+			s := NewTestServer(NewPersistentVolumeStub("pvc-id"))
+			s.driver = tt.args.driver
+			handler := s.MountHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
@@ -166,7 +172,9 @@ func TestUnmountHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			handler := UnmountHandler(tt.args.driver)
+			s := NewTestServer()
+			s.driver = tt.args.driver
+			handler := s.UnmountHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
