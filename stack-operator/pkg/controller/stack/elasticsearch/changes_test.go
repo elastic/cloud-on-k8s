@@ -80,3 +80,63 @@ func TestCalculateChanges(t *testing.T) {
 		})
 	}
 }
+
+func TestChanges_IsEmpty(t *testing.T) {
+	type fields struct {
+		ToAdd    []PodToAdd
+		ToKeep   []corev1.Pod
+		ToRemove []corev1.Pod
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   bool
+	}{
+		{
+			name:   "empty is empty",
+			fields: fields{},
+			want:   true,
+		},
+		{
+			name: "something to keep is still empty",
+			fields: fields{
+				ToKeep: []corev1.Pod{corev1.Pod{}},
+			},
+			want: true,
+		},
+		{
+			name: "something to add is not empty",
+			fields: fields{
+				ToAdd: []PodToAdd{PodToAdd{}},
+			},
+			want: false,
+		},
+		{
+			name: "something to remove is not empty",
+			fields: fields{
+				ToRemove: []corev1.Pod{corev1.Pod{}},
+			},
+			want: false,
+		},
+		{
+			name: "add and  remove is not empty",
+			fields: fields{
+				ToAdd:    []PodToAdd{PodToAdd{}},
+				ToRemove: []corev1.Pod{corev1.Pod{}},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := Changes{
+				ToAdd:    tt.fields.ToAdd,
+				ToKeep:   tt.fields.ToKeep,
+				ToRemove: tt.fields.ToRemove,
+			}
+			if got := c.IsEmpty(); got != tt.want {
+				t.Errorf("Changes.IsEmpty() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
