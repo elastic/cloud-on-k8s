@@ -253,7 +253,11 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 	versionStrategy esversion.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
 ) (state.ReconcileState, error) {
-	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack)
+	certPool := x509.NewCertPool()
+	certPool.AddCert(r.esCa.Cert)
+	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
+
+	esState, err := elasticsearch.NewResourcesStateFromAPI(r, stack, esClient)
 	if err != nil {
 		return state, err
 	}
@@ -330,10 +334,6 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		return state, err
 	}
 
-	certPool := x509.NewCertPool()
-	certPool.AddCert(r.esCa.Cert)
-	esClient := esclient.NewElasticsearchClient(elasticsearch.PublicServiceURL(stack), controllerUser, certPool)
-
 	changes, err := elasticsearch.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
 		return state, err
@@ -362,9 +362,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
-			return state, err
-		}
+		state.UpdateElasticsearchState(*esState)
 		return state, nil
 	}
 
@@ -417,10 +415,7 @@ func (r *ReconcileStack) reconcileElasticsearchPods(
 		}
 	}
 
-	if err := state.UpdateElasticsearchState(*esState, esClient, esReachable); err != nil {
-		return state, err
-	}
-
+	state.UpdateElasticsearchState(*esState)
 	return state, nil
 }
 
@@ -548,14 +543,12 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
 ) (state.ReconcileState, error) {
-	isMigratingData, err := elasticsearch.IsMigratingData(esClient, pod, allDeletions)
-	if err != nil {
-		return state, err
-	}
+	isMigratingData := elasticsearch.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
 		r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		return state, state.UpdateElasticsearchMigrating(defaultRequeue, esState, esClient)
+		state.UpdateElasticsearchMigrating(defaultRequeue, esState)
+		return state, nil
 	}
 
 	// delete all PVCs associated with this pod
@@ -579,7 +572,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 		return state, err
 	}
-	msg := common.Concat("Deleted Pod ", pod.Name)
+	msg := common.Concat("Deleted pod ", pod.Name)
 	r.recorder.Event(state.Stack, corev1.EventTypeNormal, events.EventReasonDeleted, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
@@ -682,6 +675,26 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 	}
 	if state.Stack.Status.Elasticsearch.IsDegraded(current.Status.Elasticsearch) {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch health degraded")
+	}
+	oldUUID := current.Status.Elasticsearch.ClusterUUID
+	newUUID := state.Stack.Status.Elasticsearch.ClusterUUID
+	if newUUID == "" {
+		// don't record false positives when the cluster is temporarily unavailable
+		state.Stack.Status.Elasticsearch.ClusterUUID = oldUUID
+		newUUID = oldUUID
+	}
+	if newUUID != oldUUID {
+		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnexpected,
+			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
+		)
+	}
+	newMaster := state.Stack.Status.Elasticsearch.MasterNode
+	oldMaster := current.Status.Elasticsearch.MasterNode
+	var masterChanged = newMaster != oldMaster && newMaster != ""
+	if masterChanged {
+		r.recorder.Event(&current, corev1.EventTypeNormal, events.EventReasonStateChange,
+			fmt.Sprintf("Master node is now %s", newMaster),
+		)
 	}
 	if state.Stack.Status.Kibana.IsDegraded(current.Status.Kibana) {
 		r.recorder.Event(&current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")

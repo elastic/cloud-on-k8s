@@ -184,8 +184,7 @@ func TestParseRoutingTable(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		shards, e := parseRoutingTable(clusterState)
-		assert.NoError(t, e, "should parse without error")
+		shards := clusterState.GetShards()
 		assert.True(t, len(shards) == len(tt.want))
 		sort.SliceStable(shards, func(i, j int) bool {
 			return shards[i].Shard < shards[j].Shard
@@ -246,8 +245,8 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
-			_, err := testClient.GetShards(context.TODO())
-			return "GetShards", err
+			_, err := testClient.GetClusterState(context.TODO())
+			return "GeTClusterState", err
 		},
 		func() (string, error) {
 			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.TODO(), "")
@@ -270,7 +269,7 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
-	testClient.GetShards(context.TODO())
+	testClient.GetClusterState(context.TODO())
 	testClient.ExcludeFromShardAllocation(context.TODO(), "")
 }
 
@@ -312,7 +311,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 			assert.Equal(t, tt.want.user.Password, password)
 		}))
 		testClient.User = tt.args
-		testClient.GetShards(context.TODO())
+		testClient.GetClusterState(context.TODO())
 		testClient.ExcludeFromShardAllocation(context.TODO(), "")
 		testClient.UpsertSnapshotRepository(context.TODO(), "", SnapshotRepository{})
 
