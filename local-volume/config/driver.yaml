@@ -12,7 +12,7 @@ spec:
     spec:
       serviceAccountName: elastic-local
       containers:
-      - image: localhost:5000/elastic-cloud-dev/elastic-local:latest
+      - image: $IMG
         imagePullPolicy: Always
         name: elastic-local-driver
         args: ["driver"]
