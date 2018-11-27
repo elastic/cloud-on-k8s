@@ -16,16 +16,42 @@ import (
 	"time"
 )
 
+// reconcileVolumeArgs captures arguments and some state from the reconcile part of the controller
+type reconcileVolumeArgs struct {
+	key string
+	exists bool
+	err error
+}
+
+// onReconcileHandler is a method used to verify reconcile arguments
+type onReconcileHandler func(reconcileVolumeArgs)
+
 type Controller struct {
-	client kubernetes.Interface
 	driver drivers.Driver
 
 	indexer  cache.Indexer
 	queue    workqueue.RateLimitingInterface
 	informer cache.Controller
+
+	// testOnReconcile is a method that if set, will be called on every internal reconcile
+	testOnReconcile onReconcileHandler
 }
 
-func NewController(client kubernetes.Interface, nodeName string, driver drivers.Driver) (*Controller, error) {
+type ControllerParams struct {
+	Client kubernetes.Interface
+	NodeName string
+	Driver drivers.Driver
+
+	// testWatcher is used instead of using the client, which is useful for the tests because the fake client
+	// implementation does not work for watchers.
+	testWatcher     cache.ListerWatcher
+
+	// testOnReconcile is a method that if set, will be called on every internal reconcile, used in tests to verify
+	// that specific keys are being reconciled.
+	testOnReconcile onReconcileHandler
+}
+
+func NewController(p ControllerParams) (*Controller, error) {
 	// TODO: selector that selects PVs for this node (probably by label) should go here
 	//var selector fields.Selector
 	//selector, err := fields.ParseSelector("")
@@ -33,13 +59,16 @@ func NewController(client kubernetes.Interface, nodeName string, driver drivers.
 	//	return nil, err
 	//}
 
-	// persistent volume watcher
-	watcher := cache.NewListWatchFromClient(
-		client.CoreV1().RESTClient(),
-		"persistentvolumes",
-		"",
-		fields.Everything(),
-	)
+	var watcher = p.testWatcher
+	if watcher == nil {
+		// persistent volume watcher
+		watcher = cache.NewListWatchFromClient(
+			p.Client.CoreV1().RESTClient(),
+			"persistentvolumes",
+			"",
+			fields.Everything(),
+		)
+	}
 
 	// work queue
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
@@ -76,26 +105,27 @@ func NewController(client kubernetes.Interface, nodeName string, driver drivers.
 	// If this PV is not there anymore, the controller will be notified about the removal after the
 	// cache has synchronized.
 
-	knownPVs, err := driver.ListKnownPVs()
+	currentVolumeNames, err := p.Driver.ListVolumes()
 	if err != nil {
 		return nil, err
 	}
-	for _, knownPV := range knownPVs {
-		log.Infof("Warming cache for known PV: %s", knownPV)
+	for _, volumeName := range currentVolumeNames {
+		log.Infof("Warming cache for known PV: %s", volumeName)
 		indexer.Add(&v1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: knownPV,
+				Name: volumeName,
 			},
 		})
 	}
 
 	return &Controller{
-		client:   client,
-		driver: driver,
+		driver: p.Driver,
 
 		indexer: indexer,
 		informer: informer,
 		queue: queue,
+
+		testOnReconcile: p.testOnReconcile,
 	}, nil
 }
 
@@ -111,8 +141,10 @@ func (c *Controller) Run(ctx context.Context) error {
 		return fmt.Errorf("timed out waiting for caches to sync")
 	}
 
+	// we start a single worker for now. if the worker finishes, we start it again after a second.
 	go wait.Until(c.runWorker, time.Second, ctx.Done())
 
+	// wait until our context is done
 	<- ctx.Done()
 
 	log.Info("Stopping PV Controller")
@@ -120,10 +152,13 @@ func (c *Controller) Run(ctx context.Context) error {
 	return nil
 }
 
+
+// runWorker processes all remaining items in the queue before returning.
 func (c *Controller) runWorker() {
 	for c.processNextItem() {}
 }
 
+// processNextItem processes a single work item from the queue
 func (c *Controller) processNextItem() bool {
 	// Wait until there is a new item in the working queue
 	key, quit := c.queue.Get()
@@ -173,6 +208,13 @@ func (c *Controller) handleErr(err error, key interface{}) {
 // The retry logic should not be part of the business logic.
 func (c *Controller) reconcileForKey(key string) error {
 	obj, exists, err := c.indexer.GetByKey(key)
+
+	// notify our testOnReconcile handler if it is set in order to allow unit tests to verify reconcile has been
+	// called with some specific arguments.
+	if c.testOnReconcile != nil {
+		c.testOnReconcile(reconcileVolumeArgs{key: key, exists: exists, err: err})
+	}
+
 	if err != nil {
 		log.Infof("Fetching object with key %s from store failed with %v", key, err)
 		return err
@@ -181,7 +223,7 @@ func (c *Controller) reconcileForKey(key string) error {
 	if !exists {
 		// Below we will warm up our cache with a PV, so that we will see a delete for one pv
 		log.Infof("PV %s does not exist anymore, purging", key)
-		if err := c.driver.Purge(key); err != nil {
+		if err := c.driver.PurgeVolume(key); err != nil {
 			return err
 		}
 		log.Infof("Successfully purged PV %s", key)

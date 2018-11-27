@@ -6,8 +6,8 @@ import (
 	"path"
 )
 
-// ListKnownPVs lists the volumes path to find the existing PVs
-func (d *Driver) ListKnownPVs() ([]string, error) {
+// ListVolumes lists the volumes path to find the existing PVs
+func (d *Driver) ListVolumes() ([]string, error) {
 	fileinfos, err := ioutil.ReadDir(ContainerMountPath)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func (d *Driver) ListKnownPVs() ([]string, error) {
 	return knownNames, nil
 }
 
-// Purge recursively deletes the local volume directory
-func (d *Driver) Purge(pvName string) error {
-	return os.RemoveAll(path.Join(ContainerMountPath, pvName))
+// PurgeVolume recursively deletes the local volume directory
+func (d *Driver) PurgeVolume(volumeName string) error {
+	return os.RemoveAll(path.Join(ContainerMountPath, volumeName))
 }

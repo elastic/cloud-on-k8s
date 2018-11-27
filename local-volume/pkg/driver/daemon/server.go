@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pvgc"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"net"
 	"net/http"
 	"os"
@@ -22,7 +23,7 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		return err
 	}
 
-	cfg, err := pvgc.GetConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		return err
 	}
@@ -32,14 +33,16 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		return err
 	}
 
-	log.Infof("Starting PV GC controller", driverKind)
+	log.Info("Starting PV GC controller")
 
-	controller, err := pvgc.NewController(client, "", driver)
+	controller, err := pvgc.NewController(pvgc.ControllerParams{
+		Client: client, Driver: driver,
+	})
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go func() {
 		if err := controller.Run(ctx); err != nil {

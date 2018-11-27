@@ -1,6 +1,7 @@
 package empty
 
 import (
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
 )
 
@@ -11,3 +12,17 @@ const DriverKind = "EMPTY"
 type Driver struct {
 	MountRes, UnmountRes flex.Response
 }
+
+func (d *Driver) Info() string {
+	panic("implement me")
+}
+
+func (d *Driver) ListVolumes() ([]string, error) {
+	panic("implement me")
+}
+
+func (d *Driver) PurgeVolume(volumeName string) error {
+	panic("implement me")
+}
+
+var _ drivers.Driver = &Driver{}
