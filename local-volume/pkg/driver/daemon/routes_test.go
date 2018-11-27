@@ -3,17 +3,20 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestInitHandler(t *testing.T) {
@@ -119,6 +122,18 @@ func TestMountHandler(t *testing.T) {
 			}
 			json.NewDecoder(result.Body).Decode(&body)
 			assert.Equal(t, tt.want, body)
+			if tt.want.Status == flex.StatusSuccess {
+				// make sure the PV node affinity was updated
+				pv, err := s.k8sClient.ClientSet.CoreV1().PersistentVolumes().Get("pvc-id", metav1.GetOptions{})
+				assert.NoError(t, err)
+				expectedAffinity := v1.NodeSelectorRequirement{
+					Key:      apis.LabelHostname,
+					Operator: v1.NodeSelectorOpIn,
+					Values:   []string{s.nodeName},
+				}
+				fmt.Println(pv.Spec)
+				assert.Equal(t, pv.Spec.NodeAffinity.Required.NodeSelectorTerms[0].MatchExpressions[0], expectedAffinity)
+			}
 		})
 	}
 }
