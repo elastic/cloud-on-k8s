@@ -22,7 +22,7 @@ type ResourcesState struct {
 	CurrentPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
-	// ClusterState is the current Elasticsearch cluster state if any.
+	// State is the current Elasticsearch cluster state if any.
 	ClusterState esclient.ClusterState
 	// ClusterHealh is the current traffic light health as reported by Elasticsearch.
 	ClusterHealth esclient.Health
@@ -54,15 +54,15 @@ func NewResourcesStateFromAPI(c client.Client, stack deploymentsv1alpha1.Stack, 
 
 	internalState := getInternalElasticsearchState(esClient)
 
-	esState := ResourcesState{
+	state := ResourcesState{
 		AllPods:       allPods,
 		CurrentPods:   currentPods,
 		PVCs:          pvcs,
-		ClusterState:  internalState.ClusterState,
-		ClusterHealth: internalState.ClusterHealth,
+		ClusterState:  internalState.State,
+		ClusterHealth: internalState.Health,
 	}
 
-	return &esState, nil
+	return &state, nil
 }
 
 // FindPVCByName looks up a PVC by claim name.
@@ -119,15 +119,15 @@ func getPersistentVolumeClaims(
 	return pvcs.Items, nil
 }
 
-type esState struct {
-	ClusterState  esclient.ClusterState
-	ClusterHealth esclient.Health
+type clusterState struct {
+	State  esclient.ClusterState
+	Health esclient.Health
 }
 
 // getInternalElasticsearchState tries to retrieve state from the Elasticsearch cluster directly.
 // Failures are logged but regarded as recoverable.
-func getInternalElasticsearchState(esClient *esclient.Client) esState {
-	var result esState
+func getInternalElasticsearchState(esClient *esclient.Client) clusterState {
+	var result clusterState
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // TODO don't hard code
 	defer cancel()
 	clusterState, err := esClient.GetClusterState(ctx)
@@ -137,7 +137,7 @@ func getInternalElasticsearchState(esClient *esclient.Client) esState {
 		// but return early as to not waste more time on the second request
 		return result
 	}
-	result.ClusterState = clusterState
+	result.State = clusterState
 	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 	// TODO we could derive cluster health from the routing table and save this request
@@ -147,6 +147,6 @@ func getInternalElasticsearchState(esClient *esclient.Client) esState {
 		log.Info("Failed to retrieve Elasticsearch cluster health, continuing", "error", err.Error())
 		return result
 	}
-	result.ClusterHealth = health
+	result.Health = health
 	return result
 }

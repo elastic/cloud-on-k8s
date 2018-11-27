@@ -690,7 +690,8 @@ func (r *ReconcileStack) updateStatus(state state.ReconcileState) (reconcile.Res
 	}
 	newMaster := state.Stack.Status.Elasticsearch.MasterNode
 	oldMaster := current.Status.Elasticsearch.MasterNode
-	if newMaster != oldMaster && newMaster != "" {
+	var masterChanged = newMaster != oldMaster && newMaster != ""
+	if masterChanged {
 		r.recorder.Event(&current, corev1.EventTypeNormal, events.EventReasonStateChange,
 			fmt.Sprintf("Master node is now %s", newMaster),
 		)

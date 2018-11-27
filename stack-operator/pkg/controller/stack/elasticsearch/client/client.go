@@ -124,7 +124,7 @@ func (c *Client) marshalAndRequest(context context.Context, payload interface{},
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(context context.Context) (ClusterState, error) {
 	var clusterState ClusterState
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/state", c.Endpoint), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/_cluster/state/version,master_node,nodes,routing_table", c.Endpoint), nil)
 	if err != nil {
 		return clusterState, err
 	}
