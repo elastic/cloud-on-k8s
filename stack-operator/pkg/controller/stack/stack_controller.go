@@ -566,8 +566,10 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 			return state, err
 		}
 
-		if err := preDelete(); err != nil {
-			return state, err
+		if preDelete != nil {
+			if err := preDelete(); err != nil {
+				return state, err
+			}
 		}
 		if err := r.Delete(context.TODO(), &pvc); err != nil && !apierrors.IsNotFound(err) {
 			return state, err
