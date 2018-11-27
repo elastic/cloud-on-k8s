@@ -6,7 +6,7 @@ import (
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 )
 
-// Init performs an call to the /init path using the client.
+// Init performs a call to the /init path using the client.
 func Init(c Caller) string {
 	output, err := c.Get("/init")
 	if err != nil {
@@ -15,7 +15,7 @@ func Init(c Caller) string {
 	return output
 }
 
-// Mount performs an call to the /mount path using the client.
+// Mount performs a call to the /mount path using the client.
 func Mount(c Caller, args []string) string {
 	// parse args
 	directory := args[0]
@@ -37,7 +37,7 @@ func Mount(c Caller, args []string) string {
 	return string(output)
 }
 
-// Unmount performs an call to the /unmount path using the client.
+// Unmount performs a call to the /unmount path using the client.
 func Unmount(c Caller, args []string) string {
 	// parse args
 	directory := args[0]
