@@ -6,6 +6,8 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
+// UpdatePVNodeAffinity updates the NodeAffinity section of
+// the persistent volume with the given name
 func (c *Client) UpdatePVNodeAffinity(pvName string, nodeName string) error {
 	// retrieve PV with the given name
 	pvClient := c.ClientSet.CoreV1().PersistentVolumes()

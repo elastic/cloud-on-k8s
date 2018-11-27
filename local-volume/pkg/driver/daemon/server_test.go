@@ -11,14 +11,8 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func NewPersistentVolumeStub(name string) *v1.PersistentVolume {
-	return &v1.PersistentVolume{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
-		},
-	}
-}
-
+// NewTestServer creates a Server with an empty driver and a fake k8s client,
+// intended to be used for unit testing
 func NewTestServer(k8sObj ...runtime.Object) *Server {
 	server := Server{
 		driver: &empty.Driver{},
@@ -31,4 +25,13 @@ func NewTestServer(k8sObj ...runtime.Object) *Server {
 		Handler: server.SetupRoutes(),
 	}
 	return &server
+}
+
+// NewPersistentVolumeStub creates an empty persistent volume with the given name
+func NewPersistentVolumeStub(name string) *v1.PersistentVolume {
+	return &v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
 }

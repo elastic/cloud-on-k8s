@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Server handles the driver daemon logic
 type Server struct {
 	httpServer *http.Server
 	driver     drivers.Driver
@@ -24,6 +25,7 @@ type Server struct {
 	nodeName   string
 }
 
+// NewServer creates a driver daemon server according to the given arguments
 func NewServer(nodeName string, driverKind string, driverOpts drivers.Options) (*Server, error) {
 	driver, err := drivers.NewDriver(driverKind, driverOpts)
 	if err != nil {
@@ -45,6 +47,7 @@ func NewServer(nodeName string, driverKind string, driverOpts drivers.Options) (
 	return &server, nil
 }
 
+// Start the server (runs forever)
 func (s *Server) Start() error {
 	log.Infof("Starting %s driver daemon", s.driver.Info())
 
