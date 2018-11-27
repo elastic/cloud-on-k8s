@@ -52,7 +52,7 @@ func (s *Server) MountHandler() func(w http.ResponseWriter, r *http.Request) {
 		// Moreover, the pod was assigned to this node and this won't change.
 		pvName := pathutil.ExtractPVCID(params.TargetDir)
 		log.Infof("Updating PV %s with affinity for node %s", pvName, s.nodeName)
-		if err := s.k8sClient.UpdatePVNodeAffinity(pvName, s.nodeName); err != nil {
+		if _, err := s.k8sClient.BindPVToNode(pvName, s.nodeName); err != nil {
 			log.WithError(err).Error("Cannot update Persistent Volume node affinity")
 			err500(w, err)
 			return

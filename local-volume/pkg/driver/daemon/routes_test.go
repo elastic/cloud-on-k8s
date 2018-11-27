@@ -9,10 +9,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/elastic/stack-operators/local-volume/pkg/provider"
+
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,7 +113,7 @@ func TestMountHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			s := NewTestServer(NewPersistentVolumeStub(pvcName))
+			s := NewTestServer(k8s.NewPersistentVolume(pvcName))
 			s.driver = tt.args.driver
 			handler := s.MountHandler()
 			handler(w, tt.args.req)
@@ -124,9 +127,9 @@ func TestMountHandler(t *testing.T) {
 			json.NewDecoder(result.Body).Decode(&body)
 			assert.Equal(t, tt.want, body)
 			if tt.want.Status == flex.StatusSuccess {
-				// make sure the PV node affinity was updated
 				pv, err := s.k8sClient.ClientSet.CoreV1().PersistentVolumes().Get(pvcName, metav1.GetOptions{})
 				assert.NoError(t, err)
+				// make sure the PV node affinity was updated
 				expectedAffinity := v1.NodeSelectorRequirement{
 					Key:      apis.LabelHostname,
 					Operator: v1.NodeSelectorOpIn,
@@ -134,6 +137,10 @@ func TestMountHandler(t *testing.T) {
 				}
 				fmt.Println(pv.Spec)
 				assert.Equal(t, pv.Spec.NodeAffinity.Required.NodeSelectorTerms[0].MatchExpressions[0], expectedAffinity)
+				// make sure the label was updated
+				expectedLabel := s.nodeName
+				actualLabel := pv.Labels[provider.NodeAffinityLabel]
+				assert.Equal(t, expectedLabel, actualLabel)
 			}
 		})
 	}

@@ -1,7 +1,9 @@
 package k8s
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 )
 
@@ -20,4 +22,12 @@ func NewClient() (*Client, error) {
 		return nil, err
 	}
 	return &Client{ClientSet: clientSet}, nil
+}
+
+// NewTestClient returns a stub client implementation with
+// with the given objects pre-existing
+func NewTestClient(k8sObj ...runtime.Object) *Client {
+	return &Client{
+		ClientSet: fake.NewSimpleClientset(k8sObj...),
+	}
 }
