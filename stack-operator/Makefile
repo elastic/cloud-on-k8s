@@ -198,7 +198,7 @@ endif
 .PHONY: samples
 samples: requisites generate
 	@ echo "-> Pushing samples to Kubernetes cluster..."
-	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples
+	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/deployments_v1alpha1_stack.yaml
 
 .PHONY: vendor
 vendor:
