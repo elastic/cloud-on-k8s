@@ -2,64 +2,51 @@ package daemon
 
 import (
 	"context"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pvgc"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pvgc"
+
+	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
+
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 
-func Start(driverKind string, driverOpts drivers.Options) error {
-	// create a driver of the appropriate kind
+type Server struct {
+	httpServer *http.Server
+	driver     drivers.Driver
+	k8sClient  *k8s.Client
+	nodeName   string
+}
+
+func NewServer(nodeName string, driverKind string, driverOpts drivers.Options) (*Server, error) {
 	driver, err := drivers.NewDriver(driverKind, driverOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	cfg, err := rest.InClusterConfig()
+	k8sClient, err := k8s.NewClient()
 	if err != nil {
-		return err
+		return nil, err
+	}
+	server := Server{
+		driver:    driver,
+		k8sClient: k8sClient,
+		nodeName:  nodeName,
+	}
+	server.httpServer = &http.Server{
+		Handler: server.SetupRoutes(),
 	}
 
-	client, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return err
-	}
+	return &server, nil
+}
 
-	log.Info("Starting PV GC controller")
-
-	controller, err := pvgc.NewController(pvgc.ControllerParams{
-		Client: client, Driver: driver,
-	})
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		if err := controller.Run(ctx); err != nil {
-			if ctx.Err() == context.Canceled {
-				log.Error(err)
-			} else {
-				log.Fatal(err)
-			}
-		}
-	}()
-
-	log.Infof("Starting driver daemon %s", driver.Info())
-
-	// create the http server
-	server := http.Server{
-		Handler: SetupRoutes(driver),
-	}
+func (s *Server) Start() error {
+	log.Infof("Starting %s driver daemon", s.driver.Info())
 
 	// unlink the socket if already exists (previous pod)
 	if err := syscall.Unlink(protocol.UnixSocket); err != nil {
@@ -83,10 +70,42 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 		os.Exit(0)
 	}()
 
+	// start persistent volume garbage collection
+	if err := s.StartPVGC(); err != nil {
+		return err
+	}
+
 	// run forever (unless something is wrong)
-	if err := server.Serve(unixListener); err != nil {
+	if err := s.httpServer.Serve(unixListener); err != nil {
 		return err
 	}
 	unixListener.Close()
+	return nil
+}
+
+// StartPVGC starts the persistent volume garbage collection in a goroutine
+func (s *Server) StartPVGC() error {
+
+	log.Info("Starting PV GC controller")
+
+	controller, err := pvgc.NewController(pvgc.ControllerParams{
+		Client: s.k8sClient.ClientSet, Driver: s.driver,
+	})
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := controller.Run(ctx); err != nil {
+			if ctx.Err() == context.Canceled {
+				log.Error(err)
+			} else {
+				log.Fatal(err)
+			}
+		}
+	}()
+
 	return nil
 }
