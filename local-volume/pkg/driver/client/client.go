@@ -6,15 +6,17 @@ import (
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
 )
 
-func Init() string {
-	output, err := Get("/init")
+// Init performs a call to the /init path using the client.
+func Init(c Caller) string {
+	output, err := c.Get("/init")
 	if err != nil {
 		return err.Error()
 	}
 	return output
 }
 
-func Mount(args []string) string {
+// Mount performs a call to the /mount path using the client.
+func Mount(c Caller, args []string) string {
 	// parse args
 	directory := args[0]
 	var options protocol.MountOptions
@@ -28,21 +30,22 @@ func Mount(args []string) string {
 		TargetDir: directory,
 		Options:   options,
 	}
-	output, err := Post("/mount", reqBody)
+	output, err := c.Post("/mount", reqBody)
 	if err != nil {
 		return err.Error()
 	}
 	return string(output)
 }
 
-func Unmount(args []string) string {
+// Unmount performs a call to the /unmount path using the client.
+func Unmount(c Caller, args []string) string {
 	// parse args
 	directory := args[0]
 	// make request
 	reqBody := &protocol.UnmountRequest{
 		TargetDir: directory,
 	}
-	output, err := Post("/unmount", reqBody)
+	output, err := c.Post("/unmount", reqBody)
 	if err != nil {
 		return err.Error()
 	}
