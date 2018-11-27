@@ -220,17 +220,17 @@ func (c *Controller) reconcileForKey(key string) error {
 		return err
 	}
 
-	if !exists {
-		// Below we will warm up our cache with a PV, so that we will see a delete for one pv
-		log.Infof("PV %s does not exist anymore, purging", key)
-		if err := c.driver.PurgeVolume(key); err != nil {
-			return err
-		}
-		log.Infof("Successfully purged PV %s", key)
-	} else {
+	if exists {
 		// Note that you also have to check the uid if you have a local controlled resource, which
 		// is dependent on the actual instance, to detect that a PV was recreated with the same name
 		log.Infof("Sync/Add/Update for PV %s", obj.(*v1.PersistentVolume).GetName())
+		return nil
 	}
+
+	log.Infof("PV %s does not exist anymore, purging", key)
+	if err := c.driver.PurgeVolume(key); err != nil {
+		return err
+	}
+	log.Infof("Successfully purged PV %s", key)
 	return nil
 }

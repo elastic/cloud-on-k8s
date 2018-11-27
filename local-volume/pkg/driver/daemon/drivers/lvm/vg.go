@@ -114,9 +114,6 @@ func (vg VolumeGroup) ListLogicalVolumes() ([]LogicalVolume, error) {
 	)
 
 	if err := RunLVMCmd(cmd, &result); err != nil {
-		if isVolumeGroupNotFound(err) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
