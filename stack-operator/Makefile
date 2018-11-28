@@ -49,13 +49,14 @@ stack-operator: generate fmt vet
 	go build -o bin/stack-operator github.com/elastic/stack-operators/stack-operator/cmd
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
+SNAPSHOTTER_IMAGE?=no-snapshotter-image
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ gcloud auth configure-docker
 	@ $(MAKE) docker-build docker-push deploy
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
-	go run ./cmd/main.go manager
+	SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager
 endif
 
 .PHONY: logs
