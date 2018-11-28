@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -50,13 +49,14 @@ type APIError struct {
 // Error() implements the error interface.
 func (e *APIError) Error() string {
 	defer e.response.Body.Close()
-	body := ""
+	reason := "unknown"
 	// Elasticsearch has a detailed error message in the response body
-	bytes, err := ioutil.ReadAll(e.response.Body)
+	var errMsg ErrorResponse
+	err := json.NewDecoder(e.response.Body).Decode(&errMsg)
 	if err == nil {
-		body = string(bytes)
+		reason = errMsg.Error.Reason
 	}
-	return fmt.Sprintf("%s %s", e.response.Status, body)
+	return fmt.Sprintf("%s: %s", e.response.Status, reason)
 }
 
 // IsNotFound checks whether the error was a HTTP 404 error.
