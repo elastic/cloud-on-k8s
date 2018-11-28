@@ -12,7 +12,7 @@ spec:
     spec:
       serviceAccountName: elastic-local
       containers:
-      - image: eu.gcr.io/elastic-cloud-dev/elastic-local-seb:latest
+      - image: $IMG
         imagePullPolicy: Always
         name: elastic-local-driver
         args: ["driver"]

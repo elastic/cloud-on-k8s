@@ -14,12 +14,16 @@ This project is composed of 3 main components:
 
 ## Usage
 
+Build docker image:
+
 ```bash
-kubectl apply \
-    -f config/rbac.yaml \
-    -f config/storageclass.yaml \
-    -f config/provisioner.yaml \
-    -f config/driver.yaml
+make docker-minikube # or docker-gke
+```
+
+Deploy on Kubernetes:
+
+```bash
+make deploy-minikube # or deploy-gke
 ```
 
 Then you can create any PVC matching the `elastic-local` storage class and POD using this PVC. Example:

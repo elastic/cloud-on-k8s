@@ -18,6 +18,6 @@ spec:
       serviceAccountName: elastic-local
       containers:
       - name: elastic-local-provisioner
-        image: localhost:5000/elastic-cloud-dev/elastic-local:latest
+        image: $IMG
         imagePullPolicy: Always
         args: ["provisioner"]
