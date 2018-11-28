@@ -92,19 +92,45 @@ minikube-registry:
 	docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 # create a new disk and attach it to minikube as /dev/sdb
-EXTRA_DISK_FILE = ${HOME}/.minikube/machines/minikube/extra-disk.vmdk
+MINIKUBE_EXTRA_DISK_FILE = ${HOME}/.minikube/machines/minikube/extra-disk.vmdk
 minikube-attach-disk:
 	VBoxManage createmedium disk \
-		--filename $(EXTRA_DISK_FILE) \
+		--filename $(MINIKUBE_EXTRA_DISK_FILE) \
 		--format VMDK \
 		--size 100 # megabytes
 	VBoxManage storageattach minikube \
 		--storagectl SATA \
 		--type hdd \
 		--port 2 \
-		--medium $(EXTRA_DISK_FILE)
+		--medium $(MINIKUBE_EXTRA_DISK_FILE)
+
+##
+## Volume group stuff
+## ------------------
+
+VG_NAME = elastic-local-vg
 
 # create a logical volume group in minikube
-VG_NAME = elastic-local-vg
 minikube-create-vg:
 	minikube ssh "sudo pvcreate /dev/sdb && sudo vgcreate $(VG_NAME) /dev/sdb"
+
+# create a logical volume group in GKE
+GKE_EXTRA_DISK ?= /dev/sdb
+GKE_EXTRA_DISK_MOUNT ?= /mnt/disks/ssd0
+gke-create-vg:
+	# Get all instances containing $$USER and their zone
+	# for each one, ssh into it, run a centos7 privileged container,
+	# unmount the existing extra ssd,
+	# then run pvcreate & vgcreate.
+	# It can take some time (a few minutes per host for lvm2 pkg install).
+	gcloud compute instances list | grep $$USER | awk '{print "--zone " $$2 " " $$1 }' | \
+		xargs -t -L 1 gcloud compute ssh --command \
+		"docker run --rm --privileged \
+			-v /dev:/dev \
+			-v /run:/run \
+			-v /mnt/disks:/mnt/disks:rshared \
+			centos:7 bash -c \
+				'yum install -y lvm2 && \
+					umount $(GKE_EXTRA_DISK_MOUNT) && \
+					pvcreate -y $(GKE_EXTRA_DISK) && \
+					vgcreate $(VG_NAME) $(GKE_EXTRA_DISK)'"
