@@ -6,7 +6,7 @@ import (
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/elastic/stack-operators/local-volume/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

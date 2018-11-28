@@ -765,7 +765,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/imdario/mergo",
     "github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
