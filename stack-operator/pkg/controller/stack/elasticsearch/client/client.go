@@ -138,7 +138,6 @@ func (c *Client) get(ctx context.Context, pathStr string, out interface{}) error
 		return err
 	}
 	return c.makeRequestAndUnmarshal(ctx, req, &out)
-
 }
 
 func (c *Client) put(ctx context.Context, pathStr string, in interface{}) error {
