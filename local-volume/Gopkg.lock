@@ -144,14 +144,6 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:7ab38c15bd21e056e3115c8b526d201eaf74e0308da9370997c6b3c187115d36"
-  name = "github.com/imdario/mergo"
-  packages = ["."]
-  pruneopts = ""
-  revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
-  version = "v0.3.6"
-
-[[projects]]
   digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
@@ -382,7 +374,10 @@
 [[projects]]
   digest = "1:c587772fb8ad29ad4db67575dad25ba17a51f072ff18a22b4f0257a4d9c24f75"
   name = "github.com/stretchr/testify"
-  packages = ["assert"]
+  packages = [
+    "assert",
+    "require",
+  ]
   pruneopts = ""
   revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
   version = "v1.2.2"
@@ -712,12 +707,9 @@
     "plugin/pkg/client/auth/exec",
     "rest",
     "rest/watch",
-    "tools/auth",
     "tools/cache",
-    "tools/clientcmd",
+    "tools/cache/testing",
     "tools/clientcmd/api",
-    "tools/clientcmd/api/latest",
-    "tools/clientcmd/api/v1",
     "tools/leaderelection",
     "tools/leaderelection/resourcelock",
     "tools/metrics",
@@ -729,7 +721,6 @@
     "util/cert",
     "util/connrotation",
     "util/flowcontrol",
-    "util/homedir",
     "util/integer",
     "util/retry",
     "util/workqueue",
@@ -780,6 +771,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
+    "github.com/stretchr/testify/require",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/resource",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
@@ -789,7 +781,7 @@
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/cache",
-    "k8s.io/client-go/tools/clientcmd",
+    "k8s.io/client-go/tools/cache/testing",
     "k8s.io/client-go/util/workqueue",
   ]
   solver-name = "gps-cdcl"

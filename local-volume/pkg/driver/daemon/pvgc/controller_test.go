@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 	cachetesting "k8s.io/client-go/tools/cache/testing"
 	"reflect"
 	"testing"
@@ -73,7 +72,6 @@ func TestController(t *testing.T) {
 			name: "Driver has volume not in API",
 			args: args{
 				cp: ControllerParams{
-					Client:   fake.NewSimpleClientset(),
 					NodeName: "",
 					Driver: &stubDriver{
 						ListVolumesResponse: []string{testVolumeName},
@@ -88,7 +86,6 @@ func TestController(t *testing.T) {
 			name: "API and Driver knows about same volume",
 			args: args{
 				cp: ControllerParams{
-					Client:   fake.NewSimpleClientset(),
 					NodeName: "",
 					Driver: &stubDriver{
 						ListVolumesResponse: []string{testVolumeName},
@@ -102,7 +99,6 @@ func TestController(t *testing.T) {
 			name: "API has volume not known to Driver",
 			args: args{
 				cp: ControllerParams{
-					Client:      fake.NewSimpleClientset(),
 					NodeName:    "",
 					Driver:      &stubDriver{},
 					testWatcher: controllerSourceWithFoo,
