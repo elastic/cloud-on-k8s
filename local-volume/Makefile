@@ -1,7 +1,7 @@
 DEP := $(shell command -v dep)
 IMG_TAG ?= latest
 IMG_MINIKUBE = localhost:5000/elastic-cloud-dev/elastic-local
-IMG_GKE ?= eu.gcr.io/elastic-cloud-dev/elastic-local-${USER}
+IMG_GKE ?= eu.gcr.io/elastic-cloud-dev/elastic-local/${USER}
 
 ##
 ## Go stuff
