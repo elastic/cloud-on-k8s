@@ -572,7 +572,7 @@ func (r *ReconcileStack) DeleteElasticsearchPod(
 	}
 
 	if err := preDelete(); err != nil {
-			return state, err
+		return state, err
 	}
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
 		return state, err
