@@ -103,6 +103,29 @@ func (vg VolumeGroup) CreateThinPool(name string) (ThinPool, error) {
 	return vg.LookupThinPool(name)
 }
 
+func (vg VolumeGroup) ListLogicalVolumes() ([]LogicalVolume, error) {
+	result := lvsOutput{}
+	cmd := exec.Command(
+		"lvs",
+		"--options=lv_name,lv_size,vg_name,lv_layout,data_percent",
+		vg.name,
+		"--reportformat=json",
+		"--nosuffix",
+	)
+
+	if err := RunLVMCmd(cmd, &result); err != nil {
+		return nil, err
+	}
+
+	var lvs []LogicalVolume
+	for _, report := range result.Report {
+		for _, lv := range report.Lv {
+			lvs = append(lvs, LogicalVolume{lv.Name, lv.LvSize, vg})
+		}
+	}
+	return lvs, nil
+}
+
 func (vg VolumeGroup) lookupLV(name string) (lvsOutput, error) {
 	result := lvsOutput{}
 	cmd := exec.Command(

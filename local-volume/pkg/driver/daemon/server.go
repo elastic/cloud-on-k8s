@@ -1,6 +1,10 @@
 package daemon
 
 import (
+	"context"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pvgc"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"net"
 	"net/http"
 	"os"
@@ -18,6 +22,37 @@ func Start(driverKind string, driverOpts drivers.Options) error {
 	if err != nil {
 		return err
 	}
+
+	cfg, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+
+	client, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Starting PV GC controller")
+
+	controller, err := pvgc.NewController(pvgc.ControllerParams{
+		Client: client, Driver: driver,
+	})
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		if err := controller.Run(ctx); err != nil {
+			if ctx.Err() == context.Canceled {
+				log.Error(err)
+			} else {
+				log.Fatal(err)
+			}
+		}
+	}()
 
 	log.Infof("Starting driver daemon %s", driver.Info())
 

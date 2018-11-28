@@ -18,6 +18,11 @@ type Driver interface {
 	Init() flex.Response
 	Mount(params protocol.MountRequest) flex.Response
 	Unmount(params protocol.UnmountRequest) flex.Response
+
+	// ListVolumes should return the names of PersistentVolumes that are known locally
+	ListVolumes() ([]string, error)
+	// PurgeVolume should delete the volume associated with the given PersistentVolume name
+	PurgeVolume(volumeName string) error
 }
 
 // Options defines parameters for the driver creation
@@ -33,6 +38,6 @@ func NewDriver(driverKind string, opts Options) (Driver, error) {
 	case lvm.DriverKind:
 		return lvm.NewDriver(opts.LVM), nil
 	default:
-		return nil, fmt.Errorf("Invalid driver kind: %s", driverKind)
+		return nil, fmt.Errorf("unsupported driver kind: %s", driverKind)
 	}
 }
