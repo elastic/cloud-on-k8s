@@ -1,3 +1,4 @@
+DEP := $(shell command -v dep)
 IMG_TAG ?= latest
 IMG_MINIKUBE = localhost:5000/elastic-cloud-dev/elastic-local
 IMG_GKE ?= eu.gcr.io/elastic-cloud-dev/elastic-local/${USER}
@@ -12,6 +13,15 @@ build:
 	go build -o bin/driverclient ./cmd/driverclient
 	go build -o bin/driverdaemon ./cmd/driverdaemon
 	go build -o bin/provisioner  ./cmd/provisioner
+
+.PHONY: vendor
+vendor:
+ifndef DEP
+	@ echo "-> dep binary missing, $(INSTALL_HELP)"
+	@ exit 1
+endif
+	@ echo "-> Running dep..."
+	@ dep ensure
 
 .PHONY: unit
 unit:

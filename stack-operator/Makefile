@@ -7,6 +7,7 @@ KUBECTL := $(shell command -v kubectl)
 KUBEBUILDER := $(shell command -v kubebuilder)
 KUSTOMIZE := $(shell command -v kustomize)
 SHA1SUM := $(shell command -v sha1sum)
+DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
 
 KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
@@ -73,7 +74,7 @@ deploy: manifests
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
-	go run ./cmd/controller-gen/main.go all
+	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 
 # Run go fmt against code
 fmt:
@@ -149,7 +150,7 @@ endif
 
 # dev
 .PHONY: dev
-dev: dev-cluster unit stack-operator install samples
+dev: dev-cluster vendor unit stack-operator install samples
 	@ echo "-> Development environment started"
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ echo "-> Run \"make run\" to build, push and deploy the controller in a docker image."
@@ -199,6 +200,15 @@ endif
 samples: requisites generate
 	@ echo "-> Pushing samples to Kubernetes cluster..."
 	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/deployments_v1alpha1_stack.yaml
+
+.PHONY: vendor
+vendor:
+ifndef DEP
+	@ echo "-> dep binary missing, $(INSTALL_HELP)"
+	@ exit 5
+endif
+	@ echo "-> Running dep..."
+	@ dep ensure
 
 .PHONY: set-dev-gke
 set-dev-gke:
