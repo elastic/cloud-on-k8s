@@ -5,5 +5,11 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  # Add fields here
-  foo: bar
+  version: "6.4.2"
+
+  featureFlags:
+    nodeCertificates:
+      enabled: true
+
+  nodeCount: 1
+  expose: LoadBalancer
