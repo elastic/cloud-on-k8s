@@ -147,7 +147,7 @@ func (c *Client) put(ctx context.Context, pathStr string, in interface{}) error 
 }
 
 func (c *Client) delete(ctx context.Context, path string) error {
-	request, err := http.NewRequest(http.MethodDelete, common.Concat(c.Endpoint, path), nil)
+	request, err := http.NewRequest(http.MethodDelete, common.Concat(c.Endpoint, "/", path), nil)
 	if err != nil {
 		return err
 	}
