@@ -200,8 +200,6 @@ endif
 samples: requisites generate
 	@ echo "-> Pushing samples to Kubernetes cluster..."
 	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/deployments_v1alpha1_stack.yaml
-	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/elasticsearch_v1alpha1_elasticsearchcluster.yaml
-	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/kibana_v1alpha1_kibana.yaml
 
 .PHONY: vendor
 vendor:
