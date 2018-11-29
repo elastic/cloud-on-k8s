@@ -5,18 +5,6 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - ""
   resources:
   - pods
@@ -43,10 +31,9 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - deployments.k8s.elastic.co
+  - batch
   resources:
-  - stacks
-  - stacks/status
+  - cronjobs
   verbs:
   - get
   - list
@@ -56,9 +43,46 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - batch
+  - elasticsearch.k8s.elastic.co
   resources:
-  - cronjobs
+  - elasticsearches
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - deployments.k8s.elastic.co
+  resources:
+  - stacks
+  - stacks/status
   verbs:
   - get
   - list

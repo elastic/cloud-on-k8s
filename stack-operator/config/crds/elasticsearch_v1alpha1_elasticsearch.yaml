@@ -1,0 +1,105 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: elasticsearches.elasticsearch.k8s.elastic.co
+spec:
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: Elasticsearch
+    plural: elasticsearches
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            expose:
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            featureFlags:
+              type: object
+            image:
+              type: string
+            setVmMaxMapCount:
+              type: boolean
+            snapshotRepository:
+              properties:
+                settings:
+                  properties:
+                    bucketName:
+                      type: string
+                    credentials:
+                      type: object
+                  type: object
+                type:
+                  enum:
+                  - gcs
+                  type: string
+              required:
+              - type
+              - settings
+              type: object
+            topologies:
+              items:
+                properties:
+                  nodeCount:
+                    format: int32
+                    type: integer
+                  nodeTypes:
+                    properties:
+                      data:
+                        type: boolean
+                      ingest:
+                        type: boolean
+                      master:
+                        type: boolean
+                      ml:
+                        type: boolean
+                    type: object
+                  resources:
+                    properties:
+                      limits:
+                        type: object
+                    type: object
+                  template:
+                    properties:
+                      metadata:
+                        type: object
+                      spec:
+                        properties:
+                          affinity:
+                            type: object
+                        type: object
+                    type: object
+                  volumeClaimTemplates:
+                    items:
+                      type: object
+                    type: array
+                type: object
+              type: array
+            version:
+              type: string
+          type: object
+        status:
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

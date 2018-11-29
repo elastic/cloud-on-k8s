@@ -671,7 +671,7 @@
   ]
   pruneopts = "T"
   revision = "2d6f90ab1293a1fb871cf149423ebb72aa7423aa"
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.11.5"
 
 [[projects]]
   digest = "1:3fe3cb0c5e5a140f0b40c18796b884d3432efbd690b0bda8cbd838d38a3ea585"
@@ -685,7 +685,7 @@
   ]
   pruneopts = "T"
   revision = "408db4a50408e2149acbd657bceb2480c13cb0a4"
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.11.5"
 
 [[projects]]
   digest = "1:e2035d60919705a125feeb8b13926383aff8817634b2c4550743c19ca21f3b08"
@@ -737,7 +737,7 @@
   ]
   pruneopts = "T"
   revision = "103fd098999dc9c0c88536f5c9ad2e5da39373ae"
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.11.5"
 
 [[projects]]
   digest = "1:0a19f9bf56ecc683569299c8c2282ee3ac70d4e32eeb170d3265761bff8d5e12"
@@ -812,7 +812,7 @@
   ]
   pruneopts = "T"
   revision = "1f13a808da65775f22cbf47862c4e5898d8f4ca1"
-  version = "kubernetes-1.11.2"
+  version = "kubernetes-1.11.5"
 
 [[projects]]
   branch = "master"
@@ -936,6 +936,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/emicklei/go-restful",
+    "github.com/onsi/gomega",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",

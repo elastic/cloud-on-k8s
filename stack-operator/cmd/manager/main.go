@@ -2,11 +2,11 @@ package manager
 
 import (
 	"fmt"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,7 +31,7 @@ var (
 )
 
 func init() {
-	Cmd.Flags().StringP(stack.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
 }
@@ -39,8 +39,8 @@ func init() {
 func execute() {
 	log := logf.Log.WithName("manager")
 
-	if viper.GetString(stack.SnapshotterImageFlag) == "" {
-		log.Error(fmt.Errorf("%s is a required flag", stack.SnapshotterImageFlag),
+	if viper.GetString(elasticsearch.SnapshotterImageFlag) == "" {
+		log.Error(fmt.Errorf("%s is a required flag", elasticsearch.SnapshotterImageFlag),
 			"required configuration missing")
 		os.Exit(1)
 	}
