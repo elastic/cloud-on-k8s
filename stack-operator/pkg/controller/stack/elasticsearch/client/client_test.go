@@ -152,6 +152,25 @@ const (
   }
 }
 `
+	ErrorSample = `
+{
+    "status": 400,
+    "error": {
+        "caused_by": {
+            "reason": "cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1]",
+            "type": "illegal_argument_exception"
+        },
+        "reason": "illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
+        "type": "illegal_argument_exception",
+        "root_cause": [
+            {
+                "reason": "[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update]",
+                "type": "remote_transport_exception"
+            }
+        ]
+    }
+}
+`
 )
 
 func TestParseRoutingTable(t *testing.T) {
@@ -208,7 +227,7 @@ func NewMockClient(fn RoundTripFunc) Client {
 		HTTP: &http.Client{
 			Transport: RoundTripFunc(fn),
 		},
-		Endpoint: "http//does-not-matter.com",
+		Endpoint: "http://does-not-matter.com",
 	}
 }
 
@@ -246,7 +265,7 @@ func TestClientErrorHandling(t *testing.T) {
 	requests := []func() (string, error){
 		func() (string, error) {
 			_, err := testClient.GetClusterState(context.TODO())
-			return "GeTClusterState", err
+			return "GetClusterState", err
 		},
 		func() (string, error) {
 			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.TODO(), "")
@@ -317,4 +336,66 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 	}
 
+}
+
+func TestClient_request(t *testing.T) {
+	testPath := "/_i_am_an/elasticsearch/endpoint"
+
+	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+		assert.Equal(t, testPath, req.URL.Path)
+	}))
+	requests := []func() (string, error){
+		func() (string, error) {
+			return "get", testClient.get(context.TODO(), testPath, nil)
+		},
+		func() (string, error) {
+			return "put", testClient.put(context.TODO(), testPath, nil)
+		},
+		func() (string, error) {
+			return "delete", testClient.delete(context.TODO(), testPath)
+		},
+	}
+
+	for _, f := range requests {
+		name, err := f()
+		assert.NoError(t, err, fmt.Sprintf("%s should not return an error", name))
+	}
+}
+
+func TestAPIError_Error(t *testing.T) {
+	type fields struct {
+		response *http.Response
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			name: "Elasticsearch JSON error response",
+			fields: fields{&http.Response{
+				Status: "400 Bad Request",
+				Body:   ioutil.NopCloser(bytes.NewBufferString(ErrorSample)),
+			}},
+			want: "400 Bad Request: illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
+		},
+		{
+			name: "non-JSON error response",
+			fields: fields{&http.Response{
+				Status: "500 Internal Server Error",
+				Body:   ioutil.NopCloser(bytes.NewBufferString("")),
+			}},
+			want: "500 Internal Server Error: unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := &APIError{
+				response: tt.fields.response,
+			}
+			if got := e.Error(); got != tt.want {
+				t.Errorf("APIError.Error() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
