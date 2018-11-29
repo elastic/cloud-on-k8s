@@ -123,7 +123,7 @@ gke-create-vg:
 	# unmount the existing extra ssd,
 	# then run pvcreate & vgcreate.
 	# It can take some time (a few minutes per host for lvm2 pkg install).
-	gcloud compute instances list | grep $$USER | awk '{print "--zone " $$2 " " $$1 }' | \
+	gcloud compute instances list | grep $(subst _,,$(USER)) | awk '{print "--zone " $$2 " " $$1 }' | \
 		xargs -t -L 1 gcloud compute ssh --command \
 		"docker run --rm --privileged \
 			-v /dev:/dev \
