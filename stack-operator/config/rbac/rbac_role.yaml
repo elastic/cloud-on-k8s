@@ -45,7 +45,7 @@ rules:
 - apiGroups:
   - elasticsearch.k8s.elastic.co
   resources:
-  - elasticsearches
+  - elasticsearchclusters
   verbs:
   - get
   - list
