@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	testES = v1alpha1.Elasticsearch{
+	testES = v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-es",
 			Namespace: "default",

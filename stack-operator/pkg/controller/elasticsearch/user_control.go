@@ -42,7 +42,7 @@ func NewInternalUsersFrom(users []client.User) InternalUsers {
 // into the Elasticsearch config directory which the file realm of ES security can directly understand.
 // A second file called 'users_roles' is contained in this third secret as well which describes
 // role assignments for the users specified in the first file.
-func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.Elasticsearch) (InternalUsers, error) {
+func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluster) (InternalUsers, error) {
 
 	internalSecrets := support.NewInternalUserCredentials(*es)
 
@@ -71,7 +71,7 @@ func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.Elasticsearch) (Int
 }
 
 // ReconcileSecret creates or updates the given credentials.
-func (r *ReconcileElasticsearch) reconcileSecret(es *v1alpha1.Elasticsearch, expectedCreds support.UserCredentials) error {
+func (r *ReconcileElasticsearch) reconcileSecret(es *v1alpha1.ElasticsearchCluster, expectedCreds support.UserCredentials) error {
 	expected := expectedCreds.Secret()
 	if err := controllerutil.SetControllerReference(es, &expected, r.scheme); err != nil {
 		return err

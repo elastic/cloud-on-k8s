@@ -22,7 +22,7 @@ func DiscoveryServiceName(esName string) string {
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
-func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
+func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
@@ -55,7 +55,7 @@ func PublicServiceName(esName string) string {
 }
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
-func PublicServiceURL(es v1alpha1.Elasticsearch) string {
+func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
 	scheme := "http"
 	if es.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		scheme = "https"
@@ -65,7 +65,7 @@ func PublicServiceURL(es v1alpha1.Elasticsearch) string {
 
 // NewPublicService returns the public service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewPublicService(es v1alpha1.Elasticsearch) *corev1.Service {
+func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,

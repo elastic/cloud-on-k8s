@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: elasticsearches.elasticsearch.k8s.elastic.co
+  name: elasticsearchclusters.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
   names:
-    kind: Elasticsearch
-    plural: elasticsearches
+    kind: ElasticsearchCluster
+    plural: elasticsearchclusters
   scope: Namespaced
   subresources:
     status: {}

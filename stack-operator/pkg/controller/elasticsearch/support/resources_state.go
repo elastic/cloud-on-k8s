@@ -29,7 +29,7 @@ type ResourcesState struct {
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
-func NewResourcesStateFromAPI(c client.Client, es v1alpha1.Elasticsearch, esClient *esclient.Client) (*ResourcesState, error) {
+func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster, esClient *esclient.Client) (*ResourcesState, error) {
 	labelSelector, err := NewLabelSelectorForElasticsearch(es)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (state ResourcesState) FindPVCByName(name string) (corev1.PersistentVolumeC
 // getPods returns list of pods in the current namespace with a specific set of selectors.
 func getPods(
 	c client.Client,
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
 ) ([]corev1.Pod, error) {
@@ -100,7 +100,7 @@ func getPods(
 // getPersistentVolumeClaims returns a list of PVCs in the current namespace with a specific set of selectors.
 func getPersistentVolumeClaims(
 	c client.Client,
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
 ) ([]corev1.PersistentVolumeClaim, error) {
@@ -133,7 +133,7 @@ func getInternalElasticsearchState(esClient *esclient.Client) clusterState {
 	clusterState, err := esClient.GetClusterState(ctx)
 	if err != nil {
 		// don't log this as error as this is expected when cluster is forming etc.
-		log.Info("Failed to retrieve Elasticsearch cluster state, continuing", "error", err.Error())
+		log.Info("Failed to retrieve ElasticsearchCluster cluster state, continuing", "error", err.Error())
 		// but return early as to not waste more time on the second request
 		return result
 	}
@@ -144,7 +144,7 @@ func getInternalElasticsearchState(esClient *esclient.Client) clusterState {
 	health, err := esClient.GetClusterHealth(ctx)
 	if err != nil {
 		// don't log this as error as this is expected when cluster is forming etc.
-		log.Info("Failed to retrieve Elasticsearch cluster health, continuing", "error", err.Error())
+		log.Info("Failed to retrieve ElasticsearchCluster cluster health, continuing", "error", err.Error())
 		return result
 	}
 	result.Health = health

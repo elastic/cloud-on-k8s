@@ -28,11 +28,11 @@ func asObjectMeta(n types.NamespacedName) metav1.ObjectMeta {
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	testName := types.NamespacedName{Namespace: "test-namespace", Name: "test-es-name"}
 	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: snapshots.CronJobName(testName)}
-	esSample := v1alpha1.Elasticsearch{
+	esSample := v1alpha1.ElasticsearchCluster{
 		ObjectMeta: asObjectMeta(testName),
 	}
 	type args struct {
-		es             v1alpha1.Elasticsearch
+		es             v1alpha1.ElasticsearchCluster
 		user           esClient.User
 		initialObjects []runtime.Object
 	}
@@ -67,7 +67,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 		{
 			name: "snapshot config exists create job",
 			args: args{
-				v1alpha1.Elasticsearch{
+				v1alpha1.ElasticsearchCluster{
 					ObjectMeta: asObjectMeta(testName),
 					Spec: v1alpha1.ElasticsearchSpec{
 						SnapshotRepository: v1alpha1.SnapshotRepository{

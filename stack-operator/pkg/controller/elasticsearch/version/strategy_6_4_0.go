@@ -57,7 +57,7 @@ func newStrategy_6_4_0(v version.Version) strategy_6_4_0 {
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func (s strategy_6_4_0) ExpectedPodSpecs(
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
 ) ([]support.PodSpecContext, error) {
 	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
@@ -129,7 +129,7 @@ func (s strategy_6_4_0) newEnvironmentVars(
 
 // NewPod constructs a pod from the given parameters.
 func (s strategy_6_4_0) NewPod(
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
 ) (corev1.Pod, error) {
 	pod, err := newPod(s, es, podSpecCtx)

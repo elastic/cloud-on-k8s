@@ -142,7 +142,7 @@ func (hc *HashedCredentials) Users() []client.User {
 }
 
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
-func NewInternalUserCredentials(es v1alpha1.Elasticsearch) *ClearTextCredentials {
+func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -158,7 +158,7 @@ func NewInternalUserCredentials(es v1alpha1.Elasticsearch) *ClearTextCredentials
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
-func NewExternalUserCredentials(es v1alpha1.Elasticsearch) *ClearTextCredentials {
+func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -176,7 +176,7 @@ func NewExternalUserCredentials(es v1alpha1.Elasticsearch) *ClearTextCredentials
 
 // NewElasticUsersCredentials creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
-func NewElasticUsersCredentials(es v1alpha1.Elasticsearch, users []client.User) (*HashedCredentials, error) {
+func NewElasticUsersCredentials(es v1alpha1.ElasticsearchCluster, users []client.User) (*HashedCredentials, error) {
 	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].Name < users[j].Name

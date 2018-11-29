@@ -35,7 +35,7 @@ func newStrategy_7_0_0(v version.Version) strategy_7_0_0 {
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func (s strategy_7_0_0) ExpectedPodSpecs(
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
 ) ([]support.PodSpecContext, error) {
 	return s.previousStrategy.ExpectedPodSpecs(es, paramsTmpl)
@@ -43,7 +43,7 @@ func (s strategy_7_0_0) ExpectedPodSpecs(
 
 // NewPod creates a new pod from the given parameters.
 func (s strategy_7_0_0) NewPod(
-	es v1alpha1.Elasticsearch,
+	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
 ) (corev1.Pod, error) {
 	return s.previousStrategy.NewPod(es, podSpecCtx)

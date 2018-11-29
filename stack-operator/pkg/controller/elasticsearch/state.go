@@ -10,14 +10,14 @@ import (
 // ReconcileState holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type ReconcileState struct {
-	Elasticsearch *v1alpha1.Elasticsearch
+	Elasticsearch *v1alpha1.ElasticsearchCluster
 	Result        reconcile.Result
 	Request       reconcile.Request
 }
 
 // NewReconcileState creates a new reconcile state based on the given request and Elasticsearch resource with the
 // resource state reset to empty.
-func NewReconcileState(request reconcile.Request, es *v1alpha1.Elasticsearch) ReconcileState {
+func NewReconcileState(request reconcile.Request, es *v1alpha1.ElasticsearchCluster) ReconcileState {
 	// reset status to reconstruct it during the reconcile cycle
 	es.Status = v1alpha1.ElasticsearchStatus{}
 	return ReconcileState{Request: request, Elasticsearch: es}

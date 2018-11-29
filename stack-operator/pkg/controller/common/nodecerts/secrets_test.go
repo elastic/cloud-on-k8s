@@ -14,7 +14,7 @@ import (
 )
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
-	es := v1alpha1.Elasticsearch{
+	es := v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-es-name",
 			Namespace: "test-namespace",

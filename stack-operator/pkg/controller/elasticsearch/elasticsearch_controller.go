@@ -78,7 +78,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to Elasticsearch
-	err = c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.Elasticsearch{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// watch any pods created by Elasticsearch
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	})
 	if err != nil {
 		return err
@@ -94,13 +94,13 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch services
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	})
 
 	// Watch secrets
 	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	})
 
 	return nil
@@ -138,7 +138,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}()
 
 	// Fetch the Elasticsearch instance
-	es := &elasticsearchv1alpha1.Elasticsearch{}
+	es := &elasticsearchv1alpha1.ElasticsearchCluster{}
 	err := r.Get(context.TODO(), request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -203,7 +203,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	reconcileState ReconcileState,
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1alpha1.ElasticsearchCluster,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
 ) (ReconcileState, error) {
@@ -385,7 +385,7 @@ func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 
 // CreateElasticsearchPod creates the given elasticsearch pod
 func (r *ReconcileElasticsearch) CreateElasticsearchPod(
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1alpha1.ElasticsearchCluster,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	podSpecCtx support.PodSpecContext,
 ) error {
@@ -538,12 +538,12 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	return reconcileState, nil
 }
 
-func (r *ReconcileElasticsearch) updateStatus(state ReconcileState, current *elasticsearchv1alpha1.Elasticsearch) (reconcile.Result, error) {
+func (r *ReconcileElasticsearch) updateStatus(state ReconcileState, current *elasticsearchv1alpha1.ElasticsearchCluster) (reconcile.Result, error) {
 	if reflect.DeepEqual(current.Status, state.Elasticsearch.Status) {
 		return state.Result, nil
 	}
 	if state.Elasticsearch.Status.IsDegraded(current.Status) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch health degraded")
+		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded")
 	}
 	oldUUID := current.Status.ClusterUUID
 	newUUID := state.Elasticsearch.Status.ClusterUUID
@@ -570,7 +570,7 @@ func (r *ReconcileElasticsearch) updateStatus(state ReconcileState, current *ela
 }
 
 func (r *ReconcileElasticsearch) ReconcileNodeCertificateSecrets(
-	es elasticsearchv1alpha1.Elasticsearch,
+	es elasticsearchv1alpha1.ElasticsearchCluster,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
 
@@ -640,7 +640,7 @@ func (r *ReconcileElasticsearch) ReconcileNodeCertificateSecrets(
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1alpha1.Elasticsearch) ([]corev1.Secret, error) {
+func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1alpha1.ElasticsearchCluster) ([]corev1.Secret, error) {
 	var nodeCertificateSecrets corev1.SecretList
 	listOptions := client.ListOptions{
 		Namespace: es.Namespace,
@@ -660,7 +660,7 @@ func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1al
 // IsPublicServiceReady checks if Elasticsearch public service is ready,
 // so that the ES cluster can respond to HTTP requests.
 // Here we just check that the service has endpoints to route requests to.
-func (r *ReconcileElasticsearch) IsPublicServiceReady(es elasticsearchv1alpha1.Elasticsearch) (bool, error) {
+func (r *ReconcileElasticsearch) IsPublicServiceReady(es elasticsearchv1alpha1.ElasticsearchCluster) (bool, error) {
 	endpoints := corev1.Endpoints{}
 	publicService := support.NewPublicService(es).ObjectMeta
 	namespacedName := types.NamespacedName{Namespace: publicService.Namespace, Name: publicService.Name}

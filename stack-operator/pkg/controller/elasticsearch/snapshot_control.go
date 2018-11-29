@@ -64,7 +64,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig v1alpha
 }
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
-func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.Elasticsearch, user client.User) error {
+func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.ElasticsearchCluster, user client.User) error {
 	params := snapshots.CronJobParams{
 		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
 		Elasticsearch:            es,

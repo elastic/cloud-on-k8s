@@ -39,13 +39,13 @@ type ElasticsearchVersionStrategy interface {
 	//
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
 	ExpectedPodSpecs(
-		es v1alpha1.Elasticsearch,
+		es v1alpha1.ElasticsearchCluster,
 		paramsTmpl support.NewPodSpecParams,
 	) ([]support.PodSpecContext, error)
 
 	// NewPod creates a new pod from the given parameters.
 	NewPod(
-		es v1alpha1.Elasticsearch,
+		es v1alpha1.ElasticsearchCluster,
 		podSpecCtx support.PodSpecContext,
 	) (corev1.Pod, error)
 

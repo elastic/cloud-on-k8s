@@ -180,10 +180,10 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Elasticsearch is the Schema for the elasticsearches API
+// ElasticsearchCluster is the Schema for the elasticsearches API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-type Elasticsearch struct {
+type ElasticsearchCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -193,13 +193,13 @@ type Elasticsearch struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ElasticsearchList contains a list of Elasticsearch
-type ElasticsearchList struct {
+// ElasticsearchClusterList contains a list of Elasticsearch
+type ElasticsearchClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Elasticsearch `json:"items"`
+	Items           []ElasticsearchCluster `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Elasticsearch{}, &ElasticsearchList{})
+	SchemeBuilder.Register(&ElasticsearchCluster{}, &ElasticsearchClusterList{})
 }

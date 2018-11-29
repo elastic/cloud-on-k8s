@@ -10,7 +10,7 @@ import (
 
 func TestPublicServiceURL(t *testing.T) {
 	type args struct {
-		es v1alpha1.Elasticsearch
+		es v1alpha1.ElasticsearchCluster
 	}
 	tests := []struct {
 		name string
@@ -19,7 +19,7 @@ func TestPublicServiceURL(t *testing.T) {
 	}{
 		{
 			name: "A service URL",
-			args: args{es: v1alpha1.Elasticsearch{
+			args: args{es: v1alpha1.ElasticsearchCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "an-es-name",
 					Namespace: "default",
@@ -29,7 +29,7 @@ func TestPublicServiceURL(t *testing.T) {
 		},
 		{
 			name: "Another Service URL",
-			args: args{es: v1alpha1.Elasticsearch{
+			args: args{es: v1alpha1.ElasticsearchCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another-es-name",
 					Namespace: "default",

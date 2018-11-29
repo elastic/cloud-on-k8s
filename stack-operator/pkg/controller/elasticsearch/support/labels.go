@@ -21,13 +21,13 @@ const (
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels
 var TypeSelector = labels.Set(map[string]string{TypeLabelName: Type}).AsSelector()
 
-func PseudoNamespacedResourceName(es v1alpha1.Elasticsearch) string {
+func PseudoNamespacedResourceName(es v1alpha1.ElasticsearchCluster) string {
 	return common.Concat(es.Name, "-elasticsearch")
 }
 
 
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
-func NewLabels(es v1alpha1.Elasticsearch) map[string]string {
+func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 	var labels = map[string]string{
 		ClusterNameLabelName: es.Name,
 		TypeLabelName:        Type,
@@ -37,7 +37,7 @@ func NewLabels(es v1alpha1.Elasticsearch) map[string]string {
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) (labels.Selector, error) {
+func NewLabelSelectorForElasticsearch(es v1alpha1.ElasticsearchCluster) (labels.Selector, error) {
 	req, err := labels.NewRequirement(
 		ClusterNameLabelName,
 		selection.Equals,
