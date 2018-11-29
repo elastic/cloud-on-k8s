@@ -2,9 +2,10 @@ package common
 
 import (
 	"context"
+	"reflect"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
@@ -15,7 +16,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log            = logf.Log.WithName("stack-controller")
+var log = logf.Log.WithName("stack-controller")
 
 func ReconcileService(
 	c client.Client,

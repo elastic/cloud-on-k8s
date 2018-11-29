@@ -2,10 +2,11 @@ package version
 
 import (
 	"fmt"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"

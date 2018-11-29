@@ -2,8 +2,9 @@ package manager
 
 import (
 	"fmt"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
 	"os"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"

@@ -78,7 +78,6 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 	return prev.Health == KibanaGreen && ks.Health != KibanaGreen
 }
 
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

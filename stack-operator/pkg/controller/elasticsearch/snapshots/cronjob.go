@@ -1,8 +1,9 @@
 package snapshots
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"path"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -39,7 +40,7 @@ var cronSchedule = "*/10 * * * *"
 type CronJobParams struct {
 	Parent types.NamespacedName
 	// TODO refactor to just use namespaced Name
-	Elasticsearch            v1alpha1.ElasticsearchCluster
+	Elasticsearch    v1alpha1.ElasticsearchCluster
 	SnapshotterImage string
 	User             client.User
 	EsURL            string

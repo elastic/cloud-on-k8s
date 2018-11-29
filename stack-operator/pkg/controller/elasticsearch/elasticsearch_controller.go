@@ -5,6 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sync/atomic"
+	"time"
+
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
@@ -19,9 +23,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
-	"reflect"
-	"sync/atomic"
-	"time"
 
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -61,8 +62,8 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 	}
 
 	return &ReconcileElasticsearch{
-		Client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		esCa: esCa,
@@ -111,10 +112,10 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 // ReconcileElasticsearch reconciles a Elasticsearch object
 type ReconcileElasticsearch struct {
 	client.Client
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	esCa     *nodecerts.Ca
+	esCa *nodecerts.Ca
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -180,7 +181,6 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-
 	// currently we don't need any state information from the functions above, so state collections starts here
 	state := NewReconcileState(request, es)
 
@@ -199,7 +199,6 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 	return r.updateStatus(state, es)
 }
-
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	reconcileState ReconcileState,
@@ -499,7 +498,7 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	allDeletions []corev1.Pod,
 	preDelete func() error,
 ) (ReconcileState, error) {
-	isMigratingData :=  support.IsMigratingData(esState, pod, allDeletions)
+	isMigratingData := support.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
 		r.recorder.Event(reconcileState.Elasticsearch, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
@@ -655,7 +654,6 @@ func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1al
 
 	return nodeCertificateSecrets.Items, nil
 }
-
 
 // IsPublicServiceReady checks if Elasticsearch public service is ready,
 // so that the ES cluster can respond to HTTP requests.

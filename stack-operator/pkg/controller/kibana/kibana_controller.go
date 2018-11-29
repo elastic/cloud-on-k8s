@@ -4,6 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"reflect"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
@@ -11,10 +16,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"reflect"
-	"strings"
-	"sync/atomic"
-	"time"
 
 	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,8 +49,8 @@ func Add(mgr manager.Manager) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileKibana{
-		Client: mgr.GetClient(),
-		scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("kibana-controller"),
 	}
 }
@@ -85,7 +86,7 @@ var _ reconcile.Reconciler = &ReconcileKibana{}
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
 	client.Client
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
 	// iteration is the number of times this controller has run its Reconcile method
@@ -106,7 +107,6 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	defer func() {
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
-
 
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
@@ -146,7 +146,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
 		// TODO: handle different ways to provide auth credentials
-		User:             *kb.Spec.Elasticsearch.Auth.Inline,
+		User: *kb.Spec.Elasticsearch.Auth.Inline,
 	}
 
 	if kb.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {

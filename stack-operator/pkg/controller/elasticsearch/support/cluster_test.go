@@ -1,9 +1,10 @@
 package support
 
 import (
+	"testing"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func createTopology(count int, nodeTypes v1alpha1.NodeTypesSpec) v1alpha1.ElasticsearchTopologySpec {

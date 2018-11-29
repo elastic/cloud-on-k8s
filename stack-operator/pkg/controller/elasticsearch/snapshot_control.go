@@ -2,10 +2,11 @@ package elasticsearch
 
 import (
 	"context"
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"path"
 	"reflect"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -67,7 +68,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig v1alpha
 func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.ElasticsearchCluster, user client.User) error {
 	params := snapshots.CronJobParams{
 		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
-		Elasticsearch:            es,
+		Elasticsearch:    es,
 		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
 		User:             user,
 		EsURL:            support.PublicServiceURL(es),

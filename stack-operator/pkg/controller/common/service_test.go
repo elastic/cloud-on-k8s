@@ -23,17 +23,17 @@ func TestGetServiceType(t *testing.T) {
 		},
 		{
 			name: "Expose with a correct value returns it",
-			args: args{s: "NodePort",},
+			args: args{s: "NodePort"},
 			want: corev1.ServiceTypeNodePort,
 		},
 		{
 			name: "Expose with a correct value returns it",
-			args: args{s: "LoadBalancer",},
+			args: args{s: "LoadBalancer"},
 			want: corev1.ServiceTypeLoadBalancer,
 		},
 		{
 			name: "Expose with a correct value returns it",
-			args: args{s: "ClusterIP",},
+			args: args{s: "ClusterIP"},
 			want: corev1.ServiceTypeClusterIP,
 		},
 	}

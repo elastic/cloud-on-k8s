@@ -1,10 +1,11 @@
 package support
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 
 	"golang.org/x/crypto/bcrypt"
 

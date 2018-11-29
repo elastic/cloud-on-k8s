@@ -25,7 +25,6 @@ func PseudoNamespacedResourceName(es v1alpha1.ElasticsearchCluster) string {
 	return common.Concat(es.Name, "-elasticsearch")
 }
 
-
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
 func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 	var labels = map[string]string{

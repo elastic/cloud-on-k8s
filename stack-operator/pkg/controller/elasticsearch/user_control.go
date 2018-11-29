@@ -2,6 +2,7 @@ package elasticsearch
 
 import (
 	"context"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 

@@ -31,7 +31,6 @@ type StackSpec struct {
 	Kibana kibanav1alpha1.KibanaSpec `json:"kibana,omitempty"`
 }
 
-
 // StackStatus defines the observed state of Elasticsearch
 type StackStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster

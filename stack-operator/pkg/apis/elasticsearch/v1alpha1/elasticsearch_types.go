@@ -34,7 +34,6 @@ type ElasticsearchSpec struct {
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
-
 // SnapshotRepositoryType as in gcs, AWS s3, file etc.
 type SnapshotRepositoryType string
 
@@ -59,7 +58,6 @@ type SnapshotRepository struct {
 	// Settings are provider specific repository settings
 	Settings SnapshotRepositorySettings `json:"settings"`
 }
-
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
@@ -149,7 +147,6 @@ func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
 		return true
 	}
 }
-
 
 // ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
 type ElasticsearchOrchestrationPhase string

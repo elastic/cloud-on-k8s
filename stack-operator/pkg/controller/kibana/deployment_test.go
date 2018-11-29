@@ -1,9 +1,10 @@
 package kibana
 
 import (
+	"testing"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 func TestPseudoNamespacedResourceName(t *testing.T) {
