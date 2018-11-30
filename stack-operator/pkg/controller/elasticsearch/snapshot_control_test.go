@@ -50,7 +50,6 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 		assert.Fail(t, "failed to build custom scheme")
 	}
 	return scheme
-
 }
 
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
