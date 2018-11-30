@@ -2,7 +2,6 @@ package support
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
@@ -20,10 +19,6 @@ const (
 
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels
 var TypeSelector = labels.Set(map[string]string{TypeLabelName: Type}).AsSelector()
-
-func PseudoNamespacedResourceName(es v1alpha1.ElasticsearchCluster) string {
-	return common.Concat(es.Name, "-elasticsearch")
-}
 
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
 func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {

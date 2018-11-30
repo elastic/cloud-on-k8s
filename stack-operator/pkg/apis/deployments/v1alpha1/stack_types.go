@@ -7,14 +7,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
-// StackSpec defines the desired state of Elasticsearch
+// StackSpec defines the desired state of a Stack
 type StackSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Version represents the version of the stack
 	Version string `json:"version,omitempty"`
 
@@ -31,7 +25,7 @@ type StackSpec struct {
 	Kibana kibanav1alpha1.KibanaSpec `json:"kibana,omitempty"`
 }
 
-// StackStatus defines the observed state of Elasticsearch
+// StackStatus defines the observed state of a Stack
 type StackStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -42,7 +36,7 @@ type StackStatus struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Elasticsearch is the Schema for the stacks API
+// Stack is the Schema for the stacks API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type Stack struct {
