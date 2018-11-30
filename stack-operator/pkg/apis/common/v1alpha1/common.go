@@ -10,5 +10,5 @@ type ResourcesSpec struct {
 
 // ReconcilerStatus represents status information about desired/available nodes.
 type ReconcilerStatus struct {
-	AvailableNodes int
+	AvailableNodes int `json:"availableNodes,omitempty"`
 }

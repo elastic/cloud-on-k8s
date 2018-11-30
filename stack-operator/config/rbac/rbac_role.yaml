@@ -46,6 +46,7 @@ rules:
   - elasticsearch.k8s.elastic.co
   resources:
   - elasticsearchclusters
+  - elasticsearchclusters/status
   verbs:
   - get
   - list
@@ -70,6 +71,7 @@ rules:
   - kibana.k8s.elastic.co
   resources:
   - kibanas
+  - kibanas/status
   verbs:
   - get
   - list
@@ -83,6 +85,30 @@ rules:
   resources:
   - stacks
   - stacks/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearchclusters
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
   verbs:
   - get
   - list

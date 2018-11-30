@@ -17,7 +17,7 @@ type KibanaSpec struct {
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
 	// Elasticsearch configures how Kibana connects to Elasticsearch
-	Elasticsearch BackendElasticsearch `json:"elasticsearch"`
+	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
 	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
@@ -37,7 +37,7 @@ type BackendElasticsearch struct {
 	URL string `json:"url"`
 
 	// Auth configures authentication for Kibana to use.
-	Auth ElasticsearchAuth `json:"auth"`
+	Auth ElasticsearchAuth `json:"auth,omitempty"`
 
 	// CaCertSecret names a secret that contains a ca.pem file entry to use.
 	CaCertSecret *string `json:"caCertSecret,omitempty"`
@@ -70,7 +70,7 @@ const (
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health KibanaHealth
+	Health KibanaHealth `json:"health,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

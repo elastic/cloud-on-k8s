@@ -95,6 +95,15 @@ spec:
               type: string
           type: object
         status:
+          properties:
+            clusterUUID:
+              type: string
+            health:
+              type: string
+            masterNode:
+              type: string
+            phase:
+              type: string
           type: object
   version: v1alpha1
 status:

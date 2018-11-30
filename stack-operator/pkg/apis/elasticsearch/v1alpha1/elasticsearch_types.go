@@ -163,10 +163,10 @@ const (
 // ElasticsearchStatus defines the observed state of Elasticsearch
 type ElasticsearchStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health      ElasticsearchHealth
-	Phase       ElasticsearchOrchestrationPhase
-	ClusterUUID string
-	MasterNode  string
+	Health      ElasticsearchHealth             `json:"health,omitempty"`
+	Phase       ElasticsearchOrchestrationPhase `json:"phase,omitempty"`
+	ClusterUUID string                          `json:"clusterUUID,omitempty"`
+	MasterNode  string                          `json:"masterNode,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

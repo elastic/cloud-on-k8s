@@ -2,8 +2,17 @@ package stack
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"sync/atomic"
 	"time"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	v12 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
@@ -66,11 +75,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to Elasticsearch
+	// Watch for changes to the Stack
 	err = c.Watch(&source.Kind{Type: &deploymentsv1alpha1.Stack{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
+
+	// Watch elasticsearch cluster objects
+	err = c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &deploymentsv1alpha1.Stack{},
+	})
+
+	// Watch kibana objects
+	err = c.Watch(&source.Kind{Type: &v1alpha12.Kibana{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &deploymentsv1alpha1.Stack{},
+	})
 
 	return nil
 }
@@ -95,6 +116,8 @@ type ReconcileStack struct {
 //
 // Automatically generate RBAC rules:
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=kibana.k8s.elastic.co,resources=kibanas,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -114,8 +137,105 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, err
 	}
 
-	// TODO: actually do something..
-	_ = stack
+	// use the same name for es and kibana resources for now
+	esAndKbKey := types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name}
+
+	es := v1alpha1.ElasticsearchCluster{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      esAndKbKey.Name,
+			Namespace: esAndKbKey.Namespace,
+		},
+		Spec: stack.Spec.Elasticsearch,
+	}
+	es.Spec.Version = stack.Spec.Version
+	if err := controllerutil.SetControllerReference(&stack, &es, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	var currentEs v1alpha1.ElasticsearchCluster
+	if err := r.Get(context.TODO(), esAndKbKey, &currentEs); err != nil && !apierrors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+
+	if currentEs.UID == "" {
+		log.Info("Creating ElasticsearchCluster spec")
+		if err := r.Create(context.TODO(), &es); err != nil {
+			return reconcile.Result{}, err
+		}
+		currentEs = es
+	} else {
+		// TODO: this is a bit rough
+		if !reflect.DeepEqual(currentEs.Spec, es.Spec) {
+			log.Info("Updating ElasticsearchCluster spec")
+			currentEs.Spec = es.Spec
+			if err := r.Update(context.TODO(), &currentEs); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
+	kb := v1alpha12.Kibana{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      esAndKbKey.Name,
+			Namespace: esAndKbKey.Namespace,
+		},
+		Spec: stack.Spec.Kibana,
+	}
+	kb.Spec.Version = stack.Spec.Version
+	if err := controllerutil.SetControllerReference(&stack, &kb, r.scheme); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO: be dynamic wrt to the service name
+	kb.Spec.Elasticsearch.URL = fmt.Sprintf("http://%s:9200", support.PublicServiceName(es.Name))
+
+	internalUsersSecretName := support.ElasticInternalUsersSecretName(es.Name)
+	var internalUsersSecret v12.Secret
+	internalUsersSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: internalUsersSecretName}
+	if err := r.Get(context.TODO(), internalUsersSecretKey, &internalUsersSecret); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// TODO: can deliver through a shared secret instead?
+	kb.Spec.Elasticsearch.Auth.Inline = &v1alpha12.ElasticsearchInlineAuth{
+		Username: support.InternalKibanaServerUserName,
+		// TODO: error checking
+		Password: string(internalUsersSecret.Data[support.InternalKibanaServerUserName]),
+	}
+
+	var currentKb v1alpha12.Kibana
+	if err := r.Get(context.TODO(), esAndKbKey, &currentKb); err != nil && !apierrors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+
+	if currentKb.UID == "" {
+		log.Info("Creating Kibana spec")
+		if err := r.Create(context.TODO(), &kb); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		currentKb = kb
+	} else {
+		// TODO: this is a bit rough
+		if !reflect.DeepEqual(currentKb.Spec, kb.Spec) {
+			currentKb.Spec = kb.Spec
+			log.Info("Updating Kibana spec")
+			if err := r.Update(context.TODO(), &currentKb); err != nil {
+				return reconcile.Result{}, err
+			}
+		}
+	}
+
+	// maybe update status
+	origStatus := stack.Status.DeepCopy()
+	stack.Status.Elasticsearch = currentEs.Status
+	stack.Status.Kibana = currentKb.Status
+
+	if !reflect.DeepEqual(*origStatus, stack.Status) {
+		if err := r.Status().Update(context.TODO(), &stack); err != nil {
+			return reconcile.Result{}, err
+		}
+	}
 
 	return reconcile.Result{}, nil
 }

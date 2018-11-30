@@ -13,6 +13,8 @@ type ReconcileState struct {
 	Elasticsearch *v1alpha1.ElasticsearchCluster
 	Result        reconcile.Result
 	Request       reconcile.Request
+
+	originalElasticsearch *v1alpha1.ElasticsearchCluster
 }
 
 // NewReconcileState creates a new reconcile state based on the given request and Elasticsearch resource with the
@@ -20,7 +22,7 @@ type ReconcileState struct {
 func NewReconcileState(request reconcile.Request, es *v1alpha1.ElasticsearchCluster) ReconcileState {
 	// reset status to reconstruct it during the reconcile cycle
 	es.Status = v1alpha1.ElasticsearchStatus{}
-	return ReconcileState{Request: request, Elasticsearch: es}
+	return ReconcileState{Request: request, Elasticsearch: es, originalElasticsearch: es.DeepCopy()}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.

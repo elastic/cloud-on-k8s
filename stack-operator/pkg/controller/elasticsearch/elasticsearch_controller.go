@@ -128,7 +128,7 @@ type ReconcileElasticsearch struct {
 // +kubebuilder:rbac:groups=,resources=pods;endpoints;events,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters;elasticsearchclusters/status,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -197,7 +197,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if err != nil {
 		return res, err
 	}
-	return r.updateStatus(state, es)
+	return r.updateStatus(state)
 }
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
@@ -537,7 +537,9 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	return reconcileState, nil
 }
 
-func (r *ReconcileElasticsearch) updateStatus(state ReconcileState, current *elasticsearchv1alpha1.ElasticsearchCluster) (reconcile.Result, error) {
+func (r *ReconcileElasticsearch) updateStatus(state ReconcileState) (reconcile.Result, error) {
+	current := state.originalElasticsearch
+
 	if reflect.DeepEqual(current.Status, state.Elasticsearch.Status) {
 		return state.Result, nil
 	}

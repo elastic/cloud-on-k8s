@@ -70,11 +70,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch deployments
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &kibanav1alpha1.Kibana{},
-	})
-	if err != nil {
+	}); err != nil {
+		return err
+	}
+
+	// Watch services
+	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &kibanav1alpha1.Kibana{},
+	}); err != nil {
 		return err
 	}
 
@@ -98,7 +105,7 @@ type ReconcileKibana struct {
 //
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=kibana.k8s.elastic.co,resources=kibanas,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=kibana.k8s.elastic.co,resources=kibanas;kibanas/status,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -134,7 +141,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return res, err
 	}
 
-	return r.updateStatus(state, kb)
+	return r.updateStatus(state)
 }
 
 func (r *ReconcileKibana) reconcileKibanaDeployment(
@@ -225,12 +232,13 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 	return state, nil
 }
 
-func (r *ReconcileKibana) updateStatus(state ReconcileState, kb *kibanav1alpha1.Kibana) (reconcile.Result, error) {
-	if reflect.DeepEqual(kb.Status, state.Kibana.Status) {
+func (r *ReconcileKibana) updateStatus(state ReconcileState) (reconcile.Result, error) {
+	current := state.originalKibana
+	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
 		return state.Result, nil
 	}
-	if state.Kibana.Status.IsDegraded(kb.Status) {
-		r.recorder.Event(kb, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
+	if state.Kibana.Status.IsDegraded(current.Status) {
+		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(context.TODO(), state.Kibana)

@@ -45,7 +45,6 @@ spec:
                   type: string
               required:
               - url
-              - auth
               type: object
             expose:
               enum:
@@ -67,10 +66,11 @@ spec:
               type: object
             version:
               type: string
-          required:
-          - elasticsearch
           type: object
         status:
+          properties:
+            health:
+              type: string
           type: object
   version: v1alpha1
 status:

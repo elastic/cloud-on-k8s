@@ -72,7 +72,15 @@ func (r *ReconcileKibana) ReconcileDeployment(deploy appsv1.Deployment, owner me
 	} else if err != nil {
 		log.Info(common.Concat("searched deployment ", deploy.Name, " found ", found.Name))
 		return found, err
-	} else if !reflect.DeepEqual(deploy.Spec, found.Spec) {
+	} else if !reflect.DeepEqual(deploy.Spec.Selector, found.Spec.Selector) ||
+		!reflect.DeepEqual(deploy.Spec.Replicas, found.Spec.Replicas) ||
+		!reflect.DeepEqual(deploy.Spec.Template.ObjectMeta, found.Spec.Template.ObjectMeta) ||
+		!reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Name, found.Spec.Template.Spec.Containers[0].Name) ||
+		!reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Env, found.Spec.Template.Spec.Containers[0].Env) ||
+		!reflect.DeepEqual(deploy.Spec.Template.Spec.Containers[0].Image, found.Spec.Template.Spec.Containers[0].Image) {
+		// TODO: do something better than reflect.DeepEqual above?
+		// TODO: containers[0] is a bit flaky
+		// TODO: technically not only the Spec may be different, but deployment labels etc.
 		// Update the found object and write the result back if there are any changes
 		found.Spec = deploy.Spec
 		log.Info(
