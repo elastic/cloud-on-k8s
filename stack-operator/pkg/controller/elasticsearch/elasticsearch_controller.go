@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -129,7 +128,7 @@ type ReconcileElasticsearch struct {
 // +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters;elasticsearchclusters/status,verbs=get;list;watch;create;update;patch;delete
-func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (result reconcile.Result, err error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
@@ -140,7 +139,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	// Fetch the Elasticsearch instance
 	es := &elasticsearchv1alpha1.ElasticsearchCluster{}
-	err := r.Get(context.TODO(), request.NamespacedName, es)
+	err = r.Get(context.TODO(), request.NamespacedName, es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -182,11 +181,17 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// currently we don't need any state information from the functions above, so state collections starts here
-	state := NewReconcileState(request, es)
+	state := NewReconcileState(*es)
+	defer func() {
+		_, e := r.updateStatus(&state)
+		if e != nil {
+			err = e
+		}
+	}()
 
 	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
-		return state.Result, err
+		return state.Result(), err
 	}
 
 	res, err = r.ReconcileNodeCertificateSecrets(*es)
@@ -197,7 +202,8 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if err != nil {
 		return res, err
 	}
-	return r.updateStatus(state)
+	return state.Result(), nil
+
 }
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
@@ -302,7 +308,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		if err != nil {
 			// TODO decide should this be a reason to stop this reconciliation loop?
 			msg := "Could not ensure snapshot repository"
-			r.recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg, "iteration", atomic.LoadInt64(&r.iteration))
 		}
 	}
@@ -500,7 +506,6 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 ) (ReconcileState, error) {
 	isMigratingData := support.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
-		r.recorder.Event(reconcileState.Elasticsearch, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
 		reconcileState.UpdateElasticsearchMigrating(defaultRequeue, esState)
 		return reconcileState, nil
@@ -531,43 +536,24 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 		return reconcileState, err
 	}
 	msg := common.Concat("Deleted pod ", pod.Name)
-	r.recorder.Event(reconcileState.Elasticsearch, corev1.EventTypeNormal, events.EventReasonDeleted, msg)
+	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonDeleted, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
 	return reconcileState, nil
 }
 
-func (r *ReconcileElasticsearch) updateStatus(state ReconcileState) (reconcile.Result, error) {
-	current := state.originalElasticsearch
-
-	if reflect.DeepEqual(current.Status, state.Elasticsearch.Status) {
-		return state.Result, nil
-	}
-	if state.Elasticsearch.Status.IsDegraded(current.Status) {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded")
-	}
-	oldUUID := current.Status.ClusterUUID
-	newUUID := state.Elasticsearch.Status.ClusterUUID
-	if newUUID == "" {
-		// don't record false positives when the cluster is temporarily unavailable
-		state.Elasticsearch.Status.ClusterUUID = oldUUID
-		newUUID = oldUUID
-	}
-	if newUUID != oldUUID {
-		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnexpected,
-			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
-		)
-	}
-	newMaster := state.Elasticsearch.Status.MasterNode
-	oldMaster := current.Status.MasterNode
-	var masterChanged = newMaster != oldMaster && newMaster != ""
-	if masterChanged {
-		r.recorder.Event(current, corev1.EventTypeNormal, events.EventReasonStateChange,
-			fmt.Sprintf("Master node is now %s", newMaster),
-		)
-	}
+func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) (reconcile.Result, error) {
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(context.TODO(), state.Elasticsearch)
+	resource := &state.cluster
+	events, cluster := state.Apply()
+	for _, evt := range events {
+		log.Info(fmt.Sprintf("Recording event %+v", evt))
+		r.recorder.Event(resource, evt.EventType, evt.Reason, evt.Message)
+	}
+	if cluster == nil {
+		return state.Result(), nil
+	}
+	return state.Result(), r.Status().Update(context.TODO(), cluster)
 }
 
 func (r *ReconcileElasticsearch) ReconcileNodeCertificateSecrets(
