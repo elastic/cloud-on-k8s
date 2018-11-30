@@ -33,8 +33,7 @@ const (
 // repository provider.
 func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig *v1alpha1.SnapshotRepository) (keystore.Config, error) {
 	var result keystore.Config
-	empty := corev1.SecretReference{}
-	if repoConfig.Settings.Credentials == empty {
+	if repoConfig == nil {
 		return result, nil
 	}
 
