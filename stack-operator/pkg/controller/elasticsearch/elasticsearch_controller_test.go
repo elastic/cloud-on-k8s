@@ -4,9 +4,6 @@ package elasticsearch
 
 import (
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
@@ -21,29 +18,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"testing"
 )
 
 var c client.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var depKey = types.NamespacedName{Name: "foo-deployment", Namespace: "default"}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
 var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
 
-const timeout = time.Second * 5
-
-func checkReconcileCalled(t *testing.T, requests chan reconcile.Request) {
-	select {
-	case req := <-requests:
-		assert.Equal(t, req, expectedRequest)
-	case <-time.After(test.Timeout):
-		assert.Fail(t, fmt.Sprintf("No request received after %s", test.Timeout))
-	}
-}
-
 func checkResourceDeletionTriggersReconcile(t *testing.T, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
 	assert.NoError(t, c.Delete(context.TODO(), obj))
-	checkReconcileCalled(t, requests)
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), objKey, obj) })
 }
 
@@ -114,7 +100,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	defer c.Delete(context.TODO(), instance)
 
-	checkReconcileCalled(t, requests)
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Elasticsearch pods should be created
 	esPods := getESPods(t)
@@ -129,7 +115,7 @@ func TestReconcile(t *testing.T) {
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES pod
 	assert.NoError(t, c.Delete(context.TODO(), &esPods[0]))
-	checkReconcileCalled(t, requests)
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
 		nPods := len(getESPods(t))
 		if nPods != 3 {
