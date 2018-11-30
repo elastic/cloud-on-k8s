@@ -5,7 +5,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: stack-sample
 spec:
-  # Add fields here
   version: "6.4.2"
   featureFlags:
     nodeCertificates:
@@ -45,6 +44,7 @@ spec:
     #    credentials:
     #      namespace: "default"
     #      name: "gcs-repo-account"
+    expose: LoadBalancer
   kibana:
     nodeCount: 1
     expose: LoadBalancer

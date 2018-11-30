@@ -9,8 +9,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack/elasticsearch/snapshots"
+	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
