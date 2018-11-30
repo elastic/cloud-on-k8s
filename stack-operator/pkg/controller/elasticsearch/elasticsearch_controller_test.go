@@ -4,6 +4,8 @@ package elasticsearch
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
@@ -13,12 +15,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"testing"
 )
 
 var c client.Client
@@ -26,12 +26,6 @@ var c client.Client
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
 var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
-
-func checkResourceDeletionTriggersReconcile(t *testing.T, requests chan reconcile.Request, objKey types.NamespacedName, obj runtime.Object) {
-	assert.NoError(t, c.Delete(context.TODO(), obj))
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), objKey, obj) })
-}
 
 func getESPods(t *testing.T) []corev1.Pod {
 	esPods := &corev1.PodList{}
@@ -42,14 +36,6 @@ func getESPods(t *testing.T) []corev1.Pod {
 		return c.List(context.TODO(), &esPodSelector, esPods)
 	})
 	return esPods.Items
-}
-
-func clean(t *testing.T, obj runtime.Object) {
-	err := c.Delete(context.TODO(), obj)
-	// If the resource is already deleted, we don't care, but any other error is important
-	if !apierrors.IsNotFound(err) {
-		assert.NoError(t, err)
-	}
 }
 
 func TestReconcile(t *testing.T) {
@@ -86,8 +72,8 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Pre-create dependent Endpoint which will not be create by as not service controller is running
-	endpoints := corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
-	err = c.Create(context.TODO(), &endpoints)
+	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
+	err = c.Create(context.TODO(), endpoints)
 	assert.NoError(t, err)
 	// Create the Elasticsearch object and expect the Reconcile and Deployment to be created
 	err = c.Create(context.TODO(), instance)
@@ -125,12 +111,12 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Services
-	checkResourceDeletionTriggersReconcile(t, requests, publicServiceKey, publicService)
-	checkResourceDeletionTriggersReconcile(t, requests, discoveryServiceKey, discoveryService)
+	test.CheckResourceDeletionTriggersReconcile(t, c, requests, publicServiceKey, publicService, expectedRequest)
+	test.CheckResourceDeletionTriggersReconcile(t, c, requests, discoveryServiceKey, discoveryService, expectedRequest)
 
 	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
-	clean(t, publicService)
-	clean(t, discoveryService)
-	clean(t, &endpoints)
+	test.Clean(t, c, publicService)
+	test.Clean(t, c, discoveryService)
+	test.Clean(t, c, endpoints)
 
 }

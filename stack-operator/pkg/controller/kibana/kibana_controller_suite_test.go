@@ -3,11 +3,12 @@
 package kibana
 
 import (
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 

@@ -3,10 +3,11 @@
 package kibana
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/stretchr/testify/assert"
 
 	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"golang.org/x/net/context"
