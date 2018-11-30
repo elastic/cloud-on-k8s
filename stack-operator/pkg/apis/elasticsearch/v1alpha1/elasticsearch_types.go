@@ -180,6 +180,11 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // ElasticsearchCluster is the Schema for the elasticsearches API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:categories=elastic
+// +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
+// +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
+// +kubebuilder:printcolumn:name="phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="age",type="string",JSONPath=".metadata.creationTimestamp"
 type ElasticsearchCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
