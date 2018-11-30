@@ -147,7 +147,18 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		},
 		Spec: stack.Spec.Elasticsearch,
 	}
-	es.Spec.Version = stack.Spec.Version
+
+	if es.Spec.Version == "" {
+		es.Spec.Version = stack.Spec.Version
+	}
+
+	// TODO this merging of feature flags look ripe for a generalized function
+	for k, v := range stack.Spec.FeatureFlags {
+		if _, ok := es.Spec.FeatureFlags[k]; !ok {
+			es.Spec.FeatureFlags[k] = v
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(&stack, &es, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -181,7 +192,18 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		},
 		Spec: stack.Spec.Kibana,
 	}
-	kb.Spec.Version = stack.Spec.Version
+
+	if kb.Spec.Version == "" {
+		kb.Spec.Version = stack.Spec.Version
+	}
+
+	// TODO this merging of feature flags look ripe for a generalized function
+	for k, v := range stack.Spec.FeatureFlags {
+		if _, ok := kb.Spec.FeatureFlags[k]; !ok {
+			kb.Spec.FeatureFlags[k] = v
+		}
+	}
+
 	if err := controllerutil.SetControllerReference(&stack, &kb, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
