@@ -8,6 +8,8 @@ metadata:
 spec:
   group: kibana.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: Kibana
     plural: kibanas
   scope: Namespaced

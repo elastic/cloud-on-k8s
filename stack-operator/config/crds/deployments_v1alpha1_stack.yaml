@@ -8,6 +8,8 @@ metadata:
 spec:
   group: deployments.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: Stack
     plural: stacks
   scope: Namespaced
