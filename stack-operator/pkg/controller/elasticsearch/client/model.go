@@ -237,3 +237,20 @@ func (s Snapshot) EndedBefore(d time.Duration, now time.Time) bool {
 type SnapshotsList struct {
 	Snapshots []Snapshot `json:"snapshots"`
 }
+
+// ErrorResponse is a Elasticsearch error response.
+type ErrorResponse struct {
+	Status int `json:"status"`
+	Error  struct {
+		CausedBy struct {
+			Reason string `json:"reason"`
+			Type   string `json:"type"`
+		} `json:"caused_by"`
+		Reason    string `json:"reason"`
+		Type      string `json:"type"`
+		RootCause []struct {
+			Reason string `json:"reason"`
+			Type   string `json:"type"`
+		} `json:"root_cause"`
+	} `json:"error"`
+}
