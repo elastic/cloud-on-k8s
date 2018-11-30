@@ -11,9 +11,6 @@ spec:
       enabled: true
   elasticsearch:
     setVmMaxMapCount: true
-    snapshotRepository:
-      type: gcs
-      settings: {}
     topologies:
     - nodeTypes:
         master: true
