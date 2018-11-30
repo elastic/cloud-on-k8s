@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
@@ -153,6 +155,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO this merging of feature flags look ripe for a generalized function
+	es.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags)
 	for k, v := range stack.Spec.FeatureFlags {
 		if _, ok := es.Spec.FeatureFlags[k]; !ok {
 			es.Spec.FeatureFlags[k] = v
@@ -198,6 +201,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO this merging of feature flags look ripe for a generalized function
+	kb.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags)
 	for k, v := range stack.Spec.FeatureFlags {
 		if _, ok := kb.Spec.FeatureFlags[k]; !ok {
 			kb.Spec.FeatureFlags[k] = v
