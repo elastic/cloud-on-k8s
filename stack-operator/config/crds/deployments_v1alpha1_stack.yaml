@@ -32,6 +32,8 @@ spec:
                   - LoadBalancer
                   - NodePort
                   type: string
+                featureFlags:
+                  type: object
                 image:
                   type: string
                 setVmMaxMapCount:
@@ -91,17 +93,43 @@ spec:
                         type: array
                     type: object
                   type: array
+                version:
+                  type: string
               type: object
             featureFlags:
               type: object
             kibana:
               properties:
+                elasticsearch:
+                  properties:
+                    auth:
+                      properties:
+                        inline:
+                          properties:
+                            password:
+                              type: string
+                            username:
+                              type: string
+                          required:
+                          - username
+                          - password
+                          type: object
+                      type: object
+                    caCertSecret:
+                      type: string
+                    url:
+                      type: string
+                  required:
+                  - url
+                  type: object
                 expose:
                   enum:
                   - ClusterIP
                   - LoadBalancer
                   - NodePort
                   type: string
+                featureFlags:
+                  type: object
                 image:
                   type: string
                 nodeCount:
@@ -112,11 +140,30 @@ spec:
                     limits:
                       type: object
                   type: object
+                version:
+                  type: string
               type: object
             version:
               type: string
           type: object
         status:
+          properties:
+            elasticsearch:
+              properties:
+                clusterUUID:
+                  type: string
+                health:
+                  type: string
+                masterNode:
+                  type: string
+                phase:
+                  type: string
+              type: object
+            kibana:
+              properties:
+                health:
+                  type: string
+              type: object
           type: object
   version: v1alpha1
 status:
