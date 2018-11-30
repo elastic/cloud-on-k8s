@@ -5,16 +5,16 @@ package stack
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	"k8s.io/api/core/v1"
-
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	esv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
+	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,10 +32,10 @@ func TestReconcile(t *testing.T) {
 	instance := &deploymentsv1alpha1.Stack{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: deploymentsv1alpha1.StackSpec{
-			Elasticsearch: v1alpha1.ElasticsearchSpec{
+			Elasticsearch: esv1alpha1.ElasticsearchSpec{
 				SetVMMaxMapCount: false,
-				Topologies: []v1alpha1.ElasticsearchTopologySpec{
-					v1alpha1.ElasticsearchTopologySpec{
+				Topologies: []esv1alpha1.ElasticsearchTopologySpec{
+					{
 						NodeCount: 3,
 					},
 				},
@@ -85,11 +85,11 @@ func TestReconcile(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Elasticsearch cluster should be created
-	es := &v1alpha1.ElasticsearchCluster{}
+	es := &esv1alpha1.ElasticsearchCluster{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, es) })
 
 	// Kibana  should be created
-	kibana := &v1alpha12.Kibana{}
+	kibana := &kbv1alpha1.Kibana{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, kibana) })
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
