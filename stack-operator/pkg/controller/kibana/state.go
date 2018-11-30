@@ -20,8 +20,6 @@ type ReconcileState struct {
 // NewReconcileState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
 func NewReconcileState(request reconcile.Request, kb *v1alpha1.Kibana) ReconcileState {
-	// reset status to reconstruct it during the reconcile cycle
-	kb.Status = v1alpha1.KibanaStatus{}
 	return ReconcileState{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
 }
 
