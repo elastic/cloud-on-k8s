@@ -2,9 +2,10 @@ package elasticsearch
 
 import (
 	"context"
-	"k8s.io/api/core/v1"
 	"reflect"
 	"testing"
+
+	"k8s.io/api/core/v1"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -163,9 +164,9 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 						},
 					},
 				},
-				initialObjects:[]runtime.Object{&v1.Secret{
+				initialObjects: []runtime.Object{&v1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "bar",
+						Name:      "bar",
 						Namespace: "baz",
 					},
 					Data: map[string][]byte{
@@ -173,14 +174,14 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 					},
 				}},
 			},
-			want:    keystore.Config{
+			want: keystore.Config{
 				KeystoreSecretRef: v1.SecretReference{
-					Name: "bar",
+					Name:      "bar",
 					Namespace: "baz",
 				},
 				KeystoreSettings: []keystore.Setting{
 					keystore.Setting{
-						Key : "gcs.client.elastic-internal.credentials_file",
+						Key:           "gcs.client.elastic-internal.credentials_file",
 						ValueFilePath: "/keystore-secrets/foo.json",
 					},
 				},
