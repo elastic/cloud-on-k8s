@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -61,10 +63,10 @@ func TestReconcile(t *testing.T) {
 	instance := &deploymentsv1alpha1.Stack{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: deploymentsv1alpha1.StackSpec{
-			Elasticsearch: deploymentsv1alpha1.ElasticsearchSpec{
+			Elasticsearch: v1alpha1.ElasticsearchSpec{
 				SetVMMaxMapCount: false,
-				Topologies: []deploymentsv1alpha1.ElasticsearchTopologySpec{
-					deploymentsv1alpha1.ElasticsearchTopologySpec{
+				Topologies: []v1alpha1.ElasticsearchTopologySpec{
+					v1alpha1.ElasticsearchTopologySpec{
 						NodeCount: 3,
 					},
 				},

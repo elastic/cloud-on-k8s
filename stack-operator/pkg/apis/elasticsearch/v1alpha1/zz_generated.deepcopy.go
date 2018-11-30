@@ -120,7 +120,11 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	out.SnapshotRepository = in.SnapshotRepository
+	if in.SnapshotRepository != nil {
+		in, out := &in.SnapshotRepository, &out.SnapshotRepository
+		*out = new(SnapshotRepository)
+		**out = **in
+	}
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
 		*out = make(commonv1alpha1.FeatureFlags, len(*in))
