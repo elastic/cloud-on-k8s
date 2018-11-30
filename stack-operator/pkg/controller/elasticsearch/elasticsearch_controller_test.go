@@ -71,7 +71,7 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Pre-create dependent Endpoint which will not be create by as not service controller is running
+	// Pre-create dependent Endpoint which will not be created automatically as only the Elasticsearch controller is running.
 	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
 	err = c.Create(context.TODO(), endpoints)
 	assert.NoError(t, err)
