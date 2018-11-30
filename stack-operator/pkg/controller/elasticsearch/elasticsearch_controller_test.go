@@ -30,7 +30,7 @@ func TestReconcile(t *testing.T) {
 	instance := &elasticsearchv1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: elasticsearchv1alpha1.ElasticsearchSpec{
-			SnapshotRepository: elasticsearchv1alpha1.SnapshotRepository{
+			SnapshotRepository: &elasticsearchv1alpha1.SnapshotRepository{
 				Type: elasticsearchv1alpha1.SnapshotRepositoryTypeGCS,
 			},
 		},

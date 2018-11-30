@@ -3,8 +3,6 @@
 package v1alpha1
 
 import (
-	"fmt"
-	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,62 +41,4 @@ func TestStorageStack(t *testing.T) {
 	// Test Delete
 	assert.NoError(t, c.Delete(context.TODO(), fetched))
 	assert.Error(t, c.Get(context.TODO(), key, fetched))
-}
-
-func TestElasticsearchHealth_Less(t *testing.T) {
-
-	tests := []struct {
-		inputs []ElasticsearchHealth
-		sorted bool
-	}{
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchRedHealth,
-				ElasticsearchYellowHealth,
-			},
-			sorted: true,
-		},
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchRedHealth,
-				ElasticsearchRedHealth,
-			},
-			sorted: true,
-		},
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchRedHealth,
-				ElasticsearchGreenHealth,
-			},
-			sorted: true,
-		},
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchRedHealth,
-				ElasticsearchYellowHealth,
-				ElasticsearchGreenHealth,
-			},
-			sorted: true,
-		},
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchYellowHealth,
-				ElasticsearchGreenHealth,
-			},
-			sorted: true,
-		},
-		{
-			inputs: []ElasticsearchHealth{
-				ElasticsearchGreenHealth,
-				ElasticsearchYellowHealth,
-			},
-			sorted: false,
-		},
-	}
-
-	for _, tt := range tests {
-		assert.Equal(t, sort.SliceIsSorted(tt.inputs, func(i, j int) bool {
-			return tt.inputs[i].Less(tt.inputs[j])
-		}), tt.sorted, fmt.Sprintf("%v", tt.inputs))
-	}
 }

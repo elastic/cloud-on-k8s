@@ -148,12 +148,16 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 	state ReconcileState,
 	kb *kibanav1alpha1.Kibana,
 ) (ReconcileState, error) {
+	var auth kibanav1alpha1.ElasticsearchInlineAuth
+	if kb.Spec.Elasticsearch.Auth.Inline != nil {
+		auth = *kb.Spec.Elasticsearch.Auth.Inline
+	}
 	kibanaPodSpecParams := PodSpecParams{
 		Version:          kb.Spec.Version,
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
 		// TODO: handle different ways to provide auth credentials
-		User: *kb.Spec.Elasticsearch.Auth.Inline,
+		User: auth,
 	}
 
 	if kb.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {

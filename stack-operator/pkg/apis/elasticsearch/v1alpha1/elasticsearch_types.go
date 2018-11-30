@@ -28,7 +28,7 @@ type ElasticsearchSpec struct {
 	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
 
 	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
-	SnapshotRepository SnapshotRepository `json:"snapshotRepository,omitempty"`
+	SnapshotRepository *SnapshotRepository `json:"snapshotRepository,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`

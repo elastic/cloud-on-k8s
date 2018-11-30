@@ -71,7 +71,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 				v1alpha1.ElasticsearchCluster{
 					ObjectMeta: asObjectMeta(testName),
 					Spec: v1alpha1.ElasticsearchSpec{
-						SnapshotRepository: v1alpha1.SnapshotRepository{
+						SnapshotRepository: &v1alpha1.SnapshotRepository{
 							Type: v1alpha1.SnapshotRepositoryTypeGCS,
 						},
 					},

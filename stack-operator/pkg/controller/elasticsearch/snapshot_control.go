@@ -31,7 +31,7 @@ const (
 // an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
 // created by the user containing valid snapshot repository credentials for the specified
 // repository provider.
-func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig v1alpha1.SnapshotRepository) (keystore.Config, error) {
+func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig *v1alpha1.SnapshotRepository) (keystore.Config, error) {
 	var result keystore.Config
 	empty := corev1.SecretReference{}
 	if repoConfig.Settings.Credentials == empty {
@@ -79,16 +79,15 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.Elastic
 	}
 
 	found := &batchv1beta1.CronJob{}
-	empty := v1alpha1.SnapshotRepository{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
-	if err == nil && es.Spec.SnapshotRepository == empty {
+	if err == nil && es.Spec.SnapshotRepository == nil {
 		log.Info(common.Concat("Deleting cron job ", found.Namespace, "/", found.Name),
 			"iteration", r.iteration,
 		)
 		return r.Delete(context.TODO(), found)
 	}
 	if err != nil && apierrors.IsNotFound(err) {
-		if es.Spec.SnapshotRepository == empty {
+		if es.Spec.SnapshotRepository == nil {
 			return nil // we are done
 		}
 

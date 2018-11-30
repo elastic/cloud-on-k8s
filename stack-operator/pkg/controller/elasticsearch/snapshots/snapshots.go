@@ -138,7 +138,7 @@ func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
 }
 
 // RepositoryCredentialsKey returns a provider specific keystore key for the corresponding credentials.
-func RepositoryCredentialsKey(repoConfig v1alpha1.SnapshotRepository) string {
+func RepositoryCredentialsKey(repoConfig *v1alpha1.SnapshotRepository) string {
 	switch repoConfig.Type {
 	case v1alpha1.SnapshotRepositoryTypeGCS:
 		return common.Concat("gcs.client.", SnapshotClientName, ".credentials_file")
@@ -197,15 +197,14 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 }
 
 // EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
-func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo v1alpha1.SnapshotRepository) error {
+func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo *v1alpha1.SnapshotRepository) error {
 
 	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
 	if err != nil && !client.IsNotFound(err) {
 		return err
 	}
 
-	empty := v1alpha1.SnapshotRepository{}
-	if repo == empty {
+	if repo == nil {
 		if err == nil { // we have a repository in ES delete it
 			log.Info("Deleting existing snapshot repository")
 			return es.DeleteSnapshotRepository(ctx, SnapshotRepositoryName)
