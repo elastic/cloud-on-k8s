@@ -1,8 +1,16 @@
 package elasticsearch
 
 import (
+	"reflect"
 	"testing"
 
+	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -115,5 +123,162 @@ func TestNodesAvailable(t *testing.T) {
 
 	for _, tt := range tests {
 		assert.Equal(t, tt.expected, len(AvailableElasticsearchNodes(tt.input)))
+	}
+}
+
+func TestReconcileState_Apply(t *testing.T) {
+	tests := []struct {
+		name       string
+		cluster    v1alpha1.ElasticsearchCluster
+		effects    func(s *ReconcileState)
+		wantEvents []Event
+		wantStatus *v1alpha1.ElasticsearchStatus
+	}{
+		{
+			name:       "defaults",
+			cluster:    v1alpha1.ElasticsearchCluster{},
+			wantEvents: nil,
+			wantStatus: nil,
+		},
+		{
+			name:    "health degraded",
+			cluster: v1alpha1.ElasticsearchCluster{},
+			effects: func(s *ReconcileState) {
+				s.UpdateElasticsearchPending(reconcile.Result{}, []corev1.Pod{})
+			},
+			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded"}},
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
+				Health:           v1alpha1.ElasticsearchRedHealth,
+				Phase:            v1alpha1.ElasticsearchPendingPhase,
+			},
+		},
+		{
+			name: "cluster state lost",
+			cluster: v1alpha1.ElasticsearchCluster{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health:      v1alpha1.ElasticsearchRedHealth,
+					ClusterUUID: "old",
+				},
+			},
+			effects: func(s *ReconcileState) {
+				s.UpdateElasticsearchState(support.ResourcesState{
+					ClusterHealth: client.Health{
+						Status: "red",
+					},
+					ClusterState: client.ClusterState{
+						ClusterUUID: "new",
+					},
+				})
+			},
+			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
+				Health:           v1alpha1.ElasticsearchRedHealth,
+				Phase:            v1alpha1.ElasticsearchOperationalPhase,
+				ClusterUUID:      "new",
+			},
+		},
+		{
+			name: "Ignore temporary cluster downtime",
+			cluster: v1alpha1.ElasticsearchCluster{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health:      v1alpha1.ElasticsearchRedHealth,
+					ClusterUUID: "old",
+				},
+			},
+			effects: func(s *ReconcileState) {
+				s.UpdateElasticsearchState(support.ResourcesState{
+					ClusterHealth: client.Health{
+						Status: "red",
+					},
+					ClusterState: client.ClusterState{
+						ClusterUUID: "",
+					},
+				})
+			},
+			wantEvents: nil,
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
+				Health:           v1alpha1.ElasticsearchRedHealth,
+				Phase:            v1alpha1.ElasticsearchOperationalPhase,
+				ClusterUUID:      "old",
+			},
+		},
+		{
+			name: "master node changed",
+			cluster: v1alpha1.ElasticsearchCluster{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health:     v1alpha1.ElasticsearchRedHealth,
+					MasterNode: "old",
+				},
+			},
+			effects: func(s *ReconcileState) {
+				s.UpdateElasticsearchState(support.ResourcesState{
+					ClusterHealth: client.Health{
+						Status: "red",
+					},
+					ClusterState: client.ClusterState{
+						MasterNode: "new",
+						Nodes: map[string]client.Node{
+							"new": {Name: "new"},
+						},
+					},
+				})
+			},
+			wantEvents: []Event{{corev1.EventTypeNormal, events.EventReasonStateChange, "Master node is now new"}},
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
+				Health:           v1alpha1.ElasticsearchRedHealth,
+				Phase:            v1alpha1.ElasticsearchOperationalPhase,
+				MasterNode:       "new",
+			},
+		},
+		{
+			name: "ignore temporary moster loss for status",
+			cluster: v1alpha1.ElasticsearchCluster{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health:     v1alpha1.ElasticsearchRedHealth,
+					MasterNode: "old",
+				},
+			},
+			effects: func(s *ReconcileState) {
+				s.UpdateElasticsearchState(support.ResourcesState{
+					ClusterHealth: client.Health{
+						Status: "red",
+					},
+					ClusterState: client.ClusterState{
+						MasterNode: "",
+					},
+				})
+			},
+			wantEvents: nil,
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
+				Health:           v1alpha1.ElasticsearchRedHealth,
+				Phase:            v1alpha1.ElasticsearchOperationalPhase,
+				MasterNode:       "",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewReconcileState(tt.cluster)
+			if tt.effects != nil {
+				tt.effects(&s)
+			}
+			events, cluster := s.Apply()
+			if !reflect.DeepEqual(events, tt.wantEvents) {
+				t.Errorf("ReconcileState.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
+
+			}
+			var actual *v1alpha1.ElasticsearchStatus
+			if cluster != nil {
+				actual = &cluster.Status
+			}
+			if !reflect.DeepEqual(actual, tt.wantStatus) {
+				t.Errorf("ReconcileState.Apply() cluster = %v, wantStatus %v", cluster.Status, tt.wantStatus)
+			}
+		})
 	}
 }

@@ -23,7 +23,6 @@ type Event struct {
 type ReconcileState struct {
 	cluster  v1alpha1.ElasticsearchCluster
 	status   v1alpha1.ElasticsearchStatus
-	previous v1alpha1.ElasticsearchStatus
 	result   reconcile.Result
 	events   []Event
 }
@@ -31,7 +30,7 @@ type ReconcileState struct {
 // NewReconcileState creates a new reconcile state based on the given request and Elasticsearch resource with the
 // resource state reset to empty.
 func NewReconcileState(c v1alpha1.ElasticsearchCluster) ReconcileState {
-	return ReconcileState{cluster: c, status: c.Status, previous: *c.Status.DeepCopy()}
+	return ReconcileState{cluster: c, status: *c.Status.DeepCopy(),}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
@@ -103,13 +102,14 @@ func (s *ReconcileState) AddEvent(eventType, reason, message string) {
 }
 
 func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
-	if reflect.DeepEqual(s.previous, s.status) {
+	previous := s.cluster.Status
+	if reflect.DeepEqual(previous, s.status) {
 		return s.events, nil
 	}
-	if s.status.IsDegraded(s.previous) {
+	if s.status.IsDegraded(previous) {
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded")
 	}
-	oldUUID := s.previous.ClusterUUID
+	oldUUID := previous.ClusterUUID
 	newUUID := s.status.ClusterUUID
 	if newUUID == "" {
 		// don't record false positives when the cluster is temporarily unavailable
@@ -122,7 +122,7 @@ func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 		)
 	}
 	newMaster := s.status.MasterNode
-	oldMaster := s.previous.MasterNode
+	oldMaster := previous.MasterNode
 	var masterChanged = newMaster != oldMaster && newMaster != ""
 	if masterChanged {
 		s.AddEvent(corev1.EventTypeNormal, events.EventReasonStateChange,
