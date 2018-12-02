@@ -333,7 +333,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	// Grow cluster with missing pods
 	for _, newPodToAdd := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
-		err := r.CreateElasticsearchPod(es, versionStrategy, newPodToAdd.PodSpecCtx)
+		err := r.CreateElasticsearchPod(reconcileState, versionStrategy, newPodToAdd.PodSpecCtx)
 		if err != nil {
 			return reconcileState, err
 		}
@@ -390,15 +390,15 @@ func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 
 // CreateElasticsearchPod creates the given elasticsearch pod
 func (r *ReconcileElasticsearch) CreateElasticsearchPod(
-	es elasticsearchv1alpha1.ElasticsearchCluster,
+	state ReconcileState,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	podSpecCtx support.PodSpecContext,
 ) error {
-	pod, err := versionStrategy.NewPod(es, podSpecCtx)
+	pod, err := versionStrategy.NewPod(state.cluster, podSpecCtx)
 	if err != nil {
 		return err
 	}
-	if es.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
+	if state.cluster.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
 		log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
 
 		// create the node certificates secret for this pod, which is our promise that we will sign a CSR
@@ -406,7 +406,7 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 		if err := nodecerts.EnsureNodeCertificateSecretExists(
 			r,
 			r.scheme,
-			&es,
+			&state.cluster,
 			pod,
 			nodecerts.LabelNodeCertificateTypeElasticsearchAll,
 		); err != nil {
@@ -450,7 +450,7 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 
 		log.Info(fmt.Sprintf("Creating PVC for pod %s: %s", pod.Name, pvc.Name))
 
-		if err := controllerutil.SetControllerReference(&es, pvc, r.scheme); err != nil {
+		if err := controllerutil.SetControllerReference(&state.cluster, pvc, r.scheme); err != nil {
 			return err
 		}
 
@@ -481,14 +481,14 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 		)
 	}
 
-	if err := controllerutil.SetControllerReference(&es, &pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&state.cluster, &pod, r.scheme); err != nil {
 		return err
 	}
 	if err := r.Create(context.TODO(), &pod); err != nil {
 		return err
 	}
 	msg := common.Concat("Created pod ", pod.Name)
-	r.recorder.Event(&es, corev1.EventTypeNormal, events.EventReasonCreated, msg)
+	state.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
 	return nil
