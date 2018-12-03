@@ -44,6 +44,9 @@ unit:
 integration: generate fmt vet manifests
 	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
+e2e:
+	go test -v -failfast -tags=e2e ./test/e2e
+
 # Build stack-operator binary
 stack-operator: generate fmt vet
 	go build -o bin/stack-operator github.com/elastic/stack-operators/stack-operator/cmd
