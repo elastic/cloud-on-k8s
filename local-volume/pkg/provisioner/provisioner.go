@@ -2,37 +2,31 @@ package provisioner
 
 import (
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
 	"github.com/elastic/stack-operators/local-volume/pkg/provider"
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 // Start the provisioner
 func Start() error {
 	provisioner := flexProvisioner{}
 
-	// create k8s client
-	config, err := rest.InClusterConfig()
+	k8sClient, err := k8s.NewClient()
 	if err != nil {
 		return err
 	}
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return err
-	}
-	k8sVersion, err := k8sClient.Discovery().ServerVersion()
+	k8sVersion, err := k8sClient.ClientSet.Discovery().ServerVersion()
 	if err != nil {
 		return err
 	}
 
 	// run provisioner controller
 	pc := controller.NewProvisionController(
-		k8sClient,
+		k8sClient.ClientSet,
 		provider.Name,
 		provisioner,
 		k8sVersion.String(),

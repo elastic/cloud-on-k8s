@@ -23,6 +23,10 @@ spec:
         securityContext:
           privileged: true
         env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         # Enable for using bind mounted directories instead of LVM
         # - name: DRIVER_KIND
         #   value: "BINDMOUNT"

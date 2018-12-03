@@ -19,11 +19,16 @@ const (
 	lvmVolumeGroupFlag    = "lvm-volume-group"
 	lvmUseThinVolumesFlag = "lvm-use-thin-volumes"
 	lvmThinPoolFlag       = "lvm-thin-pool"
+	nodeNameFlag          = "node-name"
 )
 
 var rootCmd = &cobra.Command{
 	Short: "Run the local volume driver daemon",
 	Run: func(cmd *cobra.Command, args []string) {
+		nodeName := viper.GetString(nodeNameFlag)
+		if nodeName == "" {
+			log.Fatal("$NODE_NAME should be set by referencing spec.nodeName")
+		}
 		driverKind := viper.GetString(driverKindFlag)
 		driverOpts := drivers.Options{
 			LVM: lvm.Options{
@@ -32,7 +37,13 @@ var rootCmd = &cobra.Command{
 				ThinPoolName:    viper.GetString(lvmThinPoolFlag),
 			},
 		}
-		log.Fatal(daemon.Start(driverKind, driverOpts))
+
+		server, err := daemon.NewServer(nodeName, driverKind, driverOpts)
+		if err != nil {
+			log.WithError(err).Fatal("Cannot create driver daemon")
+		}
+
+		log.Fatal(server.Start())
 	},
 }
 
@@ -46,6 +57,8 @@ func main() {
 	flags.String(lvmVolumeGroupFlag, lvm.DefaultVolumeGroup, "LVM Volume Group to be used for provisioning logical volumes")
 	flags.Bool(lvmUseThinVolumesFlag, lvm.DefaultUseThinVolumes, "Use LVM thin volumes")
 	flags.String(lvmThinPoolFlag, lvm.DefaultThinPoolName, "LVM thin pool name")
+	// node name should be passed to the environment through the yaml spec
+	flags.String(nodeNameFlag, "", "Name of the node this pod is running on")
 
 	// Bind flags to environment variables
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))

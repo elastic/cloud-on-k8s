@@ -3,16 +3,23 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
-	"github.com/stretchr/testify/assert"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/elastic/stack-operators/local-volume/pkg/provider"
+
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
+	"github.com/stretchr/testify/assert"
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/kubelet/apis"
 )
 
 func TestInitHandler(t *testing.T) {
@@ -42,8 +49,9 @@ func TestInitHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			s := NewTestServer()
 			w := httptest.NewRecorder()
-			handler := InitHandler(tt.args.driver)
+			handler := s.InitHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
@@ -54,7 +62,10 @@ func TestInitHandler(t *testing.T) {
 }
 
 func TestMountHandler(t *testing.T) {
-	var mountReq = protocol.MountRequest{}
+	pvcName := "pvc-name"
+	var mountReq = protocol.MountRequest{
+		TargetDir: "/path/" + pvcName,
+	}
 	mountReqBytes, _ := json.Marshal(mountReq)
 	println(string(mountReqBytes))
 
@@ -102,7 +113,9 @@ func TestMountHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			handler := MountHandler(tt.args.driver)
+			s := NewTestServer(k8s.NewPersistentVolume(pvcName))
+			s.driver = tt.args.driver
+			handler := s.MountHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
@@ -113,6 +126,22 @@ func TestMountHandler(t *testing.T) {
 			}
 			json.NewDecoder(result.Body).Decode(&body)
 			assert.Equal(t, tt.want, body)
+			if tt.want.Status == flex.StatusSuccess {
+				pv, err := s.k8sClient.ClientSet.CoreV1().PersistentVolumes().Get(pvcName, metav1.GetOptions{})
+				assert.NoError(t, err)
+				// make sure the PV node affinity was updated
+				expectedAffinity := v1.NodeSelectorRequirement{
+					Key:      apis.LabelHostname,
+					Operator: v1.NodeSelectorOpIn,
+					Values:   []string{s.nodeName},
+				}
+				fmt.Println(pv.Spec)
+				assert.Equal(t, pv.Spec.NodeAffinity.Required.NodeSelectorTerms[0].MatchExpressions[0], expectedAffinity)
+				// make sure the label was updated
+				expectedLabel := s.nodeName
+				actualLabel := pv.Labels[provider.NodeAffinityLabel]
+				assert.Equal(t, expectedLabel, actualLabel)
+			}
 		})
 	}
 }
@@ -133,7 +162,7 @@ func TestUnmountHandler(t *testing.T) {
 		wantErr *http.Response
 	}{
 		{
-			name: "Test Mount fails with empty response",
+			name: "Test unmount fails with empty response",
 			args: args{
 				driver: &empty.Driver{},
 				req:    httptest.NewRequest(http.MethodGet, "/unmount", nil),
@@ -153,20 +182,22 @@ func TestUnmountHandler(t *testing.T) {
 			},
 		},
 		{
-			name: "Test Mount Succeeds",
+			name: "Test unmount Succeeds",
 			args: args{
 				driver: &empty.Driver{
-					UnmountRes: flex.Success("successfully created the volume"),
+					UnmountRes: flex.Success("successfully unmounted the volume"),
 				},
 				req: httptest.NewRequest(http.MethodGet, "/unmount", bytes.NewReader(unmountReqBytes)),
 			},
-			want: flex.Success("successfully created the volume"),
+			want: flex.Success("successfully unmounted the volume"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			handler := UnmountHandler(tt.args.driver)
+			s := NewTestServer()
+			s.driver = tt.args.driver
+			handler := s.UnmountHandler()
 			handler(w, tt.args.req)
 
 			var body flex.Response
