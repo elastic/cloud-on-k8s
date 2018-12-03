@@ -21,16 +21,16 @@ type Event struct {
 // ReconcileState holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type ReconcileState struct {
-	cluster  v1alpha1.ElasticsearchCluster
-	status   v1alpha1.ElasticsearchStatus
-	result   reconcile.Result
-	events   []Event
+	cluster v1alpha1.ElasticsearchCluster
+	status  v1alpha1.ElasticsearchStatus
+	result  reconcile.Result
+	events  []Event
 }
 
 // NewReconcileState creates a new reconcile state based on the given request and Elasticsearch resource with the
 // resource state reset to empty.
 func NewReconcileState(c v1alpha1.ElasticsearchCluster) ReconcileState {
-	return ReconcileState{cluster: c, status: *c.Status.DeepCopy(),}
+	return ReconcileState{cluster: c, status: *c.Status.DeepCopy()}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
@@ -50,6 +50,7 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	return nodesAvailable
 }
 
+// Result returns the current reconcile result.
 func (s *ReconcileState) Result() reconcile.Result {
 	return s.result
 }
@@ -93,6 +94,7 @@ func (s *ReconcileState) UpdateElasticsearchMigrating(
 	s.UpdateElasticsearchState(state)
 }
 
+// AddEvent records the intent to emit a k8s event with the given attributes.
 func (s *ReconcileState) AddEvent(eventType, reason, message string) {
 	s.events = append(s.events, Event{
 		eventType,
@@ -101,6 +103,9 @@ func (s *ReconcileState) AddEvent(eventType, reason, message string) {
 	})
 }
 
+// Apply takes the current state applies it to the previous state and returns
+// the events to emit and a version of the Elasticsearch cluster resources with
+// the current state applied to its status sub-resource.
 func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 	previous := s.cluster.Status
 	if reflect.DeepEqual(previous, s.status) {
