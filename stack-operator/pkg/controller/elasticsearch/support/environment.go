@@ -50,8 +50,8 @@ var (
 	// ignoredVarsDuringComparison are environment variables that should be ignored when pods are compared to expected
 	// pod specs
 	ignoredVarsDuringComparison = []string{
-		"node.name",
-		"discovery.zen.minimum_master_nodes",
-		"network.publish_host",
+		EnvNodeName,
+		EnvDiscoveryZenMinimumMasterNodes,
+		EnvNetworkPublishHost,
 	}
 )

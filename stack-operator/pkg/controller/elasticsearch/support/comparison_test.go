@@ -56,7 +56,7 @@ func ESPodSpecContext(image string, cpuLimit string) PodSpecContext {
 	}
 }
 
-func WithEnv(env []corev1.EnvVar, ps PodSpecContext) PodSpecContext {
+func withEnv(env []corev1.EnvVar, ps PodSpecContext) PodSpecContext {
 	ps.PodSpec.Containers[0].Env = env
 	return ps
 }
@@ -112,7 +112,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Spec has extra env var",
 			args: args{
 				pod: ESPod(defaultImage, defaultCPULimit),
-				spec: WithEnv(
+				spec: withEnv(
 					[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 					ESPodSpecContext(defaultImage, defaultCPULimit),
 				),
@@ -125,7 +125,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Pod has extra env var",
 			args: args{
 				pod: corev1.Pod{
-					Spec: WithEnv(
+					Spec: withEnv(
 						[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 						ESPodSpecContext(defaultImage, defaultCPULimit),
 					).PodSpec,
@@ -137,15 +137,15 @@ func Test_podMatchesSpec(t *testing.T) {
 			expectedMismatches: []string{"Actual has additional env variables: map[foo:{foo bar nil}]"},
 		},
 		{
-			name: "Pod and Spec has different env var contents",
+			name: "Pod and Spec have different env var contents",
 			args: args{
 				pod: corev1.Pod{
-					Spec: WithEnv(
+					Spec: withEnv(
 						[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 						ESPodSpecContext(defaultImage, defaultCPULimit),
 					).PodSpec,
 				},
-				spec: WithEnv(
+				spec: withEnv(
 					[]corev1.EnvVar{{Name: "foo", Value: "baz"}},
 					ESPodSpecContext(defaultImage, defaultCPULimit),
 				),
@@ -153,6 +153,23 @@ func Test_podMatchesSpec(t *testing.T) {
 			want:               false,
 			wantErr:            nil,
 			expectedMismatches: []string{"Environment variable foo mismatch: expected [baz], actual [bar]"},
+		},
+		{
+			name: "Pod and Spec have different ignored env vars",
+			args: args{
+				pod: corev1.Pod{
+					Spec: withEnv(
+						[]corev1.EnvVar{{Name: EnvNodeName, Value: "foo"}},
+						ESPodSpecContext(defaultImage, defaultCPULimit),
+					).PodSpec,
+				},
+				spec: withEnv(
+					[]corev1.EnvVar{{Name: EnvNodeName, Value: "bar"}},
+					ESPodSpecContext(defaultImage, defaultCPULimit),
+				),
+			},
+			want:               true,
+			wantErr:            nil,
 		},
 		{
 			name: "Non-matching resources should match",
