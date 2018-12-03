@@ -26,14 +26,14 @@ func TestDriver_Unmount(t *testing.T) {
 		{
 			name: "success",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{}),
+				FactoryFunc: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
 			}},
 			want: flex.Success("successfully unmounted the volume"),
 		},
 		{
 			name: "failure due to cmd error",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Bytes: []byte("an output"),
 					Err:   errors.New("error"),
 				}),

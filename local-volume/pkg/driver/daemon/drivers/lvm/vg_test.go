@@ -24,7 +24,7 @@ func TestLookupVolumeGroup(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(success),
 				}),
 			},
@@ -36,7 +36,7 @@ func TestLookupVolumeGroup(t *testing.T) {
 		{
 			name: "failure due to cmd err",
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("something wrong happened"),
 					Err:       errors.New("an error"),
 				}),
@@ -47,7 +47,7 @@ func TestLookupVolumeGroup(t *testing.T) {
 		{
 			name: "failure due to vg not found",
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(`{"report":null}`),
 				}),
 			},
@@ -88,7 +88,7 @@ func TestVolumeGroup_CreateLogicalVolume(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd:      cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{}),
+				newCmd:      cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
 				name:        "anlv",
 				sizeInBytes: 2048,
 			},
@@ -105,7 +105,7 @@ func TestVolumeGroup_CreateLogicalVolume(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd:      cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{}),
+				newCmd:      cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
 				name:        "anlv??",
 				sizeInBytes: 2048,
 			},
@@ -118,7 +118,7 @@ func TestVolumeGroup_CreateLogicalVolume(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("something happened"),
 					Err:       errors.New("an error"),
 				}),
@@ -165,7 +165,7 @@ func TestVolumeGroup_CreateThinPool(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{}, {StdOutput: []byte(lookupRes)},
 				}),
 				name: "lv",
@@ -183,7 +183,7 @@ func TestVolumeGroup_CreateThinPool(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("something bad happened"),
 					Err:       errors.New("an error"),
 				}),
@@ -231,7 +231,7 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(randomStdOutput),
 				}),
 				name: "lv",
@@ -245,7 +245,7 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("something bad happened here"),
 					Err:       errors.New("an error"),
 				}),
@@ -293,7 +293,7 @@ func TestVolumeGroup_LookupLogicalVolume(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(randomStdOutput),
 				}),
 				name: "lv",
@@ -311,7 +311,7 @@ func TestVolumeGroup_LookupLogicalVolume(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(multipleLV),
 				}),
 				name: "lv",
@@ -360,7 +360,7 @@ func TestVolumeGroup_LookupThinPool(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(randomStdOutput),
 				}),
 				name: "lvn",
@@ -404,7 +404,7 @@ func TestVolumeGroup_ListLogicalVolumes(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(multipleLV),
 				}),
 			},
@@ -452,7 +452,7 @@ func TestVolumeGroup_GetOrCreateThinPool(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(lvTp),
 				}),
 				name: "lv",
@@ -469,7 +469,7 @@ func TestVolumeGroup_GetOrCreateThinPool(t *testing.T) {
 				bytesFree: 4096,
 			},
 			args: args{
-				newCmd: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(noLvFound)}, // lvs
 					{},                             // create
 					{StdOutput: []byte(lvTp)},      // lvs

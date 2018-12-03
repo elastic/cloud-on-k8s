@@ -1,8 +1,8 @@
 package diskutil
 
 import (
+	"io/ioutil"
 	"os"
-	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,10 +12,18 @@ func createPathAndDelete(t *testing.T, p string) (string, func()) {
 	if p == "" {
 		return p, func() {}
 	}
-	if err := os.MkdirAll(p, 0775); err != nil {
+
+	createdPath, err := ioutil.TempDir("", p)
+	// if err := os.MkdirAll(p, 0775); err != nil {
+	if err != nil {
+
 		t.Fatal(err)
 	}
-	return p, func() { os.RemoveAll(p) }
+	return createdPath, func() {
+		if err := os.RemoveAll(createdPath); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestEnsureDirExists(t *testing.T) {
@@ -28,22 +36,23 @@ func TestEnsureDirExists(t *testing.T) {
 		err  string
 	}{
 		{
-			name: "fails with empy path",
+			name: "fails with empty path",
 			args: args{},
 			err:  "mkdir : no such file or directory",
 		},
 		{
-			name: "fails with empy path",
+			name: "succeeds",
 			args: args{
-				path: path.Join(os.TempDir(), "somepath"),
+				path: "somepath",
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, cleanup := createPathAndDelete(t, tt.args.path)
+			p, cleanup := createPathAndDelete(t, tt.args.path)
+			println(p)
 			defer cleanup()
-			if err := EnsureDirExists(tt.args.path); err != nil {
+			if err := EnsureDirExists(p); err != nil {
 				assert.Equal(t, tt.err, err.Error())
 				return
 			}

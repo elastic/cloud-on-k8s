@@ -23,7 +23,7 @@ func TestRunLVMCmd(t *testing.T) {
 			name: "Succeeds on JSON output",
 			args: args{
 				result: &lvsOutput{},
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(randomStdOutput),
 				})("command", "argument"),
 			},
@@ -32,7 +32,7 @@ func TestRunLVMCmd(t *testing.T) {
 			name: "Fails on non JSON output",
 			args: args{
 				result: &lvsOutput{},
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(`eeeeekkkk`),
 				})("command", "argument"),
 			},
@@ -41,7 +41,7 @@ func TestRunLVMCmd(t *testing.T) {
 		{
 			name: "Fails on insufficient free space",
 			args: args{
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Err: errors.New("insufficient free space"),
 				})("command", "argument"),
 			},
@@ -50,7 +50,7 @@ func TestRunLVMCmd(t *testing.T) {
 		{
 			name: "Fails on logical volume not found",
 			args: args{
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Err: errors.New("Failed to find logical volume"),
 				})("command", "argument"),
 			},
@@ -59,7 +59,7 @@ func TestRunLVMCmd(t *testing.T) {
 		{
 			name: "Fails on volume group not found",
 			args: args{
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Err: errors.New("Volume group something not found"),
 				})("command", "argument"),
 			},
@@ -68,7 +68,7 @@ func TestRunLVMCmd(t *testing.T) {
 		{
 			name: "Fails on insuficient devices",
 			args: args{
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Err: errors.New("Insufficient suitable allocatable extents for logical volume"),
 				})("command", "argument"),
 			},
@@ -77,7 +77,7 @@ func TestRunLVMCmd(t *testing.T) {
 		{
 			name: "Fails unkown error",
 			args: args{
-				cmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				cmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("Something unexpected happened"),
 					Err:       errors.New("Unknown error mate"),
 				})("command", "argument"),

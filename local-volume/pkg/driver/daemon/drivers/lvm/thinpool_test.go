@@ -35,7 +35,7 @@ func TestThinPool_CreateThinVolume(t *testing.T) {
 				},
 			},
 			args: args{
-				newCmd:             cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{}),
+				newCmd:             cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
 				name:               "data",
 				virtualSizeInBytes: 1024,
 			},
@@ -51,7 +51,7 @@ func TestThinPool_CreateThinVolume(t *testing.T) {
 				},
 			},
 			args: args{
-				newCmd:             cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{}),
+				newCmd:             cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
 				name:               "data??",
 				virtualSizeInBytes: 1024,
 			},
@@ -67,7 +67,7 @@ func TestThinPool_CreateThinVolume(t *testing.T) {
 				},
 			},
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte("something went wrong"),
 					Err:       errors.New("SOME ERROR"),
 				}),

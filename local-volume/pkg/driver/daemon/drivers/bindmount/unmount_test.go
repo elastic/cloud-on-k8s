@@ -28,7 +28,7 @@ func TestDriver_Unmount(t *testing.T) {
 			name: "Success",
 			fields: fields{
 				mountPath: "/",
-				factoryFunc: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				factoryFunc: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Bytes: []byte("some output"),
 				}),
 			},
@@ -39,7 +39,7 @@ func TestDriver_Unmount(t *testing.T) {
 			name: "Success",
 			fields: fields{
 				mountPath: "/",
-				factoryFunc: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+				factoryFunc: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					Bytes: []byte("some output"),
 					Err:   errors.New("some error"),
 				}),

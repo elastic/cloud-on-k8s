@@ -36,11 +36,11 @@ var rootCmd = &cobra.Command{
 		driverKind := viper.GetString(driverKindFlag)
 		driverOpts := drivers.Options{
 			BindMount: bindmount.Options{
-				Factory:   cmdutil.NewCmdFactoryFunc(),
+				Factory:   cmdutil.NewWrappedCmdBuilder(),
 				MountPath: viper.GetString(bindMountPath),
 			},
 			LVM: lvm.Options{
-				FactoryFunc:     cmdutil.NewCmdFactoryFunc(),
+				FactoryFunc:     cmdutil.NewWrappedCmdBuilder(),
 				VolumeGroupName: viper.GetString(lvmVolumeGroupFlag),
 				UseThinVolumes:  viper.GetBool(lvmUseThinVolumesFlag),
 				ThinPoolName:    viper.GetString(lvmThinPoolFlag),

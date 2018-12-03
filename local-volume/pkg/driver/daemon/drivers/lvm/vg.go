@@ -200,11 +200,11 @@ func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.FactoryFunc, name string) (T
 // or creates it if it does not exit
 func (vg VolumeGroup) GetOrCreateThinPool(newCmd cmdutil.FactoryFunc, name string) (ThinPool, error) {
 	thinPool, err := vg.LookupThinPool(newCmd, name)
-	if err == nil {
-		return thinPool, nil
+	if err != nil {
+		if err == ErrLogicalVolumeNotFound {
+			return vg.CreateThinPool(newCmd, name)
+		}
+		return ThinPool{}, err
 	}
-	if err == ErrLogicalVolumeNotFound {
-		return vg.CreateThinPool(newCmd, name)
-	}
-	return ThinPool{}, err
+	return thinPool, nil
 }

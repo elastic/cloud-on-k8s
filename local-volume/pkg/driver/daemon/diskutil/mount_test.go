@@ -10,8 +10,8 @@ import (
 )
 
 func TestBindMount(t *testing.T) {
-	var success = cmdutil.StubExecutable{}
-	var failure = cmdutil.StubExecutable{
+	var success = cmdutil.FakeExecutable{}
+	var failure = cmdutil.FakeExecutable{
 		Bytes: []byte("some output"),
 		Err:   errors.New("some error"),
 	}
@@ -30,7 +30,7 @@ func TestBindMount(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&success),
+				newCmd: cmdutil.NewFakeCmdBuilder(&success),
 				source: path.Join("some", "source", "path"),
 				target: path.Join("some", "target", "path"),
 				exec:   &success,
@@ -40,7 +40,7 @@ func TestBindMount(t *testing.T) {
 		{
 			name: "failure",
 			args: args{
-				newCmd: cmdutil.NewStubFactoryFunc(&failure),
+				newCmd: cmdutil.NewFakeCmdBuilder(&failure),
 				exec:   &success,
 				source: path.Join("some", "source", "path"),
 				target: path.Join("some", "target", "path"),
@@ -59,8 +59,8 @@ func TestBindMount(t *testing.T) {
 }
 
 func TestMountDevice(t *testing.T) {
-	var success = cmdutil.StubExecutable{}
-	var failure = cmdutil.StubExecutable{
+	var success = cmdutil.FakeExecutable{}
+	var failure = cmdutil.FakeExecutable{
 		Bytes: []byte("some output"),
 		Err:   errors.New("some error"),
 	}
@@ -79,7 +79,7 @@ func TestMountDevice(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				newCmd:     cmdutil.NewStubFactoryFunc(&success),
+				newCmd:     cmdutil.NewFakeCmdBuilder(&success),
 				devicePath: path.Join("some", "source", "path"),
 				mountPath:  path.Join("some", "target", "path"),
 				exec:       &success,
@@ -89,7 +89,7 @@ func TestMountDevice(t *testing.T) {
 		{
 			name: "failure",
 			args: args{
-				newCmd:     cmdutil.NewStubFactoryFunc(&failure),
+				newCmd:     cmdutil.NewFakeCmdBuilder(&failure),
 				exec:       &success,
 				devicePath: path.Join("some", "source", "path"),
 				mountPath:  path.Join("some", "target", "path"),
@@ -108,8 +108,8 @@ func TestMountDevice(t *testing.T) {
 }
 
 func TestUnmount(t *testing.T) {
-	var success = cmdutil.StubExecutable{}
-	var failure = cmdutil.StubExecutable{
+	var success = cmdutil.FakeExecutable{}
+	var failure = cmdutil.FakeExecutable{
 		Bytes: []byte("some output"),
 		Err:   errors.New("some error"),
 	}
@@ -127,7 +127,7 @@ func TestUnmount(t *testing.T) {
 		{
 			name: "success",
 			args: args{
-				newCmd:    cmdutil.NewStubFactoryFunc(&success),
+				newCmd:    cmdutil.NewFakeCmdBuilder(&success),
 				mountPath: path.Join("some", "target", "path"),
 				exec:      &success,
 			},
@@ -136,7 +136,7 @@ func TestUnmount(t *testing.T) {
 		{
 			name: "failure",
 			args: args{
-				newCmd:    cmdutil.NewStubFactoryFunc(&failure),
+				newCmd:    cmdutil.NewFakeCmdBuilder(&failure),
 				exec:      &success,
 				mountPath: path.Join("some", "target", "path"),
 			},

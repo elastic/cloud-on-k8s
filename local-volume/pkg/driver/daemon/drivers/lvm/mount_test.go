@@ -32,7 +32,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "success",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{},
 					}),
@@ -58,7 +58,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "failure due thin pool CMD execution",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{
 							StdOutput: []byte("some output"),
 							Err:       errors.New("some error"),
@@ -83,7 +83,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "failure due CreateThinVolume CMD execution",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{
 							StdOutput: []byte("some output"),
@@ -138,7 +138,7 @@ func TestDriver_createStandardLV(t *testing.T) {
 			name: "success",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{},
 					}),
 					VolumeGroupName: "vg",
@@ -182,7 +182,7 @@ func TestDriver_createStandardLV(t *testing.T) {
 			name: "fails due to cmd execution failure",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{
 							StdOutput: []byte("some output"),
 							Err:       errors.New("some error"),
@@ -238,7 +238,7 @@ func TestDriver_CreateLV(t *testing.T) {
 			name: "success on Thin Volume",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{},
 					}),
@@ -261,7 +261,7 @@ func TestDriver_CreateLV(t *testing.T) {
 			name: "success on standard Volume",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvNTp)},
 						{},
 					}),
@@ -309,7 +309,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails looking up VG",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{Err: errors.New("something bad happened")},
 				}),
 				VolumeGroupName: "vg",
@@ -327,7 +327,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails creating LV",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{Err: errors.New("an error"), StdOutput: []byte("some out")},
 				}),
@@ -346,7 +346,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails obtaining the LV path",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 					{},
@@ -367,7 +367,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails obtaining the LV path",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 					{},
@@ -388,7 +388,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails formatting the LV path device",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 					{},
@@ -410,7 +410,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "fails due to mount device erroring",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 					{},
@@ -433,7 +433,7 @@ func TestDriver_Mount(t *testing.T) {
 		{
 			name: "succeeds",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewStubsFactoryFunc([]*cmdutil.StubExecutable{
+				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 					{},

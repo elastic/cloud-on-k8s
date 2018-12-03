@@ -11,30 +11,30 @@ import (
 // FactoryFunc wraps command execution
 type FactoryFunc func(name string, args ...string) Executable
 
-// NewCmdFactoryFunc creates a new FactoryFunc with an exec.Cmd inside.
-func NewCmdFactoryFunc() FactoryFunc {
+// NewWrappedCmdBuilder creates a new FactoryFunc with an exec.Cmd inside.
+func NewWrappedCmdBuilder() FactoryFunc {
 	return func(name string, args ...string) Executable {
-		c := Cmd{Cmd: exec.Command(name, args...)}
+		c := WrappedCmd{Cmd: exec.Command(name, args...)}
 		c.stdErr, c.stdOut = new(bytes.Buffer), new(bytes.Buffer)
 		c.Cmd.Stderr, c.Cmd.Stdout = c.stdErr, c.stdOut
 		return &c
 	}
 }
 
-// Cmd wraps an exec.Cmd to match the Executable interface
-type Cmd struct {
+// WrappedCmd wraps an exec.WrappedCmd to match the Executable interface
+type WrappedCmd struct {
 	*exec.Cmd
 	stdOut, stdErr *bytes.Buffer
 }
 
 // Command returns the command arguments
-func (c *Cmd) Command() []string { return c.Args }
+func (c *WrappedCmd) Command() []string { return c.Args }
 
 // StdOut returns the stdout
-func (c *Cmd) StdOut() []byte { return c.stdOut.Bytes() }
+func (c *WrappedCmd) StdOut() []byte { return c.stdOut.Bytes() }
 
 // StdErr returns the stderr
-func (c *Cmd) StdErr() []byte { return c.stdErr.Bytes() }
+func (c *WrappedCmd) StdErr() []byte { return c.stdErr.Bytes() }
 
 // Executable defines the common interface that any executable should have.
 type Executable interface {

@@ -17,9 +17,9 @@ func TestRunCmd(t *testing.T) {
 		err  error
 	}{
 		{
-			name: "Runs a commannd succesfully",
+			name: "Runs a command succesfully",
 			args: args{
-				cmd: &StubExecutable{
+				cmd: &FakeExecutable{
 					name: "ls",
 					args: []string{"-l"},
 					Bytes: []byte(`total 16
@@ -29,9 +29,9 @@ func TestRunCmd(t *testing.T) {
 			},
 		},
 		{
-			name: "Runs a commannd and fails due permissions",
+			name: "Runs a command and fails due permissions",
 			args: args{
-				cmd: &StubExecutable{
+				cmd: &FakeExecutable{
 					name: "ls",
 					args: []string{"-l"},
 					Err:  errors.New(`ls: .: Operation not permitted`),
@@ -40,9 +40,9 @@ func TestRunCmd(t *testing.T) {
 			err: errors.New(`ls: .: Operation not permitted. Output: `),
 		},
 		{
-			name: "Runs a commannd and fails due permissions",
+			name: "Runs a command and fails due permissions",
 			args: args{
-				cmd: &StubExecutable{
+				cmd: &FakeExecutable{
 					name:  "ls",
 					args:  []string{"-l"},
 					Bytes: []byte(`total 16`),

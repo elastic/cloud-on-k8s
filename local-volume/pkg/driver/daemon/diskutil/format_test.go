@@ -10,8 +10,8 @@ import (
 )
 
 func TestFormatDevice(t *testing.T) {
-	var success = cmdutil.StubExecutable{}
-	var failure = cmdutil.StubExecutable{
+	var success = cmdutil.FakeExecutable{}
+	var failure = cmdutil.FakeExecutable{
 		Bytes: []byte("some output"),
 		Err:   errors.New("some error"),
 	}
@@ -30,7 +30,7 @@ func TestFormatDevice(t *testing.T) {
 		{
 			name: "succeeds",
 			args: args{
-				newCmd:     cmdutil.NewStubFactoryFunc(&success),
+				newCmd:     cmdutil.NewFakeCmdBuilder(&success),
 				exec:       &success,
 				devicePath: path.Join("some", "path"),
 				fstype:     "xfs",
@@ -40,7 +40,7 @@ func TestFormatDevice(t *testing.T) {
 		{
 			name: "failure",
 			args: args{
-				newCmd:     cmdutil.NewStubFactoryFunc(&failure),
+				newCmd:     cmdutil.NewFakeCmdBuilder(&failure),
 				exec:       &failure,
 				devicePath: path.Join("some", "path"),
 				fstype:     "xfs",

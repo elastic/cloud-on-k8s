@@ -32,7 +32,7 @@ func TestLogicalVolume_Path(t *testing.T) {
 				sizeInBytes: 2048,
 				vg:          VolumeGroup{name: "avg", bytesFree: 4096},
 			},
-			args: args{newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+			args: args{newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 				StdOutput: []byte(lvsOutput),
 			})},
 			want: "/dev/anlv",
@@ -44,7 +44,7 @@ func TestLogicalVolume_Path(t *testing.T) {
 				sizeInBytes: 2048,
 				vg:          VolumeGroup{name: "avg", bytesFree: 4096},
 			},
-			args: args{newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+			args: args{newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 				StdOutput: []byte(`{}`),
 			})},
 			want: "",
@@ -57,7 +57,7 @@ func TestLogicalVolume_Path(t *testing.T) {
 				sizeInBytes: 2048,
 				vg:          VolumeGroup{name: "avg", bytesFree: 4096},
 			},
-			args: args{newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+			args: args{newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 				StdOutput: []byte(`Something went wrong`),
 				Err:       errors.New("some error"),
 			})},
@@ -97,7 +97,7 @@ func TestLogicalVolume_Remove(t *testing.T) {
 		{
 			name:   "succeeds",
 			fields: fields{},
-			args: args{newCmd: cmdutil.NewStubFactoryFunc(&cmdutil.StubExecutable{
+			args: args{newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 				StdOutput: []byte(`{}`),
 			})},
 		},
