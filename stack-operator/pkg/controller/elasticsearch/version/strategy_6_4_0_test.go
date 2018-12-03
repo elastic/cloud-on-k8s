@@ -23,6 +23,7 @@ var testStrategy_6_4_0 = newStrategy_6_4_0(version.Version{Major: 6, Minor: 4, P
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      support.NewPodSpecParams
+		nodeCertificatesVolume support.SecretVolume
 		extraFilesSecretVolume support.SecretVolume
 	}
 
@@ -48,6 +49,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 					Version:          "1.2.3",
 					ProbeUser:        testProbeUser,
 				},
+				nodeCertificatesVolume: support.SecretVolume{},
 				extraFilesSecretVolume: support.SecretVolume{},
 			},
 			wantEnvSubset: []corev1.EnvVar{
@@ -72,7 +74,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := testStrategy_6_4_0.newEnvironmentVars(
-				tt.args.p, tt.args.extraFilesSecretVolume,
+				tt.args.p, tt.args.nodeCertificatesVolume, tt.args.extraFilesSecretVolume,
 			)
 			for _, v := range tt.wantEnvSubset {
 				assert.Contains(t, got, v)
@@ -166,6 +168,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, support.DefaultContainerPorts, esContainer.Ports)
-	assert.Equal(t, 8, len(esContainer.VolumeMounts))
+	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
+	assert.Equal(t, 9, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

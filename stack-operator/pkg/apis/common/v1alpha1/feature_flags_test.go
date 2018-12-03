@@ -13,7 +13,7 @@ func TestFeatureFlags(t *testing.T) {
 	t.Run("when empty", func(t *testing.T) {
 		empty := FeatureFlags(map[FeatureFlag]FeatureFlagState{})
 
-		assert.Equal(t, empty.Get(FeatureFlagNodeCertificates), FeatureFlagNodeCertificatesDefaultState)
+		assert.Equal(t, empty.Get(FeatureFlagExample), FeatureFlagExampleDefaultState)
 	})
 
 	t.Run("when non-empty", func(t *testing.T) {
@@ -27,19 +27,19 @@ func TestFeatureFlags(t *testing.T) {
 		}{
 			{
 				flags: FeatureFlags(map[FeatureFlag]FeatureFlagState{
-					FeatureFlagNodeCertificates: {Enabled: true},
+					FeatureFlagExample: {Enabled: true},
 				}),
 				tests: []test{
-					{key: FeatureFlagNodeCertificates, expected: FeatureFlagState{Enabled: true}},
-					{key: testUnknownFeatureFlag, expected: FeatureFlagNodeCertificatesDefaultState},
+					{key: FeatureFlagExample, expected: FeatureFlagState{Enabled: true}},
+					{key: testUnknownFeatureFlag, expected: FeatureFlagExampleDefaultState},
 				},
 			}, {
 				flags: FeatureFlags(map[FeatureFlag]FeatureFlagState{
-					FeatureFlagNodeCertificates: {Enabled: false},
+					FeatureFlagExample: {Enabled: false},
 				}),
 				tests: []test{
-					{key: FeatureFlagNodeCertificates, expected: FeatureFlagState{Enabled: false}},
-					{key: testUnknownFeatureFlag, expected: FeatureFlagNodeCertificatesDefaultState},
+					{key: FeatureFlagExample, expected: FeatureFlagState{Enabled: false}},
+					{key: testUnknownFeatureFlag, expected: FeatureFlagExampleDefaultState},
 				},
 			},
 		}

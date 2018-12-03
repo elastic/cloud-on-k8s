@@ -75,12 +75,12 @@ func EnsureNodeCertificateSecretExists(
 	owner v1.Object,
 	pod corev1.Pod,
 	nodeCertificateType string,
-) error {
+) (*corev1.Secret, error) {
 	secretObjectKey := NodeCertificateSecretObjectKeyForPod(pod)
 
 	var secret corev1.Secret
 	if err := c.Get(context.TODO(), secretObjectKey, &secret); err != nil && !apierrors.IsNotFound(err) {
-		return err
+		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		secret = corev1.Secret{
 			ObjectMeta: v1.ObjectMeta{
@@ -97,15 +97,15 @@ func EnsureNodeCertificateSecretExists(
 		}
 
 		if err := controllerutil.SetControllerReference(owner, &secret, scheme); err != nil {
-			return err
+			return nil, err
 		}
 
 		if err := c.Create(context.TODO(), &secret); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return &secret, nil
 }
 
 // ReconcileNodeCertificateSecret ensures that the node certificate secret has the available and correct Data keys
