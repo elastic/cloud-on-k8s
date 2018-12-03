@@ -8,7 +8,7 @@ import (
 
 // ListVolumes lists the volumes path to find the existing PVs
 func (d *Driver) ListVolumes() ([]string, error) {
-	fileinfos, err := ioutil.ReadDir(ContainerMountPath)
+	fileinfos, err := ioutil.ReadDir(d.mountPath)
 	if err != nil {
 		return nil, err
 	}
@@ -23,5 +23,5 @@ func (d *Driver) ListVolumes() ([]string, error) {
 
 // PurgeVolume recursively deletes the local volume directory
 func (d *Driver) PurgeVolume(volumeName string) error {
-	return os.RemoveAll(path.Join(ContainerMountPath, volumeName))
+	return os.RemoveAll(path.Join(d.mountPath, volumeName))
 }

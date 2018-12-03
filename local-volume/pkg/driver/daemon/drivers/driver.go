@@ -27,6 +27,10 @@ type Driver interface {
 
 // Options defines parameters for the driver creation
 type Options struct {
+	// BindMountPath Options: only used when the driverKind is BINDMOUNT.
+	BindMount bindmount.Options
+
+	// LVM options: only used when the driverKind is LVM.
 	LVM lvm.Options
 }
 
@@ -34,7 +38,7 @@ type Options struct {
 func NewDriver(driverKind string, opts Options) (Driver, error) {
 	switch driverKind {
 	case bindmount.DriverKind:
-		return bindmount.NewDriver(), nil
+		return bindmount.NewDriver(opts.BindMount), nil
 	case lvm.DriverKind:
 		return lvm.NewDriver(opts.LVM), nil
 	default:

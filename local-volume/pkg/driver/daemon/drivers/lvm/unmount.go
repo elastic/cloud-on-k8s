@@ -12,7 +12,7 @@ import (
 // Unmount unmounts the PV from the pod dir
 func (d *Driver) Unmount(params protocol.UnmountRequest) flex.Response {
 	// unmount from the pod dir
-	if err := diskutil.Unmount(params.TargetDir); err != nil {
+	if err := diskutil.Unmount(d.options.FactoryFunc, params.TargetDir); err != nil {
 		return flex.Failure(fmt.Sprintf("Cannot unmount volume %s: %s", params.TargetDir, err.Error()))
 	}
 	log.Infof("Unmounted %s", params.TargetDir)

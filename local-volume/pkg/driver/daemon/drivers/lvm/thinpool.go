@@ -2,9 +2,11 @@ package lvm
 
 import (
 	"fmt"
-	"os/exec"
+
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
+// ThinPoolLayout represents the layout
 const ThinPoolLayout = "thin,pool"
 
 // ThinPool represents an LVM thin pool logical volume
@@ -14,7 +16,7 @@ type ThinPool struct {
 }
 
 // CreateThinVolume creates a thin logical volume
-func (tp ThinPool) CreateThinVolume(name string, virtualSizeInBytes uint64) (LogicalVolume, error) {
+func (tp ThinPool) CreateThinVolume(newCmd cmdutil.FactoryFunc, name string, virtualSizeInBytes uint64) (LogicalVolume, error) {
 	if err := ValidateLogicalVolumeName(name); err != nil {
 		return LogicalVolume{}, err
 	}
@@ -22,7 +24,7 @@ func (tp ThinPool) CreateThinVolume(name string, virtualSizeInBytes uint64) (Log
 	// size must be a multiple of 512
 	roundedSize := roundUpTo512(virtualSizeInBytes)
 
-	cmd := exec.Command(
+	cmd := newCmd(
 		"lvcreate",
 		"--virtualsize", fmt.Sprintf("%db", roundedSize),
 		"--name", name,

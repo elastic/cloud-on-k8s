@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/bindmount"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/lvm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -15,6 +17,8 @@ import (
 
 const (
 	driverKindFlag = "driver-kind"
+
+	bindMountPath = "bindmount-mount-path"
 
 	lvmVolumeGroupFlag    = "lvm-volume-group"
 	lvmUseThinVolumesFlag = "lvm-use-thin-volumes"
@@ -31,7 +35,12 @@ var rootCmd = &cobra.Command{
 		}
 		driverKind := viper.GetString(driverKindFlag)
 		driverOpts := drivers.Options{
+			BindMount: bindmount.Options{
+				Factory:   cmdutil.NewCmdFactoryFunc(),
+				MountPath: viper.GetString(bindMountPath),
+			},
 			LVM: lvm.Options{
+				FactoryFunc:     cmdutil.NewCmdFactoryFunc(),
 				VolumeGroupName: viper.GetString(lvmVolumeGroupFlag),
 				UseThinVolumes:  viper.GetBool(lvmUseThinVolumesFlag),
 				ThinPoolName:    viper.GetString(lvmThinPoolFlag),
@@ -52,6 +61,9 @@ func main() {
 
 	// Driver kind
 	flags.String(driverKindFlag, lvm.DriverKind, "Driver kind (eg. LVM or BINDMOUNT)")
+
+	// BINDMOUNT flags
+	flags.String(bindMountPath, bindmount.DefaultContainerMountPath, "default bindmount mount path")
 
 	// LVM flags
 	flags.String(lvmVolumeGroupFlag, lvm.DefaultVolumeGroup, "LVM Volume Group to be used for provisioning logical volumes")
