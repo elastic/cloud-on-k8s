@@ -115,8 +115,8 @@ func TestReconcile(t *testing.T) {
 	test.CheckResourceDeletionTriggersReconcile(t, c, requests, discoveryServiceKey, discoveryService, expectedRequest)
 
 	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
-	test.Clean(t, c, publicService)
-	test.Clean(t, c, discoveryService)
-	test.Clean(t, c, endpoints)
+	test.DeleteIfExists(t, c, publicService)
+	test.DeleteIfExists(t, c, discoveryService)
+	test.DeleteIfExists(t, c, endpoints)
 
 }

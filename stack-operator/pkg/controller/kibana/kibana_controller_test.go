@@ -72,6 +72,6 @@ func TestReconcile(t *testing.T) {
 		return c.Get(context.TODO(), depKey, deploy)
 	})
 	// Manually delete Deployment since GC isn't enabled in the test control plane
-	test.Clean(t, c, deploy)
+	test.DeleteIfExists(t, c, deploy)
 
 }

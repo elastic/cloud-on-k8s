@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// CheckReconcileCalled waits for Timeout to receive the expected requests on requests.
+// CheckReconcileCalled waits up to Timeout to receive the expected request on requests.
 func CheckReconcileCalled(t *testing.T, requests chan reconcile.Request, expected reconcile.Request) {
 	select {
 	case req := <-requests:
@@ -24,11 +24,10 @@ func CheckReconcileCalled(t *testing.T, requests chan reconcile.Request, expecte
 	}
 }
 
-// Clean manually deletes the given object.
-func Clean(t *testing.T, c client.Client, obj runtime.Object) {
-	err := c.Delete(context.TODO(), obj)
-	// If the resource is already deleted, we don't care, but any other error is important
-	if !apierrors.IsNotFound(err) {
+// DeleteIfExists manually deletes the given object.
+func DeleteIfExists(t *testing.T, c client.Client, obj runtime.Object) {
+	if err := c.Delete(context.TODO(), obj); err != nil && !apierrors.IsNotFound(err) {
+		// If the resource is already deleted, we don't care, but any other error is important
 		assert.NoError(t, err)
 	}
 }
@@ -40,7 +39,8 @@ func CheckResourceDeletionTriggersReconcile(
 	requests chan reconcile.Request,
 	objKey types.NamespacedName,
 	obj runtime.Object,
-	expected reconcile.Request) {
+	expected reconcile.Request,
+) {
 	assert.NoError(t, c.Delete(context.TODO(), obj))
 	CheckReconcileCalled(t, requests, expected)
 	RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), objKey, obj) })

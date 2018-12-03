@@ -99,8 +99,8 @@ func TestReconcile(t *testing.T) {
 	test.CheckResourceDeletionTriggersReconcile(t, c, requests, resourceKey, kibana, expectedRequest)
 
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
-	test.Clean(t, c, es)
-	test.Clean(t, c, kibana)
-	test.Clean(t, c, userSecret)
+	test.DeleteIfExists(t, c, es)
+	test.DeleteIfExists(t, c, kibana)
+	test.DeleteIfExists(t, c, userSecret)
 
 }
