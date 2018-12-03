@@ -55,20 +55,23 @@ func (s *ReconcileState) Result() reconcile.Result {
 	return s.result
 }
 
-// UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
-func (s *ReconcileState) UpdateElasticsearchState(
-	state support.ResourcesState,
-) {
+func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrationPhase, state support.ResourcesState) {
 	s.status.ClusterUUID = state.ClusterState.ClusterUUID
 	s.status.MasterNode = state.ClusterState.MasterNodeName()
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(state.CurrentPods))
 	s.status.Health = v1alpha1.ElasticsearchHealth("unknown")
-	if s.status.Phase == "" {
-		s.status.Phase = v1alpha1.ElasticsearchOperationalPhase
-	}
+	s.status.Phase = phase
+
 	if state.ClusterHealth.Status != "" {
 		s.status.Health = v1alpha1.ElasticsearchHealth(state.ClusterHealth.Status)
 	}
+}
+
+// UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
+func (s *ReconcileState) UpdateElasticsearchState(
+	state support.ResourcesState,
+) {
+	s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
@@ -91,7 +94,7 @@ func (s *ReconcileState) UpdateElasticsearchMigrating(
 	)
 	s.status.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.result = result
-	s.UpdateElasticsearchState(state)
+	s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, state)
 }
 
 // AddEvent records the intent to emit a k8s event with the given attributes.
