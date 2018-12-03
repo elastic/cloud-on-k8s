@@ -26,7 +26,7 @@ func TestPublicServiceURL(t *testing.T) {
 					Namespace: "default",
 				},
 			}},
-			want: "http://an-es-name-es-public.default.svc.cluster.local:9200",
+			want: "https://an-es-name-es-public.default.svc.cluster.local:9200",
 		},
 		{
 			name: "Another Service URL",
@@ -36,7 +36,7 @@ func TestPublicServiceURL(t *testing.T) {
 					Namespace: "default",
 				},
 			}},
-			want: "http://another-es-name-es-public.default.svc.cluster.local:9200",
+			want: "https://another-es-name-es-public.default.svc.cluster.local:9200",
 		},
 	}
 	for _, tt := range tests {

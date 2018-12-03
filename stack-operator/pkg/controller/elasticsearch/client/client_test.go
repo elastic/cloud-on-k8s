@@ -227,7 +227,7 @@ func NewMockClient(fn RoundTripFunc) Client {
 		HTTP: &http.Client{
 			Transport: RoundTripFunc(fn),
 		},
-		Endpoint: "http://does-not-matter.com",
+		Endpoint: "http://example.com",
 	}
 }
 

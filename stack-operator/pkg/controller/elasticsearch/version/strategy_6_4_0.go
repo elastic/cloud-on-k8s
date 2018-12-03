@@ -8,10 +8,8 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
-	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
@@ -84,19 +82,20 @@ func (s strategy_6_4_0) newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func (s strategy_6_4_0) newEnvironmentVars(
 	p support.NewPodSpecParams,
+	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
 ) []corev1.EnvVar {
 	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
 	return []corev1.EnvVar{
-		{Name: "node.name", Value: "", ValueFrom: &corev1.EnvVarSource{
+		{Name: support.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
-		{Name: "discovery.zen.ping.unicast.hosts", Value: p.DiscoveryServiceName},
-		{Name: "cluster.name", Value: p.ClusterName},
-		{Name: "discovery.zen.minimum_master_nodes", Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
-		{Name: "network.host", Value: "0.0.0.0"},
-		{Name: "network.publish_host", Value: "", ValueFrom: &corev1.EnvVarSource{
+		{Name: support.EnvDiscoveryZenPingUnicastHosts, Value: p.DiscoveryServiceName},
+		{Name: support.EnvClusterName, Value: p.ClusterName},
+		{Name: support.EnvDiscoveryZenMinimumMasterNodes, Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
+		{Name: support.EnvNetworkHost, Value: "0.0.0.0"},
+		{Name: support.EnvNetworkPublishHost, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
 
@@ -107,7 +106,7 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
 		//       reusable component somehow.
 		{
-			Name:  "xpack.security.transport.ssl.trust_restrictions.path",
+			Name:  support.EnvXPackSecurityTransportSslTrustRestrictionsPath,
 			Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
 		},
 
@@ -122,9 +121,47 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		{Name: support.EnvXPackSecurityEnabled, Value: "true"},
 		{Name: support.EnvXPackLicenseSelfGeneratedType, Value: "trial"},
 		{Name: support.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
-		{Name: "PROBE_USERNAME", Value: p.ProbeUser.Name},
-		{Name: "PROBE_PASSWORD_FILE", Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: "transport.profiles.client.port", Value: strconv.Itoa(support.TransportClientPort)},
+		{Name: support.EnvProbeUsername, Value: p.ProbeUser.Name},
+		{Name: support.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: support.EnvTransportProfilesClientPort, Value: strconv.Itoa(support.TransportClientPort)},
+
+		{Name: support.EnvReadinessProbeProtocol, Value: "https"},
+
+		// x-pack security general settings
+		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate",},
+
+		// client profiles
+		{Name: support.EnvTransportProfilesClientXPackSecurityType, Value: "client"},
+		{Name: support.EnvTransportProfilesClientXPackSecuritySslClientAuthentication, Value: "none"},
+
+		// x-pack security http settings
+		{Name: support.EnvXPackSecurityHttpSslEnabled, Value: "true"},
+		{
+			Name:  support.EnvXPackSecurityHttpSslKey,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+		},
+		{
+			Name:  support.EnvXPackSecurityHttpSslCertificate,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
+		},
+		{
+			Name:  support.EnvXPackSecurityHttpSslCertificateAuthorities,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+		},
+		// x-pack security transport settings
+		{Name: support.EnvXPackSecurityTransportSslEnabled, Value: "true"},
+		{
+			Name:  support.EnvXPackSecurityTransportSslKey,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+		},
+		{
+			Name:  support.EnvXPackSecurityTransportSslCertificate,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
+		},
+		{
+			Name:  support.EnvXPackSecurityTransportSslCertificateAuthorities,
+			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+		},
 	}
 }
 
@@ -138,71 +175,10 @@ func (s strategy_6_4_0) NewPod(
 		return pod, err
 	}
 
-	if es.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		log.Info("Node certificates feature flag enabled", "pod", pod.Name)
-		pod = s.configureNodeCertificates(pod)
-	}
-
 	return pod, nil
 }
 
 // UpdateDiscovery configures discovery settings based on the given list of pods.
 func (s strategy_6_4_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
 	return updateZen1Discovery(esClient, allPods)
-}
-
-// configureNodeCertificates configures node certificates for the provided pod
-func (s strategy_6_4_0) configureNodeCertificates(pod corev1.Pod) corev1.Pod {
-	nodeCertificatesVolume := support.NewSecretVolumeWithMountPath(
-		nodecerts.NodeCertificateSecretObjectKeyForPod(pod).Name,
-		"node-certificates",
-		"/usr/share/elasticsearch/config/node-certs",
-	)
-	podSpec := pod.Spec
-
-	podSpec.Volumes = append(podSpec.Volumes, nodeCertificatesVolume.Volume())
-	for i, container := range podSpec.InitContainers {
-		podSpec.InitContainers[i].VolumeMounts =
-			append(container.VolumeMounts, nodeCertificatesVolume.VolumeMount())
-	}
-	for i, container := range podSpec.Containers {
-		podSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, nodeCertificatesVolume.VolumeMount())
-
-		for _, proto := range []string{"http", "transport"} {
-			podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
-				corev1.EnvVar{
-					Name:  fmt.Sprintf("xpack.security.%s.ssl.enabled", proto),
-					Value: "true",
-				},
-				corev1.EnvVar{
-					Name:  fmt.Sprintf("xpack.security.%s.ssl.key", proto),
-					Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
-				},
-				corev1.EnvVar{
-					Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate", proto),
-					Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
-				},
-				corev1.EnvVar{
-					Name:  fmt.Sprintf("xpack.security.%s.ssl.certificate_authorities", proto),
-					Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
-				},
-			)
-		}
-
-		podSpec.Containers[i].Env = append(podSpec.Containers[i].Env,
-			corev1.EnvVar{
-				Name:  "xpack.security.transport.ssl.verification_mode",
-				Value: "certificate",
-			},
-			corev1.EnvVar{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
-
-			// client profiles
-			corev1.EnvVar{Name: "transport.profiles.client.xpack.security.type", Value: "client"},
-			corev1.EnvVar{Name: "transport.profiles.client.xpack.security.ssl.client_authentication", Value: "none"},
-		)
-
-	}
-	pod.Spec = podSpec
-
-	return pod
 }

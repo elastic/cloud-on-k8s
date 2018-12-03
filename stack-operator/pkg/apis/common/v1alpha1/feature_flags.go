@@ -10,8 +10,8 @@ func (f FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
 	}
 
 	switch flag {
-	case FeatureFlagNodeCertificates:
-		return FeatureFlagNodeCertificatesDefaultState
+	case FeatureFlagExample:
+		return FeatureFlagExampleDefaultState
 	}
 
 	return FeatureFlagState{}
@@ -21,14 +21,13 @@ func (f FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
 type FeatureFlag string
 
 const (
-	// FeatureFlagNodeCertificates configures whether we configure tls between nodes. The fact that it's called internal
-	// is a bit of a misnomer, as it also includes encryption for HTTP as well.
-	FeatureFlagNodeCertificates = FeatureFlag("nodeCertificates")
+	// FeatureFlagExample is a placeholder example feature flag.
+	FeatureFlagExample = FeatureFlag("example")
 )
 
 var (
-	// FeatureFlagNodeCertificatesDefaultState is the default state for the FeatureFlagNodeCertificates feature flag.
-	FeatureFlagNodeCertificatesDefaultState = FeatureFlagState{Enabled: false}
+	// FeatureFlagExampleDefaultState is the default state for the FeatureFlagExample feature flag.
+	FeatureFlagExampleDefaultState = FeatureFlagState{Enabled: false}
 )
 
 // FeatureFlagState contains the configured state of a FeatureFlag
