@@ -3,11 +3,8 @@ package support
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 
-	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -23,14 +20,10 @@ type ResourcesState struct {
 	CurrentPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
-	// State is the current Elasticsearch cluster state if any.
-	ClusterState esclient.ClusterState
-	// ClusterHealh is the current traffic light health as reported by Elasticsearch.
-	ClusterHealth esclient.Health
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
-func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster, esClient *esclient.Client) (*ResourcesState, error) {
+func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster) (*ResourcesState, error) {
 	labelSelector, err := NewLabelSelectorForElasticsearch(es)
 	if err != nil {
 		return nil, err
@@ -53,14 +46,10 @@ func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster,
 
 	pvcs, err := getPersistentVolumeClaims(c, es, labelSelector, nil)
 
-	internalState := getInternalElasticsearchState(esClient)
-
 	state := ResourcesState{
 		AllPods:       allPods,
 		CurrentPods:   currentPods,
 		PVCs:          pvcs,
-		ClusterState:  internalState.State,
-		ClusterHealth: internalState.Health,
 	}
 
 	return &state, nil
@@ -118,36 +107,4 @@ func getPersistentVolumeClaims(
 	}
 
 	return pvcs.Items, nil
-}
-
-type clusterState struct {
-	State  esclient.ClusterState
-	Health esclient.Health
-}
-
-// getInternalElasticsearchState tries to retrieve state from the Elasticsearch cluster directly.
-// Failures are logged but regarded as recoverable.
-func getInternalElasticsearchState(esClient *esclient.Client) clusterState {
-	var result clusterState
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // TODO don't hard code
-	defer cancel()
-	clusterState, err := esClient.GetClusterState(ctx)
-	if err != nil {
-		// don't log this as error as this is expected when cluster is forming etc.
-		log.Info("Failed to retrieve ElasticsearchCluster cluster state, continuing", "error", err.Error())
-		// but return early as to not waste more time on the second request
-		return result
-	}
-	result.State = clusterState
-	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	// TODO we could derive cluster health from the routing table and save this request
-	health, err := esClient.GetClusterHealth(ctx)
-	if err != nil {
-		// don't log this as error as this is expected when cluster is forming etc.
-		log.Info("Failed to retrieve ElasticsearchCluster cluster health, continuing", "error", err.Error())
-		return result
-	}
-	result.Health = health
-	return result
 }

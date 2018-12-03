@@ -205,14 +205,16 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	certPool.AddCert(r.esCa.Cert)
 	esClient := esclient.NewElasticsearchClient(support.PublicServiceURL(es), controllerUser, certPool)
 
-	esState, err := support.NewResourcesStateFromAPI(r, es, esClient)
+	resourcesState, err := support.NewResourcesStateFromAPI(r, es)
 	if err != nil {
 		return reconcileState, err
 	}
 
-	if err := versionStrategy.VerifySupportsExistingPods(esState.CurrentPods); err != nil {
+	if err := versionStrategy.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return reconcileState, err
 	}
+
+	observedState := support.NewObservedState(esClient)
 
 	// TODO: suffix and trim
 	elasticsearchExtraFilesSecretObjectKey := types.NamespacedName{
@@ -282,7 +284,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
-	changes, err := support.CalculateChanges(expectedPodSpecCtxs, *esState)
+	changes, err := support.CalculateChanges(expectedPodSpecCtxs, *resourcesState)
 	if err != nil {
 		return reconcileState, err
 	}
@@ -312,12 +314,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// Current state matches expected state
 		if esReachable {
 			// Update discovery for any previously created pods that have come up (see also below in create pod)
-			err := versionStrategy.UpdateDiscovery(esClient, AvailableElasticsearchNodes(esState.CurrentPods))
+			err := versionStrategy.UpdateDiscovery(esClient, AvailableElasticsearchNodes(resourcesState.CurrentPods))
 			if err != nil {
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		reconcileState.UpdateElasticsearchState(*esState)
+		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 		return reconcileState, nil
 	}
 
@@ -338,7 +340,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		reconcileState.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
+		reconcileState.UpdateElasticsearchPending(defaultRequeue, resourcesState.CurrentPods)
 		return reconcileState, nil
 	}
 
@@ -356,8 +358,8 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, errors.Wrap(err, "Error during migrate data")
 	}
 
-	newState := make([]corev1.Pod, len(esState.CurrentPods))
-	copy(newState, esState.CurrentPods)
+	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
+	copy(newState, resourcesState.CurrentPods)
 
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
@@ -365,13 +367,13 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		preDelete := func() error {
 			return versionStrategy.UpdateDiscovery(esClient, newState)
 		}
-		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *esState, pod, esClient, changes.ToRemove, preDelete)
+		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *resourcesState, observedState, pod, esClient, changes.ToRemove, preDelete)
 		if err != nil {
 			return reconcileState, err
 		}
 	}
 
-	reconcileState.UpdateElasticsearchState(*esState)
+	reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	return reconcileState, nil
 }
 
@@ -502,17 +504,18 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 // unless a data migration is in progress
 func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	reconcileState ReconcileState,
-	esState support.ResourcesState,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
 	pod corev1.Pod,
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
 	preDelete func() error,
 ) (ReconcileState, error) {
-	isMigratingData := support.IsMigratingData(esState, pod, allDeletions)
+	isMigratingData := support.IsMigratingData(observedState, pod, allDeletions)
 	if isMigratingData {
 		r.recorder.Event(reconcileState.Elasticsearch, corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration")
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		reconcileState.UpdateElasticsearchMigrating(defaultRequeue, esState)
+		reconcileState.UpdateElasticsearchMigrating(defaultRequeue, resourcesState, observedState)
 		return reconcileState, nil
 	}
 
@@ -524,7 +527,7 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 		}
 
 		// TODO: perhaps not assuming all PVCs will be managed by us? and maybe we should not categorically delete?
-		pvc, err := esState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
+		pvc, err := resourcesState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
 		if err != nil {
 			return reconcileState, err
 		}
