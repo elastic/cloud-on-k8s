@@ -16,8 +16,12 @@ type ResourcesState struct {
 	// AllPods are all the Elasticsearch pods related to the Elasticsearch cluster, including ones with a
 	// DeletionTimestamp tombstone set.
 	AllPods []corev1.Pod
-	// CurrentPods are all non-deleted Elasticsearch pods related to the Elasticsearch cluster.
+	// CurrentPods are all non-deleted Elasticsearch pods.
 	CurrentPods []corev1.Pod
+	// CurrentPodsByPhase are all non-deleted Elasticsearch indexed by their PodPhase
+	CurrentPodsByPhase map[corev1.PodPhase][]corev1.Pod
+	// DeletingPods are all deleted Elasticsearch pods.
+	DeletingPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
 }
@@ -34,22 +38,34 @@ func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster)
 		return nil, err
 	}
 
+	deletingPods := make([]corev1.Pod, 0)
 	currentPods := make([]corev1.Pod, 0, len(allPods))
+	currentPodsByPhase := make(map[corev1.PodPhase][]corev1.Pod, 0)
 	// filter out pods scheduled for deletion
 	for _, p := range allPods {
 		if p.DeletionTimestamp != nil {
-			log.Info(fmt.Sprintf("Ignoring pod %s scheduled for deletion", p.Name))
+			deletingPods = append(deletingPods, p)
 			continue
 		}
 		currentPods = append(currentPods, p)
+
+		podsInPhase, ok := currentPodsByPhase[p.Status.Phase]
+		if !ok {
+			podsInPhase = []corev1.Pod{p}
+		} else {
+			podsInPhase = append(podsInPhase, p)
+		}
+		currentPodsByPhase[p.Status.Phase] = podsInPhase
 	}
 
 	pvcs, err := getPersistentVolumeClaims(c, es, labelSelector, nil)
 
 	state := ResourcesState{
-		AllPods:       allPods,
-		CurrentPods:   currentPods,
-		PVCs:          pvcs,
+		AllPods:            allPods,
+		CurrentPods:        currentPods,
+		CurrentPodsByPhase: currentPodsByPhase,
+		DeletingPods:       deletingPods,
+		PVCs:               pvcs,
 	}
 
 	return &state, nil

@@ -9,6 +9,8 @@ import (
 
 // ObservedState contains information about an observed state of Elasticsearch.
 type ObservedState struct {
+	// TODO: verify usages of the two below never assume they are set (check for nil)
+
 	// ClusterState is the current Elasticsearch cluster state if any.
 	ClusterState *esclient.ClusterState
 	// ClusterHealth is the current traffic light health as reported by Elasticsearch.

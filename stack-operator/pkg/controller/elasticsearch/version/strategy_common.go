@@ -180,6 +180,20 @@ func newPod(
 		labels[k] = v
 	}
 
+	// add labels for node types
+	if podSpecCtx.TopologySpec.NodeTypes.Master {
+		labels["elasticsearch.k8s.elastic.co/node-master"] = "true"
+	}
+	if podSpecCtx.TopologySpec.NodeTypes.Data {
+		labels["elasticsearch.k8s.elastic.co/node-data"] = "true"
+	}
+	if podSpecCtx.TopologySpec.NodeTypes.Ingest {
+		labels["elasticsearch.k8s.elastic.co/node-ingest"] = "true"
+	}
+	if podSpecCtx.TopologySpec.NodeTypes.ML {
+		labels["elasticsearch.k8s.elastic.co/node-ml"] = "true"
+	}
+
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior
 	for k, v := range podSpecCtx.TopologySpec.PodTemplate.Labels {
