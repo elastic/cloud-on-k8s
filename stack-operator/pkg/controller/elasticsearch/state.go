@@ -75,5 +75,4 @@ func (s ReconcileState) UpdateElasticsearchMigrating(
 ) {
 	s.Elasticsearch.Status.Phase = v1alpha1.ElasticsearchMigratingDataPhase
 	s.Result = result
-	s.UpdateElasticsearchState(resourcesState, observedState)
 }

@@ -52,7 +52,7 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "1 pod replaced",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext( "another-image", defaultCPULimit)},
+				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
 				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{

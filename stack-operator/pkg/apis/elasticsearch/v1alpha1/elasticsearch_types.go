@@ -32,6 +32,9 @@ type ElasticsearchSpec struct {
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
+
+	// UpdateStrategy specifies how updates to the cluster should be performed.
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 // SnapshotRepositoryType as in gcs, AWS s3, file etc.
@@ -122,6 +125,40 @@ type NodeTypesSpec struct {
 	Ingest bool `json:"ingest,omitempty"`
 	// ML represents a machine learning node
 	ML bool `json:"ml,omitempty"`
+}
+
+// UpdateStrategy specifies how updates to the cluster should be performed.
+type UpdateStrategy struct {
+	// Groups is a list of groups that have specific limitations on how they should be updated.
+	Groups []GroupingDefinition `json:"groups,omitempty"`
+}
+
+// GroupingDefinition contains a strategy that should be applied to Pods matching a given selector.
+type GroupingDefinition struct {
+	// Selector is the selector used to match pods.
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
+	// Strategy is the change strategy that should be applied.
+	Strategy GroupChangeStrategy `json:"strategy,omitempty"`
+}
+
+// GroupChangeStrategy defines how Pods in a single group should be updated.
+type GroupChangeStrategy struct {
+	MaxSurge       int  `json:"maxSurge,omitempty"`
+	MaxUnavailable int  `json:"maxUnavailable,omitempty"`
+	Parallelizable bool `json:"parallelizable,omitempty"`
+}
+
+// DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
+// there are pods that are not selected by the user-defined groups.
+var DefaultFallbackGroupingDefinition = GroupingDefinition{
+	// use a selector that matches everything
+	Selector: metav1.LabelSelector{},
+	// a strategy that might not be the most effective, but should work in every case
+	Strategy: GroupChangeStrategy{
+		MaxSurge:       1,
+		MaxUnavailable: 1,
+		Parallelizable: false,
+	},
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

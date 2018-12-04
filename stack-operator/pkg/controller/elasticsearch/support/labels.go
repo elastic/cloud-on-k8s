@@ -15,6 +15,15 @@ const (
 	TypeLabelName = "common.k8s.elastic.co/type"
 	// Type represents the elasticsearch type
 	Type = "elasticsearch"
+
+	// NodeTypesDataLabelName is a label set on nodes with the master role
+	NodeTypesMasterLabelName = "elasticsearch.k8s.elastic.co/node-master"
+	// NodeTypesDataLabelName is a label set on nodes with the data role
+	NodeTypesDataLabelName = "elasticsearch.k8s.elastic.co/node-data"
+	// NodeTypesIngestLabelName is a label set on nodes with the ingest role
+	NodeTypesIngestLabelName = "elasticsearch.k8s.elastic.co/node-ingest"
+	// NodeTypesMLLabelName is a label set on nodes with the ml role
+	NodeTypesMLLabelName = "elasticsearch.k8s.elastic.co/node-ml"
 )
 
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels

@@ -128,7 +128,7 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		{Name: support.EnvReadinessProbeProtocol, Value: "https"},
 
 		// x-pack security general settings
-		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate",},
+		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
 
 		// client profiles
 		{Name: support.EnvTransportProfilesClientXPackSecurityType, Value: "client"},

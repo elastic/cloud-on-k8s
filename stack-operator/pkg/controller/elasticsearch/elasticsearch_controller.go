@@ -216,6 +216,11 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	observedState := support.NewObservedState(esClient)
 
+	// always update the elasticsearch state bits
+	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
+		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	}
+
 	// TODO: suffix and trim
 	elasticsearchExtraFilesSecretObjectKey := types.NamespacedName{
 		Namespace: es.Namespace,
@@ -314,36 +319,6 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	// perhaps it's not as simple as a string?
 	//phase := "operational"
 
-	// pendingPods are pods that have been created in the API but is not scheduled or running yet.
-	pendingPods, _ := resourcesState.CurrentPodsByPhase[corev1.PodPending]
-
-	// joiningPods are running pods that are not seen in the observed cluster state
-	joiningPods := make([]corev1.Pod, 0)
-	// XXX: requires an observerState.ClusterState to work, which is not reflected in the variables set
-	if observedState.ClusterState != nil {
-		nodesByName := make(map[string]esclient.Node, len(observedState.ClusterState.Nodes))
-		for _, node := range observedState.ClusterState.Nodes {
-			nodesByName[node.Name] = node
-		}
-
-		for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			// if the pod is not known in the cluster state, we assume it's supposed to join
-			if _, ok := nodesByName[currentRunningPod.Name]; !ok {
-				joiningPods = append(joiningPods, currentRunningPod)
-			}
-		}
-	}
-
-	// migratingPods are pods that are being actively migrated away from.
-	// this is equal to changes.ToRemove for now, but could change to a sub-selection based on a future strategy
-	migratingPods := changes.ToRemove
-	// leavingPods = migratingPods that is primed for deletion, but not deleted yet (is this even a thing?)
-
-	// deletingPods are pods we have issued a delete request for, but haven't disappeared from the API yet
-	deletingPods := resourcesState.DeletingPods
-
-
-
 	// there may be pods in the above categories that exist in the changes.ToRemove set. e.g it can both be in
 	// joiningPods and ToRemove at the same time.
 	//
@@ -351,35 +326,11 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	//optimisticFutureReadyPodCount := len(resourcesState.CurrentPodsByPhase[corev1.PodPending]) +
 	//	len(resourcesState.CurrentPodsByPhase[corev1.PodRunning])
 
-	changeStrategy := struct {
-		MaxConcurrentGrow int
-	}{
-		MaxConcurrentGrow: 1,
-	}
-
-	currentConcurrentGrow := len(pendingPods) + len(joiningPods)
-
-	podListToNames := func(pods []corev1.Pod) []string {
-		names := make([]string, len(pods))
-		for i, pod := range pods {
-			names[i] = pod.Name
-		}
-		return names
-	}
-
-	log.Info(
-		"State",
-		"pending_pods", podListToNames(pendingPods),
-		"joining_pods", podListToNames(joiningPods),
-		"migrating_pods", podListToNames(migratingPods),
-		"deleting_pods", podListToNames(deletingPods),
-	)
-
 	//if len(pendingPods) > 0 {
 	//	msg := fmt.Sprintf("Waiting for pending pods: %v", podListToNames(pendingPods))
 	//	r.recorder.Event(&es, corev1.EventTypeNormal, "WaitingForPendingPods", msg)
 	//}
-//
+	//
 	//if len(joiningPods) > 0 {
 	//	msg := fmt.Sprintf("Waiting for joiners: %v", podListToNames(joiningPods))
 	//	r.recorder.Event(&es, corev1.EventTypeNormal, "WaitingForJoiningNodes", msg)
@@ -394,50 +345,149 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	// sort changes into grouped sections?
 
+	allPodsState := support.NewPodsState(*resourcesState, observedState, changes)
+
 	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
+	toAddContext := make(map[string]support.PodToAdd, len(changes.ToAdd))
 	for i, podToAdd := range changes.ToAdd {
 		pod, err := versionStrategy.NewPod(es, podToAdd.PodSpecCtx)
 		if err != nil {
 			return reconcileState, err
 		}
 		podsToAdd[i] = pod
+		toAddContext[pod.Name] = podToAdd
 	}
 
 	allPodChanges := support.ChangeSet{
 		ToRemove: changes.ToRemove[:],
-		ToAdd: podsToAdd,
-		ToKeep: changes.ToKeep[:],
+		ToAdd:    podsToAdd,
+		ToKeep:   changes.ToKeep[:],
+
+		ToAddContext: toAddContext,
 	}
 
-	groupingDefinitions := []support.GroupingDefinition{{
-		Selector: v1.LabelSelector{},
-	}}
-	groupedChangeSets, err := support.CreateGroupedChangeSets(allPodChanges, groupingDefinitions)
+	groupedChangeSets, err := support.CreateGroupedChangeSets(allPodChanges, allPodsState, es.Spec.UpdateStrategy.Groups)
 	if err != nil {
 		return reconcileState, err
 	}
 
-	// Grow cluster with missing pods
-	for _, newPodToAdd := range changes.ToAdd {
-		if changeStrategy.MaxConcurrentGrow <= currentConcurrentGrow {
-			msg := fmt.Sprintf("Hit the concurrent grow limit, currently growing at a rate of %d with %d non-deleted nodes", currentConcurrentGrow, len(resourcesState.CurrentPods))
-			log.Info(msg)
-			r.recorder.Event(&es, corev1.EventTypeNormal, "ConcurrentGrowLimitHit", msg)
-			break
-		} else {
-			currentConcurrentGrow++
-			msg := fmt.Sprintf("Adding a node, rate will now be %d with %d non-deleted nodes.", currentConcurrentGrow, len(resourcesState.CurrentPods)+1)
-			log.Info(msg)
-			r.recorder.Event(&es, corev1.EventTypeNormal, "ConcurrentGrowAccepted", msg)
+	log.Info("Created grouped change sets", "count", len(groupedChangeSets))
+
+	podsToScheduleForDeletion := make([]corev1.Pod, 0)
+
+	for groupIndex, groupedChangeSet := range groupedChangeSets {
+		// surge only makes sense if you have an "expected" count which we do not have?
+		// .. or is target = toKeep + toAdd - toRemove ?
+		targetPodsCount := len(groupedChangeSet.ChangeSet.ToKeep) +
+			len(groupedChangeSet.ChangeSet.ToAdd) // - len(groupedChangeSet.ChangeSet.ToRemove)
+
+		currentPodsCount := len(groupedChangeSet.PodsState.Pending) +
+			len(groupedChangeSet.PodsState.Joining) +
+			len(groupedChangeSet.PodsState.Operational) +
+			len(groupedChangeSet.PodsState.Migrating) +
+			len(groupedChangeSet.PodsState.Deleting)
+
+		currentSurge := currentPodsCount - targetPodsCount
+
+		currentOperationalPodsCount := len(groupedChangeSet.PodsState.Operational)
+		currentUnavailable := targetPodsCount - currentOperationalPodsCount
+
+		log.Info(
+			"State",
+			"group_index", groupIndex,
+			"current_pods_count", currentPodsCount,
+			"current_surge", currentSurge,
+			"current_operational_count", currentOperationalPodsCount,
+			"current_unavailable", currentUnavailable,
+			"target_pods_count", targetPodsCount,
+			"pending_pods", support.PodMapToNames(groupedChangeSet.PodsState.Pending),
+			"joining_pods", support.PodMapToNames(groupedChangeSet.PodsState.Joining),
+			"operational_pods", support.PodMapToNames(groupedChangeSet.PodsState.Operational),
+			"migrating_pods", support.PodMapToNames(groupedChangeSet.PodsState.Migrating),
+			"deleting_pods", support.PodMapToNames(groupedChangeSet.PodsState.Deleting),
+		)
+
+		// Grow cluster with missing pods
+		for _, newPodToAdd := range groupedChangeSet.ChangeSet.ToAdd {
+			if currentSurge >= groupedChangeSet.Definition.Strategy.MaxSurge {
+				msg := fmt.Sprintf(""+
+					"Hit the max surge limit in group %d, currently growing at a rate of %d with %d current pods",
+					groupIndex,
+					currentSurge,
+					currentPodsCount,
+				)
+				log.Info(msg)
+				r.recorder.Event(&es, corev1.EventTypeNormal, "MaxSurgeHit", msg)
+				break
+			} else {
+				currentSurge++
+				currentPodsCount++
+
+				msg := fmt.Sprintf(
+					"Adding a node in group %d, rate will now be %d with %d current pods.",
+					groupIndex,
+					currentSurge,
+					currentPodsCount,
+				)
+				log.Info(msg)
+				r.recorder.Event(&es, corev1.EventTypeNormal, "SurgeAllowed", msg)
+			}
+
+			toAddContext := groupedChangeSet.ChangeSet.ToAddContext[newPodToAdd.Name]
+
+			log.Info(fmt.Sprintf(
+				"Need to add pod because of the following mismatch reasons: %v",
+				toAddContext.MismatchReasons,
+			))
+			err := r.CreateElasticsearchPod(es, versionStrategy, newPodToAdd, toAddContext.PodSpecCtx)
+			if err != nil {
+				return reconcileState, err
+			}
+			// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
+			// settings change
 		}
 
-		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
-		err := r.CreateElasticsearchPod(es, versionStrategy, newPodToAdd.PodSpecCtx)
-		if err != nil {
-			return reconcileState, err
+		// Shrink clusters by deleting deprecated pods
+		for _, pod := range groupedChangeSet.ChangeSet.ToRemove {
+			// TODO: allow removing a pod if MaxUnavailable = 0 if all pods are operational.
+			if currentUnavailable >= groupedChangeSet.Definition.Strategy.MaxUnavailable {
+				msg := fmt.Sprintf(""+
+					"Hit the max unavailable limit in group %d, currently shrinking with an unavailability of %d with %d current operational pods",
+					groupIndex,
+					currentUnavailable,
+					currentOperationalPodsCount,
+				)
+				log.Info(msg)
+				r.recorder.Event(&es, corev1.EventTypeNormal, "MaxUnavailableHit", msg)
+				break
+			} else {
+				currentUnavailable++
+				currentOperationalPodsCount--
+
+				msg := fmt.Sprintf(
+					"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
+					groupIndex,
+					currentUnavailable,
+					currentOperationalPodsCount,
+				)
+				log.Info(msg)
+				r.recorder.Event(&es, corev1.EventTypeNormal, "DeletionAllowed", msg)
+			}
+
+			podsToScheduleForDeletion = append(podsToScheduleForDeletion, pod)
 		}
-		// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
-		// settings change
+
+		// if not parallelizable, break the loop if we have stuff to do or are waiting for some specific state.
+		if !groupedChangeSet.Definition.Strategy.Parallelizable {
+			if len(groupedChangeSet.ChangeSet.ToAdd) > 0 || len(groupedChangeSet.ChangeSet.ToRemove) > 0 {
+				// we have changes to perform
+				break
+			}
+			if len(groupedChangeSet.PodsState.Operational) != len(groupedChangeSet.ChangeSet.ToKeep) {
+				// we're waiting for some pods
+				break
+			}
+		}
 	}
 
 	// this needs to happen before we return on a non-breaking-error state:
@@ -455,7 +505,8 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+
+		// TODO: can't return here, got more work to do?
 		return reconcileState, nil
 	}
 
@@ -464,13 +515,18 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// cannot be reached, hence we cannot delete pods.
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
-		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
+		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.")
+
+		// TODO: this is only a partial state!
 		reconcileState.UpdateElasticsearchPending(defaultRequeue, resourcesState.CurrentPods)
+
+		// TODO: can't return here, got more work to do?
 		return reconcileState, nil
 	}
 
+	// TODO: calculate leaving node names better, this would be a partial list atm!
 	// Start migrating data away from all pods to be removed
-	leavingNodeNames := podListToNames(migratingPods)
+	leavingNodeNames := support.PodListToNames(podsToScheduleForDeletion)
 	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
 		return reconcileState, errors.Wrap(err, "Error during migrate data")
 	}
@@ -479,18 +535,17 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	copy(newState, resourcesState.CurrentPods)
 
 	// Shrink clusters by deleting deprecated pods
-	for _, pod := range changes.ToRemove {
+	for _, pod := range podsToScheduleForDeletion {
 		newState = remove(newState, pod)
 		preDelete := func() error {
 			return versionStrategy.UpdateDiscovery(esClient, newState)
 		}
-		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *resourcesState, observedState, pod, esClient, changes.ToRemove, preDelete)
+		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *resourcesState, observedState, pod, esClient, podsToScheduleForDeletion, preDelete)
 		if err != nil {
 			return reconcileState, err
 		}
 	}
 
-	reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	return reconcileState, nil
 }
 
@@ -507,13 +562,9 @@ func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
 	versionStrategy version.ElasticsearchVersionStrategy,
+	pod corev1.Pod,
 	podSpecCtx support.PodSpecContext,
 ) error {
-	pod, err := versionStrategy.NewPod(es, podSpecCtx)
-	if err != nil {
-		return err
-	}
-
 	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
 	// originating from the pod after it has started and produced a CSR
 	log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))

@@ -3,6 +3,7 @@ package support
 import (
 	"context"
 	"fmt"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"

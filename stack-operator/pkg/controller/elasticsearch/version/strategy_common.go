@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"fmt"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -182,16 +183,16 @@ func newPod(
 
 	// add labels for node types
 	if podSpecCtx.TopologySpec.NodeTypes.Master {
-		labels["elasticsearch.k8s.elastic.co/node-master"] = "true"
+		labels[support.NodeTypesMasterLabelName] = "true"
 	}
 	if podSpecCtx.TopologySpec.NodeTypes.Data {
-		labels["elasticsearch.k8s.elastic.co/node-data"] = "true"
+		labels[support.NodeTypesDataLabelName] = "true"
 	}
 	if podSpecCtx.TopologySpec.NodeTypes.Ingest {
-		labels["elasticsearch.k8s.elastic.co/node-ingest"] = "true"
+		labels[support.NodeTypesIngestLabelName] = "true"
 	}
 	if podSpecCtx.TopologySpec.NodeTypes.ML {
-		labels["elasticsearch.k8s.elastic.co/node-ml"] = "true"
+		labels[support.NodeTypesMLLabelName] = "true"
 	}
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider

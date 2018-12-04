@@ -95,6 +95,13 @@ spec:
                         type: array
                     type: object
                   type: array
+                updateStrategy:
+                  properties:
+                    groups:
+                      items:
+                        type: object
+                      type: array
+                  type: object
                 version:
                   type: string
               type: object
