@@ -36,13 +36,13 @@ func TestStackSample(t *testing.T) {
 
 	helpers.TestSuite{}.
 		// preliminary tests
-		WithTestCases(stack.InitTestCases(sampleStack, k)...).
+		WithTestSteps(stack.InitTestSteps(sampleStack, k)...).
 		// stack creation
-		WithTestCases(stack.CreationTestCases(sampleStack, k)...).
+		WithTestSteps(stack.CreationTestSteps(sampleStack, k)...).
 		// stack mutation
-		WithTestCases(stack.MutationTestCases(sampleStack, k)...).
+		WithTestSteps(stack.MutationTestSteps(sampleStack, k)...).
 		// stack deletion
-		WithTestCases(stack.DeletionTestCases(sampleStack, k)...).
+		WithTestSteps(stack.DeletionTestSteps(sampleStack, k)...).
 		// run!
 		RunSequential(t)
 }

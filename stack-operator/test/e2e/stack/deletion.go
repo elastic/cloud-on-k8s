@@ -11,9 +11,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// DeletionTestCases tests the deletion of the given stack
-func DeletionTestCases(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestCase {
-	return []helpers.TestCase{
+// DeletionTestSteps tests the deletion of the given stack
+func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
+	return []helpers.TestStep{
 
 		{
 			Name: "Deleting stack should return no error",

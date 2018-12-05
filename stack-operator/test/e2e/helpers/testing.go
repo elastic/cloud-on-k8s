@@ -36,30 +36,30 @@ func Eventually(f func() error) func(*testing.T) {
 	}
 }
 
-// TestCase represents a single test
-type TestCase struct {
+// TestStep represents a single test
+type TestStep struct {
 	Name string
 	Test func(t *testing.T)
 }
 
-// TestSuite allows running a serie of test cases
+// TestSuite allows running a serie of test steps
 type TestSuite struct {
-	tc []TestCase
+	ts []TestStep
 }
 
-// WithTestCases creates a new test suite with the given TestCases appended
+// WithTestSteps creates a new test suite with the given TestSteps appended
 // to the current ones
-func (ts TestSuite) WithTestCases(testCases ...TestCase) *TestSuite {
+func (ts TestSuite) WithTestSteps(TestSteps ...TestStep) *TestSuite {
 	return &TestSuite{
-		tc: append(ts.tc, testCases...),
+		ts: append(ts.ts, TestSteps...),
 	}
 }
 
 // RunSequential runs the TestSuite tests sequentially,
 // and fails fast on first error
 func (ts TestSuite) RunSequential(t *testing.T) {
-	for _, tc := range ts.tc {
-		if !t.Run(tc.Name, tc.Test) {
+	for _, ts := range ts.ts {
+		if !t.Run(ts.Name, ts.Test) {
 			fmt.Println("Test failure. Stopping early.")
 			t.FailNow()
 		}

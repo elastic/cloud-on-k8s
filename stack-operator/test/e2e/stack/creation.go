@@ -12,15 +12,15 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )
 
-// CreationTestCases tests the creation of the given stack.
+// CreationTestSteps tests the creation of the given stack.
 // The stack is not deleted at the end.
-func CreationTestCases(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestCase {
+func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
 	stackKey := types.NamespacedName{
 		Name:      stack.GetName(),
 		Namespace: stack.GetNamespace(),
 	}
 
-	return []helpers.TestCase{
+	return []helpers.TestStep{
 
 		{
 			Name: "Creating a stack should succeed",

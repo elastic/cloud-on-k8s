@@ -11,10 +11,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// InitTestCases includes pre-requisite tests (eg. is k8s accessible),
+// InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
 // and cleanup from previous tests
-func InitTestCases(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestCase {
-	return []helpers.TestCase{
+func InitTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
+	return []helpers.TestStep{
 
 		{
 			Name: "K8S should be accessible",

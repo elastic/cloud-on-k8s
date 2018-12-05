@@ -5,8 +5,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 )
 
-// MigrationTestCases tests version changes on the given stack
-func MigrationTestCases(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestCase {
+// MigrationTestSteps tests version changes on the given stack
+func MigrationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
 	// TODO :)
-	return []helpers.TestCase{}
+	return []helpers.TestStep{}
 }

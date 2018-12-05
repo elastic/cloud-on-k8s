@@ -5,8 +5,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 )
 
-// MutationTestCases tests topology changes on the given stack
-func MutationTestCases(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestCase {
+// MutationTestSteps tests topology changes on the given stack
+func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
 	// TODO :)
-	return []helpers.TestCase{}
+	return []helpers.TestStep{}
 }
