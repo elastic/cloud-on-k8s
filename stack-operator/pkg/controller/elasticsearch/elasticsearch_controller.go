@@ -197,6 +197,12 @@ func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (Reconc
 
 	// recoverable reconcile steps start here
 	var errs []error
+	res, err = r.reconcileNodeCertificateSecrets(*es)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	(&state).UpdateWithResult(res)
+
 	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
 		errs = append(errs, err)
