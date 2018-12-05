@@ -21,8 +21,9 @@ type ReconcileState struct {
 // resource state reset to empty.
 func NewReconcileState(request reconcile.Request, es *v1alpha1.ElasticsearchCluster) ReconcileState {
 	// reset status to reconstruct it during the reconcile cycle
+	originalEs := es.DeepCopy()
 	es.Status = v1alpha1.ElasticsearchStatus{}
-	return ReconcileState{Request: request, Elasticsearch: es, originalElasticsearch: es.DeepCopy()}
+	return ReconcileState{Request: request, Elasticsearch: es, originalElasticsearch: originalEs}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
