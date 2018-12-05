@@ -15,7 +15,7 @@ import (
 // Re-use the sample stack for e2e tests.
 // This is a way to make sure both the sample and the e2e tests are always up-to-date.
 // Path is relative to the e2e directory.
-const sampleStackFile = "../../config/samples/deployments_v1alpha1_stack.yaml"
+const sampleStackFile = "../fixture/deployments_v1alpha1_stack.yaml"
 
 // TestStackSample runs a complete test suite using the sample stack
 func TestStackSample(t *testing.T) {
