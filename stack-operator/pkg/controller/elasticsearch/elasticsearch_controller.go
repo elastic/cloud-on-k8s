@@ -150,8 +150,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (result re
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	// currently we don't need any state information from the functions above, so state collections starts here
+	
 	state := NewReconcileState(*es)
 	finalState, errs := r.internalReconcile(state)
 	err = r.updateStatus(&finalState)
