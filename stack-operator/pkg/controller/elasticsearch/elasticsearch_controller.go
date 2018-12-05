@@ -191,7 +191,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (result re
 
 	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
-		return state.Result(), err
+		log.Error(err, "Error during reconcile Elasticsearch pods, continuing")
 	}
 
 	res, err = r.ReconcileNodeCertificateSecrets(*es)
