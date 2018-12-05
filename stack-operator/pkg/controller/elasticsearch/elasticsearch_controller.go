@@ -346,147 +346,33 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	// sort changes into grouped sections?
 
 	allPodsState := support.NewPodsState(*resourcesState, observedState, changes)
-
-	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
-	toAddContext := make(map[string]support.PodToAdd, len(changes.ToAdd))
-	for i, podToAdd := range changes.ToAdd {
-		pod, err := versionStrategy.NewPod(es, podToAdd.PodSpecCtx)
-		if err != nil {
-			return reconcileState, err
-		}
-		podsToAdd[i] = pod
-		toAddContext[pod.Name] = podToAdd
-	}
-
-	allPodChanges := support.ChangeSet{
-		ToRemove: changes.ToRemove[:],
-		ToAdd:    podsToAdd,
-		ToKeep:   changes.ToKeep[:],
-
-		ToAddContext: toAddContext,
-	}
-
-	groupedChangeSets, err := support.CreateGroupedChangeSets(allPodChanges, allPodsState, es.Spec.UpdateStrategy.Groups)
+	allPodChanges, err := support.NewChangeSetFromChanges(
+		changes,
+		func(ctx support.PodSpecContext) (corev1.Pod, error) {
+			return versionStrategy.NewPod(es, ctx)
+		},
+	)
 	if err != nil {
 		return reconcileState, err
 	}
 
+	groupedChangeSets, err := support.CreateGroupedChangeSets(*allPodChanges, allPodsState, es.Spec.UpdateStrategy.Groups)
+	if err != nil {
+		return reconcileState, err
+	}
 	log.Info("Created grouped change sets", "count", len(groupedChangeSets))
 
-	podsToScheduleForDeletion := make([]corev1.Pod, 0)
+	// figure out what changes we can perform right now
+	performableChanges := support.NewPerformableChanges(groupedChangeSets)
+	log.Info(
+		"Got performable changes",
+		"creating_pods_count", len(performableChanges.Create),
+		"deleting_pods_count", len(performableChanges.ScheduleForDeletion),
+	)
 
-	for groupIndex, groupedChangeSet := range groupedChangeSets {
-		// surge only makes sense if you have an "expected" count which we do not have?
-		// .. or is target = toKeep + toAdd - toRemove ?
-		targetPodsCount := len(groupedChangeSet.ChangeSet.ToKeep) +
-			len(groupedChangeSet.ChangeSet.ToAdd) // - len(groupedChangeSet.ChangeSet.ToRemove)
-
-		currentPodsCount := len(groupedChangeSet.PodsState.Pending) +
-			len(groupedChangeSet.PodsState.Joining) +
-			len(groupedChangeSet.PodsState.Operational) +
-			len(groupedChangeSet.PodsState.Migrating) +
-			len(groupedChangeSet.PodsState.Deleting)
-
-		currentSurge := currentPodsCount - targetPodsCount
-
-		currentOperationalPodsCount := len(groupedChangeSet.PodsState.Operational)
-		currentUnavailable := targetPodsCount - currentOperationalPodsCount
-
-		log.Info(
-			"State",
-			"group_index", groupIndex,
-			"current_pods_count", currentPodsCount,
-			"current_surge", currentSurge,
-			"current_operational_count", currentOperationalPodsCount,
-			"current_unavailable", currentUnavailable,
-			"target_pods_count", targetPodsCount,
-			"pending_pods", support.PodMapToNames(groupedChangeSet.PodsState.Pending),
-			"joining_pods", support.PodMapToNames(groupedChangeSet.PodsState.Joining),
-			"operational_pods", support.PodMapToNames(groupedChangeSet.PodsState.Operational),
-			"migrating_pods", support.PodMapToNames(groupedChangeSet.PodsState.Migrating),
-			"deleting_pods", support.PodMapToNames(groupedChangeSet.PodsState.Deleting),
-		)
-
-		// Grow cluster with missing pods
-		for _, newPodToAdd := range groupedChangeSet.ChangeSet.ToAdd {
-			if currentSurge >= groupedChangeSet.Definition.Strategy.MaxSurge {
-				msg := fmt.Sprintf(""+
-					"Hit the max surge limit in group %d, currently growing at a rate of %d with %d current pods",
-					groupIndex,
-					currentSurge,
-					currentPodsCount,
-				)
-				log.Info(msg)
-				r.recorder.Event(&es, corev1.EventTypeNormal, "MaxSurgeHit", msg)
-				break
-			} else {
-				currentSurge++
-				currentPodsCount++
-
-				msg := fmt.Sprintf(
-					"Adding a node in group %d, rate will now be %d with %d current pods.",
-					groupIndex,
-					currentSurge,
-					currentPodsCount,
-				)
-				log.Info(msg)
-				r.recorder.Event(&es, corev1.EventTypeNormal, "SurgeAllowed", msg)
-			}
-
-			toAddContext := groupedChangeSet.ChangeSet.ToAddContext[newPodToAdd.Name]
-
-			log.Info(fmt.Sprintf(
-				"Need to add pod because of the following mismatch reasons: %v",
-				toAddContext.MismatchReasons,
-			))
-			err := r.CreateElasticsearchPod(es, versionStrategy, newPodToAdd, toAddContext.PodSpecCtx)
-			if err != nil {
-				return reconcileState, err
-			}
-			// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
-			// settings change
-		}
-
-		// Shrink clusters by deleting deprecated pods
-		for _, pod := range groupedChangeSet.ChangeSet.ToRemove {
-			// TODO: allow removing a pod if MaxUnavailable = 0 if all pods are operational.
-			if currentUnavailable >= groupedChangeSet.Definition.Strategy.MaxUnavailable {
-				msg := fmt.Sprintf(""+
-					"Hit the max unavailable limit in group %d, currently shrinking with an unavailability of %d with %d current operational pods",
-					groupIndex,
-					currentUnavailable,
-					currentOperationalPodsCount,
-				)
-				log.Info(msg)
-				r.recorder.Event(&es, corev1.EventTypeNormal, "MaxUnavailableHit", msg)
-				break
-			} else {
-				currentUnavailable++
-				currentOperationalPodsCount--
-
-				msg := fmt.Sprintf(
-					"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
-					groupIndex,
-					currentUnavailable,
-					currentOperationalPodsCount,
-				)
-				log.Info(msg)
-				r.recorder.Event(&es, corev1.EventTypeNormal, "DeletionAllowed", msg)
-			}
-
-			podsToScheduleForDeletion = append(podsToScheduleForDeletion, pod)
-		}
-
-		// if not parallelizable, break the loop if we have stuff to do or are waiting for some specific state.
-		if !groupedChangeSet.Definition.Strategy.Parallelizable {
-			if len(groupedChangeSet.ChangeSet.ToAdd) > 0 || len(groupedChangeSet.ChangeSet.ToRemove) > 0 {
-				// we have changes to perform
-				break
-			}
-			if len(groupedChangeSet.PodsState.Operational) != len(groupedChangeSet.ChangeSet.ToKeep) {
-				// we're waiting for some pods
-				break
-			}
+	for _, change := range performableChanges.Create {
+		if err := r.CreateElasticsearchPod(es, versionStrategy, change.Pod, change.PodSpecContext); err != nil {
+			return reconcileState, err
 		}
 	}
 
@@ -526,7 +412,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	// TODO: calculate leaving node names better, this would be a partial list atm!
 	// Start migrating data away from all pods to be removed
-	leavingNodeNames := support.PodListToNames(podsToScheduleForDeletion)
+	leavingNodeNames := support.PodListToNames(performableChanges.ScheduleForDeletion)
 	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
 		return reconcileState, errors.Wrap(err, "Error during migrate data")
 	}
@@ -535,12 +421,20 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	copy(newState, resourcesState.CurrentPods)
 
 	// Shrink clusters by deleting deprecated pods
-	for _, pod := range podsToScheduleForDeletion {
+	for _, pod := range performableChanges.ScheduleForDeletion {
 		newState = remove(newState, pod)
 		preDelete := func() error {
 			return versionStrategy.UpdateDiscovery(esClient, newState)
 		}
-		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *resourcesState, observedState, pod, esClient, podsToScheduleForDeletion, preDelete)
+		reconcileState, err = r.DeleteElasticsearchPod(
+			reconcileState,
+			*resourcesState,
+			observedState,
+			pod,
+			esClient,
+			performableChanges.ScheduleForDeletion,
+			preDelete,
+		)
 		if err != nil {
 			return reconcileState, err
 		}

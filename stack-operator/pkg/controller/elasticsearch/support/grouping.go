@@ -1,6 +1,7 @@
 package support
 
 import (
+	"fmt"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
@@ -19,6 +20,30 @@ type ChangeSet struct {
 // IsEmpty returns true if there are no topology changes to performed
 func (c ChangeSet) IsEmpty() bool {
 	return len(c.ToAdd) == 0 && len(c.ToRemove) == 0
+}
+
+func NewChangeSetFromChanges(
+	changes Changes,
+	newPod func(ctx PodSpecContext) (corev1.Pod, error),
+) (*ChangeSet, error) {
+	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
+	toAddContext := make(map[string]PodToAdd, len(changes.ToAdd))
+	for i, podToAdd := range changes.ToAdd {
+		pod, err := newPod(podToAdd.PodSpecCtx)
+		if err != nil {
+			return nil, err
+		}
+		podsToAdd[i] = pod
+		toAddContext[pod.Name] = podToAdd
+	}
+
+	return &ChangeSet{
+		ToRemove: changes.ToRemove[:],
+		ToAdd:    podsToAdd,
+		ToKeep:   changes.ToKeep[:],
+
+		ToAddContext: toAddContext,
+	}, nil
 }
 
 type GroupedChangeSet struct {
@@ -227,6 +252,9 @@ func NewPodsState(
 	// this is equal to changes.ToRemove for now, but could change to a sub-selection based on a future strategy
 	migratingPods := changes.ToRemove
 	for _, pod := range migratingPods {
+		// TODO: this may exist in other states as well, is that ok?
+		// technically we do not know whether it's entering migrating at this stage, but only after resolving the
+		// performable changes
 		podsState.Migrating[pod.Name] = pod
 	}
 
@@ -257,4 +285,133 @@ func PodMapToNames(pods map[string]corev1.Pod) []string {
 		i++
 	}
 	return names
+}
+
+type PerformableChanges struct {
+	Create              []CreatablePod
+	ScheduleForDeletion []corev1.Pod
+}
+
+type CreatablePod struct {
+	Pod            corev1.Pod
+	PodSpecContext PodSpecContext
+}
+
+func NewPerformableChanges(
+	groupedChangeSets []GroupedChangeSet,
+) PerformableChanges {
+	var result PerformableChanges
+
+	for groupIndex, groupedChangeSet := range groupedChangeSets {
+		// surge only makes sense if you have an "expected" count which we do not have?
+		// .. or is target = toKeep + toAdd - toRemove ?
+		targetPodsCount := len(groupedChangeSet.ChangeSet.ToKeep) +
+			len(groupedChangeSet.ChangeSet.ToAdd) // - len(groupedChangeSet.ChangeSet.ToRemove)
+
+		currentPodsCount := len(groupedChangeSet.PodsState.Pending) +
+			len(groupedChangeSet.PodsState.Joining) +
+			len(groupedChangeSet.PodsState.Operational) +
+		// TODO: migrating might be duplicating things from Operational, is this ok?
+			//len(groupedChangeSet.PodsState.Migrating) +
+			len(groupedChangeSet.PodsState.Deleting)
+
+		currentSurge := currentPodsCount - targetPodsCount
+
+		currentOperationalPodsCount := len(groupedChangeSet.PodsState.Operational)
+		currentUnavailable := targetPodsCount - currentOperationalPodsCount
+
+		log.Info(
+			"State",
+			"group_index", groupIndex,
+			"current_pods_count", currentPodsCount,
+			"current_surge", currentSurge,
+			"current_operational_count", currentOperationalPodsCount,
+			"current_unavailable", currentUnavailable,
+			"target_pods_count", targetPodsCount,
+			"pending_pods", PodMapToNames(groupedChangeSet.PodsState.Pending),
+			"joining_pods", PodMapToNames(groupedChangeSet.PodsState.Joining),
+			"operational_pods", PodMapToNames(groupedChangeSet.PodsState.Operational),
+			"migrating_pods", PodMapToNames(groupedChangeSet.PodsState.Migrating),
+			"deleting_pods", PodMapToNames(groupedChangeSet.PodsState.Deleting),
+		)
+
+		// Grow cluster with missing pods
+		for _, newPodToAdd := range groupedChangeSet.ChangeSet.ToAdd {
+			if currentSurge >= groupedChangeSet.Definition.Strategy.MaxSurge {
+				msg := fmt.Sprintf(""+
+					"Hit the max surge limit in group %d, currently growing at a rate of %d with %d current pods",
+					groupIndex,
+					currentSurge,
+					currentPodsCount,
+				)
+				log.Info(msg)
+				break
+			} else {
+				currentSurge++
+				currentPodsCount++
+
+				msg := fmt.Sprintf(
+					"Adding a node in group %d, rate will now be %d with %d current pods.",
+					groupIndex,
+					currentSurge,
+					currentPodsCount,
+				)
+				log.Info(msg)
+			}
+
+			toAddContext := groupedChangeSet.ChangeSet.ToAddContext[newPodToAdd.Name]
+
+			log.Info(fmt.Sprintf(
+				"Need to add pod because of the following mismatch reasons: %v",
+				toAddContext.MismatchReasons,
+			))
+
+			result.Create = append(
+				result.Create,
+				CreatablePod{Pod: newPodToAdd, PodSpecContext: toAddContext.PodSpecCtx},
+			)
+		}
+
+		// Shrink clusters by deleting deprecated pods
+		for _, pod := range groupedChangeSet.ChangeSet.ToRemove {
+			// TODO: allow removing a pod if MaxUnavailable = 0 if all pods are operational.
+			if currentUnavailable >= groupedChangeSet.Definition.Strategy.MaxUnavailable {
+				msg := fmt.Sprintf(""+
+					"Hit the max unavailable limit in group %d, currently shrinking with an unavailability of %d with %d current operational pods",
+					groupIndex,
+					currentUnavailable,
+					currentOperationalPodsCount,
+				)
+				log.Info(msg)
+				break
+			} else {
+				currentUnavailable++
+				currentOperationalPodsCount--
+
+				msg := fmt.Sprintf(
+					"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
+					groupIndex,
+					currentUnavailable,
+					currentOperationalPodsCount,
+				)
+				log.Info(msg)
+			}
+
+			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+		}
+
+		// if not parallelizable, break the loop if we have stuff to do or are waiting for some specific state.
+		if !groupedChangeSet.Definition.Strategy.Parallelizable {
+			if len(groupedChangeSet.ChangeSet.ToAdd) > 0 || len(groupedChangeSet.ChangeSet.ToRemove) > 0 {
+				// we have changes to perform
+				break
+			}
+			if len(groupedChangeSet.PodsState.Operational) != len(groupedChangeSet.ChangeSet.ToKeep) {
+				// we're waiting for some pods
+				break
+			}
+		}
+	}
+
+	return result
 }
