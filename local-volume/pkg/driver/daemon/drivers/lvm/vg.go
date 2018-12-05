@@ -30,7 +30,7 @@ type vgsOutput struct {
 }
 
 // LookupVolumeGroup returns the volume group with the given name
-func LookupVolumeGroup(newCmd cmdutil.FactoryFunc, name string) (VolumeGroup, error) {
+func LookupVolumeGroup(newCmd cmdutil.ExecutableFactory, name string) (VolumeGroup, error) {
 	var result vgsOutput
 	cmd := newCmd(
 		"vgs",
@@ -62,7 +62,7 @@ func roundUpTo512(n uint64) uint64 {
 //
 // The actual size may be larger than asked for as the smallest
 // increment is the size of an extent on the volume group in question.
-func (vg VolumeGroup) CreateLogicalVolume(newCmd cmdutil.FactoryFunc, name string, sizeInBytes uint64) (LogicalVolume, error) {
+func (vg VolumeGroup) CreateLogicalVolume(newCmd cmdutil.ExecutableFactory, name string, sizeInBytes uint64) (LogicalVolume, error) {
 	if err := ValidateLogicalVolumeName(name); err != nil {
 		return LogicalVolume{}, err
 	}
@@ -85,7 +85,7 @@ func (vg VolumeGroup) CreateLogicalVolume(newCmd cmdutil.FactoryFunc, name strin
 }
 
 // CreateThinPool creates a thin pool logical volume with the given name and size.
-func (vg VolumeGroup) CreateThinPool(newCmd cmdutil.FactoryFunc, name string) (ThinPool, error) {
+func (vg VolumeGroup) CreateThinPool(newCmd cmdutil.ExecutableFactory, name string) (ThinPool, error) {
 	if err := ValidateLogicalVolumeName(name); err != nil {
 		return ThinPool{}, err
 	}
@@ -105,7 +105,7 @@ func (vg VolumeGroup) CreateThinPool(newCmd cmdutil.FactoryFunc, name string) (T
 }
 
 // ListLogicalVolumes the logical volumes
-func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.FactoryFunc) ([]LogicalVolume, error) {
+func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.ExecutableFactory) ([]LogicalVolume, error) {
 	var result lvsOutput
 	cmd := newCmd(
 		"lvs",
@@ -128,7 +128,7 @@ func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.FactoryFunc) ([]LogicalV
 	return lvs, nil
 }
 
-func (vg VolumeGroup) lookupLV(newCmd cmdutil.FactoryFunc, name string) (lvsOutput, error) {
+func (vg VolumeGroup) lookupLV(newCmd cmdutil.ExecutableFactory, name string) (lvsOutput, error) {
 	var result lvsOutput
 	cmd := newCmd(
 		"lvs",
@@ -143,7 +143,7 @@ func (vg VolumeGroup) lookupLV(newCmd cmdutil.FactoryFunc, name string) (lvsOutp
 
 // LookupLogicalVolume looks up the logical volume with the given name
 // in the current volume group
-func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.FactoryFunc, name string) (LogicalVolume, error) {
+func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.ExecutableFactory, name string) (LogicalVolume, error) {
 	result, err := vg.lookupLV(newCmd, name)
 	if err != nil {
 		return LogicalVolume{}, err
@@ -163,7 +163,7 @@ func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.FactoryFunc, name strin
 }
 
 // LookupThinPool returns the thinpool with the given name
-func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.FactoryFunc, name string) (ThinPool, error) {
+func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.ExecutableFactory, name string) (ThinPool, error) {
 	result, err := vg.lookupLV(newCmd, name)
 	if err != nil {
 		return ThinPool{}, err
@@ -198,7 +198,7 @@ func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.FactoryFunc, name string) (T
 
 // GetOrCreateThinPool gets the thinpool with the given name,
 // or creates it if it does not exit
-func (vg VolumeGroup) GetOrCreateThinPool(newCmd cmdutil.FactoryFunc, name string) (ThinPool, error) {
+func (vg VolumeGroup) GetOrCreateThinPool(newCmd cmdutil.ExecutableFactory, name string) (ThinPool, error) {
 	thinPool, err := vg.LookupThinPool(newCmd, name)
 	if err != nil {
 		if err == ErrLogicalVolumeNotFound {

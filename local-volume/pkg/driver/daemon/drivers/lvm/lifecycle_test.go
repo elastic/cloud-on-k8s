@@ -23,7 +23,7 @@ func TestDriver_ListVolumes(t *testing.T) {
 		{
 			name: "failure VG Lookup",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{Err: errors.New("an error"), StdOutput: []byte("something bad")},
 				}),
 			}},
@@ -32,7 +32,7 @@ func TestDriver_ListVolumes(t *testing.T) {
 		{
 			name: "failure LV List",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{Err: errors.New("an error"), StdOutput: []byte("something bad")},
 				}),
@@ -42,7 +42,7 @@ func TestDriver_ListVolumes(t *testing.T) {
 		{
 			name: "Success",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvTp)},
 				}),
@@ -80,7 +80,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "failure VG Lookup",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{Err: errors.New("an error"), StdOutput: []byte("something bad")},
 				}),
 			}},
@@ -90,7 +90,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "failure VG Lookup VG not found returns nil",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(`{"report":null}`)},
 				}),
 			}},
@@ -100,7 +100,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "failure LV Lookup",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{Err: errors.New("an error"), StdOutput: []byte("something bad")},
 				}),
@@ -111,7 +111,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "failure LV Lookup LV not found returns nil",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(`{"report":null}`)},
 				}),
@@ -122,7 +122,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "failure LV remove",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvLookup)},
 					{Err: errors.New("an error"), StdOutput: []byte("something bad")},
@@ -134,7 +134,7 @@ func TestDriver_PurgeVolume(t *testing.T) {
 		{
 			name: "Success",
 			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+				ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 					{StdOutput: []byte(vgLookup)},
 					{StdOutput: []byte(lvLookup)},
 					{},

@@ -28,7 +28,7 @@ func createPathAndDelete(t *testing.T, p string) (string, func()) {
 
 func TestDriver_Mount(t *testing.T) {
 	type fields struct {
-		factoryFunc cmdutil.FactoryFunc
+		factoryFunc cmdutil.ExecutableFactory
 		mountPath   string
 		f           func(*testing.T, string) (string, func())
 	}
@@ -115,10 +115,8 @@ func TestDriver_Mount_MissingTargetPath(t *testing.T) {
 		path.Join(os.TempDir(), "some", "unexisting", "path"),
 		": no such file or directory",
 	))
-	got := d.Mount(
-		protocol.MountRequest{
-			TargetDir: path.Join(os.TempDir(), "some", "unexisting", "path"),
-		},
-	)
+	got := d.Mount(protocol.MountRequest{
+		TargetDir: path.Join(os.TempDir(), "some", "unexisting", "path"),
+	})
 	assert.Equal(t, want, got)
 }

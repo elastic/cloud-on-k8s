@@ -29,7 +29,7 @@ type lvsOutput struct {
 }
 
 // Path returns the device path for the logical volume.
-func (lv LogicalVolume) Path(newCmd cmdutil.FactoryFunc) (string, error) {
+func (lv LogicalVolume) Path(newCmd cmdutil.ExecutableFactory) (string, error) {
 	result := lvsOutput{}
 	cmd := newCmd(
 		"lvs",
@@ -49,7 +49,7 @@ func (lv LogicalVolume) Path(newCmd cmdutil.FactoryFunc) (string, error) {
 }
 
 // Remove the logical volume from the volume group
-func (lv LogicalVolume) Remove(newCmd cmdutil.FactoryFunc) error {
+func (lv LogicalVolume) Remove(newCmd cmdutil.ExecutableFactory) error {
 	return RunLVMCmd(newCmd(
 		"lvremove", "-f", lv.vg.name+"/"+lv.name,
 	), nil)

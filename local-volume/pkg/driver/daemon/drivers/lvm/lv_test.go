@@ -16,7 +16,7 @@ func TestLogicalVolume_Path(t *testing.T) {
 		vg          VolumeGroup
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 	}
 	tests := []struct {
 		name   string
@@ -86,7 +86,7 @@ func TestLogicalVolume_Remove(t *testing.T) {
 		vg          VolumeGroup
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 	}
 	tests := []struct {
 		name   string

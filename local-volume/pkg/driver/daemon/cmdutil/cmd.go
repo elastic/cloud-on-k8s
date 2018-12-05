@@ -8,11 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// FactoryFunc wraps command execution
-type FactoryFunc func(name string, args ...string) Executable
+// ExecutableFactory wraps command execution
+type ExecutableFactory func(name string, args ...string) Executable
 
-// NewWrappedCmdBuilder creates a new FactoryFunc with an exec.Cmd inside.
-func NewWrappedCmdBuilder() FactoryFunc {
+// NewExecutableFactory creates a new ExecutableFactory with an exec.Cmd inside.
+func NewExecutableFactory() ExecutableFactory {
 	return func(name string, args ...string) Executable {
 		c := WrappedCmd{Cmd: exec.Command(name, args...)}
 		c.stdErr, c.stdOut = new(bytes.Buffer), new(bytes.Buffer)

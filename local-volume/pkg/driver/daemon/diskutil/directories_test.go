@@ -14,9 +14,7 @@ func createPathAndDelete(t *testing.T, p string) (string, func()) {
 	}
 
 	createdPath, err := ioutil.TempDir("", p)
-	// if err := os.MkdirAll(p, 0775); err != nil {
 	if err != nil {
-
 		t.Fatal(err)
 	}
 	return createdPath, func() {

@@ -12,7 +12,7 @@ import (
 
 func TestDriver_Unmount(t *testing.T) {
 	type fields struct {
-		factoryFunc cmdutil.FactoryFunc
+		factoryFunc cmdutil.ExecutableFactory
 		mountPath   string
 	}
 	type args struct {

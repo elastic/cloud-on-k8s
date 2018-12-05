@@ -14,7 +14,7 @@ func TestThinPool_CreateThinVolume(t *testing.T) {
 		dataPercent   float64
 	}
 	type args struct {
-		newCmd             cmdutil.FactoryFunc
+		newCmd             cmdutil.ExecutableFactory
 		name               string
 		virtualSizeInBytes uint64
 	}

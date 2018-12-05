@@ -16,7 +16,7 @@ func TestFormatDevice(t *testing.T) {
 		Err:   errors.New("some error"),
 	}
 	type args struct {
-		newCmd     cmdutil.FactoryFunc
+		newCmd     cmdutil.ExecutableFactory
 		devicePath string
 		fstype     string
 		exec       cmdutil.Executable

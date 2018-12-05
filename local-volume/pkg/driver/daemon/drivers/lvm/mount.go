@@ -22,7 +22,7 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 		requestedSize = defaultSize
 	}
 
-	vg, err := LookupVolumeGroup(d.options.FactoryFunc, d.options.VolumeGroupName)
+	vg, err := LookupVolumeGroup(d.options.ExecutableFactory, d.options.VolumeGroupName)
 	if err != nil {
 		return flex.Failure(fmt.Sprintf("volume group %s does not seem to exist", d.options.VolumeGroupName))
 	}
@@ -38,17 +38,17 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 		return flex.Failure(err.Error())
 	}
 
-	lvPath, err := lv.Path(d.options.FactoryFunc)
+	lvPath, err := lv.Path(d.options.ExecutableFactory)
 	if err != nil {
 		return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
 	}
 
-	if err := diskutil.FormatDevice(d.options.FactoryFunc, lvPath, fsType); err != nil {
+	if err := diskutil.FormatDevice(d.options.ExecutableFactory, lvPath, fsType); err != nil {
 		return flex.Failure(fmt.Sprintf("cannot format logical volume %s as %s: %s", lv.name, fsType, err.Error()))
 	}
 
 	// mount device to the pods dir
-	if err := diskutil.MountDevice(d.options.FactoryFunc, lvPath, params.TargetDir); err != nil {
+	if err := diskutil.MountDevice(d.options.ExecutableFactory, lvPath, params.TargetDir); err != nil {
 		return flex.Failure(fmt.Sprintf("cannot mount device %s to %s: %s", lvPath, params.TargetDir, err.Error()))
 	}
 
@@ -66,11 +66,11 @@ func (d *Driver) CreateLV(vg VolumeGroup, name string, size uint64) (LogicalVolu
 
 // createThinLV creates a thin volume
 func (d *Driver) createThinLV(vg VolumeGroup, name string, virtualSize uint64) (LogicalVolume, error) {
-	thinPool, err := vg.GetOrCreateThinPool(d.options.FactoryFunc, d.options.ThinPoolName)
+	thinPool, err := vg.GetOrCreateThinPool(d.options.ExecutableFactory, d.options.ThinPoolName)
 	if err != nil {
 		return LogicalVolume{}, fmt.Errorf(fmt.Sprintf("cannot get or create thin pool %s: %s", d.options.ThinPoolName, err.Error()))
 	}
-	lv, err := thinPool.CreateThinVolume(d.options.FactoryFunc, name, virtualSize)
+	lv, err := thinPool.CreateThinVolume(d.options.ExecutableFactory, name, virtualSize)
 	if err != nil {
 		return LogicalVolume{}, fmt.Errorf(fmt.Sprintf("cannot create thin volume: %s", err.Error()))
 	}
@@ -82,7 +82,7 @@ func (d *Driver) createStandardLV(vg VolumeGroup, name string, size uint64) (Log
 	if vg.bytesFree < size {
 		return LogicalVolume{}, fmt.Errorf("not enough space left on volume group: available %d bytes, requested: %d bytes", vg.bytesFree, size)
 	}
-	lv, err := vg.CreateLogicalVolume(d.options.FactoryFunc, name, size)
+	lv, err := vg.CreateLogicalVolume(d.options.ExecutableFactory, name, size)
 	if err != nil {
 		return LogicalVolume{}, fmt.Errorf("cannot create logical volume: %s", err.Error())
 	}

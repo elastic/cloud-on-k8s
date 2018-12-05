@@ -32,7 +32,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "success",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{},
 					}),
@@ -58,7 +58,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "failure due thin pool CMD execution",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{
 							StdOutput: []byte("some output"),
 							Err:       errors.New("some error"),
@@ -83,7 +83,7 @@ func TestDriver_createThinLV(t *testing.T) {
 			name: "failure due CreateThinVolume CMD execution",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{
 							StdOutput: []byte("some output"),
@@ -138,7 +138,7 @@ func TestDriver_createStandardLV(t *testing.T) {
 			name: "success",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{},
 					}),
 					VolumeGroupName: "vg",
@@ -182,7 +182,7 @@ func TestDriver_createStandardLV(t *testing.T) {
 			name: "fails due to cmd execution failure",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{
 							StdOutput: []byte("some output"),
 							Err:       errors.New("some error"),
@@ -238,7 +238,7 @@ func TestDriver_CreateLV(t *testing.T) {
 			name: "success on Thin Volume",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvTp)},
 						{},
 					}),
@@ -261,7 +261,7 @@ func TestDriver_CreateLV(t *testing.T) {
 			name: "success on standard Volume",
 			fields: fields{
 				options: Options{
-					FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
+					ExecutableFactory: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
 						{StdOutput: []byte(lvNTp)},
 						{},
 					}),
@@ -294,163 +294,204 @@ func TestDriver_CreateLV(t *testing.T) {
 func TestDriver_Mount(t *testing.T) {
 	var vgLookup = `{"report":[{"vg":[{"vg_name":"vg","vg_uuid":"1231512521512","vg_size":"1234","vg_free":"1234","vg_extent_size":"1234","vg_extent_count":"1234","vg_free_count,string":"","vg_tags":"tag"}]}]}`
 	var lvTp = `{"report":[{"lv":[{"lv_name":"tp","vg_name":"vg","lv_path":"cc","lv_size":"1234","lv_tags":"tt","lv_layout":"thin,pool","data_percent":"23"}]}]}`
+	var (
+		vgLookupFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{Err: errors.New("something bad happened")},
+		}}
+		lvCreateFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},
+			{Err: errors.New("an error"), StdOutput: []byte("some out")},
+		}}
+		lvGetPathFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{Err: errors.New("an error"), StdOutput: []byte("some out")},
+		}}
+		lvFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{StdOutput: []byte(lvTp)},
+			{Err: errors.New("an error"), StdOutput: []byte("some out")},
+		}}
+		mountFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{Err: errors.New("an error"), StdOutput: []byte("some out")},
+		}}
+		success = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{StdOutput: []byte(lvTp)},
+			{},
+			{},
+		}}
+	)
 	type fields struct {
-		options Options
+		options  Options
+		fakeExec *cmdutil.FakeExecutables
 	}
 	type args struct {
 		params protocol.MountRequest
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   flex.Response
+		name         string
+		fields       fields
+		args         args
+		want         flex.Response
+		wantCommands [][]string
 	}{
 		{
 			name: "fails looking up VG",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{Err: errors.New("something bad happened")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: vgLookupFailure,
+				options: Options{
+					ExecutableFactory: vgLookupFailure.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				},
+			},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 			},
 			want: flex.Failure("volume group vg does not seem to exist"),
 		},
 		{
 			name: "fails creating LV",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{Err: errors.New("an error"), StdOutput: []byte("some out")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: lvCreateFailure,
+				options: Options{
+					ExecutableFactory: lvCreateFailure.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				},
+			},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 			},
 			want: flex.Failure("cannot get or create thin pool tp: some out"),
 		},
 		{
 			name: "fails obtaining the LV path",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{Err: errors.New("an error"), StdOutput: []byte("some out")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: lvGetPathFailure,
+				options: Options{
+					ExecutableFactory: lvGetPathFailure.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				},
+			},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
 			},
-			want: flex.Failure("cannot retrieve logical volume device path: some out"),
-		},
-		{
-			name: "fails obtaining the LV path",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{Err: errors.New("an error"), StdOutput: []byte("some out")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
-			args: args{
-				params: protocol.MountRequest{
-					TargetDir: path.Join("some", "path"),
-					Options:   protocol.MountOptions{},
-				},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
 			},
 			want: flex.Failure("cannot retrieve logical volume device path: some out"),
 		},
 		{
 			name: "fails formatting the LV path device",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{StdOutput: []byte(lvTp)},
-					{Err: errors.New("an error"), StdOutput: []byte("some out")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: lvFailure,
+				options: Options{
+					ExecutableFactory: lvFailure.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				},
+			},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
+				[]string{"mkfs", "-t", "ext4", "cc"},
 			},
 			want: flex.Failure("cannot format logical volume path as ext4: an error. Output: "),
 		},
 		{
 			name: "fails due to mount device erroring",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{Err: errors.New("an error"), StdOutput: []byte("some out")},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: mountFailure,
+				options: Options{
+					ExecutableFactory: mountFailure.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				},
+			},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
+				[]string{"mkfs", "-t", "ext4", "cc"},
+				[]string{"mount", "cc", "some/path"},
 			},
 			want: flex.Failure("cannot mount device cc to some/path: an error. Output: "),
 		},
 		{
 			name: "succeeds",
-			fields: fields{options: Options{
-				FactoryFunc: cmdutil.NewFakeCmdsBuilder([]*cmdutil.FakeExecutable{
-					{StdOutput: []byte(vgLookup)},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{StdOutput: []byte(lvTp)},
-					{},
-					{},
-				}),
-				VolumeGroupName: "vg",
-				UseThinVolumes:  true,
-				ThinPoolName:    "tp",
-			}},
+			fields: fields{
+				fakeExec: success,
+				options: Options{
+					ExecutableFactory: success.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				}},
 			args: args{
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
 				},
 			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
+				[]string{"mkfs", "-t", "ext4", "cc"},
+				[]string{"mount", "cc", "some/path"}},
 			want: flex.Success("successfully created the volume"),
 		},
 	}
@@ -461,6 +502,14 @@ func TestDriver_Mount(t *testing.T) {
 			}
 			got := d.Mount(tt.args.params)
 			assert.Equal(t, tt.want, got)
+
+			if tt.fields.fakeExec != nil {
+				assert.Equal(
+					t,
+					tt.wantCommands,
+					tt.fields.fakeExec.RecordedExecution(),
+				)
+			}
 		})
 	}
 }

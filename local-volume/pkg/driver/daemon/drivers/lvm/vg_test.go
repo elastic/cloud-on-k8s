@@ -12,7 +12,7 @@ import (
 func TestLookupVolumeGroup(t *testing.T) {
 	var success = `{"report":[{"vg":[{"vg_name":"vg","vg_uuid":"1231512521512","vg_size":"1234","vg_free":"1234","vg_extent_size":"1234","vg_extent_count":"1234","vg_free_count,string":"","vg_tags":"tag"}]}]}`
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {
@@ -70,7 +70,7 @@ func TestVolumeGroup_CreateLogicalVolume(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd      cmdutil.FactoryFunc
+		newCmd      cmdutil.ExecutableFactory
 		name        string
 		sizeInBytes uint64
 	}
@@ -148,7 +148,7 @@ func TestVolumeGroup_CreateThinPool(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {
@@ -214,7 +214,7 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {
@@ -276,7 +276,7 @@ func TestVolumeGroup_LookupLogicalVolume(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {
@@ -343,7 +343,7 @@ func TestVolumeGroup_LookupThinPool(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {
@@ -388,7 +388,7 @@ func TestVolumeGroup_ListLogicalVolumes(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 	}
 	tests := []struct {
 		name   string
@@ -435,7 +435,7 @@ func TestVolumeGroup_GetOrCreateThinPool(t *testing.T) {
 		bytesFree uint64
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		name   string
 	}
 	tests := []struct {

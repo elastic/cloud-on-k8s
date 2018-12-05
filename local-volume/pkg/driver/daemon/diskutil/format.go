@@ -5,7 +5,7 @@ import (
 )
 
 // FormatDevice formats the device at the given path with the given filesystem type
-func FormatDevice(newCmd cmdutil.FactoryFunc, devicePath, fstype string) error {
+func FormatDevice(newCmd cmdutil.ExecutableFactory, devicePath, fstype string) error {
 	cmd := newCmd("mkfs", "-t", fstype, devicePath)
 	if err := cmdutil.RunCmd(cmd); err != nil {
 		return err

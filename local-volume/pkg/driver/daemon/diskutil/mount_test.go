@@ -16,7 +16,7 @@ func TestBindMount(t *testing.T) {
 		Err:   errors.New("some error"),
 	}
 	type args struct {
-		newCmd cmdutil.FactoryFunc
+		newCmd cmdutil.ExecutableFactory
 		source string
 		target string
 		exec   cmdutil.Executable
@@ -65,7 +65,7 @@ func TestMountDevice(t *testing.T) {
 		Err:   errors.New("some error"),
 	}
 	type args struct {
-		newCmd     cmdutil.FactoryFunc
+		newCmd     cmdutil.ExecutableFactory
 		devicePath string
 		mountPath  string
 		exec       cmdutil.Executable
@@ -114,7 +114,7 @@ func TestUnmount(t *testing.T) {
 		Err:   errors.New("some error"),
 	}
 	type args struct {
-		newCmd    cmdutil.FactoryFunc
+		newCmd    cmdutil.ExecutableFactory
 		mountPath string
 		exec      cmdutil.Executable
 	}

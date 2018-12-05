@@ -10,7 +10,7 @@ import (
 
 func TestDriver_Init(t *testing.T) {
 	type fields struct {
-		factoryFunc cmdutil.FactoryFunc
+		factoryFunc cmdutil.ExecutableFactory
 		mountPath   string
 	}
 	tests := []struct {

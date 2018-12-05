@@ -27,10 +27,10 @@ func (d *Driver) Info() string {
 
 // Options defines parameters for the LVM driver
 type Options struct {
-	FactoryFunc     cmdutil.FactoryFunc
-	VolumeGroupName string
-	UseThinVolumes  bool
-	ThinPoolName    string
+	ExecutableFactory cmdutil.ExecutableFactory
+	VolumeGroupName   string
+	UseThinVolumes    bool
+	ThinPoolName      string
 }
 
 // NewDriver creates a new lvm.Driver with the given options

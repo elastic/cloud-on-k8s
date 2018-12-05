@@ -16,7 +16,7 @@ type ThinPool struct {
 }
 
 // CreateThinVolume creates a thin logical volume
-func (tp ThinPool) CreateThinVolume(newCmd cmdutil.FactoryFunc, name string, virtualSizeInBytes uint64) (LogicalVolume, error) {
+func (tp ThinPool) CreateThinVolume(newCmd cmdutil.ExecutableFactory, name string, virtualSizeInBytes uint64) (LogicalVolume, error) {
 	if err := ValidateLogicalVolumeName(name); err != nil {
 		return LogicalVolume{}, err
 	}

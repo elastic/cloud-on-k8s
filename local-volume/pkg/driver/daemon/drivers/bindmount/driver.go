@@ -14,13 +14,13 @@ const (
 
 // Driver handles bind mounts
 type Driver struct {
-	factoryFunc cmdutil.FactoryFunc
+	factoryFunc cmdutil.ExecutableFactory
 	mountPath   string
 }
 
 // Options for the BindMount driver.
 type Options struct {
-	Factory   cmdutil.FactoryFunc
+	Factory   cmdutil.ExecutableFactory
 	MountPath string
 }
 
