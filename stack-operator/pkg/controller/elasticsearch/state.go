@@ -55,7 +55,7 @@ func (s *ReconcileState) Result() reconcile.Result {
 	return s.result
 }
 
-func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrationPhase, state support.ResourcesState) {
+func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrationPhase, state support.ResourcesState) *ReconcileState {
 	s.status.ClusterUUID = state.ClusterState.ClusterUUID
 	s.status.MasterNode = state.ClusterState.MasterNodeName()
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(state.CurrentPods))
@@ -65,45 +65,54 @@ func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrati
 	if state.ClusterHealth.Status != "" {
 		s.status.Health = v1alpha1.ElasticsearchHealth(state.ClusterHealth.Status)
 	}
+	return s
 }
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s *ReconcileState) UpdateElasticsearchState(
 	state support.ResourcesState,
-) {
-	s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
+) *ReconcileState {
+	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
+}
+
+func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileState{
+	if nextTakesPrecedence(s.result, result) {
+		s.result = result
+	}
+	return s
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
-func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) {
+func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) *ReconcileState{
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
 	s.status.Phase = v1alpha1.ElasticsearchPendingPhase
 	s.status.Health = v1alpha1.ElasticsearchRedHealth
-	s.result = result
+	return s.UpdateWithResult(result)
 }
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *ReconcileState) UpdateElasticsearchMigrating(
 	result reconcile.Result,
 	state support.ResourcesState,
-) {
+) *ReconcileState{
 	s.AddEvent(
 		corev1.EventTypeNormal,
 		events.EventReasonDelayed,
 		"Requested topology change delayed by data migration",
 	)
 	s.status.Phase = v1alpha1.ElasticsearchMigratingDataPhase
-	s.result = result
-	s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, state)
+	s.UpdateWithResult(result)
+	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, state)
 }
 
 // AddEvent records the intent to emit a k8s event with the given attributes.
-func (s *ReconcileState) AddEvent(eventType, reason, message string) {
+func (s *ReconcileState) AddEvent(eventType, reason, message string) *ReconcileState{
 	s.events = append(s.events, Event{
 		eventType,
 		reason,
 		message,
 	})
+	return s
 }
 
 // Apply takes the current state applies it to the previous state and returns
@@ -139,4 +148,17 @@ func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 	}
 	s.cluster.Status = s.status
 	return s.events, &s.cluster
+}
+
+func nextTakesPrecedence(current reconcile.Result, next reconcile.Result) bool {
+	if current == next {
+		return false // no need to replace the result
+	}
+	if next.Requeue && !current.Requeue && current.RequeueAfter <= 0 {
+		return true // next requests requeue current does not, next takes precendence
+	}
+	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
+		return true // next requests a requeue and current does not or wants it only later
+	}
+	return false //default case
 }

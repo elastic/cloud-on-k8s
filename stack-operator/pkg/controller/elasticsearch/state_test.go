@@ -309,7 +309,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 			},
 			args: support.ResourcesState{},
 			stateAssertions: func(s *ReconcileState) {
-				assert.EqualValues(t, string(v1alpha1.ElasticsearchOperationalPhase), string(s.status.Phase))
+				assert.EqualValues(t, v1alpha1.ElasticsearchOperationalPhase, s.status.Phase)
 			},
 		},
 		{
@@ -352,6 +352,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 		name            string
 		cluster         v1alpha1.ElasticsearchCluster
 		args            args
+		fixture         func(s *ReconcileState)
 		stateAssertions func(s *ReconcileState)
 	}{
 		{
@@ -362,18 +363,84 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 				support.ResourcesState{},
 			},
 			stateAssertions: func(s *ReconcileState) {
-				assert.EqualValues(t, reconcile.Result{RequeueAfter: 10 * time.Minute}, s.Result())
-				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, string(s.status.Phase))
+				assert.Equal(t, reconcile.Result{RequeueAfter: 10 * time.Minute}, s.Result())
+				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
 				assert.Equal(t, []Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.events)
+			},
+		},
+		{
+			name:    "result aggregation",
+			cluster: v1alpha1.ElasticsearchCluster{},
+			args: args{
+				reconcile.Result{RequeueAfter: 10 * time.Minute},
+				support.ResourcesState{},
+			},
+			fixture: func(s *ReconcileState) {
+				s.UpdateWithResult(reconcile.Result{RequeueAfter: 10 * time.Second})
+			},
+			stateAssertions: func(s *ReconcileState) {
+				assert.Equal(t, reconcile.Result{RequeueAfter: 10 * time.Second}, s.Result())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewReconcileState(tt.cluster)
+			if tt.fixture != nil {
+				tt.fixture(&s)
+			}
 			s.UpdateElasticsearchMigrating(tt.args.result, tt.args.state)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(&s)
+			}
+		})
+	}
+}
+
+func Test_nextTakesPrecedence(t *testing.T) {
+	type args struct {
+		current reconcile.Result
+		next    reconcile.Result
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "identity",
+			args: args {},
+			want: false,
+		},
+		{
+			name: "generic requeue takes precedence over no requeue",
+			args: args{
+				current: reconcile.Result{},
+				next: reconcile.Result{Requeue:true},
+			},
+			want: true,
+		},
+		{
+			name: "shorter time to reconcile takes precedence",
+			args: args{
+				current: reconcile.Result{RequeueAfter:1 * time.Hour},
+				next: reconcile.Result{RequeueAfter:1 * time.Minute},
+			},
+			want: true,
+		},
+		{
+			name: "specific requeue trumps generic requeue",
+			args: args{
+				current: reconcile.Result{Requeue:true},
+				next: reconcile.Result{RequeueAfter:1 * time.Minute},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nextTakesPrecedence(tt.args.current, tt.args.next); got != tt.want {
+				t.Errorf("nextTakesPrecedence() = %v, want %v", got, tt.want)
 			}
 		})
 	}

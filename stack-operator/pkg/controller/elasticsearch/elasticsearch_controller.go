@@ -349,8 +349,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	if res, err := r.reconcileNodeCertificateSecrets(es); err != nil {
-		reconcileState.result = res
-		return reconcileState, err
+		return *reconcileState.UpdateWithResult(res), err
 	}
 
 	// Start migrating data away from all pods to be removed
