@@ -148,9 +148,11 @@ func TestReconcileState_Apply(t *testing.T) {
 			},
 			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
-				Health:           v1alpha1.ElasticsearchRedHealth,
-				Phase:            v1alpha1.ElasticsearchPendingPhase,
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health: v1alpha1.ElasticsearchRedHealth,
+				Phase:  v1alpha1.ElasticsearchPendingPhase,
 			},
 		},
 		{
@@ -173,10 +175,12 @@ func TestReconcileState_Apply(t *testing.T) {
 			},
 			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
-				Health:           v1alpha1.ElasticsearchRedHealth,
-				Phase:            v1alpha1.ElasticsearchOperationalPhase,
-				ClusterUUID:      "new",
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health:      v1alpha1.ElasticsearchRedHealth,
+				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				ClusterUUID: "new",
 			},
 		},
 		{
@@ -199,10 +203,12 @@ func TestReconcileState_Apply(t *testing.T) {
 			},
 			wantEvents: nil,
 			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
-				Health:           v1alpha1.ElasticsearchRedHealth,
-				Phase:            v1alpha1.ElasticsearchOperationalPhase,
-				ClusterUUID:      "old",
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health:      v1alpha1.ElasticsearchRedHealth,
+				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				ClusterUUID: "old",
 			},
 		},
 		{
@@ -228,14 +234,16 @@ func TestReconcileState_Apply(t *testing.T) {
 			},
 			wantEvents: []Event{{corev1.EventTypeNormal, events.EventReasonStateChange, "Master node is now new"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
-				Health:           v1alpha1.ElasticsearchRedHealth,
-				Phase:            v1alpha1.ElasticsearchOperationalPhase,
-				MasterNode:       "new",
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health:     v1alpha1.ElasticsearchRedHealth,
+				Phase:      v1alpha1.ElasticsearchOperationalPhase,
+				MasterNode: "new",
 			},
 		},
 		{
-			name: "ignore temporary moster loss for status",
+			name: "ignore temporary master loss for status",
 			cluster: v1alpha1.ElasticsearchCluster{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
@@ -254,10 +262,12 @@ func TestReconcileState_Apply(t *testing.T) {
 			},
 			wantEvents: nil,
 			wantStatus: &v1alpha1.ElasticsearchStatus{
-				ReconcilerStatus: v1alpha12.ReconcilerStatus{0},
-				Health:           v1alpha1.ElasticsearchRedHealth,
-				Phase:            v1alpha1.ElasticsearchOperationalPhase,
-				MasterNode:       "",
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health:     v1alpha1.ElasticsearchRedHealth,
+				Phase:      v1alpha1.ElasticsearchOperationalPhase,
+				MasterNode: "",
 			},
 		},
 	}
@@ -345,10 +355,10 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 		stateAssertions func(s *ReconcileState)
 	}{
 		{
-			name: "base case",
+			name:    "base case",
 			cluster: v1alpha1.ElasticsearchCluster{},
 			args: args{
-				reconcile.Result{RequeueAfter:10 * time.Minute},
+				reconcile.Result{RequeueAfter: 10 * time.Minute},
 				support.ResourcesState{},
 			},
 			stateAssertions: func(s *ReconcileState) {
