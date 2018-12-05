@@ -23,6 +23,10 @@ spec:
         securityContext:
           privileged: true
         env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         # enable for using the BINDMOUNT driver instead of the LVM one
         # - name: DRIVER_KIND
         #   value: "BINDMOUNT"

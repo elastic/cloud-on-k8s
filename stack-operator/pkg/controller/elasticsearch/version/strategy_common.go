@@ -23,7 +23,7 @@ var (
 func newExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
 ) ([]support.PodSpecContext, error) {
 	podSpecs := make([]support.PodSpecContext, 0, es.Spec.NodeCount())
@@ -61,7 +61,7 @@ func newExpectedPodSpecs(
 // podSpec creates a new PodSpec for an Elasticsearch node
 func podSpec(
 	p support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
 ) (corev1.PodSpec, error) {
 	imageName := common.Concat(support.DefaultImageRepository, ":", p.Version)
@@ -82,6 +82,14 @@ func podSpec(
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
 
+	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
+	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
+	nodeCertificatesVolume := support.NewSecretVolumeWithMountPath(
+		"",
+		support.NodeCertificatesSecretVolumeName,
+		support.NodeCertificatesSecretVolumeMountPath,
+	)
+
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
 	}
@@ -94,7 +102,7 @@ func podSpec(
 		Affinity: p.Affinity,
 
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, extraFilesSecretVolume),
+			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            support.DefaultContainerName,
@@ -125,6 +133,7 @@ func podSpec(
 				p.UsersSecretVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
+				nodeCertificatesVolume.VolumeMount(),
 			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,

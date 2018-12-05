@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
@@ -194,10 +193,6 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (result re
 		log.Error(err, "Error during reconcile Elasticsearch pods, continuing")
 	}
 
-	res, err = r.ReconcileNodeCertificateSecrets(*es)
-	if err != nil {
-		return res, err
-	}
 	err = r.ReconcileSnapshotterCronJob(*es, internalUsers.ControllerUser)
 	if err != nil {
 		return res, err
@@ -298,6 +293,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
+	log.Info(
+		"Going to apply the following topology changes",
+		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToRemove:", len(changes.ToRemove),
+		"iteration", atomic.LoadInt64(&r.iteration),
+	)
+
 	esReachable, err := r.IsPublicServiceReady(es)
 	if err != nil {
 		return reconcileState, err
@@ -326,10 +327,6 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, nil
 	}
 
-	log.Info("Going to apply the following topology changes",
-		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToRemove:", len(changes.ToRemove),
-		"iteration", atomic.LoadInt64(&r.iteration))
-
 	// Grow cluster with missing pods
 	for _, newPodToAdd := range changes.ToAdd {
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
@@ -349,6 +346,11 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
 		reconcileState.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
 		return reconcileState, nil
+	}
+
+	if res, err := r.reconcileNodeCertificateSecrets(es); err != nil {
+		reconcileState.result = res
+		return reconcileState, err
 	}
 
 	// Start migrating data away from all pods to be removed
@@ -398,21 +400,29 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 	if err != nil {
 		return err
 	}
-	if state.cluster.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
 
-		// create the node certificates secret for this pod, which is our promise that we will sign a CSR
-		// originating from the pod after it has started and produced a CSR
-		if err := nodecerts.EnsureNodeCertificateSecretExists(
-			r,
-			r.scheme,
-			&state.cluster,
-			pod,
-			nodecerts.LabelNodeCertificateTypeElasticsearchAll,
-		); err != nil {
-			return err
-		}
+	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+	// originating from the pod after it has started and produced a CSR
+	log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
+	nodeCertificatesSecret, err := nodecerts.EnsureNodeCertificateSecretExists(
+		r,
+		r.scheme,
+		&state.cluster,
+		pod,
+		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
+	)
+	if err != nil {
+		return err
 	}
+
+	// we finally have the node certificates secret made, so we can inject the secret volume into the pod
+	nodeCertificatesSecretVolume := support.NewSecretVolumeWithMountPath(
+		nodeCertificatesSecret.Name,
+		support.NodeCertificatesSecretVolumeName,
+		support.NodeCertificatesSecretVolumeMountPath,
+	)
+	// add the node certificates volume to volumes
+	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
 
 	// when can we re-use a v1.PersistentVolumeClaim?
 	// - It is the same size, storageclass etc, or resizable as such
@@ -556,7 +566,7 @@ func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) (reconcile.
 	return state.Result(), r.Status().Update(context.TODO(), cluster)
 }
 
-func (r *ReconcileElasticsearch) ReconcileNodeCertificateSecrets(
+func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")

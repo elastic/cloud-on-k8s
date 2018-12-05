@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
@@ -160,15 +159,11 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		User: auth,
 	}
 
-	if kb.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		kibanaPodSpecParams.ElasticsearchUrl = strings.Replace(kibanaPodSpecParams.ElasticsearchUrl, "http:", "https:", 1)
-	}
-
 	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)
 	labels := NewLabelsWithKibanaName(kb.Name)
 	podLabels := NewLabelsWithKibanaName(kb.Name)
 
-	if kb.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled && kb.Spec.Elasticsearch.CaCertSecret != nil {
+	if kb.Spec.Elasticsearch.CaCertSecret != nil {
 		// TODO: use kibanaCa to generate cert for deployment
 		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
 

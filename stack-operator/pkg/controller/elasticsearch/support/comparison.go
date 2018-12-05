@@ -57,15 +57,36 @@ func envVarsByName(vars []corev1.EnvVar) map[string]corev1.EnvVar {
 // compareEnvironmentVariables returns true if the given env vars can be considered equal
 // Note that it does not compare referenced values (eg. from secrets)
 func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVar) Comparison {
-	actualByName := envVarsByName(actual)
+	actualUnmatchedByName := envVarsByName(actual)
 	expectedByName := envVarsByName(expected)
-	for _, v := range comparableEnvVars {
-		actualVar, inActual := actualByName[v]
-		expectedVar, inExpected := expectedByName[v]
-		if inActual != inExpected || actualVar.Value != expectedVar.Value {
-			return ComparisonMismatch(fmt.Sprintf("Environment variable %s mismatch: expected %s, actual %s", v, expectedVar.Value, actualVar.Value))
-		}
+
+	// handle ignored vars do not require matching
+	for _, k := range ignoredVarsDuringComparison {
+		delete(actualUnmatchedByName, k)
+		delete(expectedByName, k)
 	}
+
+	// for each expected, verify actual has a corresponding, equal (by value) entry
+	for k, expectedVar := range expectedByName {
+		actualVar, inActual := actualUnmatchedByName[k]
+		if !inActual || actualVar.Value != expectedVar.Value {
+			return ComparisonMismatch(fmt.Sprintf(
+				"Environment variable %s mismatch: expected [%s], actual [%s]",
+				k,
+				expectedVar.Value,
+				actualVar.Value,
+			))
+		}
+
+		// delete from actual unmatched as it was matched
+		delete(actualUnmatchedByName, k)
+	}
+
+	// if there's remaining entries in actualUnmatchedByName, it's not a match.
+	if len(actualUnmatchedByName) > 0 {
+		return ComparisonMismatch(fmt.Sprintf("Actual has additional env variables: %v", actualUnmatchedByName))
+	}
+
 	return ComparisonMatch
 }
 
@@ -244,11 +265,6 @@ func podMatchesSpec(pod corev1.Pod, spec PodSpecContext, state ResourcesState) (
 		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.TopologySpec.VolumeClaimTemplates, state),
 		// Non-exhaustive list of ignored stuff:
 		// - pod labels
-		// - node name
-		// - discovery.zen.ping.unicast.hosts
-		// - cluster.name
-		// - discovery.zen.minimum_master_nodes
-		// - network.host
 		// - probe password
 		// - volume and volume mounts
 		// - readiness probe

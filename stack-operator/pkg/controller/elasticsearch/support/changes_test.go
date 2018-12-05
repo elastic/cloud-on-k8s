@@ -7,8 +7,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var defaultPod = ESPod(defaultNodeData, defaultImage, defaultCPULimit)
-var defaultPodSpecCtx = ESPodSpecContext(defaultNodeData, defaultImage, defaultCPULimit)
+var defaultPod = ESPod(defaultImage, defaultCPULimit)
+var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
 func TestCalculateChanges(t *testing.T) {
 	var taintedPod = defaultPod
@@ -52,13 +52,13 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "1 pod replaced",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)},
+				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
 				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
 				ToRemove: []corev1.Pod{defaultPod},
-				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext(defaultNodeData, "another-image", defaultCPULimit)}},
+				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
 			},
 		},
 		{

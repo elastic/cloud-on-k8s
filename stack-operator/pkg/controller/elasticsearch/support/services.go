@@ -3,7 +3,6 @@ package support
 import (
 	"strconv"
 
-	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
@@ -56,11 +55,7 @@ func PublicServiceName(esName string) string {
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	scheme := "http"
-	if es.Spec.FeatureFlags.Get(commonv1alpha1.FeatureFlagNodeCertificates).Enabled {
-		scheme = "https"
-	}
-	return common.Concat(scheme, "://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
+	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
