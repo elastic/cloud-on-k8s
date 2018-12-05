@@ -409,30 +409,30 @@ func Test_nextTakesPrecedence(t *testing.T) {
 	}{
 		{
 			name: "identity",
-			args: args {},
+			args: args{},
 			want: false,
 		},
 		{
 			name: "generic requeue takes precedence over no requeue",
 			args: args{
 				current: reconcile.Result{},
-				next: reconcile.Result{Requeue:true},
+				next:    reconcile.Result{Requeue: true},
 			},
 			want: true,
 		},
 		{
 			name: "shorter time to reconcile takes precedence",
 			args: args{
-				current: reconcile.Result{RequeueAfter:1 * time.Hour},
-				next: reconcile.Result{RequeueAfter:1 * time.Minute},
+				current: reconcile.Result{RequeueAfter: 1 * time.Hour},
+				next:    reconcile.Result{RequeueAfter: 1 * time.Minute},
 			},
 			want: true,
 		},
 		{
 			name: "specific requeue trumps generic requeue",
 			args: args{
-				current: reconcile.Result{Requeue:true},
-				next: reconcile.Result{RequeueAfter:1 * time.Minute},
+				current: reconcile.Result{Requeue: true},
+				next:    reconcile.Result{RequeueAfter: 1 * time.Minute},
 			},
 			want: true,
 		},

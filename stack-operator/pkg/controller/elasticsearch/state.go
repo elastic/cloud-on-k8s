@@ -75,7 +75,7 @@ func (s *ReconcileState) UpdateElasticsearchState(
 	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
 }
 
-func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileState{
+func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileState {
 	if nextTakesPrecedence(s.result, result) {
 		s.result = result
 	}
@@ -83,7 +83,7 @@ func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileSta
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
-func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) *ReconcileState{
+func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) *ReconcileState {
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
 	s.status.Phase = v1alpha1.ElasticsearchPendingPhase
 	s.status.Health = v1alpha1.ElasticsearchRedHealth
@@ -94,7 +94,7 @@ func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pod
 func (s *ReconcileState) UpdateElasticsearchMigrating(
 	result reconcile.Result,
 	state support.ResourcesState,
-) *ReconcileState{
+) *ReconcileState {
 	s.AddEvent(
 		corev1.EventTypeNormal,
 		events.EventReasonDelayed,
@@ -106,7 +106,7 @@ func (s *ReconcileState) UpdateElasticsearchMigrating(
 }
 
 // AddEvent records the intent to emit a k8s event with the given attributes.
-func (s *ReconcileState) AddEvent(eventType, reason, message string) *ReconcileState{
+func (s *ReconcileState) AddEvent(eventType, reason, message string) *ReconcileState {
 	s.events = append(s.events, Event{
 		eventType,
 		reason,

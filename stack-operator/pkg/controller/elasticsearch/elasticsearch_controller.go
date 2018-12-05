@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
@@ -149,55 +151,64 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (result re
 		return reconcile.Result{}, err
 	}
 
+	// currently we don't need any state information from the functions above, so state collections starts here
+	state := NewReconcileState(*es)
+	finalState, errs := r.internalReconcile(state)
+	err = r.updateStatus(&finalState)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	return finalState.Result(), k8serrors.NewAggregate(errs)
+
+}
+
+func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (ReconcileState, []error) {
+	es := &state.cluster
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, []error{err}
 	}
 
 	esVersionStrategy, err := version.LookupStrategy(*ver)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, []error{err}
 	}
 
 	res, err := common.ReconcileService(r, r.scheme, support.NewDiscoveryService(*es), es)
 	if err != nil {
-		return res, err
+		return state, []error{err}
 	}
+	(&state).UpdateWithResult(res)
 	res, err = common.ReconcileService(r, r.scheme, support.NewPublicService(*es), es)
 	if err != nil {
-		return res, err
+		return state, []error{err}
+	}
+	(&state).UpdateWithResult(res)
+
+	// TODO: suffix with type (es?) and trim
+	clusterCAPublicSecretObjectKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
+	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, es, r.scheme); err != nil {
+		return state, []error{err}
 	}
 
 	internalUsers, err := r.reconcileUsers(es)
 	if err != nil {
-		return reconcile.Result{}, err
+		return state, []error{err}
 	}
 
-	// TODO: suffix with type (es?) and trim
-	clusterCAPublicSecretObjectKey := request.NamespacedName
-	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, es, r.scheme); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// currently we don't need any state information from the functions above, so state collections starts here
-	state := NewReconcileState(*es)
-	defer func() {
-		_, e := r.updateStatus(&state)
-		if e != nil {
-			err = e
-		}
-	}()
-
+	// recoverable reconcile steps start here
+	var errs []error
 	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
+		errs = append(errs, err)
 		log.Error(err, "Error during reconcile Elasticsearch pods, continuing")
 	}
 
 	err = r.ReconcileSnapshotterCronJob(*es, internalUsers.ControllerUser)
 	if err != nil {
-		return res, err
+		errs = append(errs, err)
 	}
-	return state.Result(), nil
+	return state, errs
 
 }
 
@@ -551,7 +562,7 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	return reconcileState, nil
 }
 
-func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) (reconcile.Result, error) {
+func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) error {
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	resource := &state.cluster
 	events, cluster := state.Apply()
@@ -560,9 +571,9 @@ func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) (reconcile.
 		r.recorder.Event(resource, evt.EventType, evt.Reason, evt.Message)
 	}
 	if cluster == nil {
-		return state.Result(), nil
+		return nil
 	}
-	return state.Result(), r.Status().Update(context.TODO(), cluster)
+	return r.Status().Update(context.TODO(), cluster)
 }
 
 func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
