@@ -18,8 +18,6 @@ import (
 const (
 	driverKindFlag = "driver-kind"
 
-	bindMountPath = "bindmount-mount-path"
-
 	lvmVolumeGroupFlag    = "lvm-volume-group"
 	lvmUseThinVolumesFlag = "lvm-use-thin-volumes"
 	lvmThinPoolFlag       = "lvm-thin-pool"
@@ -37,7 +35,7 @@ var rootCmd = &cobra.Command{
 		driverOpts := drivers.Options{
 			BindMount: bindmount.Options{
 				Factory:   cmdutil.NewWrappedCmdBuilder(),
-				MountPath: viper.GetString(bindMountPath),
+				MountPath: bindmount.DefaultContainerMountPath,
 			},
 			LVM: lvm.Options{
 				FactoryFunc:     cmdutil.NewWrappedCmdBuilder(),
@@ -61,9 +59,6 @@ func main() {
 
 	// Driver kind
 	flags.String(driverKindFlag, lvm.DriverKind, "Driver kind (eg. LVM or BINDMOUNT)")
-
-	// BINDMOUNT flags
-	flags.String(bindMountPath, bindmount.DefaultContainerMountPath, "default bindmount mount path")
 
 	// LVM flags
 	flags.String(lvmVolumeGroupFlag, lvm.DefaultVolumeGroup, "LVM Volume Group to be used for provisioning logical volumes")
