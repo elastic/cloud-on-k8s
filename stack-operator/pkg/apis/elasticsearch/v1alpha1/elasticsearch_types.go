@@ -143,8 +143,34 @@ type GroupingDefinition struct {
 
 // GroupChangeStrategy defines how Pods in a single group should be updated.
 type GroupChangeStrategy struct {
-	MaxSurge       int  `json:"maxSurge,omitempty"`
-	MaxUnavailable int  `json:"maxUnavailable,omitempty"`
+	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
+	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
+
+	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
+	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
+	// Absolute number is calculated from percentage by rounding down.
+	// This can not be 0 if MaxSurge is 0.
+	// By default, a fixed value of 1 is used.
+	// Example: when this is set to 30%, the group can be scaled down by 30%
+	// immediately when the rolling update starts. Once new pods are ready, the group
+	// can be scaled down further, followed by scaling up the group, ensuring
+	// that at least 70% of the target number of pods are available at all times
+	// during the update.
+	MaxUnavailable int `json:"maxUnavailable,omitempty"`
+
+	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
+	// pods.
+	// Value can be an absolute number (ex: 5) or a percentage of total pods at
+	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0.
+	// Absolute number is calculated from percentage by rounding up.
+	// Example: when this is set to 30%, the new group can be scaled up by 30%
+	// immediately when the rolling update starts. Once old pods have been killed,
+	// new group can be scaled up further, ensuring that total number of pods running
+	// at any time during the update is at most 130% of the target number of pods.
+	MaxSurge int `json:"maxSurge,omitempty"`
+
+	// Parallelizable if true allows the next group after this to be processed even if this group (or any prior group)
+	// still have not fully completed.
 	Parallelizable bool `json:"parallelizable,omitempty"`
 }
 
@@ -156,7 +182,7 @@ var DefaultFallbackGroupingDefinition = GroupingDefinition{
 	// a strategy that might not be the most effective, but should work in every case
 	Strategy: GroupChangeStrategy{
 		MaxSurge:       1,
-		MaxUnavailable: 1,
+		MaxUnavailable: 0,
 		Parallelizable: false,
 	},
 }

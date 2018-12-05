@@ -78,30 +78,35 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to Elasticsearch
-	err = c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
+	if err := c.Watch(
+		&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
+	); err != nil {
 		return err
 	}
 
 	// watch any pods created by Elasticsearch
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	if err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
-	})
-	if err != nil {
+	}); err != nil {
 		return err
 	}
+
 	// Watch services
-	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+	if err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
-	})
+	}); err != nil {
+		return err
+	}
 
 	// Watch secrets
-	err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+	if err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
-	})
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -128,6 +133,8 @@ type ReconcileElasticsearch struct {
 // +kubebuilder:rbac:groups=,resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters;elasticsearchclusters/status,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -315,37 +322,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 	}
 
-	// figure out which phase we're in
-	// perhaps it's not as simple as a string?
-	//phase := "operational"
-
-	// there may be pods in the above categories that exist in the changes.ToRemove set. e.g it can both be in
-	// joiningPods and ToRemove at the same time.
-	//
-
-	//optimisticFutureReadyPodCount := len(resourcesState.CurrentPodsByPhase[corev1.PodPending]) +
-	//	len(resourcesState.CurrentPodsByPhase[corev1.PodRunning])
-
-	//if len(pendingPods) > 0 {
-	//	msg := fmt.Sprintf("Waiting for pending pods: %v", podListToNames(pendingPods))
-	//	r.recorder.Event(&es, corev1.EventTypeNormal, "WaitingForPendingPods", msg)
-	//}
-	//
-	//if len(joiningPods) > 0 {
-	//	msg := fmt.Sprintf("Waiting for joiners: %v", podListToNames(joiningPods))
-	//	r.recorder.Event(&es, corev1.EventTypeNormal, "WaitingForJoiningNodes", msg)
-	//}
-
-	// convert master nodes to new topology first, keeping careful track of master nodes
-	// then any remaining in any order
-	// consider availability within each class manipulating nodes
-
-	// what if an external process deletes master pods from right under us? or they become unavailable for some reason?
-	// in that case, we need to ensure we always attempt to add enough nodes back (ignoring grow limits?)
-
-	// sort changes into grouped sections?
-
-	allPodsState := support.NewPodsState(*resourcesState, observedState, changes)
+	allPodsState := support.NewPodsState(*resourcesState, observedState)
 	allPodChanges, err := support.NewChangeSetFromChanges(
 		changes,
 		func(ctx support.PodSpecContext) (corev1.Pod, error) {
@@ -356,21 +333,29 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
-	groupedChangeSets, err := support.CreateGroupedChangeSets(*allPodChanges, allPodsState, es.Spec.UpdateStrategy.Groups)
+	groupedChangeSets, err := allPodChanges.Group(es.Spec.UpdateStrategy.Groups, allPodsState)
 	if err != nil {
 		return reconcileState, err
 	}
 	log.Info("Created grouped change sets", "count", len(groupedChangeSets))
 
+	// validate that only one changeset contains master nodes as a safeguard
+	if err := groupedChangeSets.ValidateMasterChanges(); err != nil {
+		return reconcileState, err
+	}
+
 	// figure out what changes we can perform right now
-	performableChanges := support.NewPerformableChanges(groupedChangeSets)
+	performableChanges, err := groupedChangeSets.CalculatePerformableChanges()
+	if err != nil {
+		return reconcileState, err
+	}
 	log.Info(
 		"Got performable changes",
-		"creating_pods_count", len(performableChanges.Create),
+		"creating_pods_count", len(performableChanges.ScheduleForCreation),
 		"deleting_pods_count", len(performableChanges.ScheduleForDeletion),
 	)
 
-	for _, change := range performableChanges.Create {
+	for _, change := range performableChanges.ScheduleForCreation {
 		if err := r.CreateElasticsearchPod(es, versionStrategy, change.Pod, change.PodSpecContext); err != nil {
 			return reconcileState, err
 		}
@@ -437,6 +422,14 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		)
 		if err != nil {
 			return reconcileState, err
+		}
+	}
+
+	if !changes.IsEmpty() && performableChanges.IsEmpty() {
+		// if there are changes we'd like to perform, but none that were performable, we try again later
+		reconcileState.Result = reconcile.Result{
+			Requeue:true,
+			RequeueAfter: 10 * time.Second,
 		}
 	}
 

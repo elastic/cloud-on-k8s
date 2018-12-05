@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
+
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -78,22 +80,25 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to the Stack
-	err = c.Watch(&source.Kind{Type: &deploymentsv1alpha1.Stack{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
+	if err := c.Watch(&source.Kind{Type: &deploymentsv1alpha1.Stack{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch elasticsearch cluster objects
-	err = c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &deploymentsv1alpha1.Stack{},
-	})
+	}); err != nil {
+		return err
+	}
 
 	// Watch kibana objects
-	err = c.Watch(&source.Kind{Type: &v1alpha12.Kibana{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &v1alpha12.Kibana{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &deploymentsv1alpha1.Stack{},
-	})
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -120,6 +125,7 @@ type ReconcileStack struct {
 // +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=kibana.k8s.elastic.co,resources=kibanas,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -155,10 +161,14 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO this merging of feature flags look ripe for a generalized function
-	es.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags)
-	for k, v := range stack.Spec.FeatureFlags {
-		if _, ok := es.Spec.FeatureFlags[k]; !ok {
-			es.Spec.FeatureFlags[k] = v
+	if stack.Spec.FeatureFlags != nil {
+		if es.Spec.FeatureFlags == nil {
+			es.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags, len(stack.Spec.FeatureFlags))
+		}
+		for k, v := range stack.Spec.FeatureFlags {
+			if _, ok := es.Spec.FeatureFlags[k]; !ok {
+				es.Spec.FeatureFlags[k] = v
+			}
 		}
 	}
 
@@ -181,6 +191,14 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		// TODO: this is a bit rough
 		if !reflect.DeepEqual(currentEs.Spec, es.Spec) {
 			log.Info("Updating ElasticsearchCluster spec")
+
+			log.V(2).Info(
+				fmt.Sprintf(
+					"Updating ElasticsearchCluster spec due to changes: %s",
+					diff.NewDiff(currentEs.Spec, es.Spec),
+				),
+			)
+
 			currentEs.Spec = es.Spec
 			if err := r.Update(context.TODO(), &currentEs); err != nil {
 				return reconcile.Result{}, err
@@ -201,10 +219,14 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO this merging of feature flags look ripe for a generalized function
-	kb.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags)
-	for k, v := range stack.Spec.FeatureFlags {
-		if _, ok := kb.Spec.FeatureFlags[k]; !ok {
-			kb.Spec.FeatureFlags[k] = v
+	if stack.Spec.FeatureFlags != nil {
+		if kb.Spec.FeatureFlags == nil {
+			kb.Spec.FeatureFlags = make(commonv1alpha1.FeatureFlags, len(stack.Spec.FeatureFlags))
+		}
+		for k, v := range stack.Spec.FeatureFlags {
+			if _, ok := kb.Spec.FeatureFlags[k]; !ok {
+				kb.Spec.FeatureFlags[k] = v
+			}
 		}
 	}
 

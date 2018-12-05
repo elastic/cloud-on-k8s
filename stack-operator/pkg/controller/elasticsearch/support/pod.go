@@ -77,3 +77,12 @@ type PodSpecContext struct {
 	PodSpec      corev1.PodSpec
 	TopologySpec v1alpha1.ElasticsearchTopologySpec
 }
+
+// PodListToNames returns a list of pod names from the list of pods.
+func PodListToNames(pods []corev1.Pod) []string {
+	names := make([]string, len(pods))
+	for i, pod := range pods {
+		names[i] = pod.Name
+	}
+	return names
+}

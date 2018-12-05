@@ -13,9 +13,9 @@ type Changes struct {
 	ToRemove []corev1.Pod
 }
 
-// SortPodByName is a sort function for a list of pods
-func SortPodByName(pods []corev1.Pod) func(i, j int) bool {
-	return func(i, j int) bool { return pods[i].Name < pods[j].Name }
+// SortPodByCreationTimestamp is a sort function for a list of pods
+func SortPodByCreationTimestamp(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
 }
 
 // PodToAdd defines a pod to be added, along with
@@ -74,9 +74,8 @@ func mutableCalculateChanges(
 	changes.ToRemove = actualPods
 
 	// sort changes for idempotent processing
-	// TODO: smart sort  to process nodes in a particular order
-	sort.SliceStable(changes.ToKeep, SortPodByName(changes.ToKeep))
-	sort.SliceStable(changes.ToRemove, SortPodByName(changes.ToRemove))
+	sort.SliceStable(changes.ToKeep, SortPodByCreationTimestamp(changes.ToKeep))
+	sort.SliceStable(changes.ToRemove, SortPodByCreationTimestamp(changes.ToRemove))
 
 	return changes, nil
 }

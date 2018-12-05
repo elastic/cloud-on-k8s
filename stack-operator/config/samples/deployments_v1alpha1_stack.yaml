@@ -6,11 +6,16 @@ metadata:
   name: stack-sample
 spec:
   version: "6.4.2"
-  featureFlags:
-    nodeCertificates:
-      enabled: true
   elasticsearch:
     setVmMaxMapCount: true
+    updateStrategy:
+      groups:
+      # update master nodes first:
+      - selector:
+          matchLabels:
+            elasticsearch.k8s.elastic.co/node-master: "true"
+        strategy:
+          maxSurge: 1
     topologies:
     - nodeTypes:
         master: true
@@ -36,6 +41,26 @@ spec:
       #    resources:
       #      requests:
       #        storage: 2Gi
+    # dedicated masters:
+    - nodeTypes:
+        master: true
+        data: false
+        ingest: false
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 800m
+      nodeCount: 0
+    # dedicated data nodes
+    - nodeTypes:
+        master: false
+        data: true
+        ingest: false
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 800m
+      nodeCount: 0
     ## See the following as an example of how to configure a snapshot repository
     #snapshotRepository:
     #  type: "gcs"

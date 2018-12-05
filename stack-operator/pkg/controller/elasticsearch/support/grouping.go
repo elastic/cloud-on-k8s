@@ -2,34 +2,43 @@ package support
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// ChangeSet contains pods that should be remove
 type ChangeSet struct {
+	// ToRemove is a list of pods that should eventually be removed
 	ToRemove []corev1.Pod
-	ToAdd    []corev1.Pod
-	ToKeep   []corev1.Pod
+	// ToAdd is a a list of pods that should be created. Each pod in this list will have a corresponding entry in
+	// ToAddContext by pod.Name
+	ToAdd []corev1.Pod
+	// ToKeep is a list of pods that should not be changed.
+	ToKeep []corev1.Pod
 
+	// ToAddContext contains context for added pods, which is required when creating the pods and associated resources
+	// using the Kubernetes API.
 	ToAddContext map[string]PodToAdd
 }
 
-// IsEmpty returns true if there are no topology changes to performed
-func (c ChangeSet) IsEmpty() bool {
-	return len(c.ToAdd) == 0 && len(c.ToRemove) == 0
+// IsEmpty returns true if this set has no removal, additions or kept pods.
+func (s ChangeSet) IsEmpty() bool {
+	return len(s.ToAdd) == 0 && len(s.ToRemove) == 0 && len(s.ToKeep) == 0
 }
 
-func NewChangeSetFromChanges(
-	changes Changes,
-	newPod func(ctx PodSpecContext) (corev1.Pod, error),
-) (*ChangeSet, error) {
+// NewPodFunc is a function that is able to create pods from a PodSpecContext
+type NewPodFunc func(ctx PodSpecContext) (corev1.Pod, error)
+
+// NewChangeSetFromChanges derives a single ChangeSet that carries over all the changes as a single ChangeSet.
+func NewChangeSetFromChanges(changes Changes, newPodFunc NewPodFunc) (*ChangeSet, error) {
 	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
 	toAddContext := make(map[string]PodToAdd, len(changes.ToAdd))
 	for i, podToAdd := range changes.ToAdd {
-		pod, err := newPod(podToAdd.PodSpecCtx)
+		pod, err := newPodFunc(podToAdd.PodSpecCtx)
 		if err != nil {
 			return nil, err
 		}
@@ -37,27 +46,75 @@ func NewChangeSetFromChanges(
 		toAddContext[pod.Name] = podToAdd
 	}
 
-	return &ChangeSet{
+	cs := ChangeSet{
 		ToRemove: changes.ToRemove[:],
 		ToAdd:    podsToAdd,
 		ToKeep:   changes.ToKeep[:],
 
 		ToAddContext: toAddContext,
-	}, nil
+	}
+
+	return &cs, nil
 }
 
+// GroupedChangeSet is a ChangeSet for a specific group of pods.
 type GroupedChangeSet struct {
+	// Definition is the grouping definition that was used when creating the group
 	Definition v1alpha1.GroupingDefinition
-	PodsState  PodsState
-	ChangeSet  ChangeSet
+	// ChangeSet contains the changes in this group
+	ChangeSet ChangeSet
+	// PodsState contains the state of all the pods in this group.
+	PodsState PodsState
 }
 
-func CreateGroupedChangeSets(
-	remainingChanges ChangeSet,
-	remainingPodsState PodsState,
+// GroupedChangeSets is a list GroupedChangeSet that can be validated for consistency
+type GroupedChangeSets []GroupedChangeSet
+
+// ValidateMasterChanges validates that only one changeset contains master nodes and returns an error otherwise.
+func (s GroupedChangeSets) ValidateMasterChanges() error {
+	// validate that only one changeset contains master nodes as a safeguard
+	// TODO: this may be significantly relaxed when there's parallelizable groups etc, as well as allowing to remove
+	// pods that are in a terminal phase.
+	var changeSetsWithMasterNodes []int
+	for i, cs := range s {
+		for _, pod := range cs.ChangeSet.ToRemove {
+			if _, ok := pod.Labels[NodeTypesMasterLabelName]; ok {
+				changeSetsWithMasterNodes = append(changeSetsWithMasterNodes, i)
+				break
+			}
+		}
+	}
+	if len(changeSetsWithMasterNodes) > 1 {
+		return fmt.Errorf(
+			"only one group is allowed to contain master nodes, found master nodes in: %v",
+			changeSetsWithMasterNodes,
+		)
+	}
+	return nil
+}
+
+// Group groups the provided ChangeSet into groups based on the GroupingDefinitions
+func (s ChangeSet) Group(
 	groupingDefinitions []v1alpha1.GroupingDefinition,
-) ([]GroupedChangeSet, error) {
+	remainingPodsState PodsState,
+) (GroupedChangeSets, error) {
+	remainingChangeSet := s
 	groupedChangeSets := make([]GroupedChangeSet, len(groupingDefinitions))
+
+	// ensure we remove the master node last in this changeset
+	sort.SliceStable(
+		remainingChangeSet.ToRemove,
+		sortPodsByMasterNodeLastThenCreationTimestamp(
+			remainingPodsState.MasterNodePod,
+			remainingChangeSet.ToRemove,
+		),
+	)
+
+	// ensure we add master nodes first in this changeset
+	sort.SliceStable(
+		remainingChangeSet.ToAdd,
+		sortPodsByMasterNodesFirstThenName(remainingChangeSet.ToAdd),
+	)
 
 	for i, gd := range groupingDefinitions {
 		groupedChanges := GroupedChangeSet{
@@ -68,14 +125,14 @@ func CreateGroupedChangeSets(
 			return nil, err
 		}
 
-		toRemove, toRemoveRemaining := selectPods(selector, remainingChanges.ToRemove)
-		remainingChanges.ToRemove = toRemoveRemaining
+		toRemove, toRemoveRemaining := partitionPods(selector, remainingChangeSet.ToRemove)
+		remainingChangeSet.ToRemove = toRemoveRemaining
 
-		toAdd, toAddRemaining := selectPods(selector, remainingChanges.ToAdd)
-		remainingChanges.ToAdd = toAddRemaining
+		toAdd, toAddRemaining := partitionPods(selector, remainingChangeSet.ToAdd)
+		remainingChangeSet.ToAdd = toAddRemaining
 
-		toKeep, toKeepRemaining := selectPods(selector, remainingChanges.ToKeep)
-		remainingChanges.ToKeep = toKeepRemaining
+		toKeep, toKeepRemaining := partitionPods(selector, remainingChangeSet.ToKeep)
+		remainingChangeSet.ToKeep = toKeepRemaining
 
 		groupedChanges.ChangeSet.ToKeep = toKeep
 		groupedChanges.ChangeSet.ToRemove = toRemove
@@ -83,261 +140,178 @@ func CreateGroupedChangeSets(
 
 		toAddContext := make(map[string]PodToAdd, len(groupedChanges.ChangeSet.ToAdd))
 		for _, pod := range groupedChanges.ChangeSet.ToAdd {
-			toAddContext[pod.Name] = remainingChanges.ToAddContext[pod.Name]
-			delete(remainingChanges.ToAddContext, pod.Name)
+			toAddContext[pod.Name] = remainingChangeSet.ToAddContext[pod.Name]
+			delete(remainingChangeSet.ToAddContext, pod.Name)
 		}
 		groupedChanges.ChangeSet.ToAddContext = toAddContext
 
 		var podsState PodsState
-		podsState, remainingPodsState = remainingPodsState.partition(groupedChanges.ChangeSet)
+		podsState, remainingPodsState = remainingPodsState.Partition(groupedChanges.ChangeSet)
 		groupedChanges.PodsState = podsState
 
 		groupedChangeSets[i] = groupedChanges
 	}
 
-	if !remainingChanges.IsEmpty() || len(remainingChanges.ToKeep) > 0 {
+	if !remainingChangeSet.IsEmpty() {
 		// add a catch-all with the remainder if non-empty
 		groupedChangeSets = append(groupedChangeSets, GroupedChangeSet{
 			Definition: v1alpha1.DefaultFallbackGroupingDefinition,
 			PodsState:  remainingPodsState,
-			ChangeSet:  remainingChanges,
+			ChangeSet:  remainingChangeSet,
 		})
 	}
 
 	return groupedChangeSets, nil
 }
 
-func selectPods(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
-	selectedPods := make([]corev1.Pod, 0)
+// sortPodsByMasterNodeLastThenCreationTimestamp sorts pods in a preferred deletion order: current master node always
+// last, remaining pods by oldest first.
+func sortPodsByMasterNodeLastThenCreationTimestamp(masterNode *corev1.Pod, pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool {
+		iPod := pods[i]
+		jPod := pods[j]
+
+		// sort the master node last
+		if masterNode != nil {
+			if iPod.Name == masterNode.Name {
+				// i is the master node, so it should be last
+				return false
+			}
+			if jPod.Name == masterNode.Name {
+				// j is the master node, so it should be last
+				return true
+			}
+		}
+		// if neither is the master node, fall back to sorting by creation timestamp, removing the oldest first.
+		return iPod.CreationTimestamp.Before(&jPod.CreationTimestamp)
+	}
+}
+
+// sortPodsByMasterNodesFirstThenName sorts pods in a preferred creation order: master nodes first, then by name
+// the by name part is used to ensure a stable sort order.
+func sortPodsByMasterNodesFirstThenName(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool {
+		// sort by master nodes last
+		iPod := pods[i]
+		jPod := pods[j]
+
+		_, iIsMaster := iPod.Labels[NodeTypesMasterLabelName]
+		_, jIsMaster := jPod.Labels[NodeTypesMasterLabelName]
+
+		if iIsMaster {
+			if jIsMaster {
+				// both masters, so fall back to sorting by name
+				return iPod.Name < jPod.Name
+			} else {
+				// i is master, j is not, so i should come first
+				return true
+			}
+		}
+
+		if jIsMaster {
+			// i is not master, j is master, so j should come first
+			return false
+		}
+
+		// neither are masters, sort by names
+		return iPod.Name < jPod.Name
+	}
+}
+
+// partitionPods partitions pods into two sets: one for pods matching the selector and one for the rest. it guarantees
+// that the order of the pods are not changed.
+func partitionPods(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
+	matchingPods := make([]corev1.Pod, 0)
 	for i := len(remainingPods) - 1; i >= 0; i-- {
 		pod := remainingPods[i]
 
 		podLabels := labels.Set(pod.Labels)
 		if selector.Matches(podLabels) {
-			selectedPods = append(selectedPods, pod)
+			matchingPods = append(matchingPods, pod)
 
 			remainingPods = append(remainingPods[:i], remainingPods[i+1:]...)
 		}
 	}
 
 	// reverse the selected pods slice because our reverse order-iteration above reversed it
-	for i := len(selectedPods)/2 - 1; i >= 0; i-- {
-		opp := len(selectedPods) - 1 - i
-		selectedPods[i], selectedPods[opp] = selectedPods[opp], selectedPods[i]
+	for i := len(matchingPods)/2 - 1; i >= 0; i-- {
+		opp := len(matchingPods) - 1 - i
+		matchingPods[i], matchingPods[opp] = matchingPods[opp], matchingPods[i]
 	}
 
-	return selectedPods, remainingPods
+	return matchingPods, remainingPods
 }
 
-type PodsState struct {
-	Pending     map[string]corev1.Pod
-	Joining     map[string]corev1.Pod
-	Operational map[string]corev1.Pod
-	Migrating   map[string]corev1.Pod
-	Deleting    map[string]corev1.Pod
-}
-
-func NewEmptyPodsState() PodsState {
-	return PodsState{
-		Pending:     make(map[string]corev1.Pod),
-		Joining:     make(map[string]corev1.Pod),
-		Operational: make(map[string]corev1.Pod),
-		Migrating:   make(map[string]corev1.Pod),
-		Deleting:    make(map[string]corev1.Pod),
-	}
-}
-
-func (s PodsState) partition(changeSet ChangeSet) (PodsState, PodsState) {
-	current := NewEmptyPodsState()
-	remaining := s
-	// no need to consider changeSet.ToAdd here, as they will not exist in a PodsState
-	for _, pods := range [][]corev1.Pod{changeSet.ToRemove, changeSet.ToKeep} {
-		var partialState PodsState
-		partialState, remaining = remaining.partitionByPods(pods)
-		current = current.mergeWith(partialState)
-	}
-	return current, remaining
-}
-
-func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
-	current := NewEmptyPodsState()
-	for _, pod := range pods {
-		if _, ok := s.Pending[pod.Name]; ok {
-			current.Pending[pod.Name] = pod
-			delete(s.Pending, pod.Name)
-			continue
-		}
-		if _, ok := s.Joining[pod.Name]; ok {
-			current.Joining[pod.Name] = pod
-			delete(s.Joining, pod.Name)
-			continue
-		}
-		if _, ok := s.Operational[pod.Name]; ok {
-			current.Operational[pod.Name] = pod
-			delete(s.Operational, pod.Name)
-			continue
-		}
-		if _, ok := s.Migrating[pod.Name]; ok {
-			current.Migrating[pod.Name] = pod
-			delete(s.Migrating, pod.Name)
-			continue
-		}
-		if _, ok := s.Deleting[pod.Name]; ok {
-			current.Deleting[pod.Name] = pod
-			delete(s.Deleting, pod.Name)
-			continue
-		}
-		log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
-	}
-
-	return current, s
-}
-
-func (s PodsState) mergeWith(other PodsState) PodsState {
-
-	for k, v := range other.Pending {
-		s.Pending[k] = v
-	}
-
-	for k, v := range other.Joining {
-		s.Joining[k] = v
-	}
-
-	for k, v := range other.Operational {
-		s.Operational[k] = v
-	}
-
-	for k, v := range other.Migrating {
-		s.Migrating[k] = v
-	}
-
-	for k, v := range other.Deleting {
-		s.Deleting[k] = v
-	}
-
-	return s
-}
-
-func NewPodsState(
-	resourcesState ResourcesState,
-	observedState ObservedState,
-	changes Changes,
-) PodsState {
-	podsState := NewEmptyPodsState()
-	// pendingPods are pods that have been created in the API but is not scheduled or running yet.
-	pendingPods, _ := resourcesState.CurrentPodsByPhase[corev1.PodPending]
-	for _, pod := range pendingPods {
-		podsState.Pending[pod.Name] = pod
-	}
-
-	// joiningPods are running pods that are not seen in the observed cluster state
-	// XXX: requires an observerState.ClusterState to work, which is not reflected in the variables set
-	if observedState.ClusterState != nil {
-		nodesByName := make(map[string]client.Node, len(observedState.ClusterState.Nodes))
-		for _, node := range observedState.ClusterState.Nodes {
-			nodesByName[node.Name] = node
-		}
-
-		for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			// if the pod is not known in the cluster state, we assume it's supposed to join
-			if _, ok := nodesByName[currentRunningPod.Name]; !ok {
-				podsState.Joining[currentRunningPod.Name] = currentRunningPod
-			} else {
-				podsState.Operational[currentRunningPod.Name] = currentRunningPod
-			}
-		}
-	}
-
-	// migratingPods are pods that are being actively migrated away from.
-	// this is equal to changes.ToRemove for now, but could change to a sub-selection based on a future strategy
-	migratingPods := changes.ToRemove
-	for _, pod := range migratingPods {
-		// TODO: this may exist in other states as well, is that ok?
-		// technically we do not know whether it's entering migrating at this stage, but only after resolving the
-		// performable changes
-		podsState.Migrating[pod.Name] = pod
-	}
-
-	// leavingPods = migratingPods that is primed for deletion, but not deleted yet (is this even a thing?)
-
-	// deletingPods are pods we have issued a delete request for, but haven't disappeared from the API yet
-	deletingPods := resourcesState.DeletingPods
-	for _, pod := range deletingPods {
-		podsState.Deleting[pod.Name] = pod
-	}
-
-	return podsState
-}
-
-func PodListToNames(pods []corev1.Pod) []string {
-	names := make([]string, len(pods))
-	for i, pod := range pods {
-		names[i] = pod.Name
-	}
-	return names
-}
-
-func PodMapToNames(pods map[string]corev1.Pod) []string {
-	names := make([]string, len(pods))
-	i := 0
-	for k := range pods {
-		names[i] = k
-		i++
-	}
-	return names
-}
-
+// PerformableChanges contains changes that can be performed to pod resources
 type PerformableChanges struct {
-	Create              []CreatablePod
+	ScheduleForCreation []CreatablePod
 	ScheduleForDeletion []corev1.Pod
 }
 
+// IsEmpty is true if there are no changes.
+func (c PerformableChanges) IsEmpty() bool {
+	return len(c.ScheduleForCreation) == 0 && len(c.ScheduleForDeletion) == 0
+}
+
+// CreatablePod contains all information required to create a pod
 type CreatablePod struct {
 	Pod            corev1.Pod
 	PodSpecContext PodSpecContext
 }
 
-func NewPerformableChanges(
-	groupedChangeSets []GroupedChangeSet,
-) PerformableChanges {
+// CalculatePerformableChanges calculates the PerformableChanges based on the groups and their associated strategies
+func (s GroupedChangeSets) CalculatePerformableChanges() (*PerformableChanges, error) {
 	var result PerformableChanges
 
-	for groupIndex, groupedChangeSet := range groupedChangeSets {
+	for groupIndex, groupedChangeSet := range s {
 		// surge only makes sense if you have an "expected" count which we do not have?
 		// .. or is target = toKeep + toAdd - toRemove ?
 		targetPodsCount := len(groupedChangeSet.ChangeSet.ToKeep) +
 			len(groupedChangeSet.ChangeSet.ToAdd) // - len(groupedChangeSet.ChangeSet.ToRemove)
+		// TODO: above: this calculation does not look entirely correct. confirm via unit tests?
 
-		currentPodsCount := len(groupedChangeSet.PodsState.Pending) +
-			len(groupedChangeSet.PodsState.Joining) +
-			len(groupedChangeSet.PodsState.Operational) +
-		// TODO: migrating might be duplicating things from Operational, is this ok?
-			//len(groupedChangeSet.PodsState.Migrating) +
-			len(groupedChangeSet.PodsState.Deleting)
+		currentPodsCount := groupedChangeSet.PodsState.CurrentPodsCount()
 
 		currentSurge := currentPodsCount - targetPodsCount
 
-		currentOperationalPodsCount := len(groupedChangeSet.PodsState.Operational)
+		currentOperationalPodsCount := len(groupedChangeSet.PodsState.RunningReady)
 		currentUnavailable := targetPodsCount - currentOperationalPodsCount
 
 		log.Info(
 			"State",
 			"group_index", groupIndex,
+			"target_pods_count", targetPodsCount,
 			"current_pods_count", currentPodsCount,
 			"current_surge", currentSurge,
-			"current_operational_count", currentOperationalPodsCount,
 			"current_unavailable", currentUnavailable,
-			"target_pods_count", targetPodsCount,
-			"pending_pods", PodMapToNames(groupedChangeSet.PodsState.Pending),
-			"joining_pods", PodMapToNames(groupedChangeSet.PodsState.Joining),
-			"operational_pods", PodMapToNames(groupedChangeSet.PodsState.Operational),
-			"migrating_pods", PodMapToNames(groupedChangeSet.PodsState.Migrating),
-			"deleting_pods", PodMapToNames(groupedChangeSet.PodsState.Deleting),
+			"pods_state", groupedChangeSet.PodsState.Summary(),
 		)
 
-		// Grow cluster with missing pods
+		// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
+		// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
+		maxSurge := groupedChangeSet.Definition.Strategy.MaxSurge
+		//maxSurge, err := intstr.GetValueFromIntOrPercent(
+		//	&groupedChangeSet.Definition.Strategy.MaxSurge,
+		//	targetPodsCount,
+		//	true,
+		//)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		maxUnavailable := groupedChangeSet.Definition.Strategy.MaxUnavailable
+		//maxUnavailable, err := intstr.GetValueFromIntOrPercent(
+		//	&groupedChangeSet.Definition.Strategy.MaxUnavailable,
+		//	targetPodsCount,
+		//	false,
+		//)
+		//if err != nil {
+		//	return nil, err
+		//}
+
+		// schedule for creation as many pods as we can
 		for _, newPodToAdd := range groupedChangeSet.ChangeSet.ToAdd {
-			if currentSurge >= groupedChangeSet.Definition.Strategy.MaxSurge {
+			if currentSurge >= maxSurge {
 				msg := fmt.Sprintf(""+
 					"Hit the max surge limit in group %d, currently growing at a rate of %d with %d current pods",
 					groupIndex,
@@ -346,18 +320,18 @@ func NewPerformableChanges(
 				)
 				log.Info(msg)
 				break
-			} else {
-				currentSurge++
-				currentPodsCount++
-
-				msg := fmt.Sprintf(
-					"Adding a node in group %d, rate will now be %d with %d current pods.",
-					groupIndex,
-					currentSurge,
-					currentPodsCount,
-				)
-				log.Info(msg)
 			}
+
+			currentSurge++
+			currentPodsCount++
+
+			msg := fmt.Sprintf(
+				"Adding a node in group %d, rate will now be %d with %d current pods.",
+				groupIndex,
+				currentSurge,
+				currentPodsCount,
+			)
+			log.Info(msg)
 
 			toAddContext := groupedChangeSet.ChangeSet.ToAddContext[newPodToAdd.Name]
 
@@ -366,16 +340,16 @@ func NewPerformableChanges(
 				toAddContext.MismatchReasons,
 			))
 
-			result.Create = append(
-				result.Create,
+			result.ScheduleForCreation = append(
+				result.ScheduleForCreation,
 				CreatablePod{Pod: newPodToAdd, PodSpecContext: toAddContext.PodSpecCtx},
 			)
 		}
 
-		// Shrink clusters by deleting deprecated pods
+		// schedule for deletion as many pods as we can
 		for _, pod := range groupedChangeSet.ChangeSet.ToRemove {
-			// TODO: allow removing a pod if MaxUnavailable = 0 if all pods are operational.
-			if currentUnavailable >= groupedChangeSet.Definition.Strategy.MaxUnavailable {
+			// TODO: consider allowing removal of a pod if MaxUnavailable = 0 if all pods are operational?
+			if currentUnavailable >= maxUnavailable {
 				msg := fmt.Sprintf(""+
 					"Hit the max unavailable limit in group %d, currently shrinking with an unavailability of %d with %d current operational pods",
 					groupIndex,
@@ -384,18 +358,18 @@ func NewPerformableChanges(
 				)
 				log.Info(msg)
 				break
-			} else {
-				currentUnavailable++
-				currentOperationalPodsCount--
-
-				msg := fmt.Sprintf(
-					"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
-					groupIndex,
-					currentUnavailable,
-					currentOperationalPodsCount,
-				)
-				log.Info(msg)
 			}
+
+			currentUnavailable++
+			currentOperationalPodsCount--
+
+			msg := fmt.Sprintf(
+				"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
+				groupIndex,
+				currentUnavailable,
+				currentOperationalPodsCount,
+			)
+			log.Info(msg)
 
 			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
 		}
@@ -406,12 +380,12 @@ func NewPerformableChanges(
 				// we have changes to perform
 				break
 			}
-			if len(groupedChangeSet.PodsState.Operational) != len(groupedChangeSet.ChangeSet.ToKeep) {
+			if len(groupedChangeSet.PodsState.RunningReady) != len(groupedChangeSet.ChangeSet.ToKeep) {
 				// we're waiting for some pods
 				break
 			}
 		}
 	}
 
-	return result
+	return &result, nil
 }
