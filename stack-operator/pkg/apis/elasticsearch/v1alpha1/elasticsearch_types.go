@@ -138,6 +138,15 @@ type UpdateStrategy struct {
 	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
 }
 
+// ResolveChangeBudget resolves the optional ChangeBudget into the user-provided one or a defaulted one.
+func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
+	if s.ChangeBudget != nil {
+		return *s.ChangeBudget
+	}
+
+	return DefaultChangeBudget
+}
+
 // GroupingDefinition is used to select a group of pods.
 type GroupingDefinition struct {
 	// Selector is the selector used to match pods.

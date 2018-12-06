@@ -181,7 +181,7 @@ func TestChangeSet_Group(t *testing.T) {
 			args:      args{},
 			want: GroupedChangeSets{
 				GroupedChangeSet{
-					Name: "unmatched",
+					Name: UnmatchedGroupName,
 					ChangeSet: ChangeSet{
 						ToKeep:       []corev1.Pod{namedPod("1")},
 						ToAddContext: map[string]support.PodToAdd{},
@@ -199,7 +199,7 @@ func TestChangeSet_Group(t *testing.T) {
 			},
 			want: GroupedChangeSets{
 				GroupedChangeSet{
-					Name: "unmatched",
+					Name: UnmatchedGroupName,
 					ChangeSet: ChangeSet{
 						ToKeep:       []corev1.Pod{namedPod("1")},
 						ToAdd:        []corev1.Pod{},
@@ -243,7 +243,7 @@ func TestChangeSet_Group(t *testing.T) {
 					}),
 				},
 				GroupedChangeSet{
-					Name: "unmatched",
+					Name: UnmatchedGroupName,
 					ChangeSet: ChangeSet{
 						ToKeep:   []corev1.Pod{},
 						ToRemove: []corev1.Pod{barPod},

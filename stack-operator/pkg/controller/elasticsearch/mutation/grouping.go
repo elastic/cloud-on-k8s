@@ -6,6 +6,19 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 )
 
+const (
+	// AllGroupName is the name used in GroupedChangeSets that is used for changes that have not been partitioned into
+	// groups
+	AllGroupName = "all"
+
+	// UnmatchedGroupName is the name used in GroupedChangeSets for a group that were not selected by the user-specified
+	// groups
+	UnmatchedGroupName = "unmatched"
+
+	// DynamicGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
+	DynamicGroupNamePrefix = "group-"
+)
+
 // GroupedChangeSet is a ChangeSet for a specific group of pods.
 type GroupedChangeSet struct {
 	// Name is a logical name for these changes.

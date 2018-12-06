@@ -32,22 +32,24 @@ type CreatablePod struct {
 
 // CalculatePerformableChanges calculates which changes we are allowed to perform in the current state.
 func CalculatePerformableChanges(
-	budget v1alpha1.ChangeBudget,
-	groups []v1alpha1.GroupingDefinition,
+	strategy v1alpha1.UpdateStrategy,
 	allPodChanges *ChangeSet,
 	allPodsState PodsState,
 ) (*PerformableChanges, error) {
 	performableChanges := &PerformableChanges{}
 
+	// resolve the change budget
+	budget := strategy.ResolveChangeBudget()
+
 	// allChangeSet is a GroupedChangeSet that contains all the changes in a single group
 	allChangeSet := GroupedChangeSet{
-		Name:      "all",
+		Name:      AllGroupName,
 		ChangeSet: *allPodChanges,
 		PodsState: allPodsState,
 	}
 
 	// group all our changes into groups based on the potentially user-specified groups
-	groupedChangeSets, err := allPodChanges.Group(groups, allPodsState)
+	groupedChangeSets, err := allPodChanges.Group(strategy.Groups, allPodsState)
 	if err != nil {
 		return nil, err
 	}

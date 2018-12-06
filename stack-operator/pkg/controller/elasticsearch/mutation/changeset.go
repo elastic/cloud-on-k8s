@@ -83,7 +83,7 @@ func (s ChangeSet) Group(
 
 	for i, gd := range groupingDefinitions {
 		groupedChanges := GroupedChangeSet{
-			Name: fmt.Sprintf("group-%d", i),
+			Name: fmt.Sprintf("%s%d", DynamicGroupNamePrefix, i),
 		}
 		selector, err := v1.LabelSelectorAsSelector(&gd.Selector)
 		if err != nil {
@@ -123,7 +123,7 @@ func (s ChangeSet) Group(
 	if !remainingChangeSet.IsEmpty() {
 		// remaining changes do not match any group definition selector, group them together as a single group
 		groupedChangeSets = append(groupedChangeSets, GroupedChangeSet{
-			Name:      "unmatched",
+			Name:      UnmatchedGroupName,
 			PodsState: remainingPodsState,
 			ChangeSet: remainingChangeSet,
 		})
