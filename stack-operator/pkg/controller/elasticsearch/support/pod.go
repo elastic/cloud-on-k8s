@@ -86,3 +86,12 @@ func PodListToNames(pods []corev1.Pod) []string {
 	}
 	return names
 }
+
+// PodMapToNames returns a list of pod names from a map of pod names to pods
+func PodMapToNames(pods map[string]corev1.Pod) []string {
+	names := make([]string, 0, len(pods))
+	for podName := range pods {
+		names = append(names, podName)
+	}
+	return names
+}

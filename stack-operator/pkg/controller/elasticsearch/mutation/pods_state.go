@@ -130,8 +130,8 @@ func (s PodsState) CurrentPodsCount() int {
 // Partition partitions the PodsState into two: one set that contains pods in the provided ChangeSet, and one set
 // containing the rest.
 func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
-	podsStateOfChangeSet := newEmptyPodsState()
-	podsStateOfChangeSet.MasterNodePod = s.MasterNodePod
+	selected := newEmptyPodsState()
+	selected.MasterNodePod = s.MasterNodePod
 
 	remaining := s
 
@@ -139,9 +139,9 @@ func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
 	for _, pods := range [][]corev1.Pod{changeSet.ToRemove, changeSet.ToKeep} {
 		var partialState PodsState
 		partialState, remaining = remaining.partitionByPods(pods)
-		podsStateOfChangeSet = podsStateOfChangeSet.mergeWith(partialState)
+		selected.mergeFrom(partialState)
 	}
-	return podsStateOfChangeSet, remaining
+	return selected, remaining
 }
 
 // partitionByPods partitions the PodsState into two: one set that contains pods in the provided list of pods, and one
@@ -149,84 +149,48 @@ func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
 func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
 	source := s.Copy()
 
-	podsStateOfPods := newEmptyPodsState()
-	podsStateOfPods.MasterNodePod = source.MasterNodePod
+	selected := newEmptyPodsState()
+	selected.MasterNodePod = source.MasterNodePod
 
 	for _, pod := range pods {
-		if _, ok := source.Pending[pod.Name]; ok {
-			podsStateOfPods.Pending[pod.Name] = pod
-			delete(source.Pending, pod.Name)
-			continue
+		if movePodToFrom(pod, selected.Pending, source.Pending) {
+		} else if movePodToFrom(pod, selected.RunningJoining, source.RunningJoining) {
+		} else if movePodToFrom(pod, selected.RunningReady, source.RunningReady) {
+		} else if movePodToFrom(pod, selected.RunningUnknown, source.RunningUnknown) {
+		} else if movePodToFrom(pod, selected.Unknown, source.Unknown) {
+		} else if movePodToFrom(pod, selected.Terminal, source.Terminal) {
+		} else if movePodToFrom(pod, selected.Deleting, source.Deleting) {
+		} else {
+			log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
 		}
-		if _, ok := source.RunningJoining[pod.Name]; ok {
-			podsStateOfPods.RunningJoining[pod.Name] = pod
-			delete(source.RunningJoining, pod.Name)
-			continue
-		}
-		if _, ok := source.RunningReady[pod.Name]; ok {
-			podsStateOfPods.RunningReady[pod.Name] = pod
-			delete(source.RunningReady, pod.Name)
-			continue
-		}
-		if _, ok := source.RunningUnknown[pod.Name]; ok {
-			podsStateOfPods.RunningUnknown[pod.Name] = pod
-			delete(source.RunningUnknown, pod.Name)
-			continue
-		}
-		if _, ok := source.Unknown[pod.Name]; ok {
-			podsStateOfPods.Unknown[pod.Name] = pod
-			delete(source.Unknown, pod.Name)
-			continue
-		}
-		if _, ok := source.Terminal[pod.Name]; ok {
-			podsStateOfPods.Terminal[pod.Name] = pod
-			delete(source.Terminal, pod.Name)
-			continue
-		}
-		if _, ok := source.Deleting[pod.Name]; ok {
-			podsStateOfPods.Deleting[pod.Name] = pod
-			delete(source.Deleting, pod.Name)
-			continue
-		}
-		log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
 	}
 
-	return podsStateOfPods, source
+	return selected, source
 }
 
-// mergeWith merges two PodsStates into one. If some pods exist in both, values in "other" take precedence.
-func (s PodsState) mergeWith(other PodsState) PodsState {
-	s.MasterNodePod = other.MasterNodePod
+// movePodToFrom moves a pod from one map to another if it existed in from, returning true if the pod was moved
+func movePodToFrom(pod corev1.Pod, to, from map[string]corev1.Pod) bool {
+	if _, ok := from[pod.Name]; ok {
+		to[pod.Name] = pod
+		delete(from, pod.Name)
+		return true
+	}
+	return false
+}
 
-	for k, v := range other.Pending {
-		s.Pending[k] = v
+// mergeFrom merges the provided PodsState into this one. If some pods exist in both, values in "other" take precedence.
+func (s *PodsState) mergeFrom(other PodsState) {
+	if other.MasterNodePod != nil {
+		s.MasterNodePod = other.MasterNodePod
 	}
 
-	for k, v := range other.RunningJoining {
-		s.RunningJoining[k] = v
-	}
-
-	for k, v := range other.RunningReady {
-		s.RunningReady[k] = v
-	}
-
-	for k, v := range other.RunningUnknown {
-		s.RunningUnknown[k] = v
-	}
-
-	for k, v := range other.Unknown {
-		s.Unknown[k] = v
-	}
-
-	for k, v := range other.Terminal {
-		s.Terminal[k] = v
-	}
-
-	for k, v := range other.Deleting {
-		s.Deleting[k] = v
-	}
-
-	return s
+	mapCopy(s.Pending, other.Pending)
+	mapCopy(s.RunningJoining, other.RunningJoining)
+	mapCopy(s.RunningReady, other.RunningReady)
+	mapCopy(s.RunningUnknown, other.RunningUnknown)
+	mapCopy(s.Unknown, other.Unknown)
+	mapCopy(s.Terminal, other.Terminal)
+	mapCopy(s.Deleting, other.Deleting)
 }
 
 // PodsStateSummary contains a shorter summary of a PodsState
@@ -252,33 +216,13 @@ func (s PodsState) Summary() PodsStateSummary {
 		summary.MasterNodeName = s.MasterNodePod.Name
 	}
 
-	for k := range s.Pending {
-		summary.Pending = append(summary.Pending, k)
-	}
-
-	for k := range s.RunningJoining {
-		summary.RunningJoining = append(summary.RunningJoining, k)
-	}
-
-	for k := range s.RunningReady {
-		summary.RunningReady = append(summary.RunningReady, k)
-	}
-
-	for k := range s.RunningUnknown {
-		summary.RunningUnknown = append(summary.RunningUnknown, k)
-	}
-
-	for k := range s.Unknown {
-		summary.Unknown = append(summary.Unknown, k)
-	}
-
-	for k := range s.Terminal {
-		summary.Terminal = append(summary.Terminal, k)
-	}
-
-	for k := range s.Deleting {
-		summary.Deleting = append(summary.Deleting, k)
-	}
+	summary.Pending = support.PodMapToNames(s.Pending)
+	summary.RunningJoining = support.PodMapToNames(s.RunningJoining)
+	summary.RunningReady = support.PodMapToNames(s.RunningReady)
+	summary.RunningUnknown = support.PodMapToNames(s.RunningUnknown)
+	summary.Unknown = support.PodMapToNames(s.Unknown)
+	summary.Terminal = support.PodMapToNames(s.Terminal)
+	summary.Deleting = support.PodMapToNames(s.Deleting)
 
 	return summary
 }
@@ -330,12 +274,6 @@ func (s PodsState) Copy() PodsState {
 		Deleting:       make(map[string]corev1.Pod, len(s.Deleting)),
 	}
 
-	mapCopy := func(dst, src map[string]corev1.Pod) {
-		for k, v := range src {
-			dst[k] = v
-		}
-	}
-
 	mapCopy(newState.Pending, s.Pending)
 	mapCopy(newState.RunningJoining, s.RunningJoining)
 	mapCopy(newState.RunningReady, s.RunningReady)
@@ -345,4 +283,11 @@ func (s PodsState) Copy() PodsState {
 	mapCopy(newState.Deleting, s.Deleting)
 
 	return newState
+}
+
+// mapCopy copies all key/value pairs in src into dst
+func mapCopy(dst, src map[string]corev1.Pod) {
+	for k, v := range src {
+		dst[k] = v
+	}
 }
