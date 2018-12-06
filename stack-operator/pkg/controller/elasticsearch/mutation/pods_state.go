@@ -200,7 +200,6 @@ type PodsStateSummary struct {
 	RunningReady      []string `json:"runningReady,omitempty"`
 	RunningUnknown    []string `json:"runningUnknown,omitempty"`
 	Unknown           []string `json:"unknown,omitempty"`
-	RemovalCandidates []string `json:"removalCandidates,omitempty"`
 	Terminal          []string `json:"terminal,omitempty"`
 	Deleting          []string `json:"deleting,omitempty"`
 
@@ -234,7 +233,6 @@ type PodsStateStatus struct {
 	RunningReady      int `json:"runningReady,omitempty"`
 	RunningUnknown    int `json:"runningUnknown,omitempty"`
 	Unknown           int `json:"unknown,omitempty"`
-	RemovalCandidates int `json:"removalCandidates,omitempty"`
 	Terminal          int `json:"terminal,omitempty"`
 	Deleting          int `json:"deleting,omitempty"`
 
