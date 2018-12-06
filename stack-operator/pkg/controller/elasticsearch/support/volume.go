@@ -12,7 +12,7 @@ const (
 	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
 	KeystoreSecretMountPath = "/keystore-secrets"
 
-	NodeCertificatesSecretVolumeName = "node-certificates"
+	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
 )
 

@@ -168,8 +168,8 @@ func Test_podMatchesSpec(t *testing.T) {
 					ESPodSpecContext(defaultImage, defaultCPULimit),
 				),
 			},
-			want:               true,
-			wantErr:            nil,
+			want:    true,
+			wantErr: nil,
 		},
 		{
 			name: "Non-matching resources should match",

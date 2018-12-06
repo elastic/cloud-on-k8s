@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"fmt"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"

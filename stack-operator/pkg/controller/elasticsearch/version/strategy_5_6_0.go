@@ -129,11 +129,11 @@ func (s strategy_5_6_0) newEnvironmentVars(
 		{Name: support.EnvTransportProfilesClientXPackSecuritySslClientAuthentication, Value: "none"},
 
 		// x-pack http settings
-		{Name: support.EnvXPackSecurityHttpSslEnabled, Value: "true",},
+		{Name: support.EnvXPackSecurityHttpSslEnabled, Value: "true"},
 
 		// x-pack transport settings
-		{Name: support.EnvXPackSecurityTransportSslEnabled, Value: "true",},
-		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate",},
+		{Name: support.EnvXPackSecurityTransportSslEnabled, Value: "true"},
+		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
 	}
 }
 
