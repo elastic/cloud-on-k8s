@@ -71,7 +71,7 @@ func (s *ReconcileState) UpdateElasticsearchState(
 	return s.updateWithPhase(s.status.Phase, state)
 }
 
-// UpdateElasticsearchState marks Elasticsearch as being operational in the resource status.
+// UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
 func (s *ReconcileState) UpdateElasticsearchOperational(
 	state support.ResourcesState,
 ) *ReconcileState {
@@ -178,7 +178,7 @@ func (r *ReconcileResults) Apply(step string, recoverableStep func() (reconcile.
 	return r.WithError(err).WithResult(result)
 }
 
-// Aggregate compares the given results with each other and returns the most specific one.
+// Aggregate compares the collected results with each other and returns the most specific one.
 // Where specific means requeue at a given time is more specific then generic requeue which is more specific
 // than no requeue. It also returns any errors recorded.
 func (r *ReconcileResults) Aggregate() (reconcile.Result, error) {
