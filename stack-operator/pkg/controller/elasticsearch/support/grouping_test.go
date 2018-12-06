@@ -138,9 +138,7 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 
 func TestGroupedChangeSets_ValidateMasterChanges(t *testing.T) {
 	masterNode := namedPodWithCreationTimestamp("master", time.Unix(5, 0))
-	masterNode.Labels = map[string]string{
-		NodeTypesMasterLabelName: "true",
-	}
+	masterNode.Labels = NodeTypesMasterLabelName.AsMap(true)
 
 	tests := []struct {
 		name    string
@@ -377,13 +375,9 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 
 func Test_sortPodsByMasterNodesFirstThenNameAsc(t *testing.T) {
 	masterNode5 := namedPodWithCreationTimestamp("master5", time.Unix(5, 0))
-	masterNode5.Labels = map[string]string{
-		NodeTypesMasterLabelName: "true",
-	}
+	masterNode5.Labels = NodeTypesMasterLabelName.AsMap(true)
 	masterNode6 := namedPodWithCreationTimestamp("master6", time.Unix(6, 0))
-	masterNode6.Labels = map[string]string{
-		NodeTypesMasterLabelName: "true",
-	}
+	masterNode6.Labels = NodeTypesMasterLabelName.AsMap(true)
 
 	type args struct {
 		pods []corev1.Pod

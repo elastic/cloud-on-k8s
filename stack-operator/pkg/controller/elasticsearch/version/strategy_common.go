@@ -182,18 +182,10 @@ func newPod(
 	}
 
 	// add labels for node types
-	if podSpecCtx.TopologySpec.NodeTypes.Master {
-		labels[support.NodeTypesMasterLabelName] = "true"
-	}
-	if podSpecCtx.TopologySpec.NodeTypes.Data {
-		labels[support.NodeTypesDataLabelName] = "true"
-	}
-	if podSpecCtx.TopologySpec.NodeTypes.Ingest {
-		labels[support.NodeTypesIngestLabelName] = "true"
-	}
-	if podSpecCtx.TopologySpec.NodeTypes.ML {
-		labels[support.NodeTypesMLLabelName] = "true"
-	}
+	support.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
+	support.NodeTypesDataLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Data, labels)
+	support.NodeTypesIngestLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Ingest, labels)
+	support.NodeTypesMLLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.ML, labels)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior

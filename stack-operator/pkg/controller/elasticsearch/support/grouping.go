@@ -116,7 +116,7 @@ func (s GroupedChangeSets) ValidateMasterChanges() error {
 	var changeSetsWithMasterNodes []int
 	for i, cs := range s {
 		for _, pod := range cs.ChangeSet.ToRemove {
-			if _, ok := pod.Labels[NodeTypesMasterLabelName]; ok {
+			if NodeTypesMasterLabelName.HasValue(true, pod.Labels) {
 				changeSetsWithMasterNodes = append(changeSetsWithMasterNodes, i)
 				break
 			}
@@ -163,13 +163,13 @@ func (s ChangeSet) Group(
 			return nil, err
 		}
 
-		toRemove, toRemoveRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToRemove)
+		toRemove, toRemoveRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToRemove)
 		remainingChangeSet.ToRemove = toRemoveRemaining
 
-		toAdd, toAddRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToAdd)
+		toAdd, toAddRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToAdd)
 		remainingChangeSet.ToAdd = toAddRemaining
 
-		toKeep, toKeepRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToKeep)
+		toKeep, toKeepRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToKeep)
 		remainingChangeSet.ToKeep = toKeepRemaining
 
 		groupedChanges.ChangeSet.ToKeep = toKeep
@@ -233,8 +233,8 @@ func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) boo
 		iPod := pods[i]
 		jPod := pods[j]
 
-		_, iIsMaster := iPod.Labels[NodeTypesMasterLabelName]
-		_, jIsMaster := jPod.Labels[NodeTypesMasterLabelName]
+		iIsMaster := NodeTypesMasterLabelName.HasValue(true, iPod.Labels)
+		jIsMaster := NodeTypesMasterLabelName.HasValue(true, jPod.Labels)
 
 		if iIsMaster {
 			if jIsMaster {
@@ -256,9 +256,9 @@ func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) boo
 	}
 }
 
-// paritionPodsBySelector partitions pods into two sets: one for pods matching the selector and one for the rest. it
+// partitionPodsBySelector partitions pods into two sets: one for pods matching the selector and one for the rest. it
 // guarantees that the order of the pods are not changed.
-func paritionPodsBySelector(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
+func partitionPodsBySelector(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
 	matchingPods := make([]corev1.Pod, 0)
 	for i := len(remainingPods) - 1; i >= 0; i-- {
 		pod := remainingPods[i]

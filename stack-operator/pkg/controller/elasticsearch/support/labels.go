@@ -4,7 +4,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"strconv"
 )
+
+// TrueFalseLabel is a label that has a true/false value.
+type TrueFalseLabel string
 
 const (
 	// ClusterNameLabelName used to represent a cluster in k8s resources
@@ -16,15 +20,30 @@ const (
 	// Type represents the elasticsearch type
 	Type = "elasticsearch"
 
-	// NodeTypesDataLabelName is a label set on nodes with the master role
-	NodeTypesMasterLabelName = "elasticsearch.k8s.elastic.co/node-master"
-	// NodeTypesDataLabelName is a label set on nodes with the data role
-	NodeTypesDataLabelName = "elasticsearch.k8s.elastic.co/node-data"
-	// NodeTypesIngestLabelName is a label set on nodes with the ingest role
-	NodeTypesIngestLabelName = "elasticsearch.k8s.elastic.co/node-ingest"
-	// NodeTypesMLLabelName is a label set on nodes with the ml role
-	NodeTypesMLLabelName = "elasticsearch.k8s.elastic.co/node-ml"
+	// NodeTypesDataLabelName is a label set to true on nodes with the master role
+	NodeTypesMasterLabelName TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"
+	// NodeTypesDataLabelName is a label set to true on nodes with the data role
+	NodeTypesDataLabelName TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-data"
+	// NodeTypesIngestLabelName is a label set to true on nodes with the ingest role
+	NodeTypesIngestLabelName TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ingest"
+	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
+	NodeTypesMLLabelName TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
 )
+
+func (l TrueFalseLabel) Set(value bool, labels map[string]string) {
+	labels[string(l)] = strconv.FormatBool(value)
+}
+
+
+func (l TrueFalseLabel) HasValue(value bool, labels map[string]string) bool {
+	return labels[string(l)] == strconv.FormatBool(value)
+}
+
+func (l TrueFalseLabel) AsMap(value bool) map[string]string {
+	return map[string]string{
+		string(l): strconv.FormatBool(value),
+	}
+}
 
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels
 var TypeSelector = labels.Set(map[string]string{TypeLabelName: Type}).AsSelector()
