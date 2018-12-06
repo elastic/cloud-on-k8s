@@ -2,6 +2,7 @@ package lvm
 
 import (
 	"errors"
+	"path"
 	"testing"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
@@ -11,34 +12,51 @@ import (
 )
 
 func TestDriver_Unmount(t *testing.T) {
+	var (
+		success = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{},
+		}}
+		cmdErrorFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{Bytes: []byte("an output"), Err: errors.New("error")},
+		}}
+	)
 	type fields struct {
-		options Options
+		options  Options
+		fakeExec *cmdutil.FakeExecutables
 	}
 	type args struct {
 		params protocol.UnmountRequest
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   flex.Response
+		name         string
+		fields       fields
+		args         args
+		want         flex.Response
+		wantCommands [][]string
 	}{
 		{
 			name: "success",
-			fields: fields{options: Options{
-				ExecutableFactory: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{}),
-			}},
-			want: flex.Success("successfully unmounted the volume"),
+			fields: fields{
+				fakeExec: success,
+				options: Options{
+					ExecutableFactory: success.ExecutableFactory(),
+				},
+			},
+			args:         args{params: protocol.UnmountRequest{TargetDir: path.Join("some", "volume", "path")}},
+			wantCommands: [][]string{[]string{"umount", "some/volume/path"}},
+			want:         flex.Success("successfully unmounted the volume"),
 		},
 		{
 			name: "failure due to cmd error",
-			fields: fields{options: Options{
-				ExecutableFactory: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
-					Bytes: []byte("an output"),
-					Err:   errors.New("error"),
-				}),
-			}},
-			want: flex.Failure("Cannot unmount volume : error. Output: an output"),
+			fields: fields{
+				fakeExec: cmdErrorFailure,
+				options: Options{
+					ExecutableFactory: cmdErrorFailure.ExecutableFactory(),
+				},
+			},
+			args:         args{params: protocol.UnmountRequest{TargetDir: path.Join("some", "path")}},
+			wantCommands: [][]string{[]string{"umount", "some/path"}},
+			want:         flex.Failure("Cannot unmount volume some/path: error. Output: an output"),
 		},
 	}
 	for _, tt := range tests {
@@ -48,6 +66,13 @@ func TestDriver_Unmount(t *testing.T) {
 			}
 			got := d.Unmount(tt.args.params)
 			assert.Equal(t, tt.want, got)
+			if tt.fields.fakeExec != nil {
+				assert.Equal(
+					t,
+					tt.wantCommands,
+					tt.fields.fakeExec.RecordedExecution(),
+				)
+			}
 		})
 	}
 }
