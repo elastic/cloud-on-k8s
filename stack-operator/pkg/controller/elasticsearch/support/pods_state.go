@@ -1,7 +1,6 @@
 package support
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -35,20 +34,15 @@ func NewPodsState(
 ) PodsState {
 	podsState := newEmptyPodsState()
 
-	// pendingPods are pods that have been created in the API but is not scheduled or running yet.
-	pendingPods, _ := resourcesState.CurrentPodsByPhase[corev1.PodPending]
-	for _, pod := range pendingPods {
+	// pending Pods are pods that have been created in the API but is not scheduled or running yet.
+	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodPending] {
 		podsState.Pending[pod.Name] = pod
 	}
 
 	if observedState.ClusterState != nil {
 		// since we have a cluster state, attempt to categorize pods further into Joining/Ready and capture the
 		// MasterNodePod
-
-		nodesByName := make(map[string]client.Node, len(observedState.ClusterState.Nodes))
-		for _, node := range observedState.ClusterState.Nodes {
-			nodesByName[node.Name] = node
-		}
+		nodesByName := observedState.ClusterState.NodesByNodeName()
 		masterNodeName := observedState.ClusterState.MasterNodeName()
 
 		for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
@@ -60,7 +54,9 @@ func NewPodsState(
 			}
 
 			if currentRunningPod.Name == masterNodeName {
-				podsState.MasterNodePod = &currentRunningPod
+				// create a new reference here, otherwise we would be setting the master node pod to the iterator
+				masterNodePod := currentRunningPod
+				podsState.MasterNodePod = &masterNodePod
 			}
 		}
 	} else {
@@ -90,15 +86,33 @@ func NewPodsState(
 
 // newEmptyPodsState initializes a PodsState with empty maps.
 func newEmptyPodsState() PodsState {
-	return PodsState{
-		Pending:        make(map[string]corev1.Pod),
-		RunningJoining: make(map[string]corev1.Pod),
-		RunningReady:   make(map[string]corev1.Pod),
-		RunningUnknown: make(map[string]corev1.Pod),
-		Unknown:        make(map[string]corev1.Pod),
-		Terminal:       make(map[string]corev1.Pod),
-		Deleting:       make(map[string]corev1.Pod),
+	return initializePodsState(PodsState{})
+}
+
+// initializePodsState ensures that all maps in the PodsState are non-nil
+func initializePodsState(state PodsState) PodsState {
+	if state.Pending == nil {
+		state.Pending = make(map[string]corev1.Pod)
 	}
+	if state.RunningJoining == nil {
+		state.RunningJoining = make(map[string]corev1.Pod)
+	}
+	if state.RunningReady == nil {
+		state.RunningReady = make(map[string]corev1.Pod)
+	}
+	if state.RunningUnknown == nil {
+		state.RunningUnknown = make(map[string]corev1.Pod)
+	}
+	if state.Unknown == nil {
+		state.Unknown = make(map[string]corev1.Pod)
+	}
+	if state.Terminal == nil {
+		state.Terminal = make(map[string]corev1.Pod)
+	}
+	if state.Deleting == nil {
+		state.Deleting = make(map[string]corev1.Pod)
+	}
+	return state
 }
 
 // CurrentPodsCount returns the count of pods that might be consuming resources in the Kubernetes cluster.

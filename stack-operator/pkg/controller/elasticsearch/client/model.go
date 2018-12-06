@@ -97,6 +97,15 @@ func (cs ClusterState) MasterNodeName() string {
 	return cs.Nodes[cs.MasterNode].Name
 }
 
+// NodesByNodeName returns the Nodes indexed by their Node.Name instead of their Node ID.
+func (cs ClusterState) NodesByNodeName() map[string]Node {
+	nodesByName := make(map[string]Node, len(cs.Nodes))
+	for _, node := range cs.Nodes {
+		nodesByName[node.Name] = node
+	}
+	return nodesByName
+}
+
 // Shard models a hybrid of _cat/shards shard and routing table shard.
 type Shard struct {
 	Index string `json:"index"`

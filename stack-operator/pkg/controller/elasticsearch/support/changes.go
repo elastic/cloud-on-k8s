@@ -13,8 +13,8 @@ type Changes struct {
 	ToRemove []corev1.Pod
 }
 
-// SortPodByCreationTimestamp is a sort function for a list of pods
-func SortPodByCreationTimestamp(pods []corev1.Pod) func(i, j int) bool {
+// sortPodByCreationTimestampAsc is a sort function for a list of pods
+func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
 	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
 }
 
@@ -74,8 +74,8 @@ func mutableCalculateChanges(
 	changes.ToRemove = actualPods
 
 	// sort changes for idempotent processing
-	sort.SliceStable(changes.ToKeep, SortPodByCreationTimestamp(changes.ToKeep))
-	sort.SliceStable(changes.ToRemove, SortPodByCreationTimestamp(changes.ToRemove))
+	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
+	sort.SliceStable(changes.ToRemove, sortPodByCreationTimestampAsc(changes.ToRemove))
 
 	return changes, nil
 }

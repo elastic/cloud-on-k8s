@@ -67,6 +67,40 @@ type GroupedChangeSet struct {
 	PodsState PodsState
 }
 
+// KeyNumbers contains key numbers for a GroupedChangeSet, used to execute an upgrade strategy
+type KeyNumbers struct {
+	// TargetPods is the number of pods we should have in the final state.
+	TargetPods int `json:"targetPods"`
+	// CurrentPods is the current number of pods in the cluster that be using resources.
+	CurrentPods int `json:"currentPods"`
+	// CurrentSurge is the number of pods above the target the cluster is using.
+	CurrentSurge int `json:"currentSurge"`
+	// CurrentOperationalPods is the number of pods that are running and have joined the current master.
+	CurrentOperationalPods int `json:"currentOperationalPods"`
+	// CurrentUnavailable is the number of pods below the target the cluster is currently using.
+	CurrentUnavailable int `json:"currentUnavailable"`
+}
+
+func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
+	// when we're done, we should have ToKeep + ToAdd pods left
+	targetPodsCount := len(s.ChangeSet.ToKeep) + len(s.ChangeSet.ToAdd)
+
+	currentPodsCount := s.PodsState.CurrentPodsCount()
+
+	currentSurge := currentPodsCount - targetPodsCount
+
+	currentOperationalPodsCount := len(s.PodsState.RunningReady)
+	currentUnavailable := targetPodsCount - currentOperationalPodsCount
+
+	return KeyNumbers{
+		TargetPods:             targetPodsCount,
+		CurrentPods:            currentPodsCount,
+		CurrentSurge:           currentSurge,
+		CurrentOperationalPods: currentOperationalPodsCount,
+		CurrentUnavailable:     currentUnavailable,
+	}
+}
+
 // GroupedChangeSets is a list GroupedChangeSet that can be validated for consistency
 type GroupedChangeSets []GroupedChangeSet
 
@@ -104,7 +138,7 @@ func (s ChangeSet) Group(
 	// ensure we remove the master node last in this changeset
 	sort.SliceStable(
 		remainingChangeSet.ToRemove,
-		sortPodsByMasterNodeLastThenCreationTimestamp(
+		sortPodsByMasterNodeLastAndCreationTimestampAsc(
 			remainingPodsState.MasterNodePod,
 			remainingChangeSet.ToRemove,
 		),
@@ -113,7 +147,7 @@ func (s ChangeSet) Group(
 	// ensure we add master nodes first in this changeset
 	sort.SliceStable(
 		remainingChangeSet.ToAdd,
-		sortPodsByMasterNodesFirstThenName(remainingChangeSet.ToAdd),
+		sortPodsByMasterNodesFirstThenNameAsc(remainingChangeSet.ToAdd),
 	)
 
 	for i, gd := range groupingDefinitions {
@@ -125,13 +159,13 @@ func (s ChangeSet) Group(
 			return nil, err
 		}
 
-		toRemove, toRemoveRemaining := partitionPods(selector, remainingChangeSet.ToRemove)
+		toRemove, toRemoveRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToRemove)
 		remainingChangeSet.ToRemove = toRemoveRemaining
 
-		toAdd, toAddRemaining := partitionPods(selector, remainingChangeSet.ToAdd)
+		toAdd, toAddRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToAdd)
 		remainingChangeSet.ToAdd = toAddRemaining
 
-		toKeep, toKeepRemaining := partitionPods(selector, remainingChangeSet.ToKeep)
+		toKeep, toKeepRemaining := paritionPodsBySelector(selector, remainingChangeSet.ToKeep)
 		remainingChangeSet.ToKeep = toKeepRemaining
 
 		groupedChanges.ChangeSet.ToKeep = toKeep
@@ -164,9 +198,9 @@ func (s ChangeSet) Group(
 	return groupedChangeSets, nil
 }
 
-// sortPodsByMasterNodeLastThenCreationTimestamp sorts pods in a preferred deletion order: current master node always
+// sortPodsByMasterNodeLastAndCreationTimestampAsc sorts pods in a preferred deletion order: current master node always
 // last, remaining pods by oldest first.
-func sortPodsByMasterNodeLastThenCreationTimestamp(masterNode *corev1.Pod, pods []corev1.Pod) func(i, j int) bool {
+func sortPodsByMasterNodeLastAndCreationTimestampAsc(masterNode *corev1.Pod, pods []corev1.Pod) func(i, j int) bool {
 	return func(i, j int) bool {
 		iPod := pods[i]
 		jPod := pods[j]
@@ -187,9 +221,9 @@ func sortPodsByMasterNodeLastThenCreationTimestamp(masterNode *corev1.Pod, pods 
 	}
 }
 
-// sortPodsByMasterNodesFirstThenName sorts pods in a preferred creation order: master nodes first, then by name
+// sortPodsByMasterNodesFirstThenNameAsc sorts pods in a preferred creation order: master nodes first, then by name
 // the by name part is used to ensure a stable sort order.
-func sortPodsByMasterNodesFirstThenName(pods []corev1.Pod) func(i, j int) bool {
+func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) bool {
 	return func(i, j int) bool {
 		// sort by master nodes last
 		iPod := pods[i]
@@ -218,9 +252,9 @@ func sortPodsByMasterNodesFirstThenName(pods []corev1.Pod) func(i, j int) bool {
 	}
 }
 
-// partitionPods partitions pods into two sets: one for pods matching the selector and one for the rest. it guarantees
-// that the order of the pods are not changed.
-func partitionPods(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
+// paritionPodsBySelector partitions pods into two sets: one for pods matching the selector and one for the rest. it
+// guarantees that the order of the pods are not changed.
+func paritionPodsBySelector(selector labels.Selector, remainingPods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
 	matchingPods := make([]corev1.Pod, 0)
 	for i := len(remainingPods) - 1; i >= 0; i-- {
 		pod := remainingPods[i]
@@ -244,8 +278,15 @@ func partitionPods(selector labels.Selector, remainingPods []corev1.Pod) ([]core
 
 // PerformableChanges contains changes that can be performed to pod resources
 type PerformableChanges struct {
+	// ScheduleForCreation are pods that can be created
 	ScheduleForCreation []CreatablePod
+	// ScheduleForDeletion are pods that can start the deletion process
 	ScheduleForDeletion []corev1.Pod
+
+	// MaxSurgeGroups are groups that hit their max surge.
+	MaxSurgeGroups []int
+	// MaxUnavailableGroups are groups that hit their max unavailable number.
+	MaxUnavailableGroups []int
 }
 
 // IsEmpty is true if there are no changes.
@@ -264,27 +305,19 @@ func (s GroupedChangeSets) CalculatePerformableChanges() (*PerformableChanges, e
 	var result PerformableChanges
 
 	for groupIndex, groupedChangeSet := range s {
-		// surge only makes sense if you have an "expected" count which we do not have?
-		// .. or is target = toKeep + toAdd - toRemove ?
-		targetPodsCount := len(groupedChangeSet.ChangeSet.ToKeep) +
-			len(groupedChangeSet.ChangeSet.ToAdd) // - len(groupedChangeSet.ChangeSet.ToRemove)
-		// TODO: above: this calculation does not look entirely correct. confirm via unit tests?
-
-		currentPodsCount := groupedChangeSet.PodsState.CurrentPodsCount()
-
-		currentSurge := currentPodsCount - targetPodsCount
-
-		currentOperationalPodsCount := len(groupedChangeSet.PodsState.RunningReady)
-		currentUnavailable := targetPodsCount - currentOperationalPodsCount
+		keyNumbers := groupedChangeSet.KeyNumbers()
 
 		log.Info(
-			"State",
+			"Calculating performable changes for group",
 			"group_index", groupIndex,
-			"target_pods_count", targetPodsCount,
-			"current_pods_count", currentPodsCount,
-			"current_surge", currentSurge,
-			"current_unavailable", currentUnavailable,
-			"pods_state", groupedChangeSet.PodsState.Summary(),
+			"key_numbers", keyNumbers,
+			"pods_state_status", groupedChangeSet.PodsState.Status(),
+		)
+
+		log.V(4).Info(
+			"Calculating performable changes for group",
+			"group_index", groupIndex,
+			"pods_state_summary", groupedChangeSet.PodsState.Summary(),
 		)
 
 		// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
@@ -311,25 +344,26 @@ func (s GroupedChangeSets) CalculatePerformableChanges() (*PerformableChanges, e
 
 		// schedule for creation as many pods as we can
 		for _, newPodToAdd := range groupedChangeSet.ChangeSet.ToAdd {
-			if currentSurge >= maxSurge {
+			if keyNumbers.CurrentSurge >= maxSurge {
 				msg := fmt.Sprintf(""+
 					"Hit the max surge limit in group %d, currently growing at a rate of %d with %d current pods",
 					groupIndex,
-					currentSurge,
-					currentPodsCount,
+					keyNumbers.CurrentSurge,
+					keyNumbers.CurrentPods,
 				)
 				log.Info(msg)
+				result.MaxSurgeGroups = append(result.MaxSurgeGroups, groupIndex)
 				break
 			}
 
-			currentSurge++
-			currentPodsCount++
+			keyNumbers.CurrentSurge++
+			keyNumbers.CurrentPods++
 
 			msg := fmt.Sprintf(
 				"Adding a node in group %d, rate will now be %d with %d current pods.",
 				groupIndex,
-				currentSurge,
-				currentPodsCount,
+				keyNumbers.CurrentSurge,
+				keyNumbers.CurrentPods,
 			)
 			log.Info(msg)
 
@@ -349,25 +383,26 @@ func (s GroupedChangeSets) CalculatePerformableChanges() (*PerformableChanges, e
 		// schedule for deletion as many pods as we can
 		for _, pod := range groupedChangeSet.ChangeSet.ToRemove {
 			// TODO: consider allowing removal of a pod if MaxUnavailable = 0 if all pods are operational?
-			if currentUnavailable >= maxUnavailable {
+			if keyNumbers.CurrentUnavailable >= maxUnavailable {
 				msg := fmt.Sprintf(""+
 					"Hit the max unavailable limit in group %d, currently shrinking with an unavailability of %d with %d current operational pods",
 					groupIndex,
-					currentUnavailable,
-					currentOperationalPodsCount,
+					keyNumbers.CurrentUnavailable,
+					keyNumbers.CurrentOperationalPods,
 				)
 				log.Info(msg)
+				result.MaxUnavailableGroups = append(result.MaxUnavailableGroups, groupIndex)
 				break
 			}
 
-			currentUnavailable++
-			currentOperationalPodsCount--
+			keyNumbers.CurrentUnavailable++
+			keyNumbers.CurrentOperationalPods--
 
 			msg := fmt.Sprintf(
 				"Removing a node in group %d, unavailability will now be %d with %d current operational pods.",
 				groupIndex,
-				currentUnavailable,
-				currentOperationalPodsCount,
+				keyNumbers.CurrentUnavailable,
+				keyNumbers.CurrentOperationalPods,
 			)
 			log.Info(msg)
 

@@ -192,7 +192,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		if !reflect.DeepEqual(currentEs.Spec, es.Spec) {
 			log.Info("Updating ElasticsearchCluster spec")
 
-			log.V(2).Info(
+			log.V(4).Info(
 				fmt.Sprintf(
 					"Updating ElasticsearchCluster spec due to changes: %s",
 					diff.NewDiff(currentEs.Spec, es.Spec),

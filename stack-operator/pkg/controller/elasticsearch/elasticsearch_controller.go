@@ -333,6 +333,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
+	// group all our changes into groups based on the potentially user-specified groups
 	groupedChangeSets, err := allPodChanges.Group(es.Spec.UpdateStrategy.Groups, allPodsState)
 	if err != nil {
 		return reconcileState, err
@@ -350,9 +351,9 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 	log.Info(
-		"Got performable changes",
-		"creating_pods_count", len(performableChanges.ScheduleForCreation),
-		"deleting_pods_count", len(performableChanges.ScheduleForDeletion),
+		"Calculated performable changes",
+		"schedule_for_creation_count", len(performableChanges.ScheduleForCreation),
+		"schedule_for_deletion_count", len(performableChanges.ScheduleForDeletion),
 	)
 
 	for _, change := range performableChanges.ScheduleForCreation {
@@ -371,13 +372,20 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// Current state matches expected state
 		if esReachable {
 			// Update discovery for any previously created pods that have come up (see also below in create pod)
-			err := versionStrategy.UpdateDiscovery(esClient, AvailableElasticsearchNodes(resourcesState.CurrentPods))
-			if err != nil {
-				log.Error(err, "Error during update discovery, continuing")
+			if err := versionStrategy.UpdateDiscovery(
+				esClient,
+				AvailableElasticsearchNodes(resourcesState.CurrentPods),
+			); err != nil {
+				log.Error(err, "Error during update discovery after having no changes, requeuing.")
+				reconcileState.Result = defaultRequeue
+				return reconcileState, nil
 			}
+		} else {
+			// es not yet reachable, let's try again later.
+			reconcileState.Result = defaultRequeue
+			return reconcileState, nil
 		}
 
-		// TODO: can't return here, got more work to do?
 		return reconcileState, nil
 	}
 
@@ -388,18 +396,15 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.")
 
-		// TODO: this is only a partial state!
 		reconcileState.UpdateElasticsearchPending(defaultRequeue, resourcesState.CurrentPods)
 
-		// TODO: can't return here, got more work to do?
 		return reconcileState, nil
 	}
 
-	// TODO: calculate leaving node names better, this would be a partial list atm!
 	// Start migrating data away from all pods to be removed
 	leavingNodeNames := support.PodListToNames(performableChanges.ScheduleForDeletion)
 	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
-		return reconcileState, errors.Wrap(err, "Error during migrate data")
+		return reconcileState, errors.Wrap(err, "error during migrate data")
 	}
 
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
@@ -427,10 +432,8 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	if !changes.IsEmpty() && performableChanges.IsEmpty() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later
-		reconcileState.Result = reconcile.Result{
-			Requeue:      true,
-			RequeueAfter: 10 * time.Second,
-		}
+		reconcileState.Result = defaultRequeue
+		return reconcileState, nil
 	}
 
 	return reconcileState, nil
