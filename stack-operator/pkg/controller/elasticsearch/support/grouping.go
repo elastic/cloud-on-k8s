@@ -10,7 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// ChangeSet contains pods that should be remove
+// ChangeSet contains pods that should be removed, added or kept in during reconciliation.
 type ChangeSet struct {
 	// ToRemove is a list of pods that should eventually be removed
 	ToRemove []corev1.Pod

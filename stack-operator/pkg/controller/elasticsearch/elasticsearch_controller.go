@@ -362,7 +362,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 	}
 
-	// this needs to happen before we return on a non-breaking-error state:
+	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
 	if res, err := r.reconcileNodeCertificateSecrets(es); err != nil {
 		reconcileState.Result = res
 		return reconcileState, err
