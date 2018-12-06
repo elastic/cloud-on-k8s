@@ -1,0 +1,230 @@
+package mutation
+
+import (
+	"sort"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+)
+
+// GroupedChangeSet is a ChangeSet for a specific group of pods.
+type GroupedChangeSet struct {
+	// Name is a logical name for these changes.
+	Name string
+	// ChangeSet contains the changes in this group
+	ChangeSet ChangeSet
+	// PodsState contains the state of all the pods in this group.
+	PodsState PodsState
+}
+
+// KeyNumbers contains key numbers for a GroupedChangeSet, used to execute an upgrade strategy
+type KeyNumbers struct {
+	// TargetPods is the number of pods we should have in the final state.
+	TargetPods int `json:"targetPods"`
+	// CurrentPods is the current number of pods in the cluster that might be using resources.
+	CurrentPods int `json:"currentPods"`
+	// CurrentSurge is the number of pods above the target the cluster is using.
+	CurrentSurge int `json:"currentSurge"`
+	// CurrentOperationalPods is the number of pods that are running and have joined the current master.
+	CurrentOperationalPods int `json:"currentOperationalPods"`
+	// CurrentUnavailable is the number of pods below the target the cluster is currently using.
+	CurrentUnavailable int `json:"currentUnavailable"`
+}
+
+// KeyNumbers calculates and returns the KeyNumbers for this grouped change set,
+func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
+	// when we're done, we should have ToKeep + ToAdd pods in the group.
+	targetPodsCount := len(s.ChangeSet.ToKeep) + len(s.ChangeSet.ToAdd)
+
+	currentPodsCount := s.PodsState.CurrentPodsCount()
+
+	// surge is the number of pods potentially consuming any resources we currently have above the target
+	currentSurge := currentPodsCount - targetPodsCount
+
+	currentOperationalPodsCount := len(s.PodsState.RunningReady)
+
+	// unavailable is the number of fully operational pods we have below the target
+	currentUnavailable := targetPodsCount - currentOperationalPodsCount
+
+	return KeyNumbers{
+		TargetPods:             targetPodsCount,
+		CurrentPods:            currentPodsCount,
+		CurrentSurge:           currentSurge,
+		CurrentOperationalPods: currentOperationalPodsCount,
+		CurrentUnavailable:     currentUnavailable,
+	}
+}
+
+// CalculatePerformableChanges calculates the PerformableChanges for this group with the given strategy
+func (s GroupedChangeSet) CalculatePerformableChanges(
+	strategy v1alpha1.ChangeStrategy,
+	result *PerformableChanges,
+) error {
+	keyNumbers := s.KeyNumbers()
+
+	log.Info(
+		"Calculating performable changes for group",
+		"group_name", s.Name,
+		"key_numbers", keyNumbers,
+		"pods_state_status", s.PodsState.Status(),
+	)
+
+	log.V(4).Info(
+		"Calculating performable changes for group",
+		"group_name", s.Name,
+		"pods_state_summary", s.PodsState.Summary(),
+	)
+
+	// ensure we remove the master node last in this changeset
+	sort.SliceStable(
+		s.ChangeSet.ToRemove,
+		sortPodsByMasterNodeLastAndCreationTimestampAsc(
+			s.PodsState.MasterNodePod,
+			s.ChangeSet.ToRemove,
+		),
+	)
+
+	// ensure we add master nodes first in this changeset
+	sort.SliceStable(
+		s.ChangeSet.ToAdd,
+		sortPodsByMasterNodesFirstThenNameAsc(s.ChangeSet.ToAdd),
+	)
+
+	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
+	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
+	maxSurge := strategy.MaxSurge
+	//maxSurge, err := intstr.GetValueFromIntOrPercent(
+	//	&s.Definition.Strategy.MaxSurge,
+	//	targetPodsCount,
+	//	true,
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	maxUnavailable := strategy.MaxUnavailable
+	//maxUnavailable, err := intstr.GetValueFromIntOrPercent(
+	//	&s.Definition.Strategy.MaxUnavailable,
+	//	targetPodsCount,
+	//	false,
+	//)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	// schedule for creation as many pods as we can
+	for _, newPodToAdd := range s.ChangeSet.ToAdd {
+		if keyNumbers.CurrentSurge >= maxSurge {
+			log.Info(
+				"Hit the max surge limit in a group.",
+				"group_name", s.Name,
+				"current_surge", keyNumbers.CurrentSurge,
+				"current_pods", keyNumbers.CurrentPods,
+			)
+			result.MaxSurgeGroups = append(result.MaxSurgeGroups, s.Name)
+			break
+		}
+
+		keyNumbers.CurrentSurge++
+		keyNumbers.CurrentPods++
+
+		toAddContext := s.ChangeSet.ToAddContext[newPodToAdd.Name]
+
+		log.Info(
+			"Scheduling a pod for creation",
+			"group_name", s.Name,
+			"current_surge", keyNumbers.CurrentSurge,
+			"current_pods", keyNumbers.CurrentPods,
+			"mismatch_reasons", toAddContext.MismatchReasons,
+		)
+
+		result.ScheduleForCreation = append(
+			result.ScheduleForCreation,
+			CreatablePod{Pod: newPodToAdd, PodSpecContext: toAddContext.PodSpecCtx},
+		)
+	}
+
+	// schedule for deletion as many pods as we can
+	for _, pod := range s.ChangeSet.ToRemove {
+		// TODO: consider allowing removal of a pod if MaxUnavailable = 0 if all pods are operational?
+		if keyNumbers.CurrentUnavailable >= maxUnavailable {
+			log.Info(
+				"Hit the max unavailable limit in a group.",
+				"group_name", s.Name,
+				"current_unavailable", keyNumbers.CurrentUnavailable,
+				"current_operational__pods", keyNumbers.CurrentOperationalPods,
+			)
+
+			result.MaxUnavailableGroups = append(result.MaxUnavailableGroups, s.Name)
+			break
+		}
+
+		keyNumbers.CurrentUnavailable++
+		keyNumbers.CurrentOperationalPods--
+
+		log.Info(
+			"Scheduling a pod for deletion",
+			"group_name", s.Name,
+			"current_unavailable", keyNumbers.CurrentUnavailable,
+			"current_operational__pods", keyNumbers.CurrentOperationalPods,
+		)
+
+		result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+	}
+
+	return nil
+}
+
+// ApplyPerformableChanges applies the performable changes to the GroupedChangeSet
+func (s *GroupedChangeSet) ApplyPerformableChanges(
+	performableChanges PerformableChanges,
+) {
+	// convert the scheduled for deletion pods to a map for faster lookup
+	scheduledForDeletionByName := make(map[string]bool, len(performableChanges.ScheduleForDeletion))
+	for _, pod := range performableChanges.ScheduleForDeletion {
+		scheduledForDeletionByName[pod.Name] = true
+	}
+
+	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToRemove
+	for i := len(s.ChangeSet.ToRemove) - 1; i >= 0; i-- {
+		if scheduledForDeletionByName[s.ChangeSet.ToRemove[i].Name] {
+			s.ChangeSet.ToRemove = append(s.ChangeSet.ToRemove[:i], s.ChangeSet.ToRemove[i+1:]...)
+		}
+	}
+
+	// convert the scheduled for creation pods to a map for faster lookup
+	handledAddPods := make(map[string]bool, len(performableChanges.ScheduleForCreation))
+	for _, podToCreate := range performableChanges.ScheduleForCreation {
+		handledAddPods[podToCreate.Pod.Name] = true
+
+		// pretend we added it, which would move it to Pending
+		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
+		// also pretend we're intending to keep it instead of adding it.
+		s.ChangeSet.ToKeep = append(s.ChangeSet.ToKeep, podToCreate.Pod)
+	}
+
+	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
+	for i := len(s.ChangeSet.ToAdd) - 1; i >= 0; i-- {
+		if handledAddPods[s.ChangeSet.ToAdd[i].Name] {
+			s.ChangeSet.ToAdd = append(s.ChangeSet.ToAdd[:i], s.ChangeSet.ToAdd[i+1:]...)
+		}
+	}
+
+	s.PodsState, _ = s.PodsState.Partition(s.ChangeSet)
+}
+
+// GroupedChangeSets is a list GroupedChangeSets
+type GroupedChangeSets []GroupedChangeSet
+
+// CalculatePerformableChanges calculates the PerformableChanges for each group with the given strategy
+func (s GroupedChangeSets) CalculatePerformableChanges(
+	strategy v1alpha1.ChangeStrategy,
+	result *PerformableChanges,
+) error {
+	for _, groupedChangeSet := range s {
+		if err := groupedChangeSet.CalculatePerformableChanges(strategy, result); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

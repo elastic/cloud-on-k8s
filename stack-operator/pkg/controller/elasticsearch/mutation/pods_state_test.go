@@ -1,29 +1,21 @@
-package support
+package mutation
 
 import (
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	corev1 "k8s.io/api/core/v1"
 )
-
-func namedPod(name string) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-		},
-	}
-}
 
 func TestNewPodsState(t *testing.T) {
 	exampleMasterNodePod := namedPod("master")
 
 	type args struct {
-		resourcesState ResourcesState
-		observedState  ObservedState
+		resourcesState support.ResourcesState
+		observedState  support.ObservedState
 	}
 	tests := []struct {
 		name string
@@ -33,7 +25,7 @@ func TestNewPodsState(t *testing.T) {
 		{
 			name: "should bucket pods into the expected states",
 			args: args{
-				resourcesState: ResourcesState{
+				resourcesState: support.ResourcesState{
 					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
@@ -43,7 +35,7 @@ func TestNewPodsState(t *testing.T) {
 					},
 					DeletingPods: []corev1.Pod{namedPod("8")},
 				},
-				observedState: ObservedState{
+				observedState: support.ObservedState{
 					ClusterState: &client.ClusterState{
 						MasterNode: "master-node-id",
 						Nodes: map[string]client.Node{
@@ -68,7 +60,7 @@ func TestNewPodsState(t *testing.T) {
 		{
 			name: "should bucket pods into the expected states when no cluster state is available",
 			args: args{
-				resourcesState: ResourcesState{
+				resourcesState: support.ResourcesState{
 					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
@@ -78,7 +70,7 @@ func TestNewPodsState(t *testing.T) {
 					},
 					DeletingPods: []corev1.Pod{namedPod("8")},
 				},
-				observedState: ObservedState{},
+				observedState: support.ObservedState{},
 			},
 			want: PodsState{
 				Pending:        map[string]corev1.Pod{"1": namedPod("1")},

@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
-
 const (
 	// ClusterNameLabelName used to represent a cluster in k8s resources
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"

@@ -9,24 +9,24 @@ import (
 	"sync/atomic"
 	"time"
 
+	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/record"
-
-	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -322,8 +322,8 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 	}
 
-	allPodsState := support.NewPodsState(*resourcesState, observedState)
-	allPodChanges, err := support.NewChangeSetFromChanges(
+	allPodsState := mutation.NewPodsState(*resourcesState, observedState)
+	allPodChanges, err := mutation.NewChangeSetFromChanges(
 		changes,
 		func(ctx support.PodSpecContext) (corev1.Pod, error) {
 			return versionStrategy.NewPod(es, ctx)
@@ -333,23 +333,23 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
-	// group all our changes into groups based on the potentially user-specified groups
-	groupedChangeSets, err := allPodChanges.Group(es.Spec.UpdateStrategy.Groups, allPodsState)
-	if err != nil {
-		return reconcileState, err
-	}
-	log.Info("Created grouped change sets", "count", len(groupedChangeSets))
-
-	// validate that only one changeset contains master nodes as a safeguard
-	if err := groupedChangeSets.ValidateMasterChanges(); err != nil {
-		return reconcileState, err
+	// use the default strategy if the user did not provide one
+	strategy := elasticsearchv1alpha1.DefaultStrategy
+	if es.Spec.UpdateStrategy.Strategy != nil {
+		strategy = *es.Spec.UpdateStrategy.Strategy
 	}
 
 	// figure out what changes we can perform right now
-	performableChanges, err := groupedChangeSets.CalculatePerformableChanges()
+	performableChanges, err := mutation.CalculatePerformableChanges(
+		strategy,
+		es.Spec.UpdateStrategy.Groups,
+		allPodChanges,
+		allPodsState,
+	)
 	if err != nil {
 		return reconcileState, err
 	}
+
 	log.Info(
 		"Calculated performable changes",
 		"schedule_for_creation_count", len(performableChanges.ScheduleForCreation),

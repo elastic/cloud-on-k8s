@@ -1,6 +1,7 @@
-package support
+package mutation
 
 import (
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -29,12 +30,12 @@ type PodsState struct {
 
 // NewPodsState creates a new PodsState categorizing pods based on the provided state and intended changes.
 func NewPodsState(
-	resourcesState ResourcesState,
-	observedState ObservedState,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
 ) PodsState {
 	podsState := newEmptyPodsState()
 
-	// pending Pods are pods that have been created in the API but is not scheduled or running yet.
+	// pending Pods are pods that have been created in the API but are not scheduled or running yet.
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodPending] {
 		podsState.Pending[pod.Name] = pod
 	}
@@ -45,35 +46,36 @@ func NewPodsState(
 		nodesByName := observedState.ClusterState.NodesByNodeName()
 		masterNodeName := observedState.ClusterState.MasterNodeName()
 
-		for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			// if the pod is not known in the cluster state, we assume it's supposed to join
-			if _, ok := nodesByName[currentRunningPod.Name]; !ok {
-				podsState.RunningJoining[currentRunningPod.Name] = currentRunningPod
+		for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
+			if _, ok := nodesByName[pod.Name]; ok {
+				// the pod is found in the cluster state, so count it as ready
+				podsState.RunningReady[pod.Name] = pod
 			} else {
-				podsState.RunningReady[currentRunningPod.Name] = currentRunningPod
+				// if the pod is not found in the cluster state, we assume it's supposed to join
+				podsState.RunningJoining[pod.Name] = pod
 			}
 
-			if currentRunningPod.Name == masterNodeName {
+			if pod.Name == masterNodeName {
 				// create a new reference here, otherwise we would be setting the master node pod to the iterator
-				masterNodePod := currentRunningPod
+				masterNodePod := pod
 				podsState.MasterNodePod = &masterNodePod
 			}
 		}
 	} else {
 		// no cluster state was available, so all the pods go into the RunningUnknown state
-		for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			podsState.RunningUnknown[currentRunningPod.Name] = currentRunningPod
+		for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
+			podsState.RunningUnknown[pod.Name] = pod
 		}
 	}
 
-	for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodSucceeded] {
-		podsState.Terminal[currentRunningPod.Name] = currentRunningPod
+	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodSucceeded] {
+		podsState.Terminal[pod.Name] = pod
 	}
-	for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodFailed] {
-		podsState.Terminal[currentRunningPod.Name] = currentRunningPod
+	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodFailed] {
+		podsState.Terminal[pod.Name] = pod
 	}
-	for _, currentRunningPod := range resourcesState.CurrentPodsByPhase[corev1.PodUnknown] {
-		podsState.Unknown[currentRunningPod.Name] = currentRunningPod
+	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodUnknown] {
+		podsState.Unknown[pod.Name] = pod
 	}
 
 	// deletingPods are pods we have issued a delete request for, but haven't disappeared from the API yet
@@ -145,49 +147,51 @@ func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
 // partitionByPods partitions the PodsState into two: one set that contains pods in the provided list of pods, and one
 // set containing the rest
 func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
+	source := s.Copy()
+
 	podsStateOfPods := newEmptyPodsState()
-	podsStateOfPods.MasterNodePod = s.MasterNodePod
+	podsStateOfPods.MasterNodePod = source.MasterNodePod
 
 	for _, pod := range pods {
-		if _, ok := s.Pending[pod.Name]; ok {
+		if _, ok := source.Pending[pod.Name]; ok {
 			podsStateOfPods.Pending[pod.Name] = pod
-			delete(s.Pending, pod.Name)
+			delete(source.Pending, pod.Name)
 			continue
 		}
-		if _, ok := s.RunningJoining[pod.Name]; ok {
+		if _, ok := source.RunningJoining[pod.Name]; ok {
 			podsStateOfPods.RunningJoining[pod.Name] = pod
-			delete(s.RunningJoining, pod.Name)
+			delete(source.RunningJoining, pod.Name)
 			continue
 		}
-		if _, ok := s.RunningReady[pod.Name]; ok {
+		if _, ok := source.RunningReady[pod.Name]; ok {
 			podsStateOfPods.RunningReady[pod.Name] = pod
-			delete(s.RunningReady, pod.Name)
+			delete(source.RunningReady, pod.Name)
 			continue
 		}
-		if _, ok := s.RunningUnknown[pod.Name]; ok {
+		if _, ok := source.RunningUnknown[pod.Name]; ok {
 			podsStateOfPods.RunningUnknown[pod.Name] = pod
-			delete(s.RunningUnknown, pod.Name)
+			delete(source.RunningUnknown, pod.Name)
 			continue
 		}
-		if _, ok := s.Unknown[pod.Name]; ok {
+		if _, ok := source.Unknown[pod.Name]; ok {
 			podsStateOfPods.Unknown[pod.Name] = pod
-			delete(s.Unknown, pod.Name)
+			delete(source.Unknown, pod.Name)
 			continue
 		}
-		if _, ok := s.Terminal[pod.Name]; ok {
+		if _, ok := source.Terminal[pod.Name]; ok {
 			podsStateOfPods.Terminal[pod.Name] = pod
-			delete(s.Terminal, pod.Name)
+			delete(source.Terminal, pod.Name)
 			continue
 		}
-		if _, ok := s.Deleting[pod.Name]; ok {
+		if _, ok := source.Deleting[pod.Name]; ok {
 			podsStateOfPods.Deleting[pod.Name] = pod
-			delete(s.Deleting, pod.Name)
+			delete(source.Deleting, pod.Name)
 			continue
 		}
 		log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
 	}
 
-	return podsStateOfPods, s
+	return podsStateOfPods, source
 }
 
 // mergeWith merges two PodsStates into one. If some pods exist in both, values in "other" take precedence.
@@ -310,4 +314,35 @@ func (s PodsState) Status() PodsStateStatus {
 	}
 
 	return status
+}
+
+// Copy copies the PodsState. It copies the underlying maps, but not their contents.
+func (s PodsState) Copy() PodsState {
+	newState := PodsState{
+		MasterNodePod: s.MasterNodePod,
+
+		Pending:        make(map[string]corev1.Pod, len(s.Pending)),
+		RunningJoining: make(map[string]corev1.Pod, len(s.RunningJoining)),
+		RunningReady:   make(map[string]corev1.Pod, len(s.RunningReady)),
+		RunningUnknown: make(map[string]corev1.Pod, len(s.RunningUnknown)),
+		Unknown:        make(map[string]corev1.Pod, len(s.Unknown)),
+		Terminal:       make(map[string]corev1.Pod, len(s.Terminal)),
+		Deleting:       make(map[string]corev1.Pod, len(s.Deleting)),
+	}
+
+	mapCopy := func(dst, src map[string]corev1.Pod) {
+		for k, v := range src {
+			dst[k] = v
+		}
+	}
+
+	mapCopy(newState.Pending, s.Pending)
+	mapCopy(newState.RunningJoining, s.RunningJoining)
+	mapCopy(newState.RunningReady, s.RunningReady)
+	mapCopy(newState.RunningUnknown, s.RunningUnknown)
+	mapCopy(newState.Unknown, s.Unknown)
+	mapCopy(newState.Terminal, s.Terminal)
+	mapCopy(newState.Deleting, s.Deleting)
+
+	return newState
 }

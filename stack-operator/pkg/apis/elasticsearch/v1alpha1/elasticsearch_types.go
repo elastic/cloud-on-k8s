@@ -131,18 +131,18 @@ type NodeTypesSpec struct {
 type UpdateStrategy struct {
 	// Groups is a list of groups that have specific limitations on how they should be updated.
 	Groups []GroupingDefinition `json:"groups,omitempty"`
+	// Strategy is the change strategy that should be applied.
+	Strategy *ChangeStrategy `json:"strategy,omitempty"`
 }
 
 // GroupingDefinition contains a strategy that should be applied to Pods matching a given selector.
 type GroupingDefinition struct {
 	// Selector is the selector used to match pods.
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
-	// Strategy is the change strategy that should be applied.
-	Strategy GroupChangeStrategy `json:"strategy,omitempty"`
 }
 
-// GroupChangeStrategy defines how Pods in a single group should be updated.
-type GroupChangeStrategy struct {
+// ChangeStrategy defines how Pods in a single group should be updated.
+type ChangeStrategy struct {
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
 	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
 
@@ -175,11 +175,13 @@ type GroupChangeStrategy struct {
 var DefaultFallbackGroupingDefinition = GroupingDefinition{
 	// use a selector that matches everything
 	Selector: metav1.LabelSelector{},
-	// a strategy that might not be the most effective, but should work in every case
-	Strategy: GroupChangeStrategy{
-		MaxSurge:       1,
-		MaxUnavailable: 0,
-	},
+}
+
+// DefaultStrategy is used when no strategy is provided. It might not be the most effective, but should work in every
+// case
+var DefaultStrategy = ChangeStrategy{
+	MaxSurge:       1,
+	MaxUnavailable: 0,
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

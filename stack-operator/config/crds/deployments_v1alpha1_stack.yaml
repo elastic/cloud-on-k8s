@@ -102,17 +102,17 @@ spec:
                         properties:
                           selector:
                             type: object
-                          strategy:
-                            properties:
-                              maxSurge:
-                                format: int64
-                                type: integer
-                              maxUnavailable:
-                                format: int64
-                                type: integer
-                            type: object
                         type: object
                       type: array
+                    strategy:
+                      properties:
+                        maxSurge:
+                          format: int64
+                          type: integer
+                        maxUnavailable:
+                          format: int64
+                          type: integer
+                      type: object
                   type: object
                 version:
                   type: string
