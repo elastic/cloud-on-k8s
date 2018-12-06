@@ -81,15 +81,19 @@ type KeyNumbers struct {
 	CurrentUnavailable int `json:"currentUnavailable"`
 }
 
+// KeyNumbers calculates and returns the KeyNumbers for this grouped change set,
 func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
 	// when we're done, we should have ToKeep + ToAdd pods left
 	targetPodsCount := len(s.ChangeSet.ToKeep) + len(s.ChangeSet.ToAdd)
 
 	currentPodsCount := s.PodsState.CurrentPodsCount()
 
+	// surge is the number of pods potentially consuming any resources we currently have above the target
 	currentSurge := currentPodsCount - targetPodsCount
 
 	currentOperationalPodsCount := len(s.PodsState.RunningReady)
+
+	// unavailable is the number of fully operational pods we have below the target
 	currentUnavailable := targetPodsCount - currentOperationalPodsCount
 
 	return KeyNumbers{
