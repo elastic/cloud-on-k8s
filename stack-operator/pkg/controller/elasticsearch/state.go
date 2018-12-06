@@ -76,7 +76,7 @@ func (s *ReconcileState) UpdateElasticsearchState(
 }
 
 func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileState {
-	if nextTakesPrecedence(s.result, result) {
+	if s.nextResultTakesPrecedence(result) {
 		s.result = result
 	}
 	return s
@@ -115,22 +115,23 @@ func (s *ReconcileState) AddEvent(eventType, reason, message string) *ReconcileS
 	return s
 }
 
-// Apply takes the current state applies it to the previous state and returns
-// the events to emit and a version of the Elasticsearch cluster resources with
-// the current state applied to its status sub-resource.
+// Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
+// It returns the events to emit and an updated version of the Elasticsearch cluster resource with
+// the current status applied to its status sub-resource.
 func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 	previous := s.cluster.Status
-	if reflect.DeepEqual(previous, s.status) {
+	current := s.status
+	if reflect.DeepEqual(previous, current) {
 		return s.events, nil
 	}
-	if s.status.IsDegraded(previous) {
-		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded")
+	if current.IsDegraded(previous) {
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded")
 	}
 	oldUUID := previous.ClusterUUID
-	newUUID := s.status.ClusterUUID
+	newUUID := current.ClusterUUID
 	if newUUID == "" {
 		// don't record false positives when the cluster is temporarily unavailable
-		s.status.ClusterUUID = oldUUID
+		current.ClusterUUID = oldUUID
 		newUUID = oldUUID
 	}
 	if newUUID != oldUUID {
@@ -138,19 +139,26 @@ func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
 		)
 	}
-	newMaster := s.status.MasterNode
+	newMaster := current.MasterNode
 	oldMaster := previous.MasterNode
+	// empty master means loss of master node or no valid cluster data
+	// we record it in status but don't emit an event. This might be transient but is a valid state
+	// as opposed to the same thing for the cluster UUID where we are interested in the eventual loss of state
+	// and want to ignore intermediate 'empty' states
 	var masterChanged = newMaster != oldMaster && newMaster != ""
 	if masterChanged {
 		s.AddEvent(corev1.EventTypeNormal, events.EventReasonStateChange,
 			fmt.Sprintf("Master node is now %s", newMaster),
 		)
 	}
-	s.cluster.Status = s.status
+	s.cluster.Status = current
 	return s.events, &s.cluster
 }
 
-func nextTakesPrecedence(current reconcile.Result, next reconcile.Result) bool {
+// nextResultTakesPrecedence compares the current reconciliation result with the proposed one,
+// and returns true if the current result should be replaced by the proposed one.
+func (s *ReconcileState) nextResultTakesPrecedence(next reconcile.Result) bool {
+	current := s.result
 	if current == next {
 		return false // no need to replace the result
 	}

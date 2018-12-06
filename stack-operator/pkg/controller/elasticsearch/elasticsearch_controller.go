@@ -152,16 +152,15 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	state := NewReconcileState(*es)
-	finalState, errs := r.internalReconcile(state)
-	err = r.updateStatus(&finalState)
+	finalState, errs := r.internalReconcile(&state)
+	err = r.updateStatus(finalState)
 	if err != nil {
 		errs = append(errs, err)
 	}
 	return finalState.Result(), k8serrors.NewAggregate(errs)
-
 }
 
-func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (ReconcileState, []error) {
+func (r *ReconcileElasticsearch) internalReconcile(state *ReconcileState) (*ReconcileState, []error) {
 	es := &state.cluster
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
@@ -177,12 +176,12 @@ func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (Reconc
 	if err != nil {
 		return state, []error{err}
 	}
-	(&state).UpdateWithResult(res)
+	state.UpdateWithResult(res)
 	res, err = common.ReconcileService(r, r.scheme, support.NewPublicService(*es), es)
 	if err != nil {
 		return state, []error{err}
 	}
-	(&state).UpdateWithResult(res)
+	state.UpdateWithResult(res)
 
 	// TODO: suffix with type (es?) and trim
 	clusterCAPublicSecretObjectKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
@@ -195,13 +194,13 @@ func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (Reconc
 		return state, []error{err}
 	}
 
-	// recoverable reconcile steps start here
+	// recoverable reconcile steps start here. In case of error we record the error and continue
 	var errs []error
 	res, err = r.reconcileNodeCertificateSecrets(*es)
 	if err != nil {
 		errs = append(errs, err)
 	}
-	(&state).UpdateWithResult(res)
+	state.UpdateWithResult(res)
 
 	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
 	if err != nil {
@@ -218,11 +217,11 @@ func (r *ReconcileElasticsearch) internalReconcile(state ReconcileState) (Reconc
 }
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
-	reconcileState ReconcileState,
+	reconcileState *ReconcileState,
 	es elasticsearchv1alpha1.ElasticsearchCluster,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
-) (ReconcileState, error) {
+) (*ReconcileState, error) {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
 	esClient := esclient.NewElasticsearchClient(support.PublicServiceURL(es), controllerUser, certPool)
@@ -365,7 +364,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	if res, err := r.reconcileNodeCertificateSecrets(es); err != nil {
-		return *reconcileState.UpdateWithResult(res), err
+		return reconcileState.UpdateWithResult(res), err
 	}
 
 	// Start migrating data away from all pods to be removed
@@ -407,7 +406,7 @@ func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 
 // CreateElasticsearchPod creates the given elasticsearch pod
 func (r *ReconcileElasticsearch) CreateElasticsearchPod(
-	state ReconcileState,
+	state *ReconcileState,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	podSpecCtx support.PodSpecContext,
 ) error {
@@ -522,18 +521,17 @@ func (r *ReconcileElasticsearch) CreateElasticsearchPod(
 // DeleteElasticsearchPod deletes the given elasticsearch pod,
 // unless a data migration is in progress
 func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
-	reconcileState ReconcileState,
+	reconcileState *ReconcileState,
 	esState support.ResourcesState,
 	pod corev1.Pod,
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
 	preDelete func() error,
-) (ReconcileState, error) {
+) (*ReconcileState, error) {
 	isMigratingData := support.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		reconcileState.UpdateElasticsearchMigrating(defaultRequeue, esState)
-		return reconcileState, nil
+		return reconcileState.UpdateElasticsearchMigrating(defaultRequeue, esState), nil
 	}
 
 	// delete all PVCs associated with this pod

@@ -146,7 +146,7 @@ func TestReconcileState_Apply(t *testing.T) {
 			effects: func(s *ReconcileState) {
 				s.UpdateElasticsearchPending(reconcile.Result{}, []corev1.Pod{})
 			},
-			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "ElasticsearchCluster health degraded"}},
+			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -439,8 +439,11 @@ func Test_nextTakesPrecedence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := nextTakesPrecedence(tt.args.current, tt.args.next); got != tt.want {
-				t.Errorf("nextTakesPrecedence() = %v, want %v", got, tt.want)
+			state := ReconcileState{
+				result: tt.args.current,
+			}
+			if got := state.nextResultTakesPrecedence(tt.args.next); got != tt.want {
+				t.Errorf("nextResultTakesPrecedence() = %v, want %v", got, tt.want)
 			}
 		})
 	}
