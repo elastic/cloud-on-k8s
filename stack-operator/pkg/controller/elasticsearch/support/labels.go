@@ -8,8 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 )
 
-// TrueFalseLabel is a label that has a true/false value.
-type TrueFalseLabel string
 
 const (
 	// ClusterNameLabelName used to represent a cluster in k8s resources
@@ -30,6 +28,9 @@ const (
 	// NodeTypesMLLabelName is a label set to true on nodes with the ml role
 	NodeTypesMLLabelName TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-ml"
 )
+
+// TrueFalseLabel is a label that has a true/false value.
+type TrueFalseLabel string
 
 // Set sets the given value of this label in the provided map
 func (l TrueFalseLabel) Set(value bool, labels map[string]string) {
