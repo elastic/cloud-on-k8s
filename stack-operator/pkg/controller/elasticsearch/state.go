@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
@@ -23,7 +25,6 @@ type Event struct {
 type ReconcileState struct {
 	cluster v1alpha1.ElasticsearchCluster
 	status  v1alpha1.ElasticsearchStatus
-	result  reconcile.Result
 	events  []Event
 }
 
@@ -50,11 +51,6 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	return nodesAvailable
 }
 
-// Result returns the current reconcile result.
-func (s *ReconcileState) Result() reconcile.Result {
-	return s.result
-}
-
 func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrationPhase, state support.ResourcesState) *ReconcileState {
 	s.status.ClusterUUID = state.ClusterState.ClusterUUID
 	s.status.MasterNode = state.ClusterState.MasterNodeName()
@@ -75,24 +71,16 @@ func (s *ReconcileState) UpdateElasticsearchState(
 	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
 }
 
-func (s *ReconcileState) UpdateWithResult(result reconcile.Result) *ReconcileState {
-	if s.nextResultTakesPrecedence(result) {
-		s.result = result
-	}
-	return s
-}
-
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
-func (s *ReconcileState) UpdateElasticsearchPending(result reconcile.Result, pods []corev1.Pod) *ReconcileState {
+func (s *ReconcileState) UpdateElasticsearchPending(pods []corev1.Pod) *ReconcileState {
 	s.status.AvailableNodes = len(AvailableElasticsearchNodes(pods))
 	s.status.Phase = v1alpha1.ElasticsearchPendingPhase
 	s.status.Health = v1alpha1.ElasticsearchRedHealth
-	return s.UpdateWithResult(result)
+	return s
 }
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *ReconcileState) UpdateElasticsearchMigrating(
-	result reconcile.Result,
 	state support.ResourcesState,
 ) *ReconcileState {
 	s.AddEvent(
@@ -100,8 +88,6 @@ func (s *ReconcileState) UpdateElasticsearchMigrating(
 		events.EventReasonDelayed,
 		"Requested topology change delayed by data migration",
 	)
-	s.status.Phase = v1alpha1.ElasticsearchMigratingDataPhase
-	s.UpdateWithResult(result)
 	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, state)
 }
 
@@ -155,10 +141,52 @@ func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 	return s.events, &s.cluster
 }
 
+// ReconcileResults collects intermediate results of a reconciliation run and any errors that occured.
+type ReconcileResults struct {
+	results []reconcile.Result
+	errors []error
+}
+
+// WithError adds an error to the results.
+func (r *ReconcileResults) WithError(err error) *ReconcileResults{
+	if err != nil {
+	 r.errors = append(r.errors, err)
+	}
+	return r
+}
+
+// WithResult adds an result to the results.
+func (r *ReconcileResults) WithResult(res reconcile.Result) *ReconcileResults {
+	r.results = append(r.results, res)
+	return r
+}
+
+// Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
+// recoverable as we just record the results and continue.
+func (r *ReconcileResults) Apply(step string, recoverableStep func()(reconcile.Result, error)) *ReconcileResults {
+	result, err := recoverableStep()
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Error during %s, continuing", step))
+	}
+	return r.WithError(err).WithResult(result)
+}
+
+// Aggregate compares the given results with each other and returns the most specific one.
+// Where specific means requeue at a given time is more specific then generic requeue which is more specific
+// than no requeue. It also returns any errors recorded.
+func (r *ReconcileResults) Aggregate() (reconcile.Result, error) {
+	var current reconcile.Result
+	for _, next := range r.results {
+		if nextResultTakesPrecedence(current, next) {
+			current = next
+		}
+	}
+	return current, k8serrors.NewAggregate(r.errors)
+}
+
 // nextResultTakesPrecedence compares the current reconciliation result with the proposed one,
 // and returns true if the current result should be replaced by the proposed one.
-func (s *ReconcileState) nextResultTakesPrecedence(next reconcile.Result) bool {
-	current := s.result
+func nextResultTakesPrecedence(current, next reconcile.Result) bool {
 	if current == next {
 		return false // no need to replace the result
 	}

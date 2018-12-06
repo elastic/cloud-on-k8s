@@ -144,7 +144,7 @@ func TestReconcileState_Apply(t *testing.T) {
 			name:    "health degraded",
 			cluster: v1alpha1.ElasticsearchCluster{},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchPending(reconcile.Result{}, []corev1.Pod{})
+				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
 			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
@@ -352,7 +352,6 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 		name            string
 		cluster         v1alpha1.ElasticsearchCluster
 		args            args
-		fixture         func(s *ReconcileState)
 		stateAssertions func(s *ReconcileState)
 	}{
 		{
@@ -363,33 +362,15 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 				support.ResourcesState{},
 			},
 			stateAssertions: func(s *ReconcileState) {
-				assert.Equal(t, reconcile.Result{RequeueAfter: 10 * time.Minute}, s.Result())
 				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
 				assert.Equal(t, []Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.events)
-			},
-		},
-		{
-			name:    "result aggregation",
-			cluster: v1alpha1.ElasticsearchCluster{},
-			args: args{
-				reconcile.Result{RequeueAfter: 10 * time.Minute},
-				support.ResourcesState{},
-			},
-			fixture: func(s *ReconcileState) {
-				s.UpdateWithResult(reconcile.Result{RequeueAfter: 10 * time.Second})
-			},
-			stateAssertions: func(s *ReconcileState) {
-				assert.Equal(t, reconcile.Result{RequeueAfter: 10 * time.Second}, s.Result())
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewReconcileState(tt.cluster)
-			if tt.fixture != nil {
-				tt.fixture(&s)
-			}
-			s.UpdateElasticsearchMigrating(tt.args.result, tt.args.state)
+			s.UpdateElasticsearchMigrating(tt.args.state)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(&s)
 			}
@@ -439,11 +420,42 @@ func Test_nextTakesPrecedence(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			state := ReconcileState{
-				result: tt.args.current,
-			}
-			if got := state.nextResultTakesPrecedence(tt.args.next); got != tt.want {
+			if got := nextResultTakesPrecedence(tt.args.current, tt.args.next); got != tt.want {
 				t.Errorf("nextResultTakesPrecedence() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestReconcileResults(t *testing.T) {
+	tests := []struct {
+		name string
+		args []reconcile.Result
+		want reconcile.Result
+	}{
+		{
+			name: "none",
+			args: nil,
+			want: reconcile.Result{},
+		},
+		{
+			name: "one",
+			args: []reconcile.Result{{Requeue:true}},
+			want: reconcile.Result{Requeue:true},
+		},
+		{
+			name: "multiple",
+			args: []reconcile.Result{{}, {Requeue:true}, {RequeueAfter: 1 * time.Second}},
+			want: reconcile.Result{RequeueAfter:1 * time.Second},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &ReconcileResults{
+				results: tt.args,
+			}
+			if got, _ := r.Aggregate(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Aggregate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

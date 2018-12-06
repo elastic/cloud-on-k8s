@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	k8serrors "k8s.io/apimachinery/pkg/util/errors"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
@@ -152,68 +150,56 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	state := NewReconcileState(*es)
-	finalState, errs := r.internalReconcile(&state)
-	err = r.updateStatus(finalState)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return finalState.Result(), k8serrors.NewAggregate(errs)
+	results:= r.internalReconcile(&state)
+	err = r.updateStatus(&state)
+	return results.WithError(err).Aggregate()
 }
 
-func (r *ReconcileElasticsearch) internalReconcile(state *ReconcileState) (*ReconcileState, []error) {
+func (r *ReconcileElasticsearch) internalReconcile(state *ReconcileState) *ReconcileResults {
 	es := &state.cluster
+	results := &ReconcileResults{}
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
-		return state, []error{err}
+		return results.WithError(err)
 	}
 
 	esVersionStrategy, err := version.LookupStrategy(*ver)
 	if err != nil {
-		return state, []error{err}
+		return results.WithError(err)
 	}
 
 	res, err := common.ReconcileService(r, r.scheme, support.NewDiscoveryService(*es), es)
 	if err != nil {
-		return state, []error{err}
+		return results.WithError(err).WithResult(res)
 	}
-	state.UpdateWithResult(res)
+
 	res, err = common.ReconcileService(r, r.scheme, support.NewPublicService(*es), es)
 	if err != nil {
-		return state, []error{err}
+		return results.WithError(err).WithResult(res)
 	}
-	state.UpdateWithResult(res)
 
 	// TODO: suffix with type (es?) and trim
 	clusterCAPublicSecretObjectKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
 	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, es, r.scheme); err != nil {
-		return state, []error{err}
+		return results.WithError(err)
 	}
 
 	internalUsers, err := r.reconcileUsers(es)
 	if err != nil {
-		return state, []error{err}
+		return results.WithError(err)
 	}
 
 	// recoverable reconcile steps start here. In case of error we record the error and continue
-	var errs []error
-	res, err = r.reconcileNodeCertificateSecrets(*es)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	state.UpdateWithResult(res)
+	results.Apply("reconcileNodeCertificateSecrets", func() (reconcile.Result, error) {
+		return r.reconcileNodeCertificateSecrets(*es)
+	})
 
-	state, err = r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
-	if err != nil {
-		errs = append(errs, err)
-		log.Error(err, "Error during reconcile Elasticsearch pods, continuing")
-	}
+	results.Apply("reconcileElasticsearchPods", func() (reconcile.Result, error) {
+		return r.reconcileElasticsearchPods(state, *es, esVersionStrategy, internalUsers.ControllerUser)
+	})
 
 	err = r.ReconcileSnapshotterCronJob(*es, internalUsers.ControllerUser)
-	if err != nil {
-		errs = append(errs, err)
-	}
-	return state, errs
-
+	return results.WithError(err)
 }
 
 func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
@@ -221,18 +207,18 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
 	versionStrategy version.ElasticsearchVersionStrategy,
 	controllerUser esclient.User,
-) (*ReconcileState, error) {
+) (reconcile.Result, error) {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
 	esClient := esclient.NewElasticsearchClient(support.PublicServiceURL(es), controllerUser, certPool)
 
 	esState, err := support.NewResourcesStateFromAPI(r, es, esClient)
 	if err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	if err := versionStrategy.VerifySupportsExistingPods(esState.CurrentPods); err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	// TODO: suffix and trim
@@ -246,7 +232,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		elasticsearchExtraFilesSecretObjectKey,
 		&elasticsearchExtraFilesSecret,
 	); err != nil && !apierrors.IsNotFound(err) {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	} else if apierrors.IsNotFound(err) {
 		// TODO: handle reconciling Data section if it already exists
 		trustRootCfg := support.TrustRootConfig{
@@ -260,7 +246,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 		trustRootCfgData, err := json.Marshal(&trustRootCfg)
 		if err != nil {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 
 		elasticsearchExtraFilesSecret = corev1.Secret{
@@ -275,17 +261,17 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 		err = controllerutil.SetControllerReference(&es, &elasticsearchExtraFilesSecret, r.scheme)
 		if err != nil {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 
 		if err := r.Create(context.TODO(), &elasticsearchExtraFilesSecret); err != nil {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 	}
 
 	keystoreConfig, err := r.ReconcileSnapshotCredentials(es.Spec.SnapshotRepository)
 	if err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	podSpecParamsTemplate := support.NewPodSpecParams{
@@ -300,12 +286,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	)
 
 	if err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	changes, err := support.CalculateChanges(expectedPodSpecCtxs, *esState)
 	if err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	log.Info(
@@ -316,7 +302,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	esReachable, err := r.IsPublicServiceReady(es)
 	if err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 
 	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
@@ -339,7 +325,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 			}
 		}
 		reconcileState.UpdateElasticsearchState(*esState)
-		return reconcileState, nil
+		return reconcile.Result{}, nil
 	}
 
 	// Grow cluster with missing pods
@@ -347,7 +333,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		log.Info(fmt.Sprintf("Need to add pod because of the following mismatch reasons: %v", newPodToAdd.MismatchReasons))
 		err := r.CreateElasticsearchPod(reconcileState, versionStrategy, newPodToAdd.PodSpecCtx)
 		if err != nil {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 		// There is no point in updating discovery settings here as the new pods will not be ready and ES will reject the
 		// settings change
@@ -359,12 +345,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
 		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.", "iteration", atomic.LoadInt64(&r.iteration))
-		reconcileState.UpdateElasticsearchPending(defaultRequeue, esState.CurrentPods)
-		return reconcileState, nil
+		reconcileState.UpdateElasticsearchPending(esState.CurrentPods)
+		return defaultRequeue, nil
 	}
 
 	if res, err := r.reconcileNodeCertificateSecrets(es); err != nil {
-		return reconcileState.UpdateWithResult(res), err
+		return res, err
 	}
 
 	// Start migrating data away from all pods to be removed
@@ -373,7 +359,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		namesToRemove[i] = pod.Name
 	}
 	if err = support.MigrateData(esClient, namesToRemove); err != nil {
-		return reconcileState, errors.Wrap(err, "Error during migrate data")
+		return reconcile.Result{}, errors.Wrap(err, "Error during migrate data")
 	}
 
 	newState := make([]corev1.Pod, len(esState.CurrentPods))
@@ -385,14 +371,14 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		preDelete := func() error {
 			return versionStrategy.UpdateDiscovery(esClient, newState)
 		}
-		reconcileState, err = r.DeleteElasticsearchPod(reconcileState, *esState, pod, esClient, changes.ToRemove, preDelete)
+		result, err := r.DeleteElasticsearchPod(reconcileState, *esState, pod, esClient, changes.ToRemove, preDelete)
 		if err != nil {
-			return reconcileState, err
+			return result, err
 		}
 	}
 
 	reconcileState.UpdateElasticsearchState(*esState)
-	return reconcileState, nil
+	return reconcile.Result{}, nil
 }
 
 func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
@@ -527,11 +513,12 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 	esClient *esclient.Client,
 	allDeletions []corev1.Pod,
 	preDelete func() error,
-) (*ReconcileState, error) {
+) (reconcile.Result, error) {
 	isMigratingData := support.IsMigratingData(esState, pod, allDeletions)
 	if isMigratingData {
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name), "iteration", atomic.LoadInt64(&r.iteration))
-		return reconcileState.UpdateElasticsearchMigrating(defaultRequeue, esState), nil
+		reconcileState.UpdateElasticsearchMigrating(esState)
+		return defaultRequeue, nil
 	}
 
 	// delete all PVCs associated with this pod
@@ -544,25 +531,25 @@ func (r *ReconcileElasticsearch) DeleteElasticsearchPod(
 		// TODO: perhaps not assuming all PVCs will be managed by us? and maybe we should not categorically delete?
 		pvc, err := esState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
 		if err != nil {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 
 		if err := r.Delete(context.TODO(), &pvc); err != nil && !apierrors.IsNotFound(err) {
-			return reconcileState, err
+			return reconcile.Result{}, err
 		}
 	}
 
 	if err := preDelete(); err != nil {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 	if err := r.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
-		return reconcileState, err
+		return reconcile.Result{}, err
 	}
 	msg := common.Concat("Deleted pod ", pod.Name)
 	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonDeleted, msg)
 	log.Info(msg, "iteration", atomic.LoadInt64(&r.iteration))
 
-	return reconcileState, nil
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileElasticsearch) updateStatus(state *ReconcileState) error {
