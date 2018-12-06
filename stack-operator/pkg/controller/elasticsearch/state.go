@@ -68,6 +68,13 @@ func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrati
 func (s *ReconcileState) UpdateElasticsearchState(
 	state support.ResourcesState,
 ) *ReconcileState {
+	return s.updateWithPhase(s.status.Phase, state)
+}
+
+// UpdateElasticsearchState marks Elasticsearch as being operational in the resource status.
+func (s *ReconcileState) UpdateElasticsearchOperational(
+	state support.ResourcesState,
+) *ReconcileState {
 	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
 }
 

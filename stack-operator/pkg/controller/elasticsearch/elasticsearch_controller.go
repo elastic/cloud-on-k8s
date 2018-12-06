@@ -324,7 +324,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 				log.Error(err, "Error during update discovery, continuing")
 			}
 		}
-		reconcileState.UpdateElasticsearchState(*esState)
+		reconcileState.UpdateElasticsearchOperational(*esState)
 		return reconcile.Result{}, nil
 	}
 
@@ -365,6 +365,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	newState := make([]corev1.Pod, len(esState.CurrentPods))
 	copy(newState, esState.CurrentPods)
 
+	results := ReconcileResults{}
 	// Shrink clusters by deleting deprecated pods
 	for _, pod := range changes.ToRemove {
 		newState = remove(newState, pod)
@@ -375,10 +376,10 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		if err != nil {
 			return result, err
 		}
+		results.WithResult(result)
 	}
-
 	reconcileState.UpdateElasticsearchState(*esState)
-	return reconcile.Result{}, nil
+	return results.Aggregate()
 }
 
 func remove(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {

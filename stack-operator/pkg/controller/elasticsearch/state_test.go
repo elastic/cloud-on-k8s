@@ -164,7 +164,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{
+				s.UpdateElasticsearchOperational(support.ResourcesState{
 					ClusterHealth: client.Health{
 						Status: "red",
 					},
@@ -192,7 +192,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{
+				s.UpdateElasticsearchOperational(support.ResourcesState{
 					ClusterHealth: client.Health{
 						Status: "red",
 					},
@@ -217,6 +217,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
+					Phase:      v1alpha1.ElasticsearchOperationalPhase,
 				},
 			},
 			effects: func(s *ReconcileState) {
@@ -248,6 +249,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
+					Phase:      v1alpha1.ElasticsearchOperationalPhase,
 				},
 			},
 			effects: func(s *ReconcileState) {
@@ -301,7 +303,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 		stateAssertions func(s *ReconcileState)
 	}{
 		{
-			name: "phase is operational by default",
+			name: "phase is not changed by default",
 			cluster: v1alpha1.ElasticsearchCluster{
 				Status: v1alpha1.ElasticsearchStatus{
 					Phase: v1alpha1.ElasticsearchPendingPhase,
@@ -309,7 +311,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 			},
 			args: support.ResourcesState{},
 			stateAssertions: func(s *ReconcileState) {
-				assert.EqualValues(t, v1alpha1.ElasticsearchOperationalPhase, s.status.Phase)
+				assert.EqualValues(t, v1alpha1.ElasticsearchPendingPhase, s.status.Phase)
 			},
 		},
 		{
