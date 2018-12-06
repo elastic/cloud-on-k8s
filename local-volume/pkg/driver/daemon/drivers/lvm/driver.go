@@ -1,7 +1,11 @@
 package lvm
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+)
 
+// DriverKind in LVM
 const DriverKind = "LVM"
 
 // Default driver options
@@ -23,9 +27,10 @@ func (d *Driver) Info() string {
 
 // Options defines parameters for the LVM driver
 type Options struct {
-	VolumeGroupName string
-	UseThinVolumes  bool
-	ThinPoolName    string
+	ExecutableFactory cmdutil.ExecutableFactory
+	VolumeGroupName   string
+	UseThinVolumes    bool
+	ThinPoolName      string
 }
 
 // NewDriver creates a new lvm.Driver with the given options

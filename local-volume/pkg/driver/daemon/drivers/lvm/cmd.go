@@ -1,25 +1,20 @@
 package lvm
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 	log "github.com/sirupsen/logrus"
 )
 
 // RunLVMCmd runs the given LVM-related command,
 // filters out known warnings from the output,
 // and returns a JSON-unmarshalled input into result if given
-func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
-	log.Infof("Running command: %v", cmd.Args)
-	stdout, stderr := new(bytes.Buffer), new(bytes.Buffer)
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	err := cmd.Run()
-	if err != nil {
+func RunLVMCmd(cmd cmdutil.Executable, result interface{}) error {
+	log.Infof("Running command: %v", cmd.Command())
+	if err := cmd.Run(); err != nil {
 		switch {
 		case isInsufficientSpace(err):
 			return ErrNoSpace
@@ -30,12 +25,12 @@ func RunLVMCmd(cmd *exec.Cmd, result interface{}) error {
 		case isVolumeGroupNotFound(err):
 			return ErrVolumeGroupNotFound
 		default:
-			return fmt.Errorf(ignoreWarnings(stderr.String()))
+			return fmt.Errorf(ignoreWarnings(string(cmd.StdOut())))
 		}
 	}
 	if result != nil {
-		if err := json.Unmarshal(stdout.Bytes(), result); err != nil {
-			return fmt.Errorf("cannot parse cmd output: %s %s", err.Error(), stdout.String())
+		if err := json.Unmarshal(cmd.StdOut(), result); err != nil {
+			return fmt.Errorf("cannot parse cmd output: %s %s", err.Error(), string(cmd.StdOut()))
 		}
 	}
 	return nil

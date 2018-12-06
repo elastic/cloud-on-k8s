@@ -2,7 +2,6 @@ package bindmount
 
 import (
 	"fmt"
-
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/diskutil"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pathutil"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
@@ -14,7 +13,7 @@ import (
 // The requested storage size is ignored here.
 func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	// sourceDir is where the directory will be created in the volumes dir
-	sourceDir := pathutil.BuildSourceDir(ContainerMountPath, params.TargetDir)
+	sourceDir := pathutil.BuildSourceDir(d.mountPath, params.TargetDir)
 	if err := diskutil.EnsureDirExists(sourceDir); err != nil {
 		return flex.Failure("cannot ensure source directory: " + err.Error())
 	}
@@ -26,7 +25,7 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	}
 
 	// create bind mount from source to target dir
-	if err := diskutil.BindMount(sourceDir, targetDir); err != nil {
+	if err := diskutil.BindMount(d.factoryFunc, sourceDir, targetDir); err != nil {
 		return flex.Failure(fmt.Sprintf("cannot bind mount %s to %s: %s", sourceDir, targetDir, err.Error()))
 	}
 

@@ -11,7 +11,7 @@ import (
 
 // Unmount unmounts the persistent volume
 func (d *Driver) Unmount(params protocol.UnmountRequest) flex.Response {
-	if err := diskutil.Unmount(params.TargetDir); err != nil {
+	if err := diskutil.Unmount(d.factoryFunc, params.TargetDir); err != nil {
 		return flex.Failure(fmt.Sprintf("Cannot unmount volume %s: %s", params.TargetDir, err.Error()))
 	}
 
