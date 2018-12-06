@@ -412,18 +412,6 @@ func (s GroupedChangeSets) CalculatePerformableChanges() (*PerformableChanges, e
 
 			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
 		}
-
-		// if not parallelizable, break the loop if we have stuff to do or are waiting for some specific state.
-		if !groupedChangeSet.Definition.Strategy.Parallelizable {
-			if len(groupedChangeSet.ChangeSet.ToAdd) > 0 || len(groupedChangeSet.ChangeSet.ToRemove) > 0 {
-				// we have changes to perform
-				break
-			}
-			if len(groupedChangeSet.PodsState.RunningReady) != len(groupedChangeSet.ChangeSet.ToKeep) {
-				// we're waiting for some pods
-				break
-			}
-		}
 	}
 
 	return &result, nil

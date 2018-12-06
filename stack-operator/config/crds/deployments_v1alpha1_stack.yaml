@@ -110,8 +110,6 @@ spec:
                               maxUnavailable:
                                 format: int64
                                 type: integer
-                              parallelizable:
-                                type: boolean
                             type: object
                         type: object
                       type: array

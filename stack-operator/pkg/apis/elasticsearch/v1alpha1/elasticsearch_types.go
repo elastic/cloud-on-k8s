@@ -168,10 +168,6 @@ type GroupChangeStrategy struct {
 	// new group can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is at most 130% of the target number of pods.
 	MaxSurge int `json:"maxSurge,omitempty"`
-
-	// Parallelizable if true allows the next group after this to be processed even if this group (or any prior group)
-	// still have not fully completed.
-	Parallelizable bool `json:"parallelizable,omitempty"`
 }
 
 // DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
@@ -183,7 +179,6 @@ var DefaultFallbackGroupingDefinition = GroupingDefinition{
 	Strategy: GroupChangeStrategy{
 		MaxSurge:       1,
 		MaxUnavailable: 0,
-		Parallelizable: false,
 	},
 }
 
