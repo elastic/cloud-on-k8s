@@ -10,12 +10,18 @@ spec:
     setVmMaxMapCount: true
     updateStrategy:
       groups:
-      # update master nodes first:
+      # give each failure domain a chance to reconcile failures before regular changes:
       - selector:
           matchLabels:
-            elasticsearch.k8s.elastic.co/node-master: "true"
-        strategy:
-          maxSurge: 1
+            failure-domain.beta.kubernetes.io/zone: europe-west3-a
+      - selector:
+          matchLabels:
+            failure-domain.beta.kubernetes.io/zone: europe-west3-b
+      - selector:
+          matchLabels:
+            failure-domain.beta.kubernetes.io/zone: europe-west3-c
+      changeBudget:
+        maxSurge: 1
     topologies:
     - nodeTypes:
         master: true

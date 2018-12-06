@@ -15,7 +15,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	tests := []struct {
 		name               string
 		s                  GroupedChangeSets
-		strategy           v1alpha1.ChangeStrategy
+		budget             v1alpha1.ChangeBudget
 		performableChanges *PerformableChanges
 		want               *PerformableChanges
 		wantErr            bool
@@ -44,7 +44,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				},
 			},
 			performableChanges: &PerformableChanges{},
-			strategy: v1alpha1.ChangeStrategy{
+			budget: v1alpha1.ChangeBudget{
 				MaxSurge:       1,
 				MaxUnavailable: 0,
 			},
@@ -73,7 +73,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				},
 			},
 			performableChanges: &PerformableChanges{},
-			strategy: v1alpha1.ChangeStrategy{
+			budget: v1alpha1.ChangeBudget{
 				MaxSurge:       1,
 				MaxUnavailable: 1,
 			},
@@ -107,7 +107,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				},
 			},
 			performableChanges: &PerformableChanges{},
-			strategy: v1alpha1.ChangeStrategy{
+			budget: v1alpha1.ChangeBudget{
 				MaxSurge:       1,
 				MaxUnavailable: 1,
 			},
@@ -125,7 +125,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.s.CalculatePerformableChanges(tt.strategy, tt.performableChanges)
+			err := tt.s.CalculatePerformableChanges(tt.budget, tt.performableChanges)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GroupedChangeSets.CalculatePerformableChanges() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -171,11 +171,11 @@ func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
 				}),
 			},
 			want: KeyNumbers{
-				TargetPods:             3,
-				CurrentPods:            3,
-				CurrentSurge:           0,
-				CurrentOperationalPods: 3,
-				CurrentUnavailable:     0,
+				TargetPods:              3,
+				CurrentPods:             3,
+				CurrentSurge:            0,
+				CurrentRunningReadyPods: 3,
+				CurrentUnavailable:      0,
 			},
 		},
 	}

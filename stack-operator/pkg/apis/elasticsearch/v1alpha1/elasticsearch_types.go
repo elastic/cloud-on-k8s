@@ -129,20 +129,23 @@ type NodeTypesSpec struct {
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
 type UpdateStrategy struct {
-	// Groups is a list of groups that have specific limitations on how they should be updated.
+	// Groups is a list of groups that should have their cluster mutations considered in a fair manner with a strict
+	// change budget (not allowing any surge or unavailability) before the entire cluster is reconciled with the
+	// full change budget.
 	Groups []GroupingDefinition `json:"groups,omitempty"`
-	// Strategy is the change strategy that should be applied.
-	Strategy *ChangeStrategy `json:"strategy,omitempty"`
+
+	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
+	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
 }
 
-// GroupingDefinition contains a strategy that should be applied to Pods matching a given selector.
+// GroupingDefinition is used to select a group of pods.
 type GroupingDefinition struct {
 	// Selector is the selector used to match pods.
 	Selector metav1.LabelSelector `json:"selector,omitempty"`
 }
 
-// ChangeStrategy defines how Pods in a single group should be updated.
-type ChangeStrategy struct {
+// ChangeBudget defines how Pods in a single group should be updated.
+type ChangeBudget struct {
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
 	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
 
@@ -177,9 +180,9 @@ var DefaultFallbackGroupingDefinition = GroupingDefinition{
 	Selector: metav1.LabelSelector{},
 }
 
-// DefaultStrategy is used when no strategy is provided. It might not be the most effective, but should work in every
-// case
-var DefaultStrategy = ChangeStrategy{
+// DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
+// every case
+var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       1,
 	MaxUnavailable: 0,
 }

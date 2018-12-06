@@ -16,7 +16,7 @@ type GroupedChangeSet struct {
 	PodsState PodsState
 }
 
-// KeyNumbers contains key numbers for a GroupedChangeSet, used to execute an upgrade strategy
+// KeyNumbers contains key numbers for a GroupedChangeSet, used to execute an upgrade budget
 type KeyNumbers struct {
 	// TargetPods is the number of pods we should have in the final state.
 	TargetPods int `json:"targetPods"`
@@ -24,8 +24,8 @@ type KeyNumbers struct {
 	CurrentPods int `json:"currentPods"`
 	// CurrentSurge is the number of pods above the target the cluster is using.
 	CurrentSurge int `json:"currentSurge"`
-	// CurrentOperationalPods is the number of pods that are running and have joined the current master.
-	CurrentOperationalPods int `json:"currentOperationalPods"`
+	// CurrentRunningReadyPods is the number of pods that are running and have joined the current master.
+	CurrentRunningReadyPods int `json:"currentRunningReady"`
 	// CurrentUnavailable is the number of pods below the target the cluster is currently using.
 	CurrentUnavailable int `json:"currentUnavailable"`
 }
@@ -40,23 +40,23 @@ func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
 	// surge is the number of pods potentially consuming any resources we currently have above the target
 	currentSurge := currentPodsCount - targetPodsCount
 
-	currentOperationalPodsCount := len(s.PodsState.RunningReady)
+	currentRunningReadyPods := len(s.PodsState.RunningReady)
 
-	// unavailable is the number of fully operational pods we have below the target
-	currentUnavailable := targetPodsCount - currentOperationalPodsCount
+	// unavailable is the number of "running and ready" pods we have below the target
+	currentUnavailable := targetPodsCount - currentRunningReadyPods
 
 	return KeyNumbers{
-		TargetPods:             targetPodsCount,
-		CurrentPods:            currentPodsCount,
-		CurrentSurge:           currentSurge,
-		CurrentOperationalPods: currentOperationalPodsCount,
-		CurrentUnavailable:     currentUnavailable,
+		TargetPods:              targetPodsCount,
+		CurrentPods:             currentPodsCount,
+		CurrentSurge:            currentSurge,
+		CurrentRunningReadyPods: currentRunningReadyPods,
+		CurrentUnavailable:      currentUnavailable,
 	}
 }
 
-// CalculatePerformableChanges calculates the PerformableChanges for this group with the given strategy
+// CalculatePerformableChanges calculates the PerformableChanges for this group with the given budget
 func (s GroupedChangeSet) CalculatePerformableChanges(
-	strategy v1alpha1.ChangeStrategy,
+	budget v1alpha1.ChangeBudget,
 	result *PerformableChanges,
 ) error {
 	keyNumbers := s.KeyNumbers()
@@ -73,6 +73,9 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 		"group_name", s.Name,
 		"pods_state_summary", s.PodsState.Summary(),
 	)
+
+	// TODO: the sorting done here does not guarantee that we have both master and data nodes available in the cluster
+	// at all times.
 
 	// ensure we remove the master node last in this changeset
 	sort.SliceStable(
@@ -91,24 +94,24 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
 	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
-	maxSurge := strategy.MaxSurge
+	maxSurge := budget.MaxSurge
 	//maxSurge, err := intstr.GetValueFromIntOrPercent(
-	//	&s.Definition.Strategy.MaxSurge,
+	//	&s.Definition.ChangeBudget.MaxSurge,
 	//	targetPodsCount,
 	//	true,
 	//)
 	//if err != nil {
-	//	return nil, err
+	//	return err
 	//}
 
-	maxUnavailable := strategy.MaxUnavailable
+	maxUnavailable := budget.MaxUnavailable
 	//maxUnavailable, err := intstr.GetValueFromIntOrPercent(
-	//	&s.Definition.Strategy.MaxUnavailable,
+	//	&s.Definition.ChangeBudget.MaxUnavailable,
 	//	targetPodsCount,
 	//	false,
 	//)
 	//if err != nil {
-	//	return nil, err
+	//	return err
 	//}
 
 	// schedule for creation as many pods as we can
@@ -117,8 +120,7 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 			log.Info(
 				"Hit the max surge limit in a group.",
 				"group_name", s.Name,
-				"current_surge", keyNumbers.CurrentSurge,
-				"current_pods", keyNumbers.CurrentPods,
+				"key_numbers", keyNumbers,
 			)
 			result.MaxSurgeGroups = append(result.MaxSurgeGroups, s.Name)
 			break
@@ -132,8 +134,7 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 		log.Info(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
-			"current_surge", keyNumbers.CurrentSurge,
-			"current_pods", keyNumbers.CurrentPods,
+			"key_numbers", keyNumbers,
 			"mismatch_reasons", toAddContext.MismatchReasons,
 		)
 
@@ -145,13 +146,11 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 
 	// schedule for deletion as many pods as we can
 	for _, pod := range s.ChangeSet.ToRemove {
-		// TODO: consider allowing removal of a pod if MaxUnavailable = 0 if all pods are operational?
 		if keyNumbers.CurrentUnavailable >= maxUnavailable {
 			log.Info(
 				"Hit the max unavailable limit in a group.",
 				"group_name", s.Name,
-				"current_unavailable", keyNumbers.CurrentUnavailable,
-				"current_operational__pods", keyNumbers.CurrentOperationalPods,
+				"key_numbers", keyNumbers,
 			)
 
 			result.MaxUnavailableGroups = append(result.MaxUnavailableGroups, s.Name)
@@ -159,13 +158,12 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 		}
 
 		keyNumbers.CurrentUnavailable++
-		keyNumbers.CurrentOperationalPods--
+		keyNumbers.CurrentRunningReadyPods--
 
 		log.Info(
 			"Scheduling a pod for deletion",
 			"group_name", s.Name,
-			"current_unavailable", keyNumbers.CurrentUnavailable,
-			"current_operational__pods", keyNumbers.CurrentOperationalPods,
+			"key_numbers", keyNumbers,
 		)
 
 		result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
@@ -212,16 +210,16 @@ func (s *GroupedChangeSet) ApplyPerformableChanges(
 	s.PodsState, _ = s.PodsState.Partition(s.ChangeSet)
 }
 
-// GroupedChangeSets is a list GroupedChangeSets
+// GroupedChangeSets is a list of GroupedChangeSets
 type GroupedChangeSets []GroupedChangeSet
 
-// CalculatePerformableChanges calculates the PerformableChanges for each group with the given strategy
+// CalculatePerformableChanges calculates the PerformableChanges for each group with the given budget
 func (s GroupedChangeSets) CalculatePerformableChanges(
-	strategy v1alpha1.ChangeStrategy,
+	budget v1alpha1.ChangeBudget,
 	result *PerformableChanges,
 ) error {
 	for _, groupedChangeSet := range s {
-		if err := groupedChangeSet.CalculatePerformableChanges(strategy, result); err != nil {
+		if err := groupedChangeSet.CalculatePerformableChanges(budget, result); err != nil {
 			return err
 		}
 	}

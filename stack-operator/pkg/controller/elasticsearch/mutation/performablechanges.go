@@ -32,7 +32,7 @@ type CreatablePod struct {
 
 // CalculatePerformableChanges calculates which changes we are allowed to perform in the current state.
 func CalculatePerformableChanges(
-	strategy v1alpha1.ChangeStrategy,
+	budget v1alpha1.ChangeBudget,
 	groups []v1alpha1.GroupingDefinition,
 	allPodChanges *ChangeSet,
 	allPodsState PodsState,
@@ -59,7 +59,7 @@ func CalculatePerformableChanges(
 	// falling apart). this is to ensure that the surge/unavailability room that's created by the failing pods do not
 	// get eaten up other, simultaneous changes.
 	if err := groupedChangeSets.CalculatePerformableChanges(
-		v1alpha1.ChangeStrategy{},
+		v1alpha1.ChangeBudget{},
 		performableChanges,
 	); err != nil {
 		return nil, err
@@ -70,8 +70,8 @@ func CalculatePerformableChanges(
 	allChangeSet.ApplyPerformableChanges(*performableChanges)
 
 	// pass 2:
-	// - calculate the performable changes across a single changeset using the proper strategy.
-	if err := allChangeSet.CalculatePerformableChanges(strategy, performableChanges); err != nil {
+	// - calculate the performable changes across a single changeset using the proper budget.
+	if err := allChangeSet.CalculatePerformableChanges(budget, performableChanges); err != nil {
 		return nil, err
 	}
 

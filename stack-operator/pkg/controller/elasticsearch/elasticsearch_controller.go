@@ -333,15 +333,15 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcileState, err
 	}
 
-	// use the default strategy if the user did not provide one
-	strategy := elasticsearchv1alpha1.DefaultStrategy
-	if es.Spec.UpdateStrategy.Strategy != nil {
-		strategy = *es.Spec.UpdateStrategy.Strategy
+	// use the default budget if the user did not provide one
+	budget := elasticsearchv1alpha1.DefaultChangeBudget
+	if es.Spec.UpdateStrategy.ChangeBudget != nil {
+		budget = *es.Spec.UpdateStrategy.ChangeBudget
 	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(
-		strategy,
+		budget,
 		es.Spec.UpdateStrategy.Groups,
 		allPodChanges,
 		allPodsState,
