@@ -16,7 +16,6 @@ func NewExecutableFactory() ExecutableFactory {
 	return func(name string, args ...string) Executable {
 		c := WrappedCmd{Cmd: exec.Command(name, args...)}
 		c.stdErr, c.stdOut = new(bytes.Buffer), new(bytes.Buffer)
-		c.Cmd.Stderr, c.Cmd.Stdout = c.stdErr, c.stdOut
 		return &c
 	}
 }
@@ -36,6 +35,12 @@ func (c *WrappedCmd) StdOut() []byte { return c.stdOut.Bytes() }
 // StdErr returns the stderr
 func (c *WrappedCmd) StdErr() []byte { return c.stdErr.Bytes() }
 
+// Run starts the specified command and waits for it to complete.
+func (c *WrappedCmd) Run() error {
+	c.Cmd.Stderr, c.Cmd.Stdout = c.stdErr, c.stdOut
+	return c.Cmd.Run()
+}
+
 // Executable defines the common interface that any executable should have.
 type Executable interface {
 	// CombinedOutput runs the command and returns its combined standard
@@ -45,8 +50,13 @@ type Executable interface {
 	// Command returns the command arguments
 	Command() []string
 
+	// StdOut returns the stdout
 	StdOut() []byte
+
+	// StdErr returns the stderr
 	StdErr() []byte
+
+	// Run starts the specified command and waits for it to complete.
 	Run() error
 }
 
