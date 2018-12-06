@@ -150,7 +150,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	state := NewReconcileState(*es)
-	results:= r.internalReconcile(&state)
+	results := r.internalReconcile(&state)
 	err = r.updateStatus(&state)
 	return results.WithError(err).Aggregate()
 }

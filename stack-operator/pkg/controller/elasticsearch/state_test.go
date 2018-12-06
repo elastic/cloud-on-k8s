@@ -440,13 +440,13 @@ func TestReconcileResults(t *testing.T) {
 		},
 		{
 			name: "one",
-			args: []reconcile.Result{{Requeue:true}},
-			want: reconcile.Result{Requeue:true},
+			args: []reconcile.Result{{Requeue: true}},
+			want: reconcile.Result{Requeue: true},
 		},
 		{
 			name: "multiple",
-			args: []reconcile.Result{{}, {Requeue:true}, {RequeueAfter: 1 * time.Second}},
-			want: reconcile.Result{RequeueAfter:1 * time.Second},
+			args: []reconcile.Result{{}, {Requeue: true}, {RequeueAfter: 1 * time.Second}},
+			want: reconcile.Result{RequeueAfter: 1 * time.Second},
 		},
 	}
 	for _, tt := range tests {

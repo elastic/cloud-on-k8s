@@ -144,13 +144,13 @@ func (s *ReconcileState) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
 // ReconcileResults collects intermediate results of a reconciliation run and any errors that occured.
 type ReconcileResults struct {
 	results []reconcile.Result
-	errors []error
+	errors  []error
 }
 
 // WithError adds an error to the results.
-func (r *ReconcileResults) WithError(err error) *ReconcileResults{
+func (r *ReconcileResults) WithError(err error) *ReconcileResults {
 	if err != nil {
-	 r.errors = append(r.errors, err)
+		r.errors = append(r.errors, err)
 	}
 	return r
 }
@@ -163,7 +163,7 @@ func (r *ReconcileResults) WithResult(res reconcile.Result) *ReconcileResults {
 
 // Apply applies the output of a reconciliation step to the results. The step outcome is implicitly considered
 // recoverable as we just record the results and continue.
-func (r *ReconcileResults) Apply(step string, recoverableStep func()(reconcile.Result, error)) *ReconcileResults {
+func (r *ReconcileResults) Apply(step string, recoverableStep func() (reconcile.Result, error)) *ReconcileResults {
 	result, err := recoverableStep()
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error during %s, continuing", step))
