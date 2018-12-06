@@ -195,13 +195,13 @@ func (s *PodsState) mergeFrom(other PodsState) {
 
 // PodsStateSummary contains a shorter summary of a PodsState
 type PodsStateSummary struct {
-	Pending           []string `json:"pending,omitempty"`
-	RunningJoining    []string `json:"runningJoining,omitempty"`
-	RunningReady      []string `json:"runningReady,omitempty"`
-	RunningUnknown    []string `json:"runningUnknown,omitempty"`
-	Unknown           []string `json:"unknown,omitempty"`
-	Terminal          []string `json:"terminal,omitempty"`
-	Deleting          []string `json:"deleting,omitempty"`
+	Pending        []string `json:"pending,omitempty"`
+	RunningJoining []string `json:"runningJoining,omitempty"`
+	RunningReady   []string `json:"runningReady,omitempty"`
+	RunningUnknown []string `json:"runningUnknown,omitempty"`
+	Unknown        []string `json:"unknown,omitempty"`
+	Terminal       []string `json:"terminal,omitempty"`
+	Deleting       []string `json:"deleting,omitempty"`
 
 	MasterNodeName string `json:"masterNodeName,omitEmpty"`
 }
@@ -228,13 +228,13 @@ func (s PodsState) Summary() PodsStateSummary {
 
 // PodsStateStatus is a short status of a PodsState.
 type PodsStateStatus struct {
-	Pending           int `json:"pending,omitempty"`
-	RunningJoining    int `json:"runningJoining,omitempty"`
-	RunningReady      int `json:"runningReady,omitempty"`
-	RunningUnknown    int `json:"runningUnknown,omitempty"`
-	Unknown           int `json:"unknown,omitempty"`
-	Terminal          int `json:"terminal,omitempty"`
-	Deleting          int `json:"deleting,omitempty"`
+	Pending        int `json:"pending,omitempty"`
+	RunningJoining int `json:"runningJoining,omitempty"`
+	RunningReady   int `json:"runningReady,omitempty"`
+	RunningUnknown int `json:"runningUnknown,omitempty"`
+	Unknown        int `json:"unknown,omitempty"`
+	Terminal       int `json:"terminal,omitempty"`
+	Deleting       int `json:"deleting,omitempty"`
 
 	MasterNodeName string `json:"masterNodeName,omitEmpty"`
 }
