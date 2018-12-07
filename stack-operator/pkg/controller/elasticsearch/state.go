@@ -51,31 +51,40 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	return nodesAvailable
 }
 
-func (s *ReconcileState) updateWithPhase(phase v1alpha1.ElasticsearchOrchestrationPhase, state support.ResourcesState) *ReconcileState {
-	s.status.ClusterUUID = state.ClusterState.ClusterUUID
-	s.status.MasterNode = state.ClusterState.MasterNodeName()
-	s.status.AvailableNodes = len(AvailableElasticsearchNodes(state.CurrentPods))
+func (s *ReconcileState) updateWithPhase(
+	phase v1alpha1.ElasticsearchOrchestrationPhase,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
+) *ReconcileState {
+	if observedState.ClusterState != nil {
+		s.status.ClusterUUID = observedState.ClusterState.ClusterUUID
+		s.status.MasterNode = observedState.ClusterState.MasterNodeName()
+	}
+	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
 	s.status.Health = v1alpha1.ElasticsearchHealth("unknown")
 	s.status.Phase = phase
 
-	if state.ClusterHealth.Status != "" {
-		s.status.Health = v1alpha1.ElasticsearchHealth(state.ClusterHealth.Status)
+	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
+		s.status.Health = v1alpha1.ElasticsearchHealth(observedState.ClusterHealth.Status)
 	}
 	return s
 }
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s *ReconcileState) UpdateElasticsearchState(
-	state support.ResourcesState,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
 ) *ReconcileState {
-	return s.updateWithPhase(s.status.Phase, state)
+	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
 }
 
 // UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
 func (s *ReconcileState) UpdateElasticsearchOperational(
-	state support.ResourcesState,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
+
 ) *ReconcileState {
-	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, state)
+	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, resourcesState, observedState)
 }
 
 // UpdateElasticsearchPending marks Elasticsearch as being the pending phase in the resource status.
@@ -88,14 +97,15 @@ func (s *ReconcileState) UpdateElasticsearchPending(pods []corev1.Pod) *Reconcil
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *ReconcileState) UpdateElasticsearchMigrating(
-	state support.ResourcesState,
+	resourcesState support.ResourcesState,
+	observedState support.ObservedState,
 ) *ReconcileState {
 	s.AddEvent(
 		corev1.EventTypeNormal,
 		events.EventReasonDelayed,
 		"Requested topology change delayed by data migration",
 	)
-	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, state)
+	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }
 
 // AddEvent records the intent to emit a k8s event with the given attributes.

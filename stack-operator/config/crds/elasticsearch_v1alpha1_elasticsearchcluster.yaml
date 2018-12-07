@@ -93,6 +93,28 @@ spec:
                     type: array
                 type: object
               type: array
+            updateStrategy:
+              properties:
+                changeBudget:
+                  properties:
+                    maxSurge:
+                      format: int64
+                      type: integer
+                    maxUnavailable:
+                      format: int64
+                      type: integer
+                  required:
+                  - maxUnavailable
+                  - maxSurge
+                  type: object
+                groups:
+                  items:
+                    properties:
+                      selector:
+                        type: object
+                    type: object
+                  type: array
+              type: object
             version:
               type: string
           type: object

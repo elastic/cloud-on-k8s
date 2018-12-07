@@ -6,9 +6,6 @@ metadata:
   name: stack-local-volume-sample
 spec:
   version: "6.4.2"
-  featureFlags:
-    nodeCertificates:
-      enabled: true
   elasticsearch:
     setVmMaxMapCount: true
     topologies:

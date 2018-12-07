@@ -32,6 +32,9 @@ type ElasticsearchSpec struct {
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
+
+	// UpdateStrategy specifies how updates to the cluster should be performed.
+	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 }
 
 // SnapshotRepositoryType as in gcs, AWS s3, file etc.
@@ -122,6 +125,77 @@ type NodeTypesSpec struct {
 	Ingest bool `json:"ingest,omitempty"`
 	// ML represents a machine learning node
 	ML bool `json:"ml,omitempty"`
+}
+
+// UpdateStrategy specifies how updates to the cluster should be performed.
+type UpdateStrategy struct {
+	// Groups is a list of groups that should have their cluster mutations considered in a fair manner with a strict
+	// change budget (not allowing any surge or unavailability) before the entire cluster is reconciled with the
+	// full change budget.
+	Groups []GroupingDefinition `json:"groups,omitempty"`
+
+	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
+	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
+}
+
+// ResolveChangeBudget resolves the optional ChangeBudget into the user-provided one or a defaulted one.
+func (s UpdateStrategy) ResolveChangeBudget() ChangeBudget {
+	if s.ChangeBudget != nil {
+		return *s.ChangeBudget
+	}
+
+	return DefaultChangeBudget
+}
+
+// GroupingDefinition is used to select a group of pods.
+type GroupingDefinition struct {
+	// Selector is the selector used to match pods.
+	Selector metav1.LabelSelector `json:"selector,omitempty"`
+}
+
+// ChangeBudget defines how Pods in a single group should be updated.
+type ChangeBudget struct {
+	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
+	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
+
+	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
+	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
+	// Absolute number is calculated from percentage by rounding down.
+	// This can not be 0 if MaxSurge is 0 if you want automatic rolling changes to be applied.
+	// By default, a fixed value of 0 is used.
+	// Example: when this is set to 30%, the group can be scaled down by 30%
+	// immediately when the rolling update starts. Once new pods are ready, the group
+	// can be scaled down further, followed by scaling up the group, ensuring
+	// that at least 70% of the target number of pods are available at all times
+	// during the update.
+	MaxUnavailable int `json:"maxUnavailable"`
+
+	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
+	// pods.
+	// By default, a fixed value of 1 is used.
+	// Value can be an absolute number (ex: 5) or a percentage of total pods at
+	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0 if you want automatic rolling
+	// updates to be applied.
+	// Absolute number is calculated from percentage by rounding up.
+	// Example: when this is set to 30%, the new group can be scaled up by 30%
+	// immediately when the rolling update starts. Once old pods have been killed,
+	// new group can be scaled up further, ensuring that total number of pods running
+	// at any time during the update is at most 130% of the target number of pods.
+	MaxSurge int `json:"maxSurge"`
+}
+
+// DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
+// there are pods that are not selected by the user-defined groups.
+var DefaultFallbackGroupingDefinition = GroupingDefinition{
+	// use a selector that matches everything
+	Selector: metav1.LabelSelector{},
+}
+
+// DefaultChangeBudget is used when no change budget is provided. It might not be the most effective, but should work in
+// every case
+var DefaultChangeBudget = ChangeBudget{
+	MaxSurge:       1,
+	MaxUnavailable: 0,
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

@@ -13,9 +13,9 @@ type Changes struct {
 	ToRemove []corev1.Pod
 }
 
-// SortPodByName is a sort function for a list of pods
-func SortPodByName(pods []corev1.Pod) func(i, j int) bool {
-	return func(i, j int) bool { return pods[i].Name < pods[j].Name }
+// sortPodByCreationTimestampAsc is a sort function for a list of pods
+func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
 }
 
 // PodToAdd defines a pod to be added, along with
@@ -26,8 +26,8 @@ type PodToAdd struct {
 }
 
 // IsEmpty returns true if there are no topology changes to performed
-func (c Changes) IsEmpty() bool {
-	return len(c.ToAdd) == 0 && len(c.ToRemove) == 0
+func (c Changes) HasChanges() bool {
+	return len(c.ToAdd) > 0 || len(c.ToRemove) > 0
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
@@ -74,9 +74,8 @@ func mutableCalculateChanges(
 	changes.ToRemove = actualPods
 
 	// sort changes for idempotent processing
-	// TODO: smart sort  to process nodes in a particular order
-	sort.SliceStable(changes.ToKeep, SortPodByName(changes.ToKeep))
-	sort.SliceStable(changes.ToRemove, SortPodByName(changes.ToRemove))
+	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
+	sort.SliceStable(changes.ToRemove, sortPodByCreationTimestampAsc(changes.ToRemove))
 
 	return changes, nil
 }

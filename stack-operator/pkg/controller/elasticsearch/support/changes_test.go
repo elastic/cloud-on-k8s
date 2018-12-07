@@ -93,38 +93,38 @@ func TestChanges_IsEmpty(t *testing.T) {
 		want   bool
 	}{
 		{
-			name:   "empty is empty",
+			name:   "empty has no changes",
 			fields: fields{},
-			want:   true,
+			want:   false,
 		},
 		{
-			name: "something to keep is still empty",
+			name: "something to keep still has no changes",
 			fields: fields{
 				ToKeep: []corev1.Pod{corev1.Pod{}},
+			},
+			want: false,
+		},
+		{
+			name: "something to add has changes",
+			fields: fields{
+				ToAdd: []PodToAdd{PodToAdd{}},
 			},
 			want: true,
 		},
 		{
-			name: "something to add is not empty",
-			fields: fields{
-				ToAdd: []PodToAdd{PodToAdd{}},
-			},
-			want: false,
-		},
-		{
-			name: "something to remove is not empty",
+			name: "something to remove has changes",
 			fields: fields{
 				ToRemove: []corev1.Pod{corev1.Pod{}},
 			},
-			want: false,
+			want: true,
 		},
 		{
-			name: "add and  remove is not empty",
+			name: "add and remove has changes",
 			fields: fields{
 				ToAdd:    []PodToAdd{PodToAdd{}},
 				ToRemove: []corev1.Pod{corev1.Pod{}},
 			},
-			want: false,
+			want: true,
 		},
 	}
 	for _, tt := range tests {
@@ -134,7 +134,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 				ToKeep:   tt.fields.ToKeep,
 				ToRemove: tt.fields.ToRemove,
 			}
-			if got := c.IsEmpty(); got != tt.want {
+			if got := c.HasChanges(); got != tt.want {
 				t.Errorf("Changes.IsEmpty() = %v, want %v", got, tt.want)
 			}
 		})
