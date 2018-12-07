@@ -1,20 +1,18 @@
 package lvm
 
-import "strings"
-
-// simpleError wraps a string into an error
-type simpleError string
-
-func (s simpleError) Error() string { return string(s) }
+import (
+	"errors"
+	"strings"
+)
 
 // Known LVM Errors
-const (
-	ErrNoSpace                = simpleError("lvm: not enough free space")
-	ErrTooFewDisks            = simpleError("lvm: not enough underlying devices")
-	ErrPhysicalVolumeNotFound = simpleError("lvm: physical volume not found")
-	ErrVolumeGroupNotFound    = simpleError("lvm: volume group not found")
-	ErrLogicalVolumeNotFound  = simpleError("lvm: logical volume not found")
-	ErrInvalidLVName          = simpleError("lvm: name contains invalid character, valid set includes: [A-Za-z0-9_+.-]")
+var (
+	ErrNoSpace                = errors.New("lvm: not enough free space")
+	ErrTooFewDisks            = errors.New("lvm: not enough underlying devices")
+	ErrPhysicalVolumeNotFound = errors.New("lvm: physical volume not found")
+	ErrVolumeGroupNotFound    = errors.New("lvm: volume group not found")
+	ErrLogicalVolumeNotFound  = errors.New("lvm: logical volume not found")
+	ErrInvalidLVName          = errors.New("lvm: name contains invalid character, valid set includes: [A-Za-z0-9_+.-]")
 )
 
 // isVolumeGroupNotFound returns true if the error is due to the vg not being found

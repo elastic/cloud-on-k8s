@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/bindmount"
 	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/lvm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -31,10 +33,15 @@ var rootCmd = &cobra.Command{
 		}
 		driverKind := viper.GetString(driverKindFlag)
 		driverOpts := drivers.Options{
+			BindMount: bindmount.Options{
+				Factory:   cmdutil.NewExecutableFactory(),
+				MountPath: bindmount.DefaultContainerMountPath,
+			},
 			LVM: lvm.Options{
-				VolumeGroupName: viper.GetString(lvmVolumeGroupFlag),
-				UseThinVolumes:  viper.GetBool(lvmUseThinVolumesFlag),
-				ThinPoolName:    viper.GetString(lvmThinPoolFlag),
+				ExecutableFactory: cmdutil.NewExecutableFactory(),
+				VolumeGroupName:   viper.GetString(lvmVolumeGroupFlag),
+				UseThinVolumes:    viper.GetBool(lvmUseThinVolumesFlag),
+				ThinPoolName:      viper.GetString(lvmThinPoolFlag),
 			},
 		}
 

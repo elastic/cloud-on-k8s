@@ -4,12 +4,12 @@ import log "github.com/sirupsen/logrus"
 
 // ListVolumes lists the logical volumes from the volume group name to find the PV names
 func (d *Driver) ListVolumes() ([]string, error) {
-	vg, err := LookupVolumeGroup(d.options.VolumeGroupName)
+	vg, err := LookupVolumeGroup(d.options.ExecutableFactory, d.options.VolumeGroupName)
 	if err != nil {
 		return nil, err
 	}
 
-	lvs, err := vg.ListLogicalVolumes()
+	lvs, err := vg.ListLogicalVolumes(d.options.ExecutableFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -23,7 +23,7 @@ func (d *Driver) ListVolumes() ([]string, error) {
 
 // PurgeVolume deletes a logical volume
 func (d *Driver) PurgeVolume(volumeName string) error {
-	vg, err := LookupVolumeGroup(d.options.VolumeGroupName)
+	vg, err := LookupVolumeGroup(d.options.ExecutableFactory, d.options.VolumeGroupName)
 	if err != nil {
 		if err == ErrVolumeGroupNotFound {
 			// we're deleting, missing volume group means the lv must be gone as well
@@ -37,7 +37,7 @@ func (d *Driver) PurgeVolume(volumeName string) error {
 		return err
 	}
 
-	lv, err := vg.LookupLogicalVolume(volumeName)
+	lv, err := vg.LookupLogicalVolume(d.options.ExecutableFactory, volumeName)
 	if err != nil {
 		if err == ErrLogicalVolumeNotFound {
 			// we're deleting, so not found is fine.
@@ -47,5 +47,5 @@ func (d *Driver) PurgeVolume(volumeName string) error {
 		return err
 	}
 
-	return lv.Remove()
+	return lv.Remove(d.options.ExecutableFactory)
 }

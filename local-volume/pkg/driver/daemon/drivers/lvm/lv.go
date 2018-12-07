@@ -1,8 +1,9 @@
 package lvm
 
 import (
-	"os/exec"
 	"regexp"
+
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
 // LogicalVolume represents an LVM logical volume
@@ -28,9 +29,9 @@ type lvsOutput struct {
 }
 
 // Path returns the device path for the logical volume.
-func (lv LogicalVolume) Path() (string, error) {
+func (lv LogicalVolume) Path(newCmd cmdutil.ExecutableFactory) (string, error) {
 	result := lvsOutput{}
-	cmd := exec.Command(
+	cmd := newCmd(
 		"lvs",
 		"--options=lv_path",
 		"--reportformat=json", "--units=b", "--nosuffix",
@@ -48,15 +49,10 @@ func (lv LogicalVolume) Path() (string, error) {
 }
 
 // Remove the logical volume from the volume group
-func (lv LogicalVolume) Remove() error {
-	cmd := exec.Command(
-		"lvremove",
-		"-f", lv.vg.name+"/"+lv.name,
-	)
-	if err := RunLVMCmd(cmd, nil); err != nil {
-		return err
-	}
-	return nil
+func (lv LogicalVolume) Remove(newCmd cmdutil.ExecutableFactory) error {
+	return RunLVMCmd(newCmd(
+		"lvremove", "-f", lv.vg.name+"/"+lv.name,
+	), nil)
 }
 
 // lvnameRegexp is the regexp validating a correct lv name

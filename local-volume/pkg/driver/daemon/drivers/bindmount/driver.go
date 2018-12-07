@@ -1,13 +1,28 @@
 package bindmount
 
-// DriverKind represents the bind mount driver
-const DriverKind = "BINDMOUNT"
+import (
+	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+)
 
-// ContainerMountPath is the path to access volumes from within the container
-const ContainerMountPath = "/mnt/elastic-local-volumes"
+const (
+	// DriverKind represents the bind mount driver
+	DriverKind = "BINDMOUNT"
+
+	// DefaultContainerMountPath is the path to access volumes from within the container
+	DefaultContainerMountPath = "/mnt/elastic-local-volumes"
+)
 
 // Driver handles bind mounts
-type Driver struct{}
+type Driver struct {
+	factoryFunc cmdutil.ExecutableFactory
+	mountPath   string
+}
+
+// Options for the BindMount driver.
+type Options struct {
+	Factory   cmdutil.ExecutableFactory
+	MountPath string
+}
 
 // Info returns some information about the driver
 func (d *Driver) Info() string {
@@ -15,6 +30,9 @@ func (d *Driver) Info() string {
 }
 
 // NewDriver creates a new bindmount.Driver
-func NewDriver() *Driver {
-	return &Driver{}
+func NewDriver(opts Options) *Driver {
+	return &Driver{
+		factoryFunc: opts.Factory,
+		mountPath:   opts.MountPath,
+	}
 }
