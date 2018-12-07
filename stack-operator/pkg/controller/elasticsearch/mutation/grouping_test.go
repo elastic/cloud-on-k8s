@@ -15,6 +15,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 		name               string
 		s                  GroupedChangeSets
 		budget             v1alpha1.ChangeBudget
+		podRestrictions    PodRestrictions
 		performableChanges *PerformableChanges
 		want               *PerformableChanges
 		wantErr            bool
@@ -124,7 +125,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.s.calculatePerformableChanges(tt.budget, tt.performableChanges)
+			err := tt.s.calculatePerformableChanges(tt.budget, &tt.podRestrictions, tt.performableChanges)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GroupedChangeSets.calculatePerformableChanges() error = %v, wantErr %v", err, tt.wantErr)
 				return

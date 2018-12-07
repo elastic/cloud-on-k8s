@@ -434,7 +434,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 		results.WithResult(result)
 	}
-	if !changes.IsEmpty() && performableChanges.IsEmpty() {
+	if !changes.IsEmpty() && !performableChanges.HasChanges() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later
 		return defaultRequeue, nil
 	}

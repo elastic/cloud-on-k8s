@@ -18,15 +18,18 @@ type PerformableChanges struct {
 	// ScheduleForDeletion are pods that can start the deletion process
 	ScheduleForDeletion []corev1.Pod
 
+	// informational values
+	// RestrictedPods are pods that were prevented from being scheduled for deletion
+	RestrictedPods map[string]error
 	// MaxSurgeGroups are groups that hit their max surge.
 	MaxSurgeGroups []string
 	// MaxUnavailableGroups are groups that hit their max unavailable number.
 	MaxUnavailableGroups []string
 }
 
-// IsEmpty is true if there are no changes.
-func (c PerformableChanges) IsEmpty() bool {
-	return len(c.ScheduleForCreation) == 0 && len(c.ScheduleForDeletion) == 0
+// HasChanges is true if there are no changes.
+func (c PerformableChanges) HasChanges() bool {
+	return len(c.ScheduleForCreation) > 0 || len(c.ScheduleForDeletion) > 0
 }
 
 // CreatablePod contains all information required to create a pod
@@ -35,13 +38,21 @@ type CreatablePod struct {
 	PodSpecContext support.PodSpecContext
 }
 
+// initializePerformableChanges initializes nil values in PerformableChanges
+func initializePerformableChanges(changes PerformableChanges) *PerformableChanges {
+	if changes.RestrictedPods == nil {
+		changes.RestrictedPods = make(map[string]error)
+	}
+	return &changes
+}
+
 // CalculatePerformableChanges calculates which changes we are allowed to perform in the current state.
 func CalculatePerformableChanges(
 	strategy v1alpha1.UpdateStrategy,
 	allPodChanges *ChangeSet,
 	allPodsState PodsState,
 ) (*PerformableChanges, error) {
-	performableChanges := &PerformableChanges{}
+	performableChanges := initializePerformableChanges(PerformableChanges{})
 
 	// resolve the change budget
 	budget := strategy.ResolveChangeBudget()
@@ -60,6 +71,8 @@ func CalculatePerformableChanges(
 	}
 	log.V(3).Info("Created grouped change sets", "count", len(groupedChangeSets))
 
+	podRestrictions := NewPodRestrictions(allPodsState)
+
 	// pass 1:
 	// - give every group a change to perform changes, but do not allow for any surge or unavailability. this is
 	// intended to ensure that we're able to recover from larger failures (e.g a pod failing or a failure domain
@@ -67,6 +80,7 @@ func CalculatePerformableChanges(
 	// get eaten up other, simultaneous changes.
 	if err := groupedChangeSets.calculatePerformableChanges(
 		pass1ChangeBudget,
+		&podRestrictions,
 		performableChanges,
 	); err != nil {
 		return nil, err
@@ -78,7 +92,11 @@ func CalculatePerformableChanges(
 
 	// pass 2:
 	// - calculate the performable changes across a single changeset using the proper budget.
-	if err := allChangeSet.calculatePerformableChanges(budget, performableChanges); err != nil {
+	if err := allChangeSet.calculatePerformableChanges(
+		budget,
+		&podRestrictions,
+		performableChanges,
+	); err != nil {
 		return nil, err
 	}
 

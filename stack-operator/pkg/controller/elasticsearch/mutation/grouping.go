@@ -75,6 +75,7 @@ func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
 // calculatePerformableChanges calculates the PerformableChanges for this group with the given budget
 func (s GroupedChangeSet) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
+	podRestrictions *PodRestrictions,
 	result *PerformableChanges,
 ) error {
 	keyNumbers := s.KeyNumbers()
@@ -91,9 +92,6 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		"group_name", s.Name,
 		"pods_state_summary", s.PodsState.Summary(),
 	)
-
-	// TODO: the sorting done here does not guarantee that we have both master and data nodes available in the cluster
-	// at all times.
 
 	// ensure we consider removing terminal pods first and the master node last in this changeset
 	sort.SliceStable(
@@ -171,6 +169,12 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 			continue
 		}
 
+		if err := podRestrictions.CanRemove(pod); err != nil {
+			// cannot remove pod due to restrictions
+			result.RestrictedPods[pod.Name] = err
+			continue
+		}
+
 		if keyNumbers.CurrentUnavailable >= maxUnavailable {
 			log.V(4).Info(
 				"Hit the max unavailable limit in a group.",
@@ -191,6 +195,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 			"key_numbers", keyNumbers,
 		)
 
+		podRestrictions.Remove(pod)
 		result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
 	}
 
@@ -250,10 +255,11 @@ type GroupedChangeSets []GroupedChangeSet
 // calculatePerformableChanges calculates the PerformableChanges for each group with the given budget
 func (s GroupedChangeSets) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
+	podRestrictions *PodRestrictions,
 	result *PerformableChanges,
 ) error {
 	for _, groupedChangeSet := range s {
-		if err := groupedChangeSet.calculatePerformableChanges(budget, result); err != nil {
+		if err := groupedChangeSet.calculatePerformableChanges(budget, podRestrictions, result); err != nil {
 			return err
 		}
 	}
