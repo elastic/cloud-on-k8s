@@ -106,10 +106,10 @@ func CalculatePerformableChanges(
 	// - this is required for scenarios such as converting from one MasterData node to one Master and One Data. In
 	// this situation we *must* create both new nodes before we delete the existing one
 	// TODO: consider requiring this being enabled in the update strategy?
-	// TODO: determine whether restricted changes from podRestrictions where a cluster is temporarily unavailable can
-	// cause this to be a bit too permissive.
+	if !allChangeSet.ChangeSet.IsEmpty() &&
+		!performableChanges.HasChanges() &&
+		!allPodsState.HasPodsInTransientStates() {
 
-	if !allChangeSet.ChangeSet.IsEmpty() && !performableChanges.HasChanges() {
 		changeStats := allChangeSet.ChangeStats()
 		newBudget := v1alpha1.ChangeBudget{
 			MaxSurge: changeStats.CurrentSurge + 1,

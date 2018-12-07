@@ -283,6 +283,21 @@ func (s PodsState) Copy() PodsState {
 	return newState
 }
 
+// HasPodsInTransientStates returns true if there are pods in transient states.
+//
+// Transient states are: Pending, RunningJoining, RunningUnknown, Unknown, Deleting
+// Non-transient states are: RunningReady, Terminal.
+func (s PodsState) HasPodsInTransientStates() bool {
+	if len(s.Pending) > 0 ||
+		len(s.RunningJoining) > 0 ||
+		len(s.RunningUnknown) > 0 ||
+		len(s.Unknown) > 0 ||
+		len(s.Deleting) > 0 {
+		return true
+	}
+	return false
+}
+
 // mapCopy copies all key/value pairs in src into dst
 func mapCopy(dst, src map[string]corev1.Pod) {
 	for k, v := range src {

@@ -242,6 +242,29 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				MaxSurgeGroups: []string{UnmatchedGroupName, AllGroupName},
 			}),
 		},
+		{
+			name: "going from dedicated m/d nodes to mdi node with an existing mdi node",
+			args: args{
+				strategy: updateStrategyWithZonesAsGroups,
+				allPodChanges: &ChangeSet{
+					ToAdd:    concatPodList(masterDataPods[:1]),
+					ToKeep:   concatPodList(masterDataPods[1:]),
+					ToRemove: concatPodList(masterPods[:1], dataPods[:1]),
+				},
+				allPodsState: initializePodsState(PodsState{
+					RunningJoining: podListToMap(concatPodList(masterDataPods[1:])),
+					RunningReady:   podListToMap(concatPodList(masterPods[:1], dataPods[:1])),
+				}),
+			},
+			want: initializePerformableChanges(PerformableChanges{
+				// we have to wait for the mdi node to join before we can start deleting master/data nodes
+				RestrictedPods: map[string]error{
+					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,
+					dataPods[0].Name:   ErrNotEnoughDataEligiblePods,
+				},
+				MaxSurgeGroups: []string{UnmatchedGroupName, AllGroupName},
+			}),
+		},
 	}
 
 	for _, tt := range tests {
