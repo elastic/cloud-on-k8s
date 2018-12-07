@@ -234,7 +234,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			},
 			want: initializePerformableChanges(PerformableChanges{
 				// this is what we would prefer, but it does not happen due to max surging
-				//ScheduleForCreation: []CreatablePod{{Pod: masterDataPods[0]}},
+				ScheduleForCreation: []CreatablePod{{Pod: masterDataPods[0]}},
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,
 					dataPods[0].Name:   ErrNotEnoughDataEligiblePods,

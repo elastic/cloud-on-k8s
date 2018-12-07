@@ -100,5 +100,27 @@ func CalculatePerformableChanges(
 		return nil, err
 	}
 
+	// pass 3:
+	// - in which we allow breaking the surge budget if we have changes we would like to apply, but were not allowed to
+	// due to the surge budget
+	// TODO: consider requiring this being enabled in the update strategy?
+
+	if !allChangeSet.ChangeSet.IsEmpty() && !performableChanges.HasChanges() {
+		keyNumbers := allChangeSet.KeyNumbers()
+		newBudget := v1alpha1.ChangeBudget{
+			MaxSurge: keyNumbers.CurrentSurge + 1,
+		}
+
+		// - here we do not have to simulate performing changes because we now it has no changes
+
+		if err := allChangeSet.calculatePerformableChanges(
+			newBudget,
+			&podRestrictions,
+			performableChanges,
+		); err != nil {
+			return nil, err
+		}
+	}
+
 	return performableChanges, nil
 }
