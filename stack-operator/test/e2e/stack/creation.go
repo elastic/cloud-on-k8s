@@ -112,9 +112,9 @@ func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 			Name: "Services should have endpoints",
 			Test: helpers.Eventually(func() error {
 				for endpointName, addrCount := range map[string]int{
-					stack.Name + "-es-discovery": 3,
-					stack.Name + "-kibana":       1,
-					stack.Name + "-es-public":    3,
+					stack.Name + "-es-discovery": int(stack.Spec.Elasticsearch.NodeCount()),
+					stack.Name + "-kibana":       int(stack.Spec.Kibana.NodeCount),
+					stack.Name + "-es-public":    int(stack.Spec.Elasticsearch.NodeCount()),
 				} {
 					endpoints, err := k.GetEndpoints(endpointName)
 					if err != nil {
