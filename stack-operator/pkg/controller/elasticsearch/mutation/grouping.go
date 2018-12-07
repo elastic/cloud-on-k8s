@@ -67,8 +67,8 @@ func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
 	}
 }
 
-// CalculatePerformableChanges calculates the PerformableChanges for this group with the given budget
-func (s GroupedChangeSet) CalculatePerformableChanges(
+// calculatePerformableChanges calculates the PerformableChanges for this group with the given budget
+func (s GroupedChangeSet) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
 	result *PerformableChanges,
 ) error {
@@ -185,8 +185,8 @@ func (s GroupedChangeSet) CalculatePerformableChanges(
 	return nil
 }
 
-// ApplyPerformableChanges applies the performable changes to the GroupedChangeSet
-func (s *GroupedChangeSet) ApplyPerformableChanges(
+// applyPerformableChanges applies the performable changes to the GroupedChangeSet
+func (s *GroupedChangeSet) applyPerformableChanges(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
@@ -226,13 +226,13 @@ func (s *GroupedChangeSet) ApplyPerformableChanges(
 // GroupedChangeSets is a list of GroupedChangeSets
 type GroupedChangeSets []GroupedChangeSet
 
-// CalculatePerformableChanges calculates the PerformableChanges for each group with the given budget
-func (s GroupedChangeSets) CalculatePerformableChanges(
+// calculatePerformableChanges calculates the PerformableChanges for each group with the given budget
+func (s GroupedChangeSets) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
 	result *PerformableChanges,
 ) error {
 	for _, groupedChangeSet := range s {
-		if err := groupedChangeSet.CalculatePerformableChanges(budget, result); err != nil {
+		if err := groupedChangeSet.calculatePerformableChanges(budget, result); err != nil {
 			return err
 		}
 	}

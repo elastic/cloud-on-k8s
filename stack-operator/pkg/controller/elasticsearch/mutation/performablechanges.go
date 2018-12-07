@@ -60,7 +60,7 @@ func CalculatePerformableChanges(
 	// intended to ensure that we're able to recover from larger failures (e.g a pod failing or a failure domain
 	// falling apart). this is to ensure that the surge/unavailability room that's created by the failing pods do not
 	// get eaten up other, simultaneous changes.
-	if err := groupedChangeSets.CalculatePerformableChanges(
+	if err := groupedChangeSets.calculatePerformableChanges(
 		v1alpha1.ChangeBudget{},
 		performableChanges,
 	); err != nil {
@@ -69,11 +69,11 @@ func CalculatePerformableChanges(
 
 	// apply the performable changes to the "all" (ungrouped) changeset. this is done in order to account for the
 	// changes pass 1 is intending to do.
-	allChangeSet.ApplyPerformableChanges(*performableChanges)
+	allChangeSet.applyPerformableChanges(*performableChanges)
 
 	// pass 2:
 	// - calculate the performable changes across a single changeset using the proper budget.
-	if err := allChangeSet.CalculatePerformableChanges(budget, performableChanges); err != nil {
+	if err := allChangeSet.calculatePerformableChanges(budget, performableChanges); err != nil {
 		return nil, err
 	}
 
