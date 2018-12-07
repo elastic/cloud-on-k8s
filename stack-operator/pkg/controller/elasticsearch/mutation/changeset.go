@@ -1,8 +1,6 @@
 package mutation
 
 import (
-	"fmt"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
@@ -83,7 +81,7 @@ func (s ChangeSet) Group(
 
 	for i, gd := range groupingDefinitions {
 		groupedChanges := GroupedChangeSet{
-			Name: fmt.Sprintf("%s%d", DynamicGroupNamePrefix, i),
+			Name: dynamicGroupName(i),
 		}
 		selector, err := v1.LabelSelectorAsSelector(&gd.Selector)
 		if err != nil {

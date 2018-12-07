@@ -3,9 +3,8 @@ package mutation
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )

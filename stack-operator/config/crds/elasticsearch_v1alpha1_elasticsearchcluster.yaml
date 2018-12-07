@@ -103,6 +103,9 @@ spec:
                     maxUnavailable:
                       format: int64
                       type: integer
+                  required:
+                  - maxUnavailable
+                  - maxSurge
                   type: object
                 groups:
                   items:

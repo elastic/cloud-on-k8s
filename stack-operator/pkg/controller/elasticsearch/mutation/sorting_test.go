@@ -14,6 +14,7 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 	masterNode := namedPodWithCreationTimestamp("master", time.Unix(5, 0))
 
 	type args struct {
+		terminal   map[string]corev1.Pod
 		masterNode *corev1.Pod
 		pods       []corev1.Pod
 	}
@@ -40,12 +41,35 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 				masterNode,
 			},
 		},
+		{
+			name: "terminal pods first",
+			args: args{
+				masterNode: &masterNode,
+				pods: []corev1.Pod{
+					masterNode,
+					namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
+					namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
+					namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
+				},
+				terminal: map[string]corev1.Pod{"6": namedPod("6")},
+			},
+			want: []corev1.Pod{
+				namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
+				namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
+				namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
+				masterNode,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sort.SliceStable(
 				tt.args.pods,
-				sortPodsByMasterNodeLastAndCreationTimestampAsc(tt.args.masterNode, tt.args.pods),
+				sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
+					tt.args.terminal,
+					tt.args.masterNode,
+					tt.args.pods,
+				),
 			)
 
 			assert.Equal(t, tt.want, tt.args.pods)

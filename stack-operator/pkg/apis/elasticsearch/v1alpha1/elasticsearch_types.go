@@ -162,16 +162,17 @@ type ChangeBudget struct {
 	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
 	// Absolute number is calculated from percentage by rounding down.
 	// This can not be 0 if MaxSurge is 0.
-	// By default, a fixed value of 1 is used.
+	// By default, a fixed value of 0 is used.
 	// Example: when this is set to 30%, the group can be scaled down by 30%
 	// immediately when the rolling update starts. Once new pods are ready, the group
 	// can be scaled down further, followed by scaling up the group, ensuring
 	// that at least 70% of the target number of pods are available at all times
 	// during the update.
-	MaxUnavailable int `json:"maxUnavailable,omitempty"`
+	MaxUnavailable int `json:"maxUnavailable"`
 
 	// MaxSurge is the maximum number of pods that can be scheduled above the original number of
 	// pods.
+	// By default, a fixed value of 1 is used.
 	// Value can be an absolute number (ex: 5) or a percentage of total pods at
 	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0.
 	// Absolute number is calculated from percentage by rounding up.
@@ -179,7 +180,7 @@ type ChangeBudget struct {
 	// immediately when the rolling update starts. Once old pods have been killed,
 	// new group can be scaled up further, ensuring that total number of pods running
 	// at any time during the update is at most 130% of the target number of pods.
-	MaxSurge int `json:"maxSurge,omitempty"`
+	MaxSurge int `json:"maxSurge"`
 }
 
 // DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or

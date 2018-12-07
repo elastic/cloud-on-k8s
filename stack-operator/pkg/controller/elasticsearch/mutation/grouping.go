@@ -1,6 +1,7 @@
 package mutation
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -15,9 +16,13 @@ const (
 	// groups
 	UnmatchedGroupName = "unmatched"
 
-	// DynamicGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
-	DynamicGroupNamePrefix = "group-"
+	// dynamicGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
+	dynamicGroupNamePrefix = "group-"
 )
+
+func dynamicGroupName(index int) string {
+	return fmt.Sprintf("%s%d", dynamicGroupNamePrefix, index)
+}
 
 // GroupedChangeSet is a ChangeSet for a specific group of pods.
 type GroupedChangeSet struct {
@@ -90,10 +95,11 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 	// TODO: the sorting done here does not guarantee that we have both master and data nodes available in the cluster
 	// at all times.
 
-	// ensure we remove the master node last in this changeset
+	// ensure we consider removing terminal pods first and the master node last in this changeset
 	sort.SliceStable(
 		s.ChangeSet.ToRemove,
-		sortPodsByMasterNodeLastAndCreationTimestampAsc(
+		sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
+			s.PodsState.Terminal,
 			s.PodsState.MasterNodePod,
 			s.ChangeSet.ToRemove,
 		),
@@ -159,6 +165,12 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 
 	// schedule for deletion as many pods as we can
 	for _, pod := range s.ChangeSet.ToRemove {
+		if _, ok := s.PodsState.Terminal[pod.Name]; ok {
+			// removing terminal pods do not affect our availability budget, so we can always delete
+			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+			continue
+		}
+
 		if keyNumbers.CurrentUnavailable >= maxUnavailable {
 			log.Info(
 				"Hit the max unavailable limit in a group.",

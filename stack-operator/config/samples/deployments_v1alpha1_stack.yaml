@@ -21,7 +21,9 @@ spec:
           matchLabels:
             failure-domain.beta.kubernetes.io/zone: europe-west3-c
       changeBudget:
+        # this is the equivalent of the default change budget
         maxSurge: 1
+        maxUnavailable: 0
     topologies:
     - nodeTypes:
         master: true

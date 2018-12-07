@@ -230,7 +230,7 @@ func TestChangeSet_Group(t *testing.T) {
 			},
 			want: GroupedChangeSets{
 				GroupedChangeSet{
-					Name: "group-0",
+					Name: dynamicGroupName(0),
 					ChangeSet: ChangeSet{
 						ToAdd:    []corev1.Pod{},
 						ToKeep:   []corev1.Pod{fooPod},

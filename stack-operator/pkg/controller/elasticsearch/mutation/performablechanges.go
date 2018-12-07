@@ -6,6 +6,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var (
+	// pass1ChangeBudget is very restrictive change budget used for the first pass when calculating performable changes
+	pass1ChangeBudget = v1alpha1.ChangeBudget{}
+)
+
 // PerformableChanges contains changes that can be performed to pod resources
 type PerformableChanges struct {
 	// ScheduleForCreation are pods that can be created
@@ -61,7 +66,7 @@ func CalculatePerformableChanges(
 	// falling apart). this is to ensure that the surge/unavailability room that's created by the failing pods do not
 	// get eaten up other, simultaneous changes.
 	if err := groupedChangeSets.calculatePerformableChanges(
-		v1alpha1.ChangeBudget{},
+		pass1ChangeBudget,
 		performableChanges,
 	); err != nil {
 		return nil, err
