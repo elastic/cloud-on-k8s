@@ -79,7 +79,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 ) error {
 	keyNumbers := s.KeyNumbers()
 
-	log.Info(
+	log.V(3).Info(
 		"Calculating performable changes for group",
 		"group_name", s.Name,
 		"key_numbers", keyNumbers,
@@ -136,7 +136,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 	// schedule for creation as many pods as we can
 	for _, newPodToAdd := range s.ChangeSet.ToAdd {
 		if keyNumbers.CurrentSurge >= maxSurge {
-			log.Info(
+			log.V(4).Info(
 				"Hit the max surge limit in a group.",
 				"group_name", s.Name,
 				"key_numbers", keyNumbers,
@@ -150,7 +150,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 
 		toAddContext := s.ChangeSet.ToAddContext[newPodToAdd.Name]
 
-		log.Info(
+		log.V(4).Info(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"key_numbers", keyNumbers,
@@ -172,7 +172,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		}
 
 		if keyNumbers.CurrentUnavailable >= maxUnavailable {
-			log.Info(
+			log.V(4).Info(
 				"Hit the max unavailable limit in a group.",
 				"group_name", s.Name,
 				"key_numbers", keyNumbers,
@@ -185,7 +185,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		keyNumbers.CurrentUnavailable++
 		keyNumbers.CurrentRunningReadyPods--
 
-		log.Info(
+		log.V(4).Info(
 			"Scheduling a pod for deletion",
 			"group_name", s.Name,
 			"key_numbers", keyNumbers,

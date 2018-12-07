@@ -58,7 +58,7 @@ func CalculatePerformableChanges(
 	if err != nil {
 		return nil, err
 	}
-	log.Info("Created grouped change sets", "count", len(groupedChangeSets))
+	log.V(3).Info("Created grouped change sets", "count", len(groupedChangeSets))
 
 	// pass 1:
 	// - give every group a change to perform changes, but do not allow for any surge or unavailability. this is
