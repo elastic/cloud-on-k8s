@@ -12,16 +12,20 @@ const (
 	// groups
 	AllGroupName = "all"
 
-	// UnmatchedGroupName is the name used in GroupedChangeSets for a group that were not selected by the user-specified
+	// UnmatchedGroupName is the name used in GroupedChangeSets for a group that was not selected by the user-specified
 	// groups
 	UnmatchedGroupName = "unmatched"
 
-	// dynamicGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
-	dynamicGroupNamePrefix = "group-"
+	// indexedGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
+	indexedGroupNamePrefix = "group-"
 )
 
-func dynamicGroupName(index int) string {
-	return fmt.Sprintf("%s%d", dynamicGroupNamePrefix, index)
+// empty is used internally when referring to an empty struct instance
+var empty struct{}
+
+// indexedGroupName returns the group name to use for the given indexed group
+func indexedGroupName(index int) string {
+	return fmt.Sprintf("%s%d", indexedGroupNamePrefix, index)
 }
 
 // GroupedChangeSet is a ChangeSet for a specific group of pods.
@@ -34,8 +38,8 @@ type GroupedChangeSet struct {
 	PodsState PodsState
 }
 
-// KeyNumbers contains key numbers for a GroupedChangeSet, used to execute an upgrade budget
-type KeyNumbers struct {
+// ChangeStats contains key numbers for a GroupedChangeSet, used to execute an upgrade budget
+type ChangeStats struct {
 	// TargetPods is the number of pods we should have in the final state.
 	TargetPods int `json:"targetPods"`
 	// CurrentPods is the current number of pods in the cluster that might be using resources.
@@ -48,8 +52,8 @@ type KeyNumbers struct {
 	CurrentUnavailable int `json:"currentUnavailable"`
 }
 
-// KeyNumbers calculates and returns the KeyNumbers for this grouped change set,
-func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
+// ChangeStats calculates and returns the ChangeStats for this grouped change set,
+func (s GroupedChangeSet) ChangeStats() ChangeStats {
 	// when we're done, we should have ToKeep + ToAdd pods in the group.
 	targetPodsCount := len(s.ChangeSet.ToKeep) + len(s.ChangeSet.ToAdd)
 
@@ -60,10 +64,10 @@ func (s GroupedChangeSet) KeyNumbers() KeyNumbers {
 
 	currentRunningReadyPods := len(s.PodsState.RunningReady)
 
-	// unavailable is the number of "running and ready" pods we have below the target
+	// unavailable is the number of "running and ready" pods that are missing compared to the target, iow pods
 	currentUnavailable := targetPodsCount - currentRunningReadyPods
 
-	return KeyNumbers{
+	return ChangeStats{
 		TargetPods:              targetPodsCount,
 		CurrentPods:             currentPodsCount,
 		CurrentSurge:            currentSurge,
@@ -78,12 +82,12 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 	podRestrictions *PodRestrictions,
 	result *PerformableChanges,
 ) error {
-	keyNumbers := s.KeyNumbers()
+	changeStats := s.ChangeStats()
 
 	log.V(3).Info(
 		"Calculating performable changes for group",
 		"group_name", s.Name,
-		"key_numbers", keyNumbers,
+		"change_stats", changeStats,
 		"pods_state_status", s.PodsState.Status(),
 	)
 
@@ -133,25 +137,25 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 
 	// schedule for creation as many pods as we can
 	for _, newPodToAdd := range s.ChangeSet.ToAdd {
-		if keyNumbers.CurrentSurge >= maxSurge {
+		if changeStats.CurrentSurge >= maxSurge {
 			log.V(4).Info(
 				"Hit the max surge limit in a group.",
 				"group_name", s.Name,
-				"key_numbers", keyNumbers,
+				"change_stats", changeStats,
 			)
 			result.MaxSurgeGroups = append(result.MaxSurgeGroups, s.Name)
 			break
 		}
 
-		keyNumbers.CurrentSurge++
-		keyNumbers.CurrentPods++
+		changeStats.CurrentSurge++
+		changeStats.CurrentPods++
 
 		toAddContext := s.ChangeSet.ToAddContext[newPodToAdd.Name]
 
 		log.V(4).Info(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
-			"key_numbers", keyNumbers,
+			"change_stats", changeStats,
 			"mismatch_reasons", toAddContext.MismatchReasons,
 		)
 
@@ -175,24 +179,24 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 			continue
 		}
 
-		if keyNumbers.CurrentUnavailable >= maxUnavailable {
+		if changeStats.CurrentUnavailable >= maxUnavailable {
 			log.V(4).Info(
 				"Hit the max unavailable limit in a group.",
 				"group_name", s.Name,
-				"key_numbers", keyNumbers,
+				"change_stats", changeStats,
 			)
 
 			result.MaxUnavailableGroups = append(result.MaxUnavailableGroups, s.Name)
 			break
 		}
 
-		keyNumbers.CurrentUnavailable++
-		keyNumbers.CurrentRunningReadyPods--
+		changeStats.CurrentUnavailable++
+		changeStats.CurrentRunningReadyPods--
 
 		log.V(4).Info(
 			"Scheduling a pod for deletion",
 			"group_name", s.Name,
-			"key_numbers", keyNumbers,
+			"change_stats", changeStats,
 		)
 
 		podRestrictions.Remove(pod)
@@ -207,22 +211,22 @@ func (s *GroupedChangeSet) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
-	scheduledForDeletionByName := make(map[string]bool, len(performableChanges.ScheduleForDeletion))
+	scheduledForDeletionByName := make(map[string]struct{}, len(performableChanges.ScheduleForDeletion))
 	for _, pod := range performableChanges.ScheduleForDeletion {
-		scheduledForDeletionByName[pod.Name] = true
+		scheduledForDeletionByName[pod.Name] = empty
 	}
 
 	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToRemove
 	for i := len(s.ChangeSet.ToRemove) - 1; i >= 0; i-- {
-		if scheduledForDeletionByName[s.ChangeSet.ToRemove[i].Name] {
+		if _, ok := scheduledForDeletionByName[s.ChangeSet.ToRemove[i].Name]; ok {
 			s.ChangeSet.ToRemove = append(s.ChangeSet.ToRemove[:i], s.ChangeSet.ToRemove[i+1:]...)
 		}
 	}
 
 	// convert the scheduled for creation pods to a map for faster lookup
-	handledAddPods := make(map[string]bool, len(performableChanges.ScheduleForCreation))
+	scheduledForCreationByName := make(map[string]struct{}, len(performableChanges.ScheduleForCreation))
 	for _, podToCreate := range performableChanges.ScheduleForCreation {
-		handledAddPods[podToCreate.Pod.Name] = true
+		scheduledForCreationByName[podToCreate.Pod.Name] = empty
 
 		// pretend we added it, which would move it to Pending
 		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
@@ -234,7 +238,7 @@ func (s *GroupedChangeSet) simulatePerformableChangesApplied(
 
 	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
 	for i := len(s.ChangeSet.ToAdd) - 1; i >= 0; i-- {
-		if handledAddPods[s.ChangeSet.ToAdd[i].Name] {
+		if _, ok := scheduledForCreationByName[s.ChangeSet.ToAdd[i].Name]; ok {
 			s.ChangeSet.ToAdd = append(s.ChangeSet.ToAdd[:i], s.ChangeSet.ToAdd[i+1:]...)
 		}
 	}
@@ -249,7 +253,7 @@ func (s *GroupedChangeSet) simulatePerformableChangesApplied(
 	}
 }
 
-// GroupedChangeSets is a list of GroupedChangeSets
+// GroupedChangeSets is a list GroupedChangeSet instances
 type GroupedChangeSets []GroupedChangeSet
 
 // calculatePerformableChanges calculates the PerformableChanges for each group with the given budget

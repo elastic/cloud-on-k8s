@@ -161,7 +161,7 @@ type ChangeBudget struct {
 	// MaxUnavailable is the maximum number of pods that can be unavailable during the update.
 	// Value can be an absolute number (ex: 5) or a percentage of total pods at the start of update (ex: 10%).
 	// Absolute number is calculated from percentage by rounding down.
-	// This can not be 0 if MaxSurge is 0.
+	// This can not be 0 if MaxSurge is 0 if you want automatic rolling changes to be applied.
 	// By default, a fixed value of 0 is used.
 	// Example: when this is set to 30%, the group can be scaled down by 30%
 	// immediately when the rolling update starts. Once new pods are ready, the group
@@ -174,7 +174,8 @@ type ChangeBudget struct {
 	// pods.
 	// By default, a fixed value of 1 is used.
 	// Value can be an absolute number (ex: 5) or a percentage of total pods at
-	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0.
+	// the start of the update (ex: 10%). This can not be 0 if MaxUnavailable is 0 if you want automatic rolling
+	// updates to be applied.
 	// Absolute number is calculated from percentage by rounding up.
 	// Example: when this is set to 30%, the new group can be scaled up by 30%
 	// immediately when the rolling update starts. Once old pods have been killed,

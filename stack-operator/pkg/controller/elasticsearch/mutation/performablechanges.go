@@ -46,7 +46,7 @@ func initializePerformableChanges(changes PerformableChanges) *PerformableChange
 	return &changes
 }
 
-// CalculatePerformableChanges calculates which changes we are allowed to perform in the current state.
+// CalculatePerformableChanges calculates which changes that can be performed in the current state.
 func CalculatePerformableChanges(
 	strategy v1alpha1.UpdateStrategy,
 	allPodChanges *ChangeSet,
@@ -74,7 +74,7 @@ func CalculatePerformableChanges(
 	podRestrictions := NewPodRestrictions(allPodsState)
 
 	// pass 1:
-	// - give every group a change to perform changes, but do not allow for any surge or unavailability. this is
+	// - give every group a chance to perform changes, but do not allow for any surge or unavailability. this is
 	// intended to ensure that we're able to recover from larger failures (e.g a pod failing or a failure domain
 	// falling apart). this is to ensure that the surge/unavailability room that's created by the failing pods do not
 	// get eaten up other, simultaneous changes.
@@ -106,9 +106,9 @@ func CalculatePerformableChanges(
 	// TODO: consider requiring this being enabled in the update strategy?
 
 	if !allChangeSet.ChangeSet.IsEmpty() && !performableChanges.HasChanges() {
-		keyNumbers := allChangeSet.KeyNumbers()
+		changeStats := allChangeSet.ChangeStats()
 		newBudget := v1alpha1.ChangeBudget{
-			MaxSurge: keyNumbers.CurrentSurge + 1,
+			MaxSurge: changeStats.CurrentSurge + 1,
 		}
 
 		// - here we do not have to simulate performing changes because we now it has no changes

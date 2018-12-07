@@ -81,24 +81,19 @@ func (s ChangeSet) Group(
 
 	for i, gd := range groupingDefinitions {
 		groupedChanges := GroupedChangeSet{
-			Name: dynamicGroupName(i),
+			Name: indexedGroupName(i),
 		}
 		selector, err := v1.LabelSelectorAsSelector(&gd.Selector)
 		if err != nil {
 			return nil, err
 		}
 
-		toRemove, toRemoveRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToRemove)
-		toAdd, toAddRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToAdd)
-		toKeep, toKeepRemaining := partitionPodsBySelector(selector, remainingChangeSet.ToKeep)
-
-		remainingChangeSet.ToRemove = toRemoveRemaining
-		remainingChangeSet.ToAdd = toAddRemaining
-		remainingChangeSet.ToKeep = toKeepRemaining
-
-		groupedChanges.ChangeSet.ToKeep = toKeep
-		groupedChanges.ChangeSet.ToRemove = toRemove
-		groupedChanges.ChangeSet.ToAdd = toAdd
+		groupedChanges.ChangeSet.ToRemove, remainingChangeSet.ToRemove =
+			partitionPodsBySelector(selector, remainingChangeSet.ToRemove)
+		groupedChanges.ChangeSet.ToAdd, remainingChangeSet.ToAdd =
+			partitionPodsBySelector(selector, remainingChangeSet.ToAdd)
+		groupedChanges.ChangeSet.ToKeep, remainingChangeSet.ToKeep =
+			partitionPodsBySelector(selector, remainingChangeSet.ToKeep)
 
 		if groupedChanges.ChangeSet.IsEmpty() {
 			continue

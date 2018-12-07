@@ -158,6 +158,8 @@ func TestChangeSet_Group(t *testing.T) {
 		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
+	foobarPod := withLabels(namedPod("4"), map[string]string{"foo":"bar", "bar": "baz"})
+
 	type args struct {
 		groupingDefinitions []v1alpha1.GroupingDefinition
 		remainingPodsState  PodsState
@@ -176,7 +178,7 @@ func TestChangeSet_Group(t *testing.T) {
 			want:      GroupedChangeSets{},
 		},
 		{
-			name:      "no group definitions should result in defaulted group",
+			name:      "no group definitions should result in a defaulted group",
 			changeSet: ChangeSet{ToKeep: []corev1.Pod{namedPod("1")}},
 			args:      args{},
 			want: GroupedChangeSets{
@@ -190,7 +192,7 @@ func TestChangeSet_Group(t *testing.T) {
 			},
 		},
 		{
-			name:      "non-matching group definitions should result in defaulted group being added",
+			name:      "non-matching group definitions should result in a defaulted group",
 			changeSet: ChangeSet{ToKeep: []corev1.Pod{namedPod("1")}},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -230,7 +232,7 @@ func TestChangeSet_Group(t *testing.T) {
 			},
 			want: GroupedChangeSets{
 				GroupedChangeSet{
-					Name: dynamicGroupName(0),
+					Name: indexedGroupName(0),
 					ChangeSet: ChangeSet{
 						ToAdd:    []corev1.Pod{},
 						ToKeep:   []corev1.Pod{fooPod},
@@ -255,6 +257,63 @@ func TestChangeSet_Group(t *testing.T) {
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{barPod.Name: barPod},
+					}),
+				},
+			},
+		},
+		{
+			name: "should match when there are multiple labels",
+			changeSet: ChangeSet{
+				ToAdd:    []corev1.Pod{bazPod},
+				ToKeep:   []corev1.Pod{fooPod},
+				ToRemove: []corev1.Pod{foobarPod},
+				ToAddContext: map[string]support.PodToAdd{
+					bazPod.Name: bazPodToAdd,
+				},
+			},
+			args: args{
+				groupingDefinitions: []v1alpha1.GroupingDefinition{
+					{
+						Selector:v1.LabelSelector{
+							MatchLabels: map[string]string{
+								"foo": "bar",
+								"bar": "baz",
+							},
+						},
+					},
+				},
+				remainingPodsState: initializePodsState(PodsState{
+					Pending:        map[string]corev1.Pod{fooPod.Name: fooPod},
+					RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
+				}),
+			},
+			want: GroupedChangeSets{
+				GroupedChangeSet{
+					Name: indexedGroupName(0),
+					ChangeSet: ChangeSet{
+						ToAdd:    []corev1.Pod{},
+						ToKeep:   []corev1.Pod{},
+						ToRemove: []corev1.Pod{foobarPod},
+
+						ToAddContext: map[string]support.PodToAdd{},
+					},
+					PodsState: initializePodsState(PodsState{
+						RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
+					}),
+				},
+				GroupedChangeSet{
+					Name: UnmatchedGroupName,
+					ChangeSet: ChangeSet{
+						ToKeep:   []corev1.Pod{fooPod},
+						ToRemove: []corev1.Pod{},
+						ToAdd:    []corev1.Pod{bazPod},
+
+						ToAddContext: map[string]support.PodToAdd{
+							bazPod.Name: bazPodToAdd,
+						},
+					},
+					PodsState: initializePodsState(PodsState{
+						Pending:        map[string]corev1.Pod{fooPod.Name: fooPod},
 					}),
 				},
 			},

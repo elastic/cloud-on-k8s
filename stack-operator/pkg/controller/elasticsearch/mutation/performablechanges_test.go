@@ -147,6 +147,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			want: initializePerformableChanges(PerformableChanges{
 				// note that this is not an optimal solution, as zone B is now completely down and we used our change
 				// budget trying to rotate nodes in A
+				// but since no groups where specified, we have no knowledge of a "zone B"
 				ScheduleForCreation: []CreatablePod{{Pod: podsA[2]}, {Pod: podsA[3]}},
 				ScheduleForDeletion: concatPodList(podsB[:2]),
 
@@ -174,8 +175,8 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				ScheduleForCreation: []CreatablePod{{Pod: podsB[2]}, {Pod: podsB[3]}},
 				ScheduleForDeletion: concatPodList(podsB[:2]),
 
-				MaxSurgeGroups:       []string{dynamicGroupName(0), dynamicGroupName(2), AllGroupName},
-				MaxUnavailableGroups: []string{dynamicGroupName(0), dynamicGroupName(2), AllGroupName},
+				MaxSurgeGroups:       []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
+				MaxUnavailableGroups: []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
 			}),
 		},
 		{
@@ -233,7 +234,6 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				// this is what we would prefer, but it does not happen due to max surging
 				ScheduleForCreation: []CreatablePod{{Pod: masterDataPods[0]}},
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,

@@ -136,7 +136,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	}
 }
 
-func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
+func TestGroupedChangeSet_ChangeStats(t *testing.T) {
 	type fields struct {
 		Name       string
 		Definition v1alpha1.GroupingDefinition
@@ -146,7 +146,7 @@ func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
 	tests := []struct {
 		name   string
 		fields fields
-		want   KeyNumbers
+		want   ChangeStats
 	}{
 		{
 			name: "sample",
@@ -170,7 +170,7 @@ func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
 					},
 				}),
 			},
-			want: KeyNumbers{
+			want: ChangeStats{
 				TargetPods:              3,
 				CurrentPods:             3,
 				CurrentSurge:            0,
@@ -187,7 +187,7 @@ func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
 				PodsState: tt.fields.PodsState,
 			}
 
-			assert.Equal(t, tt.want, s.KeyNumbers())
+			assert.Equal(t, tt.want, s.ChangeStats())
 		})
 	}
 }
