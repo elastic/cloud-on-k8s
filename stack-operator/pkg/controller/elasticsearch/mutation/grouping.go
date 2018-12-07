@@ -185,8 +185,8 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 	return nil
 }
 
-// applyPerformableChanges applies the performable changes to the GroupedChangeSet
-func (s *GroupedChangeSet) applyPerformableChanges(
+// simulatePerformableChangesApplied applies the performable changes to the GroupedChangeSet
+func (s *GroupedChangeSet) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
@@ -211,6 +211,8 @@ func (s *GroupedChangeSet) applyPerformableChanges(
 		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
 		// also pretend we're intending to keep it instead of adding it.
 		s.ChangeSet.ToKeep = append(s.ChangeSet.ToKeep, podToCreate.Pod)
+		// remove from the to add context as it's being added
+		delete(s.ChangeSet.ToAddContext, podToCreate.Pod.Name)
 	}
 
 	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
@@ -220,7 +222,14 @@ func (s *GroupedChangeSet) applyPerformableChanges(
 		}
 	}
 
+	// this leaves PodsState, which we can simply partition by the new changeset
 	s.PodsState, _ = s.PodsState.Partition(s.ChangeSet)
+
+	// removed pods will /eventually/ go to the Deleting stage, and since we're just removing it from the ChangeSet
+	// above, we need to pretend it's being deleted for it to be counted as unavailable.
+	for _, pod := range performableChanges.ScheduleForDeletion {
+		s.PodsState.Deleting[pod.Name] = pod
+	}
 }
 
 // GroupedChangeSets is a list of GroupedChangeSets

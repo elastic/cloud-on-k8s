@@ -5,9 +5,10 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"sync/atomic"
 	"time"
+
+	"k8s.io/apimachinery/pkg/labels"
 
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"

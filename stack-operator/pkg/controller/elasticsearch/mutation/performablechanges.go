@@ -69,7 +69,7 @@ func CalculatePerformableChanges(
 
 	// apply the performable changes to the "all" (ungrouped) changeset. this is done in order to account for the
 	// changes pass 1 is intending to do.
-	allChangeSet.applyPerformableChanges(*performableChanges)
+	allChangeSet.simulatePerformableChangesApplied(*performableChanges)
 
 	// pass 2:
 	// - calculate the performable changes across a single changeset using the proper budget.

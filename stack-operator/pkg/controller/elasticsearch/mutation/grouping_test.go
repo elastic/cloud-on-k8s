@@ -3,10 +3,10 @@ package mutation
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -188,6 +188,98 @@ func TestGroupedChangeSet_KeyNumbers(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want, s.KeyNumbers())
+		})
+	}
+}
+
+func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
+	type fields struct {
+		Name      string
+		ChangeSet ChangeSet
+		PodsState PodsState
+	}
+	type args struct {
+		performableChanges PerformableChanges
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   GroupedChangeSet
+	}{
+		{
+			name: "deletion",
+			fields: fields{
+				ChangeSet: ChangeSet{
+					ToKeep:   []corev1.Pod{namedPod("bar")},
+					ToRemove: []corev1.Pod{namedPod("foo"), namedPod("baz")},
+				},
+				PodsState: initializePodsState(PodsState{
+					Deleting:     map[string]corev1.Pod{"baz": namedPod("baz")},
+					RunningReady: map[string]corev1.Pod{"foo": namedPod("foo"), "bar": namedPod("bar")},
+				}),
+			},
+			args: args{
+				performableChanges: PerformableChanges{
+					ScheduleForDeletion: []corev1.Pod{namedPod("foo")},
+				},
+			},
+			want: GroupedChangeSet{
+				ChangeSet: ChangeSet{
+					ToKeep:   []corev1.Pod{namedPod("bar")},
+					ToRemove: []corev1.Pod{namedPod("baz")},
+				},
+				PodsState: initializePodsState(PodsState{
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+					Deleting:     map[string]corev1.Pod{"foo": namedPod("foo"), "baz": namedPod("baz")},
+				}),
+			},
+		},
+		{
+			name: "creation",
+			fields: fields{
+				ChangeSet: ChangeSet{
+					ToKeep: []corev1.Pod{namedPod("bar")},
+					ToAdd:  []corev1.Pod{namedPod("foo"), namedPod("baz")},
+					ToAddContext: map[string]support.PodToAdd{
+						"foo": {},
+						"baz": {},
+					},
+				},
+				PodsState: initializePodsState(PodsState{
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+				}),
+			},
+			args: args{
+				performableChanges: PerformableChanges{
+					ScheduleForCreation: []CreatablePod{{Pod: namedPod("foo")}},
+				},
+			},
+			want: GroupedChangeSet{
+				ChangeSet: ChangeSet{
+					ToAdd:  []corev1.Pod{namedPod("baz")},
+					ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
+					ToAddContext: map[string]support.PodToAdd{
+						"baz": {},
+					},
+				},
+				PodsState: initializePodsState(PodsState{
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+					Pending:      map[string]corev1.Pod{"foo": namedPod("foo")},
+				}),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &GroupedChangeSet{
+				Name:      tt.fields.Name,
+				ChangeSet: tt.fields.ChangeSet,
+				PodsState: tt.fields.PodsState,
+			}
+			s.simulatePerformableChangesApplied(tt.args.performableChanges)
+
+			assert.Equal(t, &tt.want, s)
 		})
 	}
 }
