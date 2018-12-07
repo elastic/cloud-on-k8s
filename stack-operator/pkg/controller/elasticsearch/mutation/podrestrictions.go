@@ -28,10 +28,10 @@ func NewPodRestrictions(podsState PodsState) PodRestrictions {
 	// restrictions should only count master / data nodes that are known good
 	// this has the drawback of only being able to remove nodes when there is an elected master in the cluster.
 	for name, pod := range podsState.RunningReady {
-		if support.NodeTypesMasterLabelName.HasValue(true, pod.Labels) {
+		if support.IsMasterNode(pod) {
 			masterEligiblePods[name] = empty
 		}
-		if support.NodeTypesDataLabelName.HasValue(true, pod.Labels) {
+		if support.IsDataNode(pod) {
 			dataEligiblePods[name] = empty
 		}
 	}
