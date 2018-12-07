@@ -103,7 +103,7 @@ func CalculatePerformableChanges(
 	// pass 3:
 	// - in which we allow breaking the surge budget if we have changes we would like to apply, but were not allowed to
 	// due to the surge budget
-	// - this is required for scenarios such as converting from one MasterData node to one Master and One Data. In
+	// - this is required for scenarios such as converting from one MasterData node to one Master and One Data node. In
 	// this situation we *must* create both new nodes before we delete the existing one
 	// TODO: consider requiring this being enabled in the update strategy?
 	if !allChangeSet.ChangeSet.IsEmpty() &&

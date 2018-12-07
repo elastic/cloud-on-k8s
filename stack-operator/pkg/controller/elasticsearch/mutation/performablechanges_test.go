@@ -97,6 +97,22 @@ func TestCalculatePerformableChanges(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "scale down two pods",
+			args: args{
+				strategy: v1alpha1.UpdateStrategy{},
+				allPodChanges: &ChangeSet{
+					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
+					ToRemove: concatPodList(podsB[:2]),
+				},
+				allPodsState: initializePodsState(PodsState{
+					RunningReady: podListToMap(concatPodList(podsA[:2], podsB[:2], podsC[:2])),
+				}),
+			},
+			want: initializePerformableChanges(PerformableChanges{
+				ScheduleForDeletion: concatPodList(podsB[:2]),
+			}),
+		},
+		{
 			name: "basic scale-down with a failed zone",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
