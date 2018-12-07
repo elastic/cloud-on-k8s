@@ -16,72 +16,55 @@ var (
 
 // PodRestrictions can be used to verify that invariants around available pods are not broken.
 type PodRestrictions struct {
-	MasterEligiblePods map[string]corev1.Pod
-	DataEligiblePods   map[string]corev1.Pod
+	MasterNodeNames map[string]struct{}
+	DataNodeNames   map[string]struct{}
 }
 
 // NewPodRestrictions creates a new PodRestrictions by looking at the current state of pods.
 func NewPodRestrictions(podsState PodsState) PodRestrictions {
-	masterEligiblePods := make(map[string]corev1.Pod)
-	dataEligiblePods := make(map[string]corev1.Pod)
+	masterEligiblePods := make(map[string]struct{})
+	dataEligiblePods := make(map[string]struct{})
 
-	for _, pods := range []map[string]corev1.Pod{
-		// restrictions should only count master / data nodes that are known good
-		// this has the drawback of only being able to remove nodes when there is an elected master in the cluster.
-		podsState.RunningReady,
-	} {
-		for name, pod := range pods {
-			if support.NodeTypesMasterLabelName.HasValue(true, pod.Labels) {
-				masterEligiblePods[name] = pod
-			}
-			if support.NodeTypesDataLabelName.HasValue(true, pod.Labels) {
-				dataEligiblePods[name] = pod
-			}
+	// restrictions should only count master / data nodes that are known good
+	// this has the drawback of only being able to remove nodes when there is an elected master in the cluster.
+	for name, pod := range podsState.RunningReady {
+		if support.NodeTypesMasterLabelName.HasValue(true, pod.Labels) {
+			masterEligiblePods[name] = empty
+		}
+		if support.NodeTypesDataLabelName.HasValue(true, pod.Labels) {
+			dataEligiblePods[name] = empty
 		}
 	}
 
 	return PodRestrictions{
-		MasterEligiblePods: masterEligiblePods,
-		DataEligiblePods:   dataEligiblePods,
+		MasterNodeNames: masterEligiblePods,
+		DataNodeNames:   dataEligiblePods,
 	}
 }
 
 // CanRemove returns an error if the pod cannot be safely removed.
-func (r PodRestrictions) CanRemove(pod corev1.Pod) error {
-	if support.NodeTypesMasterLabelName.HasValue(true, pod.Labels) {
-		// this node is a master node
-
-		_, isInEligibilitySet := r.MasterEligiblePods[pod.Name]
-		currentEligible := len(r.MasterEligiblePods)
-
-		// cannot remove:
-		// - if this is in the eligible set and there isn't at least one other pod there as well
-		// - if this is not in the eligible set and there isn't at least another pod there
-		if !(isInEligibilitySet && currentEligible >= 2) || (!isInEligibilitySet && currentEligible >= 1) {
-			return ErrNotEnoughMasterEligiblePods
-		}
+func (r *PodRestrictions) CanRemove(pod corev1.Pod) error {
+	switch {
+	case support.IsMasterNode(pod) && isTheOnly(pod.Name, r.MasterNodeNames):
+		return ErrNotEnoughMasterEligiblePods
+	case support.IsDataNode(pod) && isTheOnly(pod.Name, r.DataNodeNames):
+		return ErrNotEnoughDataEligiblePods
+	default:
+		return nil
 	}
+}
 
-	if support.NodeTypesDataLabelName.HasValue(true, pod.Labels) {
-		// this node is a data node
-
-		_, isInEligibilitySet := r.DataEligiblePods[pod.Name]
-		currentEligible := len(r.DataEligiblePods)
-
-		// cannot remove:
-		// - if this is in the eligible set and there isn't at least one other pod there as well
-		// - if this is not in the eligible set and there isn't at least another pod there
-		if !(isInEligibilitySet && currentEligible > 1) || (!isInEligibilitySet && currentEligible >= 1) {
-			return ErrNotEnoughDataEligiblePods
-		}
+// isTheOnly returns true if the name is the only entry in the map
+func isTheOnly(name string, fromMap map[string]struct{}) bool {
+	_, exists := fromMap[name]
+	if len(fromMap) == 1 && exists {
+		return true
 	}
-
-	// no issues found with removal
-	return nil
+	return false
 }
 
 // Remove removes the pod from the restrictions.
 func (r *PodRestrictions) Remove(pod corev1.Pod) {
-	delete(r.MasterEligiblePods, pod.Name)
-	delete(r.DataEligiblePods, pod.Name)
+	delete(r.MasterNodeNames, pod.Name)
+	delete(r.DataNodeNames, pod.Name)
 }

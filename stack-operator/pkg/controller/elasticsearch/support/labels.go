@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 )
@@ -46,6 +47,16 @@ func (l TrueFalseLabel) AsMap(value bool) map[string]string {
 	return map[string]string{
 		string(l): strconv.FormatBool(value),
 	}
+}
+
+// IsMasterNode returns true if the pod has the master node label
+func IsMasterNode(pod corev1.Pod) bool {
+	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
+}
+
+// IsDataNode returns true if the pod has the data node label
+func IsDataNode(pod corev1.Pod) bool {
+	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
 }
 
 // TypeSelector is a selector on the the Elasticsearch type present in a Pod's labels

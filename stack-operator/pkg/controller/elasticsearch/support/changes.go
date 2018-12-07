@@ -26,8 +26,8 @@ type PodToAdd struct {
 }
 
 // IsEmpty returns true if there are no topology changes to performed
-func (c Changes) IsEmpty() bool {
-	return len(c.ToAdd) == 0 && len(c.ToRemove) == 0
+func (c Changes) HasChanges() bool {
+	return len(c.ToAdd) > 0 || len(c.ToRemove) > 0
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec

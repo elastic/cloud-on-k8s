@@ -158,7 +158,7 @@ func TestChangeSet_Group(t *testing.T) {
 		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
-	foobarPod := withLabels(namedPod("4"), map[string]string{"foo":"bar", "bar": "baz"})
+	foobarPod := withLabels(namedPod("4"), map[string]string{"foo": "bar", "bar": "baz"})
 
 	type args struct {
 		groupingDefinitions []v1alpha1.GroupingDefinition
@@ -274,7 +274,7 @@ func TestChangeSet_Group(t *testing.T) {
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
 					{
-						Selector:v1.LabelSelector{
+						Selector: v1.LabelSelector{
 							MatchLabels: map[string]string{
 								"foo": "bar",
 								"bar": "baz",
@@ -313,7 +313,7 @@ func TestChangeSet_Group(t *testing.T) {
 						},
 					},
 					PodsState: initializePodsState(PodsState{
-						Pending:        map[string]corev1.Pod{fooPod.Name: fooPod},
+						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},
 					}),
 				},
 			},

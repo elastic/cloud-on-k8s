@@ -372,7 +372,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return res, err
 	}
 
-	if changes.IsEmpty() {
+	if !changes.HasChanges() {
 		// Current state matches expected state
 		if !esReachable {
 			// es not yet reachable, let's try again later.
@@ -434,7 +434,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 		results.WithResult(result)
 	}
-	if !changes.IsEmpty() && !performableChanges.HasChanges() {
+	if changes.HasChanges() && !performableChanges.HasChanges() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later
 		results.WithResult(defaultRequeue)
 	}

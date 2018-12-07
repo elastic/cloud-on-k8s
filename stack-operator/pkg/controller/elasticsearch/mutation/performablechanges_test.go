@@ -93,7 +93,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *PerformableChanges
+		want    PerformableChanges
 		wantErr bool
 	}{
 		{
@@ -252,7 +252,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				return
 			}
 
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.want, *got)
 		})
 	}
 }

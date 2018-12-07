@@ -39,11 +39,11 @@ type CreatablePod struct {
 }
 
 // initializePerformableChanges initializes nil values in PerformableChanges
-func initializePerformableChanges(changes PerformableChanges) *PerformableChanges {
+func initializePerformableChanges(changes PerformableChanges) PerformableChanges {
 	if changes.RestrictedPods == nil {
 		changes.RestrictedPods = make(map[string]error)
 	}
-	return &changes
+	return changes
 }
 
 // CalculatePerformableChanges calculates which changes that can be performed in the current state.
@@ -81,21 +81,21 @@ func CalculatePerformableChanges(
 	if err := groupedChangeSets.calculatePerformableChanges(
 		pass1ChangeBudget,
 		&podRestrictions,
-		performableChanges,
+		&performableChanges,
 	); err != nil {
 		return nil, err
 	}
 
 	// apply the performable changes to the "all" (ungrouped) changeset. this is done in order to account for the
 	// changes pass 1 is intending to do.
-	allChangeSet.simulatePerformableChangesApplied(*performableChanges)
+	allChangeSet.simulatePerformableChangesApplied(performableChanges)
 
 	// pass 2:
 	// - calculate the performable changes across a single changeset using the proper budget.
 	if err := allChangeSet.calculatePerformableChanges(
 		budget,
 		&podRestrictions,
-		performableChanges,
+		&performableChanges,
 	); err != nil {
 		return nil, err
 	}
@@ -103,7 +103,11 @@ func CalculatePerformableChanges(
 	// pass 3:
 	// - in which we allow breaking the surge budget if we have changes we would like to apply, but were not allowed to
 	// due to the surge budget
+	// - this is required for scenarios such as converting from one MasterData node to one Master and One Data. In
+	// this situation we *must* create both new nodes before we delete the existing one
 	// TODO: consider requiring this being enabled in the update strategy?
+	// TODO: determine whether restricted changes from podRestrictions where a cluster is temporarily unavailable can
+	// cause this to be a bit too permissive.
 
 	if !allChangeSet.ChangeSet.IsEmpty() && !performableChanges.HasChanges() {
 		changeStats := allChangeSet.ChangeStats()
@@ -111,16 +115,16 @@ func CalculatePerformableChanges(
 			MaxSurge: changeStats.CurrentSurge + 1,
 		}
 
-		// - here we do not have to simulate performing changes because we now it has no changes
+		// - here we do not have to simulate performing changes because we know it has no changes
 
 		if err := allChangeSet.calculatePerformableChanges(
 			newBudget,
 			&podRestrictions,
-			performableChanges,
+			&performableChanges,
 		); err != nil {
 			return nil, err
 		}
 	}
 
-	return performableChanges, nil
+	return &performableChanges, nil
 }
