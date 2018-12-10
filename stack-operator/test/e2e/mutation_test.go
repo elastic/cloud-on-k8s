@@ -8,7 +8,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/stack"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )
 
 // TestMdiToDedicatedMutation creates a 1 master + data cluster,
@@ -104,5 +103,15 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 
+	stack.RunCreationMutationDeletionTests(t, initStack.Stack, mutatedStack.Stack)
+}
+
+func TestMutationVersion540To642(t *testing.T) {
+	// create a stack with 1 node in version 5.4.0
+	initStack := stack.NewStackBuilder("test-mutation-less-nodes").
+		WithESMasterDataNodes(3, stack.DefaultResources).
+		WithVersion("5.4.0")
+	// mutate it to 1 node in version 6.4.2
+	mutatedStack := initStack.WithVersion("6.4.2")
 	stack.RunCreationMutationDeletionTests(t, initStack.Stack, mutatedStack.Stack)
 }

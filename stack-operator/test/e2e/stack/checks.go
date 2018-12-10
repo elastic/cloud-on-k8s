@@ -19,6 +19,7 @@ func CheckStackSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestS
 	return []helpers.TestStep{
 		CheckKibanaPodsCount(stack, k),
 		CheckTopology(stack, k),
+		CheckESVersion(stack, k),
 		CheckKibanaPodsRunning(stack, k),
 		CheckESPodsRunning(stack, k),
 		CheckServices(stack, k),
@@ -72,6 +73,32 @@ func CheckKibanaPodsRunning(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.
 			for _, p := range pods {
 				if p.Status.Phase != corev1.PodRunning {
 					return fmt.Errorf("Pod not running yet")
+				}
+			}
+			return nil
+		}),
+	}
+}
+
+// CheckESVersion checks that the running ES version is the expected one
+// TODO: request ES endpoint instead, not the k8s implementation detail
+func CheckESVersion(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "ES version should be the expected one",
+		Test: helpers.Eventually(func() error {
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			if err != nil {
+				return err
+			}
+			// check number of pods
+			if len(pods) != int(stack.Spec.Elasticsearch.NodeCount()) {
+				return fmt.Errorf("Expected %d pods, got %d", stack.Spec.Elasticsearch.NodeCount(), len(pods))
+			}
+			// check ES version label
+			for _, p := range pods {
+				version := p.Labels["elasticsearch.stack.k8s.elastic.co/version"]
+				if version != stack.Spec.Version {
+					return fmt.Errorf("Version %s does not match expected version %s", stack.Spec.Version, version)
 				}
 			}
 			return nil
