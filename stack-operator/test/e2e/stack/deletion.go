@@ -14,7 +14,6 @@ import (
 // DeletionTestSteps tests the deletion of the given stack
 func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
 	return []helpers.TestStep{
-
 		{
 			Name: "Deleting stack should return no error",
 			Test: func(t *testing.T) {
@@ -22,7 +21,6 @@ func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				assert.NoError(t, err)
 			},
 		},
-
 		{
 			Name: "Stack should not be there anymore",
 			Test: func(t *testing.T) {
@@ -35,7 +33,6 @@ func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				assert.True(t, apierrors.IsNotFound(err))
 			},
 		},
-
 		{
 			Name: "ES pods should be eventually be removed",
 			Test: helpers.Eventually(func() error {
