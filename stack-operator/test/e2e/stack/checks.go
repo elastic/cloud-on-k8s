@@ -270,18 +270,6 @@ func CheckESPassword(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 	}
 }
 
-// // sortNodeTypes sorts the given NodeTypesSpec in a consistent way
-// func sortNodeTypes(nt []estype.NodeTypesSpec) {
-// 	sort.Slice(nt, func(i, j int) bool {
-// 		// dirty/lazy way to compare 2 NodeTypes:
-// 		// marshal to JSON then compare the strings alphabetically o//
-// 		nti, ntj := nt[i], nt[j]
-// 		iAsStr, _ := json.Marshal(nti)
-// 		jAsStr, _ := json.Marshal(ntj)
-// 		return string(iAsStr) < string(jAsStr)
-// 	})
-// }
-
 // extractNodesTypes parses NodeTypesSpec in the given list of pods
 func extractNodesTypes(pods []corev1.Pod) ([]estype.NodeTypesSpec, error) {
 	var nodesTypes []estype.NodeTypesSpec
