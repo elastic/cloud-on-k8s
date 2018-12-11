@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )
 
@@ -18,7 +18,7 @@ func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestS
 				Name: "Creating a stack should succeed",
 				Test: func(t *testing.T) {
 					err := k.Client.Create(helpers.DefaultCtx, &stack)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				},
 			},
 			helpers.TestStep{
@@ -26,8 +26,8 @@ func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestS
 				Test: func(t *testing.T) {
 					var createdStack v1alpha1.Stack
 					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &createdStack)
-					assert.NoError(t, err)
-					assert.Equal(t, stack.Spec.Elasticsearch.Version, createdStack.Spec.Elasticsearch.Version)
+					require.NoError(t, err)
+					require.Equal(t, stack.Spec.Elasticsearch.Version, createdStack.Spec.Elasticsearch.Version)
 				},
 			},
 		).

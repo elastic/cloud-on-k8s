@@ -6,7 +6,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // MutationTestSteps tests topology changes on the given stack
@@ -42,11 +42,11 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 					// get stack so we have a versioned k8s resource we can update
 					var stackRes v1alpha1.Stack
 					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &stackRes)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					// update with new stack spec
 					stackRes.Spec = stack.Spec
 					err = k.Client.Update(helpers.DefaultCtx, &stackRes)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				},
 			}).
 		WithSteps(CheckStackSteps(stack, k)...).
@@ -56,10 +56,10 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Test: func(t *testing.T) {
 					var s v1alpha1.Stack
 					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					clusterIDAfterMutation := s.Status.Elasticsearch.ClusterUUID
-					assert.NotEmpty(t, clusterIDBeforeMutation)
-					assert.Equal(t, clusterIDBeforeMutation, clusterIDAfterMutation)
+					require.NotEmpty(t, clusterIDBeforeMutation)
+					require.Equal(t, clusterIDBeforeMutation, clusterIDAfterMutation)
 				},
 			},
 		)

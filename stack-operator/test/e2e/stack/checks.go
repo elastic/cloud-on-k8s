@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
@@ -299,8 +299,8 @@ func CheckESPassword(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 		Name: "Elastic password should be available",
 		Test: func(t *testing.T) {
 			password, err := k.GetElasticPassword(stack.Name)
-			assert.NoError(t, err)
-			assert.NotEqual(t, "", password)
+			require.NoError(t, err)
+			require.NotEqual(t, "", password)
 		},
 	}
 }

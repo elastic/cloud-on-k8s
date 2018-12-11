@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/retry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -34,7 +35,7 @@ func Eventually(f func() error) func(*testing.T) {
 			return f()
 		}, defaultTimeout, defaultRetryDelay)
 		fmt.Println()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 }
 
