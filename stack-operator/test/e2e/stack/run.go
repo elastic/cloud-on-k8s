@@ -11,7 +11,7 @@ import (
 // If the stack we mutate to is the same as the original stack, tests should still pass.
 func RunCreationMutationDeletionTests(t *testing.T, toCreate v1alpha1.Stack, mutateTo v1alpha1.Stack) {
 	k := helpers.NewK8sClientOrFatal()
-	helpers.TestSuite{}.
+	helpers.TestStepList{}.
 		WithSteps(InitTestSteps(toCreate, k)...).
 		WithSteps(CreationTestSteps(toCreate, k)...).
 		WithSteps(MutationTestSteps(mutateTo, k)...).

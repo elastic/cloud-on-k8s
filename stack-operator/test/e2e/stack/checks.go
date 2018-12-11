@@ -161,12 +161,20 @@ func CheckTopology(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep 
 					expectedNodesTypes = append(expectedNodesTypes, topo.NodeTypes)
 				}
 			}
-			if err := helpers.CheckSameUnorderedElements(expectedNodesTypes, nodesTypes); err != nil {
+			if err := helpers.ElementsMatch(expectedNodesTypes, nodesTypes); err != nil {
 				return err
 			}
 			return nil
 		}),
 	}
+}
+
+type mytesting struct {
+	hasErr bool
+}
+
+func (m mytesting) Errorf(s string, args ...interface{}) {
+	m.hasErr = true
 }
 
 // CheckClusterHealth checks that the given stack status reports a green ES health
@@ -211,7 +219,7 @@ func CheckESPodsResources(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Te
 				esContainer := p.Spec.Containers[0]
 				limits = append(limits, esContainer.Resources.Limits)
 			}
-			if err := helpers.CheckSameUnorderedElements(expectedLimits, limits); err != nil {
+			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
 				return err
 			}
 			return nil

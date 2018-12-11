@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	common "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/stack"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -58,8 +57,7 @@ func TestMutationLessNodes(t *testing.T) {
 // then mutates it to a 1 node cluster with more RAM
 func TestMutationResizeMemoryUp(t *testing.T) {
 	// create a stack with a 1G node
-	memory1G, err := resource.ParseQuantity("1G")
-	helpers.ExitOnErr(err)
+	memory1G := resource.MustParse("1G")
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
@@ -67,8 +65,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 			},
 		})
 	// mutate it to 1 node with 2G memory
-	memory2G, err := resource.ParseQuantity("2G")
-	helpers.ExitOnErr(err)
+	memory2G := resource.MustParse("2G")
 	mutatedStack := initStack.
 		WithNoESTopologies().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
@@ -84,8 +81,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create a stack with a 2G node
-	memory2G, err := resource.ParseQuantity("2G")
-	helpers.ExitOnErr(err)
+	memory2G := resource.MustParse("2G")
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
@@ -93,8 +89,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 	// mutate it to 1 node with 1G memory
-	memory1G, err := resource.ParseQuantity("1G")
-	helpers.ExitOnErr(err)
+	memory1G := resource.MustParse("1G")
 	mutatedStack := initStack.
 		WithNoESTopologies().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
