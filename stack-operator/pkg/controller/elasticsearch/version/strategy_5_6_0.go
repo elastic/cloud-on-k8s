@@ -60,7 +60,7 @@ func (s strategy_5_6_0) ExpectedPodSpecs(
 		"/usr/share/elasticsearch/config/x-pack",
 	)
 
-	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, "/usr/share/elasticsearch/config/additional")
+	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, support.ManagedConfigPath)
 
 	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
 	// potentially bypasses x-pack security.

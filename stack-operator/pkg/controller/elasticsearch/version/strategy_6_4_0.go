@@ -72,6 +72,8 @@ func (s strategy_6_4_0) ExpectedPodSpecs(
 		"users",
 	)
 
+	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, support.ManagedConfigPath)
+
 	return newExpectedPodSpecs(es, paramsTmpl, s.newEnvironmentVars, s.newInitContainers)
 }
 
