@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-const DefaultNamespace = "default"
+const DefaultNamespace = "e2e"
 
 var DefaultCtx = context.TODO()
 

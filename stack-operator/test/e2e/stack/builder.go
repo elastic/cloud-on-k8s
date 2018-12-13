@@ -5,13 +5,13 @@ import (
 	stacktype "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-const defaultNamespace = "e2e"
 const defaultVersion = "6.4.2"
 
 var DefaultResources = common.ResourcesSpec{
@@ -31,7 +31,7 @@ func NewStackBuilder(name string) Builder {
 		stacktype.Stack{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      name,
-				Namespace: defaultNamespace,
+				Namespace: helpers.DefaultNamespace,
 			},
 			Spec: stacktype.StackSpec{
 				Elasticsearch: estype.ElasticsearchSpec{},
