@@ -241,6 +241,5 @@ func quantityToMegabytes(q resource.Quantity) int {
 func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
 	return support.NewConfigMapWithData(es, map[string]string{
 		support.PolicyFile: "networkaddress.cache.ttl=60\n",
-	},
-	)
+	})
 }
