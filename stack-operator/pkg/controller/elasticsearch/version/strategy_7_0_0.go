@@ -35,7 +35,7 @@ func newStrategy_7_0_0(v version.Version) strategy_7_0_0 {
 
 // ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
 func (s strategy_7_0_0) ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
-	return newDefaultConfigMap(es)
+	return s.previousStrategy.ExpectedConfigMap(es)
 }
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
