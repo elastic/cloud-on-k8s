@@ -30,7 +30,7 @@ type PodToAdd struct {
 	MismatchReasons map[string][]string
 }
 
-// IsEmpty returns true if there are no topology changes to performed
+// HasChanges returns true if there are no topology changes to performed
 func (c Changes) HasChanges() bool {
 	return len(c.ToAdd) > 0 || len(c.ToRemove) > 0
 }
