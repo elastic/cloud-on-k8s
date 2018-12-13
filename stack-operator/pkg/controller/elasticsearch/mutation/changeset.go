@@ -20,7 +20,7 @@ type ChangeSet struct {
 
 	// ToAddContext contains context for added pods, which is required when creating the pods and associated resources
 	// using the Kubernetes API.
-	ToAddContext map[string]support.PodToAdd
+	ToAddContext map[string]PodToAdd
 }
 
 // IsEmpty returns true if this set has no removal, additions or kept pods.
@@ -32,7 +32,7 @@ func (s ChangeSet) IsEmpty() bool {
 func (s ChangeSet) Copy() ChangeSet {
 	res := ChangeSet{
 		ToAdd:        append([]corev1.Pod(nil), s.ToAdd...),
-		ToAddContext: make(map[string]support.PodToAdd, len(s.ToAddContext)),
+		ToAddContext: make(map[string]PodToAdd, len(s.ToAddContext)),
 		ToKeep:       append([]corev1.Pod(nil), s.ToKeep...),
 		ToRemove:     append([]corev1.Pod(nil), s.ToRemove...),
 	}
@@ -48,9 +48,9 @@ func (s ChangeSet) Copy() ChangeSet {
 type NewPodFunc func(ctx support.PodSpecContext) (corev1.Pod, error)
 
 // NewChangeSetFromChanges derives a single ChangeSet that carries over all the changes as a single ChangeSet.
-func NewChangeSetFromChanges(changes support.Changes, newPodFunc NewPodFunc) (*ChangeSet, error) {
+func NewChangeSetFromChanges(changes Changes, newPodFunc NewPodFunc) (*ChangeSet, error) {
 	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
-	toAddContext := make(map[string]support.PodToAdd, len(changes.ToAdd))
+	toAddContext := make(map[string]PodToAdd, len(changes.ToAdd))
 	for i, podToAdd := range changes.ToAdd {
 		pod, err := newPodFunc(podToAdd.PodSpecCtx)
 		if err != nil {
@@ -99,7 +99,7 @@ func (s ChangeSet) Group(
 			continue
 		}
 
-		toAddContext := make(map[string]support.PodToAdd, len(groupedChanges.ChangeSet.ToAdd))
+		toAddContext := make(map[string]PodToAdd, len(groupedChanges.ChangeSet.ToAdd))
 		for _, pod := range groupedChanges.ChangeSet.ToAdd {
 			toAddContext[pod.Name] = remainingChangeSet.ToAddContext[pod.Name]
 			delete(remainingChangeSet.ToAddContext, pod.Name)

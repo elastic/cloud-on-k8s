@@ -86,9 +86,9 @@ func TestChangeSet_IsEmpty(t *testing.T) {
 }
 
 func TestNewChangeSetFromChanges(t *testing.T) {
-	examplePodToAdd := support.PodToAdd{PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "foo"}}}
+	examplePodToAdd := PodToAdd{PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "foo"}}}
 	type args struct {
-		changes    support.Changes
+		changes    Changes
 		newPodFunc NewPodFunc
 	}
 	tests := []struct {
@@ -102,15 +102,15 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 			args: args{},
 			want: &ChangeSet{
 				ToAdd:        []corev1.Pod{},
-				ToAddContext: map[string]support.PodToAdd{},
+				ToAddContext: map[string]PodToAdd{},
 			},
 			wantErr: false,
 		},
 		{
 			name: "with pods",
 			args: args{
-				changes: support.Changes{
-					ToAdd: []support.PodToAdd{
+				changes: Changes{
+					ToAdd: []PodToAdd{
 						examplePodToAdd,
 					},
 					ToKeep:   []corev1.Pod{namedPod("2")},
@@ -125,7 +125,7 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 			},
 			want: &ChangeSet{
 				ToAdd:        []corev1.Pod{namedPod("example")},
-				ToAddContext: map[string]support.PodToAdd{"example": examplePodToAdd},
+				ToAddContext: map[string]PodToAdd{"example": examplePodToAdd},
 
 				ToKeep:   []corev1.Pod{namedPod("2")},
 				ToRemove: []corev1.Pod{namedPod("3")},
@@ -154,7 +154,7 @@ func TestChangeSet_Group(t *testing.T) {
 
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
 	bazPod := withLabels(namedPod("3"), map[string]string{"baz": "bar"})
-	bazPodToAdd := support.PodToAdd{
+	bazPodToAdd := PodToAdd{
 		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
@@ -186,7 +186,7 @@ func TestChangeSet_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					ChangeSet: ChangeSet{
 						ToKeep:       []corev1.Pod{namedPod("1")},
-						ToAddContext: map[string]support.PodToAdd{},
+						ToAddContext: map[string]PodToAdd{},
 					},
 				},
 			},
@@ -206,7 +206,7 @@ func TestChangeSet_Group(t *testing.T) {
 						ToKeep:       []corev1.Pod{namedPod("1")},
 						ToAdd:        []corev1.Pod{},
 						ToRemove:     []corev1.Pod{},
-						ToAddContext: map[string]support.PodToAdd{},
+						ToAddContext: map[string]PodToAdd{},
 					},
 				},
 			},
@@ -217,7 +217,7 @@ func TestChangeSet_Group(t *testing.T) {
 				ToAdd:    []corev1.Pod{bazPod},
 				ToKeep:   []corev1.Pod{fooPod},
 				ToRemove: []corev1.Pod{barPod},
-				ToAddContext: map[string]support.PodToAdd{
+				ToAddContext: map[string]PodToAdd{
 					bazPod.Name: bazPodToAdd,
 				},
 			},
@@ -238,7 +238,7 @@ func TestChangeSet_Group(t *testing.T) {
 						ToKeep:   []corev1.Pod{fooPod},
 						ToRemove: []corev1.Pod{},
 
-						ToAddContext: map[string]support.PodToAdd{},
+						ToAddContext: map[string]PodToAdd{},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},
@@ -251,7 +251,7 @@ func TestChangeSet_Group(t *testing.T) {
 						ToRemove: []corev1.Pod{barPod},
 						ToAdd:    []corev1.Pod{bazPod},
 
-						ToAddContext: map[string]support.PodToAdd{
+						ToAddContext: map[string]PodToAdd{
 							bazPod.Name: bazPodToAdd,
 						},
 					},
@@ -267,7 +267,7 @@ func TestChangeSet_Group(t *testing.T) {
 				ToAdd:    []corev1.Pod{bazPod},
 				ToKeep:   []corev1.Pod{fooPod},
 				ToRemove: []corev1.Pod{foobarPod},
-				ToAddContext: map[string]support.PodToAdd{
+				ToAddContext: map[string]PodToAdd{
 					bazPod.Name: bazPodToAdd,
 				},
 			},
@@ -295,7 +295,7 @@ func TestChangeSet_Group(t *testing.T) {
 						ToKeep:   []corev1.Pod{},
 						ToRemove: []corev1.Pod{foobarPod},
 
-						ToAddContext: map[string]support.PodToAdd{},
+						ToAddContext: map[string]PodToAdd{},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
@@ -308,7 +308,7 @@ func TestChangeSet_Group(t *testing.T) {
 						ToRemove: []corev1.Pod{},
 						ToAdd:    []corev1.Pod{bazPod},
 
-						ToAddContext: map[string]support.PodToAdd{
+						ToAddContext: map[string]PodToAdd{
 							bazPod.Name: bazPodToAdd,
 						},
 					},

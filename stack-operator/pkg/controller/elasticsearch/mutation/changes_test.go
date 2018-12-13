@@ -1,8 +1,9 @@
-package support
+package mutation
 
 import (
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -14,8 +15,8 @@ func TestCalculateChanges(t *testing.T) {
 	var taintedPod = defaultPod
 	taintedPod.Annotations = map[string]string{TaintedAnnotationName: "true"}
 	type args struct {
-		expected []PodSpecContext
-		state    ResourcesState
+		expected []support.PodSpecContext
+		state    support.ResourcesState
 	}
 	tests := []struct {
 		name string
@@ -25,16 +26,16 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "no changes",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "2 new pods",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep: []corev1.Pod{defaultPod, defaultPod},
@@ -44,16 +45,16 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "2 less pods",
 			args: args{
-				expected: []PodSpecContext{},
-				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []support.PodSpecContext{},
+				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToRemove: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "1 pod replaced",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
-				state:    ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []support.PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
+				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
@@ -64,8 +65,8 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "1 pod replaced on pod tainted",
 			args: args{
-				expected: []PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
+				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    support.ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToRemove: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpecCtx: defaultPodSpecCtx}}},
 		},

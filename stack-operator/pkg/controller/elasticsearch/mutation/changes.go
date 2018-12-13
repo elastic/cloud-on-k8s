@@ -1,8 +1,9 @@
-package support
+package mutation
 
 import (
 	"sort"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -21,7 +22,7 @@ func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
 // PodToAdd defines a pod to be added, along with
 // the reasons why it doesn't match any existing pod
 type PodToAdd struct {
-	PodSpecCtx      PodSpecContext
+	PodSpecCtx      support.PodSpecContext
 	MismatchReasons map[string][]string
 }
 
@@ -31,9 +32,9 @@ func (c Changes) HasChanges() bool {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state ResourcesState) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []support.PodSpecContext, state support.ResourcesState) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
-	expectedCopy := make([]PodSpecContext, len(expectedPodSpecCtxs))
+	expectedCopy := make([]support.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
 	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
 	copy(actualCopy, state.CurrentPods)
@@ -42,9 +43,9 @@ func CalculateChanges(expectedPodSpecCtxs []PodSpecContext, state ResourcesState
 }
 
 func mutableCalculateChanges(
-	expectedPodSpecCtxs []PodSpecContext,
+	expectedPodSpecCtxs []support.PodSpecContext,
 	actualPods []corev1.Pod,
-	state ResourcesState,
+	state support.ResourcesState,
 ) (Changes, error) {
 	changes := Changes{
 		ToAdd:    []PodToAdd{},
@@ -87,7 +88,7 @@ type PodComparisonResult struct {
 	RemainingPods         []corev1.Pod
 }
 
-func getAndRemoveMatchingPod(podSpecCtx PodSpecContext, pods []corev1.Pod, state ResourcesState) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx support.PodSpecContext, pods []corev1.Pod, state support.ResourcesState) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, pod := range pods {

@@ -304,7 +304,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcile.Result{}, err
 	}
 
-	changes, err := support.CalculateChanges(expectedPodSpecCtxs, *resourcesState)
+	changes, err := mutation.CalculateChanges(expectedPodSpecCtxs, *resourcesState)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

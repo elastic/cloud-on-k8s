@@ -33,7 +33,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 					Name: "foo",
 					ChangeSet: ChangeSet{
 						ToAdd: []corev1.Pod{namedPod("1")},
-						ToAddContext: map[string]support.PodToAdd{
+						ToAddContext: map[string]PodToAdd{
 							"1": {},
 						},
 						ToRemove: []corev1.Pod{namedPod("2")},
@@ -62,7 +62,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 					Name: "foo",
 					ChangeSet: ChangeSet{
 						ToAdd: []corev1.Pod{namedPod("1")},
-						ToAddContext: map[string]support.PodToAdd{
+						ToAddContext: map[string]PodToAdd{
 							"1": {},
 						},
 						ToRemove: []corev1.Pod{namedPod("2")},
@@ -91,7 +91,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 					Name: "foo",
 					ChangeSet: ChangeSet{
 						ToAdd: []corev1.Pod{namedPod("add-1"), namedPod("add-2")},
-						ToAddContext: map[string]support.PodToAdd{
+						ToAddContext: map[string]PodToAdd{
 							"1": {},
 						},
 						ToKeep:   []corev1.Pod{namedPod("keep-3")},
@@ -156,7 +156,7 @@ func TestGroupedChangeSet_ChangeStats(t *testing.T) {
 				},
 				ChangeSet: ChangeSet{
 					ToAdd: []corev1.Pod{namedPod("add-1"), namedPod("add-2")},
-					ToAddContext: map[string]support.PodToAdd{
+					ToAddContext: map[string]PodToAdd{
 						"1": {},
 					},
 					ToKeep:   []corev1.Pod{namedPod("keep-3")},
@@ -241,7 +241,7 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 				ChangeSet: ChangeSet{
 					ToKeep: []corev1.Pod{namedPod("bar")},
 					ToAdd:  []corev1.Pod{namedPod("foo"), namedPod("baz")},
-					ToAddContext: map[string]support.PodToAdd{
+					ToAddContext: map[string]PodToAdd{
 						"foo": {},
 						"baz": {},
 					},
@@ -259,7 +259,7 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 				ChangeSet: ChangeSet{
 					ToAdd:  []corev1.Pod{namedPod("baz")},
 					ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
-					ToAddContext: map[string]support.PodToAdd{
+					ToAddContext: map[string]PodToAdd{
 						"baz": {},
 					},
 				},
