@@ -2,7 +2,6 @@ package mutation
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -44,15 +43,12 @@ func (s ChangeSet) Copy() ChangeSet {
 	return res
 }
 
-// NewPodFunc is a function that is able to create pods from a PodSpecContext
-type NewPodFunc func(ctx support.PodSpecContext) (corev1.Pod, error)
-
 // NewChangeSetFromChanges derives a single ChangeSet that carries over all the changes as a single ChangeSet.
-func NewChangeSetFromChanges(changes Changes, newPodFunc NewPodFunc) (*ChangeSet, error) {
+func NewChangeSetFromChanges(changes Changes, podBuilder PodBuilder) (*ChangeSet, error) {
 	podsToAdd := make([]corev1.Pod, len(changes.ToAdd))
 	toAddContext := make(map[string]PodToAdd, len(changes.ToAdd))
 	for i, podToAdd := range changes.ToAdd {
-		pod, err := newPodFunc(podToAdd.PodSpecCtx)
+		pod, err := podBuilder(podToAdd.PodSpecCtx)
 		if err != nil {
 			return nil, err
 		}

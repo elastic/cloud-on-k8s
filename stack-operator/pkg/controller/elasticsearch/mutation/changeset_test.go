@@ -89,7 +89,7 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 	examplePodToAdd := PodToAdd{PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "foo"}}}
 	type args struct {
 		changes    Changes
-		newPodFunc NewPodFunc
+		podBuilder PodBuilder
 	}
 	tests := []struct {
 		name    string
@@ -116,7 +116,7 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 					ToKeep:   []corev1.Pod{namedPod("2")},
 					ToRemove: []corev1.Pod{namedPod("3")},
 				},
-				newPodFunc: func(ctx support.PodSpecContext) (corev1.Pod, error) {
+				podBuilder: func(ctx support.PodSpecContext) (corev1.Pod, error) {
 					if !reflect.DeepEqual(ctx, examplePodToAdd.PodSpecCtx) {
 						return corev1.Pod{}, fmt.Errorf("got unexpected parameter: %v", ctx)
 					}
@@ -135,7 +135,7 @@ func TestNewChangeSetFromChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewChangeSetFromChanges(tt.args.changes, tt.args.newPodFunc)
+			got, err := NewChangeSetFromChanges(tt.args.changes, tt.args.podBuilder)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewChangeSetFromChanges() error = %v, wantErr %v", err, tt.wantErr)
 				return
