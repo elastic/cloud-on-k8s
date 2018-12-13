@@ -118,7 +118,7 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.policy==%s", heapSize, heapSize, policyFilePath)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.policy=%s", heapSize, heapSize, policyFilePath)},
 
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
 		{Name: support.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},

@@ -103,7 +103,7 @@ func (s strategy_5_6_0) newEnvironmentVars(
 		{Name: support.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.policy==%s", heapSize, heapSize, policyFilePath)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.policy=%s", heapSize, heapSize, policyFilePath)},
 
 		// TODO: dedicated node types support
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
