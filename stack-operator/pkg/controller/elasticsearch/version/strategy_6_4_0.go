@@ -54,6 +54,11 @@ func newStrategy_6_4_0(v version.Version) strategy_6_4_0 {
 	return strategy
 }
 
+// ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
+func (s strategy_6_4_0) ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
+	return newDefaultConfigMap(es)
+}
+
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func (s strategy_6_4_0) ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
@@ -111,7 +116,7 @@ func (s strategy_6_4_0) newEnvironmentVars(
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.policy==%s", heapSize, heapSize, policyFilePath)},
 
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
 		{Name: support.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},

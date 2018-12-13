@@ -64,6 +64,8 @@ type NewPodSpecParams struct {
 
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume SecretVolume
+	// ConfigMapVolume is a volume containing a config map with configuration files
+	ConfigMapVolume ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
 	// KeystoreConfig is configuration for the Elasticsearch key store setup

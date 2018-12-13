@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"fmt"
+	"path"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
@@ -17,6 +18,7 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
+	policyFilePath      = path.Join(support.ManagedConfigPath, support.PolicyFile)
 )
 
 // newExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -43,6 +45,7 @@ func newExpectedPodSpecs(
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
 				Resources:            topology.Resources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
+				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 				KeystoreConfig:       paramsTmpl.KeystoreConfig,
 				ProbeUser:            paramsTmpl.ProbeUser,
@@ -131,6 +134,7 @@ func podSpec(
 			VolumeMounts: append(
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				p.UsersSecretVolume.VolumeMount(),
+				p.ConfigMapVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
@@ -140,6 +144,7 @@ func podSpec(
 		Volumes: append(
 			initcontainer.SharedVolumes.Volumes(),
 			p.UsersSecretVolume.Volume(),
+			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 		),
@@ -231,4 +236,11 @@ func nonZeroQuantityOrDefault(q, defaultQuantity resource.Quantity) resource.Qua
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
 	return int(q.Value()) / 1024 / 1024
+}
+
+func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
+	return support.NewConfigMapWithData(es, map[string]string{
+		support.PolicyFile: "networkaddress.cache.ttl=60\n",
+	},
+	)
 }
