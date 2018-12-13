@@ -30,6 +30,7 @@ GCR_REGION_NAME ?= eu.gcr.io
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= $(shell find pkg -type f -print0 | xargs -0 sha1sum | sha1sum | awk '{print $$1}')
 IMG ?= $(GCR_REGION_NAME)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+E2E_IMG ?= $(IMG)-e2e-tests
 
 OPERATOR_NAMESPACE ?= stack-operators-system
 
@@ -43,13 +44,6 @@ unit:
 
 integration: generate fmt vet manifests
 	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
-
-TESTS_MATCH ?= ""
-# run e2e tests
-# can be overriden with the name of the test to run, eg.:
-# make e2e TESTS_MATCH=TestMutationMoreNodes
-e2e:
-	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run $(TESTS_MATCH)
 
 # Build stack-operator binary
 stack-operator: generate fmt vet
@@ -265,3 +259,24 @@ start-port-forward:
 stop-port-forward:
 	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
 	@ echo "-> Stopped."
+
+# -- e2e tests
+
+TESTS_MATCH ?= ""
+# run e2e tests
+# can be overriden with the name of the test to run, eg.:
+# make e2e TESTS_MATCH=TestMutationMoreNodes
+e2e: docker-e2e
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" "$(TESTS_MATCH)"
+
+# Build and (maybe) push e2e tests Docker image
+docker-e2e:
+ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# build locally, then push to gke registry
+	docker build -t $(E2E_IMG):$(IMG_TAG) -f test/e2e/Dockerfile .
+	docker push $(E2E_IMG):$(IMG_TAG)
+else
+	# build with Minikube's Docker, don't push
+	eval $$(minikube docker-env) ;\
+	docker build -t $(E2E_IMG):$(IMG_TAG) -f test/e2e/Dockerfile .
+endif

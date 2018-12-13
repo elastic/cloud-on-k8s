@@ -1,0 +1,96 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: e2e
+  labels:
+    name: e2e
+
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: e2e
+  namespace: e2e
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: e2e
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - endpoints
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "apps"
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearchclusters
+  - elasticsearchclusters/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  - kibanas/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - deployments.k8s.elastic.co
+  resources:
+  - stacks
+  - stacks/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: e2e
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: e2e
+subjects:
+- kind: ServiceAccount
+  name: e2e
+  namespace: e2e
