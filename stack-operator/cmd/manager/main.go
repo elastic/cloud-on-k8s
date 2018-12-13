@@ -18,6 +18,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
 
+const (
+	MetricsPortFlag   = "metrics-port"
+	DefaultMetricPort = 8080
+)
+
 var (
 	// Cmd is the cobra command to start the manager.
 	Cmd = &cobra.Command{
@@ -33,6 +38,7 @@ var (
 
 func init() {
 	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	Cmd.Flags().Int(MetricsPortFlag, DefaultMetricPort, "Port to use for exposing metrics in the Prometheus format (set 0 to disable)")
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
 }
@@ -56,7 +62,13 @@ func execute() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("setting up manager")
-	mgr, err := manager.New(cfg, manager.Options{})
+	opts := manager.Options{}
+	metricsPort := viper.GetInt(MetricsPortFlag)
+	if metricsPort != 0 {
+		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
+		log.Info(fmt.Sprintf("Exposing Prometheus metrics on /metrics%s", opts.MetricsBindAddress))
+	}
+	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")
 		os.Exit(1)
