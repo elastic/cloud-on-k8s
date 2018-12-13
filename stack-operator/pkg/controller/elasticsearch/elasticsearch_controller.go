@@ -289,6 +289,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcile.Result{}, err
 	}
 
+	expectedConfigMap := versionStrategy.ExpectedConfigMap(es)
+	err = r.ReconcileConfigMap(es, expectedConfigMap)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	podSpecParamsTemplate := support.NewPodSpecParams{
 		ExtraFilesRef:  elasticsearchExtraFilesSecretObjectKey,
 		KeystoreConfig: keystoreConfig,
