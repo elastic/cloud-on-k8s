@@ -73,7 +73,9 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.state)
+			got, err := CalculateChanges(tt.args.expected, tt.args.state, func(ctx support.PodSpecContext) (corev1.Pod, error) {
+				return corev1.Pod{}, nil // TODO: fix
+			})
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToAdd), len(got.ToAdd))

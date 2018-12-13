@@ -304,7 +304,9 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return reconcile.Result{}, err
 	}
 
-	changes, err := mutation.CalculateChanges(expectedPodSpecCtxs, *resourcesState)
+	changes, err := mutation.CalculateChanges(expectedPodSpecCtxs, *resourcesState, func(ctx support.PodSpecContext) (corev1.Pod, error) {
+		return versionStrategy.NewPod(es, ctx)
+	})
 	if err != nil {
 		return reconcile.Result{}, err
 	}

@@ -26,6 +26,7 @@ func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
 // PodToAdd defines a pod to be added, along with
 // the reasons why it doesn't match any existing pod
 type PodToAdd struct {
+	Pod             corev1.Pod
 	PodSpecCtx      support.PodSpecContext
 	MismatchReasons map[string][]string
 }
@@ -36,20 +37,21 @@ func (c Changes) HasChanges() bool {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []support.PodSpecContext, state support.ResourcesState) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []support.PodSpecContext, state support.ResourcesState, podBuilder PodBuilder) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]support.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
 	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
 	copy(actualCopy, state.CurrentPods)
 
-	return mutableCalculateChanges(expectedCopy, actualCopy, state)
+	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder)
 }
 
 func mutableCalculateChanges(
 	expectedPodSpecCtxs []support.PodSpecContext,
 	actualPods []corev1.Pod,
 	state support.ResourcesState,
+	podBuilder PodBuilder,
 ) (Changes, error) {
 	changes := Changes{
 		ToAdd:    []PodToAdd{},
@@ -69,7 +71,12 @@ func mutableCalculateChanges(
 			actualPods = comparisonResult.RemainingPods
 		} else {
 			// no matching pod, a new one should be added
+			pod, err := podBuilder(expectedPodSpecCtx)
+			if err != nil {
+				return changes, err
+			}
 			changes.ToAdd = append(changes.ToAdd, PodToAdd{
+				Pod:             pod,
 				PodSpecCtx:      expectedPodSpecCtx,
 				MismatchReasons: comparisonResult.MismatchReasonsPerPod,
 			})
