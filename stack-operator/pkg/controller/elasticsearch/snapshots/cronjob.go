@@ -55,7 +55,7 @@ func CronJobName(parent types.NamespacedName) string {
 func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 	var labels = map[string]string{
 		support.ClusterNameLabelName: es.Name,
-		support.TypeLabelName:        Type,
+		common.TypeLabelName:         Type,
 	}
 	return labels
 }
