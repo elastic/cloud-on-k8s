@@ -12,10 +12,10 @@ func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kb.Namespace,
 			Name:      PseudoNamespacedResourceName(kb),
-			Labels:    NewLabelsWithKibanaName(kb.Name),
+			Labels:    NewLabels(kb.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabelsWithKibanaName(kb.Name),
+			Selector: NewLabels(kb.Name),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
