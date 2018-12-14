@@ -46,8 +46,10 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 0,
 			},
 			want: &PerformableChanges{
-				ScheduleForCreation: []CreatablePod{
-					{Pod: namedPod("1"), PodSpecContext: support.PodSpecContext{}},
+				Changes: Changes{
+					ToAdd: []PodToAdd{
+						{Pod: namedPod("1"), PodSpecCtx: support.PodSpecContext{}},
+					},
 				},
 				MaxUnavailableGroups: []string{"foo"},
 			},
@@ -72,8 +74,10 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 1,
 			},
 			want: &PerformableChanges{
-				ScheduleForDeletion: []corev1.Pod{
-					namedPod("2"),
+				Changes: Changes{
+					ToRemove: []corev1.Pod{
+						namedPod("2"),
+					},
 				},
 				MaxSurgeGroups: []string{"foo"},
 			},
@@ -103,11 +107,13 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 1,
 			},
 			want: &PerformableChanges{
-				ScheduleForCreation: []CreatablePod{
-					{Pod: namedPod("add-1"), PodSpecContext: support.PodSpecContext{}},
-				},
-				ScheduleForDeletion: []corev1.Pod{
-					namedPod("remove-1"),
+				Changes: Changes{
+					ToAdd: []PodToAdd{
+						{Pod: namedPod("add-1"), PodSpecCtx: support.PodSpecContext{}},
+					},
+					ToRemove: []corev1.Pod{
+						namedPod("remove-1"),
+					},
 				},
 				MaxSurgeGroups:       []string{"foo"},
 				MaxUnavailableGroups: []string{"foo"},
@@ -209,7 +215,9 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 			},
 			args: args{
 				performableChanges: PerformableChanges{
-					ScheduleForDeletion: []corev1.Pod{namedPod("foo")},
+					Changes: Changes{
+						ToRemove: []corev1.Pod{namedPod("foo")},
+					},
 				},
 			},
 			want: ChangeGroup{
@@ -236,7 +244,9 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 			},
 			args: args{
 				performableChanges: PerformableChanges{
-					ScheduleForCreation: []CreatablePod{{Pod: namedPod("foo")}},
+					Changes: Changes{
+						ToAdd: []PodToAdd{{Pod: namedPod("foo")}},
+					},
 				},
 			},
 			want: ChangeGroup{

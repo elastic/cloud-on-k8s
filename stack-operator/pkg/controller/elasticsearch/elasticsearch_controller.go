@@ -347,12 +347,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	log.Info(
 		"Calculated performable changes",
-		"schedule_for_creation_count", len(performableChanges.ScheduleForCreation),
-		"schedule_for_deletion_count", len(performableChanges.ScheduleForDeletion),
+		"schedule_for_creation_count", len(performableChanges.ToAdd),
+		"schedule_for_deletion_count", len(performableChanges.ToRemove),
 	)
 
-	for _, change := range performableChanges.ScheduleForCreation {
-		if err := r.CreateElasticsearchPod(reconcileState, versionStrategy, change.Pod, change.PodSpecContext); err != nil {
+	for _, change := range performableChanges.ToAdd {
+		if err := r.CreateElasticsearchPod(reconcileState, versionStrategy, change.Pod, change.PodSpecCtx); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -395,7 +395,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	// Start migrating data away from all pods to be removed
-	leavingNodeNames := support.PodListToNames(performableChanges.ScheduleForDeletion)
+	leavingNodeNames := support.PodListToNames(performableChanges.ToRemove)
 	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "error during migrate data")
 	}
@@ -405,7 +405,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	results := ReconcileResults{}
 	// Shrink clusters by deleting deprecated pods
-	for _, pod := range performableChanges.ScheduleForDeletion {
+	for _, pod := range performableChanges.ToRemove {
 		newState = remove(newState, pod)
 		preDelete := func() error {
 			return versionStrategy.UpdateDiscovery(esClient, newState)
@@ -416,7 +416,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 			observedState,
 			pod,
 			esClient,
-			performableChanges.ScheduleForDeletion,
+			performableChanges.ToRemove,
 			preDelete,
 		)
 		if err != nil {

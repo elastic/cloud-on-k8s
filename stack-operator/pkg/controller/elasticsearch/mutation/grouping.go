@@ -157,17 +157,14 @@ func (s ChangeGroup) calculatePerformableChanges(
 			"mismatch_reasons", newPodToAdd.MismatchReasons,
 		)
 
-		result.ScheduleForCreation = append(
-			result.ScheduleForCreation,
-			CreatablePod{Pod: newPodToAdd.Pod, PodSpecContext: newPodToAdd.PodSpecCtx},
-		)
+		result.ToAdd = append(result.ToAdd, newPodToAdd)
 	}
 
 	// schedule for deletion as many pods as we can
 	for _, pod := range s.Changes.ToRemove {
 		if _, ok := s.PodsState.Terminal[pod.Name]; ok {
 			// removing terminal pods do not affect our availability budget, so we can always delete
-			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+			result.ToRemove = append(result.ToRemove, pod)
 			continue
 		}
 
@@ -198,7 +195,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 		)
 
 		podRestrictions.Remove(pod)
-		result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+		result.ToRemove = append(result.ToRemove, pod)
 	}
 
 	return nil
@@ -209,22 +206,22 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
-	scheduledForDeletionByName := make(map[string]struct{}, len(performableChanges.ScheduleForDeletion))
-	for _, pod := range performableChanges.ScheduleForDeletion {
-		scheduledForDeletionByName[pod.Name] = empty
+	toRemoveByName := make(map[string]struct{}, len(performableChanges.ToRemove))
+	for _, pod := range performableChanges.ToRemove {
+		toRemoveByName[pod.Name] = empty
 	}
 
 	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToRemove
 	for i := len(s.Changes.ToRemove) - 1; i >= 0; i-- {
-		if _, ok := scheduledForDeletionByName[s.Changes.ToRemove[i].Name]; ok {
+		if _, ok := toRemoveByName[s.Changes.ToRemove[i].Name]; ok {
 			s.Changes.ToRemove = append(s.Changes.ToRemove[:i], s.Changes.ToRemove[i+1:]...)
 		}
 	}
 
 	// convert the scheduled for creation pods to a map for faster lookup
-	scheduledForCreationByName := make(map[string]struct{}, len(performableChanges.ScheduleForCreation))
-	for _, podToCreate := range performableChanges.ScheduleForCreation {
-		scheduledForCreationByName[podToCreate.Pod.Name] = empty
+	toAddByName := make(map[string]struct{}, len(performableChanges.ToAdd))
+	for _, podToCreate := range performableChanges.ToAdd {
+		toAddByName[podToCreate.Pod.Name] = empty
 
 		// pretend we added it, which would move it to Pending
 		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
@@ -236,7 +233,7 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 
 	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
 	for i := len(s.Changes.ToAdd) - 1; i >= 0; i-- {
-		if _, ok := scheduledForCreationByName[s.Changes.ToAdd[i].Pod.Name]; ok {
+		if _, ok := toAddByName[s.Changes.ToAdd[i].Pod.Name]; ok {
 			s.Changes.ToAdd = append(s.Changes.ToAdd[:i], s.Changes.ToAdd[i+1:]...)
 		}
 	}
@@ -246,7 +243,7 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 
 	// removed pods will /eventually/ go to the Deleting stage, and since we're just removing it from the ChangeGroup
 	// above, we need to pretend it's being deleted for it to be counted as unavailable.
-	for _, pod := range performableChanges.ScheduleForDeletion {
+	for _, pod := range performableChanges.ToRemove {
 		s.PodsState.Deleting[pod.Name] = pod
 	}
 }

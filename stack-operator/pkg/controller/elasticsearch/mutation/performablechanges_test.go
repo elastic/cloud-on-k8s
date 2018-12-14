@@ -19,13 +19,23 @@ func TestPerformableChanges_HasChanges(t *testing.T) {
 		want    bool
 	}{
 		{name: "empty", changes: PerformableChanges{}, want: false},
-		{name: "creation", changes: PerformableChanges{ScheduleForCreation: []CreatablePod{{}}}, want: true},
-		{name: "deletion", changes: PerformableChanges{ScheduleForDeletion: []corev1.Pod{{}}}, want: true},
+		{
+			name:    "creation",
+			changes: PerformableChanges{Changes: Changes{ToAdd: []PodToAdd{{}}}},
+			want:    true,
+		},
+		{
+			name:    "deletion",
+			changes: PerformableChanges{Changes: Changes{ToRemove: []corev1.Pod{{}}}},
+			want:    true,
+		},
 		{
 			name: "creation and deletion",
 			changes: PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{}},
-				ScheduleForDeletion: []corev1.Pod{{}},
+				Changes: Changes{
+					ToAdd:    []PodToAdd{{}},
+					ToRemove: []corev1.Pod{{}},
+				},
 			},
 			want: true,
 		},
@@ -117,7 +127,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToRemove: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
@@ -134,7 +146,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToRemove: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
@@ -151,7 +165,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToRemove: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
@@ -169,12 +185,13 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				// note that this is not an optimal solution, as zone B is now completely down and we used our change
-				// budget trying to rotate nodes in A
-				// but since no groups where specified, we have no knowledge of a "zone B"
-				ScheduleForCreation: []CreatablePod{{Pod: podsA[2]}, {Pod: podsA[3]}},
-				ScheduleForDeletion: concatPodList(podsB[:2]),
-
+				Changes: Changes{
+					// note that this is not an optimal solution, as zone B is now completely down and we used our change
+					// budget trying to rotate nodes in A
+					// but since no groups where specified, we have no knowledge of a "zone B"
+					ToAdd:    []PodToAdd{{Pod: podsA[2]}, {Pod: podsA[3]}},
+					ToRemove: concatPodList(podsB[:2]),
+				},
 				MaxSurgeGroups:       []string{UnmatchedGroupName, AllGroupName},
 				MaxUnavailableGroups: []string{UnmatchedGroupName, AllGroupName},
 			}),
@@ -194,10 +211,12 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				// we might have expected podsA[2] be be created here, but it can't be. why?
-				// trivia: which phase does a terminal pod (failed/succeeded) go to when a delete issued?
-				ScheduleForCreation: []CreatablePod{{Pod: podsB[2]}, {Pod: podsB[3]}},
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					// we might have expected podsA[2] be be created here, but it can't be. why?
+					// trivia: which phase does a terminal pod (failed/succeeded) go to when a delete issued?
+					ToAdd:    []PodToAdd{{Pod: podsB[2]}, {Pod: podsB[3]}},
+					ToRemove: concatPodList(podsB[:2]),
+				},
 
 				MaxSurgeGroups:       []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
 				MaxUnavailableGroups: []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
@@ -216,7 +235,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(masterPods[:1], dataPods[:1]),
+				Changes: Changes{
+					ToRemove: concatPodList(masterPods[:1], dataPods[:1]),
+				},
 				RestrictedPods: map[string]error{
 					masterPods[1].Name: ErrNotEnoughMasterEligiblePods,
 					dataPods[1].Name:   ErrNotEnoughDataEligiblePods,
@@ -237,7 +258,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{Pod: masterPods[0]}, {Pod: dataPods[0]}},
+				Changes: Changes{
+					ToAdd: []PodToAdd{{Pod: masterPods[0]}, {Pod: dataPods[0]}},
+				},
 				RestrictedPods: map[string]error{
 					masterDataPods[0].Name: ErrNotEnoughMasterEligiblePods,
 				},
@@ -258,7 +281,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{Pod: masterDataPods[0]}},
+				Changes: Changes{
+					ToAdd: []PodToAdd{{Pod: masterDataPods[0]}},
+				},
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,
 					dataPods[0].Name:   ErrNotEnoughDataEligiblePods,
@@ -281,6 +306,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
+				Changes: Changes{},
 				// we have to wait for the mdi node to join before we can start deleting master/data nodes
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,

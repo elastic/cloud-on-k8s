@@ -2,8 +2,6 @@ package mutation
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -13,10 +11,8 @@ var (
 
 // PerformableChanges contains changes that can be performed to pod resources
 type PerformableChanges struct {
-	// ScheduleForCreation are pods that can be created
-	ScheduleForCreation []CreatablePod
-	// ScheduleForDeletion are pods that can start the deletion process
-	ScheduleForDeletion []corev1.Pod
+	// Changes that can be safely performed
+	Changes
 
 	// informational values
 	// RestrictedPods are pods that were prevented from being scheduled for deletion
@@ -27,17 +23,6 @@ type PerformableChanges struct {
 	MaxUnavailableGroups []string
 }
 
-// HasChanges is true if there are no changes.
-func (c PerformableChanges) HasChanges() bool {
-	return len(c.ScheduleForCreation) > 0 || len(c.ScheduleForDeletion) > 0
-}
-
-// CreatablePod contains all information required to create a pod
-type CreatablePod struct {
-	Pod            corev1.Pod
-	PodSpecContext support.PodSpecContext
-}
-
 // initializePerformableChanges initializes nil values in PerformableChanges
 func initializePerformableChanges(changes PerformableChanges) PerformableChanges {
 	if changes.RestrictedPods == nil {
@@ -46,7 +31,7 @@ func initializePerformableChanges(changes PerformableChanges) PerformableChanges
 	return changes
 }
 
-// CalculatePerformableChanges calculates which changes that can be performed in the current state.
+// CalculatePerformableChanges calculates which changes can be performed in the current state.
 func CalculatePerformableChanges(
 	strategy v1alpha1.UpdateStrategy,
 	allPodChanges *Changes,
