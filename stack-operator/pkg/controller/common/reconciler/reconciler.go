@@ -28,12 +28,12 @@ type Reconciler struct {
 func (r Reconciler) ReconcileObj(
 	obj runtime.Object,
 	new func() runtime.Object,
-	diff func(expected, found *runtime.Object) bool,
-	mod func(expected, found *runtime.Object) runtime.Object,
-) error {
+	diff func(expected, found runtime.Object) bool,
+	mod func(expected, found runtime.Object) runtime.Object,
+) (runtime.Object, error) {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return errors.Errorf("%v is not a metadata Object", obj)
+		return obj, errors.Errorf("%v is not a metadata Object", obj)
 	}
 	namespace := meta.GetNamespace()
 	name := meta.GetName()
@@ -43,7 +43,7 @@ func (r Reconciler) ReconcileObj(
 		kind = kinds[0].Kind
 	}
 	if err := controllerutil.SetControllerReference(r.Owner, meta, r.Scheme); err != nil {
-		return err
+		return obj, err
 	}
 	// Check if already exists
 	expected := obj
@@ -55,20 +55,20 @@ func (r Reconciler) ReconcileObj(
 
 		err = r.Create(context.TODO(), expected)
 		if err != nil {
-			return err
+			return expected, err
 		}
-		return nil
+		return expected, nil
 	} else if err != nil {
-		return err
+		return found, err
 	}
 
 	// Update if needed
-	if !diff(&expected, &found) {
+	if diff(expected, found) {
 		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
-		err := r.Update(context.TODO(), mod(&expected, &found))
+		err := r.Update(context.TODO(), mod(expected, found))
 		if err != nil {
-			return err
+			return found, err
 		}
 	}
-	return nil
+	return found, nil
 }
