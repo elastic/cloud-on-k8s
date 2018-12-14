@@ -18,7 +18,7 @@ type PodBuilder func(ctx support.PodSpecContext) (corev1.Pod, error)
 type Changes struct {
 	ToAdd    []PodToAdd
 	ToKeep   []corev1.Pod
-	ToRemove []corev1.Pod
+	ToDelete []corev1.Pod
 }
 
 // EmptyChanges creates an empty Changes with empty arrays not nil
@@ -26,7 +26,7 @@ func EmptyChanges() Changes {
 	return Changes{
 		ToAdd:    []PodToAdd{},
 		ToKeep:   []corev1.Pod{},
-		ToRemove: []corev1.Pod{},
+		ToDelete: []corev1.Pod{},
 	}
 }
 
@@ -45,12 +45,12 @@ type PodToAdd struct {
 
 // HasChanges returns true if there are no topology changes to performed
 func (c Changes) HasChanges() bool {
-	return len(c.ToAdd) > 0 || len(c.ToRemove) > 0
+	return len(c.ToAdd) > 0 || len(c.ToDelete) > 0
 }
 
 // IsEmpty returns true if this set has no removal, additions or kept pods.
 func (c Changes) IsEmpty() bool {
-	return len(c.ToAdd) == 0 && len(c.ToRemove) == 0 && len(c.ToKeep) == 0
+	return len(c.ToAdd) == 0 && len(c.ToDelete) == 0 && len(c.ToKeep) == 0
 }
 
 // Copy copies this Changes. It copies the underlying slices and maps, but not their contents.
@@ -58,7 +58,7 @@ func (c Changes) Copy() Changes {
 	res := Changes{
 		ToAdd:    append([]PodToAdd{}, c.ToAdd...),
 		ToKeep:   append([]corev1.Pod{}, c.ToKeep...),
-		ToRemove: append([]corev1.Pod{}, c.ToRemove...),
+		ToDelete: append([]corev1.Pod{}, c.ToDelete...),
 	}
 	return res
 }
@@ -110,7 +110,7 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 	remainingChanges := EmptyChanges()
 
 	matchingChanges.ToKeep, remainingChanges.ToKeep = partitionPodsBySelector(selector, c.ToKeep)
-	matchingChanges.ToRemove, remainingChanges.ToRemove = partitionPodsBySelector(selector, c.ToRemove)
+	matchingChanges.ToDelete, remainingChanges.ToDelete = partitionPodsBySelector(selector, c.ToDelete)
 
 	for _, toAdd := range c.ToAdd {
 		if selector.Matches(labels.Set(toAdd.Pod.Labels)) {
@@ -181,11 +181,11 @@ func mutableCalculateChanges(
 		}
 	}
 	// remaining actual pods should be removed
-	changes.ToRemove = actualPods
+	changes.ToDelete = actualPods
 
 	// sort changes for idempotent processing
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
-	sort.SliceStable(changes.ToRemove, sortPodByCreationTimestampAsc(changes.ToRemove))
+	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
 
 	return changes, nil
 }

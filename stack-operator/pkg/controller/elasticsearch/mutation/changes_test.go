@@ -72,7 +72,7 @@ func TestCalculateChanges(t *testing.T) {
 				expected: []support.PodSpecContext{},
 				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
-			want: Changes{ToRemove: []corev1.Pod{defaultPod, defaultPod}},
+			want: Changes{ToDelete: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "1 pod replaced",
@@ -82,7 +82,7 @@ func TestCalculateChanges(t *testing.T) {
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
-				ToRemove: []corev1.Pod{defaultPod},
+				ToDelete: []corev1.Pod{defaultPod},
 				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
 			},
 		},
@@ -92,7 +92,7 @@ func TestCalculateChanges(t *testing.T) {
 				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
 				state:    support.ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
 			},
-			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToRemove: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpecCtx: defaultPodSpecCtx}}},
+			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToDelete: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpecCtx: defaultPodSpecCtx}}},
 		},
 	}
 	for _, tt := range tests {
@@ -103,7 +103,7 @@ func TestCalculateChanges(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToAdd), len(got.ToAdd))
-			assert.Equal(t, len(tt.want.ToRemove), len(got.ToRemove))
+			assert.Equal(t, len(tt.want.ToDelete), len(got.ToDelete))
 		})
 	}
 }
@@ -112,7 +112,7 @@ func TestChanges_HasChanges(t *testing.T) {
 	type fields struct {
 		ToAdd    []PodToAdd
 		ToKeep   []corev1.Pod
-		ToRemove []corev1.Pod
+		ToDelete []corev1.Pod
 	}
 	tests := []struct {
 		name   string
@@ -141,7 +141,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to remove has changes",
 			fields: fields{
-				ToRemove: []corev1.Pod{corev1.Pod{}},
+				ToDelete: []corev1.Pod{corev1.Pod{}},
 			},
 			want: true,
 		},
@@ -149,7 +149,7 @@ func TestChanges_HasChanges(t *testing.T) {
 			name: "add and remove has changes",
 			fields: fields{
 				ToAdd:    []PodToAdd{PodToAdd{}},
-				ToRemove: []corev1.Pod{corev1.Pod{}},
+				ToDelete: []corev1.Pod{corev1.Pod{}},
 			},
 			want: true,
 		},
@@ -159,7 +159,7 @@ func TestChanges_HasChanges(t *testing.T) {
 			c := Changes{
 				ToAdd:    tt.fields.ToAdd,
 				ToKeep:   tt.fields.ToKeep,
-				ToRemove: tt.fields.ToRemove,
+				ToDelete: tt.fields.ToDelete,
 			}
 			if got := c.HasChanges(); got != tt.want {
 				t.Errorf("Changes.HasChanges() = %v, want %v", got, tt.want)
@@ -172,7 +172,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 	type fields struct {
 		ToAdd    []PodToAdd
 		ToKeep   []corev1.Pod
-		ToRemove []corev1.Pod
+		ToDelete []corev1.Pod
 	}
 	tests := []struct {
 		name   string
@@ -189,7 +189,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToAdd:    []PodToAdd{},
 				ToKeep:   []corev1.Pod{},
-				ToRemove: []corev1.Pod{},
+				ToDelete: []corev1.Pod{},
 			},
 			want: true,
 		},
@@ -198,7 +198,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToAdd:    []PodToAdd{{}},
 				ToKeep:   []corev1.Pod{},
-				ToRemove: []corev1.Pod{},
+				ToDelete: []corev1.Pod{},
 			},
 			want: false,
 		},
@@ -207,7 +207,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToAdd:    []PodToAdd{},
 				ToKeep:   []corev1.Pod{{}},
-				ToRemove: []corev1.Pod{},
+				ToDelete: []corev1.Pod{},
 			},
 			want: false,
 		},
@@ -216,7 +216,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToAdd:    []PodToAdd{},
 				ToKeep:   []corev1.Pod{},
-				ToRemove: []corev1.Pod{{}},
+				ToDelete: []corev1.Pod{{}},
 			},
 			want: false,
 		},
@@ -226,7 +226,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			c := Changes{
 				ToAdd:    tt.fields.ToAdd,
 				ToKeep:   tt.fields.ToKeep,
-				ToRemove: tt.fields.ToRemove,
+				ToDelete: tt.fields.ToDelete,
 			}
 			if got := c.IsEmpty(); got != tt.want {
 				t.Errorf("Changes.IsEmpty() = %v, want %v", got, tt.want)
@@ -279,7 +279,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{namedPod("1")},
 						ToAdd:    []PodToAdd{},
-						ToRemove: []corev1.Pod{},
+						ToDelete: []corev1.Pod{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -300,7 +300,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{namedPod("1")},
 						ToAdd:    []PodToAdd{},
-						ToRemove: []corev1.Pod{},
+						ToDelete: []corev1.Pod{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -311,7 +311,7 @@ func TestChanges_Group(t *testing.T) {
 			changes: Changes{
 				ToAdd:    []PodToAdd{bazPodToAdd},
 				ToKeep:   []corev1.Pod{fooPod},
-				ToRemove: []corev1.Pod{barPod},
+				ToDelete: []corev1.Pod{barPod},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -328,7 +328,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToAdd:    []PodToAdd{},
 						ToKeep:   []corev1.Pod{fooPod},
-						ToRemove: []corev1.Pod{},
+						ToDelete: []corev1.Pod{},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},
@@ -338,7 +338,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{},
-						ToRemove: []corev1.Pod{barPod},
+						ToDelete: []corev1.Pod{barPod},
 						ToAdd:    []PodToAdd{bazPodToAdd},
 					},
 					PodsState: initializePodsState(PodsState{
@@ -352,7 +352,7 @@ func TestChanges_Group(t *testing.T) {
 			changes: Changes{
 				ToAdd:    []PodToAdd{bazPodToAdd},
 				ToKeep:   []corev1.Pod{fooPod},
-				ToRemove: []corev1.Pod{foobarPod},
+				ToDelete: []corev1.Pod{foobarPod},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -376,7 +376,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToAdd:    []PodToAdd{},
 						ToKeep:   []corev1.Pod{},
-						ToRemove: []corev1.Pod{foobarPod},
+						ToDelete: []corev1.Pod{foobarPod},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
@@ -386,7 +386,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{fooPod},
-						ToRemove: []corev1.Pod{},
+						ToDelete: []corev1.Pod{},
 						ToAdd:    []PodToAdd{bazPodToAdd},
 					},
 					PodsState: initializePodsState(PodsState{

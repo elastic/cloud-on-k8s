@@ -165,7 +165,7 @@ func TestPodsState_Partition(t *testing.T) {
 			},
 			args: args{
 				changes: Changes{
-					ToRemove: []corev1.Pod{namedPod("2")},
+					ToDelete: []corev1.Pod{namedPod("2")},
 					ToKeep:   []corev1.Pod{namedPod("3")},
 					// expecting this to be ignored, and just kept in the remainder.
 					ToAdd: []PodToAdd{{Pod: namedPod("4")}},

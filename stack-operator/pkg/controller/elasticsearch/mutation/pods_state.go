@@ -136,7 +136,7 @@ func (s PodsState) Partition(changes Changes) (PodsState, PodsState) {
 	remaining := s
 
 	// no need to consider changes.ToAdd here, as they will not exist in a PodsState
-	for _, pods := range [][]corev1.Pod{changes.ToRemove, changes.ToKeep} {
+	for _, pods := range [][]corev1.Pod{changes.ToDelete, changes.ToKeep} {
 		var partialState PodsState
 		partialState, remaining = remaining.partitionByPods(pods)
 		selected.mergeFrom(partialState)

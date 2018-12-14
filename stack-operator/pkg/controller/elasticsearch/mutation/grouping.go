@@ -99,11 +99,11 @@ func (s ChangeGroup) calculatePerformableChanges(
 
 	// ensure we consider removing terminal pods first and the master node last in these changes
 	sort.SliceStable(
-		s.Changes.ToRemove,
+		s.Changes.ToDelete,
 		sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 			s.PodsState.Terminal,
 			s.PodsState.MasterNodePod,
-			s.Changes.ToRemove,
+			s.Changes.ToDelete,
 		),
 	)
 
@@ -161,10 +161,10 @@ func (s ChangeGroup) calculatePerformableChanges(
 	}
 
 	// schedule for deletion as many pods as we can
-	for _, pod := range s.Changes.ToRemove {
+	for _, pod := range s.Changes.ToDelete {
 		if _, ok := s.PodsState.Terminal[pod.Name]; ok {
 			// removing terminal pods do not affect our availability budget, so we can always delete
-			result.ToRemove = append(result.ToRemove, pod)
+			result.ToDelete = append(result.ToDelete, pod)
 			continue
 		}
 
@@ -195,7 +195,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 		)
 
 		podRestrictions.Remove(pod)
-		result.ToRemove = append(result.ToRemove, pod)
+		result.ToDelete = append(result.ToDelete, pod)
 	}
 
 	return nil
@@ -206,15 +206,15 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
-	toRemoveByName := make(map[string]struct{}, len(performableChanges.ToRemove))
-	for _, pod := range performableChanges.ToRemove {
-		toRemoveByName[pod.Name] = empty
+	ToDeleteByName := make(map[string]struct{}, len(performableChanges.ToDelete))
+	for _, pod := range performableChanges.ToDelete {
+		ToDeleteByName[pod.Name] = empty
 	}
 
-	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToRemove
-	for i := len(s.Changes.ToRemove) - 1; i >= 0; i-- {
-		if _, ok := toRemoveByName[s.Changes.ToRemove[i].Name]; ok {
-			s.Changes.ToRemove = append(s.Changes.ToRemove[:i], s.Changes.ToRemove[i+1:]...)
+	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToDelete
+	for i := len(s.Changes.ToDelete) - 1; i >= 0; i-- {
+		if _, ok := ToDeleteByName[s.Changes.ToDelete[i].Name]; ok {
+			s.Changes.ToDelete = append(s.Changes.ToDelete[:i], s.Changes.ToDelete[i+1:]...)
 		}
 	}
 
@@ -243,7 +243,7 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 
 	// removed pods will /eventually/ go to the Deleting stage, and since we're just removing it from the ChangeGroup
 	// above, we need to pretend it's being deleted for it to be counted as unavailable.
-	for _, pod := range performableChanges.ToRemove {
+	for _, pod := range performableChanges.ToDelete {
 		s.PodsState.Deleting[pod.Name] = pod
 	}
 }
