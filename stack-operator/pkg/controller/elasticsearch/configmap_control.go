@@ -34,7 +34,7 @@ func (r *ReconcileElasticsearch) ReconcileConfigMap(es v1alpha1.ElasticsearchClu
 	}
 
 	// TODO proper comparison
-	if !reflect.DeepEqual(expected, found) {
+	if !reflect.DeepEqual(expected.Data, found.Data) {
 		log.Info(
 			common.Concat("Updating config map ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
