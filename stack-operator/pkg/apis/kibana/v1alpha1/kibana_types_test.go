@@ -3,22 +3,16 @@ package v1alpha1
 import (
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestStorageKibana(t *testing.T) {
-	key := types.NamespacedName{
-		Name:      "foo",
-		Namespace: "default",
-	}
+	key := k8s.NamespacedName(k8s.DefaultNamespace, "foo")
 	created := &Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		}}
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "foo"),
+	}
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create

@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -22,9 +23,7 @@ func init() {
 
 func namedPod(name string) corev1.Pod {
 	return corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-		},
+		ObjectMeta: k8s.ObjectMeta("", name),
 	}
 }
 

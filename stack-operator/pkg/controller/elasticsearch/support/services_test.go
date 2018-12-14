@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPublicServiceURL(t *testing.T) {
@@ -21,20 +21,14 @@ func TestPublicServiceURL(t *testing.T) {
 		{
 			name: "A service URL",
 			args: args{es: v1alpha1.ElasticsearchCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "an-es-name",
-					Namespace: "default",
-				},
+				ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "an-es-name"),
 			}},
 			want: "https://an-es-name-es-public.default.svc.cluster.local:9200",
 		},
 		{
 			name: "Another Service URL",
 			args: args{es: v1alpha1.ElasticsearchCluster{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "another-es-name",
-					Namespace: "default",
-				},
+				ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "another-es-name"),
 			}},
 			want: "https://another-es-name-es-public.default.svc.cluster.local:9200",
 		},

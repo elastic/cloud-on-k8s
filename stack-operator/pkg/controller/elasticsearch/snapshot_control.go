@@ -7,6 +7,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -17,7 +18,6 @@ import (
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -39,7 +39,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig *v1alph
 
 	secretRef := repoConfig.Settings.Credentials
 	userCreatedSecret := corev1.Secret{}
-	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
+	key := k8s.NamespacedName(secretRef.Namespace, secretRef.Name)
 	if err := r.Get(context.TODO(), key, &userCreatedSecret); err != nil {
 		return result, errors.Wrap(err, "configured snapshot secret could not be retrieved")
 	}
@@ -66,7 +66,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotCredentials(repoConfig *v1alph
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
 func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.ElasticsearchCluster, user client.User) error {
 	params := snapshots.CronJobParams{
-		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
+		Parent:           k8s.NamespacedName(es.Namespace, es.Name),
 		Elasticsearch:    es,
 		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
 		User:             user,
@@ -78,7 +78,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.Elastic
 	}
 
 	found := &batchv1beta1.CronJob{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	err := r.Get(context.TODO(), k8s.ToNamespacedName(expected.ObjectMeta), found)
 	if err == nil && es.Spec.SnapshotRepository == nil {
 		log.Info(common.Concat("Deleting cron job ", found.Namespace, "/", found.Name),
 			"iteration", r.iteration,

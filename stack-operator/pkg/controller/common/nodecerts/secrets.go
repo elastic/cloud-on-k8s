@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -64,7 +65,7 @@ const (
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 	// TODO: trim and suffix?
-	return types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}
+	return k8s.NamespacedName(pod.Namespace, pod.Name)
 }
 
 // EnsureNodeCertificateSecretExists ensures that the corev1.Secret that at a later point in time will contain the node

@@ -7,16 +7,13 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testProbeUser = client.User{Name: "username", Password: "supersecure"}
-var testObjectMeta = v1.ObjectMeta{
-	Name:      "my-es",
-	Namespace: "default",
-}
+var testObjectMeta = k8s.ObjectMeta(k8s.DefaultNamespace, "my-es")
 
 var testStrategy_6_4_0 = newStrategy_6_4_0(version.Version{Major: 6, Minor: 4, Patch: 2})
 

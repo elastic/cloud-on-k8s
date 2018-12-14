@@ -7,24 +7,19 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
 	es := v1alpha1.ElasticsearchCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-es-name",
-			Namespace: "test-namespace",
-		},
+		ObjectMeta: k8s.ObjectMeta("test-namespace", "test-es-name"),
 	}
 	testIp := "1.2.3.4"
 	pod := v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "test-pod-name",
-		},
+		ObjectMeta: k8s.ObjectMeta("", "test-pod-name"),
 		Status: v1.PodStatus{
 			PodIP: testIp,
 		},
@@ -35,10 +30,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	}
 
 	svc := v1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-service",
-			Namespace: "default",
-		},
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "test-service"),
 		Spec: v1.ServiceSpec{
 			ClusterIP: "2.2.3.3",
 		},

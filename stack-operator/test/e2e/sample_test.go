@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -26,7 +27,7 @@ func TestStackSample(t *testing.T) {
 	helpers.ExitOnErr(err)
 
 	// set namespace
-	sampleStack.ObjectMeta.Namespace = helpers.DefaultNamespace
+	sampleStack.ObjectMeta.Namespace = k8s.DefaultNamespace
 
 	// run, with mutation to the same stack (should work and do nothing)
 	stack.RunCreationMutationDeletionTests(t, sampleStack, sampleStack)

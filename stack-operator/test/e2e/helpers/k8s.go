@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,10 +77,7 @@ func (k *K8sHelper) CheckPodCount(listOpts client.ListOptions, expectedCount int
 
 func (k *K8sHelper) GetService(name string) (*corev1.Service, error) {
 	var service corev1.Service
-	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
-		Name:      name,
-	}
+	key := k8s.NamespacedName(DefaultNamespace, name)
 	if err := k.Client.Get(DefaultCtx, key, &service); err != nil {
 		return nil, err
 	}
@@ -89,10 +86,7 @@ func (k *K8sHelper) GetService(name string) (*corev1.Service, error) {
 
 func (k *K8sHelper) GetEndpoints(name string) (*corev1.Endpoints, error) {
 	var endpoints corev1.Endpoints
-	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
-		Name:      name,
-	}
+	key := k8s.NamespacedName(DefaultNamespace, name)
 	if err := k.Client.Get(DefaultCtx, key, &endpoints); err != nil {
 		return nil, err
 	}
@@ -103,10 +97,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 	secretName := stackName + "-elastic-user"
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
-	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
-		Name:      secretName,
-	}
+	key := k8s.NamespacedName(DefaultNamespace, secretName)
 	if err := k.Client.Get(DefaultCtx, key, &secret); err != nil {
 		return "", err
 	}

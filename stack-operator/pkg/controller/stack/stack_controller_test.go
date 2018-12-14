@@ -9,6 +9,7 @@ import (
 	esv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 
 	"github.com/stretchr/testify/assert"
@@ -16,8 +17,6 @@ import (
 	"golang.org/x/net/context"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -25,12 +24,12 @@ import (
 
 var c client.Client
 
-var resourceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
+var resourceKey = k8s.NamespacedName(k8s.DefaultNamespce, "foo")
 var expectedRequest = reconcile.Request{NamespacedName: resourceKey}
 
 func TestReconcile(t *testing.T) {
 	instance := &deploymentsv1alpha1.Stack{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespce, "foo"),
 		Spec: deploymentsv1alpha1.StackSpec{
 			Elasticsearch: esv1alpha1.ElasticsearchSpec{
 				SetVMMaxMapCount: false,
@@ -65,10 +64,7 @@ func TestReconcile(t *testing.T) {
 	err = c.Create(context.TODO(), instance)
 	// Manually create users secret as Elasticsearch controller is not running
 	userSecret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      support.ElasticInternalUsersSecretName("foo"),
-			Namespace: "default",
-		},
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, support.ElasticInternalUsersSecretName("foo")),
 		Data: map[string][]byte{
 			support.InternalKibanaServerUserName: []byte("blub"),
 		},

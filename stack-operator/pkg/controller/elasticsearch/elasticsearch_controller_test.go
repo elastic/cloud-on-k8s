@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -23,9 +23,9 @@ import (
 
 var c client.Client
 
-var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
-var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
+var expectedRequest = reconcile.Request{NamespacedName: k8s.NamespacedName(k8s.DefaultNamespace, "foo")}
+var discoveryServiceKey = k8s.NamespacedName(k8s.DefaultNamespace, "foo-es-discovery")
+var publicServiceKey = k8s.NamespacedName(k8s.DefaultNamespace, "foo-es-public")
 
 func getESPods(t *testing.T) []corev1.Pod {
 	esPods := &corev1.PodList{}
@@ -40,7 +40,7 @@ func getESPods(t *testing.T) []corev1.Pod {
 
 func TestReconcile(t *testing.T) {
 	instance := &elasticsearchv1alpha1.ElasticsearchCluster{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "foo")
 		Spec: elasticsearchv1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
 			SetVMMaxMapCount: false,
@@ -72,7 +72,7 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Pre-create dependent Endpoint which will not be created automatically as only the Elasticsearch controller is running.
-	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
+	endpoints := &corev1.Endpoints{ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "foo-es-public")}
 	err = c.Create(context.TODO(), endpoints)
 	assert.NoError(t, err)
 	// Create the Elasticsearch object and expect the Reconcile and Deployment to be created

@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -132,10 +133,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 		return err
 	} else if apierrors.IsNotFound(err) {
 		clusterCASecret = corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      objectKey.Name,
-				Namespace: objectKey.Namespace,
-			},
+			ObjectMeta: k8s.ToObjectMeta(objectKey),
 			Data: map[string][]byte{
 				SecretCAKey: expectedCaKeyBytes,
 			},

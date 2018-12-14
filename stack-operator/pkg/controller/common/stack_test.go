@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 )
 
 func TestStackID(t *testing.T) {
@@ -20,19 +20,13 @@ func TestStackID(t *testing.T) {
 	}{
 		{
 			args: args{s: deploymentsv1alpha1.Stack{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-stack",
-					Namespace: "default",
-				},
+				ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "my-stack"),
 			}},
 			want: "default-my-stack",
 		},
 		{
 			args: args{s: deploymentsv1alpha1.Stack{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-other-stack",
-					Namespace: "default",
-				},
+				ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "my-other-stack"),
 			}},
 			want: "default-my-other-stack",
 		},

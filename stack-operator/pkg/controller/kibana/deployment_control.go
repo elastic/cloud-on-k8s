@@ -5,11 +5,11 @@ import (
 	"reflect"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -59,7 +59,7 @@ func (r *ReconcileKibana) ReconcileDeployment(deploy appsv1.Deployment, owner me
 
 	// Check if the Deployment already exists
 	found := appsv1.Deployment{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, &found)
+	err := r.Get(context.TODO(), k8s.ToNamespacedName(deploy.ObjectMeta), &found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(
 			common.Concat("Creating Deployment ", deploy.Namespace, "/", deploy.Name),

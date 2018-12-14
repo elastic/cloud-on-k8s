@@ -25,7 +25,7 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Name: "Retrieve cluster ID before mutation for comparison purpose",
 				Test: helpers.Eventually(func() error {
 					var s v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
+					err := k.Client.Get(helpers.DefaultCtx, stack.NamespacedName(), &s)
 					if err != nil {
 						return err
 					}
@@ -41,7 +41,7 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Test: func(t *testing.T) {
 					// get stack so we have a versioned k8s resource we can update
 					var stackRes v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &stackRes)
+					err := k.Client.Get(helpers.DefaultCtx, stack.NamespacedName(), &stackRes)
 					require.NoError(t, err)
 					// update with new stack spec
 					stackRes.Spec = stack.Spec
@@ -55,7 +55,7 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Name: "Cluster UUID should be preserved after mutation is done",
 				Test: func(t *testing.T) {
 					var s v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
+					err := k.Client.Get(helpers.DefaultCtx, stack.NamespacedName(), &s)
 					require.NoError(t, err)
 					clusterIDAfterMutation := s.Status.Elasticsearch.ClusterUUID
 					require.NotEmpty(t, clusterIDBeforeMutation)

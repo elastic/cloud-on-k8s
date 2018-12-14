@@ -6,20 +6,18 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
 	testES = v1alpha1.ElasticsearchCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-es",
-			Namespace: "default",
-		}}
+		ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "my-es"),
+	}
 	testUser = []client.User{client.User{Name: "foo", Password: "bar"}}
 )
 

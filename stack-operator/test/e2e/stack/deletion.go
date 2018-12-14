@@ -8,7 +8,6 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // DeletionTestSteps tests the deletion of the given stack
@@ -25,10 +24,7 @@ func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 			Name: "Stack should not be there anymore",
 			Test: func(t *testing.T) {
 				var s v1alpha1.Stack
-				err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
-					Name:      stack.GetName(),
-					Namespace: stack.GetNamespace(),
-				}, &s)
+				err := k.Client.Get(helpers.DefaultCtx, stack.NamespacedName(), &s)
 				require.Error(t, err)
 				require.True(t, apierrors.IsNotFound(err))
 			},

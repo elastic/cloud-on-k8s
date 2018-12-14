@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 
@@ -13,8 +14,6 @@ import (
 	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -22,14 +21,14 @@ import (
 
 var c client.Client
 
-var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var depKey = types.NamespacedName{Name: "foo-kibana", Namespace: "default"}
+var expectedRequest = reconcile.Request{NamespacedName: k8s.NamespacedName(k8s.DefaultNamespace, "foo")}
+var depKey = k8s.NamespacedName(k8s.DefaultNamespace, "foo-kibana")
 
 const timeout = time.Second * 5
 
 func TestReconcile(t *testing.T) {
 
-	instance := &kibanav1alpha1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	instance := &kibanav1alpha1.Kibana{ObjectMeta: k8s.ObjectMeta(k8s.DefaultNamespace, "foo")}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.

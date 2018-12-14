@@ -20,12 +20,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -187,7 +186,7 @@ func (r *ReconcileElasticsearch) internalReconcile(state *ReconcileState) *Recon
 	}
 
 	// TODO: suffix with type (es?) and trim
-	clusterCAPublicSecretObjectKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
+	clusterCAPublicSecretObjectKey := k8s.NamespacedName(es.Namespace, es.Name)
 	if err := r.esCa.ReconcilePublicCertsSecret(r, clusterCAPublicSecretObjectKey, es, r.scheme); err != nil {
 		return results.WithError(err)
 	}
@@ -237,10 +236,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	// TODO: suffix and trim
-	elasticsearchExtraFilesSecretObjectKey := types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      fmt.Sprintf("%s-extrafiles", es.Name),
-	}
+	elasticsearchExtraFilesSecretObjectKey := k8s.NamespacedName(es.Namespace, fmt.Sprintf("%s-extrafiles", es.Name))
 	var elasticsearchExtraFilesSecret corev1.Secret
 	if err := r.Get(
 		context.TODO(),
@@ -265,10 +261,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 
 		elasticsearchExtraFilesSecret = corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      elasticsearchExtraFilesSecretObjectKey.Name,
-				Namespace: elasticsearchExtraFilesSecretObjectKey.Namespace,
-			},
+			ObjectMeta: k8s.ToObjectMeta(elasticsearchExtraFilesSecretObjectKey),
 			Data: map[string][]byte{
 				"trust.yml": trustRootCfgData,
 			},
@@ -636,10 +629,7 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 	}
 
 	var esDiscoveryService corev1.Service
-	if err := r.Get(context.TODO(), types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      support.DiscoveryServiceName(es.Name),
-	}, &esDiscoveryService); err != nil {
+	if err := r.Get(context.TODO(), k8s.NamespacedName(es.Namespace, support.DiscoveryServiceName(es.Name)), &esDiscoveryService); err != nil {
 		return reconcile.Result{}, err
 	}
 	esAllServices := []corev1.Service{esDiscoveryService}
@@ -649,7 +639,7 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 		podName := secret.Labels[nodecerts.LabelAssociatedPod]
 
 		var pod corev1.Pod
-		if err := r.Get(context.TODO(), types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
+		if err := r.Get(context.TODO(), k8s.NamespacedName(secret.Namespace, podName), &pod); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return reconcile.Result{}, err
 			}
@@ -718,7 +708,7 @@ func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1al
 func (r *ReconcileElasticsearch) IsPublicServiceReady(es elasticsearchv1alpha1.ElasticsearchCluster) (bool, error) {
 	endpoints := corev1.Endpoints{}
 	publicService := support.NewPublicService(es).ObjectMeta
-	namespacedName := types.NamespacedName{Namespace: publicService.Namespace, Name: publicService.Name}
+	namespacedName := k8s.NamespacedName(publicService.Namespace, publicService.Name)
 	err := r.Get(context.TODO(), namespacedName, &endpoints)
 	if err != nil {
 		return false, err

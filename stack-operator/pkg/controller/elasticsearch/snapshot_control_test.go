@@ -11,13 +11,12 @@ import (
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -37,13 +36,6 @@ const (
                     }`
 )
 
-func asObjectMeta(n types.NamespacedName) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:      n.Name,
-		Namespace: n.Namespace,
-	}
-}
-
 func registerScheme(t *testing.T) *runtime.Scheme {
 	scheme, err := v1alpha1.SchemeBuilder.Build()
 	if err != nil {
@@ -53,10 +45,10 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 }
 
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
-	testName := types.NamespacedName{Namespace: "test-namespace", Name: "test-es-name"}
-	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: snapshots.CronJobName(testName)}
+	testName := k8s.NamespacedName("test-namespace", "test-es-name")
+	cronName := k8s.NamespacedName(testName.Namespace, snapshots.CronJobName(testName))
 	esSample := v1alpha1.ElasticsearchCluster{
-		ObjectMeta: asObjectMeta(testName),
+		ObjectMeta: k8s.ToObjectMeta(testName),
 	}
 	type args struct {
 		es             v1alpha1.ElasticsearchCluster
@@ -84,7 +76,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			args: args{
 				esSample,
 				esClient.User{},
-				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: asObjectMeta(cronName)}},
+				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: k8s.ToObjectMeta(cronName)}},
 			},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
@@ -95,7 +87,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			name: "snapshot config exists create job",
 			args: args{
 				v1alpha1.ElasticsearchCluster{
-					ObjectMeta: asObjectMeta(testName),
+					ObjectMeta: k8s.ToObjectMeta(testName),
 					Spec: v1alpha1.ElasticsearchSpec{
 						SnapshotRepository: &v1alpha1.SnapshotRepository{
 							Type: v1alpha1.SnapshotRepositoryTypeGCS,
@@ -164,10 +156,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 					},
 				},
 				initialObjects: []runtime.Object{&v1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "bar",
-						Namespace: "baz",
-					},
+					ObjectMeta: k8s.ObjectMeta("baz", "bar"),
 					Data: map[string][]byte{
 						"foo.json": []byte(validSnapshotCredentials),
 					},

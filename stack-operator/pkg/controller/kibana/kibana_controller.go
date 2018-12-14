@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/client-go/tools/record"
 
 	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
@@ -180,7 +180,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		// updating the ca.pem file contents without restarting the process.
 		caChecksum := ""
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
+		key := k8s.NamespacedName(kb.Namespace, *kb.Spec.Elasticsearch.CaCertSecret)
 		if err := r.Get(context.TODO(), key, &esPublicCASecret); err != nil {
 			return state, err
 		}

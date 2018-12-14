@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 
@@ -15,7 +16,6 @@ import (
 	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	v12 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
@@ -146,14 +146,11 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// use the same name for es and kibana resources for now
-	esAndKbKey := types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name}
+	esAndKbKey := stack.NamespacedName()
 
 	es := v1alpha1.ElasticsearchCluster{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      esAndKbKey.Name,
-			Namespace: esAndKbKey.Namespace,
-		},
-		Spec: stack.Spec.Elasticsearch,
+		ObjectMeta: k8s.ToObjectMeta(esAndKbKey),
+		Spec:       stack.Spec.Elasticsearch,
 	}
 
 	if es.Spec.Version == "" {
@@ -207,11 +204,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	kb := v1alpha12.Kibana{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      esAndKbKey.Name,
-			Namespace: esAndKbKey.Namespace,
-		},
-		Spec: stack.Spec.Kibana,
+		ObjectMeta: k8s.ToObjectMeta(esAndKbKey),
+		Spec:       stack.Spec.Kibana,
 	}
 
 	if kb.Spec.Version == "" {
@@ -239,7 +233,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	internalUsersSecretName := support.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret v12.Secret
-	internalUsersSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: internalUsersSecretName}
+	internalUsersSecretKey := k8s.NamespacedName(stack.Namespace, internalUsersSecretName)
 	if err := r.Get(context.TODO(), internalUsersSecretKey, &internalUsersSecret); err != nil {
 		return reconcile.Result{}, err
 	}

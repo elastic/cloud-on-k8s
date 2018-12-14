@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	certs "k8s.io/api/certificates/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -110,10 +111,7 @@ func main() {
 	}
 
 	csr := certs.CertificateSigningRequest{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-		},
+		ObjectMeta: k8s.ObjectMeta(namespace, podName),
 		Spec: certs.CertificateSigningRequestSpec{
 			Request: csrBytes,
 		},

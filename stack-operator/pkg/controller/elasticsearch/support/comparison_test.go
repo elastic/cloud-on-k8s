@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ESPod(image string, cpuLimit string) corev1.Pod {
@@ -190,9 +190,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
-									Name: "test",
-								},
+								ObjectMeta: k8s.ObjectMeta("", "test"),
 							},
 						},
 					},
@@ -211,9 +209,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
-									Name: "test",
-								},
+								ObjectMeta: k8s.ObjectMeta("", "test"),
 							},
 						},
 					},
@@ -221,7 +217,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: k8s.ObjectMeta("", "claim-foo"),
 						},
 					},
 				},
@@ -239,9 +235,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
-									Name: "foo",
-								},
+								ObjectMeta: k8s.ObjectMeta("", "foo"),
 							},
 						},
 					},
@@ -249,7 +243,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: k8s.ObjectMeta("", "claim-foo"),
 						},
 					},
 				},
@@ -266,9 +260,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
-									Name: "foo",
-								},
+								ObjectMeta: k8s.ObjectMeta("", "foo"),
 								Spec: corev1.PersistentVolumeClaimSpec{
 									Resources: corev1.ResourceRequirements{
 										Requests: corev1.ResourceList{
@@ -283,7 +275,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: k8s.ObjectMeta("", "claim-foo"),
 						},
 					},
 				},

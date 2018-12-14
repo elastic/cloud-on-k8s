@@ -5,11 +5,10 @@ import (
 	stacktype "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const defaultVersion = "6.4.2"
@@ -29,10 +28,7 @@ type Builder struct {
 func NewStackBuilder(name string) Builder {
 	return Builder{
 		stacktype.Stack{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      name,
-				Namespace: helpers.DefaultNamespace,
-			},
+			ObjectMeta: k8s.ObjectMeta(helpers.DefaultNamespace, name),
 			Spec: stacktype.StackSpec{
 				Elasticsearch: estype.ElasticsearchSpec{},
 				Kibana:        kbtype.KibanaSpec{},
@@ -86,13 +82,4 @@ func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec
 func (b Builder) WithESTopology(topology estype.ElasticsearchTopologySpec) Builder {
 	b.Spec.Elasticsearch.Topologies = append(b.Spec.Elasticsearch.Topologies, topology)
 	return b
-}
-
-// -- Helper functions
-
-func GetNamespacedName(stack stacktype.Stack) types.NamespacedName {
-	return types.NamespacedName{
-		Name:      stack.GetName(),
-		Namespace: stack.GetNamespace(),
-	}
 }

@@ -4,7 +4,9 @@ import (
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // StackSpec defines the desired state of a Stack
@@ -49,6 +51,11 @@ type Stack struct {
 
 	Spec   StackSpec   `json:"spec,omitempty"`
 	Status StackStatus `json:"status,omitempty"`
+}
+
+// NamespacedName returns a NamespacedName to reference this stack
+func (s Stack) NamespacedName() types.NamespacedName {
+	return k8s.ToNamespacedName(s.ObjectMeta)
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
