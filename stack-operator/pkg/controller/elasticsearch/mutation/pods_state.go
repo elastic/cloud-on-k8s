@@ -144,8 +144,9 @@ func (s PodsState) Partition(changes Changes) (PodsState, PodsState) {
 	return selected, remaining
 }
 
-// partitionByPods partitions the PodsState into two: one set that contains pods in the provided list of pods, and one
-// set containing the rest
+// partitionByPods partitions the PodsState into two:
+// - one set that contains pods in the provided list of pods
+// - one set containing the rest
 func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
 	source := s.Copy()
 

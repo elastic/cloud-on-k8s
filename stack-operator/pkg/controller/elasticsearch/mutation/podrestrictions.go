@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	// ErrNotEnoughDataEligiblePods is an error used if a master-eligible pod cannot be removed.
+	// ErrNotEnoughMasterEligiblePods is an error used if a master-eligible pod cannot be removed.
 	ErrNotEnoughMasterEligiblePods = errors.New("not enough master eligible pods left")
 	// ErrNotEnoughDataEligiblePods is an error used if a data-eligible pod cannot be removed.
 	ErrNotEnoughDataEligiblePods = errors.New("not enough data eligible pods left")
