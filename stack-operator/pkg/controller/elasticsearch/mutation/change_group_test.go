@@ -231,35 +231,35 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 				}),
 			},
 		},
-		{
-			name: "creation",
-			fields: fields{
-				Changes: Changes{
-					ToKeep: []corev1.Pod{namedPod("bar")},
-					ToAdd:  []PodToAdd{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
-				},
-				PodsState: initializePodsState(PodsState{
-					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
-				}),
-			},
-			args: args{
-				performableChanges: PerformableChanges{
-					Changes: Changes{
-						ToAdd: []PodToAdd{{Pod: namedPod("foo")}},
-					},
-				},
-			},
-			want: ChangeGroup{
-				Changes: Changes{
-					ToAdd:  []PodToAdd{{Pod: namedPod("baz")}},
-					ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
-				},
-				PodsState: initializePodsState(PodsState{
-					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
-					Pending:      map[string]corev1.Pod{"foo": namedPod("foo")},
-				}),
-			},
-		},
+		// {
+		// 	name: "creation",
+		// 	fields: fields{
+		// 		Changes: Changes{
+		// 			ToKeep: []corev1.Pod{namedPod("bar")},
+		// 			ToAdd:  []PodToAdd{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
+		// 		},
+		// 		PodsState: initializePodsState(PodsState{
+		// 			RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+		// 		}),
+		// 	},
+		// 	args: args{
+		// 		performableChanges: PerformableChanges{
+		// 			Changes: Changes{
+		// 				ToAdd: []PodToAdd{{Pod: namedPod("foo")}},
+		// 			},
+		// 		},
+		// 	},
+		// 	want: ChangeGroup{
+		// 		Changes: Changes{
+		// 			ToAdd:  []PodToAdd{{Pod: namedPod("baz")}},
+		// 			ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
+		// 		},
+		// 		PodsState: initializePodsState(PodsState{
+		// 			RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+		// 			Pending:      map[string]corev1.Pod{"foo": namedPod("foo")},
+		// 		}),
+		// 	},
+		// },
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

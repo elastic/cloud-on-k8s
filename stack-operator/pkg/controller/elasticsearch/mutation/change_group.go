@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	// AllGroupName is the name used in ChangeGroupsthat is used for changes that have not been partitioned into
-	// groups
+	// AllGroupName is the name used in ChangeGroups that is used for
+	// changes that have not been partitioned into groups
 	AllGroupName = "all"
 
-	// UnmatchedGroupName is the name used in ChangeGroupsfor a group that was not selected by the user-specified
-	// groups
+	// UnmatchedGroupName is the name used in ChangeGroups for
+	// a group that was not selected by the user-specified groups
 	UnmatchedGroupName = "unmatched"
 
-	// indexedGroupNamePrefix is the prefix used for dynamically named ChangeGroups.
+	// indexedGroupNamePrefix is the prefix used for dynamically named ChangeGroups
 	indexedGroupNamePrefix = "group-"
 )
 
@@ -28,27 +28,27 @@ func indexedGroupName(index int) string {
 	return fmt.Sprintf("%s%d", indexedGroupNamePrefix, index)
 }
 
-// ChangeGroup holds changes for a specific group of pods.
+// ChangeGroup holds changes for a specific group of pods
 type ChangeGroup struct {
-	// Name is a logical name for these changes.
+	// Name is a logical name for these changes
 	Name string
 	// Changes contains the changes in this group
 	Changes Changes
-	// PodsState contains the state of all the pods in this group.
+	// PodsState contains the state of all the pods in this group
 	PodsState PodsState
 }
 
-// ChangeStats contains key numbers for a ChangeGroups, used to execute an upgrade budget
+// ChangeStats contains key numbers for a ChangeGroup, used to execute an upgrade budget
 type ChangeStats struct {
-	// TargetPods is the number of pods we should have in the final state.
+	// TargetPods is the number of pods we should have in the final state
 	TargetPods int `json:"targetPods"`
-	// CurrentPods is the current number of pods in the cluster that might be using resources.
+	// CurrentPods is the current number of pods in the cluster that might be using resources
 	CurrentPods int `json:"currentPods"`
-	// CurrentSurge is the number of pods above the target the cluster is using.
+	// CurrentSurge is the number of pods above the target the cluster is using
 	CurrentSurge int `json:"currentSurge"`
-	// CurrentRunningReadyPods is the number of pods that are running and have joined the current master.
+	// CurrentRunningReadyPods is the number of pods that are running and have joined the current master
 	CurrentRunningReadyPods int `json:"currentRunningReady"`
-	// CurrentUnavailable is the number of pods below the target the cluster is currently using.
+	// CurrentUnavailable is the number of pods below the target the cluster is currently using
 	CurrentUnavailable int `json:"currentUnavailable"`
 }
 
@@ -206,43 +206,47 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
-	ToDeleteByName := make(map[string]struct{}, len(performableChanges.ToDelete))
+	toDeleteByName := make(map[string]struct{}, len(performableChanges.ToDelete))
 	for _, pod := range performableChanges.ToDelete {
-		ToDeleteByName[pod.Name] = empty
+		toDeleteByName[pod.Name] = empty
 	}
 
-	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToDelete
+	fmt.Println("todelete:", toDeleteByName)
+
+	// for each pod we intend to remove, simulate a deletion
 	for i := len(s.Changes.ToDelete) - 1; i >= 0; i-- {
-		if _, ok := ToDeleteByName[s.Changes.ToDelete[i].Name]; ok {
+		podToDelete := s.Changes.ToDelete[i]
+		if _, ok := toDeleteByName[podToDelete.Name]; ok {
+			fmt.Println("deleting pod ", podToDelete.Name)
+			// pop from list of pods to delete
 			s.Changes.ToDelete = append(s.Changes.ToDelete[:i], s.Changes.ToDelete[i+1:]...)
 		}
 	}
 
 	// convert the scheduled for creation pods to a map for faster lookup
 	toAddByName := make(map[string]struct{}, len(performableChanges.ToAdd))
-	for _, podToCreate := range performableChanges.ToAdd {
-		toAddByName[podToCreate.Pod.Name] = empty
-
-		// pretend we added it, which would move it to Pending
-		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
-		// also pretend we're intending to keep it instead of adding it.
-		s.Changes.ToKeep = append(s.Changes.ToKeep, podToCreate.Pod)
-		// // remove from the to add context as it's being added
-		// delete(s.Changes.ToAddContext, podToCreate.Pod.Name)
+	for _, podToAdd := range performableChanges.ToAdd {
+		toAddByName[podToAdd.Pod.Name] = empty
 	}
 
-	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
+	// for each pod we intend to add, simulate a creation
 	for i := len(s.Changes.ToAdd) - 1; i >= 0; i-- {
-		if _, ok := toAddByName[s.Changes.ToAdd[i].Pod.Name]; ok {
+		podToAdd := s.Changes.ToAdd[i]
+		if _, ok := toAddByName[podToAdd.Pod.Name]; ok {
+			// pop from list of pods to add
 			s.Changes.ToAdd = append(s.Changes.ToAdd[:i], s.Changes.ToAdd[i+1:]...)
+			// pretend we added it, which would move it to Pending
+			s.PodsState.Pending[podToAdd.Pod.Name] = podToAdd.Pod
+			// also pretend we're intending to keep it instead of adding it.
+			s.Changes.ToKeep = append(s.Changes.ToKeep, podToAdd.Pod)
 		}
 	}
 
-	// this leaves PodsState, which we can simply partition by the new changes
+	// update the current pod states to match the simulated changes
 	s.PodsState, _ = s.PodsState.Partition(s.Changes)
 
-	// removed pods will /eventually/ go to the Deleting stage, and since we're just removing it from the ChangeGroup
-	// above, we need to pretend it's being deleted for it to be counted as unavailable.
+	// deleted pods should eventually go into a Deleting state,
+	// simulate that for deleted pods to be counted as unavailable
 	for _, pod := range performableChanges.ToDelete {
 		s.PodsState.Deleting[pod.Name] = pod
 	}

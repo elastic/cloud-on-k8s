@@ -74,9 +74,7 @@ func (c Changes) Group(
 			// selector does not match anything
 			continue
 		}
-
 		group.PodsState, remainingPodsState = remainingPodsState.Partition(group.Changes)
-
 		groups = append(groups, group)
 	}
 
@@ -100,7 +98,6 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 
 	matchingChanges.ToKeep, remainingChanges.ToKeep = partitionPodsBySelector(selector, c.ToKeep)
 	matchingChanges.ToDelete, remainingChanges.ToDelete = partitionPodsBySelector(selector, c.ToDelete)
-
 	for _, toAdd := range c.ToAdd {
 		if selector.Matches(labels.Set(toAdd.Pod.Labels)) {
 			matchingChanges.ToAdd = append(matchingChanges.ToAdd, toAdd)
