@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	PolicyFile        = "security.policy"
+	SecurityPropsFile = "security.properties"
 	ManagedConfigPath = "/usr/share/elasticsearch/config/managed"
 )
 

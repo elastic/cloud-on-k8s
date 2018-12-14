@@ -18,7 +18,7 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
-	policyFilePath      = path.Join(support.ManagedConfigPath, support.PolicyFile)
+	securityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
 )
 
 // newExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -240,6 +240,6 @@ func quantityToMegabytes(q resource.Quantity) int {
 
 func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
 	return support.NewConfigMapWithData(es, map[string]string{
-		support.PolicyFile: "networkaddress.cache.ttl=60\n",
+		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
 	})
 }
