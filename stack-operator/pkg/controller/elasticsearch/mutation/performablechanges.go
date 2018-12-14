@@ -49,7 +49,7 @@ func initializePerformableChanges(changes PerformableChanges) PerformableChanges
 // CalculatePerformableChanges calculates which changes that can be performed in the current state.
 func CalculatePerformableChanges(
 	strategy v1alpha1.UpdateStrategy,
-	allPodChanges *ChangeSet,
+	allPodChanges *Changes,
 	allPodsState PodsState,
 ) (*PerformableChanges, error) {
 	performableChanges := initializePerformableChanges(PerformableChanges{})
@@ -57,19 +57,19 @@ func CalculatePerformableChanges(
 	// resolve the change budget
 	budget := strategy.ResolveChangeBudget()
 
-	// allChangeSet is a GroupedChangeSet that contains all the changes in a single group
-	allChangeSet := GroupedChangeSet{
+	// allChanges is a ChangeGroup that contains all the changes in a single group
+	allChanges := ChangeGroup{
 		Name:      AllGroupName,
-		ChangeSet: *allPodChanges,
+		Changes:   *allPodChanges,
 		PodsState: allPodsState,
 	}
 
 	// group all our changes into groups based on the potentially user-specified groups
-	groupedChangeSets, err := allPodChanges.Group(strategy.Groups, allPodsState)
+	changeGroups, err := allPodChanges.Group(strategy.Groups, allPodsState)
 	if err != nil {
 		return nil, err
 	}
-	log.V(3).Info("Created grouped change sets", "count", len(groupedChangeSets))
+	log.V(3).Info("Created grouped change sets", "count", len(changeGroups))
 
 	podRestrictions := NewPodRestrictions(allPodsState)
 
@@ -78,7 +78,7 @@ func CalculatePerformableChanges(
 	// intended to ensure that we're able to recover from larger failures (e.g a pod failing or a failure domain
 	// falling apart). this is to ensure that the surge/unavailability room that's created by the failing pods do not
 	// get eaten up other, simultaneous changes.
-	if err := groupedChangeSets.calculatePerformableChanges(
+	if err := changeGroups.calculatePerformableChanges(
 		pass1ChangeBudget,
 		&podRestrictions,
 		&performableChanges,
@@ -86,13 +86,13 @@ func CalculatePerformableChanges(
 		return nil, err
 	}
 
-	// apply the performable changes to the "all" (ungrouped) changeset. this is done in order to account for the
+	// apply the performable changes to the "all" (ungrouped) change group. this is done in order to account for the
 	// changes pass 1 is intending to do.
-	allChangeSet.simulatePerformableChangesApplied(performableChanges)
+	allChanges.simulatePerformableChangesApplied(performableChanges)
 
 	// pass 2:
-	// - calculate the performable changes across a single changeset using the proper budget.
-	if err := allChangeSet.calculatePerformableChanges(
+	// - calculate the performable changes using the proper budget.
+	if err := allChanges.calculatePerformableChanges(
 		budget,
 		&podRestrictions,
 		&performableChanges,
@@ -106,18 +106,18 @@ func CalculatePerformableChanges(
 	// - this is required for scenarios such as converting from one MasterData node to one Master and One Data node. In
 	// this situation we *must* create both new nodes before we delete the existing one
 	// TODO: consider requiring this being enabled in the update strategy?
-	if !allChangeSet.ChangeSet.IsEmpty() &&
+	if !allChanges.Changes.IsEmpty() &&
 		!performableChanges.HasChanges() &&
 		!allPodsState.HasPodsInTransientStates() {
 
-		changeStats := allChangeSet.ChangeStats()
+		changeStats := allChanges.ChangeStats()
 		newBudget := v1alpha1.ChangeBudget{
 			MaxSurge: changeStats.CurrentSurge + 1,
 		}
 
 		// - here we do not have to simulate performing changes because we know it has no changes
 
-		if err := allChangeSet.calculatePerformableChanges(
+		if err := allChanges.calculatePerformableChanges(
 			newBudget,
 			&podRestrictions,
 			&performableChanges,

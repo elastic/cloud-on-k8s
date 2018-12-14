@@ -335,22 +335,10 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	// build the current state of the pods.
 	podsState := mutation.NewPodsState(*resourcesState, observedState)
 
-	// convert the changes into a changeset
-	// TODO: this should either be simplified or entirely go away if we converge the changes/changeset implementations
-	changeSet, err := mutation.NewChangeSetFromChanges(
-		changes,
-		func(ctx support.PodSpecContext) (corev1.Pod, error) {
-			return versionStrategy.NewPod(es, ctx)
-		},
-	)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(
 		es.Spec.UpdateStrategy,
-		changeSet,
+		&changes,
 		podsState,
 	)
 	if err != nil {
