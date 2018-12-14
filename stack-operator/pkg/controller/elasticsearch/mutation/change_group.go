@@ -54,8 +54,8 @@ type ChangeStats struct {
 
 // ChangeStats calculates and returns the ChangeStats for this ChangeGroup
 func (s ChangeGroup) ChangeStats() ChangeStats {
-	// when we're done, we should have ToKeep + ToAdd pods in the group.
-	targetPodsCount := len(s.Changes.ToKeep) + len(s.Changes.ToAdd)
+	// when we're done, we should have ToKeep + ToCreate pods in the group.
+	targetPodsCount := len(s.Changes.ToKeep) + len(s.Changes.ToCreate)
 
 	currentPodsCount := s.PodsState.CurrentPodsCount()
 
@@ -107,10 +107,10 @@ func (s ChangeGroup) calculatePerformableChanges(
 		),
 	)
 
-	// ensure we add master nodes first in this group
+	// ensure we create master nodes first in this group
 	sort.SliceStable(
-		s.Changes.ToAdd,
-		sortPodsToAddByMasterNodesFirstThenNameAsc(s.Changes.ToAdd),
+		s.Changes.ToCreate,
+		sortPodsToCreateByMasterNodesFirstThenNameAsc(s.Changes.ToCreate),
 	)
 
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
@@ -136,7 +136,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 	//}
 
 	// schedule for creation as many pods as we can
-	for _, newPodToAdd := range s.Changes.ToAdd {
+	for _, newPodToCreate := range s.Changes.ToCreate {
 		if changeStats.CurrentSurge >= maxSurge {
 			log.V(4).Info(
 				"Hit the max surge limit in a group.",
@@ -154,10 +154,10 @@ func (s ChangeGroup) calculatePerformableChanges(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"change_stats", changeStats,
-			"mismatch_reasons", newPodToAdd.MismatchReasons,
+			"mismatch_reasons", newPodToCreate.MismatchReasons,
 		)
 
-		result.ToAdd = append(result.ToAdd, newPodToAdd)
+		result.ToCreate = append(result.ToCreate, newPodToCreate)
 	}
 
 	// schedule for deletion as many pods as we can
@@ -168,7 +168,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 			continue
 		}
 
-		if err := podRestrictions.CanRemove(pod); err != nil {
+		if err := podRestrictions.CanDelete(pod); err != nil {
 			// cannot remove pod due to restrictions
 			result.RestrictedPods[pod.Name] = err
 			continue
@@ -224,21 +224,21 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	}
 
 	// convert the scheduled for creation pods to a map for faster lookup
-	toAddByName := make(map[string]struct{}, len(performableChanges.ToAdd))
-	for _, podToAdd := range performableChanges.ToAdd {
-		toAddByName[podToAdd.Pod.Name] = empty
+	toCreateByName := make(map[string]struct{}, len(performableChanges.ToCreate))
+	for _, podToCreate := range performableChanges.ToCreate {
+		toCreateByName[podToCreate.Pod.Name] = empty
 	}
 
-	// for each pod we intend to add, simulate a creation
-	for i := len(s.Changes.ToAdd) - 1; i >= 0; i-- {
-		podToAdd := s.Changes.ToAdd[i]
-		if _, ok := toAddByName[podToAdd.Pod.Name]; ok {
-			// pop from list of pods to add
-			s.Changes.ToAdd = append(s.Changes.ToAdd[:i], s.Changes.ToAdd[i+1:]...)
-			// pretend we added it, which would move it to Pending
-			s.PodsState.Pending[podToAdd.Pod.Name] = podToAdd.Pod
-			// also pretend we're intending to keep it instead of adding it.
-			s.Changes.ToKeep = append(s.Changes.ToKeep, podToAdd.Pod)
+	// for each pod we intend to create, simulate the creation
+	for i := len(s.Changes.ToCreate) - 1; i >= 0; i-- {
+		podToCreate := s.Changes.ToCreate[i]
+		if _, ok := toCreateByName[podToCreate.Pod.Name]; ok {
+			// pop from list of pods to create
+			s.Changes.ToCreate = append(s.Changes.ToCreate[:i], s.Changes.ToCreate[i+1:]...)
+			// pretend we created it, which would move it to Pending
+			s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
+			// also pretend we're intending to keep it instead of creating it
+			s.Changes.ToKeep = append(s.Changes.ToKeep, podToCreate.Pod)
 		}
 	}
 

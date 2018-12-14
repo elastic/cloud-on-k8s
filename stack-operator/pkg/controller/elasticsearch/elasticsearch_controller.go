@@ -313,7 +313,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	log.Info(
 		"Going to apply the following topology changes",
-		"ToAdd:", len(changes.ToAdd), "ToKeep:", len(changes.ToKeep), "ToDelete:", len(changes.ToDelete),
+		"ToCreate:", len(changes.ToCreate), "ToKeep:", len(changes.ToKeep), "ToDelete:", len(changes.ToDelete),
 		"iteration", atomic.LoadInt64(&r.iteration),
 	)
 
@@ -347,11 +347,11 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 
 	log.Info(
 		"Calculated performable changes",
-		"schedule_for_creation_count", len(performableChanges.ToAdd),
+		"schedule_for_creation_count", len(performableChanges.ToCreate),
 		"schedule_for_deletion_count", len(performableChanges.ToDelete),
 	)
 
-	for _, change := range performableChanges.ToAdd {
+	for _, change := range performableChanges.ToCreate {
 		if err := r.CreateElasticsearchPod(reconcileState, versionStrategy, change.Pod, change.PodSpecCtx); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -394,7 +394,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		return defaultRequeue, nil
 	}
 
-	// Start migrating data away from all pods to be removed
+	// Start migrating data away from all pods to be deleted
 	leavingNodeNames := support.PodListToNames(performableChanges.ToDelete)
 	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
 		return reconcile.Result{}, errors.Wrap(err, "error during migrate data")

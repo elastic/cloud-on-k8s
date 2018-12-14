@@ -55,7 +55,7 @@ func TestNewPodRestrictions(t *testing.T) {
 	}
 }
 
-func TestPodRestrictions_CanRemove(t *testing.T) {
+func TestPodRestrictions_CanDelete(t *testing.T) {
 	masterPod := withLabels(namedPod("master"), support.NodeTypesMasterLabelName.AsMap(true))
 	dataPod := withLabels(namedPod("data"), support.NodeTypesDataLabelName.AsMap(true))
 
@@ -69,7 +69,7 @@ func TestPodRestrictions_CanRemove(t *testing.T) {
 		wantErr         error
 	}{
 		{
-			name: "cant remove last master node",
+			name: "cant delete last master node",
 			podRestrictions: PodRestrictions{
 				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod}),
 			},
@@ -79,7 +79,7 @@ func TestPodRestrictions_CanRemove(t *testing.T) {
 			wantErr: ErrNotEnoughMasterEligiblePods,
 		},
 		{
-			name: "can remove non-last master node",
+			name: "can delete non-last master node",
 			podRestrictions: PodRestrictions{
 				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod, namedPod("bar")}),
 			},
@@ -88,7 +88,7 @@ func TestPodRestrictions_CanRemove(t *testing.T) {
 			},
 		},
 		{
-			name: "cant remove last data node",
+			name: "cant delete last data node",
 			podRestrictions: PodRestrictions{
 				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod}),
 			},
@@ -98,7 +98,7 @@ func TestPodRestrictions_CanRemove(t *testing.T) {
 			wantErr: ErrNotEnoughDataEligiblePods,
 		},
 		{
-			name: "can remove non-last data node",
+			name: "can delete non-last data node",
 			podRestrictions: PodRestrictions{
 				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod, namedPod("bar")}),
 			},
@@ -109,7 +109,7 @@ func TestPodRestrictions_CanRemove(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.podRestrictions.CanRemove(tt.args.pod)
+			err := tt.podRestrictions.CanDelete(tt.args.pod)
 
 			if tt.wantErr == nil {
 				assert.NoError(t, err)
@@ -131,7 +131,7 @@ func TestPodRestrictions_Remove(t *testing.T) {
 		want            PodRestrictions
 	}{
 		{
-			name: "can remove",
+			name: "can delete",
 			podRestrictions: PodRestrictions{
 				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
 				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
@@ -145,7 +145,7 @@ func TestPodRestrictions_Remove(t *testing.T) {
 			},
 		},
 		{
-			name: "can remove nonexistent without failing",
+			name: "can delete nonexistent without failing",
 			args: args{
 				pod: namedPod("foo"),
 			},

@@ -63,12 +63,12 @@ func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) boo
 	}
 }
 
-// sortPodsToAddByMasterNodesFirstThenNameAsc sorts podToAdd in a preferred creation order:
+// sortPodsToCreateByMasterNodesFirstThenNameAsc sorts podToCreate in a preferred creation order:
 // - master nodes first
 // - by name otherwise, which is used to ensure a stable sort order.
-func sortPodsToAddByMasterNodesFirstThenNameAsc(podsToAdd []PodToAdd) func(i, j int) bool {
+func sortPodsToCreateByMasterNodesFirstThenNameAsc(podsToCreate []PodToCreate) func(i, j int) bool {
 	return func(i, j int) bool {
-		return comparePodByMasterNodesFirstThenNameAsc(podsToAdd[i].Pod, podsToAdd[j].Pod)
+		return comparePodByMasterNodesFirstThenNameAsc(podsToCreate[i].Pod, podsToCreate[j].Pod)
 	}
 }
 

@@ -10,14 +10,14 @@ import (
 
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
-	ToAdd    []PodToAdd
+	ToCreate []PodToCreate
 	ToKeep   []corev1.Pod
 	ToDelete []corev1.Pod
 }
 
-// PodToAdd defines a pod to be added, along with
+// PodToCreate defines a pod to be created, along with
 // the reasons why it doesn't match any existing pod
-type PodToAdd struct {
+type PodToCreate struct {
 	Pod             corev1.Pod
 	PodSpecCtx      support.PodSpecContext
 	MismatchReasons map[string][]string
@@ -26,7 +26,7 @@ type PodToAdd struct {
 // EmptyChanges creates an empty Changes with empty arrays (not nil)
 func EmptyChanges() Changes {
 	return Changes{
-		ToAdd:    []PodToAdd{},
+		ToCreate: []PodToCreate{},
 		ToKeep:   []corev1.Pod{},
 		ToDelete: []corev1.Pod{},
 	}
@@ -34,18 +34,18 @@ func EmptyChanges() Changes {
 
 // HasChanges returns true if there are no topology changes to performed
 func (c Changes) HasChanges() bool {
-	return len(c.ToAdd) > 0 || len(c.ToDelete) > 0
+	return len(c.ToCreate) > 0 || len(c.ToDelete) > 0
 }
 
-// IsEmpty returns true if this set has no removal, additions or kept pods.
+// IsEmpty returns true if this set has no deletion, creation or kept pods
 func (c Changes) IsEmpty() bool {
-	return len(c.ToAdd) == 0 && len(c.ToDelete) == 0 && len(c.ToKeep) == 0
+	return len(c.ToCreate) == 0 && len(c.ToDelete) == 0 && len(c.ToKeep) == 0
 }
 
-// Copy copies this Changes. It copies the underlying slices and maps, but not their contents.
+// Copy copies this Changes. It copies the underlying slices and maps, but not their contents
 func (c Changes) Copy() Changes {
 	res := Changes{
-		ToAdd:    append([]PodToAdd{}, c.ToAdd...),
+		ToCreate: append([]PodToCreate{}, c.ToCreate...),
 		ToKeep:   append([]corev1.Pod{}, c.ToKeep...),
 		ToDelete: append([]corev1.Pod{}, c.ToDelete...),
 	}
@@ -98,11 +98,11 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 
 	matchingChanges.ToKeep, remainingChanges.ToKeep = partitionPodsBySelector(selector, c.ToKeep)
 	matchingChanges.ToDelete, remainingChanges.ToDelete = partitionPodsBySelector(selector, c.ToDelete)
-	for _, toAdd := range c.ToAdd {
-		if selector.Matches(labels.Set(toAdd.Pod.Labels)) {
-			matchingChanges.ToAdd = append(matchingChanges.ToAdd, toAdd)
+	for _, toCreate := range c.ToCreate {
+		if selector.Matches(labels.Set(toCreate.Pod.Labels)) {
+			matchingChanges.ToCreate = append(matchingChanges.ToCreate, toCreate)
 		} else {
-			remainingChanges.ToAdd = append(remainingChanges.ToAdd, toAdd)
+			remainingChanges.ToCreate = append(remainingChanges.ToCreate, toCreate)
 		}
 	}
 

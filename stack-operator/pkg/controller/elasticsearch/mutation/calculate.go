@@ -49,19 +49,19 @@ func mutableCalculateChanges(
 			// one less pod to compare with
 			actualPods = comparisonResult.RemainingPods
 		} else {
-			// no matching pod, a new one should be added
+			// no matching pod, a new one should be created
 			pod, err := podBuilder(expectedPodSpecCtx)
 			if err != nil {
 				return changes, err
 			}
-			changes.ToAdd = append(changes.ToAdd, PodToAdd{
+			changes.ToCreate = append(changes.ToCreate, PodToCreate{
 				Pod:             pod,
 				PodSpecCtx:      expectedPodSpecCtx,
 				MismatchReasons: comparisonResult.MismatchReasonsPerPod,
 			})
 		}
 	}
-	// remaining actual pods should be removed
+	// remaining actual pods should be deleted
 	changes.ToDelete = actualPods
 
 	// sort changes for idempotent processing

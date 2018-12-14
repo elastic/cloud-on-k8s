@@ -27,12 +27,12 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			want:               &PerformableChanges{},
 		},
 		{
-			name: "can only add if unavailable budget is maxed out",
+			name: "can only create if unavailable budget is maxed out",
 			s: ChangeGroups{
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToAdd:    []PodToAdd{{Pod: namedPod("1")}},
+						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
 						ToDelete: []corev1.Pod{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
@@ -47,7 +47,7 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			},
 			want: &PerformableChanges{
 				Changes: Changes{
-					ToAdd: []PodToAdd{
+					ToCreate: []PodToCreate{
 						{Pod: namedPod("1"), PodSpecCtx: support.PodSpecContext{}},
 					},
 				},
@@ -55,12 +55,12 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "can only remove if surge budget is maxed out",
+			name: "can only delete if surge budget is maxed out",
 			s: ChangeGroups{
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToAdd:    []PodToAdd{{Pod: namedPod("1")}},
+						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
 						ToDelete: []corev1.Pod{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
@@ -83,19 +83,19 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "can both remove and add up to the surge and unavailability budgets are exhausted",
+			name: "can both delete and create up to the surge and unavailability budgets are exhausted",
 			s: ChangeGroups{
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToAdd:    []PodToAdd{{Pod: namedPod("add-1")}, {Pod: namedPod("add-2")}},
+						ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
 						ToKeep:   []corev1.Pod{namedPod("keep-3")},
-						ToDelete: []corev1.Pod{namedPod("remove-1"), namedPod("remove-2")},
+						ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningReady: map[string]corev1.Pod{
-							"remove-1": namedPod("remove-1"),
-							"remove-2": namedPod("remove-2"),
+							"delete-1": namedPod("delete-1"),
+							"delete-2": namedPod("delete-2"),
 							"keep-3":   namedPod("keep-3"),
 						},
 					}),
@@ -108,11 +108,11 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			},
 			want: &PerformableChanges{
 				Changes: Changes{
-					ToAdd: []PodToAdd{
-						{Pod: namedPod("add-1"), PodSpecCtx: support.PodSpecContext{}},
+					ToCreate: []PodToCreate{
+						{Pod: namedPod("create-1"), PodSpecCtx: support.PodSpecContext{}},
 					},
 					ToDelete: []corev1.Pod{
-						namedPod("remove-1"),
+						namedPod("delete-1"),
 					},
 				},
 				MaxSurgeGroups:       []string{"foo"},
@@ -152,14 +152,14 @@ func TestChangeGroups_ChangeStats(t *testing.T) {
 					Selector: v1.LabelSelector{},
 				},
 				Changes: Changes{
-					ToAdd:    []PodToAdd{{Pod: namedPod("add-1")}, {Pod: namedPod("add-2")}},
+					ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
 					ToKeep:   []corev1.Pod{namedPod("keep-3")},
-					ToDelete: []corev1.Pod{namedPod("remove-1"), namedPod("remove-2")},
+					ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{
-						"remove-1": namedPod("remove-1"),
-						"remove-2": namedPod("remove-2"),
+						"delete-1": namedPod("delete-1"),
+						"delete-2": namedPod("delete-2"),
 						"keep-3":   namedPod("keep-3"),
 					},
 				}),
@@ -236,7 +236,7 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 		// 	fields: fields{
 		// 		Changes: Changes{
 		// 			ToKeep: []corev1.Pod{namedPod("bar")},
-		// 			ToAdd:  []PodToAdd{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
+		// 			ToCreate:  []PodToCreate{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
 		// 		},
 		// 		PodsState: initializePodsState(PodsState{
 		// 			RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
@@ -245,13 +245,13 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 		// 	args: args{
 		// 		performableChanges: PerformableChanges{
 		// 			Changes: Changes{
-		// 				ToAdd: []PodToAdd{{Pod: namedPod("foo")}},
+		// 				ToCreate: []PodToCreate{{Pod: namedPod("foo")}},
 		// 			},
 		// 		},
 		// 	},
 		// 	want: ChangeGroup{
 		// 		Changes: Changes{
-		// 			ToAdd:  []PodToAdd{{Pod: namedPod("baz")}},
+		// 			ToCreate:  []PodToCreate{{Pod: namedPod("baz")}},
 		// 			ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
 		// 		},
 		// 		PodsState: initializePodsState(PodsState{

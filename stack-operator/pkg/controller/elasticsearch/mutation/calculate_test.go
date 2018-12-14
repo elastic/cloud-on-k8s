@@ -35,8 +35,8 @@ func TestCalculateChanges(t *testing.T) {
 				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
-				ToKeep: []corev1.Pod{defaultPod, defaultPod},
-				ToAdd:  []PodToAdd{{PodSpecCtx: defaultPodSpecCtx}, {PodSpecCtx: defaultPodSpecCtx}},
+				ToKeep:   []corev1.Pod{defaultPod, defaultPod},
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtx}, {PodSpecCtx: defaultPodSpecCtx}},
 			},
 		},
 		{
@@ -56,7 +56,7 @@ func TestCalculateChanges(t *testing.T) {
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
 				ToDelete: []corev1.Pod{defaultPod},
-				ToAdd:    []PodToAdd{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
+				ToCreate: []PodToCreate{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
 			},
 		},
 		{
@@ -65,7 +65,7 @@ func TestCalculateChanges(t *testing.T) {
 				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
 				state:    support.ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
 			},
-			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToDelete: []corev1.Pod{defaultPod}, ToAdd: []PodToAdd{PodToAdd{PodSpecCtx: defaultPodSpecCtx}}},
+			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToDelete: []corev1.Pod{defaultPod}, ToCreate: []PodToCreate{PodToCreate{PodSpecCtx: defaultPodSpecCtx}}},
 		},
 	}
 	for _, tt := range tests {
@@ -75,7 +75,7 @@ func TestCalculateChanges(t *testing.T) {
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
-			assert.Equal(t, len(tt.want.ToAdd), len(got.ToAdd))
+			assert.Equal(t, len(tt.want.ToCreate), len(got.ToCreate))
 			assert.Equal(t, len(tt.want.ToDelete), len(got.ToDelete))
 		})
 	}

@@ -38,7 +38,7 @@ func withLabels(pod corev1.Pod, labels map[string]string) corev1.Pod {
 
 func TestChanges_HasChanges(t *testing.T) {
 	type fields struct {
-		ToAdd    []PodToAdd
+		ToCreate []PodToCreate
 		ToKeep   []corev1.Pod
 		ToDelete []corev1.Pod
 	}
@@ -60,23 +60,23 @@ func TestChanges_HasChanges(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "something to add has changes",
+			name: "something to create has changes",
 			fields: fields{
-				ToAdd: []PodToAdd{PodToAdd{}},
+				ToCreate: []PodToCreate{PodToCreate{}},
 			},
 			want: true,
 		},
 		{
-			name: "something to remove has changes",
+			name: "something to delete has changes",
 			fields: fields{
 				ToDelete: []corev1.Pod{corev1.Pod{}},
 			},
 			want: true,
 		},
 		{
-			name: "add and remove has changes",
+			name: "create and delete has changes",
 			fields: fields{
-				ToAdd:    []PodToAdd{PodToAdd{}},
+				ToCreate: []PodToCreate{PodToCreate{}},
 				ToDelete: []corev1.Pod{corev1.Pod{}},
 			},
 			want: true,
@@ -85,7 +85,7 @@ func TestChanges_HasChanges(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := Changes{
-				ToAdd:    tt.fields.ToAdd,
+				ToCreate: tt.fields.ToCreate,
 				ToKeep:   tt.fields.ToKeep,
 				ToDelete: tt.fields.ToDelete,
 			}
@@ -98,7 +98,7 @@ func TestChanges_HasChanges(t *testing.T) {
 
 func TestChanges_IsEmpty(t *testing.T) {
 	type fields struct {
-		ToAdd    []PodToAdd
+		ToCreate []PodToCreate
 		ToKeep   []corev1.Pod
 		ToDelete []corev1.Pod
 	}
@@ -115,16 +115,16 @@ func TestChanges_IsEmpty(t *testing.T) {
 		{
 			name: "empty inner lists should be empty",
 			fields: fields{
-				ToAdd:    []PodToAdd{},
+				ToCreate: []PodToCreate{},
 				ToKeep:   []corev1.Pod{},
 				ToDelete: []corev1.Pod{},
 			},
 			want: true,
 		},
 		{
-			name: "with pod to add should not be empty",
+			name: "with pod to create should not be empty",
 			fields: fields{
-				ToAdd:    []PodToAdd{{}},
+				ToCreate: []PodToCreate{{}},
 				ToKeep:   []corev1.Pod{},
 				ToDelete: []corev1.Pod{},
 			},
@@ -133,16 +133,16 @@ func TestChanges_IsEmpty(t *testing.T) {
 		{
 			name: "with pod to keep not be empty",
 			fields: fields{
-				ToAdd:    []PodToAdd{},
+				ToCreate: []PodToCreate{},
 				ToKeep:   []corev1.Pod{{}},
 				ToDelete: []corev1.Pod{},
 			},
 			want: false,
 		},
 		{
-			name: "with pod to remove should not empty",
+			name: "with pod to delete should not empty",
 			fields: fields{
-				ToAdd:    []PodToAdd{},
+				ToCreate: []PodToCreate{},
 				ToKeep:   []corev1.Pod{},
 				ToDelete: []corev1.Pod{{}},
 			},
@@ -152,7 +152,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := Changes{
-				ToAdd:    tt.fields.ToAdd,
+				ToCreate: tt.fields.ToCreate,
 				ToKeep:   tt.fields.ToKeep,
 				ToDelete: tt.fields.ToDelete,
 			}
@@ -170,7 +170,7 @@ func TestChanges_Group(t *testing.T) {
 
 	fooPod := withLabels(namedPod("1"), map[string]string{"foo": "bar"})
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
-	bazPodToAdd := PodToAdd{
+	bazPodToCreate := PodToCreate{
 		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}),
 		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
@@ -206,7 +206,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{namedPod("1")},
-						ToAdd:    []PodToAdd{},
+						ToCreate: []PodToCreate{},
 						ToDelete: []corev1.Pod{},
 					},
 					PodsState: NewEmptyPodsState(),
@@ -227,7 +227,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{namedPod("1")},
-						ToAdd:    []PodToAdd{},
+						ToCreate: []PodToCreate{},
 						ToDelete: []corev1.Pod{},
 					},
 					PodsState: NewEmptyPodsState(),
@@ -237,7 +237,7 @@ func TestChanges_Group(t *testing.T) {
 		{
 			name: "pods should be bucketed into the groups based on the selector and include relevant PodsState",
 			changes: Changes{
-				ToAdd:    []PodToAdd{bazPodToAdd},
+				ToCreate: []PodToCreate{bazPodToCreate},
 				ToKeep:   []corev1.Pod{fooPod},
 				ToDelete: []corev1.Pod{barPod},
 			},
@@ -254,7 +254,7 @@ func TestChanges_Group(t *testing.T) {
 				ChangeGroup{
 					Name: indexedGroupName(0),
 					Changes: Changes{
-						ToAdd:    []PodToAdd{},
+						ToCreate: []PodToCreate{},
 						ToKeep:   []corev1.Pod{fooPod},
 						ToDelete: []corev1.Pod{},
 					},
@@ -267,7 +267,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{},
 						ToDelete: []corev1.Pod{barPod},
-						ToAdd:    []PodToAdd{bazPodToAdd},
+						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{barPod.Name: barPod},
@@ -278,7 +278,7 @@ func TestChanges_Group(t *testing.T) {
 		{
 			name: "should match when there are multiple labels",
 			changes: Changes{
-				ToAdd:    []PodToAdd{bazPodToAdd},
+				ToCreate: []PodToCreate{bazPodToCreate},
 				ToKeep:   []corev1.Pod{fooPod},
 				ToDelete: []corev1.Pod{foobarPod},
 			},
@@ -302,7 +302,7 @@ func TestChanges_Group(t *testing.T) {
 				ChangeGroup{
 					Name: indexedGroupName(0),
 					Changes: Changes{
-						ToAdd:    []PodToAdd{},
+						ToCreate: []PodToCreate{},
 						ToKeep:   []corev1.Pod{},
 						ToDelete: []corev1.Pod{foobarPod},
 					},
@@ -315,7 +315,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToKeep:   []corev1.Pod{fooPod},
 						ToDelete: []corev1.Pod{},
-						ToAdd:    []PodToAdd{bazPodToAdd},
+						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},

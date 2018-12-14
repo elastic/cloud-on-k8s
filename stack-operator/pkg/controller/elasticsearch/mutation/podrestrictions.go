@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	// ErrNotEnoughMasterEligiblePods is an error used if a master-eligible pod cannot be removed.
+	// ErrNotEnoughMasterEligiblePods is an error used if a master-eligible pod cannot be deleted.
 	ErrNotEnoughMasterEligiblePods = errors.New("not enough master eligible pods left")
-	// ErrNotEnoughDataEligiblePods is an error used if a data-eligible pod cannot be removed.
+	// ErrNotEnoughDataEligiblePods is an error used if a data-eligible pod cannot be deleted.
 	ErrNotEnoughDataEligiblePods = errors.New("not enough data eligible pods left")
 )
 
@@ -26,7 +26,7 @@ func NewPodRestrictions(podsState PodsState) PodRestrictions {
 	dataEligiblePods := make(map[string]struct{})
 
 	// restrictions should only count master / data nodes that are known good
-	// this has the drawback of only being able to remove nodes when there is an elected master in the cluster.
+	// this has the drawback of only being able to delete nodes when there is an elected master in the cluster.
 	for name, pod := range podsState.RunningReady {
 		if support.IsMasterNode(pod) {
 			masterEligiblePods[name] = empty
@@ -42,8 +42,8 @@ func NewPodRestrictions(podsState PodsState) PodRestrictions {
 	}
 }
 
-// CanRemove returns an error if the pod cannot be safely removed.
-func (r *PodRestrictions) CanRemove(pod corev1.Pod) error {
+// CanDelete returns an error if the pod cannot be safely deleted
+func (r *PodRestrictions) CanDelete(pod corev1.Pod) error {
 	switch {
 	case support.IsMasterNode(pod) && isTheOnly(pod.Name, r.MasterNodeNames):
 		return ErrNotEnoughMasterEligiblePods
