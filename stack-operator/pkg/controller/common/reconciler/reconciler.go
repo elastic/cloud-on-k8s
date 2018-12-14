@@ -24,16 +24,15 @@ type Reconciler struct {
 	Owner  metav1.Object
 }
 
-// ReconcileObj reconciles a given runtime object using the factory, diffing and modifying functions given.
-func (r Reconciler) ReconcileObj(
+func (r Reconciler) ReconcileObjWithEffect(
 	obj runtime.Object,
 	new func() runtime.Object,
 	diff func(expected, found runtime.Object) bool,
 	mod func(expected, found runtime.Object) runtime.Object,
-) (runtime.Object, error) {
+	effect func(result runtime.Object)) error {
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return obj, errors.Errorf("%v is not a metadata Object", obj)
+		return errors.Errorf("%v is not a metadata Object", obj)
 	}
 	namespace := meta.GetNamespace()
 	name := meta.GetName()
@@ -43,7 +42,7 @@ func (r Reconciler) ReconcileObj(
 		kind = kinds[0].Kind
 	}
 	if err := controllerutil.SetControllerReference(r.Owner, meta, r.Scheme); err != nil {
-		return obj, err
+		return err
 	}
 	// Check if already exists
 	expected := obj
@@ -55,11 +54,11 @@ func (r Reconciler) ReconcileObj(
 
 		err = r.Create(context.TODO(), expected)
 		if err != nil {
-			return expected, err
+			return err
 		}
-		return expected, nil
+		return nil
 	} else if err != nil {
-		return found, err
+		return err
 	}
 
 	// Update if needed
@@ -67,8 +66,23 @@ func (r Reconciler) ReconcileObj(
 		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
 		err := r.Update(context.TODO(), mod(expected, found))
 		if err != nil {
-			return found, err
+			return err
 		}
 	}
-	return found, nil
+	effect(found)
+	return nil
+}
+
+// ReconcileObj reconciles a given runtime object using the factory, diffing and modifying functions given.
+func (r Reconciler) ReconcileObj(
+	obj runtime.Object,
+	new func() runtime.Object,
+	diff func(expected, found runtime.Object) bool,
+	mod func(expected, found runtime.Object) runtime.Object,
+) (runtime.Object, error) {
+	result := obj
+	err := r.ReconcileObjWithEffect(obj, new, diff, mod, func(res runtime.Object) {
+		result = res
+	})
+	return result, err
 }
