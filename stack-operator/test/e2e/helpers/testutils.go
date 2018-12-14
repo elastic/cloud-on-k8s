@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/retry"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -28,40 +29,33 @@ func ExitOnErr(err error) {
 // with a default timeout
 func Eventually(f func() error) func(*testing.T) {
 	return func(t *testing.T) {
+		fmt.Printf("Retries (%s timeout): ", defaultTimeout)
 		err := retry.UntilSuccess(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
 		}, defaultTimeout, defaultRetryDelay)
-		assert.NoError(t, err)
+		fmt.Println()
+		require.NoError(t, err)
 	}
 }
 
-// TestStep represents a single test
-type TestStep struct {
-	Name string
-	Test func(t *testing.T)
+// TestifyTestingTStub mocks testify's TestingT interface
+// so that we can use assertions outside a testing context
+type TestifyTestingTStub struct {
+	err error
 }
 
-// TestSuite allows running a serie of test steps
-type TestSuite struct {
-	ts []TestStep
+// Errorf sets the error for the TestingTStub
+func (t *TestifyTestingTStub) Errorf(msg string, args ...interface{}) {
+	t.err = fmt.Errorf(msg, args...)
 }
 
-// WithTestSteps creates a new test suite with the given TestSteps appended
-// to the current ones
-func (ts TestSuite) WithTestSteps(TestSteps ...TestStep) *TestSuite {
-	return &TestSuite{
-		ts: append(ts.ts, TestSteps...),
+// ElementsMatch checks that both given slices contain the same elements
+func ElementsMatch(listA interface{}, listB interface{}) error {
+	t := TestifyTestingTStub{}
+	assert.ElementsMatch(&t, listA, listB)
+	if t.err != nil {
+		return t.err
 	}
-}
-
-// RunSequential runs the TestSuite tests sequentially,
-// and fails fast on first error
-func (ts TestSuite) RunSequential(t *testing.T) {
-	for _, ts := range ts.ts {
-		if !t.Run(ts.Name, ts.Test) {
-			fmt.Println("Test failure. Stopping early.")
-			t.FailNow()
-		}
-	}
+	return nil
 }

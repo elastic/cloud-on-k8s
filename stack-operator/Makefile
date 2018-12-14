@@ -44,8 +44,12 @@ unit:
 integration: generate fmt vet manifests
 	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
+TESTS_MATCH ?= ""
+# run e2e tests
+# can be overriden with the name of the test to run, eg.:
+# make e2e TESTS_MATCH=TestMutationMoreNodes
 e2e:
-	go test -v -failfast -tags=e2e ./test/e2e
+	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run $(TESTS_MATCH)
 
 # Build stack-operator binary
 stack-operator: generate fmt vet
