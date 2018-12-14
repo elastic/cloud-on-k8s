@@ -5,7 +5,8 @@ import (
 )
 
 var (
-	// pass1ChangeBudget is very restrictive change budget used for the first pass when calculating performable changes
+	// pass1ChangeBudget is a very restrictive change budget
+	// used for the first pass when calculating performable changes
 	pass1ChangeBudget = v1alpha1.ChangeBudget{}
 )
 
@@ -54,7 +55,7 @@ func CalculatePerformableChanges(
 	if err != nil {
 		return nil, err
 	}
-	log.V(3).Info("Created grouped change sets", "count", len(changeGroups))
+	log.V(3).Info("Created change groups", "count", len(changeGroups))
 
 	podRestrictions := NewPodRestrictions(allPodsState)
 
