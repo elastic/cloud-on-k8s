@@ -7,6 +7,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// PodBuilder is a function that is able to create pods from a PodSpecContext,
+// mostly used by the various supported versions
+type PodBuilder func(ctx support.PodSpecContext) (corev1.Pod, error)
+
 // PodComparisonResult holds information about pod comparison result
 type PodComparisonResult struct {
 	IsMatch               bool

@@ -8,29 +8,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// PodBuilder is a function that is able to create pods from a PodSpecContext,
-// mostly used by the various supported versions
-type PodBuilder func(ctx support.PodSpecContext) (corev1.Pod, error)
-
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
 	ToAdd    []PodToAdd
 	ToKeep   []corev1.Pod
 	ToDelete []corev1.Pod
-}
-
-// EmptyChanges creates an empty Changes with empty arrays not nil
-func EmptyChanges() Changes {
-	return Changes{
-		ToAdd:    []PodToAdd{},
-		ToKeep:   []corev1.Pod{},
-		ToDelete: []corev1.Pod{},
-	}
-}
-
-// sortPodByCreationTimestampAsc is a sort function for a list of pods
-func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
-	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
 }
 
 // PodToAdd defines a pod to be added, along with
@@ -39,6 +21,15 @@ type PodToAdd struct {
 	Pod             corev1.Pod
 	PodSpecCtx      support.PodSpecContext
 	MismatchReasons map[string][]string
+}
+
+// EmptyChanges creates an empty Changes with empty arrays (not nil)
+func EmptyChanges() Changes {
+	return Changes{
+		ToAdd:    []PodToAdd{},
+		ToKeep:   []corev1.Pod{},
+		ToDelete: []corev1.Pod{},
+	}
 }
 
 // HasChanges returns true if there are no topology changes to performed

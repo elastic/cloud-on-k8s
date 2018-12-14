@@ -71,3 +71,8 @@ func sortPodsToAddByMasterNodesFirstThenNameAsc(podsToAdd []PodToAdd) func(i, j 
 		return comparePodByMasterNodesFirstThenNameAsc(podsToAdd[i].Pod, podsToAdd[j].Pod)
 	}
 }
+
+// sortPodByCreationTimestampAsc is a sort function for a list of pods
+func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
+}
