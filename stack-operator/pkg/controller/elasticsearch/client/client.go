@@ -12,6 +12,16 @@ import (
 	"path"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
+)
+
+const (
+	AutoPortForwardFlagName = "auto-port-forward"
+)
+
+var (
+	AutoPortForwardFlag = false
+	autoDialer          = portforward.NewForwardingDialer()
 )
 
 // User captures Elasticsearch user credentials.
@@ -29,17 +39,23 @@ type Client struct {
 
 // NewElasticsearchClient creates a new client for the target cluster.
 func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *Client {
+	transportConfig := http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: caPool,
+			// TODO: we can do better.
+			InsecureSkipVerify: true,
+		},
+	}
+
+	if AutoPortForwardFlag {
+		transportConfig.DialContext = autoDialer.DialContext
+	}
+
 	return &Client{
 		Endpoint: esURL,
 		User:     esUser,
 		HTTP: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: caPool,
-					// TODO: we can do better.
-					InsecureSkipVerify: true,
-				},
-			},
+			Transport: &transportConfig,
 		},
 	}
 }

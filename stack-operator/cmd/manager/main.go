@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -33,12 +32,22 @@ var (
 
 func init() {
 	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	Cmd.Flags().BoolVar(
+		&client.AutoPortForwardFlag,
+		client.AutoPortForwardFlagName,
+		false,
+		"enables automatic port-forwarding",
+	)
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
 }
 
 func execute() {
 	log := logf.Log.WithName("manager")
+
+	if client.AutoPortForwardFlag {
+		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
+	}
 
 	if viper.GetString(elasticsearch.SnapshotterImageFlag) == "" {
 		log.Error(fmt.Errorf("%s is a required flag", elasticsearch.SnapshotterImageFlag),
