@@ -21,7 +21,6 @@ func (r *ReconcileElasticsearch) ReconcileConfigMap(es v1alpha1.ElasticsearchClu
 	found := &corev1.ConfigMap{}
 	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
-
 		log.Info(common.Concat("Creating config map ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,
 		)
