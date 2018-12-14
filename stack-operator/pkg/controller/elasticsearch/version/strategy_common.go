@@ -238,7 +238,7 @@ func quantityToMegabytes(q resource.Quantity) int {
 	return int(q.Value()) / 1024 / 1024
 }
 
-// newDefaultConfigMap creates a default config map usable for all vesions of Elasticsearch.
+// newDefaultConfigMap creates a default config map usable for all versions of Elasticsearch.
 func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
 	return support.NewConfigMapWithData(es, map[string]string{
 		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
