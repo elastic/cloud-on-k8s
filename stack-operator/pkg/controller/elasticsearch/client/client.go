@@ -15,15 +15,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 )
 
-const (
-	AutoPortForwardFlagName = "auto-port-forward"
-)
-
-var (
-	AutoPortForwardFlag = false
-	autoDialer          = portforward.NewForwardingDialer()
-)
-
 // User captures Elasticsearch user credentials.
 type User struct {
 	Name     string
@@ -47,8 +38,9 @@ func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *C
 		},
 	}
 
-	if AutoPortForwardFlag {
-		transportConfig.DialContext = autoDialer.DialContext
+	// if auto portforwarding is enabled, use the custom dialer
+	if portforward.AutoPortForwardFlag {
+		transportConfig.DialContext = portforward.AutoDialer.DialContext
 	}
 
 	return &Client{

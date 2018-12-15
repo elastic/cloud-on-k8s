@@ -5,6 +5,8 @@ import (
 	"net"
 	"reflect"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type stubForwarder struct {
@@ -14,11 +16,18 @@ type stubForwarder struct {
 }
 
 func (f *stubForwarder) Run(ctx context.Context) error {
-	return f.onRun(ctx)
+	if f.onRun != nil {
+		return f.onRun(ctx)
+	}
+	<-ctx.Done()
+	return nil
 }
 
 func (f *stubForwarder) DialContext(ctx context.Context) (net.Conn, error) {
-	return f.onDialContext(ctx)
+	if f.onDialContext != nil {
+		return f.onDialContext(ctx)
+	}
+	return nil, nil
 }
 
 func TestForwardingDialer_DialContext(t *testing.T) {
@@ -38,9 +47,11 @@ func TestForwardingDialer_DialContext(t *testing.T) {
 		{
 			name: "sample",
 			tweaks: func(dialer *ForwardingDialer) {
-				dialer.forwarderFactory = func(network, addr string) Forwarder {
-					return &stubForwarder{network: network, addr: addr}
-				}
+				dialer.forwarderFactory = ForwarderFactoryFunc(func(_ client.Client, network, addr string) Forwarder {
+					return &stubForwarder{
+						network: network, addr: addr,
+					}
+				})
 			},
 		},
 	}

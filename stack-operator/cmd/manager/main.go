@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -18,6 +19,9 @@ import (
 )
 
 var (
+	// development is whether we should be in development mode or not (affects logging and development-specific features)
+	development = false
+
 	// Cmd is the cobra command to start the manager.
 	Cmd = &cobra.Command{
 		Use:   "manager",
@@ -31,21 +35,30 @@ var (
 )
 
 func init() {
-	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
+	Cmd.Flags().BoolVar(&development, "development", false, "turns on development mode")
+	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snapshotter application")
 	Cmd.Flags().BoolVar(
-		&client.AutoPortForwardFlag,
-		client.AutoPortForwardFlagName,
+		&portforward.AutoPortForwardFlag,
+		portforward.AutoPortForwardFlagName,
 		false,
-		"enables automatic port-forwarding",
+		"enables automatic port-forwarding (for dev use only)",
 	)
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
 }
 
 func execute() {
+	logf.SetLogger(logf.ZapLogger(development))
+
 	log := logf.Log.WithName("manager")
 
-	if client.AutoPortForwardFlag {
+	if !development && portforward.AutoPortForwardFlag {
+		panic(fmt.Sprintf(
+			"Enabling %s without enabling development mode not allowed", portforward.AutoPortForwardFlagName,
+		))
+	}
+
+	if portforward.AutoPortForwardFlag {
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
 	}
 

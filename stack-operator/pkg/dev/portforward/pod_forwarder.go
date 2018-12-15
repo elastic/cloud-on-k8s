@@ -16,16 +16,21 @@ import (
 // forwardingFromRegex is the stdout output from kubectl port-forward that contains the locally bound port.
 var forwardingFromRegex = regexp.MustCompile(`Forwarding from (?P<localHostPort>\S+) -> \S+\n?`)
 
-// forwarder enables redirecting tcp connections through "kubectl port-forward"
+// podForwarder enables redirecting tcp connections through "kubectl port-forward"
 //
 // - "kubectl port-forward" will be run as a subprocess
 // - only one subprocess will be spawned concurrently regardless of the number of dials
-type forwarder struct {
-	network, addr string
+//
+// TODO: consider vendoring some code from kubernetes upstream to support doing this in-process. it will still
+// likely have to bind to a local port, but we don't have to spawn a subprocess and parse the stdout. the total
+// amount of code looks to be roughly the same
+type podForwarder struct {
+	network, addr      string
+	podName, namespace string
 
 	sync.Mutex
 
-	// initChan is used to wait for the port-forwarder to be set up before redirecting connections
+	// initChan is used to wait for the port-podForwarder to be set up before redirecting connections
 	initChan chan struct{}
 	// viaErr is set when there's an error during initialization
 	viaErr error
@@ -39,7 +44,7 @@ type forwarder struct {
 	dialerFunc dialerFunc
 }
 
-var _ Forwarder = &forwarder{}
+var _ Forwarder = &podForwarder{}
 
 // commandFactory is a factory for commands
 type commandFactory func(ctx context.Context, name string, arg ...string) command
@@ -65,11 +70,17 @@ var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address st
 	return d.DialContext(ctx, network, address)
 }
 
-// NewForwarder returns a new initialized forwarder
-func NewForwarder(network, addr string) *forwarder {
-	return &forwarder{
-		network:  network,
-		addr:     addr,
+// NewPodForwarder returns a new initialized podForwarder
+func NewPodForwarder(network, addr string) *podForwarder {
+	podName, namespace := parsePodAddr(addr)
+
+	return &podForwarder{
+		network: network,
+		addr:    addr,
+
+		podName:   podName,
+		namespace: namespace,
+
 		initChan: make(chan struct{}),
 
 		commandFactory: defaultCommandFactory,
@@ -77,8 +88,17 @@ func NewForwarder(network, addr string) *forwarder {
 	}
 }
 
-// DialContext connects to the forwarder address using the provided context.
-func (f *forwarder) DialContext(ctx context.Context) (net.Conn, error) {
+func parsePodAddr(addr string) (string, string) {
+	// (our) pods generally look like this (as FQDN): {name}.{namespace}.pod.cluster.local
+	// TODO: this isn't necessarily through with k8s services, but works for us for now
+	parts := strings.SplitN(addr, ".", 3)
+	name := parts[0]
+	namespace := parts[1]
+	return name, namespace
+}
+
+// DialContext connects to the podForwarder address using the provided context.
+func (f *podForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	// wait until we're initialized or context is done
 	select {
 	case <-f.initChan:
@@ -100,8 +120,8 @@ func (f *forwarder) DialContext(ctx context.Context) (net.Conn, error) {
 }
 
 // Run starts a forwarding process and blocks until either the port forwarding process fails or the context is done.
-func (f *forwarder) Run(ctx context.Context) error {
-	log.Info("Running port-forwarder for", "addr", f.addr)
+func (f *podForwarder) Run(ctx context.Context) error {
+	log.Info("Running port-podForwarder for", "addr", f.addr)
 
 	forwardingAddrChan := make(chan string)
 	attemptErrorChan := make(chan error)
@@ -147,16 +167,11 @@ func (f *forwarder) Run(ctx context.Context) error {
 // runPortForwardProcess does a single attempt at setting up port-forward.
 // after starting, it does not return until the process exits or the context is cancelled.
 // the out parameter will receive a string, which is the local address port-forward is bound to
-func (f *forwarder) runPortForwardProcess(ctx context.Context, out chan<- string) error {
+func (f *podForwarder) runPortForwardProcess(ctx context.Context, out chan<- string) error {
 	// derive a new context so we can ensure the process is (attempted) killed before we return and that we return as
 	// soon as the process exits.
 	runCtx, runCtxCancel := context.WithCancel(ctx)
 	defer runCtxCancel()
-
-	addrType, err := parseAddrType(f.addr)
-	if err != nil {
-		return err
-	}
 
 	_, port, err := net.SplitHostPort(f.addr)
 	if err != nil {
@@ -171,8 +186,8 @@ func (f *forwarder) runPortForwardProcess(ctx context.Context, out chan<- string
 		"--address",
 		"127.0.0.1",
 		"--namespace",
-		addrType.namespace,
-		addrType.TypeName(),
+		f.namespace,
+		fmt.Sprintf("pod/%s", f.podName),
 		":"+port,
 	)
 
@@ -196,7 +211,7 @@ func (f *forwarder) runPortForwardProcess(ctx context.Context, out chan<- string
 				return
 			}
 
-			log.Info("port-forward stdout:", "line", line)
+			log.Info("kubectl port-forward stdout:", "line", line)
 
 			localAddress := findForwardedFromLocalAddress(line)
 			if localAddress != "" {
@@ -209,41 +224,7 @@ func (f *forwarder) runPortForwardProcess(ctx context.Context, out chan<- string
 		return err
 	}
 
-	// ensure that runCtx is cancelled if the command completes early
-	var waitErr error
-	go func() {
-		waitErr = cmd.Wait()
-		runCtxCancel()
-	}()
-
-	// wait for the context to be cancelled, which indicates the command either finished early or were cancelled
-	<-runCtx.Done()
-
-	return waitErr
-}
-
-// addrType encapsulates information about an address to a Kubernetes resource
-type addrType struct {
-	type_, name, namespace string
-}
-
-// TypeName returns the resource "type/name" for this address.
-func (a addrType) TypeName() string {
-	return fmt.Sprintf("%s/%s", a.type_, a.name)
-}
-
-// parseAddrType parses a kubernetes DNS-based address to a structured format
-// only "service" types with a FQDN is currently supported.
-func parseAddrType(addr string) (addrType, error) {
-	// services generally look like this (as FQDN): {name}.{namespace}.svc.cluster.local
-	if strings.Contains(addr, ".svc.") {
-		parts := strings.SplitN(addr, ".", 3)
-		name := parts[0]
-		namespace := parts[1]
-		return addrType{type_: "service", name: name, namespace: namespace}, nil
-	}
-
-	return addrType{}, fmt.Errorf("unsupported type: %s", addr)
+	return cmd.Wait()
 }
 
 // findForwardedFromLocalAddress finds the local address from the "Forwarded from" stdout output of port-forward
