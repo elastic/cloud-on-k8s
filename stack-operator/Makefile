@@ -9,6 +9,7 @@ KUSTOMIZE := $(shell command -v kustomize)
 SHA1SUM := $(shell command -v sha1sum)
 DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
+REVIVE_LINTER := $(shell command -v revive)
 
 KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
 CONFIG_FILE ?= .devenv
@@ -265,3 +266,11 @@ start-port-forward:
 stop-port-forward:
 	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
 	@ echo "-> Stopped."
+
+.PHONY: lint
+lint:
+ifndef REVIVE_LINTER
+	@ echo "-> linter (revive) binary missing, install via \"go get -u github.com/mgechev/revive\""
+	@ exit 5
+endif
+	@ $(REVIVE_LINTER) -formatter stylish ./pkg/... ./cmd/... ./test/...
