@@ -9,7 +9,7 @@ KUSTOMIZE := $(shell command -v kustomize)
 SHA1SUM := $(shell command -v sha1sum)
 DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
-REVIVE_LINTER := $(shell command -v revive)
+GOLANGCI_LINTER := $(shell command -v golangci-lint)
 
 KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
 CONFIG_FILE ?= .devenv
@@ -269,8 +269,8 @@ stop-port-forward:
 
 .PHONY: lint
 lint:
-ifndef REVIVE_LINTER
-	@ echo "-> linter (revive) binary missing, install via \"go get -u github.com/mgechev/revive\""
+ifndef GOLANGCI_LINTER
+	@ echo "-> linter (golangci-lint) binary missing, install via \"https://github.com/golangci/golangci-lint#install\""
 	@ exit 5
 endif
-	@ $(REVIVE_LINTER) -formatter stylish ./pkg/... ./cmd/... ./test/...
+	@ $(GOLANGCI_LINTER) run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
