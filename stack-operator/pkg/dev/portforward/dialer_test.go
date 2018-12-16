@@ -47,11 +47,13 @@ func TestForwardingDialer_DialContext(t *testing.T) {
 		{
 			name: "sample",
 			tweaks: func(dialer *ForwardingDialer) {
-				dialer.forwarderFactory = ForwarderFactoryFunc(func(_ client.Client, network, addr string) Forwarder {
-					return &stubForwarder{
-						network: network, addr: addr,
-					}
-				})
+				dialer.forwarderFactory = ForwarderFactoryFunc(
+					func(_ client.Client, network, addr string) (Forwarder, error) {
+						return &stubForwarder{
+							network: network, addr: addr,
+						}, nil
+					},
+				)
 			},
 		},
 	}

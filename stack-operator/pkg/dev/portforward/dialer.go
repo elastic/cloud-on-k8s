@@ -37,18 +37,18 @@ type ForwardingDialer struct {
 
 // ForwarderFactory is a function that can produce forwarders
 type ForwarderFactory interface {
-	NewForwarder(client client.Client, network, addr string) Forwarder
+	NewForwarder(client client.Client, network, addr string) (Forwarder, error)
 }
 
 // ForwarderFactoryFunc is a converter from a function to a ForwarderFactory
-type ForwarderFactoryFunc func(client client.Client, network, addr string) Forwarder
+type ForwarderFactoryFunc func(client client.Client, network, addr string) (Forwarder, error)
 
-func (f ForwarderFactoryFunc) NewForwarder(client client.Client, network, addr string) Forwarder {
+func (f ForwarderFactoryFunc) NewForwarder(client client.Client, network, addr string) (Forwarder, error) {
 	return f(client, network, addr)
 }
 
 // defaultForwarderFactory is the default podForwarder factory used outside of tests
-var defaultForwarderFactory = func(client client.Client, network, addr string) Forwarder {
+var defaultForwarderFactory = func(client client.Client, network, addr string) (Forwarder, error) {
 	if strings.Contains(addr, ".svc.cluster.local:") {
 		// it looks like a service url, so forward as a service
 		return NewServiceForwarder(client, network, addr)
@@ -97,42 +97,50 @@ func (d *ForwardingDialer) initIfRequired() {
 func (d *ForwardingDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	d.initIfRequired()
 
-	fwd := d.getOrCreateForwarder(network, addr)
+	fwd, err := d.getOrCreateForwarder(network, addr)
+	if err != nil {
+		return nil, err
+	}
 
 	return fwd.DialContext(ctx)
 }
 
 // getOrCreateForwarder gets the current or creates and inserts a new Forwarder for the given address
-func (d *ForwardingDialer) getOrCreateForwarder(network, addr string) Forwarder {
+func (d *ForwardingDialer) getOrCreateForwarder(network, addr string) (Forwarder, error) {
 	d.Lock()
 	defer d.Unlock()
 
 	key := netAddrToKey(network, addr)
 
 	fwd, ok := d.forwarders[key]
-	if !ok {
-		fwd = d.forwarderFactory.NewForwarder(d.client, network, addr)
-		d.forwarders[key] = fwd
-
-		// start the podForwarder in a goroutine
-		go func() {
-			// remove the podForwarder from the map when done running
-			defer func() {
-				d.Lock()
-				defer d.Unlock()
-
-				delete(d.forwarders, key)
-			}()
-			// TODO: cancel this at some point to GC?
-			if err := fwd.Run(context.TODO()); err != nil {
-				log.Error(err, "Forwarder returned with an error")
-			} else {
-				log.Info("Forwarder returned without an error")
-			}
-		}()
+	if ok {
+		return fwd, nil
 	}
 
-	return fwd
+	fwd, err := d.forwarderFactory.NewForwarder(d.client, network, addr)
+	if err != nil {
+		return nil, err
+	}
+	d.forwarders[key] = fwd
+
+	// start the podForwarder in a goroutine
+	go func() {
+		// remove the podForwarder from the map when done running
+		defer func() {
+			d.Lock()
+			defer d.Unlock()
+
+			delete(d.forwarders, key)
+		}()
+		// TODO: cancel this at some point to GC?
+		if err := fwd.Run(context.TODO()); err != nil {
+			log.Error(err, "Forwarder returned with an error")
+		} else {
+			log.Info("Forwarder returned without an error")
+		}
+	}()
+
+	return fwd, nil
 }
 
 // netAddrToKey returns the map key to use for this network+address tuple

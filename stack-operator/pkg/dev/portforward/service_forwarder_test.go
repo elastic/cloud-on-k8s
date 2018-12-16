@@ -49,9 +49,9 @@ type capturingPodForwarderFactory struct {
 	addrs []string
 }
 
-func (f *capturingPodForwarderFactory) NewPodForwarder(network, addr string) Forwarder {
+func (f *capturingPodForwarderFactory) NewPodForwarder(network, addr string) (Forwarder, error) {
 	f.addrs = append(f.addrs, addr)
-	return &stubForwarder{network: network, addr: addr}
+	return &stubForwarder{network: network, addr: addr}, nil
 }
 
 func Test_serviceForwarder_DialContext(t *testing.T) {
@@ -133,7 +133,8 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			f := NewServiceForwarder(tt.fields.client, tt.fields.network, tt.fields.addr)
+			f, err := NewServiceForwarder(tt.fields.client, tt.fields.network, tt.fields.addr)
+			assert.NoError(t, err)
 
 			if tt.tweaks != nil {
 				tt.tweaks(f)

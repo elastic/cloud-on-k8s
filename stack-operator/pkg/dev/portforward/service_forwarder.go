@@ -22,10 +22,11 @@ type serviceForwarder struct {
 	network, addr          string
 	serviceName, namespace string
 
+	// client is used to look up the service and pods selected by the service during dialing
 	client client.Client
 
-	sync.Mutex
 	forwarders map[string]Forwarder
+	sync.Mutex
 
 	// podForwarderFactory enables injecting a custom forwarder factory in tests
 	podForwarderFactory PodForwarderFactory
@@ -35,23 +36,23 @@ var _ Forwarder = &serviceForwarder{}
 
 // PodForwarderFactory is a function that can produce forwarders
 type PodForwarderFactory interface {
-	NewPodForwarder(network, addr string) Forwarder
+	NewPodForwarder(network, addr string) (Forwarder, error)
 }
 
 // ForwarderFactoryFunc is a converter from a function to a ForwarderFactory
-type PodForwarderFactoryFunc func(network, addr string) Forwarder
+type PodForwarderFactoryFunc func(network, addr string) (Forwarder, error)
 
-func (f PodForwarderFactoryFunc) NewPodForwarder(network, addr string) Forwarder {
+func (f PodForwarderFactoryFunc) NewPodForwarder(network, addr string) (Forwarder, error) {
 	return f(network, addr)
 }
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
-var defaultPodForwarderFactory = PodForwarderFactoryFunc(func(network, addr string) Forwarder {
+var defaultPodForwarderFactory = PodForwarderFactoryFunc(func(network, addr string) (Forwarder, error) {
 	return NewPodForwarder(network, addr)
 })
 
 // NewServiceForwarder returns a new initialized service forwarder
-func NewServiceForwarder(client client.Client, network, addr string) *serviceForwarder {
+func NewServiceForwarder(client client.Client, network, addr string) (*serviceForwarder, error) {
 	serviceName, namespace := parseServiceAddr(addr)
 
 	return &serviceForwarder{
@@ -65,7 +66,7 @@ func NewServiceForwarder(client client.Client, network, addr string) *serviceFor
 
 		forwarders:          make(map[string]Forwarder),
 		podForwarderFactory: defaultPodForwarderFactory,
-	}
+	}, nil
 }
 
 // parseServiceAddr parses the service name and namespace from a connection address
@@ -79,13 +80,15 @@ func parseServiceAddr(addr string) (string, string) {
 
 // Run starts the service forwarder, blocking until it's done
 func (f *serviceForwarder) Run(ctx context.Context) error {
+	// TODO: /could/ consider snipping connections here when pods turn unready, but that does not match the default
+	// Service behavior
 	<-ctx.Done()
 	return nil
 }
 
 // DialContext dials one of the ready pods behind this service forwarder.
 //
-// As an approximation to load balancing, a random ready pod will be chosen for each dial.
+// As an approximation to load balancing, a random ready pod will be chosen for each dialing attempt.
 func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	service := v1.Service{}
 	serviceObjectKey := types.NamespacedName{Namespace: f.namespace, Name: f.serviceName}
@@ -118,6 +121,8 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, err
 	}
 
+	// TODO: support named ports? how it's supposed to work is not quite clear atm, and we don't use it ourselves
+	// so this is deferred to later
 	targetPort := intstr.FromInt(servicePort)
 	for _, port := range service.Spec.Ports {
 		if port.Port == int32(servicePort) {
@@ -127,43 +132,52 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 
 	pod := readyPods[rand.Intn(len(readyPods))]
 
+	// this should match a supported format of parsePodAddr(addr string)
 	podAddr := fmt.Sprintf("%s.%s.pod.cluster.local:%s", pod.Name, pod.Namespace, targetPort.String())
-	forwarder := f.getOrCreateForwarder(f.network, podAddr)
+	forwarder, err := f.getOrCreateForwarder(f.network, podAddr)
+	if err != nil {
+		return nil, err
+	}
 
 	return forwarder.DialContext(ctx)
 }
 
 // getOrCreateForwarder returns a cached
-func (f *serviceForwarder) getOrCreateForwarder(network, addr string) Forwarder {
+func (f *serviceForwarder) getOrCreateForwarder(network, addr string) (Forwarder, error) {
 	f.Lock()
 	defer f.Unlock()
 
 	key := addr
 
 	fwd, ok := f.forwarders[key]
-	if !ok {
-		fwd = NewPodForwarder(network, addr)
-		f.forwarders[key] = fwd
-
-		// start the podForwarder in a goroutine
-		go func() {
-			// remove the podForwarder from the map when done running
-			defer func() {
-				f.Lock()
-				defer f.Unlock()
-
-				delete(f.forwarders, key)
-			}()
-			// TODO: cancel this at some point to GC?
-			if err := fwd.Run(context.TODO()); err != nil {
-				log.Error(err, "Forwarder returned with an error")
-			} else {
-				log.Info("Forwarder returned without an error")
-			}
-		}()
+	if ok {
+		return fwd, nil
 	}
 
-	return fwd
+	fwd, err := NewPodForwarder(network, addr)
+	if err != nil {
+		return nil, err
+	}
+	f.forwarders[key] = fwd
+
+	// start the podForwarder in a goroutine
+	go func() {
+		// remove the podForwarder from the map when done running
+		defer func() {
+			f.Lock()
+			defer f.Unlock()
+
+			delete(f.forwarders, key)
+		}()
+		// TODO: cancel this at some point to GC?
+		if err := fwd.Run(context.TODO()); err != nil {
+			log.Error(err, "Forwarder returned with an error")
+		} else {
+			log.Info("Forwarder returned without an error")
+		}
+	}()
+
+	return fwd, nil
 }
 
 // readyPods returns a new slice that containing only the pods that are ready.

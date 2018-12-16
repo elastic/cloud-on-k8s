@@ -1,44 +1,41 @@
 package portforward
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
-	"os/exec"
-	"regexp"
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
+
+	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/transport/spdy"
+
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-// forwardingFromRegex is the stdout output from kubectl port-forward that contains the locally bound port.
-var forwardingFromRegex = regexp.MustCompile(`Forwarding from (?P<localHostPort>\S+) -> \S+\n?`)
-
-// podForwarder enables redirecting tcp connections through "kubectl port-forward"
-//
-// - "kubectl port-forward" will be run as a subprocess
-// - only one subprocess will be spawned concurrently regardless of the number of dials
-//
-// TODO: consider vendoring some code from kubernetes upstream to support doing this in-process. it will still
-// likely have to bind to a local port, but we don't have to spawn a subprocess and parse the stdout. the total
-// amount of code looks to be roughly the same
+// podForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
 type podForwarder struct {
 	network, addr      string
 	podName, namespace string
 
 	sync.Mutex
 
-	// initChan is used to wait for the port-podForwarder to be set up before redirecting connections
+	// initChan is used to wait for the port-forwarder to be set up before redirecting connections
 	initChan chan struct{}
 	// viaErr is set when there's an error during initialization
 	viaErr error
 	// viaAddr is the address that we use when redirecting connections
 	viaAddr string
 
-	// commandFactory is used to facilitate testing without spawning processes
-	commandFactory commandFactory
+	// ephemeralPortFinder is used to find an available ephemeral port
+	ephemeralPortFinder func() (string, error)
+
+	// portForwarderFactory is used to facilitate testing without using the API
+	portForwarderFactory PortForwarderFactory
 
 	// dialerFunc is used to facilitate testing without making new connections
 	dialerFunc dialerFunc
@@ -46,20 +43,56 @@ type podForwarder struct {
 
 var _ Forwarder = &podForwarder{}
 
+// defaultEphemeralPortFinder finds an ephemral port by binding to :0 and checking what port was bound
+var defaultEphemeralPortFinder = func() (string, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+
+	addr := listener.Addr().String()
+
+	if err := listener.Close(); err != nil {
+		return "", err
+	}
+
+	_, localPort, err := net.SplitHostPort(addr)
+
+	return localPort, err
+}
+
+type PortForwarderFactory interface {
+	NewPortForwarder(
+		ctx context.Context,
+		namespace, podName string,
+		ports []string,
+		readyChan chan struct{},
+	) (PortForwarder, error)
+}
+
+type PortForwarder interface {
+	ForwardPorts() error
+}
+
 // commandFactory is a factory for commands
-type commandFactory func(ctx context.Context, name string, arg ...string) command
+type PortForwarderFactoryFunc func(
+	ctx context.Context,
+	namespace, podName string,
+	ports []string,
+	readyChan chan struct{},
+) (PortForwarder, error)
 
-// defaultCommandFactory is the default factory used for commands outside of tests
-var defaultCommandFactory commandFactory = func(ctx context.Context, name string, arg ...string) command {
-	return exec.CommandContext(ctx, name, arg...)
+func (f PortForwarderFactoryFunc) NewPortForwarder(
+	ctx context.Context,
+	namespace, podName string,
+	ports []string,
+	readyChan chan struct{},
+) (PortForwarder, error) {
+	return f(ctx, namespace, podName, ports, readyChan)
 }
 
-// command is an interface that declares the parts of exec.Cmd we use and facilitates testing
-type command interface {
-	StdoutPipe() (io.ReadCloser, error)
-	Start() error
-	Wait() error
-}
+// defaultPortForwarderFactory is the default factory used for port forwarders outside of tests
+var defaultPortForwarderFactory = PortForwarderFactoryFunc(newKubectlPortForwarder)
 
 // dialerFunc is a factory for connections
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
@@ -71,8 +104,11 @@ var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address st
 }
 
 // NewPodForwarder returns a new initialized podForwarder
-func NewPodForwarder(network, addr string) *podForwarder {
-	podName, namespace := parsePodAddr(addr)
+func NewPodForwarder(network, addr string) (*podForwarder, error) {
+	podName, namespace, err := parsePodAddr(addr)
+	if err != nil {
+		return nil, err
+	}
 
 	return &podForwarder{
 		network: network,
@@ -83,18 +119,25 @@ func NewPodForwarder(network, addr string) *podForwarder {
 
 		initChan: make(chan struct{}),
 
-		commandFactory: defaultCommandFactory,
-		dialerFunc:     defaultDialerFunc,
-	}
+		ephemeralPortFinder:  defaultEphemeralPortFinder,
+		portForwarderFactory: defaultPortForwarderFactory,
+		dialerFunc:           defaultDialerFunc,
+	}, nil
 }
 
-func parsePodAddr(addr string) (string, string) {
+// parsePodAddr parses the pod name and namespace from an address
+func parsePodAddr(addr string) (string, string, error) {
 	// (our) pods generally look like this (as FQDN): {name}.{namespace}.pod.cluster.local
-	// TODO: this isn't necessarily through with k8s services, but works for us for now
+	// TODO: subdomains in pod names would change this.
 	parts := strings.SplitN(addr, ".", 3)
+
+	if len(parts) <= 2 {
+		return "", "", fmt.Errorf("unsupported pod address format: %s", addr)
+	}
+
 	name := parts[0]
 	namespace := parts[1]
-	return name, namespace
+	return name, namespace, nil
 }
 
 // DialContext connects to the podForwarder address using the provided context.
@@ -119,57 +162,22 @@ func (f *podForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	return f.dialerFunc(ctx, f.network, f.viaAddr)
 }
 
-// Run starts a forwarding process and blocks until either the port forwarding process fails or the context is done.
+// Run starts a port forwarder and blocks until either the port forwarding fails or the context is done.
 func (f *podForwarder) Run(ctx context.Context) error {
-	log.Info("Running port-podForwarder for", "addr", f.addr)
-
-	forwardingAddrChan := make(chan string)
-	attemptErrorChan := make(chan error)
-
-	go func() {
-		if err := f.runPortForwardProcess(ctx, forwardingAddrChan); err != nil {
-			attemptErrorChan <- err
-			close(attemptErrorChan)
-		}
-	}()
+	log.Info("Running port-forwarder for", "addr", f.addr)
+	defer log.Info("No longer running port-forwarder for", "addr", f.addr)
 
 	// used as a safeguard to ensure we only close the init channel once
 	initCloser := sync.Once{}
 
-	for {
-		select {
-		case err := <-attemptErrorChan:
-			// can probably come up with a better error to set here in the future.
-			f.viaErr = errors.New("not currently forwarding")
+	// wrap this in a sync.Once because it will panic if it happens more than once
+	// ensure that initChan is closed even if we were never ready.
+	defer initCloser.Do(func() {
+		close(f.initChan)
+	})
 
-			// wrap this in a sync.Once because it will panic if it happens more than once
-			initCloser.Do(func() {
-				close(f.initChan)
-			})
-
-			return err
-		case <-ctx.Done():
-			return nil
-		case forwardingAddr := <-forwardingAddrChan:
-			// this should only happen once according to the currently experience behavior.
-			log.Info("Ready to redirect connections", "addr", f.addr, "via", forwardingAddr)
-
-			// wrap this in a sync.Once because it will panic if it happens more than once
-			initCloser.Do(func() {
-				close(f.initChan)
-			})
-
-			f.viaAddr = forwardingAddr
-		}
-	}
-}
-
-// runPortForwardProcess does a single attempt at setting up port-forward.
-// after starting, it does not return until the process exits or the context is cancelled.
-// the out parameter will receive a string, which is the local address port-forward is bound to
-func (f *podForwarder) runPortForwardProcess(ctx context.Context, out chan<- string) error {
-	// derive a new context so we can ensure the process is (attempted) killed before we return and that we return as
-	// soon as the process exits.
+	// derive a new context so we can ensure the port-forwarding is stopped before we return and that we return as
+	// soon as the port-forwarding stops, whichever occurs first
 	runCtx, runCtxCancel := context.WithCancel(ctx)
 	defer runCtxCancel()
 
@@ -178,79 +186,97 @@ func (f *podForwarder) runPortForwardProcess(ctx context.Context, out chan<- str
 		return err
 	}
 
-	cmd := f.commandFactory(
-		runCtx,
-		"kubectl",
-		"port-forward",
-		// bind to localhost specifically
-		"--address",
-		"127.0.0.1",
-		"--namespace",
-		f.namespace,
-		fmt.Sprintf("pod/%s", f.podName),
-		":"+port,
-	)
-
-	// prepare to capture stdout
-	stdout, err := cmd.StdoutPipe()
+	// find an available local ephemeral port
+	localPort, err := f.ephemeralPortFinder()
 	if err != nil {
 		return err
 	}
 
-	// parse stdout when it becomes available
-	go func() {
-		reader := bufio.NewReader(stdout)
-		for {
-			if ctx.Err() != nil {
-				return
-			}
-
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				// read partial string, likely an EOF, which means we are closing, nothing more to parse
-				return
-			}
-
-			log.Info("kubectl port-forward stdout:", "line", line)
-
-			localAddress := findForwardedFromLocalAddress(line)
-			if localAddress != "" {
-				out <- localAddress
-			}
-		}
-	}()
-
-	if err := cmd.Start(); err != nil {
+	readyChan := make(chan struct{})
+	fwd, err := f.portForwarderFactory.NewPortForwarder(
+		runCtx,
+		f.namespace, f.podName,
+		[]string{localPort + ":" + port},
+		readyChan,
+	)
+	if err != nil {
 		return err
 	}
 
-	return cmd.Wait()
+	// wait for our context to be done or the port forwarder to become ready
+	go func() {
+		select {
+		case <-runCtx.Done():
+		case <-readyChan:
+			f.viaAddr = "127.0.0.1:" + localPort
+
+			log.Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
+
+			// wrap this in a sync.Once because it will panic if it happens more than once
+			defer initCloser.Do(func() {
+				close(f.initChan)
+			})
+		}
+	}()
+
+	err = fwd.ForwardPorts()
+	f.viaErr = errors.New("not currently forwarding")
+	return err
 }
 
-// findForwardedFromLocalAddress finds the local address from the "Forwarded from" stdout output of port-forward
-func findForwardedFromLocalAddress(line string) string {
-	submatches := forwardingFromRegex.FindStringSubmatch(line)
-	names := forwardingFromRegex.SubexpNames()
-
-	for i, submatch := range submatches {
-		if names[i] != "localHostPort" {
-			continue
-		}
-
-		host, _, err := net.SplitHostPort(submatch)
-		if err != nil {
-			// not a host:port tuple, safe to ignore
-			continue
-		}
-
-		// we only support forwarding over ipv4, so anything else can be ignored
-		hostIp := net.ParseIP(host)
-		if hostIp.To4() == nil {
-			continue
-		}
-
-		return submatch
+// newKubectlPortForwarder creates a new PortForwarder using kubectl tooling
+func newKubectlPortForwarder(
+	ctx context.Context,
+	namespace, podName string,
+	ports []string,
+	readyChan chan struct{},
+) (PortForwarder, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
 	}
 
-	return ""
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	req := clientSet.RESTClient().Post().
+		Resource("pods").
+		Namespace(namespace).
+		Name(podName).
+		SubResource("portforward")
+
+	u := url.URL{
+		Scheme:   req.URL().Scheme,
+		Host:     req.URL().Host,
+		Path:     "/api/v1" + req.URL().Path,
+		RawQuery: "timeout=32s",
+	}
+
+	transport, upgrader, err := spdy.RoundTripperFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &u)
+
+	// wrap stdout / stderr through logging
+	w := &logWriter{keysAndValues: []interface{}{
+		"namespace", namespace,
+		"pod", podName,
+		"ports", ports,
+	}}
+	return portforward.New(dialer, ports, ctx.Done(), readyChan, w, w)
+}
+
+// logWriter is a small utility that writes data from an io.Writer to a log
+type logWriter struct {
+	keysAndValues []interface{}
+}
+
+func (w *logWriter) Write(p []byte) (n int, err error) {
+	log.Info(strings.TrimSpace(string(p)), w.keysAndValues...)
+
+	return len(p), nil
 }

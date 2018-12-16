@@ -1,15 +1,14 @@
 package portforward
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"io/ioutil"
 	"net"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -17,41 +16,6 @@ import (
 
 func init() {
 	logf.SetLogger(logf.ZapLogger(true))
-}
-
-func Test_findLocalForwardingFromComponent(t *testing.T) {
-	type args struct {
-		line string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "example ipv4",
-			args: args{line: "Forwarding from 127.0.0.1:34479 -> 9200"},
-			want: "127.0.0.1:34479",
-		},
-		{
-			// Forwarding from [::1]:34479 -> 9200
-			name: "example ipv4 with newline",
-			args: args{line: "Forwarding from 127.0.0.1:34479 -> 9200\n"},
-			want: "127.0.0.1:34479",
-		},
-		{
-			name: "ipv6 should be ignored",
-			args: args{line: "Forwarding from [::1]:34479 -> 9200\n"},
-			want: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := findForwardedFromLocalAddress(tt.args.line); got != tt.want {
-				t.Errorf("findForwardedFromLocalAddress() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 type capturingDialer struct {
@@ -63,28 +27,19 @@ func (d *capturingDialer) DialContext(ctx context.Context, network, address stri
 	return nil, nil
 }
 
-type testingCommand struct {
-	onStdoutPipe func() (io.ReadCloser, error)
-	onStart      func() error
-	onWait       func() error
+func NewPodForwarderWithTest(t *testing.T, network, addr string) *podForwarder {
+	fwd, err := NewPodForwarder(network, addr)
+	require.NoError(t, err)
+	return fwd
 }
 
-func (c *testingCommand) StdoutPipe() (io.ReadCloser, error) {
-	return c.onStdoutPipe()
+type stubPortForwarder struct {
+	ctx context.Context
 }
 
-func (c *testingCommand) Start() error {
-	if c.onStart == nil {
-		return nil
-	}
-	return c.onStart()
-}
-
-func (c *testingCommand) Wait() error {
-	if c.onWait == nil {
-		return nil
-	}
-	return c.onWait()
+func (c *stubPortForwarder) ForwardPorts() error {
+	<-c.ctx.Done()
+	return nil
 }
 
 func Test_podForwarder_DialContext(t *testing.T) {
@@ -94,31 +49,35 @@ func Test_podForwarder_DialContext(t *testing.T) {
 	tests := []struct {
 		name         string
 		forwarder    *podForwarder
-		tweaks       func(*podForwarder)
+		tweaks       func(t *testing.T, f *podForwarder)
 		args         args
 		wantDialArgs []string
 		wantErr      bool
 	}{
 		{
 			name:      "pod should be forwarded",
-			forwarder: NewPodForwarder("tcp", "foo.bar.pod.cluster.local:9200"),
-			tweaks: func(f *podForwarder) {
-				f.commandFactory = func(ctx context.Context, name string, arg ...string) command {
-					return &testingCommand{
-						onStdoutPipe: func() (io.ReadCloser, error) {
-							return ioutil.NopCloser(bytes.NewBufferString(
-								"Forwarding from 127.0.0.1:34479 -> 9200\n",
-							)), nil
-						},
-					}
+			forwarder: NewPodForwarderWithTest(t, "tcp", "foo.bar.pod.cluster.local:9200"),
+			tweaks: func(t *testing.T, f *podForwarder) {
+				f.ephemeralPortFinder = func() (string, error) {
+					return "12345", nil
 				}
+				f.portForwarderFactory = PortForwarderFactoryFunc(func(
+					ctx context.Context,
+					namespace, podName string,
+					ports []string,
+					readyChan chan struct{},
+				) (PortForwarder, error) {
+					assert.Equal(t, "bar", namespace)
+					assert.Equal(t, "foo", podName)
+					assert.Equal(t, []string{"12345:9200"}, ports)
+
+					// closing the readyChan to pretend we're ready
+					close(readyChan)
+
+					return &stubPortForwarder{ctx: ctx}, nil
+				})
 			},
-			wantDialArgs: []string{"127.0.0.1:34479"},
-		},
-		{
-			name:      "unsupported address should result in error",
-			forwarder: NewPodForwarder("tcp", "example.com"),
-			wantErr:   true,
+			wantDialArgs: []string{"127.0.0.1:12345"},
 		},
 	}
 	for _, tt := range tests {
@@ -130,16 +89,23 @@ func Test_podForwarder_DialContext(t *testing.T) {
 				tt.args.ctx = context.TODO()
 			}
 
+			// wait for our goroutines to finish before returning
+			wg := sync.WaitGroup{}
+			defer wg.Wait()
+
 			ctx, canceller := context.WithTimeout(tt.args.ctx, 5*time.Second)
 			defer canceller()
 
 			if tt.tweaks != nil {
-				tt.tweaks(tt.forwarder)
+				tt.tweaks(t, tt.forwarder)
 			}
 
+			wg.Add(1)
+			currentTest := tt
 			go func() {
-				err := tt.forwarder.Run(ctx)
-				if !tt.wantErr {
+				defer wg.Done()
+				err := currentTest.forwarder.Run(ctx)
+				if !currentTest.wantErr {
 					assert.NoError(t, err)
 				}
 			}()
@@ -156,122 +122,16 @@ func Test_podForwarder_DialContext(t *testing.T) {
 	}
 }
 
-func Test_podForwarder_runPortForwardProcess(t *testing.T) {
-	exitError := errors.New("exit error: 1")
-
-	type args struct {
-		ctx context.Context
-		out chan string
-	}
-	tests := []struct {
-		name      string
-		forwarder *podForwarder
-		tweaks    func(*podForwarder)
-		args      args
-		wantOut   []string
-		wantErr   error
-	}{
-		{
-			name:      "example",
-			forwarder: NewPodForwarder("tcp", "foo.bar.pod.cluster.local:9200"),
-			tweaks: func(f *podForwarder) {
-				f.commandFactory = func(ctx context.Context, name string, arg ...string) command {
-					return &testingCommand{
-						onStdoutPipe: func() (io.ReadCloser, error) {
-							return ioutil.NopCloser(bytes.NewBufferString(
-								"Forwarding from 127.0.0.1:34479 -> 9200\n",
-							)), nil
-						},
-					}
-				}
-			},
-			wantOut: []string{"127.0.0.1:34479"},
-		},
-		{
-			name:      "error propagated when process exits",
-			forwarder: NewPodForwarder("tcp", "example.com:9200"),
-			tweaks: func(f *podForwarder) {
-				f.commandFactory = func(ctx context.Context, name string, arg ...string) command {
-					return &testingCommand{
-						onStdoutPipe: func() (io.ReadCloser, error) {
-							return ioutil.NopCloser(bytes.NewBufferString("")), nil
-						},
-						onWait: func() error {
-							return exitError
-						},
-					}
-				}
-			},
-			wantErr: exitError,
-		},
-		{
-			name:      "error propagated when process unable to start",
-			forwarder: NewPodForwarder("tcp", "example.com:9200"),
-			tweaks: func(f *podForwarder) {
-				f.commandFactory = func(ctx context.Context, name string, arg ...string) command {
-					return &testingCommand{
-						onStdoutPipe: func() (io.ReadCloser, error) {
-							return ioutil.NopCloser(bytes.NewBufferString("")), nil
-						},
-						onStart: func() error {
-							return exitError
-						},
-					}
-				}
-			},
-			wantErr: exitError,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.args.ctx == nil {
-				tt.args.ctx = context.TODO()
-			}
-			if tt.args.out == nil {
-				tt.args.out = make(chan string)
-			}
-
-			wg := sync.WaitGroup{}
-			defer wg.Wait()
-			ctx, canceller := context.WithTimeout(tt.args.ctx, 5*time.Second)
-			defer canceller()
-
-			if tt.tweaks != nil {
-				tt.tweaks(tt.forwarder)
-			}
-
-			// capture tt
-			wg.Add(1)
-			currentTest := tt
-			go func() {
-				defer wg.Done()
-
-				err := currentTest.forwarder.runPortForwardProcess(ctx, currentTest.args.out)
-
-				if currentTest.wantErr != nil {
-					assert.Equal(t, currentTest.wantErr, err)
-				} else if err != nil {
-					assert.NoError(t, err)
-				}
-			}()
-
-			for _, wantOut := range tt.wantOut {
-				gotOut := <-tt.args.out
-				assert.Equal(t, wantOut, gotOut)
-			}
-		})
-	}
-}
-
 func Test_parsePodAddr(t *testing.T) {
 	type args struct {
 		addr string
 	}
 	tests := []struct {
-		name  string
-		args  args
-		want  string
-		want1 string
+		name    string
+		args    args
+		want    string
+		want1   string
+		wantErr error
 	}{
 		{
 			name:  "without subdomain",
@@ -279,10 +139,22 @@ func Test_parsePodAddr(t *testing.T) {
 			want:  "foo",
 			want1: "bar",
 		},
+		{
+			name:    "invalid",
+			args:    args{addr: "example.com"},
+			wantErr: errors.New("unsupported pod address format: example.com"),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := parsePodAddr(tt.args.addr)
+			got, got1, err := parsePodAddr(tt.args.addr)
+
+			if tt.wantErr != nil {
+				assert.Equal(t, tt.wantErr, err)
+				return
+			}
+			assert.NoError(t, err)
+
 			if got != tt.want {
 				t.Errorf("parsePodAddr() got = %v, want %v", got, tt.want)
 			}

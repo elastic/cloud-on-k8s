@@ -41,7 +41,7 @@ func init() {
 		&portforward.AutoPortForwardFlag,
 		portforward.AutoPortForwardFlagName,
 		false,
-		"enables automatic port-forwarding (for dev use only)",
+		"enables automatic port-forwarding (for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
 	)
 	viper.BindPFlags(Cmd.Flags())
 	viper.AutomaticEnv()
