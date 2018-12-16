@@ -161,8 +161,8 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 	}
 
 	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)
-	labels := NewLabelsWithKibanaName(kb.Name)
-	podLabels := NewLabelsWithKibanaName(kb.Name)
+	labels := NewLabels(kb.Name)
+	podLabels := NewLabels(kb.Name)
 
 	if kb.Spec.Elasticsearch.CaCertSecret != nil {
 		// TODO: use kibanaCa to generate cert for deployment
