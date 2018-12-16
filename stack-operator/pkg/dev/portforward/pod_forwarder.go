@@ -126,18 +126,19 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 }
 
 // parsePodAddr parses the pod name and namespace from an address
-func parsePodAddr(addr string) (string, string, error) {
+func parsePodAddr(addr string) (name string, namespace string, err error) {
 	// (our) pods generally look like this (as FQDN): {name}.{namespace}.pod.cluster.local
 	// TODO: subdomains in pod names would change this.
 	parts := strings.SplitN(addr, ".", 3)
 
 	if len(parts) <= 2 {
-		return "", "", fmt.Errorf("unsupported pod address format: %s", addr)
+		err = fmt.Errorf("unsupported pod address format: %s", addr)
+		return
 	}
 
-	name := parts[0]
-	namespace := parts[1]
-	return name, namespace, nil
+	name = parts[0]
+	namespace = parts[1]
+	return
 }
 
 // DialContext connects to the podForwarder address using the provided context.

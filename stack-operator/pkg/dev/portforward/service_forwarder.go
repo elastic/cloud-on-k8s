@@ -56,12 +56,12 @@ func NewServiceForwarder(client client.Client, network, addr string) (*serviceFo
 }
 
 // parseServiceAddr parses the service name and namespace from a connection address
-func parseServiceAddr(addr string) (string, string) {
+func parseServiceAddr(addr string) (name string, namespace string) {
 	// services generally look like this (as FQDN): {name}.{namespace}.svc.cluster.local
 	parts := strings.SplitN(addr, ".", 3)
-	name := parts[0]
-	namespace := parts[1]
-	return name, namespace
+	name = parts[0]
+	namespace = parts[1]
+	return
 }
 
 // Run starts the service forwarder, blocking until it's done
