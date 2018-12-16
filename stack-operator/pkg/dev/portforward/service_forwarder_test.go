@@ -127,7 +127,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			},
 			extraAssertions: func(t *testing.T, tt test, f *serviceForwarder) {
 				ff := f.podForwarderFactory.(*capturingPodForwarderFactory)
-				assert.Equal(t, []string{"some-pod-name.bar.pod.cluster.local:http"}, ff.addrs)
+				assert.Equal(t, []string{"some-pod-name.bar.pod.cluster.local:9200"}, ff.addrs)
 			},
 		},
 	}
