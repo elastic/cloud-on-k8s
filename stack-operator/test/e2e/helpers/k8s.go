@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-const DefaultNamespace = "default"
+const DefaultNamespace = "e2e"
 
 var DefaultCtx = context.TODO()
 
@@ -30,6 +31,15 @@ func NewK8sClient() (*K8sHelper, error) {
 	return &K8sHelper{
 		Client: client,
 	}, nil
+}
+
+func NewK8sClientOrFatal() *K8sHelper {
+	client, err := NewK8sClient()
+	if err != nil {
+		fmt.Println("Cannot create K8s client", err)
+		os.Exit(1)
+	}
+	return client
 }
 
 func CreateClient() (client.Client, error) {

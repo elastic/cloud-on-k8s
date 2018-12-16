@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-SVCS=`kubectl get service -o json | jq -r '.items | map(select(.metadata.ownerReferences)) | map(select(any(.metadata.ownerReferences[]; .kind == "Stack") and .spec.clusterIP != "None") | "\(.metadata.name):\(.spec.ports[0].port)" ) | @sh '`
+SVCS=`kubectl get service -o json | jq -r '.items | map(select(.metadata.ownerReferences)) | map(select(any(.metadata.ownerReferences[]; .kind == "ElasticsearchCluster" or .kind == "Kibana") and .spec.clusterIP != "None") | "\(.metadata.name):\(.spec.ports[0].port)" ) | @sh '`
 
 SUDOMESSAGE="Please enter your sudo password to modify the hosts file"
 
