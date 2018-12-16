@@ -8,7 +8,6 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,29 +24,16 @@ type serviceForwarder struct {
 	// client is used to look up the service and pods selected by the service during dialing
 	client client.Client
 
-	forwarders map[string]Forwarder
-	sync.Mutex
+	store *forwarderStore
 
 	// podForwarderFactory enables injecting a custom forwarder factory in tests
-	podForwarderFactory PodForwarderFactory
+	podForwarderFactory ForwarderFactory
 }
 
 var _ Forwarder = &serviceForwarder{}
 
-// PodForwarderFactory is a function that can produce forwarders
-type PodForwarderFactory interface {
-	NewPodForwarder(network, addr string) (Forwarder, error)
-}
-
-// ForwarderFactoryFunc is a converter from a function to a ForwarderFactory
-type PodForwarderFactoryFunc func(network, addr string) (Forwarder, error)
-
-func (f PodForwarderFactoryFunc) NewPodForwarder(network, addr string) (Forwarder, error) {
-	return f(network, addr)
-}
-
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
-var defaultPodForwarderFactory = PodForwarderFactoryFunc(func(network, addr string) (Forwarder, error) {
+var defaultPodForwarderFactory = ForwarderFactoryFunc(func(network, addr string) (Forwarder, error) {
 	return NewPodForwarder(network, addr)
 })
 
@@ -64,7 +50,7 @@ func NewServiceForwarder(client client.Client, network, addr string) (*serviceFo
 		serviceName: serviceName,
 		namespace:   namespace,
 
-		forwarders:          make(map[string]Forwarder),
+		store:               NewForwarderStore(),
 		podForwarderFactory: defaultPodForwarderFactory,
 	}, nil
 }
@@ -134,50 +120,12 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 
 	// this should match a supported format of parsePodAddr(addr string)
 	podAddr := fmt.Sprintf("%s.%s.pod.cluster.local:%s", pod.Name, pod.Namespace, targetPort.String())
-	forwarder, err := f.getOrCreateForwarder(f.network, podAddr)
+	forwarder, err := f.store.GetOrCreateForwarder(f.network, podAddr, f.podForwarderFactory)
 	if err != nil {
 		return nil, err
 	}
 
 	return forwarder.DialContext(ctx)
-}
-
-// getOrCreateForwarder returns a cached
-func (f *serviceForwarder) getOrCreateForwarder(network, addr string) (Forwarder, error) {
-	f.Lock()
-	defer f.Unlock()
-
-	key := addr
-
-	fwd, ok := f.forwarders[key]
-	if ok {
-		return fwd, nil
-	}
-
-	fwd, err := NewPodForwarder(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	f.forwarders[key] = fwd
-
-	// start the podForwarder in a goroutine
-	go func() {
-		// remove the podForwarder from the map when done running
-		defer func() {
-			f.Lock()
-			defer f.Unlock()
-
-			delete(f.forwarders, key)
-		}()
-		// TODO: cancel this at some point to GC?
-		if err := fwd.Run(context.TODO()); err != nil {
-			log.Error(err, "Forwarder returned with an error")
-		} else {
-			log.Info("Forwarder returned without an error")
-		}
-	}()
-
-	return fwd, nil
 }
 
 // readyPods returns a new slice that containing only the pods that are ready.

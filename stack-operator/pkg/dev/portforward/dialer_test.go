@@ -47,7 +47,7 @@ func TestForwardingDialer_DialContext(t *testing.T) {
 		{
 			name: "sample",
 			tweaks: func(dialer *ForwardingDialer) {
-				dialer.forwarderFactory = ForwarderFactoryFunc(
+				dialer.forwarderFactory = DialerForwarderFactoryFunc(
 					func(_ client.Client, network, addr string) (Forwarder, error) {
 						return &stubForwarder{
 							network: network, addr: addr,

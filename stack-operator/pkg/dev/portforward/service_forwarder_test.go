@@ -49,7 +49,7 @@ type capturingPodForwarderFactory struct {
 	addrs []string
 }
 
-func (f *capturingPodForwarderFactory) NewPodForwarder(network, addr string) (Forwarder, error) {
+func (f *capturingPodForwarderFactory) NewForwarder(network, addr string) (Forwarder, error) {
 	f.addrs = append(f.addrs, addr)
 	return &stubForwarder{network: network, addr: addr}, nil
 }

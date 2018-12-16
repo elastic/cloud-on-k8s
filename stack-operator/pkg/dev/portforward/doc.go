@@ -6,3 +6,11 @@
 //
 // Note: It is intended for development use only.
 package portforward
+
+import (
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	log = logf.KBLog.WithName("portforward")
+)

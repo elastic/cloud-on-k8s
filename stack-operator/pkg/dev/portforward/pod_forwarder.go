@@ -22,8 +22,6 @@ type podForwarder struct {
 	network, addr      string
 	podName, namespace string
 
-	sync.Mutex
-
 	// initChan is used to wait for the port-forwarder to be set up before redirecting connections
 	initChan chan struct{}
 	// viaErr is set when there's an error during initialization
@@ -61,6 +59,7 @@ var defaultEphemeralPortFinder = func() (string, error) {
 	return localPort, err
 }
 
+// PortForwarderFactory is a factory for port forwarders
 type PortForwarderFactory interface {
 	NewPortForwarder(
 		ctx context.Context,
@@ -70,6 +69,7 @@ type PortForwarderFactory interface {
 	) (PortForwarder, error)
 }
 
+// PortForwarder is a port forwarder that may be started.
 type PortForwarder interface {
 	ForwardPorts() error
 }

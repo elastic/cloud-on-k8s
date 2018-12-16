@@ -2,14 +2,12 @@ package portforward
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"strings"
 	"sync"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -19,42 +17,41 @@ const (
 var (
 	AutoPortForwardFlag = false
 	AutoDialer          = NewForwardingDialer()
-
-	log = logf.KBLog.WithName("portforward")
 )
 
 // ForwardingDialer is a dialer that uses a podForwarder to redirect connections when dialing
 type ForwardingDialer struct {
-	forwarders map[string]Forwarder
-	sync.Mutex
+	store *forwarderStore
 
 	initOnce sync.Once
 	client   client.Client
 
-	// forwarderFactory is used to inject a custom podForwarder during testing.
-	forwarderFactory ForwarderFactory
+	// forwarderFactory is used to inject a custom Forwarder during testing.
+	forwarderFactory DialerForwarderFactory
 }
 
-// ForwarderFactory is a function that can produce forwarders
-type ForwarderFactory interface {
+// DialerForwarderFactory is a function that can produce forwarders
+type DialerForwarderFactory interface {
 	NewForwarder(client client.Client, network, addr string) (Forwarder, error)
 }
 
-// ForwarderFactoryFunc is a converter from a function to a ForwarderFactory
-type ForwarderFactoryFunc func(client client.Client, network, addr string) (Forwarder, error)
+// ForwarderFactoryFunc is a converter from a function to a DialerForwarderFactory
+type DialerForwarderFactoryFunc func(client client.Client, network, addr string) (Forwarder, error)
 
-func (f ForwarderFactoryFunc) NewForwarder(client client.Client, network, addr string) (Forwarder, error) {
+func (f DialerForwarderFactoryFunc) NewForwarder(client client.Client, network, addr string) (Forwarder, error) {
 	return f(client, network, addr)
 }
 
 // defaultForwarderFactory is the default podForwarder factory used outside of tests
-var defaultForwarderFactory = func(client client.Client, network, addr string) (Forwarder, error) {
-	if strings.Contains(addr, ".svc.cluster.local:") {
-		// it looks like a service url, so forward as a service
-		return NewServiceForwarder(client, network, addr)
-	}
-	return NewPodForwarder(network, addr)
-}
+var defaultForwarderFactory = DialerForwarderFactoryFunc(
+	func(client client.Client, network, addr string) (Forwarder, error) {
+		if strings.Contains(addr, ".svc.cluster.local:") {
+			// it looks like a service url, so forward as a service
+			return NewServiceForwarder(client, network, addr)
+		}
+		return NewPodForwarder(network, addr)
+	},
+)
 
 // Forwarder is something that can forward connections
 type Forwarder interface {
@@ -67,8 +64,8 @@ type Forwarder interface {
 // NewForwardingDialer creates a new, initialized ForwardingDialer
 func NewForwardingDialer() *ForwardingDialer {
 	return &ForwardingDialer{
-		forwarders:       make(map[string]Forwarder),
-		forwarderFactory: ForwarderFactoryFunc(defaultForwarderFactory),
+		store:            NewForwarderStore(),
+		forwarderFactory: DialerForwarderFactoryFunc(defaultForwarderFactory),
 	}
 }
 
@@ -97,7 +94,7 @@ func (d *ForwardingDialer) initIfRequired() {
 func (d *ForwardingDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	d.initIfRequired()
 
-	fwd, err := d.getOrCreateForwarder(network, addr)
+	fwd, err := d.store.GetOrCreateForwarder(network, addr, ForwarderFactoryFunc(d.newForwarder))
 	if err != nil {
 		return nil, err
 	}
@@ -105,45 +102,7 @@ func (d *ForwardingDialer) DialContext(ctx context.Context, network, addr string
 	return fwd.DialContext(ctx)
 }
 
-// getOrCreateForwarder gets the current or creates and inserts a new Forwarder for the given address
-func (d *ForwardingDialer) getOrCreateForwarder(network, addr string) (Forwarder, error) {
-	d.Lock()
-	defer d.Unlock()
-
-	key := netAddrToKey(network, addr)
-
-	fwd, ok := d.forwarders[key]
-	if ok {
-		return fwd, nil
-	}
-
-	fwd, err := d.forwarderFactory.NewForwarder(d.client, network, addr)
-	if err != nil {
-		return nil, err
-	}
-	d.forwarders[key] = fwd
-
-	// start the podForwarder in a goroutine
-	go func() {
-		// remove the podForwarder from the map when done running
-		defer func() {
-			d.Lock()
-			defer d.Unlock()
-
-			delete(d.forwarders, key)
-		}()
-		// TODO: cancel this at some point to GC?
-		if err := fwd.Run(context.TODO()); err != nil {
-			log.Error(err, "Forwarder returned with an error")
-		} else {
-			log.Info("Forwarder returned without an error")
-		}
-	}()
-
-	return fwd, nil
-}
-
-// netAddrToKey returns the map key to use for this network+address tuple
-func netAddrToKey(network, addr string) string {
-	return fmt.Sprintf("%s/%s", network, addr)
+// newForwarder adapts our internal forwarder factory to the forwarderStore one.
+func (d *ForwardingDialer) newForwarder(network, addr string) (Forwarder, error) {
+	return d.forwarderFactory.NewForwarder(d.client, network, addr)
 }
