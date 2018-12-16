@@ -11,8 +11,9 @@ import (
 	"net/http"
 	"path"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 )
 
 // User captures Elasticsearch user credentials.
@@ -29,7 +30,9 @@ type Client struct {
 }
 
 // NewElasticsearchClient creates a new client for the target cluster.
-func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *Client {
+//
+// If dialer is not nil, it will be used to create new TCP connections
+func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caPool *x509.CertPool) *Client {
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs: caPool,
@@ -38,9 +41,9 @@ func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *C
 		},
 	}
 
-	// if auto portforwarding is enabled, use the custom dialer
-	if portforward.AutoPortForwardFlag {
-		transportConfig.DialContext = portforward.AutoDialer.DialContext
+	// use the custom dialer if provided
+	if dialer != nil {
+		transportConfig.DialContext = dialer.DialContext
 	}
 
 	return &Client{

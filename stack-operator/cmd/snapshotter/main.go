@@ -75,7 +75,7 @@ func execute() {
 	if esURL == "" {
 		unrecoverable(errors.New(fmt.Sprintf("%s is required", esURLFlag)))
 	}
-	apiClient := esclient.NewElasticsearchClient(esURL, user, certPool)
+	apiClient := esclient.NewElasticsearchClient(nil, esURL, user, certPool)
 
 	interval := viper.GetDuration(intervalFlag)
 	max := viper.GetInt(maxFlag)

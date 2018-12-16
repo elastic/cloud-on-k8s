@@ -10,15 +10,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-const (
-	AutoPortForwardFlagName = "auto-port-forward"
-)
-
-var (
-	AutoPortForwardFlag = false
-	AutoDialer          = NewForwardingDialer()
-)
-
 // ForwardingDialer is a dialer that uses a podForwarder to redirect connections when dialing
 type ForwardingDialer struct {
 	store *forwarderStore

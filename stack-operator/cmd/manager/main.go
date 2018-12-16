@@ -3,12 +3,13 @@ package manager
 import (
 	"fmt"
 	"os"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
+	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch"
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,6 +22,8 @@ import (
 const (
 	MetricsPortFlag   = "metrics-port"
 	DefaultMetricPort = 8080
+
+	AutoPortForwardFlagName = "auto-port-forward"
 )
 
 var (
@@ -40,16 +43,29 @@ var (
 )
 
 func init() {
+	// development mode is only available as a command line flag to avoid accidentally enabling it
 	Cmd.Flags().BoolVar(&development, "development", false, "turns on development mode")
-	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snapshotter application")
-	Cmd.Flags().BoolVar(
-		&portforward.AutoPortForwardFlag,
-		portforward.AutoPortForwardFlagName,
-		false,
-		"enables automatic port-forwarding (for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
+
+	Cmd.Flags().String(
+		elasticsearch.SnapshotterImageFlag,
+		"",
+		"image to use for the snapshotter application",
 	)
-	Cmd.Flags().Int(MetricsPortFlag, DefaultMetricPort, "Port to use for exposing metrics in the Prometheus format (set 0 to disable)")
+	Cmd.Flags().Bool(
+		AutoPortForwardFlagName,
+		false,
+		"enables automatic port-forwarding "+
+			"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)",
+	)
+	Cmd.Flags().Int(
+		MetricsPortFlag,
+		DefaultMetricPort,
+		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
+	)
+
 	viper.BindPFlags(Cmd.Flags())
+	// enable using dashed notation in flags and underscores in env
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 }
 
@@ -58,14 +74,15 @@ func execute() {
 
 	log := logf.Log.WithName("manager")
 
-	if !development && portforward.AutoPortForwardFlag {
+	var dialer net.Dialer
+	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
+	if !development && autoPortForward {
 		panic(fmt.Sprintf(
-			"Enabling %s without enabling development mode not allowed", portforward.AutoPortForwardFlagName,
+			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))
-	}
-
-	if portforward.AutoPortForwardFlag {
+	} else if autoPortForward {
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
+		dialer = portforward.NewForwardingDialer()
 	}
 
 	if viper.GetString(elasticsearch.SnapshotterImageFlag) == "" {
@@ -107,7 +124,7 @@ func execute() {
 
 	// Setup all Controllers
 	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddToManager(mgr, dialer); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
 	}
