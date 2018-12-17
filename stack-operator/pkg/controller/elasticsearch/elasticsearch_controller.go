@@ -135,6 +135,7 @@ type ReconcileElasticsearch struct {
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters;elasticsearchclusters/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -285,6 +286,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	keystoreConfig, err := r.ReconcileSnapshotCredentials(es.Spec.SnapshotRepository)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	expectedConfigMap := versionStrategy.ExpectedConfigMap(es)
+	err = r.ReconcileConfigMap(es, expectedConfigMap)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -635,14 +642,20 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 		return reconcile.Result{}, err
 	}
 
-	var esDiscoveryService corev1.Service
-	if err := r.Get(context.TODO(), types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      support.DiscoveryServiceName(es.Name),
-	}, &esDiscoveryService); err != nil {
+	esAllServices, err := getNamedServices(
+		r,
+		types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      support.DiscoveryServiceName(es.Name),
+		},
+		types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      support.PublicServiceName(es.Name),
+		},
+	)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
-	esAllServices := []corev1.Service{esDiscoveryService}
 
 	for _, secret := range nodeCertificateSecrets {
 		// todo: error checking if label does not exist
@@ -694,6 +707,19 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 	}
 
 	return reconcile.Result{}, nil
+}
+
+// getNamedServices retrieves the named services from the API
+func getNamedServices(client client.Client, names ...types.NamespacedName) ([]corev1.Service, error) {
+	services := make([]corev1.Service, len(names))
+	for i, name := range names {
+		var service corev1.Service
+		if err := client.Get(context.TODO(), name, &service); err != nil {
+			return nil, err
+		}
+		services[i] = service
+	}
+	return services, nil
 }
 
 func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1alpha1.ElasticsearchCluster) ([]corev1.Secret, error) {

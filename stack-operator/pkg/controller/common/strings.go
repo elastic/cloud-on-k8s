@@ -9,7 +9,8 @@ import (
 func Concat(args ...string) string {
 	var result strings.Builder
 	for _, arg := range args {
-		result.WriteString(arg)
+		// it's safe to ignore the result here as strings.Builder cannot error on result.WriteString
+		result.WriteString(arg) // #nosec G104
 	}
 	return result.String()
 }

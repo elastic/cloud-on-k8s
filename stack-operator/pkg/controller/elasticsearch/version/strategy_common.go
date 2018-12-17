@@ -3,6 +3,7 @@ package version
 import (
 	"context"
 	"fmt"
+	"path"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
@@ -17,6 +18,7 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
+	securityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
 )
 
 // newExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -43,6 +45,7 @@ func newExpectedPodSpecs(
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
 				Resources:            topology.Resources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
+				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 				KeystoreConfig:       paramsTmpl.KeystoreConfig,
 				ProbeUser:            paramsTmpl.ProbeUser,
@@ -131,6 +134,7 @@ func podSpec(
 			VolumeMounts: append(
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				p.UsersSecretVolume.VolumeMount(),
+				p.ConfigMapVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
@@ -140,6 +144,7 @@ func podSpec(
 		Volumes: append(
 			initcontainer.SharedVolumes.Volumes(),
 			p.UsersSecretVolume.Volume(),
+			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 		),
@@ -231,4 +236,14 @@ func nonZeroQuantityOrDefault(q, defaultQuantity resource.Quantity) resource.Qua
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
 	return int(q.Value()) / 1024 / 1024
+}
+
+// newDefaultConfigMap creates a default config map usable for all versions of Elasticsearch.
+func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
+	return support.NewConfigMapWithData(es, map[string]string{
+		// With a security manager present the JVM will cache hostname lookup results indefinitely.
+		// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
+		// See also: https://github.com/elastic/elasticsearch/pull/36570
+		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
+	})
 }

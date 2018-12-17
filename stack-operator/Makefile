@@ -9,6 +9,7 @@ KUSTOMIZE := $(shell command -v kustomize)
 SHA1SUM := $(shell command -v sha1sum)
 DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
+GOLANGCI_LINTER := $(shell command -v golangci-lint)
 
 KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
 CONFIG_FILE ?= .devenv
@@ -188,7 +189,7 @@ gke:
 # minikube ensures that there's a local minikube environment running
 .PHONY: minikube
 minikube: requisites
-ifneq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifneq ($(shell minikube status --format '{{.ApiServer}}'),Running)
 	@ echo "-> Starting minikube..."
 	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY}
 else
@@ -214,7 +215,7 @@ endif
 .PHONY: set-dev-gke
 set-dev-gke:
 ifdef MINIKUBE
-ifeq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifeq ($(shell minikube status --format '{{.Host}}'),Running)
 	minikube stop
 endif
 endif
@@ -259,6 +260,14 @@ start-port-forward:
 stop-port-forward:
 	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
 	@ echo "-> Stopped."
+
+.PHONY: lint
+lint:
+ifndef GOLANGCI_LINTER
+	@ echo "-> linter (golangci-lint) binary missing, install via \"https://github.com/golangci/golangci-lint#install\""
+	@ exit 5
+endif
+	@ $(GOLANGCI_LINTER) run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
 
 # -- e2e tests
 

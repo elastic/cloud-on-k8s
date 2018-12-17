@@ -6,6 +6,20 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: elasticsearchclusters.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .status.phase
+    name: phase
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
     categories:
