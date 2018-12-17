@@ -24,9 +24,9 @@ type Params struct {
 	Scheme *runtime.Scheme
 	Owner  metav1.Object
 	Object runtime.Object
-	// func(expected, found T) bool
+	// Differ is a generic function of the type func(expected, found T) bool where T is a runtime.Object
 	Differ interface{}
-	// func(expected, found T)
+	// Modifier is generic fucntion of the type func(expected, found T) where T is runtime Object
 	Modifier interface{}
 }
 

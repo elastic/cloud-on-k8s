@@ -2,25 +2,23 @@ package nodecerts
 
 import (
 	"bytes"
-	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"fmt"
 	"math/big"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var (
@@ -127,44 +125,33 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
 	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: c.Cert.Raw})
 
-	var clusterCASecret corev1.Secret
-	if err := cl.Get(context.TODO(), objectKey, &clusterCASecret); err != nil && !apierrors.IsNotFound(err) {
-		return err
-	} else if apierrors.IsNotFound(err) {
-		clusterCASecret = corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      objectKey.Name,
-				Namespace: objectKey.Namespace,
-			},
-			Data: map[string][]byte{
-				SecretCAKey: expectedCaKeyBytes,
-			},
-		}
-
-		if err := controllerutil.SetControllerReference(owner, &clusterCASecret, scheme); err != nil {
-			return err
-		}
-
-		log.Info(fmt.Sprintf(
-			"Creating CA public certs for secret %s in namespace %s", objectKey.Name, objectKey.Namespace,
-		))
-		return cl.Create(context.TODO(), &clusterCASecret)
+	clusterCASecret := corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      objectKey.Name,
+			Namespace: objectKey.Namespace,
+		},
+		Data: map[string][]byte{
+			SecretCAKey: expectedCaKeyBytes,
+		},
 	}
 
-	// if Data is nil, create it in case we're starting with a poorly initialized secret
-	if clusterCASecret.Data == nil {
-		clusterCASecret.Data = make(map[string][]byte)
-	}
+	return reconciler.ReconcileResource(reconciler.Params{
+		Client: cl,
+		Scheme: scheme,
+		Owner:  owner,
+		Object: &clusterCASecret,
+		Differ: func(expected, found *corev1.Secret) bool {
+			// if Data is nil, create it in case we're starting with a poorly initialized secret
+			if found.Data == nil {
+				found.Data = make(map[string][]byte)
+			}
+			caKey, ok := clusterCASecret.Data[SecretCAKey]
+			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
-	// if the secret does not contain our cert, update it
-	if caKey, ok := clusterCASecret.Data[SecretCAKey]; !ok || !bytes.Equal(caKey, expectedCaKeyBytes) {
-		clusterCASecret.Data[SecretCAKey] = expectedCaKeyBytes
+		},
+		Modifier: func(_, found *corev1.Secret) {
+			found.Data[SecretCAKey] = expectedCaKeyBytes
+		},
+	})
 
-		log.Info(fmt.Sprintf(
-			"Updating CA public certs for secret %s in namespace %s", objectKey.Name, objectKey.Namespace,
-		))
-		return cl.Update(context.TODO(), &clusterCASecret)
-	}
-
-	return nil
 }
