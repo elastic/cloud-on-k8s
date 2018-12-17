@@ -36,8 +36,6 @@ func NewElasticsearchClient(esURL string, esUser User, caPool *x509.CertPool) *C
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
 					RootCAs: caPool,
-					// TODO: we can do better.
-					InsecureSkipVerify: true,
 				},
 			},
 		},

@@ -9,6 +9,7 @@ KUSTOMIZE := $(shell command -v kustomize)
 SHA1SUM := $(shell command -v sha1sum)
 DEP := $(shell command -v dep)
 GCLOUD := $(shell command -v gcloud)
+GOLANGCI_LINTER := $(shell command -v golangci-lint)
 
 KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
 CONFIG_FILE ?= .devenv
@@ -30,6 +31,7 @@ GCR_REGION_NAME ?= eu.gcr.io
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= $(shell find pkg -type f -print0 | xargs -0 sha1sum | sha1sum | awk '{print $$1}')
 IMG ?= $(GCR_REGION_NAME)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+E2E_IMG ?= $(IMG)-e2e-tests
 
 OPERATOR_NAMESPACE ?= stack-operators-system
 
@@ -43,13 +45,6 @@ unit:
 
 integration: generate fmt vet manifests
 	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
-
-TESTS_MATCH ?= ""
-# run e2e tests
-# can be overriden with the name of the test to run, eg.:
-# make e2e TESTS_MATCH=TestMutationMoreNodes
-e2e:
-	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run $(TESTS_MATCH)
 
 # Build stack-operator binary
 stack-operator: generate fmt vet
@@ -194,7 +189,7 @@ gke:
 # minikube ensures that there's a local minikube environment running
 .PHONY: minikube
 minikube: requisites
-ifneq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifneq ($(shell minikube status --format '{{.ApiServer}}'),Running)
 	@ echo "-> Starting minikube..."
 	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY}
 else
@@ -220,7 +215,7 @@ endif
 .PHONY: set-dev-gke
 set-dev-gke:
 ifdef MINIKUBE
-ifeq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifeq ($(shell minikube status --format '{{.Host}}'),Running)
 	minikube stop
 endif
 endif
@@ -265,3 +260,32 @@ start-port-forward:
 stop-port-forward:
 	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
 	@ echo "-> Stopped."
+
+.PHONY: lint
+lint:
+ifndef GOLANGCI_LINTER
+	@ echo "-> linter (golangci-lint) binary missing, install via \"https://github.com/golangci/golangci-lint#install\""
+	@ exit 5
+endif
+	@ $(GOLANGCI_LINTER) run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
+
+# -- e2e tests
+
+TESTS_MATCH ?= ""
+# run e2e tests
+# can be overriden with the name of the test to run, eg.:
+# make e2e TESTS_MATCH=TestMutationMoreNodes
+e2e: docker-e2e
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" "$(TESTS_MATCH)"
+
+# Build and (maybe) push e2e tests Docker image
+docker-e2e:
+ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# build locally, then push to gke registry
+	docker build -t $(E2E_IMG):$(IMG_TAG) -f test/e2e/Dockerfile .
+	docker push $(E2E_IMG):$(IMG_TAG)
+else
+	# build with Minikube's Docker, don't push
+	eval $$(minikube docker-env) ;\
+	docker build -t $(E2E_IMG):$(IMG_TAG) -f test/e2e/Dockerfile .
+endif

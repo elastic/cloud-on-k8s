@@ -47,7 +47,9 @@ func CreateClient() (client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	v1alpha1.AddToScheme(scheme.Scheme)
+	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
 	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		return nil, err

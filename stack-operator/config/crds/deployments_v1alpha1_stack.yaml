@@ -6,6 +6,18 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: stacks.deployments.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.elasticsearch.health
+    description: Elasticsearch health
+    name: es
+    type: string
+  - JSONPath: .status.kibana.health
+    description: Kibana health
+    name: kibana
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: string
   group: deployments.k8s.elastic.co
   names:
     categories:

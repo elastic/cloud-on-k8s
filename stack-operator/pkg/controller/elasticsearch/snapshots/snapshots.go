@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/pkg/errors"
-
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -189,7 +189,7 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 				errs = append(errs, err)
 			}
 		}
-		return common.NewCompoundError(errs)
+		return k8serrors.NewAggregate(errs)
 
 	default:
 		return errors.New(common.Concat("Unsupported snapshot repository type ", string(kind)))

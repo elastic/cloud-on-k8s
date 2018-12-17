@@ -242,7 +242,7 @@ func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim,
 }
 func IsTainted(pod corev1.Pod) bool {
 	if v, ok := pod.Annotations[TaintedAnnotationName]; ok {
-		tainted, _ := strconv.ParseBool(v)
+		tainted, _ := strconv.ParseBool(v) // #nosec G104 // ignore unhandled error because we want to default to false
 		return tainted
 	}
 	return false
