@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/apimachinery/pkg/labels"
-
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
@@ -20,10 +18,12 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -44,9 +44,8 @@ var (
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this elasticsearch.Add(mgr) to install this Controller
-func Add(mgr manager.Manager) error {
-	reconciler, err := newReconciler(mgr)
+func Add(mgr manager.Manager, dialer net.Dialer) error {
+	reconciler, err := newReconciler(mgr, dialer)
 	if err != nil {
 		return err
 	}
@@ -54,7 +53,7 @@ func Add(mgr manager.Manager) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
+func newReconciler(mgr manager.Manager, dialer net.Dialer) (reconcile.Reconciler, error) {
 	esCa, err := nodecerts.NewSelfSignedCa("elasticsearch-controller")
 	if err != nil {
 		return nil, err
@@ -66,6 +65,8 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		esCa: esCa,
+
+		dialer: dialer,
 	}, nil
 }
 
@@ -120,6 +121,8 @@ type ReconcileElasticsearch struct {
 	recorder record.EventRecorder
 
 	esCa *nodecerts.Ca
+
+	dialer net.Dialer
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -219,7 +222,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 ) (reconcile.Result, error) {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(r.esCa.Cert)
-	esClient := esclient.NewElasticsearchClient(support.PublicServiceURL(es), controllerUser, certPool)
+	esClient := esclient.NewElasticsearchClient(r.dialer, support.PublicServiceURL(es), controllerUser, certPool)
 
 	resourcesState, err := support.NewResourcesStateFromAPI(r, es)
 	if err != nil {

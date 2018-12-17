@@ -11,7 +11,6 @@ import (
 var log = logf.KBLog.WithName("main")
 
 func main() {
-	logf.SetLogger(logf.ZapLogger(false))
 	var rootCmd = &cobra.Command{Use: "stack-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
 
