@@ -80,7 +80,7 @@ func (r *ReconcileElasticsearch) reconcileSecret(es *v1alpha1.ElasticsearchClust
 			found.Data = expected.Data // only update data, keep the rest
 		},
 	})
-	if err != nil {
+	if err == nil {
 		//expected creds have been updated to reflect the state on the API server
 		expectedCreds.Reset(expected)
 	}

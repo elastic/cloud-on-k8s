@@ -48,6 +48,7 @@ func ReconcileResource(params Params) error {
 	}
 	// Check if already exists
 	expected := obj
+	// runtime.Object is an interface containing a pointer to value of type resourceType
 	resourceType := reflect.Indirect(reflect.ValueOf(obj)).Type()
 	empty := reflect.New(resourceType)
 	found, ok := empty.Interface().(runtime.Object)
