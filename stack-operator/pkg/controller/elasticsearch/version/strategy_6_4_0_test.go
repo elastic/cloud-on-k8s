@@ -59,7 +59,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "network.host", Value: "0.0.0.0"},
 				{Name: "path.data", Value: "/usr/share/elasticsearch/data"},
 				{Name: "path.logs", Value: "/usr/share/elasticsearch/logs"},
-				{Name: "ES_JAVA_OPTS", Value: "-Xms512M -Xmx512M"},
+				{Name: "ES_JAVA_OPTS", Value: "-Xms512M -Xmx512M -Djava.security.properties=/usr/share/elasticsearch/config/managed/security.properties"},
 				{Name: "node.master", Value: "true"},
 				{Name: "node.data", Value: "true"},
 				{Name: "node.ingest", Value: "false"},
@@ -160,7 +160,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 2, len(esPodSpec.InitContainers))
-	assert.Equal(t, 8, len(esPodSpec.Volumes))
+	assert.Equal(t, 9, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -169,6 +169,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, support.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
-	assert.Equal(t, 9, len(esContainer.VolumeMounts))
+	assert.Equal(t, 10, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

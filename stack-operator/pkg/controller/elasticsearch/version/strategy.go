@@ -35,6 +35,9 @@ type ElasticsearchVersionStrategy interface {
 	// PodLabels returns version-related labels for new pods
 	PodLabels() map[string]string
 
+	// ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
+	ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap
+
 	// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch
 	// cluster.
 	//

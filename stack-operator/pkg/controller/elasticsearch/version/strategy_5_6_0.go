@@ -41,6 +41,11 @@ func newStrategy_5_6_0(v version.Version) strategy_5_6_0 {
 	return strategy
 }
 
+// ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
+func (s strategy_5_6_0) ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
+	return newDefaultConfigMap(es)
+}
+
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func (s strategy_5_6_0) ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
@@ -54,6 +59,8 @@ func (s strategy_5_6_0) ExpectedPodSpecs(
 		"users",
 		"/usr/share/elasticsearch/config/x-pack",
 	)
+
+	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, support.ManagedConfigPath)
 
 	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
 	// potentially bypasses x-pack security.
@@ -96,7 +103,7 @@ func (s strategy_5_6_0) newEnvironmentVars(
 		{Name: support.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, securityPropsFile)},
 
 		// TODO: dedicated node types support
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},

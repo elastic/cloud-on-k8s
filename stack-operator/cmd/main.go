@@ -8,9 +8,14 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
+var log = logf.KBLog.WithName("main")
+
 func main() {
 	logf.SetLogger(logf.ZapLogger(false))
 	var rootCmd = &cobra.Command{Use: "stack-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
-	rootCmd.Execute()
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Error(err, "Unexpected error while running executing command")
+	}
 }
