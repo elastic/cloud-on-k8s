@@ -6,6 +6,17 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibanas.kibana.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: string
   group: kibana.k8s.elastic.co
   names:
     categories:

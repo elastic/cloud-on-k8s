@@ -135,6 +135,7 @@ type ReconcileElasticsearch struct {
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters;elasticsearchclusters/status,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -285,6 +286,12 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 	}
 
 	keystoreConfig, err := r.ReconcileSnapshotCredentials(es.Spec.SnapshotRepository)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	expectedConfigMap := versionStrategy.ExpectedConfigMap(es)
+	err = r.ReconcileConfigMap(es, expectedConfigMap)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
