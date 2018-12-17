@@ -195,7 +195,7 @@ gke:
 # minikube ensures that there's a local minikube environment running
 .PHONY: minikube
 minikube: requisites
-ifneq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifneq ($(shell minikube status --format '{{.ApiServer}}'),Running)
 	@ echo "-> Starting minikube..."
 	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY}
 else
@@ -221,7 +221,7 @@ endif
 .PHONY: set-dev-gke
 set-dev-gke:
 ifdef MINIKUBE
-ifeq ($(shell minikube status --format '{{.MinikubeStatus}}'),Running)
+ifeq ($(shell minikube status --format '{{.Host}}'),Running)
 	minikube stop
 endif
 endif
