@@ -17,8 +17,8 @@ import (
 
 // serviceForwarder forwards one port of a service
 type serviceForwarder struct {
-	network, addr          string
-	serviceName, namespace string
+	network, addr string
+	serviceNSN    types.NamespacedName
 
 	// client is used to look up the service and pods selected by the service during dialing
 	client client.Client
@@ -32,13 +32,16 @@ type serviceForwarder struct {
 var _ Forwarder = &serviceForwarder{}
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
-var defaultPodForwarderFactory = ForwarderFactoryFunc(func(network, addr string) (Forwarder, error) {
+var defaultPodForwarderFactory = ForwarderFactory(func(network, addr string) (Forwarder, error) {
 	return NewPodForwarder(network, addr)
 })
 
 // NewServiceForwarder returns a new initialized service forwarder
 func NewServiceForwarder(client client.Client, network, addr string) (*serviceForwarder, error) {
-	serviceName, namespace := parseServiceAddr(addr)
+	serviceNSN, err := parseServiceAddr(addr)
+	if err != nil {
+		return nil, err
+	}
 
 	return &serviceForwarder{
 		network: network,
@@ -46,8 +49,7 @@ func NewServiceForwarder(client client.Client, network, addr string) (*serviceFo
 
 		client: client,
 
-		serviceName: serviceName,
-		namespace:   namespace,
+		serviceNSN: *serviceNSN,
 
 		store:               NewForwarderStore(),
 		podForwarderFactory: defaultPodForwarderFactory,
@@ -55,12 +57,15 @@ func NewServiceForwarder(client client.Client, network, addr string) (*serviceFo
 }
 
 // parseServiceAddr parses the service name and namespace from a connection address
-func parseServiceAddr(addr string) (name string, namespace string) {
+func parseServiceAddr(addr string) (*types.NamespacedName, error) {
 	// services generally look like this (as FQDN): {name}.{namespace}.svc.cluster.local
 	parts := strings.SplitN(addr, ".", 3)
-	name = parts[0]
-	namespace = parts[1]
-	return
+
+	if len(parts) <= 2 {
+		return nil, fmt.Errorf("unsupported service address format: %s", addr)
+	}
+
+	return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
 }
 
 // Run starts the service forwarder, blocking until it's done
@@ -85,24 +90,35 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	}
 
 	service := v1.Service{}
-	serviceObjectKey := types.NamespacedName{Namespace: f.namespace, Name: f.serviceName}
 
-	if err := f.client.Get(ctx, serviceObjectKey, &service); err != nil {
+	if err := f.client.Get(ctx, f.serviceNSN, &service); err != nil {
 		return nil, err
 	}
 
 	// TODO: support named ports? how it's supposed to work is not quite clear atm, and we don't use it ourselves
 	// so this is deferred to later
-	targetPort := intstr.FromInt(servicePort)
+
+	targetPort := intstr.FromInt(0)
 	for _, port := range service.Spec.Ports {
 		if port.Port == int32(servicePort) {
-			targetPort = port.TargetPort
+			// default to using the same port between the service and the target
+			targetPort = intstr.FromInt(int(port.Port))
+
+			// if .TargetPort is non-0, we use that
+			if port.TargetPort.IntValue() != 0 {
+				targetPort = port.TargetPort
+			}
+			break
 		}
+	}
+
+	if targetPort.IntValue() == 0 {
+		return nil, fmt.Errorf("service is not listening on port: %d", servicePort)
 	}
 
 	endpoints := v1.Endpoints{}
 
-	if err := f.client.Get(ctx, serviceObjectKey, &endpoints); err != nil {
+	if err := f.client.Get(ctx, f.serviceNSN, &endpoints); err != nil {
 		return nil, err
 	}
 

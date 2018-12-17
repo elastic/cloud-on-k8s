@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
@@ -61,7 +63,7 @@ func Test_podForwarder_DialContext(t *testing.T) {
 				f.ephemeralPortFinder = func() (string, error) {
 					return "12345", nil
 				}
-				f.portForwarderFactory = PortForwarderFactoryFunc(func(
+				f.portForwarderFactory = PortForwarderFactory(func(
 					ctx context.Context,
 					namespace, podName string,
 					ports []string,
@@ -129,15 +131,13 @@ func Test_parsePodAddr(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    string
-		want1   string
+		want    types.NamespacedName
 		wantErr error
 	}{
 		{
-			name:  "without subdomain",
-			args:  args{addr: "foo.bar.pod.cluster.local"},
-			want:  "foo",
-			want1: "bar",
+			name: "without subdomain",
+			args: args{addr: "foo.bar.pod.cluster.local"},
+			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
 			name:    "invalid",
@@ -147,7 +147,7 @@ func Test_parsePodAddr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := parsePodAddr(tt.args.addr)
+			got, err := parsePodAddr(tt.args.addr)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)
@@ -155,12 +155,7 @@ func Test_parsePodAddr(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			if got != tt.want {
-				t.Errorf("parsePodAddr() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("parsePodAddr() got1 = %v, want %v", got1, tt.want1)
-			}
+			assert.Equal(t, tt.want, *got)
 		})
 	}
 }

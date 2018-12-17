@@ -18,23 +18,22 @@ type ForwardingDialer struct {
 	client   client.Client
 
 	// forwarderFactory is used to inject a custom Forwarder during testing.
-	forwarderFactory DialerForwarderFactory
+	forwarderFactory ForwardingDialerForwarderFactory
 }
 
-// DialerForwarderFactory is a function that can produce forwarders
-type DialerForwarderFactory interface {
-	NewForwarder(client client.Client, network, addr string) (Forwarder, error)
-}
+// ForwardingDialerForwarderFactory is a function that can produce forwarders
+type ForwardingDialerForwarderFactory func(client client.Client, network, addr string) (Forwarder, error)
 
-// ForwarderFactoryFunc is a converter from a function to a DialerForwarderFactory
-type DialerForwarderFactoryFunc func(client client.Client, network, addr string) (Forwarder, error)
-
-func (f DialerForwarderFactoryFunc) NewForwarder(client client.Client, network, addr string) (Forwarder, error) {
-	return f(client, network, addr)
+// NewForwardingDialer creates a new, initialized ForwardingDialer
+func NewForwardingDialer() *ForwardingDialer {
+	return &ForwardingDialer{
+		store:            NewForwarderStore(),
+		forwarderFactory: defaultForwarderFactory,
+	}
 }
 
 // defaultForwarderFactory is the default podForwarder factory used outside of tests
-var defaultForwarderFactory = DialerForwarderFactoryFunc(
+var defaultForwarderFactory = ForwardingDialerForwarderFactory(
 	func(client client.Client, network, addr string) (Forwarder, error) {
 		if strings.Contains(addr, ".svc.cluster.local:") {
 			// it looks like a service url, so forward as a service
@@ -50,14 +49,6 @@ type Forwarder interface {
 	Run(ctx context.Context) error
 	// DialContext creates a connection to the forwarded address
 	DialContext(ctx context.Context) (net.Conn, error)
-}
-
-// NewForwardingDialer creates a new, initialized ForwardingDialer
-func NewForwardingDialer() *ForwardingDialer {
-	return &ForwardingDialer{
-		store:            NewForwarderStore(),
-		forwarderFactory: DialerForwarderFactoryFunc(defaultForwarderFactory),
-	}
 }
 
 // initIfRequired initializes the dialer once if required.
@@ -85,7 +76,7 @@ func (d *ForwardingDialer) initIfRequired() {
 func (d *ForwardingDialer) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
 	d.initIfRequired()
 
-	fwd, err := d.store.GetOrCreateForwarder(network, addr, ForwarderFactoryFunc(d.newForwarder))
+	fwd, err := d.store.GetOrCreateForwarder(network, addr, d.newForwarder)
 	if err != nil {
 		return nil, err
 	}
@@ -95,5 +86,5 @@ func (d *ForwardingDialer) DialContext(ctx context.Context, network, addr string
 
 // newForwarder adapts our internal forwarder factory to the forwarderStore one.
 func (d *ForwardingDialer) newForwarder(network, addr string) (Forwarder, error) {
-	return d.forwarderFactory.NewForwarder(d.client, network, addr)
+	return d.forwarderFactory(d.client, network, addr)
 }

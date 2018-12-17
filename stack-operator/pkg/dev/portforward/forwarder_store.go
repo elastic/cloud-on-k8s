@@ -13,16 +13,7 @@ type forwarderStore struct {
 }
 
 // ForwarderFactory is a function that can produce forwarders
-type ForwarderFactory interface {
-	NewForwarder(network, addr string) (Forwarder, error)
-}
-
-// ForwarderFactoryFunc is an adapter from a function to a DialerForwarderFactory
-type ForwarderFactoryFunc func(network, addr string) (Forwarder, error)
-
-func (f ForwarderFactoryFunc) NewForwarder(network, addr string) (Forwarder, error) {
-	return f(network, addr)
-}
+type ForwarderFactory func(network, addr string) (Forwarder, error)
 
 // NewForwarderStore creates a new initialized forwarderStore
 func NewForwarderStore() *forwarderStore {
@@ -45,15 +36,15 @@ func (s *forwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 		return fwd, nil
 	}
 
-	fwd, err := factory.NewForwarder(network, addr)
+	fwd, err := factory(network, addr)
 	if err != nil {
 		return nil, err
 	}
 	s.forwarders[key] = fwd
 
-	// start the podForwarder in a goroutine
+	// run the forwarder in a goroutine
 	go func() {
-		// remove the podForwarder from the map when done running
+		// remove the forwarder from the map when done running
 		defer func() {
 			s.Lock()
 			defer s.Unlock()
@@ -62,9 +53,9 @@ func (s *forwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 		}()
 		// TODO: cancel this at some point to GC?
 		if err := fwd.Run(context.TODO()); err != nil {
-			log.Error(err, "Forwarder returned with an error")
+			log.Error(err, "Forwarder returned with an error", "addr", addr)
 		} else {
-			log.Info("Forwarder returned without an error")
+			log.Info("Forwarder returned without an error", "addr", addr)
 		}
 	}()
 

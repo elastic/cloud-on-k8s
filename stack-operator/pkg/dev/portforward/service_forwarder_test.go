@@ -2,14 +2,15 @@ package portforward
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -20,38 +21,35 @@ func Test_parseServiceAddr(t *testing.T) {
 		addr string
 	}
 	tests := []struct {
-		name  string
-		args  args
-		want  string
-		want1 string
+		name    string
+		args    args
+		want    types.NamespacedName
+		wantErr error
 	}{
 		{
-			name:  "service with namespace",
-			args:  args{addr: "foo.bar.svc.cluster.local"},
-			want:  "foo",
-			want1: "bar",
+			name: "service with namespace",
+			args: args{addr: "foo.bar.svc.cluster.local"},
+			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
+		},
+		{
+			name:    "non-fqdn service name",
+			args:    args{addr: "foo"},
+			wantErr: errors.New("unsupported service address format: foo"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := parseServiceAddr(tt.args.addr)
-			if got != tt.want {
-				t.Errorf("parseServiceAddr() got = %v, want %v", got, tt.want)
+			got, err := parseServiceAddr(tt.args.addr)
+
+			if tt.wantErr != nil {
+				assert.Equal(t, tt.wantErr, err)
+				return
 			}
-			if got1 != tt.want1 {
-				t.Errorf("parseServiceAddr() got1 = %v, want %v", got1, tt.want1)
-			}
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.want, *got)
 		})
 	}
-}
-
-type capturingPodForwarderFactory struct {
-	addrs []string
-}
-
-func (f *capturingPodForwarderFactory) NewForwarder(network, addr string) (Forwarder, error) {
-	f.addrs = append(f.addrs, addr)
-	return &stubForwarder{network: network, addr: addr}, nil
 }
 
 func Test_serviceForwarder_DialContext(t *testing.T) {
@@ -64,13 +62,12 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 		ctx context.Context
 	}
 	type test struct {
-		name            string
-		fields          fields
-		tweaks          func(f *serviceForwarder)
-		args            args
-		want            net.Conn
-		wantErr         bool
-		extraAssertions func(t *testing.T, tt test, f *serviceForwarder)
+		name    string
+		fields  fields
+		tweaks  func(f *serviceForwarder)
+		args    args
+		want    net.Conn
+		wantErr error
 	}
 
 	tests := []test{
@@ -117,12 +114,31 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 				),
 			},
 			tweaks: func(f *serviceForwarder) {
-				f.podForwarderFactory = &capturingPodForwarderFactory{}
+				f.podForwarderFactory = func(network, addr string) (Forwarder, error) {
+					return &stubForwarder{
+						onDialContext: func(ctx context.Context) (net.Conn, error) {
+							return nil, fmt.Errorf("would dial: %s", addr)
+						},
+					}, nil
+				}
 			},
-			extraAssertions: func(t *testing.T, tt test, f *serviceForwarder) {
-				ff := f.podForwarderFactory.(*capturingPodForwarderFactory)
-				assert.Equal(t, []string{"some-pod-name.bar.pod.cluster.local:9200"}, ff.addrs)
+			wantErr: errors.New("would dial: some-pod-name.bar.pod.cluster.local:9200"),
+		},
+		{
+			name: "should fail if the service is not listening on the specified port",
+			fields: fields{
+				network: "tcp",
+				addr:    "foo.bar.svc.cluster.local:1234",
+				client: fake.NewFakeClient(
+					&v1.Service{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "bar",
+						},
+					},
+				),
 			},
+			wantErr: errors.New("service is not listening on port: 1234"),
 		},
 	}
 	for _, tt := range tests {
@@ -135,17 +151,13 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			}
 
 			got, err := f.DialContext(tt.args.ctx)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("serviceForwarder.DialContext() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("serviceForwarder.DialContext() = %v, want %v", got, tt.want)
+			if tt.wantErr != nil {
+				assert.Equal(t, tt.wantErr, err)
+			} else {
+				assert.NoError(t, err)
 			}
 
-			if tt.extraAssertions != nil {
-				tt.extraAssertions(t, tt, f)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

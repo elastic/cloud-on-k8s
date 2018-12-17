@@ -10,17 +10,17 @@ import (
 	"strings"
 	"sync"
 
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
-
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // podForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
 type podForwarder struct {
-	network, addr      string
-	podName, namespace string
+	network, addr string
+	podNSN        types.NamespacedName
 
 	// initChan is used to wait for the port-forwarder to be set up before redirecting connections
 	initChan chan struct{}
@@ -41,7 +41,7 @@ type podForwarder struct {
 
 var _ Forwarder = &podForwarder{}
 
-// defaultEphemeralPortFinder finds an ephemral port by binding to :0 and checking what port was bound
+// defaultEphemeralPortFinder finds an ephemeral port by binding to :0 and checking what port was bound
 var defaultEphemeralPortFinder = func() (string, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -60,39 +60,20 @@ var defaultEphemeralPortFinder = func() (string, error) {
 }
 
 // PortForwarderFactory is a factory for port forwarders
-type PortForwarderFactory interface {
-	NewPortForwarder(
-		ctx context.Context,
-		namespace, podName string,
-		ports []string,
-		readyChan chan struct{},
-	) (PortForwarder, error)
-}
-
-// PortForwarder is a port forwarder that may be started.
-type PortForwarder interface {
-	ForwardPorts() error
-}
-
-// commandFactory is a factory for commands
-type PortForwarderFactoryFunc func(
+type PortForwarderFactory func(
 	ctx context.Context,
 	namespace, podName string,
 	ports []string,
 	readyChan chan struct{},
 ) (PortForwarder, error)
 
-func (f PortForwarderFactoryFunc) NewPortForwarder(
-	ctx context.Context,
-	namespace, podName string,
-	ports []string,
-	readyChan chan struct{},
-) (PortForwarder, error) {
-	return f(ctx, namespace, podName, ports, readyChan)
+// PortForwarder is a port forwarder that may be started.
+type PortForwarder interface {
+	ForwardPorts() error
 }
 
 // defaultPortForwarderFactory is the default factory used for port forwarders outside of tests
-var defaultPortForwarderFactory = PortForwarderFactoryFunc(newKubectlPortForwarder)
+var defaultPortForwarderFactory = PortForwarderFactory(newKubectlPortForwarder)
 
 // dialerFunc is a factory for connections
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
@@ -105,7 +86,7 @@ var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address st
 
 // NewPodForwarder returns a new initialized podForwarder
 func NewPodForwarder(network, addr string) (*podForwarder, error) {
-	podName, namespace, err := parsePodAddr(addr)
+	podNSN, err := parsePodAddr(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +95,7 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 		network: network,
 		addr:    addr,
 
-		podName:   podName,
-		namespace: namespace,
+		podNSN: *podNSN,
 
 		initChan: make(chan struct{}),
 
@@ -126,19 +106,16 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 }
 
 // parsePodAddr parses the pod name and namespace from an address
-func parsePodAddr(addr string) (name string, namespace string, err error) {
+func parsePodAddr(addr string) (*types.NamespacedName, error) {
 	// (our) pods generally look like this (as FQDN): {name}.{namespace}.pod.cluster.local
 	// TODO: subdomains in pod names would change this.
 	parts := strings.SplitN(addr, ".", 3)
 
 	if len(parts) <= 2 {
-		err = fmt.Errorf("unsupported pod address format: %s", addr)
-		return
+		return nil, fmt.Errorf("unsupported pod address format: %s", addr)
 	}
 
-	name = parts[0]
-	namespace = parts[1]
-	return
+	return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
 }
 
 // DialContext connects to the podForwarder address using the provided context.
@@ -194,9 +171,10 @@ func (f *podForwarder) Run(ctx context.Context) error {
 	}
 
 	readyChan := make(chan struct{})
-	fwd, err := f.portForwarderFactory.NewPortForwarder(
+	fwd, err := f.portForwarderFactory(
 		runCtx,
-		f.namespace, f.podName,
+		f.podNSN.Namespace,
+		f.podNSN.Name,
 		[]string{localPort + ":" + port},
 		readyChan,
 	)
@@ -213,8 +191,9 @@ func (f *podForwarder) Run(ctx context.Context) error {
 
 			log.Info("Ready to redirect connections", "addr", f.addr, "via", f.viaAddr)
 
-			// wrap this in a sync.Once because it will panic if it happens more than once
-			defer initCloser.Do(func() {
+			// wrap this in a sync.Once because it will panic if it happens more than once, which it may if our
+			// outer function returned just as readyChan was closed.
+			initCloser.Do(func() {
 				close(f.initChan)
 			})
 		}
