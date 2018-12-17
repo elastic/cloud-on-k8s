@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -32,8 +34,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-	log            = logf.Log.WithName("stack-controller")
+	log = logf.Log.WithName("stack-controller")
 )
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -230,7 +231,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO: be dynamic wrt to the service name
-	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", support.PublicServiceName(es.Name))
+	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", services.PublicServiceName(es.Name))
 
 	internalUsersSecretName := support.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret v12.Secret

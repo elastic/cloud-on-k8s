@@ -1,7 +1,9 @@
-package support
+package services
 
 import (
 	"strconv"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -26,14 +28,14 @@ func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      DiscoveryServiceName(es.Name),
-			Labels:    NewLabels(es),
+			Labels:    support.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(es),
+			Selector: support.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     TransportPort,
+					Port:     support.TransportPort,
 				},
 			},
 			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
@@ -55,7 +57,7 @@ func PublicServiceName(esName string) string {
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
+	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(support.HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
@@ -65,14 +67,14 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      PublicServiceName(es.Name),
-			Labels:    NewLabels(es),
+			Labels:    support.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(es),
+			Selector: support.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     HTTPPort,
+					Port:     support.HTTPPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,

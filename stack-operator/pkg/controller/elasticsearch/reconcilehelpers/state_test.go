@@ -1,4 +1,4 @@
-package elasticsearch
+package reconcilehelpers
 
 import (
 	"reflect"
@@ -22,28 +22,28 @@ func TestNodesAvailable(t *testing.T) {
 	}{
 		{
 			input: []corev1.Pod{
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.ContainersReady,
 								Status: corev1.ConditionTrue,
 							},
 						},
 					},
 				},
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.ContainersReady,
 								Status: corev1.ConditionFalse,
 							},
@@ -55,28 +55,28 @@ func TestNodesAvailable(t *testing.T) {
 		},
 		{
 			input: []corev1.Pod{
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodScheduled,
 								Status: corev1.ConditionTrue,
 							},
 						},
 					},
 				},
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodScheduled,
 								Status: corev1.ConditionTrue,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionFalse,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.ContainersReady,
 								Status: corev1.ConditionFalse,
 							},
@@ -88,28 +88,28 @@ func TestNodesAvailable(t *testing.T) {
 		},
 		{
 			input: []corev1.Pod{
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.ContainersReady,
 								Status: corev1.ConditionTrue,
 							},
 						},
 					},
 				},
-				corev1.Pod{
+				{
 					Status: corev1.PodStatus{
 						Conditions: []corev1.PodCondition{
-							corev1.PodCondition{
+							{
 								Type:   corev1.PodReady,
 								Status: corev1.ConditionTrue,
 							},
-							corev1.PodCondition{
+							{
 								Type:   corev1.ContainersReady,
 								Status: corev1.ConditionTrue,
 							},
@@ -277,7 +277,7 @@ func TestReconcileState_Apply(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewReconcileState(tt.cluster)
 			if tt.effects != nil {
-				tt.effects(&s)
+				tt.effects(s)
 			}
 			events, cluster := s.Apply()
 			if !reflect.DeepEqual(events, tt.wantEvents) {
@@ -343,7 +343,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 			s := NewReconcileState(tt.cluster)
 			s.UpdateElasticsearchState(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
-				tt.stateAssertions(&s)
+				tt.stateAssertions(s)
 			}
 		})
 	}
@@ -378,7 +378,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 			s := NewReconcileState(tt.cluster)
 			s.UpdateElasticsearchMigrating(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
-				tt.stateAssertions(&s)
+				tt.stateAssertions(s)
 			}
 		})
 	}

@@ -5,6 +5,8 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
@@ -70,7 +72,7 @@ func (r *ReconcileElasticsearch) ReconcileSnapshotterCronJob(es v1alpha1.Elastic
 		Elasticsearch:    es,
 		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
 		User:             user,
-		EsURL:            support.PublicServiceURL(es),
+		EsURL:            services.PublicServiceURL(es),
 	}
 	expected := snapshots.NewCronJob(params)
 	if err := controllerutil.SetControllerReference(&es, expected, r.scheme); err != nil {
