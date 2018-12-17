@@ -635,14 +635,20 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 		return reconcile.Result{}, err
 	}
 
-	var esDiscoveryService corev1.Service
-	if err := r.Get(context.TODO(), types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      support.DiscoveryServiceName(es.Name),
-	}, &esDiscoveryService); err != nil {
+	esAllServices, err := getNamedServices(
+		r,
+		types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      support.DiscoveryServiceName(es.Name),
+		},
+		types.NamespacedName{
+			Namespace: es.Namespace,
+			Name:      support.PublicServiceName(es.Name),
+		},
+	)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
-	esAllServices := []corev1.Service{esDiscoveryService}
 
 	for _, secret := range nodeCertificateSecrets {
 		// todo: error checking if label does not exist
@@ -694,6 +700,19 @@ func (r *ReconcileElasticsearch) reconcileNodeCertificateSecrets(
 	}
 
 	return reconcile.Result{}, nil
+}
+
+// getNamedServices retrieves the named services from the API
+func getNamedServices(client client.Client, names ...types.NamespacedName) ([]corev1.Service, error) {
+	services := make([]corev1.Service, len(names))
+	for i, name := range names {
+		var service corev1.Service
+		if err := client.Get(context.TODO(), name, &service); err != nil {
+			return nil, err
+		}
+		services[i] = service
+	}
+	return services, nil
 }
 
 func (r *ReconcileElasticsearch) findNodeCertificateSecrets(es elasticsearchv1alpha1.ElasticsearchCluster) ([]corev1.Secret, error) {
