@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -76,34 +75,19 @@ func (f *serviceForwarder) Run(ctx context.Context) error {
 //
 // As an approximation to load balancing, a random ready pod will be chosen for each dialing attempt.
 func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
-	service := v1.Service{}
-	serviceObjectKey := types.NamespacedName{Namespace: f.namespace, Name: f.serviceName}
-
-	if err := f.client.Get(ctx, serviceObjectKey, &service); err != nil {
-		return nil, err
-	}
-
-	podList := v1.PodList{}
-	podListOptions := client.ListOptions{
-		LabelSelector: labels.Set(service.Spec.Selector).AsSelector(),
-	}
-
-	if err := f.client.List(ctx, &podListOptions, &podList); err != nil {
-		return nil, err
-	}
-
-	readyPods := readyPods(podList.Items)
-
-	if len(readyPods) == 0 {
-		return nil, errors.New("no pods ready")
-	}
-
 	_, servicePortStr, err := net.SplitHostPort(f.addr)
 	if err != nil {
 		return nil, err
 	}
 	servicePort, err := strconv.Atoi(servicePortStr)
 	if err != nil {
+		return nil, err
+	}
+
+	service := v1.Service{}
+	serviceObjectKey := types.NamespacedName{Namespace: f.namespace, Name: f.serviceName}
+
+	if err := f.client.Get(ctx, serviceObjectKey, &service); err != nil {
 		return nil, err
 	}
 
@@ -116,7 +100,37 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		}
 	}
 
-	pod := readyPods[rand.Intn(len(readyPods))]
+	endpoints := v1.Endpoints{}
+
+	if err := f.client.Get(ctx, serviceObjectKey, &endpoints); err != nil {
+		return nil, err
+	}
+
+	var podTargets []*v1.ObjectReference
+	for _, subset := range endpoints.Subsets {
+		foundPort := false
+		for _, port := range subset.Ports {
+			foundPort = port.Port == int32(targetPort.IntValue())
+			if foundPort {
+				break
+			}
+		}
+		if !foundPort {
+			continue
+		}
+
+		for _, address := range subset.Addresses {
+			if address.TargetRef.Kind == "Pod" {
+				podTargets = append(podTargets, address.TargetRef)
+			}
+		}
+	}
+
+	if len(podTargets) == 0 {
+		return nil, errors.New("no pod addresses found in service endpoints")
+	}
+
+	pod := podTargets[rand.Intn(len(podTargets))]
 
 	// this should match a supported format of parsePodAddr(addr string)
 	podAddr := fmt.Sprintf("%s.%s.pod.cluster.local:%s", pod.Name, pod.Namespace, targetPort.String())
@@ -126,21 +140,4 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	}
 
 	return forwarder.DialContext(ctx)
-}
-
-// readyPods returns a new slice that containing only the pods that are ready.
-func readyPods(pods []v1.Pod) []v1.Pod {
-	var readyPods []v1.Pod
-	for _, pod := range pods {
-		conditionsTrue := 0
-		for _, cond := range pod.Status.Conditions {
-			if cond.Status == v1.ConditionTrue && (cond.Type == v1.ContainersReady || cond.Type == v1.PodReady) {
-				conditionsTrue++
-			}
-		}
-		if conditionsTrue == 2 {
-			readyPods = append(readyPods, pod)
-		}
-	}
-	return readyPods
 }

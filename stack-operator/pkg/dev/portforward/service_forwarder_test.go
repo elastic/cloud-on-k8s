@@ -75,7 +75,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 
 	tests := []test{
 		{
-			name: "should forward to a ready pod",
+			name: "should forward to a ready endpoint address with Kind=Pod",
 			fields: fields{
 				network: "tcp",
 				addr:    "foo.bar.svc.cluster.local:9200",
@@ -86,7 +86,6 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 							Namespace: "bar",
 						},
 						Spec: v1.ServiceSpec{
-							Selector: map[string]string{"foo": "bar"},
 							Ports: []v1.ServicePort{
 								{
 									Port:       9200,
@@ -95,28 +94,23 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 							},
 						},
 					},
-					&v1.Pod{
+					&v1.Endpoints{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "some-pod-name",
+							Name:      "foo",
 							Namespace: "bar",
-							Labels:    map[string]string{"foo": "bar"},
 						},
-						Spec: v1.PodSpec{
-							Containers: []v1.Container{
-								{
-									Ports: []v1.ContainerPort{
-										{
-											Name:          "http",
-											ContainerPort: 9200,
+						Subsets: []v1.EndpointSubset{
+							{
+								Ports: []v1.EndpointPort{{Port: 9200}},
+								Addresses: []v1.EndpointAddress{
+									{
+										TargetRef: &v1.ObjectReference{
+											Kind:      "Pod",
+											Name:      "some-pod-name",
+											Namespace: "bar",
 										},
 									},
 								},
-							},
-						},
-						Status: v1.PodStatus{
-							Conditions: []v1.PodCondition{
-								{Type: v1.PodReady, Status: v1.ConditionTrue},
-								{Type: v1.ContainersReady, Status: v1.ConditionTrue},
 							},
 						},
 					},
