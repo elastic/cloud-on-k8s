@@ -189,14 +189,12 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		currentEs = es
 	} else {
 		// TODO: this is a bit rough
-		if !reflect.DeepEqual(currentEs.Spec, es.Spec) {
+		if err := diff.NewDiffAsError(currentEs.Spec, es.Spec); err != nil {
 			log.Info("Updating ElasticsearchCluster spec")
 
 			log.V(4).Info(
-				fmt.Sprintf(
-					"Updating ElasticsearchCluster spec due to changes: %s",
-					diff.NewDiff(currentEs.Spec, es.Spec),
-				),
+				"Updating ElasticsearchCluster spec due to changes",
+				"diff_err", err,
 			)
 
 			currentEs.Spec = es.Spec

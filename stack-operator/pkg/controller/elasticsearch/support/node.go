@@ -1,8 +1,7 @@
 package support
 
 import (
-	"strings"
-
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -20,16 +19,17 @@ const (
 )
 
 // NewNodeName forms an Elasticsearch node name. Returning a unique node
-// node name to be used for the Elaticsearch cluster node.
+// node name to be used for the Elasticsearch cluster node.
 func NewNodeName(clusterName string) string {
 	var prefix = clusterName
 	if len(prefix) > maxPrefixLength {
 		prefix = prefix[:maxPrefixLength]
 	}
-	var nodeName strings.Builder
-	nodeName.WriteString(prefix)
-	nodeName.WriteString(typeSuffix)
-	nodeName.WriteString("-")
-	nodeName.WriteString(rand.String(randomSuffixLength))
-	return nodeName.String()
+
+	return common.Concat(
+		prefix,
+		typeSuffix,
+		"-",
+		rand.String(randomSuffixLength),
+	)
 }

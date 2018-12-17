@@ -34,18 +34,23 @@ var (
 			execute()
 		},
 	}
+
+	log = logf.Log.WithName("manager")
 )
 
 func init() {
 	Cmd.Flags().StringP(elasticsearch.SnapshotterImageFlag, "s", "", "image to use for the snappshotter application")
 	Cmd.Flags().Int(MetricsPortFlag, DefaultMetricPort, "Port to use for exposing metrics in the Prometheus format (set 0 to disable)")
-	viper.BindPFlags(Cmd.Flags())
+
+	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
+		log.Error(err, "Unexpected error while binding flags")
+		os.Exit(1)
+	}
+
 	viper.AutomaticEnv()
 }
 
 func execute() {
-	log := logf.Log.WithName("manager")
-
 	if viper.GetString(elasticsearch.SnapshotterImageFlag) == "" {
 		log.Error(fmt.Errorf("%s is a required flag", elasticsearch.SnapshotterImageFlag),
 			"required configuration missing")
