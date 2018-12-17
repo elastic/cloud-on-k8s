@@ -51,7 +51,11 @@ func init() {
 	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
 	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snaphshots retained")
 
-	viper.BindPFlags(Cmd.Flags())
+	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
+		log.Error(err, "Unexpected error while binding flags")
+		os.Exit(1)
+	}
+
 	viper.AutomaticEnv()
 }
 

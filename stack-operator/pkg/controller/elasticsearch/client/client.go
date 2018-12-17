@@ -36,8 +36,6 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caPool
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs: caPool,
-			// TODO: we can do better.
-			InsecureSkipVerify: true,
 		},
 	}
 

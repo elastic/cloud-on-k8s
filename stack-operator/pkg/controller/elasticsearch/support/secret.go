@@ -183,7 +183,10 @@ func NewElasticUsersCredentials(es v1alpha1.ElasticsearchCluster, users []client
 		return users[i].Name < users[j].Name
 	})
 	hashedCreds, roles := strings.Builder{}, strings.Builder{}
-	roles.WriteString("superuser:") // TODO all superusers -> role mappings
+	// TODO all superusers -> role mappings
+	// safe to ignore errors from strings.Builder.WriteString as it cannot error
+	roles.WriteString("superuser:") // #nosec G104
+
 	for i, user := range users {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 		if err != nil {
@@ -191,17 +194,19 @@ func NewElasticUsersCredentials(es v1alpha1.ElasticsearchCluster, users []client
 		}
 
 		notLast := i+1 < len(users)
+		/* #nosec G104 */ // ignore unhandled errors in this block since strings.Builder.WriteString cannot error out
+		{
+			hashedCreds.WriteString(user.Name)
+			hashedCreds.WriteString(":")
+			hashedCreds.Write(hash)
+			if notLast {
+				hashedCreds.WriteString("\n")
+			}
 
-		hashedCreds.WriteString(user.Name)
-		hashedCreds.WriteString(":")
-		hashedCreds.Write(hash)
-		if notLast {
-			hashedCreds.WriteString("\n")
-		}
-
-		roles.WriteString(user.Name)
-		if notLast {
-			roles.WriteString(",")
+			roles.WriteString(user.Name)
+			if notLast {
+				roles.WriteString(",")
+			}
 		}
 	}
 

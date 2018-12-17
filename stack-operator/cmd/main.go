@@ -7,8 +7,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
+var log = logf.KBLog.WithName("main")
+
 func main() {
 	var rootCmd = &cobra.Command{Use: "stack-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
-	rootCmd.Execute()
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Error(err, "Unexpected error while running executing command")
+	}
 }

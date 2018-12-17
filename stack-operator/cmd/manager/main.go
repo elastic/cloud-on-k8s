@@ -40,6 +40,8 @@ var (
 			execute()
 		},
 	}
+
+	log = logf.Log.WithName("manager")
 )
 
 func init() {
@@ -66,6 +68,12 @@ func init() {
 	viper.BindPFlags(Cmd.Flags())
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+
+	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
+		log.Error(err, "Unexpected error while binding flags")
+		os.Exit(1)
+	}
+
 	viper.AutomaticEnv()
 }
 
