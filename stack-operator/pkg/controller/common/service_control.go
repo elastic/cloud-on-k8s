@@ -23,18 +23,12 @@ func ReconcileService(
 	owner v1.Object,
 ) (reconcile.Result, error) {
 
-	_, err := reconciler.Reconciler{
+	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: c,
 		Scheme: scheme,
 		Owner:  owner,
-	}.ReconcileObj(
-		service,
-		func() runtime.Object {
-			return &corev1.Service{}
-		},
-		func(exp, fnd runtime.Object) bool {
-			expected := exp.(*corev1.Service)
-			found := fnd.(*corev1.Service)
+		Object: service,
+		Differ: func(expected, found *corev1.Service) bool {
 			// ClusterIP might not exist in the expected service,
 			// but might have been set after creation by k8s on the actual resource.
 			// In such case, we want to use these values for comparison.
@@ -54,13 +48,10 @@ func ReconcileService(
 			}
 			return !reflect.DeepEqual(expected.Spec, found.Spec)
 		},
-		func(exp, fnd runtime.Object) runtime.Object {
-			expected := exp.(*corev1.Service)
-			found := fnd.(*corev1.Service)
+		Modifier: func(expected, found *corev1.Service) {
 			found.Spec = expected.Spec // only update spec, keep the rest
-			return found
 		},
-	)
+	})
 	return reconcile.Result{}, err
 
 }

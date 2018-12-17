@@ -3,10 +3,8 @@ package kibana
 import (
 	"reflect"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,18 +50,12 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 
 // ReconcileDeployment upserts the given deployment for the specified owner.
 func (r *ReconcileKibana) ReconcileDeployment(deploy appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
-	obj, err := reconciler.Reconciler{
+	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: r,
 		Scheme: r.scheme,
 		Owner:  owner,
-	}.ReconcileObj(
-		&deploy,
-		func() runtime.Object {
-			return &appsv1.Deployment{}
-		},
-		func(exp, fnd runtime.Object) bool {
-			expected := exp.(*appsv1.Deployment)
-			found := fnd.(*appsv1.Deployment)
+		Object: &deploy,
+		Differ: func(expected, found *appsv1.Deployment) bool {
 			return !reflect.DeepEqual(expected.Spec.Selector, found.Spec.Selector) ||
 				!reflect.DeepEqual(expected.Spec.Replicas, found.Spec.Replicas) ||
 				!reflect.DeepEqual(expected.Spec.Template.ObjectMeta, found.Spec.Template.ObjectMeta) ||
@@ -74,14 +66,11 @@ func (r *ReconcileKibana) ReconcileDeployment(deploy appsv1.Deployment, owner me
 			// TODO: containers[0] is a bit flaky
 			// TODO: technically not only the Spec may be different, but deployment labels etc.
 		},
-		func(exp, fnd runtime.Object) runtime.Object {
-			expected := exp.(*appsv1.Deployment)
-			found := fnd.(*appsv1.Deployment)
+		Modifier: func(expected, found *appsv1.Deployment) {
 			// Update the found object and write the result back if there are any changes
 			found.Spec = expected.Spec
-			return found
 		},
-	)
-	return *obj.(*appsv1.Deployment), err
+	})
+	return deploy, err
 
 }

@@ -3,6 +3,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -18,41 +19,47 @@ var (
 	log = logf.Log.WithName("generic-reconciler")
 )
 
-type Reconciler struct {
+type Params struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Owner  metav1.Object
+	Object runtime.Object
+	// func(expected, found T) bool
+	Differ interface{}
+	// func(expected, found T)
+	Modifier interface{}
 }
 
-func (r Reconciler) ReconcileObjWithEffect(
-	obj runtime.Object,
-	new func() runtime.Object,
-	diff func(expected, found runtime.Object) bool,
-	mod func(expected, found runtime.Object) runtime.Object,
-	effect func(result runtime.Object)) error {
+func ReconcileResource(params Params) error {
+	obj := params.Object
 	meta, ok := obj.(metav1.Object)
 	if !ok {
-		return errors.Errorf("%v is not a metadata Object", obj)
+		return errors.Errorf("%v is not a k8s metadata Object", obj)
 	}
 	namespace := meta.GetNamespace()
 	name := meta.GetName()
-	kinds, unversioned, err := r.Scheme.ObjectKinds(obj)
+	kinds, unversioned, err := params.Scheme.ObjectKinds(obj)
 	kind := "unknown"
 	if !unversioned && err == nil {
 		kind = kinds[0].Kind
 	}
-	if err := controllerutil.SetControllerReference(r.Owner, meta, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(params.Owner, meta, params.Scheme); err != nil {
 		return err
 	}
 	// Check if already exists
 	expected := obj
-	found := new()
-	err = r.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
+	resourceType := reflect.TypeOf(obj)
+	newPtr := reflect.New(resourceType)
+	found, ok := newPtr.Interface().(runtime.Object)
+	if !ok {
+		return errors.Errorf("%v was not a k8s runtime.Object", obj)
+	}
+	err = params.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
 		log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
 
-		err = r.Create(context.TODO(), expected)
+		err = params.Create(context.TODO(), expected)
 		if err != nil {
 			return err
 		}
@@ -61,28 +68,24 @@ func (r Reconciler) ReconcileObjWithEffect(
 		return err
 	}
 
+	//TODO panics included from here on + add better error messages
+	v := reflect.ValueOf(params.Differ)
+	funcArgs := []reflect.Value{
+		reflect.ValueOf(expected),
+		reflect.ValueOf(found),
+	}
+	updateNeeded := v.Call(funcArgs)[0].Bool()
+
 	// Update if needed
-	if diff(expected, found) {
+	if updateNeeded {
 		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
-		err := r.Update(context.TODO(), mod(expected, found))
+		v = reflect.ValueOf(params.Modifier)
+		v.Call(funcArgs)
+		err := params.Update(context.TODO(), found)
 		if err != nil {
 			return err
 		}
 	}
-	effect(found)
+	reflect.ValueOf(found).MethodByName("DeepCopyInto").Call([]reflect.Value{reflect.ValueOf(expected)})
 	return nil
-}
-
-// ReconcileObj reconciles a given runtime object using the factory, diffing and modifying functions given.
-func (r Reconciler) ReconcileObj(
-	obj runtime.Object,
-	new func() runtime.Object,
-	diff func(expected, found runtime.Object) bool,
-	mod func(expected, found runtime.Object) runtime.Object,
-) (runtime.Object, error) {
-	result := obj
-	err := r.ReconcileObjWithEffect(obj, new, diff, mod, func(res runtime.Object) {
-		result = res
-	})
-	return result, err
 }

@@ -1,10 +1,8 @@
 package elasticsearch
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -70,29 +68,21 @@ func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluste
 // ReconcileSecret creates or updates the given credentials.
 func (r *ReconcileElasticsearch) reconcileSecret(es *v1alpha1.ElasticsearchCluster, expectedCreds support.UserCredentials) error {
 	expected := expectedCreds.Secret()
-	err := reconciler.Reconciler{
+	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: r,
 		Scheme: r.scheme,
 		Owner:  es,
-	}.ReconcileObjWithEffect(
-		&expected,
-		func() runtime.Object {
-			return &corev1.Secret{}
-		},
-		func(_, fnd runtime.Object) bool {
-			found := fnd.(*corev1.Secret)
+		Object: &expected,
+		Differ: func(_, found *corev1.Secret) bool {
 			return expectedCreds.NeedsUpdate(*found)
 		},
-		func(exp, fnd runtime.Object) runtime.Object {
-			found := fnd.(*corev1.Secret)
-			expected := exp.(*corev1.Secret)
+		Modifier: func(expected, found *corev1.Secret) {
 			found.Data = expected.Data // only update data, keep the rest
-			return found
 		},
-		func(result runtime.Object) {
-			found := result.(*corev1.Secret)
-			expectedCreds.Reset(*found)
-		},
-	)
+	})
+	if err != nil {
+		//expected creds have been updated to reflect the state on the API server
+		expectedCreds.Reset(expected)
+	}
 	return err
 }
