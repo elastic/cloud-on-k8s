@@ -241,6 +241,9 @@ func quantityToMegabytes(q resource.Quantity) int {
 // newDefaultConfigMap creates a default config map usable for all versions of Elasticsearch.
 func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
 	return support.NewConfigMapWithData(es, map[string]string{
+		// With a security manager present the JVM will cache hostname lookup results indefinitely.
+		// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
+		// See also: https://github.com/elastic/elasticsearch/pull/36570
 		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
 	})
 }
