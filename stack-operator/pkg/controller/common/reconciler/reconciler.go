@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("generic-reconciler")
+	log              = logf.Log.WithName("generic-reconciler")
+	IdentityModifier = func(_, _ runtime.Object) {}
 )
 
 type Params struct {
