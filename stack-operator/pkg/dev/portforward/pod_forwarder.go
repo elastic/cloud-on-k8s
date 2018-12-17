@@ -5,16 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/portforward"
-	"k8s.io/client-go/transport/spdy"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // podForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
@@ -41,24 +35,6 @@ type podForwarder struct {
 
 var _ Forwarder = &podForwarder{}
 
-// defaultEphemeralPortFinder finds an ephemeral port by binding to :0 and checking what port was bound
-var defaultEphemeralPortFinder = func() (string, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return "", err
-	}
-
-	addr := listener.Addr().String()
-
-	if err := listener.Close(); err != nil {
-		return "", err
-	}
-
-	_, localPort, err := net.SplitHostPort(addr)
-
-	return localPort, err
-}
-
 // PortForwarderFactory is a factory for port forwarders
 type PortForwarderFactory func(
 	ctx context.Context,
@@ -72,17 +48,8 @@ type PortForwarder interface {
 	ForwardPorts() error
 }
 
-// defaultPortForwarderFactory is the default factory used for port forwarders outside of tests
-var defaultPortForwarderFactory = PortForwarderFactory(newKubectlPortForwarder)
-
 // dialerFunc is a factory for connections
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
-
-// defaultDialerFunc is the default dialer function we use outside of tests
-var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address string) (net.Conn, error) {
-	var d net.Dialer
-	return d.DialContext(ctx, network, address)
-}
 
 // NewPodForwarder returns a new initialized podForwarder
 func NewPodForwarder(network, addr string) (*podForwarder, error) {
@@ -116,6 +83,40 @@ func parsePodAddr(addr string) (*types.NamespacedName, error) {
 	}
 
 	return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
+}
+
+// defaultEphemeralPortFinder finds an ephemeral port by binding to :0 and checking what port was bound
+var defaultEphemeralPortFinder = func() (string, error) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
+	}
+
+	addr := listener.Addr().String()
+
+	if err := listener.Close(); err != nil {
+		return "", err
+	}
+
+	_, localPort, err := net.SplitHostPort(addr)
+
+	return localPort, err
+}
+
+// defaultPortForwarderFactory is the default factory used for port forwarders outside of tests
+var defaultPortForwarderFactory PortForwarderFactory = func(
+	ctx context.Context,
+	namespace, podName string,
+	ports []string,
+	readyChan chan struct{},
+) (PortForwarder, error) {
+	return newKubectlPortForwarder(ctx, namespace, podName, ports, readyChan)
+}
+
+// defaultDialerFunc is the default dialer function we use outside of tests
+var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address string) (net.Conn, error) {
+	var d net.Dialer
+	return d.DialContext(ctx, network, address)
 }
 
 // DialContext connects to the podForwarder address using the provided context.
@@ -202,61 +203,4 @@ func (f *podForwarder) Run(ctx context.Context) error {
 	err = fwd.ForwardPorts()
 	f.viaErr = errors.New("not currently forwarding")
 	return err
-}
-
-// newKubectlPortForwarder creates a new PortForwarder using kubectl tooling
-func newKubectlPortForwarder(
-	ctx context.Context,
-	namespace, podName string,
-	ports []string,
-	readyChan chan struct{},
-) (PortForwarder, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	req := clientSet.RESTClient().Post().
-		Resource("pods").
-		Namespace(namespace).
-		Name(podName).
-		SubResource("portforward")
-
-	u := url.URL{
-		Scheme:   req.URL().Scheme,
-		Host:     req.URL().Host,
-		Path:     "/api/v1" + req.URL().Path,
-		RawQuery: "timeout=32s",
-	}
-
-	transport, upgrader, err := spdy.RoundTripperFor(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, &u)
-
-	// wrap stdout / stderr through logging
-	w := &logWriter{keysAndValues: []interface{}{
-		"namespace", namespace,
-		"pod", podName,
-		"ports", ports,
-	}}
-	return portforward.New(dialer, ports, ctx.Done(), readyChan, w, w)
-}
-
-// logWriter is a small utility that writes data from an io.Writer to a log
-type logWriter struct {
-	keysAndValues []interface{}
-}
-
-func (w *logWriter) Write(p []byte) (n int, err error) {
-	log.Info(strings.TrimSpace(string(p)), w.keysAndValues...)
-
-	return len(p), nil
 }
