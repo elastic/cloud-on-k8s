@@ -48,12 +48,13 @@ func ReconcileResource(params Params) error {
 	}
 	// Check if already exists
 	expected := obj
-	resourceType := reflect.TypeOf(obj)
-	newPtr := reflect.New(resourceType)
-	found, ok := newPtr.Interface().(runtime.Object)
+	resourceType := reflect.Indirect(reflect.ValueOf(obj)).Type()
+	empty := reflect.New(resourceType)
+	found, ok := empty.Interface().(runtime.Object)
 	if !ok {
 		return errors.Errorf("%v was not a k8s runtime.Object", obj)
 	}
+	log.V(3).Info(fmt.Sprintf("GET args %s/%s:  %v", name, namespace, reflect.ValueOf(found)))
 	err = params.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
@@ -65,6 +66,7 @@ func ReconcileResource(params Params) error {
 		}
 		return nil
 	} else if err != nil {
+		log.Error(err, "Generic GET failed with error")
 		return err
 	}
 
