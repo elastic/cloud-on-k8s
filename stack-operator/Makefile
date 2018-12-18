@@ -54,11 +54,14 @@ stack-operator: generate fmt vet
 SNAPSHOTTER_IMAGE?=no-snapshotter-image
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# Deploy on gke
 	@ gcloud auth configure-docker
 	@ $(MAKE) docker-build docker-push deploy
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
-	SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager $(MANAGER_ARGS)
+	# Run the operator locally with port-forwarding enabled, so that
+	# it can reach services running in the cluster through k8s port-forward feature
+	AUTO_PORT_FORWARD=true SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager --development $(MANAGER_ARGS)
 endif
 
 .PHONY: logs
@@ -247,19 +250,6 @@ purge-gcr-images:
 .PHONY: show-credentials
 show-credentials:
 	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
-
-.PHONY: start-port-forward
-start-port-forward:
-	@ echo "-> Running port-forwarding service on 127.0.0.1, you can see the logs on portfwd.log."
-	@ echo "-> To stop it, run 'make stop-port-forward'."
-	@ echo > portfwd.log
-	@./hack/forward-minikube.sh
-
-
-.PHONY: stop-port-forward
-stop-port-forward:
-	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
-	@ echo "-> Stopped."
 
 .PHONY: lint
 lint:
