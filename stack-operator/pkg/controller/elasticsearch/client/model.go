@@ -34,9 +34,9 @@ const (
 	UNASSIGNED   = "UNASSIGNED"
 )
 
-// Node represents an element in the `node` structure in
+// ClusterStateNode represents an element in the `node` structure in
 // Elasticsearch cluster state.
-type Node struct {
+type ClusterStateNode struct {
 	Name             string `json:"name"`
 	EphemeralID      string `json:"ephemeral_id"`
 	TransportAddress string `json:"transport_address"`
@@ -56,11 +56,11 @@ type Shards struct {
 
 // ClusterState partially models Elasticsearch cluster state.
 type ClusterState struct {
-	ClusterName  string          `json:"cluster_name"`
-	ClusterUUID  string          `json:"cluster_uuid"`
-	Version      int             `json:"version"`
-	MasterNode   string          `json:"master_node"`
-	Nodes        map[string]Node `json:"nodes"`
+	ClusterName  string                      `json:"cluster_name"`
+	ClusterUUID  string                      `json:"cluster_uuid"`
+	Version      int                         `json:"version"`
+	MasterNode   string                      `json:"master_node"`
+	Nodes        map[string]ClusterStateNode `json:"nodes"`
 	RoutingTable struct {
 		Indices map[string]Shards `json:"indices"`
 	} `json:"routing_table"`
@@ -98,8 +98,8 @@ func (cs ClusterState) MasterNodeName() string {
 }
 
 // NodesByNodeName returns the Nodes indexed by their Node.Name instead of their Node ID.
-func (cs ClusterState) NodesByNodeName() map[string]Node {
-	nodesByName := make(map[string]Node, len(cs.Nodes))
+func (cs ClusterState) NodesByNodeName() map[string]ClusterStateNode {
+	nodesByName := make(map[string]ClusterStateNode, len(cs.Nodes))
 	for _, node := range cs.Nodes {
 		nodesByName[node.Name] = node
 	}
