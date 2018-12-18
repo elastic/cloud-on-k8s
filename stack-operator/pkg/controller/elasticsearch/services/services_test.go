@@ -1,4 +1,4 @@
-package support
+package services
 
 import (
 	"testing"
