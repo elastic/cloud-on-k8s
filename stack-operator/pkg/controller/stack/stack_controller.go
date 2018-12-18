@@ -252,7 +252,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	var publicCACertSecret corev1.Secret
 	publicCACertSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: es.Name}
 	if err = r.Get(context.TODO(), publicCACertSecretKey, &publicCACertSecret); err != nil {
-		return reconcile.Result{}, err // maybe not created yet
+		return defaultRequeue, err // maybe not created yet
 	}
 	kb.Spec.Elasticsearch.CaCertSecret = &publicCACertSecret.Name
 
