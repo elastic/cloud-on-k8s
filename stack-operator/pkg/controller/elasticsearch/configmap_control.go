@@ -1,6 +1,8 @@
 package elasticsearch
 
 import (
+	"reflect"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -15,6 +17,9 @@ func (r *ReconcileElasticsearch) ReconcileConfigMap(es v1alpha1.ElasticsearchClu
 			Scheme: r.scheme,
 			Owner:  &es,
 			Object: &expected,
+			Differ: func(expected, found *corev1.Secret) bool {
+				return !reflect.DeepEqual(expected.Data, found.Data)
+			},
 			Modifier: func(expected, found *corev1.ConfigMap) {
 				found.Data = expected.Data
 			},
