@@ -25,7 +25,7 @@ func ReconcileConfigMap(
 			Scheme: scheme,
 			Owner:  &es,
 			Object: &expected,
-			Differ: func(expected, found *corev1.Secret) bool {
+			Differ: func(expected, found *corev1.ConfigMap) bool {
 				return !reflect.DeepEqual(expected.Data, found.Data)
 			},
 			Modifier: func(expected, found *corev1.ConfigMap) {

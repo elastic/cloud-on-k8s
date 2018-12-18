@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +38,7 @@ func TestReconcileResource(t *testing.T) {
 	}
 
 	objectKey := types.NamespacedName{Name: "test", Namespace: "foo"}
-	obj := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: objectKey.Name, Namespace: objectKey.Namespace}}
+	obj := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(objectKey)}
 	secretData := map[string][]byte{"bar": []byte("shush")}
 
 	tests := []struct {
@@ -87,10 +89,7 @@ func TestReconcileResource(t *testing.T) {
 			name: "Updates server state, if in param differs from remote",
 			args: args{
 				Object: &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      objectKey.Name,
-						Namespace: objectKey.Namespace,
-					},
+					ObjectMeta: k8s.ToObjectMeta(objectKey),
 					Data: map[string][]byte{
 						"bar": []byte("be quiet"),
 					},
