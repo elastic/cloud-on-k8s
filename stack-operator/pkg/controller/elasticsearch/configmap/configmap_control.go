@@ -1,4 +1,4 @@
-package configmaps
+package configmap
 
 import (
 	"context"
@@ -11,6 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	log = logf.Log.WithName("configmaps")
 )
 
 // ReconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.

@@ -10,8 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ReconcileNodeCertificates ensures that the CA cert is pushed to the API and node certificates are issued.
-func ReconcileNodeCertificates(
+// reconcileNodeCertificates ensures that the CA cert is pushed to the API and node certificates are issued.
+func reconcileNodeCertificates(
 	c client.Client,
 	scheme *runtime.Scheme,
 	ca *nodecerts.Ca,

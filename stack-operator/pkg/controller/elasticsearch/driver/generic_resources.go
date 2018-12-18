@@ -11,12 +11,14 @@ import (
 
 // GenericResources are resources that all clusters have.
 type GenericResources struct {
-	PublicService    v1.Service
+	// PublicService is the user-facing service
+	PublicService v1.Service
+	// DiscoveryService is the service used by ES for discovery purposes
 	DiscoveryService v1.Service
 }
 
-// ReconcileGenericResources reconciles the expected generic resources of a cluster.
-func ReconcileGenericResources(
+// reconcileGenericResources reconciles the expected generic resources of a cluster.
+func reconcileGenericResources(
 	c client.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,

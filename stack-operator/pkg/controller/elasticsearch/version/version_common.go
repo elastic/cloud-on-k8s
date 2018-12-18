@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -177,16 +176,13 @@ func podSpec(
 
 // newPod constructs a pod from the given parameters.
 func newPod(
-	versionStrategy ElasticsearchVersionStrategy,
+	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
 ) (corev1.Pod, error) {
 	labels := support.NewLabels(es)
-
-	// add labels from the version strategy
-	for k, v := range versionStrategy.PodLabels() {
-		labels[k] = v
-	}
+	// add labels from the version
+	labels[ElasticsearchVersionLabelName] = version.String()
 
 	// add labels for node types
 	support.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
@@ -215,7 +211,7 @@ func newPod(
 	return pod, nil
 }
 
-func updateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
+func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
 	minimumMasterNodes := support.ComputeMinimumMasterNodesFromPods(allPods)
 	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
 	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
@@ -238,14 +234,4 @@ func nonZeroQuantityOrDefault(q, defaultQuantity resource.Quantity) resource.Qua
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
 	return int(q.Value()) / 1024 / 1024
-}
-
-// newDefaultConfigMap creates a default config map usable for all versions of Elasticsearch.
-func newDefaultConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
-	return support.NewConfigMapWithData(es, map[string]string{
-		// With a security manager present the JVM will cache hostname lookup results indefinitely.
-		// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
-		// See also: https://github.com/elastic/elasticsearch/pull/36570
-		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
-	})
 }

@@ -14,11 +14,11 @@ var (
 
 func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T) {
 	newPodWithVersionLabel := func(v version.Version) corev1.Pod {
-		l := versionedNewPodLabels{version: v}
-
 		return corev1.Pod{
 			ObjectMeta: v1.ObjectMeta{
-				Labels: l.PodLabels(),
+				Labels: map[string]string{
+					ElasticsearchVersionLabelName: v.String(),
+				},
 			},
 		}
 	}
@@ -95,12 +95,12 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lh := lowestHighestSupportedVersions{
-				lowestSupportedVersion:  tt.fields.lowestSupportedVersion,
-				highestSupportedVersion: tt.fields.highestSupportedVersion,
+			lh := LowestHighestSupportedVersions{
+				LowestSupportedVersion:  tt.fields.lowestSupportedVersion,
+				HighestSupportedVersion: tt.fields.highestSupportedVersion,
 			}
 			if err := lh.VerifySupportsExistingPods(tt.args.pods); (err != nil) != tt.wantErr {
-				t.Errorf("lowestHighestSupportedVersions.VerifySupportsExistingPods() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("LowestHighestSupportedVersions.VerifySupportsExistingPods() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

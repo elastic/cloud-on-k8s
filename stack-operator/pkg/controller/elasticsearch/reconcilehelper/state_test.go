@@ -1,4 +1,4 @@
-package reconcilehelpers
+package reconcilehelper
 
 import (
 	"reflect"

@@ -8,12 +8,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type lowestHighestSupportedVersions struct {
-	lowestSupportedVersion  version.Version
-	highestSupportedVersion version.Version
+type LowestHighestSupportedVersions struct {
+	LowestSupportedVersion  version.Version
+	HighestSupportedVersion version.Version
 }
 
-func (lh lowestHighestSupportedVersions) VerifySupportsExistingPods(
+func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 	pods []corev1.Pod,
 ) error {
 	for _, pod := range pods {
@@ -26,21 +26,21 @@ func (lh lowestHighestSupportedVersions) VerifySupportsExistingPods(
 			return errors.Wrapf(err, "pod %s has an invalid version label", pod.Name)
 		}
 
-		if !v.IsSameOrAfter(lh.lowestSupportedVersion) {
+		if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
 			return fmt.Errorf(
 				"pod %s has version %v, which is older than the lowest supported version %s",
 				pod.Name,
 				v,
-				lh.lowestSupportedVersion,
+				lh.LowestSupportedVersion,
 			)
 		}
 
-		if !lh.highestSupportedVersion.IsSameOrAfter(*v) {
+		if !lh.HighestSupportedVersion.IsSameOrAfter(*v) {
 			return fmt.Errorf(
 				"pod %s has version %v, which is newer than the highest supported version %s",
 				pod.Name,
 				v,
-				lh.highestSupportedVersion,
+				lh.HighestSupportedVersion,
 			)
 		}
 	}
