@@ -2,16 +2,14 @@ package driver
 
 import (
 	"crypto/x509"
+	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
-	esnodecerts "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelpers"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/users"
@@ -19,7 +17,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -51,57 +48,12 @@ func NewDriver(opts Options) (Driver, error) {
 		opts:            opts,
 		versionStrategy: versionStrategy,
 
-		genericResourcesReconciler: func(
-			c client.Client,
-			scheme *runtime.Scheme,
-			es v1alpha1.ElasticsearchCluster,
-		) (*GenericResources, error) {
-			discoveryService := services.NewDiscoveryService(es)
-			_, err := common.ReconcileService(c, scheme, discoveryService, &es)
-			if err != nil {
-				return nil, err
-			}
+		genericResourcesReconciler: ReconcileGenericResources,
+		nodeCertificatesReconciler: ReconcileNodeCertificates,
 
-			publicService := services.NewPublicService(es)
-			_, err = common.ReconcileService(c, scheme, publicService, &es)
-			if err != nil {
-				return nil, err
-			}
-
-			return &GenericResources{DiscoveryService: *discoveryService, PublicService: *publicService}, nil
-		},
-
-		nodeCertificatesReconciler: func(
-			c client.Client,
-			scheme *runtime.Scheme,
-			ca *nodecerts.Ca,
-			es v1alpha1.ElasticsearchCluster,
-			services []v1.Service,
-		) error {
-			// TODO: suffix with type (-ca?) and trim
-			clusterCAPublicSecretObjectKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
-			if err := ca.ReconcilePublicCertsSecret(c, clusterCAPublicSecretObjectKey, &es, scheme); err != nil {
-				return err
-			}
-
-			// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
-			if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, es, services); err != nil {
-				return err
-			}
-
-			return nil
-		},
-
-		observedStateResolver: func(
-			esClient *esclient.Client,
-		) (*support.ObservedState, error) {
-			state := support.NewObservedState(esClient)
-			return &state, nil
-		},
-
+		observedStateResolver:  support.NewObservedState,
 		resourcesStateResolver: support.NewResourcesStateFromAPI,
-
-		usersResolver: users.ReconcileUsers,
+		usersResolver:          users.ReconcileUsers,
 	}
 
 	return driver, nil
@@ -136,9 +88,7 @@ type strategyDriver struct {
 
 	//expectedPodsAndResourcesResolver interface{} // version-specific, uses common tooling (mostly from version package)
 
-	observedStateResolver func(
-		esClient *esclient.Client,
-	) (*support.ObservedState, error)
+	observedStateResolver func(esClient *esclient.Client) support.ObservedState
 
 	resourcesStateResolver func(
 		c client.Client,
@@ -159,11 +109,6 @@ type strategyDriver struct {
 	//	version version.Version,
 	//	state mutation.PodsState,
 	//) (reconcile.Result, error) // could get away with one impl
-}
-
-type GenericResources struct {
-	PublicService    v1.Service
-	DiscoveryService v1.Service
 }
 
 func (d *strategyDriver) Reconcile(
@@ -192,16 +137,9 @@ func (d *strategyDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	certPool := x509.NewCertPool()
-	certPool.AddCert(d.opts.ClusterCa.Cert)
-	esClient := esclient.NewElasticsearchClient(
-		d.opts.Dialer, services.PublicServiceURL(es), internalUsers.ControllerUser, certPool,
-	)
+	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
 
-	observedState, err := d.observedStateResolver(esClient)
-	if err != nil {
-		return results.WithError(err)
-	}
+	observedState := d.observedStateResolver(esClient)
 
 	resourcesState, err := d.resourcesStateResolver(d.opts.Client, es)
 	if err != nil {
@@ -210,10 +148,10 @@ func (d *strategyDriver) Reconcile(
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
-		reconcileState.UpdateElasticsearchState(*resourcesState, *observedState)
+		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
-	podsState := mutation.NewPodsState(*resourcesState, *observedState)
+	podsState := mutation.NewPodsState(*resourcesState, observedState)
 
 	// recoverable reconcile steps start here. In case of error we record the error and continue
 	results.Apply("reconcileElasticsearchPods", func() (reconcile.Result, error) {
@@ -227,7 +165,7 @@ func (d *strategyDriver) Reconcile(
 			podsState,
 			reconcileState,
 			*resourcesState,
-			*observedState,
+			observedState,
 			podsState,
 			d.versionStrategy,
 			internalUsers.ControllerUser,
@@ -244,4 +182,17 @@ func (d *strategyDriver) Reconcile(
 	}
 
 	return results
+}
+
+// newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
+func (d *strategyDriver) newElasticsearchClient(service v1.Service, user esclient.User) *esclient.Client {
+	certPool := x509.NewCertPool()
+	certPool.AddCert(d.opts.ClusterCa.Cert)
+
+	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, support.HTTPPort)
+
+	esClient := esclient.NewElasticsearchClient(
+		d.opts.Dialer, url, user, certPool,
+	)
+	return esClient
 }
