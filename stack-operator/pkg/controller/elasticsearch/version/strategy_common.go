@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -39,7 +41,7 @@ func newExpectedPodSpecs(
 				DiscoveryZenMinimumMasterNodes: support.ComputeMinimumMasterNodes(
 					es.Spec.Topologies,
 				),
-				DiscoveryServiceName: support.DiscoveryServiceName(es.Name),
+				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
 				NodeTypes:            topology.NodeTypes,
 				Affinity:             topology.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,

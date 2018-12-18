@@ -1,4 +1,4 @@
-package support
+package mutation
 
 import (
 	"errors"
@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -16,14 +17,14 @@ func ESPod(image string, cpuLimit string) corev1.Pod {
 	return corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec}
 }
 
-func ESPodSpecContext(image string, cpuLimit string) PodSpecContext {
-	return PodSpecContext{
+func ESPodSpecContext(image string, cpuLimit string) support.PodSpecContext {
+	return support.PodSpecContext{
 		PodSpec: corev1.PodSpec{
 			Containers: []corev1.Container{{
 				Image:           image,
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				Name:            "elasticsearch",
-				Ports:           DefaultContainerPorts,
+				Ports:           support.DefaultContainerPorts,
 				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
@@ -56,7 +57,7 @@ func ESPodSpecContext(image string, cpuLimit string) PodSpecContext {
 	}
 }
 
-func withEnv(env []corev1.EnvVar, ps PodSpecContext) PodSpecContext {
+func withEnv(env []corev1.EnvVar, ps support.PodSpecContext) support.PodSpecContext {
 	ps.PodSpec.Containers[0].Env = env
 	return ps
 }
@@ -67,8 +68,8 @@ var defaultImage = "image"
 func Test_podMatchesSpec(t *testing.T) {
 	type args struct {
 		pod   corev1.Pod
-		spec  PodSpecContext
-		state ResourcesState
+		spec  support.PodSpecContext
+		state support.ResourcesState
 	}
 	tests := []struct {
 		name                      string
@@ -82,7 +83,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Call with invalid specs should return an error",
 			args: args{
 				pod:  corev1.Pod{},
-				spec: PodSpecContext{PodSpec: corev1.PodSpec{}},
+				spec: support.PodSpecContext{PodSpec: corev1.PodSpec{}},
 			},
 			want:               false,
 			wantErr:            errors.New("No container named elasticsearch in the given pod"),
@@ -159,12 +160,12 @@ func Test_podMatchesSpec(t *testing.T) {
 			args: args{
 				pod: corev1.Pod{
 					Spec: withEnv(
-						[]corev1.EnvVar{{Name: EnvNodeName, Value: "foo"}},
+						[]corev1.EnvVar{{Name: support.EnvNodeName, Value: "foo"}},
 						ESPodSpecContext(defaultImage, defaultCPULimit),
 					).PodSpec,
 				},
 				spec: withEnv(
-					[]corev1.EnvVar{{Name: EnvNodeName, Value: "bar"}},
+					[]corev1.EnvVar{{Name: support.EnvNodeName, Value: "bar"}},
 					ESPodSpecContext(defaultImage, defaultCPULimit),
 				),
 			},
@@ -185,7 +186,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Pod is missing a PVC",
 			args: args{
 				pod: ESPod(defaultImage, defaultCPULimit),
-				spec: PodSpecContext{
+				spec: support.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -206,7 +207,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Pod is missing a PVC, but has another",
 			args: args{
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
-				spec: PodSpecContext{
+				spec: support.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -218,7 +219,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: ResourcesState{
+				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
@@ -234,7 +235,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Pod has matching PVC",
 			args: args{
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
-				spec: PodSpecContext{
+				spec: support.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -246,7 +247,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: ResourcesState{
+				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
@@ -261,7 +262,7 @@ func Test_podMatchesSpec(t *testing.T) {
 			name: "Pod has matching PVC, but spec does not match",
 			args: args{
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
-				spec: PodSpecContext{
+				spec: support.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -280,7 +281,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: ResourcesState{
+				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},

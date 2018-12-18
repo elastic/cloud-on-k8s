@@ -43,9 +43,9 @@ func NewInternalUsersFrom(users []client.User) InternalUsers {
 // into the Elasticsearch config directory which the file realm of ES security can directly understand.
 // A second file called 'users_roles' is contained in this third secret as well which describes
 // role assignments for the users specified in the first file.
-func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluster) (InternalUsers, error) {
+func (r *ReconcileElasticsearch) reconcileUsers(es v1alpha1.ElasticsearchCluster) (InternalUsers, error) {
 
-	internalSecrets := support.NewInternalUserCredentials(*es)
+	internalSecrets := support.NewInternalUserCredentials(es)
 
 	if err := r.reconcileSecret(es, internalSecrets); err != nil {
 		return InternalUsers{}, err
@@ -53,7 +53,7 @@ func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluste
 
 	users := internalSecrets.Users()
 	internalUsers := NewInternalUsersFrom(users)
-	externalSecrets := support.NewExternalUserCredentials(*es)
+	externalSecrets := support.NewExternalUserCredentials(es)
 
 	if err := r.reconcileSecret(es, externalSecrets); err != nil {
 		return internalUsers, err
@@ -63,7 +63,7 @@ func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluste
 		users = append(users, u)
 	}
 
-	elasticUsersSecret, err := support.NewElasticUsersCredentials(*es, users)
+	elasticUsersSecret, err := support.NewElasticUsersCredentials(es, users)
 	if err != nil {
 		return internalUsers, err
 	}
@@ -72,9 +72,9 @@ func (r *ReconcileElasticsearch) reconcileUsers(es *v1alpha1.ElasticsearchCluste
 }
 
 // ReconcileSecret creates or updates the given credentials.
-func (r *ReconcileElasticsearch) reconcileSecret(es *v1alpha1.ElasticsearchCluster, expectedCreds support.UserCredentials) error {
+func (r *ReconcileElasticsearch) reconcileSecret(es v1alpha1.ElasticsearchCluster, expectedCreds support.UserCredentials) error {
 	expected := expectedCreds.Secret()
-	if err := controllerutil.SetControllerReference(es, &expected, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, &expected, r.scheme); err != nil {
 		return err
 	}
 	found := &corev1.Secret{}
