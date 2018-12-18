@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/api/core/v1"
@@ -34,13 +35,6 @@ const (
                     }`
 )
 
-func asObjectMeta(n types.NamespacedName) metav1.ObjectMeta {
-	return metav1.ObjectMeta{
-		Name:      n.Name,
-		Namespace: n.Namespace,
-	}
-}
-
 func registerScheme(t *testing.T) *runtime.Scheme {
 	scheme, err := v1alpha1.SchemeBuilder.Build()
 	if err != nil {
@@ -53,7 +47,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	testName := types.NamespacedName{Namespace: "test-namespace", Name: "test-es-name"}
 	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: CronJobName(testName)}
 	esSample := v1alpha1.ElasticsearchCluster{
-		ObjectMeta: asObjectMeta(testName),
+		ObjectMeta: k8s.ToObjectMeta(testName),
 	}
 	type args struct {
 		es             v1alpha1.ElasticsearchCluster
@@ -81,7 +75,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			args: args{
 				esSample,
 				esClient.User{},
-				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: asObjectMeta(cronName)}},
+				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: k8s.ToObjectMeta(cronName)}},
 			},
 			wantErr: false,
 			clientAssertion: func(c client.Client) {
@@ -92,7 +86,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			name: "snapshot config exists create job",
 			args: args{
 				v1alpha1.ElasticsearchCluster{
-					ObjectMeta: asObjectMeta(testName),
+					ObjectMeta: k8s.ToObjectMeta(testName),
 					Spec: v1alpha1.ElasticsearchSpec{
 						SnapshotRepository: &v1alpha1.SnapshotRepository{
 							Type: v1alpha1.SnapshotRepositoryTypeGCS,

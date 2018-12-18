@@ -4,13 +4,13 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -30,7 +30,7 @@ func ReconcileService(
 	// Check if already exists
 	expected := service
 	found := &corev1.Service{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	err := c.Get(context.TODO(), k8s.ExtractNamespacedName(expected.ObjectMeta), found)
 	if err != nil && errors.IsNotFound(err) {
 		// Create if needed
 		log.Info(Concat("Creating service ", expected.Namespace, "/", expected.Name))

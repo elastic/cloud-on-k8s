@@ -18,10 +18,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -79,10 +79,7 @@ func (d *strategyDriver) reconcileElasticsearchPods(
 		}
 
 		elasticsearchExtraFilesSecret = v1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      elasticsearchExtraFilesSecretObjectKey.Name,
-				Namespace: elasticsearchExtraFilesSecretObjectKey.Namespace,
-			},
+			ObjectMeta: k8s.ToObjectMeta(elasticsearchExtraFilesSecretObjectKey),
 			Data: map[string][]byte{
 				"trust.yml": trustRootCfgData,
 			},

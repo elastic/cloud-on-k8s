@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -83,7 +84,7 @@ func ReconcileSnapshotterCronJob(
 	}
 
 	found := &batchv1beta1.CronJob{}
-	err := c.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	err := c.Get(context.TODO(), k8s.ExtractNamespacedName(expected.ObjectMeta), found)
 	if err == nil && es.Spec.SnapshotRepository == nil {
 		log.Info("Deleting cronjob", "namespace", expected.Namespace, "name", expected.Name)
 		return c.Delete(context.TODO(), found)
