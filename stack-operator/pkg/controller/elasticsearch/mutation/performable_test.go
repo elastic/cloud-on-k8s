@@ -19,13 +19,23 @@ func TestPerformableChanges_HasChanges(t *testing.T) {
 		want    bool
 	}{
 		{name: "empty", changes: PerformableChanges{}, want: false},
-		{name: "creation", changes: PerformableChanges{ScheduleForCreation: []CreatablePod{{}}}, want: true},
-		{name: "deletion", changes: PerformableChanges{ScheduleForDeletion: []corev1.Pod{{}}}, want: true},
+		{
+			name:    "creation",
+			changes: PerformableChanges{Changes: Changes{ToCreate: []PodToCreate{{}}}},
+			want:    true,
+		},
+		{
+			name:    "deletion",
+			changes: PerformableChanges{Changes: Changes{ToDelete: []corev1.Pod{{}}}},
+			want:    true,
+		},
 		{
 			name: "creation and deletion",
 			changes: PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{}},
-				ScheduleForDeletion: []corev1.Pod{{}},
+				Changes: Changes{
+					ToCreate: []PodToCreate{{}},
+					ToDelete: []corev1.Pod{{}},
+				},
 			},
 			want: true,
 		},
@@ -64,6 +74,14 @@ func concatPodList(podLists ...[]corev1.Pod) []corev1.Pod {
 	return res
 }
 
+func podToCreateList(pods []corev1.Pod) []PodToCreate {
+	res := make([]PodToCreate, 0, len(pods))
+	for _, p := range pods {
+		res = append(res, PodToCreate{Pod: p})
+	}
+	return res
+}
+
 func TestCalculatePerformableChanges(t *testing.T) {
 	podsA := generatePodsN(4, "a-", map[string]string{"zone": "a"})
 	podsB := generatePodsN(4, "b-", map[string]string{"zone": "b"})
@@ -86,7 +104,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 
 	type args struct {
 		strategy      v1alpha1.UpdateStrategy
-		allPodChanges *ChangeSet
+		allPodChanges *Changes
 		allPodsState  PodsState
 	}
 
@@ -100,25 +118,27 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "scale down two pods",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &ChangeSet{
+				allPodChanges: &Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToRemove: concatPodList(podsB[:2]),
+					ToDelete: concatPodList(podsB[:2]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsB[:2], podsC[:2])),
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToDelete: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
 			name: "basic scale-down with a failed zone",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &ChangeSet{
+				allPodChanges: &Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToRemove: concatPodList(podsB[:2]),
+					ToDelete: concatPodList(podsB[:2]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2])),
@@ -126,16 +146,18 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToDelete: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
 			name: "scale-down with groups",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
+				allPodChanges: &Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToRemove: concatPodList(podsB[:2]),
+					ToDelete: concatPodList(podsB[:2]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2])),
@@ -143,17 +165,19 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					ToDelete: concatPodList(podsB[:2]),
+				},
 			}),
 		},
 		{
 			name: "multi-zone failure recovery during rolling change without groups",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &ChangeSet{
-					ToAdd:    concatPodList(podsA[2:4], podsB[2:4], podsC[2:4]),
+				allPodChanges: &Changes{
+					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4])),
 					ToKeep:   concatPodList(),
-					ToRemove: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
+					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2])),
@@ -161,12 +185,13 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				// note that this is not an optimal solution, as zone B is now completely down and we used our change
-				// budget trying to rotate nodes in A
-				// but since no groups where specified, we have no knowledge of a "zone B"
-				ScheduleForCreation: []CreatablePod{{Pod: podsA[2]}, {Pod: podsA[3]}},
-				ScheduleForDeletion: concatPodList(podsB[:2]),
-
+				Changes: Changes{
+					// note that this is not an optimal solution, as zone B is now completely down and we used our change
+					// budget trying to rotate nodes in A
+					// but since no groups where specified, we have no knowledge of a "zone B"
+					ToCreate: []PodToCreate{{Pod: podsA[2]}, {Pod: podsA[3]}},
+					ToDelete: concatPodList(podsB[:2]),
+				},
 				MaxSurgeGroups:       []string{UnmatchedGroupName, AllGroupName},
 				MaxUnavailableGroups: []string{UnmatchedGroupName, AllGroupName},
 			}),
@@ -175,10 +200,10 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "multi-zone failure recovery during rolling change with groups",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
-					ToAdd:    concatPodList(podsA[2:4], podsB[2:4], podsC[2:4]),
+				allPodChanges: &Changes{
+					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4])),
 					ToKeep:   concatPodList(),
-					ToRemove: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
+					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2])),
@@ -186,10 +211,12 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				// we might have expected podsA[2] be be created here, but it can't be. why?
-				// trivia: which phase does a terminal pod (failed/succeeded) go to when a delete issued?
-				ScheduleForCreation: []CreatablePod{{Pod: podsB[2]}, {Pod: podsB[3]}},
-				ScheduleForDeletion: concatPodList(podsB[:2]),
+				Changes: Changes{
+					// we might have expected podsA[2] be be created here, but it can't be. why?
+					// trivia: which phase does a terminal pod (failed/succeeded) go to when a delete issued?
+					ToCreate: []PodToCreate{{Pod: podsB[2]}, {Pod: podsB[3]}},
+					ToDelete: concatPodList(podsB[:2]),
+				},
 
 				MaxSurgeGroups:       []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
 				MaxUnavailableGroups: []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
@@ -199,16 +226,18 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "cannot end up without master or data nodes when removing nodes",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
+				allPodChanges: &Changes{
 					ToKeep:   concatPodList(),
-					ToRemove: concatPodList(masterPods, dataPods),
+					ToDelete: concatPodList(masterPods, dataPods),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterPods, dataPods)),
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForDeletion: concatPodList(masterPods[:1], dataPods[:1]),
+				Changes: Changes{
+					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
+				},
 				RestrictedPods: map[string]error{
 					masterPods[1].Name: ErrNotEnoughMasterEligiblePods,
 					dataPods[1].Name:   ErrNotEnoughDataEligiblePods,
@@ -219,17 +248,19 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from mdi node to dedicated m/d nodes",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
-					ToAdd:    concatPodList(masterPods[:1], dataPods[:1]),
+				allPodChanges: &Changes{
+					ToCreate: podToCreateList(concatPodList(masterPods[:1], dataPods[:1])),
 					ToKeep:   concatPodList(),
-					ToRemove: concatPodList(masterDataPods[:1]),
+					ToDelete: concatPodList(masterDataPods[:1]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterDataPods[:1])),
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{Pod: masterPods[0]}, {Pod: dataPods[0]}},
+				Changes: Changes{
+					ToCreate: []PodToCreate{{Pod: masterPods[0]}, {Pod: dataPods[0]}},
+				},
 				RestrictedPods: map[string]error{
 					masterDataPods[0].Name: ErrNotEnoughMasterEligiblePods,
 				},
@@ -240,17 +271,19 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from dedicated m/d nodes to mdi node",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
-					ToAdd:    concatPodList(masterDataPods[:1]),
+				allPodChanges: &Changes{
+					ToCreate: podToCreateList(concatPodList(masterDataPods[:1])),
 					ToKeep:   concatPodList(),
-					ToRemove: concatPodList(masterPods[:1], dataPods[:1]),
+					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterPods[:1], dataPods[:1])),
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				ScheduleForCreation: []CreatablePod{{Pod: masterDataPods[0]}},
+				Changes: Changes{
+					ToCreate: []PodToCreate{{Pod: masterDataPods[0]}},
+				},
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,
 					dataPods[0].Name:   ErrNotEnoughDataEligiblePods,
@@ -262,10 +295,10 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from dedicated m/d nodes to mdi node with an existing mdi node",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &ChangeSet{
-					ToAdd:    concatPodList(masterDataPods[:1]),
+				allPodChanges: &Changes{
+					ToCreate: podToCreateList(concatPodList(masterDataPods[:1])),
 					ToKeep:   concatPodList(masterDataPods[1:]),
-					ToRemove: concatPodList(masterPods[:1], dataPods[:1]),
+					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningJoining: podListToMap(concatPodList(masterDataPods[1:])),
@@ -273,6 +306,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
+				Changes: Changes{},
 				// we have to wait for the mdi node to join before we can start deleting master/data nodes
 				RestrictedPods: map[string]error{
 					masterPods[0].Name: ErrNotEnoughMasterEligiblePods,

@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:ed60a6e8f70d2e8670ad586784d7b2a40963cf189077a02338eb801e1030ece8"
+  digest = "1:e4549155be72f065cf860ada7148bbeb0857360e81da2d5e28b799bd8720f1bc"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = "T"
-  revision = "74b12019e2aa53ec27882158f59192d7cd6d1998"
-  version = "v0.33.1"
+  revision = "0ebda48a7f143b1cce9eb37a8c1106ac762a3430"
+  version = "v0.34.0"
 
 [[projects]]
   branch = "master"
@@ -24,6 +24,17 @@
   pruneopts = "T"
   revision = "8991bc29aa16c548c550c7ff78260e27b9ab7c73"
   version = "v1.1.1"
+
+[[projects]]
+  branch = "master"
+  digest = "1:0d4540d92fd82f9957e1f718e2b1e5f2d301ed8169e2923bba23558fbbbd08a1"
+  name = "github.com/docker/spdystream"
+  packages = [
+    ".",
+    "spdy",
+  ]
+  pruneopts = "T"
+  revision = "6480d4af844c189cf5dd913db24ddd339d3a4f85"
 
 [[projects]]
   digest = "1:0ffd93121f3971aea43f6a26b3eaaa64c8af20fb0ff0731087d8dab7164af5a8"
@@ -69,23 +80,23 @@
   version = "v0.1.0"
 
 [[projects]]
-  digest = "1:2e2e504f10412c94bbe34b1d9fed61a785049843774e5fa17d3d814f61553ecf"
+  digest = "1:3e34b0a53d651b06655475eb488745c912596e08557a33b83d336aab41cb6fe9"
   name = "github.com/gobuffalo/envy"
   packages = ["."]
   pruneopts = "T"
-  revision = "b29bf6b8134f3398b9333ba1893c58620152edb0"
-  version = "v1.6.9"
+  revision = "801d7253ade1f895f74596b9a96147ed2d3b087e"
+  version = "v1.6.11"
 
 [[projects]]
-  digest = "1:da39f4a22829ca95e63566208e0ea42d6f055f41dff1b14fdab88d88f62df653"
+  digest = "1:f5ccd717b5f093cbabc51ee2e7a5979b92f17d217f9031d6d64f337101c408e4"
   name = "github.com/gogo/protobuf"
   packages = [
     "proto",
     "sortkeys",
   ]
   pruneopts = "T"
-  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
-  version = "v1.1.1"
+  revision = "4cbf7e384e768b4e01799441fdf2a706a5635ae7"
+  version = "v1.2.0"
 
 [[projects]]
   branch = "master"
@@ -440,6 +451,18 @@
   revision = "1dc9a6cbc91aacc3e8b2d63db4d2e957a5394ac4"
 
 [[projects]]
+  digest = "1:fac620096bacf6e41b3beb93ff03af9fe545d77421b3e7320f114b2da2e10824"
+  name = "github.com/rogpeppe/go-internal"
+  packages = [
+    "modfile",
+    "module",
+    "semver",
+  ]
+  pruneopts = "T"
+  revision = "d87f08a7d80821c797ffc8eb8f4e01675f378736"
+  version = "v1.0.0"
+
+[[projects]]
   digest = "1:b7bf9fd95d38ebe6726a63b7d0320611f7c920c64e2c8313eba0cec51926bf55"
   name = "github.com/spf13/afero"
   packages = [
@@ -483,12 +506,12 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:e51827672e3fb26dfd07e1ca96bdece5b1c0ecebacdaf0235d7593314d2a17ac"
+  digest = "1:fefab651e5663d271bda04e3fac63e52d642b454ef88dc1b78deca05f267e94e"
   name = "github.com/spf13/viper"
   packages = ["."]
   pruneopts = "T"
-  revision = "2c12c60302a5a0e62ee102ca9bc996277c2f64f5"
-  version = "v1.2.1"
+  revision = "6d33b5a963d922d182c91e8a1c88d81fd150cfd4"
+  version = "v1.3.1"
 
 [[projects]]
   digest = "1:e95496462101745805bd4e041a5b841e108c7cf761264d53648246308de2761e"
@@ -534,7 +557,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0550efca924537365fba757950ae7b6ec8c11f018b5c2d6a189ac9a2af0f1ba7"
+  digest = "1:d470cb69884835b1800e93ceceb85afcf981ea647e61d99398a76af7a95bad6a"
   name = "golang.org/x/crypto"
   packages = [
     "bcrypt",
@@ -542,11 +565,11 @@
     "ssh/terminal",
   ]
   pruneopts = "T"
-  revision = "3d3f9f413869b949e48070b5bc593aa22cc2b8f2"
+  revision = "505ab145d0a99da450461ae2c1a9f6cd10d1f447"
 
 [[projects]]
   branch = "master"
-  digest = "1:a92d7dd2268883d2d466576cb7319cc5321c906d853da4b4ac1ffc407895f809"
+  digest = "1:0c60c25323a50cdd330a193334388e8f1f51e50d8e2aeed95aa89316c77248d7"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -560,11 +583,11 @@
     "idna",
   ]
   pruneopts = "T"
-  revision = "adae6a3d119ae4890b46832a2e88a95adc62b8e7"
+  revision = "891ebc4b82d6e74f468c533b06f983c7be918a96"
 
 [[projects]]
   branch = "master"
-  digest = "1:a49679e655b109295662e96c9402d8cf5165e840b56f98f76959fd8af6e61ab4"
+  digest = "1:320e5ba9ea8000060bec710764b8b26c251ee28f6012422b669cb8cb100c9815"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
@@ -574,18 +597,18 @@
     "jwt",
   ]
   pruneopts = "T"
-  revision = "8f65e3013ebad444f13bc19536f7865efc793816"
+  revision = "d668ce993890a79bda886613ee587a69dd5da7a6"
 
 [[projects]]
   branch = "master"
-  digest = "1:aa255b0a0a884e6927587009224910e4758ae91510c03a6bb06bceacc9868c69"
+  digest = "1:3631df9157a563b9b7efe8bedae459a2d6a8db709826e2c0e26cec4f40d7d7a7"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "T"
-  revision = "0cf1ed9e522b7dbb416f080a5c8003de9b702bf4"
+  revision = "4d1cda033e0619309c606fc686de3adcf599539e"
 
 [[projects]]
   digest = "1:6164911cb5e94e8d8d5131d646613ff82c14f5a8ce869de2f6d80d9889df8c5a"
@@ -632,16 +655,22 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:137f2f897a74420939af23d69fb335d2047cee772fcf34e2997256eec263555c"
+  digest = "1:7fd1b4c8e7c1e67fe2b671b385fd348f85d988adc5f0da9e3f8db46373ac3592"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
+    "go/gcexportdata",
+    "go/internal/cgo",
+    "go/internal/gcimporter",
+    "go/packages",
+    "go/types/typeutil",
     "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/semver",
   ]
   pruneopts = "T"
-  revision = "91f80e683c10fea00e7f965a1a7cac482ce52541"
+  revision = "3c39ce7b61056afe4473b651789da5f89d4aeb20"
 
 [[projects]]
   digest = "1:fb4ee7f835110d238c58366cfa442da7dfa62cec87d42da2d8049000f4330758"
@@ -688,12 +717,12 @@
   revision = "dd632973f1e7218eb1089048e0798ec9ae7dceb8"
 
 [[projects]]
-  digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
+  digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "T"
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [[projects]]
   digest = "1:8a1af4b4d5b51e3f8d6ec2a44467e8505e25e29814c2557d1d9717834065c674"
@@ -780,6 +809,8 @@
     "pkg/util/diff",
     "pkg/util/errors",
     "pkg/util/framer",
+    "pkg/util/httpstream",
+    "pkg/util/httpstream/spdy",
     "pkg/util/intstr",
     "pkg/util/json",
     "pkg/util/mergepatch",
@@ -797,6 +828,7 @@
     "pkg/version",
     "pkg/watch",
     "third_party/forked/golang/json",
+    "third_party/forked/golang/netutil",
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "T"
@@ -863,9 +895,11 @@
     "tools/leaderelection/resourcelock",
     "tools/metrics",
     "tools/pager",
+    "tools/portforward",
     "tools/record",
     "tools/reference",
     "transport",
+    "transport/spdy",
     "util/buffer",
     "util/cert",
     "util/connrotation",
@@ -882,7 +916,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dc1ae99dcab96913d81ae970b1f7a7411a54199b14bfb17a7e86f9a56979c720"
+  digest = "1:b11533d0d337c776e3ee4d59f86ca302a66a777b40a289d97cb59a638179f31e"
   name = "k8s.io/code-generator"
   packages = [
     "cmd/client-gen",
@@ -895,10 +929,11 @@
     "cmd/client-gen/types",
     "cmd/deepcopy-gen",
     "cmd/deepcopy-gen/args",
+    "pkg/namer",
     "pkg/util",
   ]
   pruneopts = "T"
-  revision = "405721ab9678fde04d78961eec9498820d80408d"
+  revision = "3a2206dd6a78497deceb3ae058417fdeb2036c7e"
 
 [[projects]]
   branch = "master"
@@ -997,7 +1032,6 @@
   version = "v0.1.7"
 
 [[projects]]
-  branch = "master"
   digest = "1:fd7fb0f1f6e3259ec03c9730c675f7c97bcbd9d2a1037364734b197eaa76eee7"
   name = "sigs.k8s.io/testing_frameworks"
   packages = [
@@ -1006,16 +1040,15 @@
   ]
   pruneopts = "T"
   revision = "5818a3a284a11812aaed11d5ca0bcadec2c50e83"
+  version = "v0.1.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/davecgh/go-spew/spew",
     "github.com/emicklei/go-restful",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
-    "github.com/pmezard/go-difflib/difflib",
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
@@ -1041,10 +1074,13 @@
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/rand",
     "k8s.io/apimachinery/pkg/util/yaml",
+    "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
+    "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/tools/record",
+    "k8s.io/client-go/transport/spdy",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "sigs.k8s.io/controller-runtime/pkg/client",

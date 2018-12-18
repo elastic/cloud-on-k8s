@@ -32,7 +32,7 @@ spec:
       resources:
         limits:
           memory: 1Gi
-          cpu: 800m
+          cpu: 500m
       nodeCount: 3
       ## this shows how to add a custom label to all pods created for this topology element
       #template:

@@ -1,12 +1,16 @@
-package support
+package services
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -26,14 +30,14 @@ func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      DiscoveryServiceName(es.Name),
-			Labels:    NewLabels(es),
+			Labels:    support.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(es),
+			Selector: support.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     TransportPort,
+					Port:     support.TransportPort,
 				},
 			},
 			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
@@ -55,7 +59,7 @@ func PublicServiceName(esName string) string {
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(HTTPPort))
+	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(support.HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
@@ -65,14 +69,14 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      PublicServiceName(es.Name),
-			Labels:    NewLabels(es),
+			Labels:    support.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: NewLabels(es),
+			Selector: support.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     HTTPPort,
+					Port:     support.HTTPPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
@@ -83,4 +87,20 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
 	}
 	return &svc
+}
+
+// IsServiceReady checks if a service has one or more ready endpoints.
+func IsServiceReady(c client.Client, service corev1.Service) (bool, error) {
+	endpoints := corev1.Endpoints{}
+	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+
+	if err := c.Get(context.TODO(), namespacedName, &endpoints); err != nil {
+		return false, err
+	}
+	for _, subs := range endpoints.Subsets {
+		if len(subs.Addresses) > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }

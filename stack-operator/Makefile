@@ -15,6 +15,7 @@ KUBECTL_CONFIG ?= $(shell cat $(CONFIG_FILE) 2> /dev/null)
 CONFIG_FILE ?= .devenv
 MINIKUBE_KUBERNETES_VERSION ?= v1.12.0
 MINIKUBE_MEMORY ?= 8192
+MINIKUBE_CPUS ?= 4
 
 GCLOUD_PROJECT ?= elastic-cloud-dev
 GCLOUD_CLUSTER_NAME ?= $(subst _,,$(USER))-dev-cluster
@@ -54,11 +55,14 @@ stack-operator: generate fmt vet
 SNAPSHOTTER_IMAGE?=no-snapshotter-image
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# Deploy on gke
 	@ gcloud auth configure-docker
 	@ $(MAKE) docker-build docker-push deploy
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
-	SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager
+	# Run the operator locally with port-forwarding enabled, so that
+	# it can reach services running in the cluster through k8s port-forward feature
+	AUTO_PORT_FORWARD=true SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager --development $(MANAGER_ARGS)
 endif
 
 .PHONY: logs
@@ -191,7 +195,7 @@ gke:
 minikube: requisites
 ifneq ($(shell minikube status --format '{{.ApiServer}}'),Running)
 	@ echo "-> Starting minikube..."
-	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY}
+	@ minikube start --kubernetes-version $(MINIKUBE_KUBERNETES_VERSION) --memory ${MINIKUBE_MEMORY} --cpus ${MINIKUBE_CPUS}
 else
 	@ echo "-> minikube already started, skipping..."
 endif
@@ -248,19 +252,6 @@ purge-gcr-images:
 show-credentials:
 	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
 
-.PHONY: start-port-forward
-start-port-forward:
-	@ echo "-> Running port-forwarding service on 127.0.0.1, you can see the logs on portfwd.log."
-	@ echo "-> To stop it, run 'make stop-port-forward'."
-	@ echo > portfwd.log
-	@./hack/forward-minikube.sh
-
-
-.PHONY: stop-port-forward
-stop-port-forward:
-	@ kill -9 $$(ps -ef | grep 'kubectl port-forward' | grep -v 'grep ' | awk '{print $$2}')
-	@ echo "-> Stopped."
-
 .PHONY: lint
 lint:
 ifndef GOLANGCI_LINTER
@@ -276,7 +267,13 @@ TESTS_MATCH ?= ""
 # can be overriden with the name of the test to run, eg.:
 # make e2e TESTS_MATCH=TestMutationMoreNodes
 e2e: docker-e2e
-	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" "$(TESTS_MATCH)"
+ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# always pull latest img on gke
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Always "$(TESTS_MATCH)"
+else
+	# never pull on minikube (no registry)
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Never "$(TESTS_MATCH)"
+endif
 
 # Build and (maybe) push e2e tests Docker image
 docker-e2e:

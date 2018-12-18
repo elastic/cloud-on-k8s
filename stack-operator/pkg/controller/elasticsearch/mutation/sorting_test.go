@@ -77,37 +77,37 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 	}
 }
 
-func Test_sortPodsByMasterNodesFirstThenNameAsc(t *testing.T) {
-	masterNode5 := namedPodWithCreationTimestamp("master5", time.Unix(5, 0))
-	masterNode5.Labels = support.NodeTypesMasterLabelName.AsMap(true)
-	masterNode6 := namedPodWithCreationTimestamp("master6", time.Unix(6, 0))
-	masterNode6.Labels = support.NodeTypesMasterLabelName.AsMap(true)
+func Test_sortPodsToCreateByMasterNodesFirstThenNameAsc(t *testing.T) {
+	masterNode5 := PodToCreate{Pod: namedPodWithCreationTimestamp("master5", time.Unix(5, 0))}
+	masterNode5.Pod.Labels = support.NodeTypesMasterLabelName.AsMap(true)
+	masterNode6 := PodToCreate{Pod: namedPodWithCreationTimestamp("master6", time.Unix(6, 0))}
+	masterNode6.Pod.Labels = support.NodeTypesMasterLabelName.AsMap(true)
 
 	type args struct {
-		pods []corev1.Pod
+		pods []PodToCreate
 	}
 	tests := []struct {
 		name string
 		args args
-		want []corev1.Pod
+		want []PodToCreate
 	}{
 		{
 			name: "sample",
 			args: args{
-				pods: []corev1.Pod{
-					namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
+				pods: []PodToCreate{
+					PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0))},
 					masterNode6,
-					namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
+					PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0))},
 					masterNode5,
-					namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
+					PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0))},
 				},
 			},
-			want: []corev1.Pod{
+			want: []PodToCreate{
 				masterNode5,
 				masterNode6,
-				namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
-				namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
-				namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
+				PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0))},
+				PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0))},
+				PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0))},
 			},
 		},
 	}
@@ -115,7 +115,7 @@ func Test_sortPodsByMasterNodesFirstThenNameAsc(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			sort.SliceStable(
 				tt.args.pods,
-				sortPodsByMasterNodesFirstThenNameAsc(tt.args.pods),
+				sortPodsToCreateByMasterNodesFirstThenNameAsc(tt.args.pods),
 			)
 
 			assert.Equal(t, tt.want, tt.args.pods)
