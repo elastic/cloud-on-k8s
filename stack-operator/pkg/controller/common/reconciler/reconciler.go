@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -106,47 +105,29 @@ func ReconcileResource(params Params) error {
 }
 
 func validateModifier(mod reflect.Value, resourceType reflect.Type) {
-	validateDynamic("Modifier", mod, resourceType, nil)
+	expected := reflect.FuncOf(
+		[]reflect.Type{
+			reflect.PtrTo(resourceType),
+			reflect.PtrTo(resourceType),
+		},
+		[]reflect.Type{},
+		false,
+	)
+	if mod.Type() != expected {
+		panic(fmt.Sprintf("invalid Modifier func: expected %v got %v", expected, mod.Type()))
+	}
 }
 
 func validateDiffer(differ reflect.Value, resourceType reflect.Type) {
-	returns := reflect.TypeOf(true)
-	validateDynamic("Differ", differ, resourceType, &returns)
-}
-
-func validateDynamic(name string, fn reflect.Value, resourceType reflect.Type, returns *reflect.Type) {
-	msg := fmt.Sprintf("%s needs to be of type func(expected, found *%s) %v", name, resourceType, *returns)
-
-	if !fn.IsValid() || fn.Kind() != reflect.Func {
-		panic(msg)
-	}
-
-	funcType := fn.Type()
-	if funcType.NumIn() != 2 {
-		panic(msg)
-	}
-
-	var incorrectArgs []string
-	for i := 0; i < funcType.NumIn(); i++ {
-		if !funcType.In(i).AssignableTo(reflect.PtrTo(resourceType)) {
-			incorrectArgs = append(incorrectArgs, funcType.In(i).String())
-		}
-	}
-
-	if len(incorrectArgs) > 0 {
-		panic(msg + " got incorrect args: " + strings.Join(incorrectArgs, ", "))
-	}
-
-	var returnTypes []reflect.Type
-	for i := 0; i < funcType.NumOut(); i++ {
-		returnTypes = append(returnTypes, funcType.Out(i))
-	}
-	hasIncorrectReturns := len(returnTypes) != 0
-	if returns != nil {
-		hasIncorrectReturns = len(returnTypes) != 1 || (len(returnTypes) > 0 && returnTypes[0] != *returns)
-	}
-
-	if hasIncorrectReturns {
-		panic(msg + fmt.Sprintf(" incorrect return types %v ", returnTypes))
+	expected := reflect.FuncOf(
+		[]reflect.Type{
+			reflect.PtrTo(resourceType),
+			reflect.PtrTo(resourceType),
+		},
+		[]reflect.Type{reflect.TypeOf(true)},
+		false,
+	)
+	if differ.Type() != expected {
+		panic(fmt.Sprintf("invalid Differ func: expected %v got %v", expected, differ.Type()))
 	}
 }
