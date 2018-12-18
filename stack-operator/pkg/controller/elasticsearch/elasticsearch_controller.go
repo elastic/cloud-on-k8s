@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	log            = logf.Log.WithName("elasticsearch-controller")
+	log = logf.Log.WithName("elasticsearch-controller")
 )
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields

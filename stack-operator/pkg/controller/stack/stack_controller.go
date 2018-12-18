@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
-	v12 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,7 +34,8 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("stack-controller")
+	log            = logf.Log.WithName("stack-controller")
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -228,7 +229,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", services.PublicServiceName(es.Name))
 
 	internalUsersSecretName := support.ElasticInternalUsersSecretName(es.Name)
-	var internalUsersSecret v12.Secret
+	var internalUsersSecret corev1.Secret
 	internalUsersSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: internalUsersSecretName}
 	if err := r.Get(context.TODO(), internalUsersSecretKey, &internalUsersSecret); err != nil {
 		return reconcile.Result{}, err
@@ -240,6 +241,13 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		// TODO: error checking
 		Password: string(internalUsersSecret.Data[support.InternalKibanaServerUserName]),
 	}
+
+	var publicCACertSecret corev1.Secret
+	publicCACertSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: es.Name}
+	if err = r.Get(context.TODO(), publicCACertSecretKey, &publicCACertSecret); err != nil {
+		return defaultRequeue, err // maybe not created yet
+	}
+	kb.Spec.Elasticsearch.CaCertSecret = &publicCACertSecret.Name
 
 	var currentKb v1alpha12.Kibana
 	if err := r.Get(context.TODO(), esAndKbKey, &currentKb); err != nil && !apierrors.IsNotFound(err) {
