@@ -110,12 +110,12 @@ func validateModifier(mod reflect.Value, resourceType reflect.Type) {
 }
 
 func validateDiffer(differ reflect.Value, resourceType reflect.Type) {
-	returns := reflect.Bool
+	returns := reflect.TypeOf(true)
 	validateDynamic("Differ", differ, resourceType, &returns)
 }
 
-func validateDynamic(name string, fn reflect.Value, resourceType reflect.Type, returns *reflect.Kind) {
-	msg := fmt.Sprintf("%s needs to be of type func(expected, found %s) %v", name, resourceType, returns)
+func validateDynamic(name string, fn reflect.Value, resourceType reflect.Type, returns *reflect.Type) {
+	msg := fmt.Sprintf("%s needs to be of type func(expected, found *%s) %v", name, resourceType, *returns)
 
 	if !fn.IsValid() || fn.Kind() != reflect.Func {
 		panic(msg)
@@ -129,7 +129,7 @@ func validateDynamic(name string, fn reflect.Value, resourceType reflect.Type, r
 	var incorrectArgs []string
 	for i := 0; i < funcType.NumIn(); i++ {
 		if !funcType.In(i).AssignableTo(reflect.PtrTo(resourceType)) {
-			incorrectArgs = append(incorrectArgs, funcType.In(i).Kind().String())
+			incorrectArgs = append(incorrectArgs, funcType.In(i).String())
 		}
 	}
 
@@ -137,9 +137,9 @@ func validateDynamic(name string, fn reflect.Value, resourceType reflect.Type, r
 		panic(msg + " got incorrect args: " + strings.Join(incorrectArgs, ", "))
 	}
 
-	var returnTypes []reflect.Kind
+	var returnTypes []reflect.Type
 	for i := 0; i < funcType.NumOut(); i++ {
-		returnTypes = append(returnTypes, funcType.Out(i).Kind())
+		returnTypes = append(returnTypes, funcType.Out(i))
 	}
 	hasIncorrectReturns := len(returnTypes) != 0
 	if returns != nil {
