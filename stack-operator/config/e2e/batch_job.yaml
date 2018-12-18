@@ -10,6 +10,7 @@ spec:
       containers:
       - name: e2e
         image: $IMG
+        imagePullPolicy: $PULL_POLICY
         args: ["-run", "$TESTS_MATCH"] # optionally limit tests to run
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test

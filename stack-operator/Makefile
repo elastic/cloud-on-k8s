@@ -276,7 +276,13 @@ TESTS_MATCH ?= ""
 # can be overriden with the name of the test to run, eg.:
 # make e2e TESTS_MATCH=TestMutationMoreNodes
 e2e: docker-e2e
-	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" "$(TESTS_MATCH)"
+ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	# always pull latest img on gke
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Always "$(TESTS_MATCH)"
+else
+	# never pull on minikube (no registry)
+	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Never "$(TESTS_MATCH)"
+endif
 
 # Build and (maybe) push e2e tests Docker image
 docker-e2e:
