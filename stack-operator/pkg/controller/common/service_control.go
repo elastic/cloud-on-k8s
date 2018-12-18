@@ -22,7 +22,6 @@ func ReconcileService(
 	service *corev1.Service,
 	owner v1.Object,
 ) (reconcile.Result, error) {
-
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: c,
 		Scheme: scheme,

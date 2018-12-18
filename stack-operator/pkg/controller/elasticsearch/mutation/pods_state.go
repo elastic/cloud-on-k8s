@@ -33,7 +33,7 @@ func NewPodsState(
 	resourcesState support.ResourcesState,
 	observedState support.ObservedState,
 ) PodsState {
-	podsState := newEmptyPodsState()
+	podsState := NewEmptyPodsState()
 
 	// pending Pods are pods that have been created in the API but are not scheduled or running yet.
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodPending] {
@@ -86,8 +86,8 @@ func NewPodsState(
 	return podsState
 }
 
-// newEmptyPodsState initializes a PodsState with empty maps.
-func newEmptyPodsState() PodsState {
+// NewEmptyPodsState initializes a PodsState with empty maps.
+func NewEmptyPodsState() PodsState {
 	return initializePodsState(PodsState{})
 }
 
@@ -127,16 +127,16 @@ func (s PodsState) CurrentPodsCount() int {
 		len(s.Deleting)
 }
 
-// Partition partitions the PodsState into two: one set that contains pods in the provided ChangeSet, and one set
+// Partition partitions the PodsState into two: one set that contains pods in the provided Changes, and one set
 // containing the rest.
-func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
-	selected := newEmptyPodsState()
+func (s PodsState) Partition(changes Changes) (PodsState, PodsState) {
+	selected := NewEmptyPodsState()
 	selected.MasterNodePod = s.MasterNodePod
 
 	remaining := s
 
-	// no need to consider changeSet.ToAdd here, as they will not exist in a PodsState
-	for _, pods := range [][]corev1.Pod{changeSet.ToRemove, changeSet.ToKeep} {
+	// no need to consider changes.ToCreate here, as they will not exist in a PodsState
+	for _, pods := range [][]corev1.Pod{changes.ToDelete, changes.ToKeep} {
 		var partialState PodsState
 		partialState, remaining = remaining.partitionByPods(pods)
 		selected.mergeFrom(partialState)
@@ -144,12 +144,13 @@ func (s PodsState) Partition(changeSet ChangeSet) (PodsState, PodsState) {
 	return selected, remaining
 }
 
-// partitionByPods partitions the PodsState into two: one set that contains pods in the provided list of pods, and one
-// set containing the rest
+// partitionByPods partitions the PodsState into two:
+// - one set that contains pods in the provided list of pods
+// - one set containing the rest
 func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
 	source := s.Copy()
 
-	selected := newEmptyPodsState()
+	selected := NewEmptyPodsState()
 	selected.MasterNodePod = source.MasterNodePod
 
 	for _, pod := range pods {

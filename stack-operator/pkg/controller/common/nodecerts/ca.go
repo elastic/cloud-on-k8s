@@ -12,6 +12,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -126,10 +127,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: c.Cert.Raw})
 
 	clusterCASecret := corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      objectKey.Name,
-			Namespace: objectKey.Namespace,
-		},
+		ObjectMeta: k8s.ToObjectMeta(objectKey),
 		Data: map[string][]byte{
 			SecretCAKey: expectedCaKeyBytes,
 		},

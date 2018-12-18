@@ -1,4 +1,4 @@
-package elasticsearch
+package reconcilehelpers
 
 import (
 	"fmt"
@@ -11,7 +11,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
+
+var log = logf.KBLog.WithName("reconcilestate")
 
 // Event is a k8s event that can be recorded via an event recorder.
 type Event struct {
@@ -30,8 +33,8 @@ type ReconcileState struct {
 
 // NewReconcileState creates a new reconcile state based on the given request and Elasticsearch resource with the
 // resource state reset to empty.
-func NewReconcileState(c v1alpha1.ElasticsearchCluster) ReconcileState {
-	return ReconcileState{cluster: c, status: *c.Status.DeepCopy()}
+func NewReconcileState(c v1alpha1.ElasticsearchCluster) *ReconcileState {
+	return &ReconcileState{cluster: c, status: *c.Status.DeepCopy()}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.

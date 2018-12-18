@@ -2,11 +2,12 @@
 
 #
 # Run end-to-end tests as a K8s batch job
-# Usage: ./hack/run_e2e.sh <e2e_docker_image_name> <go_tests_matcher>
+# Usage: ./hack/run_e2e.sh <e2e_docker_image_name> <image_pull_policy> <go_tests_matcher>
 #
 
 IMG="$1" # Docker image name
-TESTS_MATCH="$2" # Expression to match go test names (can be "")
+PULL_POLICY="$2"
+TESTS_MATCH="$3" # Expression to match go test names (can be "")
 
 JOB_NAME="stack-operator-e2e-tests"
 NAMESPACE="e2e"
@@ -25,6 +26,7 @@ set -e
 cat config/e2e/batch_job.yaml |  \
     sed "s;\$IMG;$IMG;g" | \
     sed "s;\$TESTS_MATCH;$TESTS_MATCH;g" | \
+    sed "s;\$PULL_POLICY;$PULL_POLICY;g" | \
     kubectl apply -f -
 
 # retrieve pod responsible for running the job

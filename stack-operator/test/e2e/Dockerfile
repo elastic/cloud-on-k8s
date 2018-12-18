@@ -4,7 +4,7 @@ FROM golang:1.11
 # Copy in the go src
 WORKDIR /go/src/github.com/elastic/stack-operators/stack-operator
 COPY pkg/    pkg/
-COPY cmd/    cmd/
+COPY config/ config/
 COPY test/   test/
 COPY vendor/ vendor/
 
