@@ -261,7 +261,6 @@ endif
 	@ $(GOLANGCI_LINTER) run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
 
 # -- e2e tests
-
 TESTS_MATCH ?= ""
 # run e2e tests
 # can be overriden with the name of the test to run, eg.:
@@ -274,6 +273,11 @@ else
 	# never pull on minikube (no registry)
 	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Never "$(TESTS_MATCH)"
 endif
+
+# run e2e tests locally (not as a k8s job), with a custom http dialer
+# that can reach ES services running in the k8s cluster through port-forwarding
+e2e-local:
+	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Build and (maybe) push e2e tests Docker image
 docker-e2e:
