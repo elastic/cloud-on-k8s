@@ -16,10 +16,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	v12 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -147,11 +147,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	esAndKbKey := types.NamespacedName{Namespace: stack.Namespace, Name: stack.Name}
 
 	es := v1alpha1.ElasticsearchCluster{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      esAndKbKey.Name,
-			Namespace: esAndKbKey.Namespace,
-		},
-		Spec: stack.Spec.Elasticsearch,
+		ObjectMeta: k8s.ToObjectMeta(esAndKbKey),
+		Spec:       stack.Spec.Elasticsearch,
 	}
 
 	if es.Spec.Version == "" {
@@ -203,11 +200,8 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	kb := v1alpha12.Kibana{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      esAndKbKey.Name,
-			Namespace: esAndKbKey.Namespace,
-		},
-		Spec: stack.Spec.Kibana,
+		ObjectMeta: k8s.ToObjectMeta(esAndKbKey),
+		Spec:       stack.Spec.Kibana,
 	}
 
 	if kb.Spec.Version == "" {

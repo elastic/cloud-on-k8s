@@ -5,6 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -12,7 +13,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // InternalUsers are Elasticsearch users intended for system use.
@@ -78,7 +78,7 @@ func (r *ReconcileElasticsearch) reconcileSecret(es v1alpha1.ElasticsearchCluste
 		return err
 	}
 	found := &corev1.Secret{}
-	err := r.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: expected.Namespace}, found)
+	err := r.Get(context.TODO(), k8s.ExtractNamespacedName(expected.ObjectMeta), found)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(common.Concat("Creating secret ", expected.Namespace, "/", expected.Name),
 			"iteration", r.iteration,

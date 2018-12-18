@@ -22,11 +22,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -279,10 +279,7 @@ func (r *ReconcileElasticsearch) reconcileElasticsearchPods(
 		}
 
 		elasticsearchExtraFilesSecret = corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      elasticsearchExtraFilesSecretObjectKey.Name,
-				Namespace: elasticsearchExtraFilesSecretObjectKey.Namespace,
-			},
+			ObjectMeta: k8s.ToObjectMeta(elasticsearchExtraFilesSecretObjectKey),
 			Data: map[string][]byte{
 				"trust.yml": trustRootCfgData,
 			},
