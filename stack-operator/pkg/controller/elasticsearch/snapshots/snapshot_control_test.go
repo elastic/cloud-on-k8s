@@ -1,19 +1,16 @@
-package elasticsearch
+package snapshots
 
 import (
 	"context"
 	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
-
 	"github.com/stretchr/testify/assert"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -54,7 +51,7 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	testName := types.NamespacedName{Namespace: "test-namespace", Name: "test-es-name"}
-	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: snapshots.CronJobName(testName)}
+	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: CronJobName(testName)}
 	esSample := v1alpha1.ElasticsearchCluster{
 		ObjectMeta: asObjectMeta(testName),
 	}
@@ -115,14 +112,11 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	scheme := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := ReconcileElasticsearch{
-				Client: fake.NewFakeClient(tt.args.initialObjects...),
-				scheme: scheme,
-			}
-			if err := r.ReconcileSnapshotterCronJob(tt.args.es, tt.args.user); (err != nil) != tt.wantErr {
+			client := fake.NewFakeClient(tt.args.initialObjects...)
+			if err := ReconcileSnapshotterCronJob(client, scheme, tt.args.es, tt.args.user); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotterCronJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			tt.clientAssertion(r)
+			tt.clientAssertion(client)
 		})
 	}
 }
@@ -189,14 +183,9 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 		},
 	}
 
-	scheme := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileElasticsearch{
-				Client: fake.NewFakeClient(tt.args.initialObjects...),
-				scheme: scheme,
-			}
-			got, err := r.ReconcileSnapshotCredentials(tt.args.repoConfig)
+			got, err := ReconcileSnapshotCredentials(fake.NewFakeClient(tt.args.initialObjects...), tt.args.repoConfig)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return

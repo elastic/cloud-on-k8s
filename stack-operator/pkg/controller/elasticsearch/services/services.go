@@ -1,14 +1,16 @@
 package services
 
 import (
+	"context"
 	"strconv"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -85,4 +87,20 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
 	}
 	return &svc
+}
+
+// IsServiceReady checks if a service has one or more ready endpoints.
+func IsServiceReady(c client.Client, service corev1.Service) (bool, error) {
+	endpoints := corev1.Endpoints{}
+	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+
+	if err := c.Get(context.TODO(), namespacedName, &endpoints); err != nil {
+		return false, err
+	}
+	for _, subs := range endpoints.Subsets {
+		if len(subs.Addresses) > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
