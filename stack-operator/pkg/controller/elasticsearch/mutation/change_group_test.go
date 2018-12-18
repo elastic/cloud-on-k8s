@@ -10,10 +10,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
+func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 	tests := []struct {
 		name               string
-		s                  GroupedChangeSets
+		s                  ChangeGroups
 		budget             v1alpha1.ChangeBudget
 		podRestrictions    PodRestrictions
 		performableChanges *PerformableChanges
@@ -22,21 +22,18 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	}{
 		{
 			name:               "empty",
-			s:                  GroupedChangeSets{},
+			s:                  ChangeGroups{},
 			performableChanges: &PerformableChanges{},
 			want:               &PerformableChanges{},
 		},
 		{
-			name: "can only add if unavailable budget is maxed out",
-			s: GroupedChangeSets{
-				GroupedChangeSet{
+			name: "can only create if unavailable budget is maxed out",
+			s: ChangeGroups{
+				ChangeGroup{
 					Name: "foo",
-					ChangeSet: ChangeSet{
-						ToAdd: []corev1.Pod{namedPod("1")},
-						ToAddContext: map[string]support.PodToAdd{
-							"1": {},
-						},
-						ToRemove: []corev1.Pod{namedPod("2")},
+					Changes: Changes{
+						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
+						ToDelete: []corev1.Pod{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningReady: map[string]corev1.Pod{"2": namedPod("2")},
@@ -49,23 +46,22 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 0,
 			},
 			want: &PerformableChanges{
-				ScheduleForCreation: []CreatablePod{
-					{Pod: namedPod("1"), PodSpecContext: support.PodSpecContext{}},
+				Changes: Changes{
+					ToCreate: []PodToCreate{
+						{Pod: namedPod("1"), PodSpecCtx: support.PodSpecContext{}},
+					},
 				},
 				MaxUnavailableGroups: []string{"foo"},
 			},
 		},
 		{
-			name: "can only remove if surge budget is maxed out",
-			s: GroupedChangeSets{
-				GroupedChangeSet{
+			name: "can only delete if surge budget is maxed out",
+			s: ChangeGroups{
+				ChangeGroup{
 					Name: "foo",
-					ChangeSet: ChangeSet{
-						ToAdd: []corev1.Pod{namedPod("1")},
-						ToAddContext: map[string]support.PodToAdd{
-							"1": {},
-						},
-						ToRemove: []corev1.Pod{namedPod("2")},
+					Changes: Changes{
+						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
+						ToDelete: []corev1.Pod{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningReady: map[string]corev1.Pod{"2": namedPod("2"), "3": namedPod("3")},
@@ -78,29 +74,28 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 1,
 			},
 			want: &PerformableChanges{
-				ScheduleForDeletion: []corev1.Pod{
-					namedPod("2"),
+				Changes: Changes{
+					ToDelete: []corev1.Pod{
+						namedPod("2"),
+					},
 				},
 				MaxSurgeGroups: []string{"foo"},
 			},
 		},
 		{
-			name: "can both remove and add up to the surge and unavailability budgets are exhausted",
-			s: GroupedChangeSets{
-				GroupedChangeSet{
+			name: "can both delete and create up to the surge and unavailability budgets are exhausted",
+			s: ChangeGroups{
+				ChangeGroup{
 					Name: "foo",
-					ChangeSet: ChangeSet{
-						ToAdd: []corev1.Pod{namedPod("add-1"), namedPod("add-2")},
-						ToAddContext: map[string]support.PodToAdd{
-							"1": {},
-						},
+					Changes: Changes{
+						ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
 						ToKeep:   []corev1.Pod{namedPod("keep-3")},
-						ToRemove: []corev1.Pod{namedPod("remove-1"), namedPod("remove-2")},
+						ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningReady: map[string]corev1.Pod{
-							"remove-1": namedPod("remove-1"),
-							"remove-2": namedPod("remove-2"),
+							"delete-1": namedPod("delete-1"),
+							"delete-2": namedPod("delete-2"),
 							"keep-3":   namedPod("keep-3"),
 						},
 					}),
@@ -112,11 +107,13 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 				MaxUnavailable: 1,
 			},
 			want: &PerformableChanges{
-				ScheduleForCreation: []CreatablePod{
-					{Pod: namedPod("add-1"), PodSpecContext: support.PodSpecContext{}},
-				},
-				ScheduleForDeletion: []corev1.Pod{
-					namedPod("remove-1"),
+				Changes: Changes{
+					ToCreate: []PodToCreate{
+						{Pod: namedPod("create-1"), PodSpecCtx: support.PodSpecContext{}},
+					},
+					ToDelete: []corev1.Pod{
+						namedPod("delete-1"),
+					},
 				},
 				MaxSurgeGroups:       []string{"foo"},
 				MaxUnavailableGroups: []string{"foo"},
@@ -127,7 +124,7 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.s.calculatePerformableChanges(tt.budget, &tt.podRestrictions, tt.performableChanges)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GroupedChangeSets.calculatePerformableChanges() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ChangeGroups.calculatePerformableChanges() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -136,11 +133,11 @@ func TestGroupedChangeSets_CalculatePerformableChanges(t *testing.T) {
 	}
 }
 
-func TestGroupedChangeSet_ChangeStats(t *testing.T) {
+func TestChangeGroups_ChangeStats(t *testing.T) {
 	type fields struct {
 		Name       string
 		Definition v1alpha1.GroupingDefinition
-		ChangeSet  ChangeSet
+		Changes    Changes
 		PodsState  PodsState
 	}
 	tests := []struct {
@@ -154,18 +151,15 @@ func TestGroupedChangeSet_ChangeStats(t *testing.T) {
 				Definition: v1alpha1.GroupingDefinition{
 					Selector: v1.LabelSelector{},
 				},
-				ChangeSet: ChangeSet{
-					ToAdd: []corev1.Pod{namedPod("add-1"), namedPod("add-2")},
-					ToAddContext: map[string]support.PodToAdd{
-						"1": {},
-					},
+				Changes: Changes{
+					ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
 					ToKeep:   []corev1.Pod{namedPod("keep-3")},
-					ToRemove: []corev1.Pod{namedPod("remove-1"), namedPod("remove-2")},
+					ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{
-						"remove-1": namedPod("remove-1"),
-						"remove-2": namedPod("remove-2"),
+						"delete-1": namedPod("delete-1"),
+						"delete-2": namedPod("delete-2"),
 						"keep-3":   namedPod("keep-3"),
 					},
 				}),
@@ -181,9 +175,9 @@ func TestGroupedChangeSet_ChangeStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := GroupedChangeSet{
+			s := ChangeGroup{
 				Name:      tt.fields.Name,
-				ChangeSet: tt.fields.ChangeSet,
+				Changes:   tt.fields.Changes,
 				PodsState: tt.fields.PodsState,
 			}
 
@@ -192,10 +186,10 @@ func TestGroupedChangeSet_ChangeStats(t *testing.T) {
 	}
 }
 
-func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
+func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 	type fields struct {
 		Name      string
-		ChangeSet ChangeSet
+		Changes   Changes
 		PodsState PodsState
 	}
 	type args struct {
@@ -205,14 +199,14 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   GroupedChangeSet
+		want   ChangeGroup
 	}{
 		{
 			name: "deletion",
 			fields: fields{
-				ChangeSet: ChangeSet{
+				Changes: Changes{
 					ToKeep:   []corev1.Pod{namedPod("bar")},
-					ToRemove: []corev1.Pod{namedPod("foo"), namedPod("baz")},
+					ToDelete: []corev1.Pod{namedPod("foo"), namedPod("baz")},
 				},
 				PodsState: initializePodsState(PodsState{
 					Deleting:     map[string]corev1.Pod{"baz": namedPod("baz")},
@@ -221,13 +215,15 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 			},
 			args: args{
 				performableChanges: PerformableChanges{
-					ScheduleForDeletion: []corev1.Pod{namedPod("foo")},
+					Changes: Changes{
+						ToDelete: []corev1.Pod{namedPod("foo")},
+					},
 				},
 			},
-			want: GroupedChangeSet{
-				ChangeSet: ChangeSet{
+			want: ChangeGroup{
+				Changes: Changes{
 					ToKeep:   []corev1.Pod{namedPod("bar")},
-					ToRemove: []corev1.Pod{namedPod("baz")},
+					ToDelete: []corev1.Pod{namedPod("baz")},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
@@ -238,13 +234,9 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 		{
 			name: "creation",
 			fields: fields{
-				ChangeSet: ChangeSet{
-					ToKeep: []corev1.Pod{namedPod("bar")},
-					ToAdd:  []corev1.Pod{namedPod("foo"), namedPod("baz")},
-					ToAddContext: map[string]support.PodToAdd{
-						"foo": {},
-						"baz": {},
-					},
+				Changes: Changes{
+					ToKeep:   []corev1.Pod{namedPod("bar")},
+					ToCreate: []PodToCreate{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
@@ -252,16 +244,15 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 			},
 			args: args{
 				performableChanges: PerformableChanges{
-					ScheduleForCreation: []CreatablePod{{Pod: namedPod("foo")}},
+					Changes: Changes{
+						ToCreate: []PodToCreate{{Pod: namedPod("foo")}},
+					},
 				},
 			},
-			want: GroupedChangeSet{
-				ChangeSet: ChangeSet{
-					ToAdd:  []corev1.Pod{namedPod("baz")},
-					ToKeep: []corev1.Pod{namedPod("bar"), namedPod("foo")},
-					ToAddContext: map[string]support.PodToAdd{
-						"baz": {},
-					},
+			want: ChangeGroup{
+				Changes: Changes{
+					ToCreate: []PodToCreate{{Pod: namedPod("baz")}},
+					ToKeep:   []corev1.Pod{namedPod("bar"), namedPod("foo")},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
@@ -272,9 +263,9 @@ func TestGroupedChangeSet_simulatePerformableChangesApplied(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &GroupedChangeSet{
+			s := &ChangeGroup{
 				Name:      tt.fields.Name,
-				ChangeSet: tt.fields.ChangeSet,
+				Changes:   tt.fields.Changes,
 				PodsState: tt.fields.PodsState,
 			}
 			s.simulatePerformableChangesApplied(tt.args.performableChanges)

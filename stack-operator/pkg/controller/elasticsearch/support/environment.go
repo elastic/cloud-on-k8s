@@ -47,9 +47,9 @@ const (
 )
 
 var (
-	// ignoredVarsDuringComparison are environment variables that should be ignored when pods are compared to expected
+	// IgnoredVarsDuringComparison are environment variables that should be ignored when pods are compared to expected
 	// pod specs
-	ignoredVarsDuringComparison = []string{
+	IgnoredVarsDuringComparison = []string{
 		EnvNodeName,
 		EnvDiscoveryZenMinimumMasterNodes,
 		EnvNetworkPublishHost,
