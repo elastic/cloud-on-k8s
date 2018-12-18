@@ -148,7 +148,7 @@ func TestReconcileResource(t *testing.T) {
 				// should be unchanged as it is ignored by the custom differ
 				assert.Equal(t, "other", string(found.Labels["label"]))
 				// but we don't panic even though I haven't specified the modifier function
-				// because the differ should not flap up an update
+				// because the differ should not flag up an update
 			},
 		},
 		{
