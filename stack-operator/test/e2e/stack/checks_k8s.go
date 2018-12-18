@@ -201,29 +201,27 @@ func CheckESPodsResources(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Te
 	return helpers.TestStep{
 		Name: "Pods should eventually have the expected resources",
 		Test: helpers.Eventually(func() error {
-			// TODO
-			// pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
-			// if err != nil {
-			// 	return err
-			// }
-			// var expectedLimits []corev1.ResourceList
-			// for _, topo := range stack.Spec.Elasticsearch.Topologies {
-			// 	for i := 0; i < int(topo.NodeCount); i++ {
-			// 		expectedLimits = append(expectedLimits, topo.Resources.Limits)
-			// 	}
-			// }
-			// var limits []corev1.ResourceList
-			// for _, p := range pods {
-			// 	if len(p.Spec.Containers) == 0 {
-			// 		return fmt.Errorf("No ES container found in pod %s", p.Name)
-			// 	}
-			// 	esContainer := p.Spec.Containers[0]
-			// 	if es.Container.Resources.Limits
-			// 	limits = append(limits, esContainer.Resources.Limits)
-			// }
-			// if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
-			// 	return err
-			// }
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			if err != nil {
+				return err
+			}
+			var expectedLimits []corev1.ResourceList
+			for _, topo := range stack.Spec.Elasticsearch.Topologies {
+				for i := 0; i < int(topo.NodeCount); i++ {
+					expectedLimits = append(expectedLimits, topo.Resources.Limits)
+				}
+			}
+			var limits []corev1.ResourceList
+			for _, p := range pods {
+				if len(p.Spec.Containers) == 0 {
+					return fmt.Errorf("No ES container found in pod %s", p.Name)
+				}
+				esContainer := p.Spec.Containers[0]
+				limits = append(limits, esContainer.Resources.Limits)
+			}
+			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
+				return err
+			}
 			return nil
 		}),
 	}
