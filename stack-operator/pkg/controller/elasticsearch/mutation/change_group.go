@@ -8,15 +8,15 @@ import (
 )
 
 const (
-	// AllGroupName is the name used in GroupedChangeSets that is used for changes that have not been partitioned into
-	// groups
+	// AllGroupName is the name used in ChangeGroups that is used for
+	// changes that have not been partitioned into groups
 	AllGroupName = "all"
 
-	// UnmatchedGroupName is the name used in GroupedChangeSets for a group that was not selected by the user-specified
-	// groups
+	// UnmatchedGroupName is the name used in ChangeGroups for
+	// a group that was not selected by the user-specified groups
 	UnmatchedGroupName = "unmatched"
 
-	// indexedGroupNamePrefix is the prefix used for dynamically named GroupedChangeSets.
+	// indexedGroupNamePrefix is the prefix used for dynamically named ChangeGroups
 	indexedGroupNamePrefix = "group-"
 )
 
@@ -28,34 +28,34 @@ func indexedGroupName(index int) string {
 	return fmt.Sprintf("%s%d", indexedGroupNamePrefix, index)
 }
 
-// GroupedChangeSet is a ChangeSet for a specific group of pods.
-type GroupedChangeSet struct {
-	// Name is a logical name for these changes.
+// ChangeGroup holds changes for a specific group of pods
+type ChangeGroup struct {
+	// Name is a logical name for these changes
 	Name string
-	// ChangeSet contains the changes in this group
-	ChangeSet ChangeSet
-	// PodsState contains the state of all the pods in this group.
+	// Changes contains the changes in this group
+	Changes Changes
+	// PodsState contains the state of all the pods in this group
 	PodsState PodsState
 }
 
-// ChangeStats contains key numbers for a GroupedChangeSet, used to execute an upgrade budget
+// ChangeStats contains key numbers for a ChangeGroup, used to execute an upgrade budget
 type ChangeStats struct {
-	// TargetPods is the number of pods we should have in the final state.
+	// TargetPods is the number of pods we should have in the final state
 	TargetPods int `json:"targetPods"`
-	// CurrentPods is the current number of pods in the cluster that might be using resources.
+	// CurrentPods is the current number of pods in the cluster that might be using resources
 	CurrentPods int `json:"currentPods"`
-	// CurrentSurge is the number of pods above the target the cluster is using.
+	// CurrentSurge is the number of pods above the target the cluster is using
 	CurrentSurge int `json:"currentSurge"`
-	// CurrentRunningReadyPods is the number of pods that are running and have joined the current master.
+	// CurrentRunningReadyPods is the number of pods that are running and have joined the current master
 	CurrentRunningReadyPods int `json:"currentRunningReady"`
-	// CurrentUnavailable is the number of pods below the target the cluster is currently using.
+	// CurrentUnavailable is the number of pods below the target the cluster is currently using
 	CurrentUnavailable int `json:"currentUnavailable"`
 }
 
-// ChangeStats calculates and returns the ChangeStats for this grouped change set,
-func (s GroupedChangeSet) ChangeStats() ChangeStats {
-	// when we're done, we should have ToKeep + ToAdd pods in the group.
-	targetPodsCount := len(s.ChangeSet.ToKeep) + len(s.ChangeSet.ToAdd)
+// ChangeStats calculates and returns the ChangeStats for this ChangeGroup
+func (s ChangeGroup) ChangeStats() ChangeStats {
+	// when we're done, we should have ToKeep + ToCreate pods in the group.
+	targetPodsCount := len(s.Changes.ToKeep) + len(s.Changes.ToCreate)
 
 	currentPodsCount := s.PodsState.CurrentPodsCount()
 
@@ -77,7 +77,7 @@ func (s GroupedChangeSet) ChangeStats() ChangeStats {
 }
 
 // calculatePerformableChanges calculates the PerformableChanges for this group with the given budget
-func (s GroupedChangeSet) calculatePerformableChanges(
+func (s ChangeGroup) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
 	podRestrictions *PodRestrictions,
 	result *PerformableChanges,
@@ -97,20 +97,20 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		"pods_state_summary", s.PodsState.Summary(),
 	)
 
-	// ensure we consider removing terminal pods first and the master node last in this changeset
+	// ensure we consider removing terminal pods first and the master node last in these changes
 	sort.SliceStable(
-		s.ChangeSet.ToRemove,
+		s.Changes.ToDelete,
 		sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 			s.PodsState.Terminal,
 			s.PodsState.MasterNodePod,
-			s.ChangeSet.ToRemove,
+			s.Changes.ToDelete,
 		),
 	)
 
-	// ensure we add master nodes first in this changeset
+	// ensure we create master nodes first in this group
 	sort.SliceStable(
-		s.ChangeSet.ToAdd,
-		sortPodsByMasterNodesFirstThenNameAsc(s.ChangeSet.ToAdd),
+		s.Changes.ToCreate,
+		sortPodsToCreateByMasterNodesFirstThenNameAsc(s.Changes.ToCreate),
 	)
 
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
@@ -136,7 +136,7 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 	//}
 
 	// schedule for creation as many pods as we can
-	for _, newPodToAdd := range s.ChangeSet.ToAdd {
+	for _, newPodToCreate := range s.Changes.ToCreate {
 		if changeStats.CurrentSurge >= maxSurge {
 			log.V(4).Info(
 				"Hit the max surge limit in a group.",
@@ -150,30 +150,25 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		changeStats.CurrentSurge++
 		changeStats.CurrentPods++
 
-		toAddContext := s.ChangeSet.ToAddContext[newPodToAdd.Name]
-
 		log.V(4).Info(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"change_stats", changeStats,
-			"mismatch_reasons", toAddContext.MismatchReasons,
+			"mismatch_reasons", newPodToCreate.MismatchReasons,
 		)
 
-		result.ScheduleForCreation = append(
-			result.ScheduleForCreation,
-			CreatablePod{Pod: newPodToAdd, PodSpecContext: toAddContext.PodSpecCtx},
-		)
+		result.ToCreate = append(result.ToCreate, newPodToCreate)
 	}
 
 	// schedule for deletion as many pods as we can
-	for _, pod := range s.ChangeSet.ToRemove {
+	for _, pod := range s.Changes.ToDelete {
 		if _, ok := s.PodsState.Terminal[pod.Name]; ok {
 			// removing terminal pods do not affect our availability budget, so we can always delete
-			result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+			result.ToDelete = append(result.ToDelete, pod)
 			continue
 		}
 
-		if err := podRestrictions.CanRemove(pod); err != nil {
+		if err := podRestrictions.CanDelete(pod); err != nil {
 			// cannot remove pod due to restrictions
 			result.RestrictedPods[pod.Name] = err
 			continue
@@ -200,70 +195,74 @@ func (s GroupedChangeSet) calculatePerformableChanges(
 		)
 
 		podRestrictions.Remove(pod)
-		result.ScheduleForDeletion = append(result.ScheduleForDeletion, pod)
+		result.ToDelete = append(result.ToDelete, pod)
 	}
 
 	return nil
 }
 
-// simulatePerformableChangesApplied applies the performable changes to the GroupedChangeSet
-func (s *GroupedChangeSet) simulatePerformableChangesApplied(
+// simulatePerformableChangesApplied applies the performable changes to the ChangeGroup
+func (s *ChangeGroup) simulatePerformableChangesApplied(
 	performableChanges PerformableChanges,
 ) {
 	// convert the scheduled for deletion pods to a map for faster lookup
-	scheduledForDeletionByName := make(map[string]struct{}, len(performableChanges.ScheduleForDeletion))
-	for _, pod := range performableChanges.ScheduleForDeletion {
-		scheduledForDeletionByName[pod.Name] = empty
+	toDeleteByName := make(map[string]struct{}, len(performableChanges.ToDelete))
+	for _, pod := range performableChanges.ToDelete {
+		toDeleteByName[pod.Name] = empty
 	}
 
-	// for each pod we intend to remove, if it was scheduled for deletion, pop it from ToRemove
-	for i := len(s.ChangeSet.ToRemove) - 1; i >= 0; i-- {
-		if _, ok := scheduledForDeletionByName[s.ChangeSet.ToRemove[i].Name]; ok {
-			s.ChangeSet.ToRemove = append(s.ChangeSet.ToRemove[:i], s.ChangeSet.ToRemove[i+1:]...)
+	fmt.Println("todelete:", toDeleteByName)
+
+	// for each pod we intend to remove, simulate a deletion
+	for i := len(s.Changes.ToDelete) - 1; i >= 0; i-- {
+		podToDelete := s.Changes.ToDelete[i]
+		if _, ok := toDeleteByName[podToDelete.Name]; ok {
+			fmt.Println("deleting pod ", podToDelete.Name)
+			// pop from list of pods to delete
+			s.Changes.ToDelete = append(s.Changes.ToDelete[:i], s.Changes.ToDelete[i+1:]...)
 		}
 	}
 
 	// convert the scheduled for creation pods to a map for faster lookup
-	scheduledForCreationByName := make(map[string]struct{}, len(performableChanges.ScheduleForCreation))
-	for _, podToCreate := range performableChanges.ScheduleForCreation {
-		scheduledForCreationByName[podToCreate.Pod.Name] = empty
-
-		// pretend we added it, which would move it to Pending
-		s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
-		// also pretend we're intending to keep it instead of adding it.
-		s.ChangeSet.ToKeep = append(s.ChangeSet.ToKeep, podToCreate.Pod)
-		// remove from the to add context as it's being added
-		delete(s.ChangeSet.ToAddContext, podToCreate.Pod.Name)
+	toCreateByName := make(map[string]struct{}, len(performableChanges.ToCreate))
+	for _, podToCreate := range performableChanges.ToCreate {
+		toCreateByName[podToCreate.Pod.Name] = empty
 	}
 
-	// for each pod we intend to add, if it was scheduled for creation, pop it from ToAdd
-	for i := len(s.ChangeSet.ToAdd) - 1; i >= 0; i-- {
-		if _, ok := scheduledForCreationByName[s.ChangeSet.ToAdd[i].Name]; ok {
-			s.ChangeSet.ToAdd = append(s.ChangeSet.ToAdd[:i], s.ChangeSet.ToAdd[i+1:]...)
+	// for each pod we intend to create, simulate the creation
+	for i := len(s.Changes.ToCreate) - 1; i >= 0; i-- {
+		podToCreate := s.Changes.ToCreate[i]
+		if _, ok := toCreateByName[podToCreate.Pod.Name]; ok {
+			// pop from list of pods to create
+			s.Changes.ToCreate = append(s.Changes.ToCreate[:i], s.Changes.ToCreate[i+1:]...)
+			// pretend we created it, which would move it to Pending
+			s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
+			// also pretend we're intending to keep it instead of creating it
+			s.Changes.ToKeep = append(s.Changes.ToKeep, podToCreate.Pod)
 		}
 	}
 
-	// this leaves PodsState, which we can simply partition by the new changeset
-	s.PodsState, _ = s.PodsState.Partition(s.ChangeSet)
+	// update the current pod states to match the simulated changes
+	s.PodsState, _ = s.PodsState.Partition(s.Changes)
 
-	// removed pods will /eventually/ go to the Deleting stage, and since we're just removing it from the ChangeSet
-	// above, we need to pretend it's being deleted for it to be counted as unavailable.
-	for _, pod := range performableChanges.ScheduleForDeletion {
+	// deleted pods should eventually go into a Deleting state,
+	// simulate that for deleted pods to be counted as unavailable
+	for _, pod := range performableChanges.ToDelete {
 		s.PodsState.Deleting[pod.Name] = pod
 	}
 }
 
-// GroupedChangeSets is a list GroupedChangeSet instances
-type GroupedChangeSets []GroupedChangeSet
+// ChangeGroups is a list of ChangeGroup
+type ChangeGroups []ChangeGroup
 
 // calculatePerformableChanges calculates the PerformableChanges for each group with the given budget
-func (s GroupedChangeSets) calculatePerformableChanges(
+func (s ChangeGroups) calculatePerformableChanges(
 	budget v1alpha1.ChangeBudget,
 	podRestrictions *PodRestrictions,
 	result *PerformableChanges,
 ) error {
-	for _, groupedChangeSet := range s {
-		if err := groupedChangeSet.calculatePerformableChanges(budget, podRestrictions, result); err != nil {
+	for _, group := range s {
+		if err := group.calculatePerformableChanges(budget, podRestrictions, result); err != nil {
 			return err
 		}
 	}

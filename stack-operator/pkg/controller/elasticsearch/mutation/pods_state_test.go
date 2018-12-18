@@ -97,8 +97,8 @@ func TestNewPodsState(t *testing.T) {
 	}
 }
 
-func Test_newEmptyPodsState(t *testing.T) {
-	s := newEmptyPodsState()
+func Test_NewEmptyPodsState(t *testing.T) {
+	s := NewEmptyPodsState()
 
 	assert.Nil(t, s.MasterNodePod)
 
@@ -143,7 +143,7 @@ func TestPodsState_CurrentPodsCount(t *testing.T) {
 
 func TestPodsState_Partition(t *testing.T) {
 	type args struct {
-		changeSet ChangeSet
+		changes Changes
 	}
 	tests := []struct {
 		name      string
@@ -164,11 +164,11 @@ func TestPodsState_Partition(t *testing.T) {
 				Deleting:       map[string]corev1.Pod{"7": namedPod("7")},
 			},
 			args: args{
-				changeSet: ChangeSet{
-					ToRemove: []corev1.Pod{namedPod("2")},
+				changes: Changes{
+					ToDelete: []corev1.Pod{namedPod("2")},
 					ToKeep:   []corev1.Pod{namedPod("3")},
 					// expecting this to be ignored, and just kept in the remainder.
-					ToAdd: []corev1.Pod{namedPod("4")},
+					ToCreate: []PodToCreate{{Pod: namedPod("4")}},
 				},
 			},
 			want: initializePodsState(PodsState{
@@ -187,7 +187,7 @@ func TestPodsState_Partition(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := tt.podsState
-			got, got1 := s.Partition(tt.args.changeSet)
+			got, got1 := s.Partition(tt.args.changes)
 
 			assert.Equal(t, tt.want, got, "PodsState.Partition() got")
 			assert.Equal(t, tt.want1, got1, "PodsState.Partition() got1")

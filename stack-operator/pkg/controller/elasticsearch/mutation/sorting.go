@@ -37,28 +37,42 @@ func sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 	}
 }
 
+func comparePodByMasterNodesFirstThenNameAsc(iPod corev1.Pod, jPod corev1.Pod) bool {
+	iIsMaster := support.NodeTypesMasterLabelName.HasValue(true, iPod.Labels)
+	jIsMaster := support.NodeTypesMasterLabelName.HasValue(true, jPod.Labels)
+
+	switch {
+	case iIsMaster && !jIsMaster:
+		// i is master, j is not, so i should come first
+		return true
+	case jIsMaster && !iIsMaster:
+		// i is not master, j is master, so j should come first
+		return false
+	default:
+		// neither or both are masters, sort by names
+		return iPod.Name < jPod.Name
+	}
+}
+
 // sortPodsByMasterNodesFirstThenNameAsc sorts pods in a preferred creation order:
 // - master nodes first
 // - by name otherwise, which is used to ensure a stable sort order.
 func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) bool {
 	return func(i, j int) bool {
-		// sort by master nodes last
-		iPod := pods[i]
-		jPod := pods[j]
-
-		iIsMaster := support.NodeTypesMasterLabelName.HasValue(true, iPod.Labels)
-		jIsMaster := support.NodeTypesMasterLabelName.HasValue(true, jPod.Labels)
-
-		switch {
-		case iIsMaster && !jIsMaster:
-			// i is master, j is not, so i should come first
-			return true
-		case jIsMaster && !iIsMaster:
-			// i is not master, j is master, so j should come first
-			return false
-		default:
-			// neither or both are masters, sort by names
-			return iPod.Name < jPod.Name
-		}
+		return comparePodByMasterNodesFirstThenNameAsc(pods[i], pods[j])
 	}
+}
+
+// sortPodsToCreateByMasterNodesFirstThenNameAsc sorts podToCreate in a preferred creation order:
+// - master nodes first
+// - by name otherwise, which is used to ensure a stable sort order.
+func sortPodsToCreateByMasterNodesFirstThenNameAsc(podsToCreate []PodToCreate) func(i, j int) bool {
+	return func(i, j int) bool {
+		return comparePodByMasterNodesFirstThenNameAsc(podsToCreate[i].Pod, podsToCreate[j].Pod)
+	}
+}
+
+// sortPodByCreationTimestampAsc is a sort function for a list of pods
+func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
 }
