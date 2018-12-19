@@ -51,6 +51,12 @@ integration: generate fmt vet manifests
 stack-operator: generate fmt vet
 	go build -o bin/stack-operator github.com/elastic/stack-operators/stack-operator/cmd
 
+
+# Build keystore updater
+keystore-updater: generate fmt vet
+	go build -o bin/keystore-updater github.com/elastic/stack-operators/stack-operator/cmd/keystore-updater
+
+
 # Run against the configured Kubernetes cluster in ~/.kube/config
 SNAPSHOTTER_IMAGE?=no-snapshotter-image
 run: generate fmt vet
