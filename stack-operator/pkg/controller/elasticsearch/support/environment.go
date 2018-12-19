@@ -5,6 +5,7 @@ const (
 
 	EnvDiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
 	EnvDiscoveryZenPingUnicastHosts   = "discovery.zen.ping.unicast.hosts"
+	EnvClusterInitialMasterNodes      = "cluster.initial_master_nodes"
 
 	EnvEsJavaOpts         = "ES_JAVA_OPTS"
 	EnvNetworkHost        = "network.host"
@@ -52,6 +53,7 @@ var (
 	IgnoredVarsDuringComparison = []string{
 		EnvNodeName,
 		EnvDiscoveryZenMinimumMasterNodes,
+		EnvClusterInitialMasterNodes,
 		EnvNetworkPublishHost,
 	}
 )

@@ -10,10 +10,12 @@ import (
 	"io"
 	"net/http"
 	"path"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+	"strconv"
+	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+	"github.com/pkg/errors"
 )
 
 // User captures Elasticsearch user credentials.
@@ -222,4 +224,46 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 		Persistent: DiscoveryZen{MinimumMasterNodes: n},
 	}
 	return c.put(ctx, "/_cluster/settings", &zenSettings)
+}
+
+// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	if timeout == "" {
+		// 30 seconds is the default timeout in ES
+		timeout = "30s"
+	}
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions/%s?timeout=%s",
+		strings.Join(nodeNames, ","),
+		timeout,
+	)
+	request, err := http.NewRequest(http.MethodPost, common.Concat(c.Endpoint, path), http.NoBody)
+	if err != nil {
+		return err
+	}
+
+	res, err := c.makeRequest(ctx, request)
+
+	if err := checkError(res); err != nil {
+		return errors.Wrap(err, "unable to add to voting_config_exclusions")
+	}
+	return nil
+}
+
+// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions?wait_for_removal=%s",
+		strconv.FormatBool(waitForRemoval),
+	)
+	request, err := http.NewRequest(http.MethodDelete, common.Concat(c.Endpoint, path), http.NoBody)
+	if err != nil {
+		return err
+	}
+
+	res, err := c.makeRequest(ctx, request)
+	if err := checkError(res); err != nil {
+		return errors.Wrap(err, "unable to delete voting_config_exclusions")
+	}
+	return nil
 }

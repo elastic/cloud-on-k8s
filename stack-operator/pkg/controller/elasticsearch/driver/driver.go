@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -76,8 +77,81 @@ func NewDriver(opts Options) (Driver, error) {
 		// TODO: handle differences from 6
 		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs6
 		driver.podBuilder = esversion.NewPod6
-		// TODO: zen 2?
-		driver.discoverySettingsUpdater = esversion.UpdateZen1Discovery
+
+		driver.performableChangesResolver = func(
+			strategy v1alpha1.UpdateStrategy,
+			changes mutation.Changes,
+			podsState mutation.PodsState,
+		) (*mutation.PerformableChanges, error) {
+			performableChanges, err := mutation.CalculatePerformableChanges(
+				strategy,
+				changes,
+				podsState,
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			// if no masters in the cluster, it's bootstrapping
+			var masterEligibleNodeNames []string
+			// TODO: use resourcesState.CurrentPods?
+			for _, pod := range changes.ToKeep {
+				if support.IsMasterNode(pod) {
+					masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Name)
+				}
+			}
+			shouldSetInitialMasters := len(masterEligibleNodeNames) == 0
+			if shouldSetInitialMasters {
+				for _, change := range performableChanges.ToCreate {
+					if support.IsMasterNode(change.Pod) {
+						masterEligibleNodeNames = append(masterEligibleNodeNames, change.Pod.Name)
+					}
+				}
+			}
+
+			for j, change := range performableChanges.ToCreate {
+				for i, container := range change.Pod.Spec.Containers {
+					container.Env = append(container.Env, v1.EnvVar{
+						Name:  support.EnvClusterInitialMasterNodes,
+						Value: strings.Join(masterEligibleNodeNames, ","),
+					})
+					change.Pod.Spec.Containers[i] = container
+				}
+				// TODO: is this required?
+				performableChanges.ToCreate[j] = change
+			}
+
+			return performableChanges, nil
+		}
+
+		driver.zen2SettingsUpdater = func(
+			esClient *esclient.Client,
+			changes mutation.Changes,
+			performableChanges mutation.PerformableChanges,
+		) error {
+			if !changes.HasChanges() {
+				log.Info("Ensuring no voting exclusions are set")
+				if err := esClient.DeleteVotingConfigExclusions(context.TODO(), false); err != nil {
+					return err
+				}
+				return nil
+			}
+
+			leavingMasters := make([]string, 0)
+			for _, pod := range performableChanges.ToDelete {
+				if support.IsMasterNode(pod) {
+					leavingMasters = append(leavingMasters, pod.Name)
+				}
+			}
+			if len(leavingMasters) != 0 {
+				// TODO: only update if required and remove old exclusions as well
+				log.Info("Setting voting config exclusions", "excluding", leavingMasters)
+				if err := esClient.AddVotingConfigExclusions(context.TODO(), leavingMasters, ""); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// 6.6.0 is the lowest wire compatibility version for 7.x
 			LowestSupportedVersion: version.MustParse("6.6.0"),
@@ -88,7 +162,8 @@ func NewDriver(opts Options) (Driver, error) {
 	case 6:
 		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs6
 		driver.podBuilder = esversion.NewPod6
-		driver.discoverySettingsUpdater = esversion.UpdateZen1Discovery
+		driver.performableChangesResolver = mutation.CalculatePerformableChanges
+		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// 5.6.0 is the lowest wire compatibility version for 6.x
 			LowestSupportedVersion: version.MustParse("5.6.0"),
@@ -98,7 +173,8 @@ func NewDriver(opts Options) (Driver, error) {
 	case 5:
 		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs5
 		driver.podBuilder = esversion.NewPod5
-		driver.discoverySettingsUpdater = esversion.UpdateZen1Discovery
+		driver.performableChangesResolver = mutation.CalculatePerformableChanges
+		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// TODO: verify that we actually support down to 5.0.0
 			// TODO: this follows ES version compat, which is wrong, because we would have to be able to support
@@ -178,8 +254,21 @@ type strategyDriver struct {
 		es v1alpha1.ElasticsearchCluster,
 	) (*support.ResourcesState, error)
 
-	// discoverySettingsUpdater updates the discovery settings for the current pods.
-	discoverySettingsUpdater func(esClient *esclient.Client, allPods []v1.Pod) error
+	performableChangesResolver func(
+		strategy v1alpha1.UpdateStrategy,
+		changes mutation.Changes,
+		podsState mutation.PodsState,
+	) (*mutation.PerformableChanges, error)
+
+	// zen1SettingsUpdater updates the zen1 settings for the current pods.
+	zen1SettingsUpdater func(esClient *esclient.Client, allPods []v1.Pod) error
+
+	// zen2SettingsUpdater updates the zen2 settings for the current changes.
+	zen2SettingsUpdater func(
+		esClient *esclient.Client,
+		changes mutation.Changes,
+		performableChanges mutation.PerformableChanges,
+	) error
 
 	// TODO: implement
 	//// apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
@@ -266,11 +355,7 @@ func (d *strategyDriver) Reconcile(
 	)
 
 	// figure out what changes we can perform right now
-	performableChanges, err := mutation.CalculatePerformableChanges(
-		es.Spec.UpdateStrategy,
-		changes,
-		podsState,
-	)
+	performableChanges, err := d.performableChangesResolver(es.Spec.UpdateStrategy, *changes, podsState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -309,27 +394,6 @@ func (d *strategyDriver) Reconcile(
 		}
 	}
 
-	if !changes.HasChanges() {
-		// Current state matches expected state
-		if !esReachable {
-			// es not yet reachable, let's try again later.
-			return results.WithResult(defaultRequeue)
-		}
-
-		// Update discovery for any previously created pods that have come up (see also below in create pod)
-		if err := d.discoverySettingsUpdater(
-			esClient,
-			reconcilehelper.AvailableElasticsearchNodes(resourcesState.CurrentPods),
-		); err != nil {
-			// TODO: reconsider whether this error should be propagated with results instead?
-			log.Error(err, "Error during update discovery after having no changes, requeuing.")
-			return results.WithResult(defaultRequeue)
-		}
-
-		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
-		return results
-	}
-
 	if !esReachable {
 		// We cannot manipulate ES allocation exclude settings if the ES cluster
 		// cannot be reached, hence we cannot delete pods.
@@ -340,6 +404,36 @@ func (d *strategyDriver) Reconcile(
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
 
 		return results.WithResult(defaultRequeue)
+	}
+
+	if d.zen2SettingsUpdater != nil {
+		// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
+		if err := d.zen2SettingsUpdater(
+			esClient,
+			*changes,
+			*performableChanges,
+		); err != nil {
+			return results.WithResult(defaultRequeue).WithError(err)
+		}
+	}
+
+	if !changes.HasChanges() {
+		// Current state matches expected state
+
+		// Update discovery for any previously created pods that have come up (see also below in create pod)
+		if d.zen1SettingsUpdater != nil {
+			if err := d.zen1SettingsUpdater(
+				esClient,
+				reconcilehelper.AvailableElasticsearchNodes(resourcesState.CurrentPods),
+			); err != nil {
+				// TODO: reconsider whether this error should be propagated with results instead?
+				log.Error(err, "Error during update discovery after having no changes, requeuing.")
+				return results.WithResult(defaultRequeue)
+			}
+		}
+
+		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
+		return results
 	}
 
 	// Start migrating data away from all pods to be deleted
@@ -355,7 +449,12 @@ func (d *strategyDriver) Reconcile(
 	for _, pod := range performableChanges.ToDelete {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {
-			return d.discoverySettingsUpdater(esClient, newState)
+			if d.zen1SettingsUpdater != nil {
+				if err := d.zen1SettingsUpdater(esClient, newState); err != nil {
+					return err
+				}
+			}
+			return nil
 		}
 		result, err := deleteElasticsearchPod(
 			d.Client,
