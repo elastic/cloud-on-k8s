@@ -10,7 +10,7 @@ import (
 	"os"
 
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshots"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -20,12 +20,12 @@ import (
 
 var (
 	log                     = logf.Log.WithName("snapshotter")
-	certificateLocationFlag = strings.ToLower(snapshots.CertificateLocationVar)
-	userNameFlag            = strings.ToLower(snapshots.UserNameVar)
-	userPasswordFlag        = strings.ToLower(snapshots.UserPasswordVar)
-	intervalFlag            = strings.ToLower(snapshots.IntervalVar)
-	maxFlag                 = strings.ToLower(snapshots.MaxVar)
-	esURLFlag               = strings.ToLower(snapshots.EsURLVar)
+	certificateLocationFlag = strings.ToLower(snapshot.CertificateLocationVar)
+	userNameFlag            = strings.ToLower(snapshot.UserNameVar)
+	userPasswordFlag        = strings.ToLower(snapshot.UserPasswordVar)
+	intervalFlag            = strings.ToLower(snapshot.IntervalVar)
+	maxFlag                 = strings.ToLower(snapshot.MaxVar)
+	esURLFlag               = strings.ToLower(snapshot.EsURLVar)
 	// Cmd is the cobra command to start a snapshotter run
 	Cmd = &cobra.Command{
 		Use:   "snapshotter",
@@ -83,14 +83,14 @@ func execute() {
 
 	interval := viper.GetDuration(intervalFlag)
 	max := viper.GetInt(maxFlag)
-	settings := snapshots.Settings{
+	settings := snapshot.Settings{
 		Interval:   interval,
 		Max:        max,
 		Repository: "elastic-snapshots",
 	}
 
 	log.Info(fmt.Sprintf("Snapshotter initialised with [%+v]", settings))
-	err := snapshots.ExecuteNextPhase(apiClient, settings)
+	err := snapshot.ExecuteNextPhase(apiClient, settings)
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Error during snapshot maintenance"))
 	}

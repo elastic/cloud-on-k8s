@@ -11,14 +11,13 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	corev1 "k8s.io/api/core/v1"
 )
 
 var (
-	// linkedFiles_6_4_0 describe how the user related secrets are mapped into the pod's filesystem.
-	linkedFiles_6_4_0 = initcontainer.LinkedFilesArray{
+	// linkedFiles6 describe how the user related secrets are mapped into the pod's filesystem.
+	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
 				Source: common.Concat(support.DefaultSecretMountPath, "/", support.ElasticUsersFile),
@@ -32,35 +31,8 @@ var (
 	}
 )
 
-//noinspection GoSnakeCaseUsage
-type strategy_6_4_0 struct {
-	versionHolder
-	versionedNewPodLabels
-	lowestHighestSupportedVersions
-}
-
-//noinspection GoSnakeCaseUsage
-func newStrategy_6_4_0(v version.Version) strategy_6_4_0 {
-	strategy := strategy_6_4_0{
-		versionHolder:         versionHolder{version: v},
-		versionedNewPodLabels: versionedNewPodLabels{version: v},
-		lowestHighestSupportedVersions: lowestHighestSupportedVersions{
-			// 5.6.0 is the lowest wire compatibility version for 6.x
-			lowestSupportedVersion: version.MustParse("5.6.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			highestSupportedVersion: version.MustParse("6.4.99"),
-		},
-	}
-	return strategy
-}
-
-// ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
-func (s strategy_6_4_0) ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
-	return newDefaultConfigMap(es)
-}
-
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
-func (s strategy_6_4_0) ExpectedPodSpecs(
+func ExpectedPodSpecs6(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
 ) ([]support.PodSpecContext, error) {
@@ -72,22 +44,20 @@ func (s strategy_6_4_0) ExpectedPodSpecs(
 		"users",
 	)
 
-	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, support.ManagedConfigPath)
-
-	return newExpectedPodSpecs(es, paramsTmpl, s.newEnvironmentVars, s.newInitContainers)
+	return newExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars6, newInitContainers6)
 }
 
-// newInitContainers returns a list of init containers
-func (s strategy_6_4_0) newInitContainers(
+// newInitContainers6 returns a list of init containers
+func newInitContainers6(
 	imageName string,
 	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, linkedFiles_6_4_0, keyStoreInit, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(imageName, linkedFiles6, keyStoreInit, setVMMaxMapCount)
 }
 
-// newEnvironmentVars returns the environment vars to be associated to a pod
-func (s strategy_6_4_0) newEnvironmentVars(
+// newEnvironmentVars6 returns the environment vars to be associated to a pod
+func newEnvironmentVars6(
 	p support.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
@@ -172,20 +142,16 @@ func (s strategy_6_4_0) newEnvironmentVars(
 	}
 }
 
-// NewPod constructs a pod from the given parameters.
-func (s strategy_6_4_0) NewPod(
+// NewPod6 constructs a pod from the given parameters.
+func NewPod6(
+	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
 ) (corev1.Pod, error) {
-	pod, err := newPod(s, es, podSpecCtx)
+	pod, err := newPod(version, es, podSpecCtx)
 	if err != nil {
 		return pod, err
 	}
 
 	return pod, nil
-}
-
-// UpdateDiscovery configures discovery settings based on the given list of pods.
-func (s strategy_6_4_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
-	return updateZen1Discovery(esClient, allPods)
 }
