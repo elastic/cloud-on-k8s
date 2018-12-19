@@ -19,11 +19,11 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
-	securityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
+	SecurityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
 )
 
-// newExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
-func newExpectedPodSpecs(
+// NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
+func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
 	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
@@ -174,8 +174,8 @@ func podSpec(
 	return podSpec, nil
 }
 
-// newPod constructs a pod from the given parameters.
-func newPod(
+// NewPod constructs a pod from the given parameters.
+func NewPod(
 	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
@@ -217,8 +217,8 @@ func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
 	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
 }
 
-// memoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
-func memoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
+// MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
+func MemoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
 	// use half the available memory as heap
 	return quantityToMegabytes(nonZeroQuantityOrDefault(memoryLimit, defaultMemoryLimits)) / 2
 }

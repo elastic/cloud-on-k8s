@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -19,6 +18,9 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version5"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version6"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version7"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/pkg/errors"
@@ -74,84 +76,17 @@ func NewDriver(opts Options) (Driver, error) {
 
 	switch opts.Version.Major {
 	case 7:
-		// TODO: handle differences from 6
-		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs6
-		driver.podBuilder = esversion.NewPod6
+		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
 
-		driver.performableChangesResolver = func(
-			strategy v1alpha1.UpdateStrategy,
-			changes mutation.Changes,
-			podsState mutation.PodsState,
-		) (*mutation.PerformableChanges, error) {
-			performableChanges, err := mutation.CalculatePerformableChanges(
-				strategy,
-				changes,
-				podsState,
-			)
-			if err != nil {
-				return nil, err
-			}
+		driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
 
-			// if no masters in the cluster, it's bootstrapping
-			var masterEligibleNodeNames []string
-			// TODO: use resourcesState.CurrentPods?
-			for _, pod := range changes.ToKeep {
-				if support.IsMasterNode(pod) {
-					masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Name)
-				}
-			}
-			shouldSetInitialMasters := len(masterEligibleNodeNames) == 0
-			if shouldSetInitialMasters {
-				for _, change := range performableChanges.ToCreate {
-					if support.IsMasterNode(change.Pod) {
-						masterEligibleNodeNames = append(masterEligibleNodeNames, change.Pod.Name)
-					}
-				}
-			}
+		// version 7 usually uses zen2 instead of zen
+		driver.zen2SettingsUpdater = version7.UpdateZen2Settings
+		// .. except we still have to manage minimum_master_nodes while upgrading from 6 -> 7
+		// we approximate this by also handling zen 1, even in 7
+		// TODO: only do this if there's 6.x masters in the cluster.
+		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 
-			for j, change := range performableChanges.ToCreate {
-				for i, container := range change.Pod.Spec.Containers {
-					container.Env = append(container.Env, v1.EnvVar{
-						Name:  support.EnvClusterInitialMasterNodes,
-						Value: strings.Join(masterEligibleNodeNames, ","),
-					})
-					change.Pod.Spec.Containers[i] = container
-				}
-				// TODO: is this required?
-				performableChanges.ToCreate[j] = change
-			}
-
-			return performableChanges, nil
-		}
-
-		driver.zen2SettingsUpdater = func(
-			esClient *esclient.Client,
-			changes mutation.Changes,
-			performableChanges mutation.PerformableChanges,
-		) error {
-			if !changes.HasChanges() {
-				log.Info("Ensuring no voting exclusions are set")
-				if err := esClient.DeleteVotingConfigExclusions(context.TODO(), false); err != nil {
-					return err
-				}
-				return nil
-			}
-
-			leavingMasters := make([]string, 0)
-			for _, pod := range performableChanges.ToDelete {
-				if support.IsMasterNode(pod) {
-					leavingMasters = append(leavingMasters, pod.Name)
-				}
-			}
-			if len(leavingMasters) != 0 {
-				// TODO: only update if required and remove old exclusions as well
-				log.Info("Setting voting config exclusions", "excluding", leavingMasters)
-				if err := esClient.AddVotingConfigExclusions(context.TODO(), leavingMasters, ""); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// 6.6.0 is the lowest wire compatibility version for 7.x
 			LowestSupportedVersion: version.MustParse("6.6.0"),
@@ -160,9 +95,7 @@ func NewDriver(opts Options) (Driver, error) {
 		}
 
 	case 6:
-		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs6
-		driver.podBuilder = esversion.NewPod6
-		driver.performableChangesResolver = mutation.CalculatePerformableChanges
+		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// 5.6.0 is the lowest wire compatibility version for 6.x
@@ -171,9 +104,7 @@ func NewDriver(opts Options) (Driver, error) {
 			HighestSupportedVersion: version.MustParse("6.4.99"),
 		}
 	case 5:
-		driver.expectedPodsAndResourcesResolver = esversion.ExpectedPodSpecs5
-		driver.podBuilder = esversion.NewPod5
-		driver.performableChangesResolver = mutation.CalculatePerformableChanges
+		driver.expectedPodsAndResourcesResolver = version5.ExpectedPodSpecs
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
 			// TODO: verify that we actually support down to 5.0.0
@@ -236,14 +167,8 @@ type strategyDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
 		paramsTmpl support.NewPodSpecParams,
+		resourcesState support.ResourcesState,
 	) ([]support.PodSpecContext, error)
-
-	// podBuilder constructs Pod objects before creation
-	podBuilder func(
-		version version.Version,
-		es v1alpha1.ElasticsearchCluster,
-		podSpecCtx support.PodSpecContext,
-	) (v1.Pod, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
 	observedStateResolver func(esClient *esclient.Client) support.ObservedState
@@ -254,10 +179,10 @@ type strategyDriver struct {
 		es v1alpha1.ElasticsearchCluster,
 	) (*support.ResourcesState, error)
 
-	performableChangesResolver func(
-		strategy v1alpha1.UpdateStrategy,
-		changes mutation.Changes,
-		podsState mutation.PodsState,
+	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
+	clusterInitialMasterNodesEnforcer func(
+		performableChanges mutation.PerformableChanges,
+		resourcesState support.ResourcesState,
 	) (*mutation.PerformableChanges, error)
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
@@ -342,7 +267,7 @@ func (d *strategyDriver) Reconcile(
 		results.WithError(err)
 	}
 
-	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, resourcesState)
+	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, *resourcesState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -355,7 +280,7 @@ func (d *strategyDriver) Reconcile(
 	)
 
 	// figure out what changes we can perform right now
-	performableChanges, err := d.performableChangesResolver(es.Spec.UpdateStrategy, *changes, podsState)
+	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -378,6 +303,13 @@ func (d *strategyDriver) Reconcile(
 			msg := "Could not ensure snapshot repository"
 			reconcileState.AddEvent(v1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
+		}
+	}
+
+	if d.clusterInitialMasterNodesEnforcer != nil {
+		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
+		if err != nil {
+			return results.WithError(err)
 		}
 	}
 
@@ -496,7 +428,7 @@ func (d *strategyDriver) calculateChanges(
 	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.ElasticsearchCluster,
-	resourcesState *support.ResourcesState,
+	resourcesState support.ResourcesState,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
@@ -506,6 +438,7 @@ func (d *strategyDriver) calculateChanges(
 			ProbeUser:       internalUsers.ControllerUser,
 			ConfigMapVolume: support.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, support.ManagedConfigPath),
 		},
+		resourcesState,
 	)
 	if err != nil {
 		return nil, err
@@ -513,9 +446,9 @@ func (d *strategyDriver) calculateChanges(
 
 	changes, err := mutation.CalculateChanges(
 		expectedPodSpecCtxs,
-		*resourcesState,
+		resourcesState,
 		func(ctx support.PodSpecContext) (v1.Pod, error) {
-			return d.podBuilder(d.Version, es, ctx)
+			return esversion.NewPod(d.Version, es, ctx)
 		},
 	)
 	if err != nil {
