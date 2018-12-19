@@ -26,6 +26,7 @@ func ESClusterChecks(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 	return helpers.TestStepList{
 		e.BuildESClient(stack, k),
 		e.CheckESReachable(),
+		e.CheckESVersion(stack),
 		e.CheckESHealthGreen(),
 		e.CheckESNodesTopology(stack),
 	}
@@ -51,6 +52,17 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 			}
 			return nil
 		}),
+	}
+}
+
+func (e *esClusterChecks) CheckESVersion(stack v1alpha1.Stack) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Elasticsearch version should be the expected one",
+		Test: func(t *testing.T) {
+			info, err := e.client.GetClusterInfo(context.TODO())
+			require.NoError(t, err)
+			require.Equal(t, stack.Spec.Version, info.Version.Number)
+		},
 	}
 }
 

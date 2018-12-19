@@ -164,6 +164,11 @@ func (c *Client) delete(ctx context.Context, path string) error {
 	return err
 }
 
+func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
+	var info Info
+	return info, c.get(ctx, "/", &info)
+}
+
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState

@@ -7,6 +7,15 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 )
 
+// Info represents the response from /
+type Info struct {
+	ClusterName string `json:"cluster_name"`
+	ClusterUUID string `json:"cluster_uuid"`
+	Version     struct {
+		Number string `json:"number"`
+	} `json:"version"`
+}
+
 // Health represents the response from _cluster/health
 type Health struct {
 	ClusterName                 string  `json:"cluster_name"`

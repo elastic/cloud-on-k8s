@@ -261,3 +261,21 @@ func TestClientGetNodes(t *testing.T) {
 	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
 	require.Equal(t, 2130051072, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].JVM.Mem.HeapMaxInBytes)
 }
+
+func TestGetInfo(t *testing.T) {
+	expectedPath := "/"
+	testClient := NewMockClient(func(req *http.Request) *http.Response {
+		require.Equal(t, expectedPath, req.URL.Path)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(strings.NewReader(fixtures.InfoSample)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+	info, err := testClient.GetClusterInfo(context.TODO())
+	require.NoError(t, err)
+	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
+	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
+	require.Equal(t, "6.4.1", info.Version.Number)
+}
