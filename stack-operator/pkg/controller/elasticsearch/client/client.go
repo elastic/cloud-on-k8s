@@ -223,3 +223,9 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 	}
 	return c.put(ctx, "/_cluster/settings", &zenSettings)
 }
+
+// GetNodes calls the _nodes api to return a map(nodeName -> Node)
+func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
+	var nodes Nodes
+	return nodes, c.get(ctx, "/_nodes", &nodes)
+}

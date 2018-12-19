@@ -34,6 +34,22 @@ const (
 	UNASSIGNED   = "UNASSIGNED"
 )
 
+// Nodes partially models the response from a request to /_nodes
+type Nodes struct {
+	Nodes map[string]Node `json:"nodes"`
+}
+
+// Node partially models an Elasticsearch node retrieved from /_nodes
+type Node struct {
+	Name  string   `json:"name"`
+	Roles []string `json:"roles"`
+	JVM   struct {
+		Mem struct {
+			HeapMaxInBytes int `json:"heap_max_in_bytes"`
+		} `json:"mem"`
+	} `json:"jvm"`
+}
+
 // ClusterStateNode represents an element in the `node` structure in
 // Elasticsearch cluster state.
 type ClusterStateNode struct {

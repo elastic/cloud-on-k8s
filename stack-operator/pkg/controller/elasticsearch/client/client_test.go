@@ -8,10 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"testing"
 
 	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRoutingTable(t *testing.T) {
@@ -239,4 +241,23 @@ func TestAPIError_Error(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientGetNodes(t *testing.T) {
+	expectedPath := "/_nodes"
+	testClient := NewMockClient(func(req *http.Request) *http.Response {
+		require.Equal(t, expectedPath, req.URL.Path)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesSample)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+	resp, err := testClient.GetNodes(context.TODO())
+	require.NoError(t, err)
+	require.Equal(t, 3, len(resp.Nodes))
+	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
+	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
+	require.Equal(t, 2130051072, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].JVM.Mem.HeapMaxInBytes)
 }
