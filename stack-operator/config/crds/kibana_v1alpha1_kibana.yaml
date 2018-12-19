@@ -16,7 +16,7 @@ spec:
     type: integer
   - JSONPath: .metadata.creationTimestamp
     name: age
-    type: string
+    type: date
   group: kibana.k8s.elastic.co
   names:
     categories:

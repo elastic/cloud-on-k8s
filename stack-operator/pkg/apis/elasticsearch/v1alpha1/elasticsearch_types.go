@@ -258,7 +258,7 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="phase",type="string",JSONPath=".status.phase"
-// +kubebuilder:printcolumn:name="age",type="string",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 type ElasticsearchCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
