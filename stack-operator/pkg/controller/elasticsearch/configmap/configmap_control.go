@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("configmaps")
+	log = logf.Log.WithName("configmap")
 )
 
 // ReconcileConfigMap checks for an existing config map and updates it or creates one if it does not exist.
