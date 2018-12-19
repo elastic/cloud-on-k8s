@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
@@ -17,8 +16,6 @@ var testObjectMeta = v1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",
 }
-
-var testStrategy_6_4_0 = newStrategy_6_4_0(version.Version{Major: 6, Minor: 4, Patch: 2})
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
@@ -73,7 +70,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := testStrategy_6_4_0.newEnvironmentVars(
+			got := newEnvironmentVars6(
 				tt.args.p, tt.args.nodeCertificatesVolume, tt.args.extraFilesSecretVolume,
 			)
 			for _, v := range tt.wantEnvSubset {
@@ -125,7 +122,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := testStrategy_6_4_0.ExpectedPodSpecs(
+			podSpecs, err := ExpectedPodSpecs6(
 				tt.es,
 				support.NewPodSpecParams{ProbeUser: testProbeUser},
 			)
@@ -150,7 +147,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := testStrategy_6_4_0.ExpectedPodSpecs(
+	podSpec, err := ExpectedPodSpecs6(
 		es,
 		support.NewPodSpecParams{ProbeUser: testProbeUser},
 	)

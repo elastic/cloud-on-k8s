@@ -8,46 +8,14 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	corev1 "k8s.io/api/core/v1"
 )
 
-//noinspection GoSnakeCaseUsage
-type strategy_5_6_0 struct {
-	versionHolder
-	versionedNewPodLabels
-	lowestHighestSupportedVersions
-}
-
-//noinspection GoSnakeCaseUsage
-func newStrategy_5_6_0(v version.Version) strategy_5_6_0 {
-	strategy := strategy_5_6_0{
-		versionHolder:         versionHolder{version: v},
-		versionedNewPodLabels: versionedNewPodLabels{version: v},
-		lowestHighestSupportedVersions: lowestHighestSupportedVersions{
-			// TODO: verify that we actually support down to 5.0.0
-			// TODO: this follows ES version compat, which is wrong, because we would have to be able to support
-			//       an elasticsearch cluster full of 2.x (2.4.6 at least) instances which we would probably only want
-			// 		 to do upgrade checks on, snapshot, then terminate + snapshot restore (or re-use volumes).
-			lowestSupportedVersion: version.MustParse("5.0.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			highestSupportedVersion: version.MustParse("5.6.99"),
-		},
-	}
-	return strategy
-}
-
-// ExpectedConfigMaps returns a config map that is expected to exist when the Elasticsearch pods are created.
-func (s strategy_5_6_0) ExpectedConfigMap(es v1alpha1.ElasticsearchCluster) corev1.ConfigMap {
-	return newDefaultConfigMap(es)
-}
-
-// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
-func (s strategy_5_6_0) ExpectedPodSpecs(
+// ExpectedPodSpecs5 returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
+func ExpectedPodSpecs5(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
 ) ([]support.PodSpecContext, error) {
@@ -60,16 +28,14 @@ func (s strategy_5_6_0) ExpectedPodSpecs(
 		"/usr/share/elasticsearch/config/x-pack",
 	)
 
-	paramsTmpl.ConfigMapVolume = support.NewConfigMapVolume(s.ExpectedConfigMap(es).Name, support.ManagedConfigPath)
-
 	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
 	// potentially bypasses x-pack security.
 
-	return newExpectedPodSpecs(es, paramsTmpl, s.newEnvironmentVars, s.newInitContainers)
+	return newExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars5, newInitContainers5)
 }
 
-// newInitContainers returns a list of init containers
-func (s strategy_5_6_0) newInitContainers(
+// newInitContainers5 returns a list of init containers
+func newInitContainers5(
 	imageName string,
 	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
@@ -78,7 +44,7 @@ func (s strategy_5_6_0) newInitContainers(
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
-func (s strategy_5_6_0) newEnvironmentVars(
+func newEnvironmentVars5(
 	p support.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
@@ -145,19 +111,15 @@ func (s strategy_5_6_0) newEnvironmentVars(
 }
 
 // NewPod creates a new pod from the given parameters.
-func (s strategy_5_6_0) NewPod(
+func NewPod5(
+	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx support.PodSpecContext,
 ) (corev1.Pod, error) {
-	pod, err := newPod(s, es, podSpecCtx)
+	pod, err := newPod(version, es, podSpecCtx)
 	if err != nil {
 		return pod, err
 	}
 
 	return pod, nil
-}
-
-// UpdateDiscovery configures discovery settings based on the given list of pods.
-func (s strategy_5_6_0) UpdateDiscovery(esClient *client.Client, allPods []corev1.Pod) error {
-	return updateZen1Discovery(esClient, allPods)
 }

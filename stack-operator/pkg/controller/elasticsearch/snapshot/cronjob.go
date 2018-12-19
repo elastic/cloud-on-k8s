@@ -1,4 +1,4 @@
-package snapshots
+package snapshot
 
 import (
 	"path"
