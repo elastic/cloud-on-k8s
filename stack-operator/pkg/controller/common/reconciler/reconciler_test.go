@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,16 +24,17 @@ func withoutControllerRef(obj runtime.Object) runtime.Object {
 	return copy
 }
 
-func noopModifier(_, _ *corev1.Secret) {}
+func noopModifier() {}
 
 func TestReconcileResource(t *testing.T) {
 
 	type args struct {
-		Object runtime.Object
+		Expected   runtime.Object
+		Reconciled runtime.Object
 		// Differ is a generic function of the type func(expected, found T) bool where T is a runtime.Object
-		Differ interface{}
+		NeedsUpdate func() bool
 		// Modifier is generic function of the type func(expected, found T) where T is runtime Object
-		Modifier interface{}
+		UpdateReconciled func()
 	}
 
 	objectKey := types.NamespacedName{Name: "test", Namespace: "foo"}
@@ -43,23 +43,76 @@ func TestReconcileResource(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		args            args
+		args            func() args
 		initialObjects  []runtime.Object
 		argAssertion    func(args args)
 		errorAssertion  func(err error)
 		clientAssertion func(c client.Client)
-		panics          bool
 	}{
 		{
 			name: "Error: not a metadata object",
-			args: args{},
+			args: func() args {
+				return args{
+					Reconciled:       &corev1.Secret{},
+					UpdateReconciled: noopModifier,
+					NeedsUpdate: func() bool {
+						return false
+					},
+				}
+			},
 			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "not a k8s metadata Object")
+				assert.Contains(t, err.Error(), "object does not implement the Object interfaces")
+			},
+		},
+		{
+			name: "Error: NeedsUpdate must not be nil",
+			args: func() args {
+				return args{
+					Expected: obj.DeepCopy(),
+					Reconciled: &corev1.Secret{},
+					UpdateReconciled:noopModifier,
+				}
+			},
+			errorAssertion: func(err error) {
+				assert.Contains(t, err.Error(), "NeedsUpdate must not be nil")
+			},
+		},
+		{
+			name: "Error: Reconcile must not be nil",
+			args: func() args {
+				return args{
+					Expected: obj.DeepCopy(),
+				}
+			},
+			errorAssertion: func(err error) {
+				assert.Contains(t, err.Error(), "Reconciled must not be nil")
+			},
+		},
+		{
+			name: "Error: UpdateReconciled must be defined",
+			args: func() args {
+				return args{
+					Expected:   obj.DeepCopy(),
+					Reconciled: &corev1.Secret{},
+				}
+			},
+			errorAssertion: func(err error) {
+				assert.Contains(t, err.Error(), "UpdateReconciled must not be nil")
 			},
 		},
 		{
 			name: "Create resource if not found",
-			args: args{Object: obj.DeepCopy()},
+			args: func() args {
+				reconciled := &corev1.Secret{}
+				return args{
+					Expected:         obj.DeepCopy(),
+					Reconciled:       reconciled,
+					UpdateReconciled: noopModifier,
+					NeedsUpdate: func() bool {
+						return false
+					},
+				}
+			},
 			clientAssertion: func(c client.Client) {
 				var found corev1.Secret
 				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
@@ -68,9 +121,16 @@ func TestReconcileResource(t *testing.T) {
 		},
 		{
 			name: "Returns server state via in/out param",
-			args: args{
-				Object:   obj.DeepCopy(),
-				Modifier: noopModifier,
+			args: func() args {
+				reconciled := &corev1.Secret{}
+				return args{
+					Expected:         obj.DeepCopy(),
+					Reconciled:       reconciled,
+					UpdateReconciled: noopModifier,
+					NeedsUpdate: func() bool {
+						return false
+					},
+				}
 			},
 			initialObjects: []runtime.Object{&corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -82,26 +142,34 @@ func TestReconcileResource(t *testing.T) {
 				},
 			}},
 			argAssertion: func(args args) {
-				assert.Equal(t, "baz", args.Object.(*corev1.Secret).Labels["label"])
+				assert.Equal(t, "baz", args.Reconciled.(*corev1.Secret).Labels["label"])
 			},
 		},
 		{
 			name: "Updates server state, if in param differs from remote",
-			args: args{
-				Object: &corev1.Secret{
+			args: func() args {
+				expected := &corev1.Secret{
 					ObjectMeta: k8s.ToObjectMeta(objectKey),
 					Data: map[string][]byte{
 						"bar": []byte("be quiet"),
 					},
-				},
-				Modifier: func(expected, found *corev1.Secret) {
-					found.Data = expected.Data
-				},
+				}
+				reconciled := &corev1.Secret{}
+				return args{
+					Expected:   expected,
+					Reconciled: reconciled,
+					UpdateReconciled: func() {
+						reconciled.Data = expected.Data
+					},
+					NeedsUpdate: func() bool {
+						return !reflect.DeepEqual(expected, reconciled)
+					},
+				}
 			},
 			initialObjects: []runtime.Object{obj},
 			argAssertion: func(args args) {
 				// should be unchanged
-				assert.Equal(t, "be quiet", string(args.Object.(*corev1.Secret).Data["bar"]))
+				assert.Equal(t, "be quiet", string(args.Expected.(*corev1.Secret).Data["bar"]))
 			},
 			clientAssertion: func(c client.Client) {
 				var found corev1.Secret
@@ -110,9 +178,9 @@ func TestReconcileResource(t *testing.T) {
 			},
 		},
 		{
-			name: "Can optionally use custom differ",
-			args: args{
-				Object: &corev1.Secret{
+			name: "NeedsUpdate can ignore parts of the resource",
+			args: func() args {
+				expected := &corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      objectKey.Name,
 						Namespace: objectKey.Namespace,
@@ -121,10 +189,16 @@ func TestReconcileResource(t *testing.T) {
 						},
 					},
 					Data: secretData,
-				},
-				Differ: func(expected, found *corev1.Secret) bool {
-					return !reflect.DeepEqual(expected.Data, found.Data)
-				},
+				}
+				reconciled := &corev1.Secret{}
+				return args{
+					Expected:   expected,
+					Reconciled: reconciled,
+					NeedsUpdate: func() bool {
+						return !reflect.DeepEqual(expected.Data, reconciled.Data)
+					},
+					UpdateReconciled: noopModifier,
+				}
 			},
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
@@ -140,63 +214,35 @@ func TestReconcileResource(t *testing.T) {
 			},
 			argAssertion: func(args args) {
 				// should be updated to the server state
-				assert.Equal(t, "other", string(args.Object.(*corev1.Secret).Labels["label"]))
+				assert.Equal(t, "other", string(args.Reconciled.(*corev1.Secret).Labels["label"]))
 			},
 			clientAssertion: func(c client.Client) {
 				var found corev1.Secret
 				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
 				// should be unchanged as it is ignored by the custom differ
 				assert.Equal(t, "other", string(found.Labels["label"]))
-				// but we don't panic even though I haven't specified the modifier function
-				// because the differ should not flag up an update
 			},
-		},
-		{
-			name: "Validates differ function",
-			args: args{
-				Object: obj,
-				Differ: func(x, y int) int {
-					return 0
-				},
-			},
-			initialObjects: []runtime.Object{obj},
-			panics:         true,
-		},
-		{
-			name: "Validates modifier function",
-			args: args{
-				Object: obj,
-				Differ: func(x, y *corev1.Secret) bool {
-					return true
-				},
-			},
-			initialObjects: []runtime.Object{obj},
-			panics:         true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
 			client := fake.NewFakeClient(tt.initialObjects...)
+			args := tt.args()
 			p := Params{
-				Client:   client,
-				Scheme:   scheme.Scheme,
-				Owner:    &appsv1.Deployment{}, //just a dummy
-				Object:   tt.args.Object,
-				Differ:   tt.args.Differ,
-				Modifier: tt.args.Modifier,
+				Client:           client,
+				Scheme:           scheme.Scheme,
+				Owner:            &appsv1.Deployment{}, //just a dummy
+				Expected:         args.Expected,
+				Reconciled:       args.Reconciled,
+				NeedsUpdate:      args.NeedsUpdate,
+				UpdateReconciled: args.UpdateReconciled,
 			}
 
-			if tt.panics {
-				defer func() {
-					if r := recover(); r == nil {
-						t.Errorf("The call did not panic, but it should")
-					}
-				}()
-			}
 			err := ReconcileResource(p)
 			if (err != nil) != (tt.errorAssertion != nil) {
 				t.Errorf("ReconcileResource() error = %v, wantErr %v", err, tt.errorAssertion != nil)
+				return
 			}
 			if tt.errorAssertion != nil {
 				tt.errorAssertion(err)
@@ -205,7 +251,7 @@ func TestReconcileResource(t *testing.T) {
 				tt.clientAssertion(client)
 			}
 			if tt.argAssertion != nil {
-				tt.argAssertion(tt.args)
+				tt.argAssertion(args)
 			}
 		})
 	}

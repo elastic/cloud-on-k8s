@@ -49,28 +49,29 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 }
 
 // ReconcileDeployment upserts the given deployment for the specified owner.
-func (r *ReconcileKibana) ReconcileDeployment(deploy appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
+func (r *ReconcileKibana) ReconcileDeployment(expected appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
+	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: r,
 		Scheme: r.scheme,
 		Owner:  owner,
-		Object: &deploy,
-		Differ: func(expected, found *appsv1.Deployment) bool {
-			return !reflect.DeepEqual(expected.Spec.Selector, found.Spec.Selector) ||
-				!reflect.DeepEqual(expected.Spec.Replicas, found.Spec.Replicas) ||
-				!reflect.DeepEqual(expected.Spec.Template.ObjectMeta, found.Spec.Template.ObjectMeta) ||
-				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Name, found.Spec.Template.Spec.Containers[0].Name) ||
-				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Env, found.Spec.Template.Spec.Containers[0].Env) ||
-				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, found.Spec.Template.Spec.Containers[0].Image)
+		Expected: &expected,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(expected.Spec.Selector, reconciled.Spec.Selector) ||
+				!reflect.DeepEqual(expected.Spec.Replicas, reconciled.Spec.Replicas) ||
+				!reflect.DeepEqual(expected.Spec.Template.ObjectMeta, reconciled.Spec.Template.ObjectMeta) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Name, reconciled.Spec.Template.Spec.Containers[0].Name) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Env, reconciled.Spec.Template.Spec.Containers[0].Env) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, reconciled.Spec.Template.Spec.Containers[0].Image)
 			// TODO: do something better than reflect.DeepEqual above?
 			// TODO: containers[0] is a bit flaky
 			// TODO: technically not only the Spec may be different, but deployment labels etc.
 		},
-		Modifier: func(expected, found *appsv1.Deployment) {
+		UpdateReconciled: func() {
 			// Update the found object and write the result back if there are any changes
-			found.Spec = expected.Spec
+			reconciled.Spec = expected.Spec
 		},
 	})
-	return deploy, err
+	return *reconciled, err
 
 }

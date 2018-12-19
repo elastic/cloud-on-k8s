@@ -23,17 +23,19 @@ func ReconcileConfigMap(
 	es v1alpha1.ElasticsearchCluster,
 	expected corev1.ConfigMap,
 ) error {
+	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: c,
 			Scheme: scheme,
 			Owner:  &es,
-			Object: &expected,
-			Differ: func(expected, found *corev1.ConfigMap) bool {
-				return !reflect.DeepEqual(expected.Data, found.Data)
+			Expected: &expected,
+			Reconciled: reconciled,
+			NeedsUpdate: func() bool {
+				return !reflect.DeepEqual(expected.Data, reconciled.Data)
 			},
-			Modifier: func(expected, found *corev1.ConfigMap) {
-				found.Data = expected.Data
+			UpdateReconciled: func() {
+				reconciled.Data = expected.Data
 			},
 		},
 	)

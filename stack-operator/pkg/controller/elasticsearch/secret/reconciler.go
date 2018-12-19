@@ -23,16 +23,18 @@ func ReconcileUserCredentialsSecret(
 	creds support.UserCredentials,
 ) error {
 	expected := creds.Secret()
+	reconciled := &v1.Secret{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client: c,
 		Scheme: scheme,
 		Owner:  &es,
-		Object: &expected,
-		Differ: func(_, found *v1.Secret) bool {
-			return creds.NeedsUpdate(*found)
+		Expected: &expected,
+		Reconciled: reconciled,
+		NeedsUpdate: func() bool {
+			return creds.NeedsUpdate(*reconciled)
 		},
-		Modifier: func(expected, found *v1.Secret) {
-			found.Data = expected.Data // only update data, keep the rest
+		UpdateReconciled: func() {
+			reconciled.Data = expected.Data // only update data, keep the rest
 		},
 	})
 	if err == nil {

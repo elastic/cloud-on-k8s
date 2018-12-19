@@ -133,22 +133,24 @@ func (c *Ca) ReconcilePublicCertsSecret(
 		},
 	}
 
+	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client: cl,
 		Scheme: scheme,
 		Owner:  owner,
-		Object: &clusterCASecret,
-		Differ: func(expected, found *corev1.Secret) bool {
+		Expected: &clusterCASecret,
+		Reconciled: reconciled,
+		NeedsUpdate: func() bool {
 			// if Data is nil, create it in case we're starting with a poorly initialized secret
-			if found.Data == nil {
-				found.Data = make(map[string][]byte)
+			if reconciled.Data == nil {
+				reconciled.Data = make(map[string][]byte)
 			}
 			caKey, ok := clusterCASecret.Data[SecretCAKey]
 			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
 		},
-		Modifier: func(_, found *corev1.Secret) {
-			found.Data[SecretCAKey] = expectedCaKeyBytes
+		UpdateReconciled: func() {
+			reconciled.Data[SecretCAKey] = expectedCaKeyBytes
 		},
 	})
 
