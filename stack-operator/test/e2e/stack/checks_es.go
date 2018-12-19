@@ -29,7 +29,7 @@ func ESClusterChecks(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 
 func (e *esClusterChecks) BuildESClient(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Every secrets should be set so that we can build an ES client",
+		Name: "Every secret should be set so that we can build an ES client",
 		Test: func(t *testing.T) {
 			esClient, err := helpers.NewElasticsearchClient(stack, k)
 			assert.NoError(t, err)
