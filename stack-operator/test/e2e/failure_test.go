@@ -82,9 +82,9 @@ func TestKillOneDataNode(t *testing.T) {
 }
 
 func TestKillOneMasterNode(t *testing.T) {
-	// 1 master + 2 data nodes
+	// 2 master + 2 data nodes
 	s := stack.NewStackBuilder("test-failure-kill-one-master-node").
-		WithESMasterNodes(1, stack.DefaultResources).
+		WithESMasterNodes(2, stack.DefaultResources).
 		WithESDataNodes(2, stack.DefaultResources).
 		Stack
 	matchMasterNode := func(p corev1.Pod) bool {
@@ -93,20 +93,18 @@ func TestKillOneMasterNode(t *testing.T) {
 	killNodeTest(t, s, matchMasterNode)
 }
 
-func TestKillSingleNodeNoPV(t *testing.T) {
-	s := stack.NewStackBuilder("test-failure-kill-single-node-no-pv").
-		WithESMasterDataNodes(1, stack.DefaultResources).
-		Stack
-	matchNode := func(p corev1.Pod) bool {
-		return true // match first node we find
-	}
-	killNodeTest(t, s, matchNode)
-	// we probably lost some data here :(
-}
-
 func TestKillSingleNodeReusePV(t *testing.T) {
 	// TODO :)
 	// We should not loose data, and ClusterUUID should stay the same
+
+	// s := stack.NewStackBuilder("test-failure-kill-single-node-no-pv").
+	// 	WithESMasterDataNodes(1, stack.DefaultResources).
+	//  WithPV().
+	// 	Stack
+	// matchNode := func(p corev1.Pod) bool {
+	// 	return true // match first node we find
+	// }
+	// killNodeTest(t, s, matchNode)
 }
 
 func TestDeleteServices(t *testing.T) {
