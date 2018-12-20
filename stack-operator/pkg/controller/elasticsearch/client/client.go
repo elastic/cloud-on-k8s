@@ -170,6 +170,11 @@ func (c *Client) post(ctx context.Context, pathStr string, in interface{}) error
 	})
 }
 
+func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
+	var info Info
+	return info, c.get(ctx, "/", &info)
+}
+
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
@@ -230,6 +235,15 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 	return c.put(ctx, "/_cluster/settings", &zenSettings)
 }
 
+// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
+// but only the reloadable secure settings will be applied
 func (c *Client) ReloadSecureSettings(ctx context.Context) error {
 	return c.post(ctx, "/_nodes/reload_secure_settings", nil)
+}
+
+// GetNodes calls the _nodes api to return a map(nodeName -> Node)
+func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
+	var nodes Nodes
+	// restrict call to basic node info only
+	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
 }

@@ -3,7 +3,10 @@ package stack
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -23,7 +26,9 @@ func ESClusterChecks(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 	return helpers.TestStepList{
 		e.BuildESClient(stack, k),
 		e.CheckESReachable(),
+		e.CheckESVersion(stack),
 		e.CheckESHealthGreen(),
+		e.CheckESNodesTopology(stack),
 	}
 }
 
@@ -50,6 +55,17 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 	}
 }
 
+func (e *esClusterChecks) CheckESVersion(stack v1alpha1.Stack) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Elasticsearch version should be the expected one",
+		Test: func(t *testing.T) {
+			info, err := e.client.GetClusterInfo(context.TODO())
+			require.NoError(t, err)
+			require.Equal(t, stack.Spec.Version, info.Version.Number)
+		},
+	}
+}
+
 func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch endpoint should eventually be reachable",
@@ -66,4 +82,71 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 			return nil
 		}),
 	}
+}
+func (e *esClusterChecks) CheckESNodesTopology(stack v1alpha1.Stack) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Elasticsearch nodes topology should be the expected ones",
+		Test: func(t *testing.T) {
+			nodes, err := e.client.GetNodes(context.TODO())
+			require.NoError(t, err)
+			require.Equal(t, int(stack.Spec.Elasticsearch.NodeCount()), len(nodes.Nodes))
+
+			// flatten the topologies
+			expectedTopologies := []estype.ElasticsearchTopologySpec{}
+			for _, topo := range stack.Spec.Elasticsearch.Topologies {
+				for i := 0; i < int(topo.NodeCount); i++ {
+					expectedTopologies = append(expectedTopologies, topo)
+				}
+			}
+			// match each actual node to an expected node
+			for _, node := range nodes.Nodes {
+				nodeTypes := rolesToNodeTypes(node.Roles)
+				for i, topo := range expectedTopologies {
+					if topo.NodeTypes == nodeTypes && compareMemoryLimit(topo, node.JVM.Mem.HeapMaxInBytes) {
+						// it's a match! #tinder
+						// no need to match this topology anymore
+						expectedTopologies = append(expectedTopologies[:i], expectedTopologies[i+1:]...)
+						break
+					}
+				}
+			}
+			// all expected topologies should have matched a node
+			require.Empty(t, expectedTopologies)
+		},
+	}
+}
+
+func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
+	nt := estype.NodeTypesSpec{}
+	for _, r := range roles {
+		switch r {
+		case "master":
+			nt.Master = true
+		case "data":
+			nt.Data = true
+		case "ingest":
+			nt.Ingest = true
+		case "ml":
+			nt.ML = true
+		}
+	}
+	return nt
+}
+
+func compareMemoryLimit(topo estype.ElasticsearchTopologySpec, heapMaxBytes int) bool {
+	if topo.Resources.Limits.Memory() == nil {
+		// no expected memory, consider it's ok
+		return true
+	}
+
+	const epsilon = 0.05 // allow a 5% diff due to bytes approximation
+
+	expectedBytes := topo.Resources.Limits.Memory().Value()
+	actualBytes := int64(heapMaxBytes * 2) // we set heap to half the available memory
+
+	diffRatio := math.Abs(float64(actualBytes-expectedBytes)) / math.Abs(float64(expectedBytes))
+	if diffRatio < epsilon {
+		return true
+	}
+	return false
 }

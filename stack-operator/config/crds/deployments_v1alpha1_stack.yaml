@@ -17,7 +17,7 @@ spec:
     type: string
   - JSONPath: .metadata.creationTimestamp
     name: age
-    type: string
+    type: date
   group: deployments.k8s.elastic.co
   names:
     categories:
