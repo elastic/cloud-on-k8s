@@ -24,10 +24,10 @@ func ReconcileService(
 ) (reconcile.Result, error) {
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
-		Client: c,
-		Scheme: scheme,
-		Owner:  owner,
-		Expected: expected,
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      owner,
+		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
 			// ClusterIP might not exist in the expected service,

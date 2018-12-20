@@ -14,10 +14,10 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"github.com/fsnotify/fsnotify"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -43,19 +43,19 @@ var (
 // Config contains configuration parameters for the keystore updater.
 type Config struct {
 	// SourceDir is the directory where secrets will appear that need to be added to the keystore.
-	SourceDir         string
+	SourceDir string
 	// KeystoreBinary is the path to the Elasticsearch keystore tool binary.
-	KeystoreBinary    string
+	KeystoreBinary string
 	// KeystorePath is the path to the Elasticsearch keystore file.
-	KeystorePath      string
+	KeystorePath string
 	// ReloadCredentials indicates whether the updater should attempt to reload secure settings in Elasticsearch.
 	ReloadCredentials bool
 	// User is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
-	User              client.User
+	User client.User
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
-	Endpoint          string
+	Endpoint string
 	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
-	CACerts           []byte
+	CACerts []byte
 }
 
 func init() {
@@ -196,7 +196,7 @@ func validateConfig() Config {
 
 }
 
-// execute updates the keystore once and then starts a watcher on source dir to update again on file changes. 
+// execute updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func execute() {
 	config := validateConfig()
 

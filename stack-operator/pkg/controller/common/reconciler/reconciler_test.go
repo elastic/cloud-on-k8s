@@ -2,19 +2,20 @@ package reconciler
 
 import (
 	"context"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
-	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -27,7 +28,7 @@ func withoutControllerRef(obj runtime.Object) runtime.Object {
 
 func noopModifier() {}
 
-type wrong struct {}
+type wrong struct{}
 
 func (w wrong) GetObjectKind() schema.ObjectKind {
 	return nil
@@ -115,7 +116,7 @@ func TestReconcileResource(t *testing.T) {
 			name: "Error: Expected needs to implement runtime.Object and meta.Object",
 			args: func() args {
 				return args{
-					Expected: &wrong{},
+					Expected:         &wrong{},
 					Reconciled:       &corev1.Secret{},
 					UpdateReconciled: noopModifier,
 					NeedsUpdate: func() bool {

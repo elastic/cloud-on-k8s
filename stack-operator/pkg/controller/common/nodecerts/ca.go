@@ -135,10 +135,10 @@ func (c *Ca) ReconcilePublicCertsSecret(
 
 	reconciled := &corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
-		Client: cl,
-		Scheme: scheme,
-		Owner:  owner,
-		Expected: &clusterCASecret,
+		Client:     cl,
+		Scheme:     scheme,
+		Owner:      owner,
+		Expected:   &clusterCASecret,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
 			// if Data is nil, create it in case we're starting with a poorly initialized secret
