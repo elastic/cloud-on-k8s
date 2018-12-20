@@ -164,6 +164,12 @@ func (c *Client) delete(ctx context.Context, path string) error {
 	return err
 }
 
+func (c *Client) post(ctx context.Context, pathStr string, in interface{}) error {
+	return c.marshalAndRequest(ctx, in, func(body io.Reader) (*http.Request, error) {
+		return http.NewRequest(http.MethodPost, common.Concat(c.Endpoint, pathStr), body)
+	})
+}
+
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
@@ -222,4 +228,8 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 		Persistent: DiscoveryZen{MinimumMasterNodes: n},
 	}
 	return c.put(ctx, "/_cluster/settings", &zenSettings)
+}
+
+func (c *Client) ReloadSecureSettings(ctx context.Context) error {
+	return c.post(ctx, "/_nodes/reload_secure_settings", nil)
 }
