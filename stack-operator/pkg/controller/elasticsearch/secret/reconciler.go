@@ -1,16 +1,13 @@
 package secret
 
 import (
-	"context"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -26,26 +23,23 @@ func ReconcileUserCredentialsSecret(
 	creds support.UserCredentials,
 ) error {
 	expected := creds.Secret()
-	if err := controllerutil.SetControllerReference(&es, &expected, scheme); err != nil {
-		return err
+	reconciled := &v1.Secret{}
+	err := reconciler.ReconcileResource(reconciler.Params{
+		Client: c,
+		Scheme: scheme,
+		Owner:  &es,
+		Expected: &expected,
+		Reconciled: reconciled,
+		NeedsUpdate: func() bool {
+			return creds.NeedsUpdate(*reconciled)
+		},
+		UpdateReconciled: func() {
+			reconciled.Data = expected.Data // only update data, keep the rest
+		},
+	})
+	if err == nil {
+		// expected creds have been updated to reflect the state on the API server
+		creds.Reset(expected)
 	}
-	found := &v1.Secret{}
-	err := c.Get(context.TODO(), k8s.ExtractNamespacedName(expected.ObjectMeta), found)
-	if err != nil && errors.IsNotFound(err) {
-		log.Info("Creating secret", "namespace", expected.Namespace, "name", expected.Name)
-		return c.Create(context.TODO(), &expected)
-	} else if err != nil {
-		return err
-	}
-
-	if creds.NeedsUpdate(*found) {
-		log.Info("Updating secret", "namespace", expected.Namespace, "name", expected.Name)
-		found.Data = expected.Data // only update data, keep the rest
-		err := c.Update(context.TODO(), found)
-		if err != nil {
-			return err
-		}
-	}
-	creds.Reset(*found)
-	return nil
+	return err
 }
