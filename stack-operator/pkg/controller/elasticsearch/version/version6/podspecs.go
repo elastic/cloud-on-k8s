@@ -1,4 +1,4 @@
-package version
+package version6
 
 import (
 	"fmt"
@@ -6,12 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -32,9 +31,10 @@ var (
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
-func ExpectedPodSpecs6(
+func ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
+	resourcesState support.ResourcesState,
 ) ([]support.PodSpecContext, error) {
 	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
 	// creation below.
@@ -44,11 +44,11 @@ func ExpectedPodSpecs6(
 		"users",
 	)
 
-	return newExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars6, newInitContainers6)
+	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers)
 }
 
-// newInitContainers6 returns a list of init containers
-func newInitContainers6(
+// newInitContainers returns a list of init containers
+func newInitContainers(
 	imageName string,
 	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
@@ -56,13 +56,13 @@ func newInitContainers6(
 	return initcontainer.NewInitContainers(imageName, linkedFiles6, keyStoreInit, setVMMaxMapCount)
 }
 
-// newEnvironmentVars6 returns the environment vars to be associated to a pod
-func newEnvironmentVars6(
+// newEnvironmentVars returns the environment vars to be associated to a pod
+func newEnvironmentVars(
 	p support.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
 ) []corev1.EnvVar {
-	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
+	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
 	return []corev1.EnvVar{
 		{Name: support.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -88,7 +88,7 @@ func newEnvironmentVars6(
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, securityPropsFile)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
 		{Name: support.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
@@ -140,18 +140,4 @@ func newEnvironmentVars6(
 			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
 		},
 	}
-}
-
-// NewPod6 constructs a pod from the given parameters.
-func NewPod6(
-	version version.Version,
-	es v1alpha1.ElasticsearchCluster,
-	podSpecCtx support.PodSpecContext,
-) (corev1.Pod, error) {
-	pod, err := newPod(version, es, podSpecCtx)
-	if err != nil {
-		return pod, err
-	}
-
-	return pod, nil
 }

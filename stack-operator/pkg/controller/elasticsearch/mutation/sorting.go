@@ -54,15 +54,6 @@ func comparePodByMasterNodesFirstThenNameAsc(iPod corev1.Pod, jPod corev1.Pod) b
 	}
 }
 
-// sortPodsByMasterNodesFirstThenNameAsc sorts pods in a preferred creation order:
-// - master nodes first
-// - by name otherwise, which is used to ensure a stable sort order.
-func sortPodsByMasterNodesFirstThenNameAsc(pods []corev1.Pod) func(i, j int) bool {
-	return func(i, j int) bool {
-		return comparePodByMasterNodesFirstThenNameAsc(pods[i], pods[j])
-	}
-}
-
 // sortPodsToCreateByMasterNodesFirstThenNameAsc sorts podToCreate in a preferred creation order:
 // - master nodes first
 // - by name otherwise, which is used to ensure a stable sort order.

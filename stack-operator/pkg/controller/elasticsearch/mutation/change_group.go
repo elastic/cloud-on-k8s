@@ -211,13 +211,10 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 		toDeleteByName[pod.Name] = empty
 	}
 
-	fmt.Println("todelete:", toDeleteByName)
-
 	// for each pod we intend to remove, simulate a deletion
 	for i := len(s.Changes.ToDelete) - 1; i >= 0; i-- {
 		podToDelete := s.Changes.ToDelete[i]
 		if _, ok := toDeleteByName[podToDelete.Name]; ok {
-			fmt.Println("deleting pod ", podToDelete.Name)
 			// pop from list of pods to delete
 			s.Changes.ToDelete = append(s.Changes.ToDelete[:i], s.Changes.ToDelete[i+1:]...)
 		}

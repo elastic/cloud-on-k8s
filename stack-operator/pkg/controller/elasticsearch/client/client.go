@@ -10,11 +10,16 @@ import (
 	"io"
 	"net/http"
 	"path"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+	"strconv"
+	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+	"github.com/pkg/errors"
 )
+
+// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
+const DefaultVotingConfigExclusionsTimeout = "30s"
 
 // User captures Elasticsearch user credentials.
 type User struct {
@@ -82,9 +87,6 @@ func IsNotFound(err error) bool {
 }
 
 func checkError(response *http.Response) error {
-	if response == nil {
-		return fmt.Errorf("received a <nil> response")
-	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return &APIError{
 			response: response,
@@ -93,8 +95,7 @@ func checkError(response *http.Response) error {
 	return nil
 }
 
-func (c *Client) makeRequest(context context.Context, request *http.Request) (*http.Response, error) {
-
+func (c *Client) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
@@ -110,58 +111,62 @@ func (c *Client) makeRequest(context context.Context, request *http.Request) (*h
 	return response, err
 }
 
-func (c *Client) makeRequestAndUnmarshal(context context.Context, request *http.Request, out interface{}) error {
-	resp, err := c.makeRequest(context, request)
+func (c *Client) get(ctx context.Context, pathWithQuery string, out interface{}) error {
+	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out)
+}
+
+func (c *Client) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+	return c.request(ctx, http.MethodPut, pathWithQuery, in, out)
+}
+
+func (c *Client) post(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+	return c.request(ctx, http.MethodPost, pathWithQuery, in, out)
+}
+
+func (c *Client) delete(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out)
+}
+
+// request performs a new http request
+//
+// if requestObj is not nil, it's marshalled as JSON and used as the request body
+// if responseObj is not nil, it should be a pointer to an struct. the response body will be unmarshalled from JSON
+// into this struct.
+func (c *Client) request(
+	ctx context.Context,
+	method string,
+	pathWithQuery string,
+	requestObj,
+	responseObj interface{},
+) error {
+	var body io.Reader = http.NoBody
+	if requestObj != nil {
+		outData, err := json.Marshal(requestObj)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewBuffer(outData)
+	}
+
+	request, err := http.NewRequest(method, common.Concat(c.Endpoint, pathWithQuery), body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.doRequest(ctx, request)
 	if err != nil {
 		return err
 	}
 
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(out)
-	if err != nil {
-		return err
+	if responseObj != nil {
+		if err := json.NewDecoder(resp.Body).Decode(responseObj); err != nil {
+			return err
+		}
 	}
+
 	return nil
-}
-
-func (c *Client) marshalAndRequest(context context.Context, payload interface{}, newRequest func(at io.Reader) (*http.Request, error)) error {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	request, err := newRequest(bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	_, err = c.makeRequest(context, request)
-	return err
-
-}
-
-func (c *Client) get(ctx context.Context, pathStr string, out interface{}) error {
-	req, err := http.NewRequest(http.MethodGet, common.Concat(c.Endpoint, pathStr), nil)
-	if err != nil {
-		return err
-	}
-	return c.makeRequestAndUnmarshal(ctx, req, &out)
-}
-
-func (c *Client) put(ctx context.Context, pathStr string, in interface{}) error {
-	return c.marshalAndRequest(ctx, in, func(body io.Reader) (*http.Request, error) {
-		return http.NewRequest(http.MethodPut, common.Concat(c.Endpoint, pathStr), body)
-	})
-}
-
-func (c *Client) delete(ctx context.Context, path string) error {
-	request, err := http.NewRequest(http.MethodDelete, common.Concat(c.Endpoint, path), nil)
-	if err != nil {
-		return err
-	}
-	_, err = c.makeRequest(ctx, request)
-	return err
 }
 
 func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
@@ -179,7 +184,7 @@ func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 // configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
-	return c.put(ctx, "/_cluster/settings", allocationSetting)
+	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 
 // GetClusterHealth calls the _cluster/health api.
@@ -196,12 +201,12 @@ func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (Snapsh
 
 // DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
 func (c *Client) DeleteSnapshotRepository(ctx context.Context, name string) error {
-	return c.delete(ctx, path.Join("/_snapshot", name))
+	return c.delete(ctx, path.Join("/_snapshot", name), nil, nil)
 }
 
 // UpsertSnapshotRepository inserts or updates the given snapshot repository
 func (c *Client) UpsertSnapshotRepository(context context.Context, name string, repository SnapshotRepository) error {
-	return c.put(context, path.Join("/_snapshot", name), repository)
+	return c.put(context, path.Join("/_snapshot", name), repository, nil)
 }
 
 // GetAllSnapshots returns a list of all snapshots for the given repository.
@@ -212,12 +217,12 @@ func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsLis
 
 // TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
 func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
-	return c.put(ctx, path.Join("/_snapshot", repo, snapshot), nil)
+	return c.put(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
 }
 
 // DeleteSnapshot deletes the given snapshot from the given repository.
 func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
-	return c.delete(ctx, path.Join("/_snapshot", repo, snapshot))
+	return c.delete(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
 }
 
 // SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
@@ -226,7 +231,43 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 		Transient:  DiscoveryZen{MinimumMasterNodes: n},
 		Persistent: DiscoveryZen{MinimumMasterNodes: n},
 	}
-	return c.put(ctx, "/_cluster/settings", &zenSettings)
+	return c.put(ctx, "/_cluster/settings", &zenSettings, nil)
+}
+
+// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+//
+// If timeout is the empty string, the default is used.
+//
+// Introduced in: Elasticsearch 7.0.0
+func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	if timeout == "" {
+		timeout = DefaultVotingConfigExclusionsTimeout
+	}
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions/%s?timeout=%s",
+		strings.Join(nodeNames, ","),
+		timeout,
+	)
+
+	if err := c.post(ctx, path, nil, nil); err != nil {
+		return errors.Wrap(err, "unable to add to voting_config_exclusions")
+	}
+	return nil
+}
+
+// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+//
+// Introduced in: Elasticsearch 7.0.0
+func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions?wait_for_removal=%s",
+		strconv.FormatBool(waitForRemoval),
+	)
+
+	if err := c.delete(ctx, path, nil, nil); err != nil {
+		return errors.Wrap(err, "unable to delete /_cluster/voting_config_exclusions")
+	}
+	return nil
 }
 
 // GetNodes calls the _nodes api to return a map(nodeName -> Node)

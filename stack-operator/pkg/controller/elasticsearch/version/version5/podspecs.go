@@ -1,4 +1,4 @@
-package version
+package version5
 
 import (
 	"fmt"
@@ -6,18 +6,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// ExpectedPodSpecs5 returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
-func ExpectedPodSpecs5(
+// ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
+func ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl support.NewPodSpecParams,
+	resourcesState support.ResourcesState,
 ) ([]support.PodSpecContext, error) {
 	// we currently mount the users secret volume as the x-pack folder. we cannot symlink these into the existing
 	// config/x-pack/ folder because of the Java Security Manager restrictions.
@@ -31,11 +31,11 @@ func ExpectedPodSpecs5(
 	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
 	// potentially bypasses x-pack security.
 
-	return newExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars5, newInitContainers5)
+	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers)
 }
 
-// newInitContainers5 returns a list of init containers
-func newInitContainers5(
+// newInitContainers returns a list of init containers
+func newInitContainers(
 	imageName string,
 	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
@@ -44,14 +44,14 @@ func newInitContainers5(
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
-func newEnvironmentVars5(
+func newEnvironmentVars(
 	p support.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
 ) []corev1.EnvVar {
 	// TODO: require system key setting for 5.2 and up
 
-	heapSize := memoryLimitsToHeapSize(*p.Resources.Limits.Memory())
+	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
 	return []corev1.EnvVar{
 		{Name: support.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -69,7 +69,7 @@ func newEnvironmentVars5(
 		{Name: support.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, securityPropsFile)},
+		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
 		// TODO: dedicated node types support
 		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
@@ -108,18 +108,4 @@ func newEnvironmentVars5(
 		{Name: support.EnvXPackSecurityTransportSslEnabled, Value: "true"},
 		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
 	}
-}
-
-// NewPod creates a new pod from the given parameters.
-func NewPod5(
-	version version.Version,
-	es v1alpha1.ElasticsearchCluster,
-	podSpecCtx support.PodSpecContext,
-) (corev1.Pod, error) {
-	pod, err := newPod(version, es, podSpecCtx)
-	if err != nil {
-		return pod, err
-	}
-
-	return pod, nil
 }
