@@ -81,6 +81,8 @@ func fatal(err error, msg string) {
 	os.Exit(1)
 }
 
+// reloadCredentials tries to make an API call to the reload_secure_credentials API
+// to reload reloadable settings after the keystore has been updated.
 func reloadCredentials(cfg Config) error {
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(cfg.CACerts)
@@ -89,9 +91,14 @@ func reloadCredentials(cfg Config) error {
 	}
 
 	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, certPool)
+	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
+	// keystore which is something we cannot guarantee from this process. Also this call will be issued
+	// on each node which is redundant and might be problematic as well.
 	return api.ReloadSecureSettings(context.Background())
 }
 
+// updateKeystore reconciles the source directory with Elasticsearch keystores by recreating the
+// keystore and adding a setting for each file in the source directory.
 func updateKeystore(cfg Config) {
 	// delete existing keystore (TODO can we do that to a running cluster?)
 	_, err := os.Stat(cfg.KeystorePath)
@@ -141,6 +148,7 @@ func updateKeystore(cfg Config) {
 	}
 }
 
+// validateConfig validates the configuration parameters for the keystore-updater and ends execution if invalid.
 func validateConfig() Config {
 	sourceDir := viper.GetString(sourceDirFlag)
 	_, err := os.Stat(sourceDir)
@@ -188,6 +196,7 @@ func validateConfig() Config {
 
 }
 
+// execute updates the keystore once and then starts a watcher on source dir to update again on file changes. 
 func execute() {
 	config := validateConfig()
 
