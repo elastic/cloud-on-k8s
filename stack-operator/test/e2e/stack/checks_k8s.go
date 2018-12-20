@@ -4,18 +4,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
+	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // K8sStackChecks returns all test steps to verify the given stack
 // in K8s is the expected one
 func K8sStackChecks(stack v1alpha1.Stack, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{
+		CheckKibanaDeployment(stack, k8sClient),
 		CheckKibanaPodsCount(stack, k8sClient),
 		CheckESVersion(stack, k8sClient),
 		CheckKibanaPodsRunning(stack, k8sClient),
@@ -27,6 +30,30 @@ func K8sStackChecks(stack v1alpha1.Stack, k8sClient *helpers.K8sHelper) helpers.
 		CheckClusterHealth(stack, k8sClient),
 		CheckClusterUUID(stack, k8sClient),
 		CheckESPassword(stack, k8sClient),
+	}
+}
+
+// CheckKibanaDeployment checks that Kibana deployment exists
+func CheckKibanaDeployment(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Kibana deployment should be set",
+		Test: helpers.Eventually(func() error {
+			var dep appsv1.Deployment
+			err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
+				Namespace: helpers.DefaultNamespace,
+				Name:      stack.Name + "-kibana",
+			}, &dep)
+			if stack.Spec.Kibana.NodeCount == 0 && apierrors.IsNotFound(err) {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if *dep.Spec.Replicas != stack.Spec.Kibana.NodeCount {
+				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", stack.Spec.Kibana.NodeCount, *dep.Spec.Replicas)
+			}
+			return nil
+		}),
 	}
 }
 
