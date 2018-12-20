@@ -351,7 +351,7 @@ func TestClient_request(t *testing.T) {
 	}))
 	requests := []func() (string, error){
 		func() (string, error) {
-			return "get", testClient.get(context.TODO(), testPath, nil, nil)
+			return "get", testClient.get(context.TODO(), testPath, nil)
 		},
 		func() (string, error) {
 			return "put", testClient.put(context.TODO(), testPath, nil, nil)

@@ -111,8 +111,8 @@ func (c *Client) doRequest(context context.Context, request *http.Request) (*htt
 	return response, err
 }
 
-func (c *Client) get(ctx context.Context, pathWithQuery string, in, out interface{}) error {
-	return c.request(ctx, http.MethodGet, pathWithQuery, in, out)
+func (c *Client) get(ctx context.Context, pathWithQuery string, out interface{}) error {
+	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out)
 }
 
 func (c *Client) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
@@ -166,7 +166,7 @@ func (c *Client) request(ctx context.Context, method string, pathWithQuery strin
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
-	return clusterState, c.get(ctx, "/_cluster/state/version,master_node,nodes,routing_table", nil, &clusterState)
+	return clusterState, c.get(ctx, "/_cluster/state/version,master_node,nodes,routing_table", &clusterState)
 }
 
 // ExcludeFromShardAllocation takes a comma-separated string of node names and
@@ -179,13 +179,13 @@ func (c *Client) ExcludeFromShardAllocation(ctx context.Context, nodes string) e
 // GetClusterHealth calls the _cluster/health api.
 func (c *Client) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
-	return result, c.get(ctx, "/_cluster/health", nil, &result)
+	return result, c.get(ctx, "/_cluster/health", &result)
 }
 
 // GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
 func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
 	var result map[string]SnapshotRepository
-	return result[name], c.get(ctx, path.Join("/_snapshot", name), nil, &result)
+	return result[name], c.get(ctx, path.Join("/_snapshot", name), &result)
 }
 
 // DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
@@ -201,7 +201,7 @@ func (c *Client) UpsertSnapshotRepository(context context.Context, name string, 
 // GetAllSnapshots returns a list of all snapshots for the given repository.
 func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
 	var result SnapshotsList
-	return result, c.get(ctx, path.Join("/_snapshot", repo, "_all"), nil, &result)
+	return result, c.get(ctx, path.Join("/_snapshot", repo, "_all"), &result)
 }
 
 // TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
