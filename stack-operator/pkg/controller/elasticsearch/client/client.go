@@ -164,6 +164,11 @@ func (c *Client) delete(ctx context.Context, path string) error {
 	return err
 }
 
+func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
+	var info Info
+	return info, c.get(ctx, "/", &info)
+}
+
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
@@ -222,4 +227,11 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 		Persistent: DiscoveryZen{MinimumMasterNodes: n},
 	}
 	return c.put(ctx, "/_cluster/settings", &zenSettings)
+}
+
+// GetNodes calls the _nodes api to return a map(nodeName -> Node)
+func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
+	var nodes Nodes
+	// restrict call to basic node info only
+	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
 }

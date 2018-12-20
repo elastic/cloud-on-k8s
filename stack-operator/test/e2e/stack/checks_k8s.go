@@ -2,7 +2,6 @@ package stack
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
@@ -18,7 +17,6 @@ import (
 func K8sStackChecks(stack v1alpha1.Stack, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{
 		CheckKibanaPodsCount(stack, k8sClient),
-		CheckTopology(stack, k8sClient),
 		CheckESVersion(stack, k8sClient),
 		CheckKibanaPodsRunning(stack, k8sClient),
 		CheckESPodsRunning(stack, k8sClient),
@@ -130,39 +128,6 @@ func CheckESPodsReady(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSt
 					}
 				}
 				return fmt.Errorf("Pod %s is not ready yet", p.Name)
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckTopology checks that the pods in K8S match
-// the topology specified in the stack
-// TODO: request Elasticsearch /nodes endpoint instead, to move away from implementation details
-func CheckTopology(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
-	return helpers.TestStep{
-		Name: "Pods should have the expected topology",
-		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
-			if err != nil {
-				return err
-			}
-			if len(pods) != int(stack.Spec.Elasticsearch.NodeCount()) {
-				return fmt.Errorf("Actual number of pods %d does not match expected %d", len(pods), int(stack.Spec.Elasticsearch.NodeCount()))
-			}
-			// compare expected vs. actual node types
-			nodesTypes, err := extractNodesTypes(pods)
-			if err != nil {
-				return err
-			}
-			expectedNodesTypes := []estype.NodeTypesSpec{}
-			for _, topo := range stack.Spec.Elasticsearch.Topologies {
-				for i := 0; i < int(topo.NodeCount); i++ {
-					expectedNodesTypes = append(expectedNodesTypes, topo.NodeTypes)
-				}
-			}
-			if err := helpers.ElementsMatch(expectedNodesTypes, nodesTypes); err != nil {
-				return err
 			}
 			return nil
 		}),
@@ -303,49 +268,4 @@ func CheckESPassword(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSte
 			require.NotEqual(t, "", password)
 		},
 	}
-}
-
-// extractNodesTypes parses NodeTypesSpec in the given list of pods
-func extractNodesTypes(pods []corev1.Pod) ([]estype.NodeTypesSpec, error) {
-	var nodesTypes []estype.NodeTypesSpec
-	for _, p := range pods {
-		if len(p.Spec.Containers) != 1 {
-			return nil, fmt.Errorf("More than 1 container in pod %s", p.Name)
-		}
-		esContainer := p.Spec.Containers[0]
-		env := map[string]string{}
-		for _, envVar := range esContainer.Env {
-			switch envVar.Name {
-			case "node.master", "node.data", "node.ingest", "node.ml":
-				env[envVar.Name] = envVar.Value
-			}
-		}
-		if len(env) != 4 {
-			return nil, fmt.Errorf("Expected node topologies env var to be set, got %+v", env)
-		}
-		isMaster, err := strconv.ParseBool(env["node.master"])
-		if err != nil {
-			return nil, err
-		}
-		isData, err := strconv.ParseBool(env["node.data"])
-		if err != nil {
-			return nil, err
-		}
-		isIngest, err := strconv.ParseBool(env["node.ingest"])
-		if err != nil {
-			return nil, err
-		}
-		isML, err := strconv.ParseBool(env["node.ml"])
-		if err != nil {
-			return nil, err
-		}
-		nodeTypes := estype.NodeTypesSpec{
-			Master: isMaster,
-			Data:   isData,
-			Ingest: isIngest,
-			ML:     isML,
-		}
-		nodesTypes = append(nodesTypes, nodeTypes)
-	}
-	return nodesTypes, nil
 }

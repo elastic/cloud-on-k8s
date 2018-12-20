@@ -8,169 +8,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"strings"
 	"testing"
 
+	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/stretchr/testify/assert"
-)
-
-const (
-	ClusterDataSample = `
-{
-  "cluster_name": "stack-sample",
-  "compressed_size_in_bytes": 10021,
-  "cluster_uuid": "LyyITZoWSlO1NYEOQ6qYsA",
-  "version": 69,
-  "state_uuid": "pUYeoTGiRNCXfmJB-lBSjg",
-  "master_node": "4cHWfQAwQQKTvKV1vrtbDQ",
-  "blocks": {},
-  "nodes": {
-    "SaGT6YMJQyS409ZhonOLhQ": {
-      "name": "stack-sample-es-4fxm76vnwj",
-      "ephemeral_id": "xUIKCkLMRt6ysOPLHwcxxg",
-      "transport_address": "172.17.0.5:9300",
-      "attributes": {
-        "ml.machine_memory": "2147483648",
-        "ml.max_open_jobs": "20",
-        "xpack.installed": "true",
-        "ml.enabled": "true"
-      }
-    },
-    "4cHWfQAwQQKTvKV1vrtbDQ": {
-      "name": "stack-sample-es-lkrjf7224s",
-      "ephemeral_id": "dgJQM-g7RYyKO_WZbzfp8A",
-      "transport_address": "172.17.0.7:9300",
-      "attributes": {
-        "ml.machine_memory": "2147483648",
-        "ml.max_open_jobs": "20",
-        "xpack.installed": "true",
-        "ml.enabled": "true"
-      }
-    }
-  },
-  "routing_table": {
-    "indices": {
-      "sample-data-2": {
-        "shards": {
-          "0": [
-            {
-              "state": "STARTED",
-              "primary": true,
-              "node": "4cHWfQAwQQKTvKV1vrtbDQ",
-              "relocating_node": null,
-              "shard": 0,
-              "index": "sample-data-2",
-              "allocation_id": {
-                "id": "IDGMmL6ySAWnfH8bRvNmUw"
-              }
-            }
-          ],
-          "1": [
-            {
-              "state": "STARTED",
-              "primary": false,
-              "node": "SaGT6YMJQyS409ZhonOLhQ",
-              "relocating_node": null,
-              "shard": 1,
-              "index": "sample-data-2",
-              "allocation_id": {
-                "id": "llMZRy1jTA-Fe_X1jDBvnw"
-              }
-            }
-          ],
-          "2": [
-            {
-              "state": "UNASSIGNED",
-              "primary": true,
-              "node": null,
-              "relocating_node": null,
-              "shard": 2,
-              "index": "sample-data-2",
-              "recovery_source": {
-                "type": "EXISTING_STORE"
-              },
-              "unassigned_info": {
-                "reason": "NODE_LEFT",
-                "at": "2018-11-04T19:52:58.923Z",
-                "delayed": false,
-                "details": "node_left[sTom3cUZSdaRC8zBHWhn2g]",
-                "allocation_status": "no_valid_shard_copy"
-              }
-            }
-          ]
-        }
-      }
-    }
-  }
-}
-`
-	EmptyClusterDataSample = `
-{
-  "cluster_name": "stack-sample",
-  "compressed_size_in_bytes": 10506,
-  "cluster_uuid": "LyyITZoWSlO1NYEOQ6qYsA",
-  "version": 150,
-  "state_uuid": "EDJl3tuTSGeaKUossvfOfA",
-  "master_node": "-M71qm0GS2-wWjPdQdyEjw",
-  "blocks": {},
-  "nodes": {
-    "wWH74nr1TXeRNkQorC1S8A": {
-      "name": "stack-sample-es-v47j276fsw",
-      "ephemeral_id": "IgMivqAfTMmaqhAdKa6tow",
-      "transport_address": "172.17.0.6:9300",
-      "attributes": {
-        "ml.machine_memory": "2147483648",
-        "ml.max_open_jobs": "20",
-        "xpack.installed": "true",
-        "ml.enabled": "true"
-      }
-    },
-    "-M71qm0GS2-wWjPdQdyEjw": {
-      "name": "stack-sample-es-tj9s45xqz7",
-      "ephemeral_id": "9S5EL-28TlisnagzU96DWA",
-      "transport_address": "172.17.0.5:9300",
-      "attributes": {
-        "ml.machine_memory": "2147483648",
-        "ml.max_open_jobs": "20",
-        "xpack.installed": "true",
-        "ml.enabled": "true"
-      }
-    },
-    "Kp1mi0WEShmbJFm8aPrxiw": {
-      "name": "stack-sample-es-tmbtfpscsl",
-      "ephemeral_id": "WKuaCpctQtKIm7jbepGcaA",
-      "transport_address": "172.17.0.3:9300",
-      "attributes": {
-        "ml.machine_memory": "2147483648",
-        "ml.max_open_jobs": "20",
-        "xpack.installed": "true",
-        "ml.enabled": "true"
-      }
-    }
-  }, 
-  "routing_table": {
-    "indices": {}
-  }
-}
-`
-	ErrorSample = `
-{
-    "status": 400,
-    "error": {
-        "caused_by": {
-            "reason": "cannot set discovery.zen.minimum_master_nodes to more than the current master nodes count [1]",
-            "type": "illegal_argument_exception"
-        },
-        "reason": "illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
-        "type": "illegal_argument_exception",
-        "root_cause": [
-            {
-                "reason": "[stack-sample-es-575vhzs8ln][10.60.1.22:9300][cluster:admin/settings/update]",
-                "type": "remote_transport_exception"
-            }
-        ]
-    }
-}
-`
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRoutingTable(t *testing.T) {
@@ -182,7 +25,7 @@ func TestParseRoutingTable(t *testing.T) {
 	}{
 		{
 			name: "Can parse populated routing table",
-			args: ClusterDataSample,
+			args: fixtures.ClusterStateSample,
 			want: []Shard{
 				Shard{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
 				Shard{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
@@ -191,7 +34,7 @@ func TestParseRoutingTable(t *testing.T) {
 		},
 		{
 			name: "Can parse an empty routing table",
-			args: EmptyClusterDataSample,
+			args: fixtures.EmptyClusterStateSample,
 			want: []Shard{},
 		},
 	}
@@ -375,7 +218,7 @@ func TestAPIError_Error(t *testing.T) {
 			name: "Elasticsearch JSON error response",
 			fields: fields{&http.Response{
 				Status: "400 Bad Request",
-				Body:   ioutil.NopCloser(bytes.NewBufferString(ErrorSample)),
+				Body:   ioutil.NopCloser(bytes.NewBufferString(fixtures.ErrorSample)),
 			}},
 			want: "400 Bad Request: illegal value can't update [discovery.zen.minimum_master_nodes] from [1] to [6]",
 		},
@@ -398,4 +241,41 @@ func TestAPIError_Error(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClientGetNodes(t *testing.T) {
+	expectedPath := "/_nodes"
+	testClient := NewMockClient(func(req *http.Request) *http.Response {
+		require.Equal(t, expectedPath, req.URL.Path)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesSample)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+	resp, err := testClient.GetNodes(context.TODO())
+	require.NoError(t, err)
+	require.Equal(t, 3, len(resp.Nodes))
+	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
+	require.ElementsMatch(t, []string{"master", "data", "ingest"}, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].Roles)
+	require.Equal(t, 2130051072, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].JVM.Mem.HeapMaxInBytes)
+}
+
+func TestGetInfo(t *testing.T) {
+	expectedPath := "/"
+	testClient := NewMockClient(func(req *http.Request) *http.Response {
+		require.Equal(t, expectedPath, req.URL.Path)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(strings.NewReader(fixtures.InfoSample)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+	info, err := testClient.GetClusterInfo(context.TODO())
+	require.NoError(t, err)
+	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
+	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
+	require.Equal(t, "6.4.1", info.Version.Number)
 }

@@ -37,7 +37,7 @@ func TestNewPodsState(t *testing.T) {
 				observedState: support.ObservedState{
 					ClusterState: &client.ClusterState{
 						MasterNode: "master-node-id",
-						Nodes: map[string]client.Node{
+						Nodes: map[string]client.ClusterStateNode{
 							"master-node-id": {Name: exampleMasterNodePod.Name},
 							"a":              {Name: "3"},
 						},

@@ -227,7 +227,7 @@ func TestReconcileState_Apply(t *testing.T) {
 					},
 					ClusterState: &client.ClusterState{
 						MasterNode: "new",
-						Nodes: map[string]client.Node{
+						Nodes: map[string]client.ClusterStateNode{
 							"new": {Name: "new"},
 						},
 					},
