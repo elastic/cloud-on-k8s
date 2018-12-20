@@ -65,6 +65,18 @@ func (k *K8sHelper) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {
 	return podList.Items, nil
 }
 
+func (k *K8sHelper) GetPod(name string) (corev1.Pod, error) {
+	var pod corev1.Pod
+	if err := k.Client.Get(DefaultCtx, types.NamespacedName{Namespace: DefaultNamespace, Name: name}, &pod); err != nil {
+		return corev1.Pod{}, err
+	}
+	return pod, nil
+}
+
+func (k *K8sHelper) DeletePod(pod corev1.Pod) error {
+	return k.Client.Delete(DefaultCtx, &pod)
+}
+
 func (k *K8sHelper) CheckPodCount(listOpts client.ListOptions, expectedCount int) error {
 	pods, err := k.GetPods(listOpts)
 	if err != nil {
@@ -151,4 +163,13 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			"kibana.k8s.elastic.co/name": stackName,
 		}))}
+}
+
+func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool) (corev1.Pod, bool) {
+	for _, pod := range pods {
+		if predicate(pod) {
+			return pod, true
+		}
+	}
+	return corev1.Pod{}, false
 }

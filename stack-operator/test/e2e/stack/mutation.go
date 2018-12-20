@@ -3,7 +3,6 @@ package stack
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -41,21 +40,7 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 					continuousHealthChecks.Start()
 				},
 			},
-			helpers.TestStep{
-				Name: "Retrieve cluster ID before mutation for comparison purpose",
-				Test: helpers.Eventually(func() error {
-					var s v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
-					if err != nil {
-						return err
-					}
-					clusterIDBeforeMutation = s.Status.Elasticsearch.ClusterUUID
-					if clusterIDBeforeMutation == "" {
-						return fmt.Errorf("Empty ClusterUUID")
-					}
-					return nil
-				}),
-			},
+			RetrieveClusterUUIDStep(stack, k, &clusterIDBeforeMutation),
 			helpers.TestStep{
 				Name: "Applying the mutation should succeed",
 				Test: func(t *testing.T) {
@@ -71,17 +56,7 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 			}).
 		WithSteps(CheckStackSteps(stack, k)...).
 		WithSteps(
-			helpers.TestStep{
-				Name: "Cluster UUID should be preserved after mutation is done",
-				Test: func(t *testing.T) {
-					var s v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
-					require.NoError(t, err)
-					clusterIDAfterMutation := s.Status.Elasticsearch.ClusterUUID
-					require.NotEmpty(t, clusterIDBeforeMutation)
-					require.Equal(t, clusterIDBeforeMutation, clusterIDAfterMutation)
-				},
-			},
+			CompareClusterUUIDStep(stack, k, &clusterIDBeforeMutation),
 			helpers.TestStep{
 				Name: "Cluster health should not have been red during mutation process",
 				Test: func(t *testing.T) {
