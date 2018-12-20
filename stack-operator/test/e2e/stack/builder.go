@@ -88,6 +88,13 @@ func (b Builder) WithESTopology(topology estype.ElasticsearchTopologySpec) Build
 	return b
 }
 
+// -- Kibana
+
+func (b Builder) WithKibana(count int) Builder {
+	b.Spec.Kibana.NodeCount = 1
+	return b
+}
+
 // -- Helper functions
 
 func GetNamespacedName(stack stacktype.Stack) types.NamespacedName {

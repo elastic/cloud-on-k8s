@@ -104,7 +104,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 
 	type args struct {
 		strategy      v1alpha1.UpdateStrategy
-		allPodChanges *Changes
+		allPodChanges Changes
 		allPodsState  PodsState
 	}
 
@@ -118,7 +118,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "scale down two pods",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
 					ToDelete: concatPodList(podsB[:2]),
 				},
@@ -136,7 +136,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "basic scale-down with a failed zone",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
 					ToDelete: concatPodList(podsB[:2]),
 				},
@@ -155,7 +155,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "scale-down with groups",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
 					ToDelete: concatPodList(podsB[:2]),
 				},
@@ -174,7 +174,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "multi-zone failure recovery during rolling change without groups",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4])),
 					ToKeep:   concatPodList(),
 					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
@@ -200,7 +200,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "multi-zone failure recovery during rolling change with groups",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4])),
 					ToKeep:   concatPodList(),
 					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
@@ -226,7 +226,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "cannot end up without master or data nodes when removing nodes",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToKeep:   concatPodList(),
 					ToDelete: concatPodList(masterPods, dataPods),
 				},
@@ -248,7 +248,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from mdi node to dedicated m/d nodes",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterPods[:1], dataPods[:1])),
 					ToKeep:   concatPodList(),
 					ToDelete: concatPodList(masterDataPods[:1]),
@@ -271,7 +271,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from dedicated m/d nodes to mdi node",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterDataPods[:1])),
 					ToKeep:   concatPodList(),
 					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
@@ -295,7 +295,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			name: "going from dedicated m/d nodes to mdi node with an existing mdi node",
 			args: args{
 				strategy: updateStrategyWithZonesAsGroups,
-				allPodChanges: &Changes{
+				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterDataPods[:1])),
 					ToKeep:   concatPodList(masterDataPods[1:]),
 					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),

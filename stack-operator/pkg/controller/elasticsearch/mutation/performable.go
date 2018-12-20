@@ -35,7 +35,7 @@ func initializePerformableChanges(changes PerformableChanges) PerformableChanges
 // CalculatePerformableChanges calculates which changes can be performed in the current state.
 func CalculatePerformableChanges(
 	strategy v1alpha1.UpdateStrategy,
-	allPodChanges *Changes,
+	allPodChanges Changes,
 	allPodsState PodsState,
 ) (*PerformableChanges, error) {
 	performableChanges := initializePerformableChanges(PerformableChanges{})
@@ -46,7 +46,7 @@ func CalculatePerformableChanges(
 	// allChanges is a ChangeGroup that contains all the changes in a single group
 	allChanges := ChangeGroup{
 		Name:      AllGroupName,
-		Changes:   *allPodChanges,
+		Changes:   allPodChanges,
 		PodsState: allPodsState,
 	}
 

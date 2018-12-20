@@ -1,4 +1,4 @@
-package version
+package version6
 
 import (
 	"testing"
@@ -70,7 +70,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars6(
+			got := newEnvironmentVars(
 				tt.args.p, tt.args.nodeCertificatesVolume, tt.args.extraFilesSecretVolume,
 			)
 			for _, v := range tt.wantEnvSubset {
@@ -122,9 +122,10 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			podSpecs, err := ExpectedPodSpecs6(
+			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
 				support.NewPodSpecParams{ProbeUser: testProbeUser},
+				support.ResourcesState{},
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
@@ -147,9 +148,10 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			},
 		},
 	}
-	podSpec, err := ExpectedPodSpecs6(
+	podSpec, err := ExpectedPodSpecs(
 		es,
 		support.NewPodSpecParams{ProbeUser: testProbeUser},
+		support.ResourcesState{},
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
