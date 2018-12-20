@@ -270,6 +270,12 @@ func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemova
 	return nil
 }
 
+// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
+// but only the reloadable secure settings will be applied
+func (c *Client) ReloadSecureSettings(ctx context.Context) error {
+	return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
+}
+
 // GetNodes calls the _nodes api to return a map(nodeName -> Node)
 func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
 	var nodes Nodes

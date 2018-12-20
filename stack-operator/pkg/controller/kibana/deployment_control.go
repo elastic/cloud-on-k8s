@@ -52,9 +52,9 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 func (r *ReconcileKibana) ReconcileDeployment(expected appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
 	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
-		Client: r,
-		Scheme: r.scheme,
-		Owner:  owner,
+		Client:   r,
+		Scheme:   r.scheme,
+		Owner:    owner,
 		Expected: &expected,
 		NeedsUpdate: func() bool {
 			return !reflect.DeepEqual(expected.Spec.Selector, reconciled.Spec.Selector) ||

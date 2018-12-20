@@ -26,10 +26,10 @@ func ReconcileConfigMap(
 	reconciled := &corev1.ConfigMap{}
 	return reconciler.ReconcileResource(
 		reconciler.Params{
-			Client: c,
-			Scheme: scheme,
-			Owner:  &es,
-			Expected: &expected,
+			Client:     c,
+			Scheme:     scheme,
+			Owner:      &es,
+			Expected:   &expected,
 			Reconciled: reconciled,
 			NeedsUpdate: func() bool {
 				return !reflect.DeepEqual(expected.Data, reconciled.Data)

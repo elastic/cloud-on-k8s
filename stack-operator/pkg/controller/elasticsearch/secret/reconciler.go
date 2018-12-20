@@ -25,10 +25,10 @@ func ReconcileUserCredentialsSecret(
 	expected := creds.Secret()
 	reconciled := &v1.Secret{}
 	err := reconciler.ReconcileResource(reconciler.Params{
-		Client: c,
-		Scheme: scheme,
-		Owner:  &es,
-		Expected: &expected,
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      &es,
+		Expected:   &expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
 			return creds.NeedsUpdate(*reconciled)
