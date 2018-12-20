@@ -288,8 +288,11 @@ func TestClientUsesJsonContentType(t *testing.T) {
 	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
-	testClient.GetClusterState(context.TODO())
-	testClient.ExcludeFromShardAllocation(context.TODO(), "")
+
+	_, err := testClient.GetClusterState(context.TODO())
+	assert.NoError(t, err)
+
+	assert.NoError(t, testClient.ExcludeFromShardAllocation(context.TODO(), ""))
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -330,9 +333,11 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 			assert.Equal(t, tt.want.user.Password, password)
 		}))
 		testClient.User = tt.args
-		testClient.GetClusterState(context.TODO())
-		testClient.ExcludeFromShardAllocation(context.TODO(), "")
-		testClient.UpsertSnapshotRepository(context.TODO(), "", SnapshotRepository{})
+
+		_, err := testClient.GetClusterState(context.TODO())
+		assert.NoError(t, err)
+		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.TODO(), ""))
+		assert.NoError(t, testClient.UpsertSnapshotRepository(context.TODO(), "", SnapshotRepository{}))
 
 	}
 
@@ -346,13 +351,13 @@ func TestClient_request(t *testing.T) {
 	}))
 	requests := []func() (string, error){
 		func() (string, error) {
-			return "get", testClient.get(context.TODO(), testPath, nil)
+			return "get", testClient.get(context.TODO(), testPath, nil, nil)
 		},
 		func() (string, error) {
-			return "put", testClient.put(context.TODO(), testPath, nil)
+			return "put", testClient.put(context.TODO(), testPath, nil, nil)
 		},
 		func() (string, error) {
-			return "delete", testClient.delete(context.TODO(), testPath)
+			return "delete", testClient.delete(context.TODO(), testPath, nil, nil)
 		},
 	}
 
