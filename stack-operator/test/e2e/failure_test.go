@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/stack"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type failureTestFunc func(k *helpers.K8sHelper) helpers.TestStepList
@@ -36,14 +37,14 @@ func RunFailureTest(t *testing.T, s v1alpha1.Stack, f failureTestFunc) {
 		RunSequential(t)
 }
 
-func killNodeTest(t *testing.T, s v1alpha1.Stack, podMatch func(p corev1.Pod) bool) {
+func killNodeTest(t *testing.T, s v1alpha1.Stack, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		var killedPod corev1.Pod
 		return helpers.TestStepList{
 			{
 				Name: "Kill a node",
 				Test: func(t *testing.T) {
-					pods, err := k.GetPods(helpers.ESPodListOptions(s.Name))
+					pods, err := k.GetPods(listOptions)
 					require.NoError(t, err)
 					var found bool
 					killedPod, found = helpers.GetFirstPodMatching(pods, podMatch)
@@ -78,7 +79,7 @@ func TestKillOneDataNode(t *testing.T) {
 	matchDataNode := func(p corev1.Pod) bool {
 		return support.IsDataNode(p) && !support.IsMasterNode(p)
 	}
-	killNodeTest(t, s, matchDataNode)
+	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchDataNode)
 }
 
 func TestKillOneMasterNode(t *testing.T) {
@@ -90,7 +91,7 @@ func TestKillOneMasterNode(t *testing.T) {
 	matchMasterNode := func(p corev1.Pod) bool {
 		return !support.IsDataNode(p) && support.IsMasterNode(p)
 	}
-	killNodeTest(t, s, matchMasterNode)
+	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchMasterNode)
 }
 
 func TestKillSingleNodeReusePV(t *testing.T) {
@@ -105,6 +106,41 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 	// 	return true // match first node we find
 	// }
 	// killNodeTest(t, s, matchNode)
+}
+
+func TestKillKibanaPod(t *testing.T) {
+	s := stack.NewStackBuilder("test-kill-kibana-pod").
+		WithESMasterDataNodes(1, stack.DefaultResources).
+		WithKibana(1).
+		Stack
+	matchFirst := func(p corev1.Pod) bool {
+		return true
+	}
+	killNodeTest(t, s, helpers.KibanaPodListOptions(s.Name), matchFirst)
+}
+
+func TestKillKibanaDeployment(t *testing.T) {
+	s := stack.NewStackBuilder("test-kill-kibana-deployment").
+		WithESMasterDataNodes(1, stack.DefaultResources).
+		WithKibana(1).
+		Stack
+	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
+		return helpers.TestStepList{
+			{
+				Name: "Delete Kibana deployment",
+				Test: func(t *testing.T) {
+					var dep appsv1.Deployment
+					err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
+						Namespace: helpers.DefaultNamespace,
+						Name:      s.Name + "-kibana",
+					}, &dep)
+					require.NoError(t, err)
+					err = k.Client.Delete(helpers.DefaultCtx, &dep)
+					require.NoError(t, err)
+				},
+			},
+		}
+	})
 }
 
 func TestDeleteServices(t *testing.T) {
