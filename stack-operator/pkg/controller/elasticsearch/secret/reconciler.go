@@ -38,7 +38,7 @@ func ReconcileUserCredentialsSecret(
 		},
 	})
 	if err == nil {
-		//expected creds have been updated to reflect the state on the API server
+		// expected creds have been updated to reflect the state on the API server
 		creds.Reset(expected)
 	}
 	return err

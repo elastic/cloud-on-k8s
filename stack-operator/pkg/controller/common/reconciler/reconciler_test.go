@@ -2,6 +2,7 @@ package reconciler
 
 import (
 	"context"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
 	"testing"
 
@@ -26,14 +27,24 @@ func withoutControllerRef(obj runtime.Object) runtime.Object {
 
 func noopModifier() {}
 
+type wrong struct {}
+
+func (w wrong) GetObjectKind() schema.ObjectKind {
+	return nil
+}
+
+func (w wrong) DeepCopyObject() runtime.Object {
+	return w
+}
+
+var _ runtime.Object = wrong{}
+
 func TestReconcileResource(t *testing.T) {
 
 	type args struct {
-		Expected   runtime.Object
-		Reconciled runtime.Object
-		// Differ is a generic function of the type func(expected, found T) bool where T is a runtime.Object
-		NeedsUpdate func() bool
-		// Modifier is generic function of the type func(expected, found T) where T is runtime Object
+		Expected         runtime.Object
+		Reconciled       runtime.Object
+		NeedsUpdate      func() bool
 		UpdateReconciled func()
 	}
 
@@ -50,7 +61,7 @@ func TestReconcileResource(t *testing.T) {
 		clientAssertion func(c client.Client)
 	}{
 		{
-			name: "Error: not a metadata object",
+			name: "Error: Expected must not be nil",
 			args: func() args {
 				return args{
 					Reconciled:       &corev1.Secret{},
@@ -61,16 +72,16 @@ func TestReconcileResource(t *testing.T) {
 				}
 			},
 			errorAssertion: func(err error) {
-				assert.Contains(t, err.Error(), "object does not implement the Object interfaces")
+				assert.Contains(t, err.Error(), "Expected must not be nil")
 			},
 		},
 		{
 			name: "Error: NeedsUpdate must not be nil",
 			args: func() args {
 				return args{
-					Expected: obj.DeepCopy(),
-					Reconciled: &corev1.Secret{},
-					UpdateReconciled:noopModifier,
+					Expected:         obj.DeepCopy(),
+					Reconciled:       &corev1.Secret{},
+					UpdateReconciled: noopModifier,
 				}
 			},
 			errorAssertion: func(err error) {
@@ -98,6 +109,22 @@ func TestReconcileResource(t *testing.T) {
 			},
 			errorAssertion: func(err error) {
 				assert.Contains(t, err.Error(), "UpdateReconciled must not be nil")
+			},
+		},
+		{
+			name: "Error: Expected needs to implement runtime.Object and meta.Object",
+			args: func() args {
+				return args{
+					Expected: &wrong{},
+					Reconciled:       &corev1.Secret{},
+					UpdateReconciled: noopModifier,
+					NeedsUpdate: func() bool {
+						return false
+					},
+				}
+			},
+			errorAssertion: func(err error) {
+				assert.Contains(t, err.Error(), "object does not implement the Object interfaces")
 			},
 		},
 		{
