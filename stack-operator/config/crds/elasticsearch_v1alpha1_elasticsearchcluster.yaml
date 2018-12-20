@@ -19,7 +19,7 @@ spec:
     type: string
   - JSONPath: .metadata.creationTimestamp
     name: age
-    type: string
+    type: date
   group: elasticsearch.k8s.elastic.co
   names:
     categories:

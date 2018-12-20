@@ -42,7 +42,7 @@ type StackStatus struct {
 // +kubebuilder:categories=elastic
 // +kubebuilder:printcolumn:name="es",type="string",JSONPath=".status.elasticsearch.health",description="Elasticsearch health"
 // +kubebuilder:printcolumn:name="kibana",type="string",JSONPath=".status.kibana.health",description="Kibana health"
-// +kubebuilder:printcolumn:name="age",type="string",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 type Stack struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
