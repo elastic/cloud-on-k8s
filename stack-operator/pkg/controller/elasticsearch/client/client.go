@@ -232,5 +232,6 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 // GetNodes calls the _nodes api to return a map(nodeName -> Node)
 func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
 	var nodes Nodes
-	return nodes, c.get(ctx, "/_nodes", &nodes)
+	// restrict call to basic node info only
+	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
 }
