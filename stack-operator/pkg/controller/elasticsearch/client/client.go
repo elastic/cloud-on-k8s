@@ -12,7 +12,6 @@ import (
 	"path"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 )
 
