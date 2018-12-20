@@ -28,7 +28,7 @@ type defaultDriver struct {
 	// Options are the options that the driver was created with.
 	Options
 
-	// supportedVersions verified whether we can support upgrading from the current pods.
+	// supportedVersions verifies whether we can support upgrading from the current pods.
 	supportedVersions esversion.LowestHighestSupportedVersions
 
 	// genericResourcesReconciler reconciles non-version specific resources.
@@ -81,15 +81,18 @@ type defaultDriver struct {
 	) (*support.ResourcesState, error)
 
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
+	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
 		performableChanges mutation.PerformableChanges,
 		resourcesState support.ResourcesState,
 	) (*mutation.PerformableChanges, error)
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
+	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
 	zen1SettingsUpdater func(esClient *esclient.Client, allPods []v1.Pod) error
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
+	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
 	zen2SettingsUpdater func(
 		esClient *esclient.Client,
 		changes mutation.Changes,

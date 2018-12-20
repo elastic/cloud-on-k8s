@@ -18,6 +18,9 @@ import (
 	"github.com/pkg/errors"
 )
 
+// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
+const DefaultVotingConfigExclusionsTimeout = "30s"
+
 // User captures Elasticsearch user credentials.
 type User struct {
 	Name     string
@@ -166,6 +169,15 @@ func (c *Client) delete(ctx context.Context, path string) error {
 	return err
 }
 
+func (c *Client) postWithBodyNoResponse(ctx context.Context, pathStr string, body io.Reader) error {
+	request, err := http.NewRequest(http.MethodPut, common.Concat(c.Endpoint, pathStr), body)
+	if err != nil {
+		return err
+	}
+	_, err = c.makeRequest(ctx, request)
+	return err
+}
+
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 	var clusterState ClusterState
@@ -227,43 +239,37 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 }
 
 // AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+//
+// If timeout is the empty string, the default is used.
+//
+// Introduced in: Elasticsearch 7.0.0
 func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	if timeout == "" {
-		// 30 seconds is the default timeout in ES
-		timeout = "30s"
+		timeout = DefaultVotingConfigExclusionsTimeout
 	}
 	path := fmt.Sprintf(
 		"/_cluster/voting_config_exclusions/%s?timeout=%s",
 		strings.Join(nodeNames, ","),
 		timeout,
 	)
-	request, err := http.NewRequest(http.MethodPost, common.Concat(c.Endpoint, path), http.NoBody)
-	if err != nil {
-		return err
-	}
 
-	res, err := c.makeRequest(ctx, request)
-
-	if err := checkError(res); err != nil {
+	if err := c.postWithBodyNoResponse(ctx, path, http.NoBody); err != nil {
 		return errors.Wrap(err, "unable to add to voting_config_exclusions")
 	}
 	return nil
 }
 
 // DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+//
+// Introduced in: Elasticsearch 7.0.0
 func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
 	path := fmt.Sprintf(
 		"/_cluster/voting_config_exclusions?wait_for_removal=%s",
 		strconv.FormatBool(waitForRemoval),
 	)
-	request, err := http.NewRequest(http.MethodDelete, common.Concat(c.Endpoint, path), http.NoBody)
-	if err != nil {
-		return err
-	}
 
-	res, err := c.makeRequest(ctx, request)
-	if err := checkError(res); err != nil {
-		return errors.Wrap(err, "unable to delete voting_config_exclusions")
+	if err := c.delete(ctx, path); err != nil {
+		return errors.Wrap(err, "unable to delete /_cluster/voting_config_exclusions")
 	}
 	return nil
 }

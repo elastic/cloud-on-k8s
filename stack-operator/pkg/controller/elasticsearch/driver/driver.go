@@ -70,9 +70,9 @@ func NewDriver(opts Options) (Driver, error) {
 
 		driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
 
-		// version 7 usually uses zen2 instead of zen
+		// version 7 uses zen2 instead of zen
 		driver.zen2SettingsUpdater = version7.UpdateZen2Settings
-		// .. except we still have to manage minimum_master_nodes while upgrading from 6 -> 7
+		// .. except we still have to manage minimum_master_nodes while doing a rolling upgrade from 6 -> 7
 		// we approximate this by also handling zen 1, even in 7
 		// TODO: only do this if there's 6.x masters in the cluster.
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
