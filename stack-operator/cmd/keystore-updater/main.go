@@ -76,7 +76,6 @@ func fatal(err error, msg string) {
 }
 
 func reloadCredentials(cfg Config) error {
-
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM(cfg.CACerts)
 	if !ok {
@@ -184,7 +183,6 @@ func validateConfig() Config {
 }
 
 func execute() {
-
 	config := validateConfig()
 
 	//initial update
