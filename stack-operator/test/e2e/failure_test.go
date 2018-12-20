@@ -96,6 +96,7 @@ func TestKillOneMasterNode(t *testing.T) {
 
 func TestKillSingleNodeReusePV(t *testing.T) {
 	// TODO :)
+	// This test cannot work until we correctly reuse PV between pods in the operator.
 	// We should not loose data, and ClusterUUID should stay the same
 
 	// s := stack.NewStackBuilder("test-failure-kill-single-node-no-pv").
