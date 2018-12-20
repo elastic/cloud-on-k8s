@@ -129,13 +129,19 @@ func (c *Client) delete(ctx context.Context, pathWithQuery string, in, out inter
 
 // request performs a new http request
 //
-// if in is not nil, it's marshalled as JSON and used as the request body
-// if out is not nil, if should be a pointer to an object and the response body is parsed as unmarshalled as JSON into
-// it
-func (c *Client) request(ctx context.Context, method string, pathWithQuery string, in, out interface{}) error {
+// if requestObj is not nil, it's marshalled as JSON and used as the request body
+// if responseObj is not nil, it should be a pointer to an struct. the response body will be unmarshalled from JSON
+// into this struct.
+func (c *Client) request(
+	ctx context.Context,
+	method string,
+	pathWithQuery string,
+	requestObj,
+	responseObj interface{},
+) error {
 	var body io.Reader = http.NoBody
-	if in != nil {
-		outData, err := json.Marshal(in)
+	if requestObj != nil {
+		outData, err := json.Marshal(requestObj)
 		if err != nil {
 			return err
 		}
@@ -154,8 +160,8 @@ func (c *Client) request(ctx context.Context, method string, pathWithQuery strin
 
 	defer resp.Body.Close()
 
-	if out != nil {
-		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	if responseObj != nil {
+		if err := json.NewDecoder(resp.Body).Decode(responseObj); err != nil {
 			return err
 		}
 	}
