@@ -226,6 +226,7 @@ func execute() {
 				if !ok {
 					return
 				}
+				// TODO filter out: CHMOD and events on dot files
 				log.Info("Observed:", "event", event)
 				updateKeystore(config)
 			case err, ok := <-watcher.Errors:

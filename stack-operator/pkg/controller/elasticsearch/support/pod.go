@@ -4,7 +4,6 @@ import (
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -68,8 +67,8 @@ type NewPodSpecParams struct {
 	ConfigMapVolume ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
-	// KeystoreConfig is configuration for the Elasticsearch key store setup
-	KeystoreConfig keystore.Config
+	// KeystoreSecretRef is configuration for the Elasticsearch key store setup
+	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.User
 }

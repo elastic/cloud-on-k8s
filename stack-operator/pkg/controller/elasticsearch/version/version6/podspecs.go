@@ -62,13 +62,11 @@ func ExpectedPodSpecs(
 // newInitContainers returns a list of init containers
 func newInitContainers(
 	imageName string,
-	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
 		imageName,
 		linkedFiles6,
-		keyStoreInit,
 		setVMMaxMapCount,
 		initcontainer.NewSidecarInitContainer(sideCarSharedVolume),
 	)

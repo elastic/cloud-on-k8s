@@ -37,10 +37,9 @@ func ExpectedPodSpecs(
 // newInitContainers returns a list of init containers
 func newInitContainers(
 	imageName string,
-	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, keyStoreInit, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, setVMMaxMapCount)
 }
 
 // newSidecarContainers returns a list of sidecar containers

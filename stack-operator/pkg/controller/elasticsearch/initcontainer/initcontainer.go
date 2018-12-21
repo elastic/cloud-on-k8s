@@ -11,7 +11,6 @@ const defaultInitContainerRunAsUser int64 = 0
 func NewInitContainers(
 	imageName string,
 	linkedFiles LinkedFilesArray,
-	keystoreInit KeystoreInit,
 	SetVMMaxMapCount bool,
 	additional ...corev1.Container,
 ) ([]corev1.Container, error) {
@@ -24,7 +23,7 @@ func NewInitContainers(
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles, keystoreInit)
+	prepareFsContainer, err := NewPrepareFSInitContainer(imageName, linkedFiles)
 	if err != nil {
 		return nil, err
 	}

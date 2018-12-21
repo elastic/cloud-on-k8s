@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esClient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
@@ -123,19 +125,24 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    keystore.Config
+		want    v1.Secret
 		wantErr bool
 	}{
 		{
-			name:    "no config does not blow up",
-			args:    args{repoConfig: nil},
-			want:    keystore.Config{},
+			name: "no config does not blow up",
+			args: args{repoConfig: nil},
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      keystore.ManagedSecretName,
+					Namespace: "",
+				},
+				Data: map[string][]byte{},
+			},
 			wantErr: false,
 		},
 		{
 			name:    "invalid credentials leads to error",
 			args:    args{repoConfig: &v1alpha1.SnapshotRepository{}},
-			want:    keystore.Config{},
 			wantErr: true,
 		},
 		{
@@ -161,29 +168,32 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 					},
 				}},
 			},
-			want: keystore.Config{
-				KeystoreSecretRef: v1.SecretReference{
-					Name:      "bar",
-					Namespace: "baz",
+			want: v1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      keystore.ManagedSecretName,
+					Namespace: "",
 				},
-				KeystoreSettings: []keystore.Setting{
-					keystore.Setting{
-						Key:           "gcs.client.elastic-internal.credentials_file",
-						ValueFilePath: "/keystore-secrets/foo.json",
-					},
+				Data: map[string][]byte{
+					"gcs.client.elastic-internal.credentials_file": []byte(validSnapshotCredentials),
 				},
 			},
 			wantErr: false,
 		},
 	}
 
+	owner := v1alpha1.ElasticsearchCluster{}
+	scheme := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReconcileSnapshotCredentials(fake.NewFakeClient(tt.args.initialObjects...), tt.args.repoConfig)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotCredentials() error = %v, wantErr %v", err, tt.wantErr)
+			got, err := ReconcileSnapshotCredentials(fake.NewFakeClient(tt.args.initialObjects...), scheme, owner, tt.args.repoConfig)
+
+			if err != nil {
+				if !tt.wantErr {
+					t.Errorf("ReconcileElasticsearch.ReconcileSnapshotCredentials() error = %v, wantErr %v", err, tt.wantErr)
+				}
 				return
 			}
+			controllerutil.SetControllerReference(&owner, &tt.want, scheme) // to facilitate comparison
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotCredentials() = %v, want %v", got, tt.want)
 			}

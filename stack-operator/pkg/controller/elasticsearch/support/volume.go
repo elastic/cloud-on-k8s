@@ -9,8 +9,6 @@ const (
 	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
 	DefaultSecretMountPath   = "/secrets"
 	ProbeUserSecretMountPath = "/probe-user"
-	// KeystoreSecretMountPath Mountpath for keystore secrets in init container.
-	KeystoreSecretMountPath = "/keystore-secrets"
 
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
