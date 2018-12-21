@@ -249,7 +249,7 @@ func TestAPIError_Error(t *testing.T) {
 }
 
 func TestClientGetNodes(t *testing.T) {
-	expectedPath := "/_nodes"
+	expectedPath := "/_nodes/_all/jvm,settings"
 	testClient := NewMockClient(func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
