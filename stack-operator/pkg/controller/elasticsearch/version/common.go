@@ -28,29 +28,37 @@ func NewExpectedPodSpecs(
 	paramsTmpl support.NewPodSpecParams,
 	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec support.NewPodSpecParams, volumes map[string]support.VolumeLike) ([]corev1.Container, error),
+	additionalVolumes []corev1.Volume,
 ) ([]support.PodSpecContext, error) {
 	podSpecs := make([]support.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, topology := range es.Spec.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
-			podSpec, err := podSpec(support.NewPodSpecParams{
-				Version:         es.Spec.Version,
-				CustomImageName: es.Spec.Image,
-				ClusterName:     es.Name,
-				DiscoveryZenMinimumMasterNodes: support.ComputeMinimumMasterNodes(
-					es.Spec.Topologies,
-				),
-				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				NodeTypes:            topology.NodeTypes,
-				Affinity:             topology.PodTemplate.Spec.Affinity,
-				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-				Resources:            topology.Resources,
-				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
-				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
-				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
-				KeystoreConfig:       paramsTmpl.KeystoreConfig,
-				ProbeUser:            paramsTmpl.ProbeUser,
-			}, newEnvironmentVarsFn, newInitContainersFn)
+			podSpec, err := podSpec(
+				support.NewPodSpecParams{
+					Version:         es.Spec.Version,
+					CustomImageName: es.Spec.Image,
+					ClusterName:     es.Name,
+					DiscoveryZenMinimumMasterNodes: support.ComputeMinimumMasterNodes(
+						es.Spec.Topologies,
+					),
+					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
+					NodeTypes:            topology.NodeTypes,
+					Affinity:             topology.PodTemplate.Spec.Affinity,
+					SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
+					Resources:            topology.Resources,
+					UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
+					ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
+					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
+					KeystoreConfig:       paramsTmpl.KeystoreConfig,
+					ProbeUser:            paramsTmpl.ProbeUser,
+				},
+				newEnvironmentVarsFn,
+				newInitContainersFn,
+				newSideCarContainersFn,
+				additionalVolumes,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -67,6 +75,8 @@ func podSpec(
 	p support.NewPodSpecParams,
 	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec support.NewPodSpecParams, volumes map[string]support.VolumeLike) ([]corev1.Container, error),
+	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
 	imageName := common.Concat(support.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -74,17 +84,24 @@ func podSpec(
 	}
 
 	terminationGracePeriodSeconds := support.DefaultTerminationGracePeriodSeconds
+	volumes := map[string]support.VolumeLike{
+		p.ConfigMapVolume.Name():   p.ConfigMapVolume,
+		p.UsersSecretVolume.Name(): p.UsersSecretVolume,
+	}
 
 	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
 		support.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
 		support.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
+	volumes[probeSecret.Name()] = probeSecret
 
 	extraFilesSecretVolume := support.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
+
+	volumes[extraFilesSecretVolume.Name()] = extraFilesSecretVolume
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
@@ -93,6 +110,8 @@ func podSpec(
 		support.NodeCertificatesSecretVolumeName,
 		support.NodeCertificatesSecretVolumeMountPath,
 	)
+
+	volumes[nodeCertificatesVolume.Name()] = nodeCertificatesVolume
 
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
@@ -151,8 +170,10 @@ func podSpec(
 		),
 	}
 
+	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)
+
 	// keystore init is optional, will only happen if snapshots are requested in the Elasticsearch resource
-	keyStoreInit := initcontainer.KeystoreInit{Settings: p.KeystoreConfig.KeystoreSettings}
+	keyStoreInit := initcontainer.KeystoreInit{Settings: p.KeystoreConfig.KeystoreSettings} //TODO should be there all the time
 	if !p.KeystoreConfig.IsEmpty() {
 		keystoreVolume := support.NewSecretVolumeWithMountPath(
 			p.KeystoreConfig.KeystoreSecretRef.Name,
@@ -161,7 +182,15 @@ func podSpec(
 
 		podSpec.Volumes = append(podSpec.Volumes, keystoreVolume.Volume())
 		keyStoreInit.VolumeMount = keystoreVolume.VolumeMount()
+		volumes["keystore-init"] = keystoreVolume
 	}
+
+	// Setup sidecars if any
+	sidecars, err := newSideCarContainersFn(imageName, p, volumes)
+	if err != nil {
+		return podSpec, err
+	}
+	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
 	initContainers, err := newInitContainersFn(

@@ -21,6 +21,7 @@ var (
 )
 
 type VolumeLike interface {
+	Name() string
 	Volume() corev1.Volume
 	VolumeMount() corev1.VolumeMount
 }
@@ -56,6 +57,11 @@ func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 		MountPath: v.mountPath,
 		Name:      v.name,
 	}
+}
+
+// Name returns the name of the volume
+func (v EmptyDirVolume) Name() string {
+	return v.name
 }
 
 var _ VolumeLike = EmptyDirVolume{}
@@ -122,6 +128,11 @@ func (sv SecretVolume) Volume() corev1.Volume {
 	}
 }
 
+// Name returns the name of the volume
+func (sv SecretVolume) Name() string {
+	return sv.name
+}
+
 var _ VolumeLike = SecretVolume{}
 
 // NewConfigMapVolume creates a new ConfigMapVolume struct
@@ -162,6 +173,11 @@ func (cm ConfigMapVolume) Volume() corev1.Volume {
 			},
 		},
 	}
+}
+
+// Name returns the name of the volume
+func (cm ConfigMapVolume) Name() string {
+	return cm.name
 }
 
 var _ VolumeLike = ConfigMapVolume{}

@@ -1,10 +1,14 @@
 package version6
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -28,6 +32,7 @@ var (
 			},
 		},
 	}
+	sideCarSharedVolume = support.NewEmptyDirVolume("sidecar-bin", "/opt/sidecar/bin")
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
@@ -44,7 +49,14 @@ func ExpectedPodSpecs(
 		"users",
 	)
 
-	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers)
+	return version.NewExpectedPodSpecs(
+		es,
+		paramsTmpl,
+		newEnvironmentVars,
+		newInitContainers,
+		newSidecarContainers,
+		[]corev1.Volume{sideCarSharedVolume.Volume()},
+	)
 }
 
 // newInitContainers returns a list of init containers
@@ -53,7 +65,46 @@ func newInitContainers(
 	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, linkedFiles6, keyStoreInit, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(
+		imageName,
+		linkedFiles6,
+		keyStoreInit,
+		setVMMaxMapCount,
+		initcontainer.NewSidecarInitContainer(sideCarSharedVolume),
+	)
+}
+
+func newSidecarContainers(
+	imageName string,
+	spec support.NewPodSpecParams,
+	volumes map[string]support.VolumeLike,
+) ([]corev1.Container, error) {
+
+	keystore, ok := volumes["keystore-init"] // TODO refactor to be always present
+	if !ok {
+		return []corev1.Container{}, errors.New(fmt.Sprintf("TODO no keystore volume present %v", volumes))
+	}
+	certs := volumes[support.NodeCertificatesSecretVolumeName]
+	return []corev1.Container{
+		{
+			Name:            "keystore-updater",
+			Image:           imageName,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{path.Join(sideCarSharedVolume.VolumeMount().MountPath, "keystore-updater")},
+			Env: []corev1.EnvVar{
+				{Name: sidecar.EnvSourceDir, Value: keystore.VolumeMount().MountPath},
+				{Name: sidecar.EnvReloadCredentials, Value: "true"},
+				{Name: sidecar.EnvUsername, Value: spec.ProbeUser.Name},
+				{Name: sidecar.EnvPassword, Value: spec.ProbeUser.Password}, //TODO mount pw file instead + change keystore updater
+				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				sideCarSharedVolume.VolumeMount(),
+				certs.VolumeMount(),
+				keystore.VolumeMount(),
+			},
+		},
+	}, nil
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod

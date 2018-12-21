@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 
 	"github.com/fsnotify/fsnotify"
@@ -23,14 +25,14 @@ import (
 
 var (
 	log                   = logf.Log.WithName("keystore-updater")
-	sourceDirFlag         = "source-dir"
-	keystoreBinaryFlag    = "keystore-binary"
-	keystorePathFlag      = "keystore-path"
-	reloadCredentialsFlag = "reload-credentials"
-	usernameFlag          = "username"
-	passwordFlag          = "password"
-	endpointFlag          = "endpoint"
-	certPathFlag          = "certificates-path"
+	sourceDirFlag         = envToFlag(sidecar.EnvSourceDir)
+	keystoreBinaryFlag    = envToFlag(sidecar.EnvKeystoreBinary)
+	keystorePathFlag      = envToFlag(sidecar.EnvKeystorePath)
+	reloadCredentialsFlag = envToFlag(sidecar.EnvReloadCredentials)
+	usernameFlag          = envToFlag(sidecar.EnvUsername)
+	passwordFlag          = envToFlag(sidecar.EnvPassword)
+	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
+	certPathFlag          = envToFlag(sidecar.EnvCertPath)
 
 	cmd = &cobra.Command{
 		Use: "keystore-updater",
@@ -56,6 +58,10 @@ type Config struct {
 	Endpoint string
 	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
 	CACerts []byte
+}
+
+func envToFlag(env string) string {
+	return strings.Replace(strings.ToLower(env), "_", "-", -1)
 }
 
 func init() {
@@ -123,6 +129,10 @@ func updateKeystore(cfg Config) {
 		fatal(err, "could not read source directory")
 	}
 	for _, file := range fileInfos {
+		if strings.HasPrefix(file.Name(), ".") {
+			log.Info(fmt.Sprintf("Ignoring %s", file.Name()))
+			continue
+		}
 		log.Info("Adding setting to keystore", "file", file.Name())
 		add := exec.Command(cfg.KeystoreBinary, "add-file", file.Name(), path.Join(cfg.SourceDir, file.Name()))
 		err := add.Run()
@@ -164,7 +174,6 @@ func validateConfig() Config {
 	user := viper.GetString(usernameFlag)
 	pass := viper.GetString(passwordFlag)
 	endpoint := viper.GetString(endpointFlag)
-	log.Info("should reload", "?", shouldReload)
 	caCerts := viper.GetString(certPathFlag)
 	if shouldReload && (user == "" || pass == "") {
 		fatal(
