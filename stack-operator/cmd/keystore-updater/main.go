@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 
@@ -59,6 +60,8 @@ type Config struct {
 	Endpoint string
 	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
 	CACerts []byte
+	// ReloadQueue is a channel to schedule config reload requests
+	ReloadQueue chan func() error
 }
 
 func envToFlag(env string) string {
@@ -86,6 +89,35 @@ func init() {
 func fatal(err error, msg string) {
 	log.Error(err, msg)
 	os.Exit(1)
+}
+// coalescingRetry attempts to run functions from in but coalescing any subsequent new incoming requests into
+// one while retrying. The underlying assumption being that all functions passed via in are idempotent.
+func coalescingRetry(in <-chan func() error) {
+	var request func() error
+	timer := time.NewTimer(0)
+	var retryTimerCh <-chan time.Time
+
+	attempt := func() {
+		err := request()
+		if err != nil {
+			timer.Reset(5 * time.Second) // TODO backoff/jitter etc
+			retryTimerCh = timer.C
+		} else {
+			request = nil // success
+		}
+	}
+
+	for {
+		select {
+		case r := <-in:
+			request = r //effectively coalesces any pending requests into one
+			attempt()
+		case <-retryTimerCh:
+			retryTimerCh = nil
+			attempt()
+		}
+
+	}
 }
 
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
@@ -152,10 +184,16 @@ func updateKeystore(cfg Config) {
 	input := re.ReplaceAllString(string(bytes), " ")
 	log.Info("keystore updated", "settings", input)
 	if cfg.ReloadCredentials {
-		err := reloadCredentials(cfg)
-		if err != nil {
-			log.Error(err, "Error reloading credentials. Continuing.")
+		cfg.ReloadQueue <- func() error {
+			err := reloadCredentials(cfg)
+			if err != nil {
+				log.Error(err, "Error reloading credentials. Continuing.")
+			} else {
+				log.Info("Successfully reloaded credentials")
+			}
+			return err
 		}
+
 	}
 }
 
@@ -177,6 +215,7 @@ func validateConfig() Config {
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
+		ReloadQueue:       make(chan func() error),
 	}
 
 	if shouldReload {
@@ -225,6 +264,10 @@ func validateConfig() Config {
 func execute() {
 	config := validateConfig()
 
+	if config.ReloadCredentials {
+		go coalescingRetry(config.ReloadQueue)
+	}
+
 	//initial update
 	updateKeystore(config)
 
@@ -245,7 +288,7 @@ func execute() {
 				// avoid noisy chmod events when k8s maps changes into the file system
 				// also k8s seems to use a couple of dot files to manage mapped secrets which create
 				// additional noise and should be save to ignore
-				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(event.Name, ".") {
+				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(path.Base(event.Name), ".") {
 					log.Info("Ignoring:", "event", event)
 					continue
 				}
