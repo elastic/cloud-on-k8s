@@ -65,8 +65,6 @@ func execute() {
 	user := esclient.User{Name: userName, Password: userPassword}
 
 	certCfg := viper.GetString(certificateLocationFlag)
-	log.Info("Snapshotter environment", "user", userName, "password", strings.Repeat("*", len(userPassword)), "certs", certCfg)
-
 	certPool := x509.NewCertPool()
 	if certCfg != "" {
 		pemCerts, err := ioutil.ReadFile(certCfg)
