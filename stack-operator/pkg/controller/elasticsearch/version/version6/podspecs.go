@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -78,9 +79,13 @@ func newSidecarContainers(
 	volumes map[string]support.VolumeLike,
 ) ([]corev1.Container, error) {
 
-	keystore, ok := volumes["keystore-init"] // TODO refactor to be always present
+	keystoreVolume, ok := volumes[keystore.SecretVolumeName]
 	if !ok {
-		return []corev1.Container{}, errors.New(fmt.Sprintf("TODO no keystore volume present %v", volumes))
+		return []corev1.Container{}, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
+	}
+	probeUser, ok := volumes[support.ProbeUserVolumeName]
+	if !ok {
+		return []corev1.Container{}, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
 	}
 	certs := volumes[support.NodeCertificatesSecretVolumeName]
 	return []corev1.Container{
@@ -90,16 +95,17 @@ func newSidecarContainers(
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Command:         []string{path.Join(sideCarSharedVolume.VolumeMount().MountPath, "keystore-updater")},
 			Env: []corev1.EnvVar{
-				{Name: sidecar.EnvSourceDir, Value: keystore.VolumeMount().MountPath},
+				{Name: sidecar.EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
 				{Name: sidecar.EnvUsername, Value: spec.ProbeUser.Name},
-				{Name: sidecar.EnvPassword, Value: spec.ProbeUser.Password}, //TODO mount pw file instead + change keystore updater
+				{Name: sidecar.EnvPasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, spec.ProbeUser.Name)},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
 			},
 			VolumeMounts: []corev1.VolumeMount{
 				sideCarSharedVolume.VolumeMount(),
 				certs.VolumeMount(),
-				keystore.VolumeMount(),
+				keystoreVolume.VolumeMount(),
+				probeUser.VolumeMount(),
 			},
 		},
 	}, nil

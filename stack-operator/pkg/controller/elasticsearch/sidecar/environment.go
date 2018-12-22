@@ -7,6 +7,7 @@ const (
 	EnvReloadCredentials = "RELOAD_CREDENTIALS"
 	EnvUsername          = "USERNAME"
 	EnvPassword          = "PASSWORD"
+	EnvPasswordFile      = "PASSWORD_FILE"
 	EnvCertPath          = "CERTIFICATES_PATH"
 	EnvEndpoint          = "ENDPOINT"
 )

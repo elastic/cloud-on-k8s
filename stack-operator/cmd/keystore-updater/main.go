@@ -31,6 +31,7 @@ var (
 	reloadCredentialsFlag = envToFlag(sidecar.EnvReloadCredentials)
 	usernameFlag          = envToFlag(sidecar.EnvUsername)
 	passwordFlag          = envToFlag(sidecar.EnvPassword)
+	passwordFileFlag      = envToFlag(sidecar.EnvPasswordFile)
 	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
 	certPathFlag          = envToFlag(sidecar.EnvCertPath)
 
@@ -171,38 +172,53 @@ func validateConfig() Config {
 		fatal(err, "keystore binary does not exist")
 	}
 	shouldReload := viper.GetBool(reloadCredentialsFlag)
-	user := viper.GetString(usernameFlag)
-	pass := viper.GetString(passwordFlag)
-	endpoint := viper.GetString(endpointFlag)
-	caCerts := viper.GetString(certPathFlag)
-	if shouldReload && (user == "" || pass == "") {
-		fatal(
-			fmt.Errorf("user and password are required but found username: %s password:%s", user, strings.Repeat("*", len(pass))),
-			"Invalid config",
-		)
-	}
-
-	var certificates []byte
-	if shouldReload {
-		certificates, err = ioutil.ReadFile(caCerts)
-		if err != nil {
-			fatal(err, "CA certificates are required when reloading credentials but could not be read")
-		}
-	}
-
-	return Config{
+	config := Config{
 		SourceDir:         sourceDir,
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
-		Endpoint:          endpoint,
-		CACerts:           certificates,
-		User: client.User{
-			Name:     user,
-			Password: pass,
-		},
 	}
 
+	if shouldReload {
+		user := viper.GetString(usernameFlag)
+		pass := viper.GetString(passwordFlag)
+
+		caCerts := viper.GetString(certPathFlag)
+
+		if pass == "" {
+			passwordFile := viper.GetString(passwordFileFlag)
+			bytes, err := ioutil.ReadFile(passwordFile)
+			if err != nil {
+				fatal(err, fmt.Sprintf("password file %s could not be read", passwordFile))
+			}
+			pass = string(bytes)
+		}
+
+		if user == "" || pass == "" {
+			fatal(
+				fmt.Errorf(
+					"user and password are required but found username: %s password:%s",
+					user,
+					strings.Repeat("*", len(pass)),
+				),
+				"Invalid config",
+			)
+		}
+		var certificates []byte
+		if shouldReload {
+			certificates, err = ioutil.ReadFile(caCerts)
+			if err != nil {
+				fatal(err, "CA certificates are required when reloading credentials but could not be read")
+			}
+		}
+		config.User = client.User{
+			Name:     user,
+			Password: pass,
+		}
+		config.Endpoint = viper.GetString(endpointFlag)
+		config.CACerts = certificates
+	}
+	return config
 }
 
 // execute updates the keystore once and then starts a watcher on source dir to update again on file changes.
@@ -226,7 +242,13 @@ func execute() {
 				if !ok {
 					return
 				}
-				// TODO filter out: CHMOD and events on dot files
+				// avoid noisy chmod events when k8s maps changes into the file system
+				// also k8s seems to use a couple of dot files to manage mapped secrets which create
+				// additional noise and should be save to ignore
+				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(event.Name, ".") {
+					log.Info("Ignoring:", "event", event)
+					continue
+				}
 				log.Info("Observed:", "event", event)
 				updateKeystore(config)
 			case err, ok := <-watcher.Errors:

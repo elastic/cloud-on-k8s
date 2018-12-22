@@ -92,7 +92,7 @@ func podSpec(
 	}
 
 	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
-		support.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		support.ElasticInternalUsersSecretName(p.ClusterName), support.ProbeUserVolumeName,
 		support.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	volumes[probeSecret.Name()] = probeSecret
