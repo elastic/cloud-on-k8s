@@ -4,9 +4,10 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -27,7 +28,8 @@ import (
 
 const (
 	// SnapshotterImageFlag is the name of the flag/env-var containing the docker image of the snapshotter application.
-	SnapshotterImageFlag = "snapshotter_image"
+	SnapshotterImageFlag            = "snapshotter_image"
+	SnapshotExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
 )
 
 func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchCluster, repoConfig *v1alpha1.SnapshotRepository) (corev1.Secret, error) {
@@ -55,7 +57,7 @@ func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchClu
 		return managedSecret, err
 	}
 
-	err = ensureOwnerReference(c, userCreatedSecret, &owner)
+	err = manageOwnerReference(c, userCreatedSecret, owner)
 	if err != nil {
 		return managedSecret, err
 	}
@@ -99,32 +101,59 @@ func ReconcileSnapshotCredentials(
 	return managedSecret, err
 }
 
-func ensureOwnerReference(c client.Client, secret corev1.Secret, owner runtime.Object) error {
-	metaObj, err := meta.Accessor(owner)
-	if err != nil {
-		return err
-	}
+func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.ElasticsearchCluster) error {
 	gvk := owner.GetObjectKind().GroupVersionKind()
 	blockOwnerDeletion := false
 	isController := false
 	ownerRef := v1.OwnerReference{
 		APIVersion:         gvk.GroupVersion().String(),
 		Kind:               gvk.Kind,
-		Name:               metaObj.GetName(),
-		UID:                metaObj.GetUID(),
+		Name:               owner.GetName(),
+		UID:                owner.GetUID(),
 		BlockOwnerDeletion: &blockOwnerDeletion,
 		Controller:         &isController,
 	}
-	existing := secret.GetOwnerReferences()
-	for _, r := range existing {
-		if reflect.DeepEqual(r, ownerRef) {
-			return nil
+
+	if owner.DeletionTimestamp.IsZero() {
+
+		existing := secret.GetOwnerReferences()
+		for _, r := range existing {
+			if reflect.DeepEqual(r, ownerRef) {
+				return nil
+			}
 		}
+		existing = append(existing, ownerRef)
+		secret.SetOwnerReferences(existing)
+		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name )
+		if err := c.Update(context.Background(), &secret); err != nil {
+			return err
+		}
+		if !common.StringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers) {
+			log.Info("Adding finalizer", "finalizer", SnapshotExternalSecretFinalizer)
+			owner.Finalizers = append(owner.Finalizers, SnapshotExternalSecretFinalizer)
+			return c.Update(context.Background(), &owner)
+		}
+		return nil
 	}
 
-	existing = append(existing, ownerRef)
-	secret.SetOwnerReferences(existing)
-	return c.Update(context.TODO(), &secret)
+	if common.StringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers) {
+		filtered := secret.GetOwnerReferences()[:0]
+		for _, r := range secret.GetOwnerReferences() {
+			if !reflect.DeepEqual(r, ownerRef) {
+				filtered = append(filtered, r)
+			}
+		}
+		secret.SetOwnerReferences(filtered)
+		log.Info("Removing owner", "secret", secret.Name , "elasticsearch", owner.Name)
+		if err := c.Update(context.Background(), &secret); err != nil {
+			return err
+		}
+
+		owner.Finalizers = common.RemoveStringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers)
+		log.Info("Removing finalizer", "finalizer", SnapshotExternalSecretFinalizer)
+		return c.Update(context.Background(), &owner)
+	}
+	return nil
 }
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config

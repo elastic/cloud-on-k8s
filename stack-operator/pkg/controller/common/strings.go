@@ -24,3 +24,13 @@ func StringInSlice(str string, list []string) bool {
 	}
 	return false
 }
+
+// RemoveStringInSlice removes the given string r from the slice
+func RemoveStringInSlice(r string, list []string) []string {
+	for i, v := range list {
+		if v == r {
+			return append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
+}
