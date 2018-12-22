@@ -102,12 +102,13 @@ func newSidecarContainers(
 				{Name: sidecar.EnvPasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, spec.ProbeUser.Name)},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
 			},
-			VolumeMounts: []corev1.VolumeMount{
+			VolumeMounts: append(
+				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
 				sideCarSharedVolume.VolumeMount(),
 				certs.VolumeMount(),
 				keystoreVolume.VolumeMount(),
 				probeUser.VolumeMount(),
-			},
+			),
 		},
 	}, nil
 }
