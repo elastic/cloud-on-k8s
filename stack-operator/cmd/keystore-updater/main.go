@@ -117,7 +117,6 @@ func coalescingRetry(in <-chan func() error) {
 			retryTimerCh = nil
 			attempt()
 		}
-
 	}
 }
 
@@ -194,7 +193,6 @@ func updateKeystore(cfg Config) {
 			}
 			return err
 		}
-
 	}
 }
 
@@ -269,7 +267,7 @@ func execute() {
 		go coalescingRetry(config.ReloadQueue)
 	}
 
-	//initial update
+	//initial update/create
 	updateKeystore(config)
 
 	watcher, err := fsnotify.NewWatcher()
@@ -288,7 +286,7 @@ func execute() {
 				}
 				// avoid noisy chmod events when k8s maps changes into the file system
 				// also k8s seems to use a couple of dot files to manage mapped secrets which create
-				// additional noise and should be save to ignore
+				// additional noise and should be safe to ignore
 				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(path.Base(event.Name), ".") {
 					log.Info("Ignoring:", "event", event)
 					continue
@@ -309,7 +307,6 @@ func execute() {
 		fatal(err, fmt.Sprintf("failed to add watch on %s", config.SourceDir))
 	}
 	<-done
-
 }
 
 func main() {
