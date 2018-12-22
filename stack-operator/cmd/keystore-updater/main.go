@@ -90,6 +90,7 @@ func fatal(err error, msg string) {
 	log.Error(err, msg)
 	os.Exit(1)
 }
+
 // coalescingRetry attempts to run functions from in but coalescing any subsequent new incoming requests into
 // one while retrying. The underlying assumption being that all functions passed via in are idempotent.
 func coalescingRetry(in <-chan func() error) {
