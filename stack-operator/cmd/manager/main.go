@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
@@ -28,9 +30,6 @@ const (
 )
 
 var (
-	// development is whether we should be in development mode or not (affects logging and development-specific features)
-	development = false
-
 	// Cmd is the cobra command to start the manager.
 	Cmd = &cobra.Command{
 		Use:   "manager",
@@ -46,8 +45,6 @@ var (
 )
 
 func init() {
-	// development mode is only available as a command line flag to avoid accidentally enabling it
-	Cmd.Flags().BoolVar(&development, "development", false, "turns on development mode")
 
 	Cmd.Flags().String(
 		operator.ImageFlag,
@@ -79,13 +76,10 @@ func init() {
 }
 
 func execute() {
-	logf.SetLogger(logf.ZapLogger(development))
-
-	log := logf.Log.WithName("manager")
 
 	var dialer net.Dialer
 	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
-	if !development && autoPortForward {
+	if !dev.Mode && autoPortForward {
 		panic(fmt.Sprintf(
 			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))

@@ -60,7 +60,6 @@ func init() {
 }
 
 func execute() {
-
 	userName := viper.GetString(userNameFlag)
 	userPassword := viper.GetString(userPasswordFlag)
 	user := esclient.User{Name: userName, Password: userPassword}
