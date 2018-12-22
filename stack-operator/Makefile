@@ -58,7 +58,7 @@ keystore-updater: generate fmt vet
 
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-SNAPSHOTTER_IMAGE?=no-snapshotter-image
+OPERATOR_IMAGE?=no-snapshotter-image
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	# Deploy on gke
@@ -68,7 +68,7 @@ ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 else
 	# Run the operator locally with port-forwarding enabled, so that
 	# it can reach services running in the cluster through k8s port-forward feature
-	AUTO_PORT_FORWARD=true SNAPSHOTTER_IMAGE=$(SNAPSHOTTER_IMAGE) go run ./cmd/main.go manager --development $(MANAGER_ARGS)
+	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE) go run ./cmd/main.go manager --development $(MANAGER_ARGS)
 endif
 
 .PHONY: logs

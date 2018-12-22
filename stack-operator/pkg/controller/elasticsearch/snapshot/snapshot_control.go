@@ -5,21 +5,20 @@ import (
 	"reflect"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,9 +26,8 @@ import (
 )
 
 const (
-	// SnapshotterImageFlag is the name of the flag/env-var containing the docker image of the snapshotter application.
-	SnapshotterImageFlag            = "snapshotter_image"
-	SnapshotExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
+	// ExternalSecretFinalizer designates a finalizer to clean up owner references in secrets not controlled by this operator.
+	ExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
 )
 
 func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchCluster, repoConfig *v1alpha1.SnapshotRepository) (corev1.Secret, error) {
@@ -126,19 +124,19 @@ func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.
 		}
 		existing = append(existing, ownerRef)
 		secret.SetOwnerReferences(existing)
-		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name )
+		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name)
 		if err := c.Update(context.Background(), &secret); err != nil {
 			return err
 		}
-		if !common.StringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers) {
-			log.Info("Adding finalizer", "finalizer", SnapshotExternalSecretFinalizer)
-			owner.Finalizers = append(owner.Finalizers, SnapshotExternalSecretFinalizer)
+		if !common.StringInSlice(ExternalSecretFinalizer, owner.Finalizers) {
+			log.Info("Adding finalizer", "finalizer", ExternalSecretFinalizer)
+			owner.Finalizers = append(owner.Finalizers, ExternalSecretFinalizer)
 			return c.Update(context.Background(), &owner)
 		}
 		return nil
 	}
 
-	if common.StringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers) {
+	if common.StringInSlice(ExternalSecretFinalizer, owner.Finalizers) {
 		filtered := secret.GetOwnerReferences()[:0]
 		for _, r := range secret.GetOwnerReferences() {
 			if !reflect.DeepEqual(r, ownerRef) {
@@ -149,13 +147,13 @@ func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.
 		// labeling as an alternative does not really work as it would prevent reuse of the secret in multiple
 		// clusters
 		secret.SetOwnerReferences(filtered)
-		log.Info("Removing owner", "secret", secret.Name , "elasticsearch", owner.Name)
+		log.Info("Removing owner", "secret", secret.Name, "elasticsearch", owner.Name)
 		if err := c.Update(context.Background(), &secret); err != nil {
 			return err
 		}
 
-		owner.Finalizers = common.RemoveStringInSlice(SnapshotExternalSecretFinalizer, owner.Finalizers)
-		log.Info("Removing finalizer", "finalizer", SnapshotExternalSecretFinalizer)
+		owner.Finalizers = common.RemoveStringInSlice(ExternalSecretFinalizer, owner.Finalizers)
+		log.Info("Removing finalizer", "finalizer", ExternalSecretFinalizer)
 		return c.Update(context.Background(), &owner)
 	}
 	return nil
@@ -171,7 +169,7 @@ func ReconcileSnapshotterCronJob(
 	params := CronJobParams{
 		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
 		Elasticsearch:    es,
-		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
+		SnapshotterImage: viper.GetString(operator.ImageFlag),
 		User:             user,
 		EsURL:            services.PublicServiceURL(es),
 	}

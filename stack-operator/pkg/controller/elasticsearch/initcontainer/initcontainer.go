@@ -14,7 +14,7 @@ func NewInitContainers(
 	SetVMMaxMapCount bool,
 	additional ...corev1.Container,
 ) ([]corev1.Container, error) {
-	containers := []corev1.Container{}
+	var containers []corev1.Container
 	if SetVMMaxMapCount {
 		// Only create the privileged init container if needed
 		osSettingsContainer, err := NewOSSettingsInitContainer(imageName)

@@ -5,9 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
@@ -49,9 +50,9 @@ func init() {
 	Cmd.Flags().BoolVar(&development, "development", false, "turns on development mode")
 
 	Cmd.Flags().String(
-		snapshot.SnapshotterImageFlag,
+		operator.ImageFlag,
 		"",
-		"image to use for the snapshotter application",
+		"image containing the binaries for this operator",
 	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
@@ -93,8 +94,8 @@ func execute() {
 		dialer = portforward.NewForwardingDialer()
 	}
 
-	if viper.GetString(snapshot.SnapshotterImageFlag) == "" {
-		log.Error(fmt.Errorf("%s is a required flag", snapshot.SnapshotterImageFlag),
+	if viper.GetString(operator.ImageFlag) == "" {
+		log.Error(fmt.Errorf("%s is a required flag", operator.ImageFlag),
 			"required configuration missing")
 		os.Exit(1)
 	}
