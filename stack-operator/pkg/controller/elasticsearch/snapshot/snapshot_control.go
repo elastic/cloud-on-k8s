@@ -68,8 +68,8 @@ func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchClu
 	return managedSecret, nil
 }
 
-// ReconcileSnapshotCredentials checks the snapshot repository config for user provided, validates
-// snapshot repository configuration and transforms it into a keystore.Config to initialise
+// ReconcileSnapshotCredentials checks the snapshot repository config for user provided secrets, validates
+// snapshot repository configuration and transforms it into a managed secret to initialise
 // an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
 // created by the user containing valid snapshot repository credentials for the specified
 // repository provider.
@@ -101,6 +101,8 @@ func ReconcileSnapshotCredentials(
 	return managedSecret, err
 }
 
+// manageOwnerReference set an owner reference into the user created secret to facilitate watching for changes
+// it also sets up a finalizer to remove the owner reference on cluster deletion
 func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.ElasticsearchCluster) error {
 	gvk := owner.GetObjectKind().GroupVersionKind()
 	blockOwnerDeletion := false
@@ -143,6 +145,9 @@ func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.
 				filtered = append(filtered, r)
 			}
 		}
+		// TODO if the user removes the secret from the cluster, owner ref will remain in place
+		// labeling as an alternative does not really work as it would prevent reuse of the secret in multiple
+		// clusters
 		secret.SetOwnerReferences(filtered)
 		log.Info("Removing owner", "secret", secret.Name , "elasticsearch", owner.Name)
 		if err := c.Update(context.Background(), &secret); err != nil {

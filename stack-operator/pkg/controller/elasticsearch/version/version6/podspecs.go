@@ -73,6 +73,7 @@ func newInitContainers(
 	)
 }
 
+// newSidecarContainers returns a list of sidecar containers.
 func newSidecarContainers(
 	imageName string,
 	spec support.NewPodSpecParams,

@@ -185,14 +185,12 @@ func podSpec(
 	// Setup sidecars if any
 	sidecars, err := newSideCarContainersFn(imageName, p, volumes)
 	if err != nil {
-		return podSpec, err
+		return corev1.PodSpec{}, err
 	}
 	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(
-		imageName, p.SetVMMaxMapCount,
-	)
+	initContainers, err := newInitContainersFn(imageName, p.SetVMMaxMapCount)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

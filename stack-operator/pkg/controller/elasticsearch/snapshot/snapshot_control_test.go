@@ -2,9 +2,11 @@ package snapshot
 
 import (
 	"context"
+
 	"reflect"
 	"testing"
 
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -38,11 +40,11 @@ const (
 )
 
 func registerScheme(t *testing.T) *runtime.Scheme {
-	scheme, err := v1alpha1.SchemeBuilder.Build()
-	if err != nil {
+	sc := scheme.Scheme
+	if err := v1alpha1.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to build custom scheme")
 	}
-	return scheme
+	return sc
 }
 
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
@@ -118,6 +120,11 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 }
 
 func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
+	owner := v1alpha1.ElasticsearchCluster{ObjectMeta: metav1.ObjectMeta{
+		Name:      "my-cluster",
+		Namespace: "baz",
+	}}
+
 	type args struct {
 		repoConfig     *v1alpha1.SnapshotRepository
 		initialObjects []runtime.Object
@@ -134,7 +141,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 			want: v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keystore.ManagedSecretName,
-					Namespace: "",
+					Namespace: "baz",
 				},
 				Data: map[string][]byte{},
 			},
@@ -158,20 +165,23 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 						},
 					},
 				},
-				initialObjects: []runtime.Object{&v1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "bar",
-						Namespace: "baz",
+				initialObjects: []runtime.Object{
+					&v1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "bar",
+							Namespace: "baz",
+						},
+						Data: map[string][]byte{
+							"foo.json": []byte(validSnapshotCredentials),
+						},
 					},
-					Data: map[string][]byte{
-						"foo.json": []byte(validSnapshotCredentials),
-					},
-				}},
+					&owner,
+				},
 			},
 			want: v1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keystore.ManagedSecretName,
-					Namespace: "",
+					Namespace: "baz",
 				},
 				Data: map[string][]byte{
 					"gcs.client.elastic-internal.credentials_file": []byte(validSnapshotCredentials),
@@ -181,11 +191,12 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 		},
 	}
 
-	owner := v1alpha1.ElasticsearchCluster{}
 	scheme := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ReconcileSnapshotCredentials(fake.NewFakeClient(tt.args.initialObjects...), scheme, owner, tt.args.repoConfig)
+			got, err := ReconcileSnapshotCredentials(
+				fake.NewFakeClientWithScheme(scheme, tt.args.initialObjects...), scheme, owner, tt.args.repoConfig,
+			)
 
 			if err != nil {
 				if !tt.wantErr {

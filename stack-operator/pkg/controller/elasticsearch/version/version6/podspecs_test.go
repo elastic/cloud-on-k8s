@@ -157,9 +157,9 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.Equal(t, 1, len(podSpec))
 
 	esPodSpec := podSpec[0].PodSpec
-	assert.Equal(t, 1, len(esPodSpec.Containers))
-	assert.Equal(t, 2, len(esPodSpec.InitContainers))
-	assert.Equal(t, 9, len(esPodSpec.Volumes))
+	assert.Equal(t, 2, len(esPodSpec.Containers))
+	assert.Equal(t, 3, len(esPodSpec.InitContainers))
+	assert.Equal(t, 11, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)

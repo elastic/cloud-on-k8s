@@ -42,7 +42,7 @@ func newInitContainers(
 	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, setVMMaxMapCount)
 }
 
-// newSidecarContainers returns a list of sidecar containers
+// newSidecarContainers returns a list of sidecar containers.
 func newSidecarContainers(
 	_ string,
 	_ support.NewPodSpecParams,
