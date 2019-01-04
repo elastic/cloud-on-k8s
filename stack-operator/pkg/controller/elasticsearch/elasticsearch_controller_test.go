@@ -59,7 +59,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	c = mgr.GetClient()
 
-	r, err := newReconciler(mgr)
+	r, err := newReconciler(mgr, nil)
 	require.NoError(t, err)
 	recFn, requests := SetupTestReconcile(r)
 	assert.NoError(t, add(mgr, recFn))
