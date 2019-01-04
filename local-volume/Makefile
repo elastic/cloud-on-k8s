@@ -27,6 +27,9 @@ endif
 unit:
 	@ go test -cover ./...
 
+.PHONY: ci
+ci: build unit
+
 ##
 ## Docker stuff
 ## ------------
