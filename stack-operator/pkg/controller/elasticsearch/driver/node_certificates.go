@@ -5,7 +5,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	esnodecerts "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

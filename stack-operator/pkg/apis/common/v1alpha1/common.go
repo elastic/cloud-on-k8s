@@ -1,6 +1,6 @@
 package v1alpha1
 
-import "k8s.io/api/core/v1"
+import v1 "k8s.io/api/core/v1"
 
 // ResourcesSpec defines the resources to be allocated to a pod
 type ResourcesSpec struct {
