@@ -43,6 +43,7 @@ func TestForwardingDialer_DialContext(t *testing.T) {
 			},
 		}, nil
 	}
+	d.initOnce.Do(func() {}) // don't init with kubeconfig
 
 	_, err := d.DialContext(context.TODO(), "tcp", "localhost:8080")
 	assert.Equal(t, customError, err)
