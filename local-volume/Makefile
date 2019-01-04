@@ -14,21 +14,20 @@ build:
 	go build -o bin/driverdaemon ./cmd/driverdaemon
 	go build -o bin/provisioner  ./cmd/provisioner
 
-.PHONY: vendor
-vendor:
-ifndef DEP
-	@ echo "-> dep binary missing, $(INSTALL_HELP)"
-	@ exit 1
-endif
-	@ echo "-> Running dep..."
-	@ dep ensure
+.PHONY: dep
+dep:
+	dep ensure -v
+
+dep-vendor-only:
+	# don't attempt to upgrade Gopkg.lock
+	dep ensure --vendor-only -v
 
 .PHONY: unit
 unit:
 	@ go test -cover ./...
 
 .PHONY: ci
-ci: build unit
+ci: dep-vendor-only build unit
 
 ##
 ## Docker stuff
