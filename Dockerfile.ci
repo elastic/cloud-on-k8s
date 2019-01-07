@@ -1,0 +1,13 @@
+# Docker image aimed to run compilation and tests in CI
+FROM golang:1.11
+
+# Download kubebuilder release to get required tools (etcd, apiserver, etc.)
+ARG version=1.0.6
+RUN curl -L -O https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${version}/kubebuilder_${version}_linux_amd64.tar.gz && \
+    tar -zxvf kubebuilder_${version}_linux_amd64.tar.gz && \
+    mv kubebuilder_${version}_linux_amd64 /usr/local/kubebuilder
+# update PATH to include downloaded binaries
+ENV PATH=${PATH}:/usr/local/kubebuilder/bin
+
+# Download required golang tools
+RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports

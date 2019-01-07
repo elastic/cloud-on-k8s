@@ -1,11 +1,14 @@
 MOUNT_PATH ?= /go/src/github.com/elastic/stack-operators
-BASE_IMAGE ?= golang:1.11
+CI_IMAGE_NAME ?= stack-operators-ci
 
-ci:
+build-image:
+	docker build -f Dockerfile.ci -t $(CI_IMAGE_NAME) .
+
+ci: build-image
 	docker run --rm -t \
 		-v $(CURDIR):$(MOUNT_PATH) \
 		-w $(MOUNT_PATH) \
-		$(BASE_IMAGE) \
+		$(CI_IMAGE_NAME) \
 		bash -c \
 			"make -C stack-operator ci && \
 			 make -C local-volume ci"
