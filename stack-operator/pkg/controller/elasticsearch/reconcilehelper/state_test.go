@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -164,7 +165,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchOperational(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchOperational(support.ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -192,7 +193,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchOperational(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchOperational(support.ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -221,7 +222,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchState(support.ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -253,7 +254,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchState(support.ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -298,7 +299,7 @@ func TestReconcileState_Apply(t *testing.T) {
 func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 	type args struct {
 		resourcesState support.ResourcesState
-		observedState  support.ObservedState
+		observedState  observer.State
 	}
 	tests := []struct {
 		name            string
@@ -328,7 +329,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 			name:    "health is set if returned by Elasticsearch",
 			cluster: v1alpha1.ElasticsearchCluster{},
 			args: args{
-				observedState: support.ObservedState{
+				observedState: observer.State{
 					ClusterHealth: &client.Health{Status: "green"},
 				},
 			},
@@ -353,7 +354,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 	type args struct {
 		result         reconcile.Result
 		resourcesState support.ResourcesState
-		observedState  support.ObservedState
+		observedState  observer.State
 	}
 	tests := []struct {
 		name            string

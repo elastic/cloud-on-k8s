@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"k8s.io/api/core/v1"
@@ -135,7 +136,7 @@ func deleteElasticsearchPod(
 	c client.Client,
 	reconcileState *reconcilehelper.ReconcileState,
 	resourcesState support.ResourcesState,
-	observedState support.ObservedState,
+	observedState observer.State,
 	pod v1.Pod,
 	allDeletions []v1.Pod,
 	preDelete func() error,

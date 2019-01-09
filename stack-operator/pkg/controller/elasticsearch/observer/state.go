@@ -1,4 +1,4 @@
-package support
+package observer
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 )
 
-// ObservedState contains information about an observed state of Elasticsearch.
-type ObservedState struct {
+// State contains information about an observed state of Elasticsearch.
+type State struct {
 	// TODO: verify usages of the two below never assume they are set (check for nil)
 
 	// ClusterState is the current Elasticsearch cluster state if any.
@@ -17,11 +17,11 @@ type ObservedState struct {
 	ClusterHealth *esclient.Health
 }
 
-// NewObservedState reflects the current ObservedState from Elasticsearch
-func NewObservedState(esClient *esclient.Client) ObservedState {
-	state := ObservedState{}
+// RetrieveState returns the current Elasticsearch cluster state
+func RetrieveState(esClient *esclient.Client, timeout time.Duration) State {
+	state := State{}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // TODO don't hard code
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	clusterState, err := esClient.GetClusterState(ctx)
@@ -33,7 +33,7 @@ func NewObservedState(esClient *esclient.Client) ObservedState {
 
 	// TODO: if the above errored, we might want to consider bailing? or do the requests in parallel
 
-	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	// TODO we could derive cluster health from the routing table and save this request
