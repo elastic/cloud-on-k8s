@@ -2,7 +2,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -265,6 +265,14 @@ type ElasticsearchCluster struct {
 
 	Spec   ElasticsearchSpec   `json:"spec,omitempty"`
 	Status ElasticsearchStatus `json:"status,omitempty"`
+}
+
+// IsMarkedForDeletion returns true if the ElasticsearchCluster is going to be deleted
+func (e ElasticsearchCluster) IsMarkedForDeletion() bool {
+	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
+		return false
+	}
+	return true
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
