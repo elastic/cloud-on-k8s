@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,10 +11,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -84,13 +83,11 @@ func fatal(err error, msg string) {
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
 // to reload reloadable settings after the keystore has been updated.
 func reloadCredentials(cfg Config) error {
-	certPool := x509.NewCertPool()
-	ok := certPool.AppendCertsFromPEM(cfg.CACerts)
-	if !ok {
-		fatal(errors.New("Could not create certificate pool"), "Elasticsearch client creation failed")
+	caCerts, err := certutil.ParsePEMCerts(cfg.CACerts)
+	if err != nil {
+		fatal(err, "Cannot create Elasticsearch client from CA cert")
 	}
-
-	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, certPool)
+	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, caCerts)
 	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
 	// keystore which is something we cannot guarantee from this process. Also this call will be issued
 	// on each node which is redundant and might be problematic as well.

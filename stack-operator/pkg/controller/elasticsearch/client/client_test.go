@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,7 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -283,4 +286,70 @@ func TestGetInfo(t *testing.T) {
 	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
 	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
 	require.Equal(t, "6.4.1", info.Version.Number)
+}
+
+func TestClient_Equal(t *testing.T) {
+	dummyEndpoint := "es-url"
+	dummyUser := User{Name: "user", Password: "password"}
+	createCert := func() *x509.Certificate {
+		ca, err := nodecerts.NewSelfSignedCa("cn")
+		require.NoError(t, err)
+		return ca.Cert
+	}
+	dummyCaCerts := []*x509.Certificate{createCert()}
+	x509.NewCertPool()
+	tests := []struct {
+		name string
+		c1   *Client
+		c2   *Client
+		want bool
+	}{
+		{
+			name: "c1 and c2 equals",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			want: true,
+		},
+		{
+			name: "c2 nil",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   nil,
+			want: false,
+		},
+		{
+			name: "different endpoint",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCaCerts),
+			want: false,
+		},
+		{
+			name: "different user",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, User{Name: "user", Password: "another-password"}, dummyCaCerts),
+			want: false,
+		},
+		{
+			name: "different CA cert",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert()}),
+			want: false,
+		},
+		{
+			name: "different CA certs length",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert(), createCert()}),
+			want: false,
+		},
+		{
+			name: "different dialers are not taken into consideration",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCaCerts),
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.True(t, tt.c1.Equal(tt.c2) == tt.want)
+		})
+	}
 }

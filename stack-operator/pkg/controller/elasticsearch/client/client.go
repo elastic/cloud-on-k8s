@@ -32,15 +32,21 @@ type Client struct {
 	User     User
 	HTTP     *http.Client
 	Endpoint string
+	caCerts  []*x509.Certificate
 }
 
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caPool *x509.CertPool) *Client {
+func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caCerts []*x509.Certificate) *Client {
+	certPool := x509.NewCertPool()
+	for _, c := range caCerts {
+		certPool.AddCert(c)
+	}
+
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
-			RootCAs: caPool,
+			RootCAs: certPool,
 		},
 	}
 
@@ -52,10 +58,31 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caPool
 	return &Client{
 		Endpoint: esURL,
 		User:     esUser,
+		caCerts:  caCerts,
 		HTTP: &http.Client{
 			Transport: &transportConfig,
 		},
 	}
+}
+
+// Equal returns true if c2 can be considered the same as c
+func (c *Client) Equal(c2 *Client) bool {
+	// handle nil case
+	if c2 == nil && c != nil {
+		return false
+	}
+	// compare ca certs
+	if len(c.caCerts) != len(c2.caCerts) {
+		return false
+	}
+	for i := range c.caCerts {
+		if !c.caCerts[i].Equal(c2.caCerts[i]) {
+			return false
+		}
+	}
+	// compare endpoint and user creds
+	return c.Endpoint == c2.Endpoint &&
+		c.User == c2.User
 }
 
 // APIError is a non 2xx response from the Elasticsearch API
