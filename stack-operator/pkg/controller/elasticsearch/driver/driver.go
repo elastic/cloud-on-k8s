@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
@@ -47,6 +48,8 @@ type Options struct {
 	ClusterCa *nodecerts.Ca
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
+	// Observers that observe es clusters state
+	Observers *observer.Manager
 }
 
 // NewDriver returns a Driver that can operate the provided version
@@ -59,7 +62,7 @@ func NewDriver(opts Options) (Driver, error) {
 
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
-		observedStateResolver:   support.NewObservedState,
+		observedStateResolver:   opts.Observers.ObservedStateResolver,
 		resourcesStateResolver:  support.NewResourcesStateFromAPI,
 		internalUsersReconciler: user.ReconcileUsers,
 	}

@@ -51,7 +51,8 @@ func newReconciler(mgr manager.Manager, dialer net.Dialer) (reconcile.Reconciler
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
-		esCa: esCa,
+		esCa:        esCa,
+		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		dialer: dialer,
 	}, nil
@@ -110,6 +111,8 @@ type ReconcileElasticsearch struct {
 	esCa *nodecerts.Ca
 
 	dialer net.Dialer
+
+	esObservers *observer.Manager
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -172,6 +175,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		ClusterCa: r.esCa,
 		Dialer:    r.dialer,
+		Observers: r.esObservers,
 	})
 	if err != nil {
 		return results.WithError(err)

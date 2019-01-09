@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
@@ -72,7 +73,7 @@ type defaultDriver struct {
 	) ([]support.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(esClient *esclient.Client) support.ObservedState
+	observedStateResolver func(es v1alpha1.ElasticsearchCluster, esClient *esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -135,10 +136,9 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-
 	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
 
-	observedState := d.observedStateResolver(esClient)
+	observedState := d.observedStateResolver(es, esClient)
 
 	resourcesState, err := d.resourcesStateResolver(d.Client, es)
 	if err != nil {
