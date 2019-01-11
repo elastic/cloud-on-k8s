@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	corev1 "k8s.io/api/core/v1"
@@ -19,12 +20,12 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: common.Concat(support.DefaultSecretMountPath, "/", support.ElasticUsersFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", support.ElasticUsersFile),
+				Source: common.Concat(support.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
 			},
 			{
-				Source: common.Concat(support.DefaultSecretMountPath, "/", support.ElasticUsersRolesFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", support.ElasticUsersRolesFile),
+				Source: common.Concat(support.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
+				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
 			},
 		},
 	}
@@ -40,7 +41,7 @@ func ExpectedPodSpecs(
 	// creation below.
 	// TODO: make this association clearer.
 	paramsTmpl.UsersSecretVolume = support.NewSecretVolume(
-		support.ElasticUsersSecretName(es.Name),
+		secret.ElasticUsersSecretName(es.Name),
 		"users",
 	)
 

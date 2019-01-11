@@ -10,11 +10,12 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -76,7 +77,7 @@ func podSpec(
 	terminationGracePeriodSeconds := support.DefaultTerminationGracePeriodSeconds
 
 	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
-		support.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		secret.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
 		support.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 

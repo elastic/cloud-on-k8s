@@ -3,6 +3,7 @@ package snapshot
 import (
 	"path"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -98,7 +99,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: support.ElasticInternalUsersSecretName(params.Parent.Name),
+												Name: secret.ElasticInternalUsersSecretName(params.Parent.Name),
 											},
 											Key: params.User.Name,
 										},
