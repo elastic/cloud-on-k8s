@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(pod.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -68,7 +69,7 @@ func NewExpectedPodSpecs(
 // podSpec creates a new PodSpec for an Elasticsearch node
 func podSpec(
 	p pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(pod.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
 ) (corev1.PodSpec, error) {
 	imageName := common.Concat(pod.DefaultImageRepository, ":", p.Version)
@@ -78,12 +79,12 @@ func podSpec(
 
 	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
 
-	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
+	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		secret.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
-		support.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
+		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 
-	extraFilesSecretVolume := support.NewSecretVolumeWithMountPath(
+	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
@@ -91,10 +92,10 @@ func podSpec(
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := support.NewSecretVolumeWithMountPath(
+	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		support.NodeCertificatesSecretVolumeName,
-		support.NodeCertificatesSecretVolumeMountPath,
+		volume.NodeCertificatesSecretVolumeName,
+		volume.NodeCertificatesSecretVolumeMountPath,
 	)
 
 	resourceLimits := corev1.ResourceList{
@@ -157,10 +158,10 @@ func podSpec(
 	// keystore init is optional, will only happen if snapshots are requested in the Elasticsearch resource
 	keyStoreInit := initcontainer.KeystoreInit{Settings: p.KeystoreConfig.KeystoreSettings}
 	if !p.KeystoreConfig.IsEmpty() {
-		keystoreVolume := support.NewSecretVolumeWithMountPath(
+		keystoreVolume := volume.NewSecretVolumeWithMountPath(
 			p.KeystoreConfig.KeystoreSecretRef.Name,
 			"keystore-init",
-			support.KeystoreSecretMountPath)
+			volume.KeystoreSecretMountPath)
 
 		podSpec.Volumes = append(podSpec.Volumes, keystoreVolume.Volume())
 		keyStoreInit.VolumeMount = keystoreVolume.VolumeMount()

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -22,11 +23,11 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: common.Concat(support.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
+				Source: common.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
 				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
 			},
 			{
-				Source: common.Concat(support.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
+				Source: common.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
 				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
 			},
 		},
@@ -42,7 +43,7 @@ func ExpectedPodSpecs(
 	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
 	// creation below.
 	// TODO: make this association clearer.
-	paramsTmpl.UsersSecretVolume = support.NewSecretVolume(
+	paramsTmpl.UsersSecretVolume = volume.NewSecretVolume(
 		secret.ElasticUsersSecretName(es.Name),
 		"users",
 	)
@@ -62,8 +63,8 @@ func newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	nodeCertificatesVolume support.SecretVolume,
-	extraFilesSecretVolume support.SecretVolume,
+	nodeCertificatesVolume volume.SecretVolume,
+	extraFilesSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
@@ -102,7 +103,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"},
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
-		{Name: settings.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},

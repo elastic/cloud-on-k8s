@@ -5,6 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -67,8 +68,8 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	completions := int32(1)
 	backoffLimit := int32(0) // don't retry on failure
 	// TODO brittle, by convention currently called like the stack
-	caCertSecret := support.NewSecretVolume(params.Parent.Name, "ca")
-	certPath := path.Join(support.DefaultSecretMountPath, nodecerts.SecretCAKey)
+	caCertSecret := volume.NewSecretVolume(params.Parent.Name, "ca")
+	certPath := path.Join(volume.DefaultSecretMountPath, nodecerts.SecretCAKey)
 
 	meta := metav1.ObjectMeta{
 		Namespace: params.Parent.Namespace,

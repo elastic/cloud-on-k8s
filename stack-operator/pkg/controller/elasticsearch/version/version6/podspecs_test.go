@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,8 +22,8 @@ var testObjectMeta = v1.ObjectMeta{
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
-		nodeCertificatesVolume support.SecretVolume
-		extraFilesSecretVolume support.SecretVolume
+		nodeCertificatesVolume volume.SecretVolume
+		extraFilesSecretVolume volume.SecretVolume
 	}
 
 	tests := []struct {
@@ -47,8 +48,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 					Version:          "1.2.3",
 					ProbeUser:        testProbeUser,
 				},
-				nodeCertificatesVolume: support.SecretVolume{},
-				extraFilesSecretVolume: support.SecretVolume{},
+				nodeCertificatesVolume: volume.SecretVolume{},
+				extraFilesSecretVolume: volume.SecretVolume{},
 			},
 			wantEnvSubset: []corev1.EnvVar{
 				{Name: "discovery.zen.ping.unicast.hosts", Value: "discovery-service"},

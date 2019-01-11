@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -25,7 +26,7 @@ func ExpectedPodSpecs(
 	// we currently mount the users secret volume as the x-pack folder. we cannot symlink these into the existing
 	// config/x-pack/ folder because of the Java Security Manager restrictions.
 	// in the future we might want to consider bind-mounting specific files instead to be less broad
-	paramsTmpl.UsersSecretVolume = support.NewSecretVolumeWithMountPath(
+	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
 		secret.ElasticUsersSecretName(es.Name),
 		"users",
 		"/usr/share/elasticsearch/config/x-pack",
@@ -49,8 +50,8 @@ func newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	nodeCertificatesVolume support.SecretVolume,
-	extraFilesSecretVolume support.SecretVolume,
+	nodeCertificatesVolume volume.SecretVolume,
+	extraFilesSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	// TODO: require system key setting for 5.2 and up
 
@@ -83,7 +84,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
-		{Name: settings.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},

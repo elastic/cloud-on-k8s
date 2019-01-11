@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,10 +45,10 @@ func createElasticsearchPod(
 	}
 
 	// we finally have the node certificates secret made, so we can inject the secret volume into the pod
-	nodeCertificatesSecretVolume := support.NewSecretVolumeWithMountPath(
+	nodeCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		nodeCertificatesSecret.Name,
-		support.NodeCertificatesSecretVolumeName,
-		support.NodeCertificatesSecretVolumeMountPath,
+		volume.NodeCertificatesSecretVolumeName,
+		volume.NodeCertificatesSecretVolumeMountPath,
 	)
 	// add the node certificates volume to volumes
 	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
