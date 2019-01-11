@@ -8,13 +8,13 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	esv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,11 +66,11 @@ func TestReconcile(t *testing.T) {
 	// Manually create users secret as Elasticsearch controller is not running
 	userSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      support.ElasticInternalUsersSecretName("foo"),
+			Name:      secret.ElasticInternalUsersSecretName("foo"),
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			support.InternalKibanaServerUserName: []byte("blub"),
+			secret.InternalKibanaServerUserName: []byte("blub"),
 		},
 	}
 	assert.NoError(t, c.Create(context.TODO(), userSecret))
