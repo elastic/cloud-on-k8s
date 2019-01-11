@@ -8,7 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,7 +150,7 @@ func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
 				Name:      ElasticInternalUsersSecretName(es.Name),
-				Labels:    support.NewLabels(es),
+				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
 				InternalControllerUserName:   []byte(rand.String(24)),
@@ -166,7 +166,7 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
 				Name:      common.Concat(es.Name, "-elastic-user"),
-				Labels:    support.NewLabels(es),
+				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
 				ExternalUserName: []byte(rand.String(24)),
@@ -217,7 +217,7 @@ func NewElasticUsersCredentials(es v1alpha1.ElasticsearchCluster, users []client
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
 				Name:      ElasticUsersSecretName(es.Name),
-				Labels:    support.NewLabels(es),
+				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
 				ElasticUsersFile:      []byte(hashedCreds.String()),

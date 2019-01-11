@@ -3,8 +3,8 @@ package snapshot
 import (
 	"path"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -56,8 +56,8 @@ func CronJobName(parent types.NamespacedName) string {
 // NewLabels constructs a new set of labels from a Elasticsearch definition.
 func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 	var labels = map[string]string{
-		support.ClusterNameLabelName: es.Name,
-		common.TypeLabelName:         Type,
+		label.ClusterNameLabelName: es.Name,
+		common.TypeLabelName:       Type,
 	}
 	return labels
 }

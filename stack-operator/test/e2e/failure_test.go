@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
 	"github.com/elastic/stack-operators/stack-operator/test/e2e/stack"
 	"github.com/stretchr/testify/require"
@@ -77,7 +77,7 @@ func TestKillOneDataNode(t *testing.T) {
 		WithESDataNodes(2, stack.DefaultResources).
 		Stack
 	matchDataNode := func(p corev1.Pod) bool {
-		return support.IsDataNode(p) && !support.IsMasterNode(p)
+		return label.IsDataNode(p) && !label.IsMasterNode(p)
 	}
 	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchDataNode)
 }
@@ -89,7 +89,7 @@ func TestKillOneMasterNode(t *testing.T) {
 		WithESDataNodes(2, stack.DefaultResources).
 		Stack
 	matchMasterNode := func(p corev1.Pod) bool {
-		return !support.IsDataNode(p) && support.IsMasterNode(p)
+		return !label.IsDataNode(p) && label.IsMasterNode(p)
 	}
 	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchMasterNode)
 }

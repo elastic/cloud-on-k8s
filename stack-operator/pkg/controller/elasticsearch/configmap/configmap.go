@@ -2,7 +2,7 @@ package configmap
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,7 +13,7 @@ func NewConfigMapWithData(es v1alpha1.ElasticsearchCluster, data map[string]stri
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      es.Name,
 			Namespace: es.Namespace,
-			Labels:    support.NewLabels(es),
+			Labels:    label.NewLabels(es),
 		},
 		Data: data,
 	}

@@ -3,11 +3,12 @@ package version7
 import (
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,7 +24,7 @@ func newPod(name string, master bool) v1.Pod {
 		},
 	}
 
-	support.NodeTypesMasterLabelName.Set(master, pod.Labels)
+	label.NodeTypesMasterLabelName.Set(master, pod.Labels)
 
 	return pod
 }
