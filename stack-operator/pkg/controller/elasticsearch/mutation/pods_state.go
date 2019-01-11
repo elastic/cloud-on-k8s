@@ -2,6 +2,7 @@ package mutation
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -31,7 +32,7 @@ type PodsState struct {
 
 // NewPodsState creates a new PodsState categorizing pods based on the provided state and intended changes.
 func NewPodsState(
-	resourcesState support.ResourcesState,
+	resourcesState reconcilehelper.ResourcesState,
 	observedState support.ObservedState,
 ) PodsState {
 	podsState := NewEmptyPodsState()

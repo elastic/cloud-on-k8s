@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -21,7 +21,7 @@ type PodComparisonResult struct {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state support.ResourcesState, podBuilder PodBuilder) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcilehelper.ResourcesState, podBuilder PodBuilder) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
@@ -34,7 +34,7 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state support.Re
 func mutableCalculateChanges(
 	expectedPodSpecCtxs []pod.PodSpecContext,
 	actualPods []corev1.Pod,
-	state support.ResourcesState,
+	state reconcilehelper.ResourcesState,
 	podBuilder PodBuilder,
 ) (Changes, error) {
 	changes := EmptyChanges()
@@ -72,7 +72,7 @@ func mutableCalculateChanges(
 	return changes, nil
 }
 
-func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, state support.ResourcesState) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, state reconcilehelper.ResourcesState) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, pod := range pods {

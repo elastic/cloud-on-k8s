@@ -6,8 +6,8 @@ import (
 	"strconv"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -139,7 +139,7 @@ type volumeAndPVC struct {
 func comparePersistentVolumeClaims(
 	actual []corev1.Volume,
 	expected []corev1.PersistentVolumeClaim,
-	state support.ResourcesState,
+	state reconcilehelper.ResourcesState,
 ) Comparison {
 	// TODO: handle extra PVCs that are in volumes, but not in expected claim templates
 
@@ -250,7 +250,7 @@ func IsTainted(pod corev1.Pod) bool {
 	return false
 }
 
-func podMatchesSpec(pod corev1.Pod, spec pod.PodSpecContext, state support.ResourcesState) (bool, []string, error) {
+func podMatchesSpec(pod corev1.Pod, spec pod.PodSpecContext, state reconcilehelper.ResourcesState) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err

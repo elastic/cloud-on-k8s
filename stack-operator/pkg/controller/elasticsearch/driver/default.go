@@ -72,7 +72,7 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
 		paramsTmpl pod.NewPodSpecParams,
-		resourcesState support.ResourcesState,
+		resourcesState reconcilehelper.ResourcesState,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
@@ -82,13 +82,13 @@ type defaultDriver struct {
 	resourcesStateResolver func(
 		c client.Client,
 		es v1alpha1.ElasticsearchCluster,
-	) (*support.ResourcesState, error)
+	) (*reconcilehelper.ResourcesState, error)
 
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
 	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
 		performableChanges mutation.PerformableChanges,
-		resourcesState support.ResourcesState,
+		resourcesState reconcilehelper.ResourcesState,
 	) (*mutation.PerformableChanges, error)
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
@@ -336,7 +336,7 @@ func (d *defaultDriver) calculateChanges(
 	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.ElasticsearchCluster,
-	resourcesState support.ResourcesState,
+	resourcesState reconcilehelper.ResourcesState,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,

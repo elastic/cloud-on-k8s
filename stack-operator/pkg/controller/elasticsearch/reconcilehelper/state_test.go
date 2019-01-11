@@ -164,7 +164,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchOperational(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchOperational(ResourcesState{}, support.ObservedState{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -192,7 +192,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchOperational(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchOperational(ResourcesState{}, support.ObservedState{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -221,7 +221,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchState(ResourcesState{}, support.ObservedState{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -253,7 +253,7 @@ func TestReconcileState_Apply(t *testing.T) {
 				},
 			},
 			effects: func(s *ReconcileState) {
-				s.UpdateElasticsearchState(support.ResourcesState{}, support.ObservedState{
+				s.UpdateElasticsearchState(ResourcesState{}, support.ObservedState{
 					ClusterHealth: &client.Health{
 						Status: "red",
 					},
@@ -297,7 +297,7 @@ func TestReconcileState_Apply(t *testing.T) {
 
 func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 	type args struct {
-		resourcesState support.ResourcesState
+		resourcesState ResourcesState
 		observedState  support.ObservedState
 	}
 	tests := []struct {
@@ -352,7 +352,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 	type args struct {
 		result         reconcile.Result
-		resourcesState support.ResourcesState
+		resourcesState ResourcesState
 		observedState  support.ObservedState
 	}
 	tests := []struct {

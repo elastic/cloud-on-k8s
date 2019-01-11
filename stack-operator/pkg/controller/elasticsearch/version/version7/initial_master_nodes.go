@@ -5,15 +5,15 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	v1 "k8s.io/api/core/v1"
 )
 
 // ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
 func ClusterInitialMasterNodesEnforcer(
 	performableChanges mutation.PerformableChanges,
-	resourcesState support.ResourcesState,
+	resourcesState reconcilehelper.ResourcesState,
 ) (*mutation.PerformableChanges, error) {
 	var masterEligibleNodeNames []string
 	for _, pod := range resourcesState.CurrentPods {

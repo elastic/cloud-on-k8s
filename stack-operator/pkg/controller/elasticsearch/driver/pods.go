@@ -137,7 +137,7 @@ func createElasticsearchPod(
 func deleteElasticsearchPod(
 	c client.Client,
 	reconcileState *reconcilehelper.ReconcileState,
-	resourcesState support.ResourcesState,
+	resourcesState reconcilehelper.ResourcesState,
 	observedState support.ObservedState,
 	pod v1.Pod,
 	allDeletions []v1.Pod,
