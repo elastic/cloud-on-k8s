@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
@@ -40,11 +41,11 @@ func NewStringComparison(expected string, actual string, name string) Comparison
 // getEsContainer returns the elasticsearch container in the given pod
 func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 	for _, c := range containers {
-		if c.Name == support.DefaultContainerName {
+		if c.Name == pod.DefaultContainerName {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", support.DefaultContainerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", pod.DefaultContainerName)
 }
 
 // envVarsByName turns the given list of env vars into a map: EnvVar.Name -> EnvVar
@@ -249,7 +250,7 @@ func IsTainted(pod corev1.Pod) bool {
 	return false
 }
 
-func podMatchesSpec(pod corev1.Pod, spec support.PodSpecContext, state support.ResourcesState) (bool, []string, error) {
+func podMatchesSpec(pod corev1.Pod, spec pod.PodSpecContext, state support.ResourcesState) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err

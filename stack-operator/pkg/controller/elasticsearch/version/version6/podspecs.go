@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
@@ -35,9 +36,9 @@ var (
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
-	paramsTmpl support.NewPodSpecParams,
+	paramsTmpl pod.NewPodSpecParams,
 	resourcesState support.ResourcesState,
-) ([]support.PodSpecContext, error) {
+) ([]pod.PodSpecContext, error) {
 	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
 	// creation below.
 	// TODO: make this association clearer.
@@ -60,7 +61,7 @@ func newInitContainers(
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
-	p support.NewPodSpecParams,
+	p pod.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
 ) []corev1.EnvVar {
@@ -102,7 +103,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(support.TransportClientPort)},
+		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 

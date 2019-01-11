@@ -5,10 +5,11 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testProbeUser = client.User{Name: "username", Password: "supersecure"}
@@ -19,7 +20,7 @@ var testObjectMeta = v1.ObjectMeta{
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
-		p                      support.NewPodSpecParams
+		p                      pod.NewPodSpecParams
 		nodeCertificatesVolume support.SecretVolume
 		extraFilesSecretVolume support.SecretVolume
 	}
@@ -31,7 +32,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}{
 		{name: "2 nodes",
 			args: args{
-				p: support.NewPodSpecParams{
+				p: pod.NewPodSpecParams{
 					ClusterName:                    "cluster",
 					CustomImageName:                "myImage",
 					DiscoveryServiceName:           "discovery-service",
@@ -124,7 +125,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
-				support.NewPodSpecParams{ProbeUser: testProbeUser},
+				pod.NewPodSpecParams{ProbeUser: testProbeUser},
 				support.ResourcesState{},
 			)
 			assert.NoError(t, err)
@@ -150,7 +151,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	}
 	podSpec, err := ExpectedPodSpecs(
 		es,
-		support.NewPodSpecParams{ProbeUser: testProbeUser},
+		pod.NewPodSpecParams{ProbeUser: testProbeUser},
 		support.ResourcesState{},
 	)
 	assert.NoError(t, err)
@@ -166,7 +167,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
-	assert.ElementsMatch(t, support.DefaultContainerPorts, esContainer.Ports)
+	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
 	assert.Equal(t, 10, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)

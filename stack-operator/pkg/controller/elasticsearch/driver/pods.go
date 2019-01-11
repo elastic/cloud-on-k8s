@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	v1 "k8s.io/api/core/v1"
@@ -26,7 +27,7 @@ func createElasticsearchPod(
 	es v1alpha1.ElasticsearchCluster,
 	state *reconcilehelper.ReconcileState,
 	pod v1.Pod,
-	podSpecCtx support.PodSpecContext,
+	podSpecCtx pod.PodSpecContext,
 ) error {
 	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
 	// originating from the pod after it has started and produced a CSR

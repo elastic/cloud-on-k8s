@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
@@ -27,15 +28,15 @@ var (
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
-	paramsTmpl support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	paramsTmpl pod.NewPodSpecParams,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
-) ([]support.PodSpecContext, error) {
-	podSpecs := make([]support.PodSpecContext, 0, es.Spec.NodeCount())
+) ([]pod.PodSpecContext, error) {
+	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, topology := range es.Spec.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
-			podSpec, err := podSpec(support.NewPodSpecParams{
+			podSpec, err := podSpec(pod.NewPodSpecParams{
 				Version:         es.Spec.Version,
 				CustomImageName: es.Spec.Image,
 				ClusterName:     es.Name,
@@ -57,7 +58,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, support.PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
 		}
 	}
 
@@ -66,16 +67,16 @@ func NewExpectedPodSpecs(
 
 // podSpec creates a new PodSpec for an Elasticsearch node
 func podSpec(
-	p support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	p pod.NewPodSpecParams,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
 ) (corev1.PodSpec, error) {
-	imageName := common.Concat(support.DefaultImageRepository, ":", p.Version)
+	imageName := common.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
 		imageName = p.CustomImageName
 	}
 
-	terminationGracePeriodSeconds := support.DefaultTerminationGracePeriodSeconds
+	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
 
 	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
 		secret.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
@@ -111,8 +112,8 @@ func podSpec(
 			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            support.DefaultContainerName,
-			Ports:           support.DefaultContainerPorts,
+			Name:            pod.DefaultContainerName,
+			Ports:           pod.DefaultContainerPorts,
 			Resources: corev1.ResourceRequirements{
 				Limits: resourceLimits,
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
@@ -129,7 +130,7 @@ func podSpec(
 						Command: []string{
 							"sh",
 							"-c",
-							support.DefaultReadinessProbeScript,
+							pod.DefaultReadinessProbeScript,
 						},
 					},
 				},
@@ -180,7 +181,7 @@ func podSpec(
 func NewPod(
 	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
-	podSpecCtx support.PodSpecContext,
+	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
 	labels := support.NewLabels(es)
 	// add labels from the version

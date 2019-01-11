@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
@@ -18,9 +19,9 @@ import (
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
-	paramsTmpl support.NewPodSpecParams,
+	paramsTmpl pod.NewPodSpecParams,
 	resourcesState support.ResourcesState,
-) ([]support.PodSpecContext, error) {
+) ([]pod.PodSpecContext, error) {
 	// we currently mount the users secret volume as the x-pack folder. we cannot symlink these into the existing
 	// config/x-pack/ folder because of the Java Security Manager restrictions.
 	// in the future we might want to consider bind-mounting specific files instead to be less broad
@@ -47,7 +48,7 @@ func newInitContainers(
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
-	p support.NewPodSpecParams,
+	p pod.NewPodSpecParams,
 	nodeCertificatesVolume support.SecretVolume,
 	extraFilesSecretVolume support.SecretVolume,
 ) []corev1.EnvVar {
@@ -83,7 +84,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(support.TransportClientPort)},
+		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		// x-pack general settings

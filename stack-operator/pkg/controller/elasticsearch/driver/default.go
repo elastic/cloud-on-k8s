@@ -11,6 +11,7 @@ import (
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
@@ -69,9 +70,9 @@ type defaultDriver struct {
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
-		paramsTmpl support.NewPodSpecParams,
+		paramsTmpl pod.NewPodSpecParams,
 		resourcesState support.ResourcesState,
-	) ([]support.PodSpecContext, error)
+	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
 	observedStateResolver func(esClient *esclient.Client) support.ObservedState
@@ -275,7 +276,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := support.PodListToNames(performableChanges.ToDelete)
+	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete)
 	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
 		return results.WithError(errors.Wrap(err, "error during migrate data"))
 	}
@@ -338,7 +339,7 @@ func (d *defaultDriver) calculateChanges(
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
-		support.NewPodSpecParams{
+		pod.NewPodSpecParams{
 			ExtraFilesRef:   k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
 			KeystoreConfig:  versionWideResources.KeyStoreConfig,
 			ProbeUser:       internalUsers.ControllerUser,
@@ -353,7 +354,7 @@ func (d *defaultDriver) calculateChanges(
 	changes, err := mutation.CalculateChanges(
 		expectedPodSpecCtxs,
 		resourcesState,
-		func(ctx support.PodSpecContext) (v1.Pod, error) {
+		func(ctx pod.PodSpecContext) (v1.Pod, error) {
 			return esversion.NewPod(d.Version, es, ctx)
 		},
 	)
@@ -368,7 +369,7 @@ func (d *defaultDriver) newElasticsearchClient(service v1.Service, user esclient
 	certPool := x509.NewCertPool()
 	certPool.AddCert(d.ClusterCa.Cert)
 
-	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, support.HTTPPort)
+	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
 		d.Dialer, url, user, certPool,

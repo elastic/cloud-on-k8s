@@ -1,6 +1,7 @@
 package mutation
 
 import (
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -216,13 +217,13 @@ func (s PodsState) Summary() PodsStateSummary {
 		summary.MasterNodeName = s.MasterNodePod.Name
 	}
 
-	summary.Pending = support.PodMapToNames(s.Pending)
-	summary.RunningJoining = support.PodMapToNames(s.RunningJoining)
-	summary.RunningReady = support.PodMapToNames(s.RunningReady)
-	summary.RunningUnknown = support.PodMapToNames(s.RunningUnknown)
-	summary.Unknown = support.PodMapToNames(s.Unknown)
-	summary.Terminal = support.PodMapToNames(s.Terminal)
-	summary.Deleting = support.PodMapToNames(s.Deleting)
+	summary.Pending = pod.PodMapToNames(s.Pending)
+	summary.RunningJoining = pod.PodMapToNames(s.RunningJoining)
+	summary.RunningReady = pod.PodMapToNames(s.RunningReady)
+	summary.RunningUnknown = pod.PodMapToNames(s.RunningUnknown)
+	summary.Unknown = pod.PodMapToNames(s.Unknown)
+	summary.Terminal = pod.PodMapToNames(s.Terminal)
+	summary.Deleting = pod.PodMapToNames(s.Deleting)
 
 	return summary
 }
