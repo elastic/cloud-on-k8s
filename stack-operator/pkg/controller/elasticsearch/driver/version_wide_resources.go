@@ -66,15 +66,7 @@ func reconcileVersionWideResources(
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		// TODO: handle reconciling Data section if it already exists
-		trustRootCfg := nodecerts.TrustRootConfig{
-			Trust: nodecerts.TrustConfig{
-				// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
-				// this needs to be kept in sync with nodecerts.buildCertificateCommonName
-				SubjectName: []string{fmt.Sprintf(
-					"*.node.%s.%s.es.cluster.local", es.Name, es.Namespace,
-				)},
-			},
-		}
+		trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
 		trustRootCfgData, err := json.Marshal(&trustRootCfg)
 		if err != nil {
 			return nil, err
