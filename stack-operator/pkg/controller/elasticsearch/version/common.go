@@ -203,7 +203,7 @@ func NewPod(
 
 	pod := corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
-			Name:        support.NewNodeName(es.Name),
+			Name:        pod.NewNodeName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
 			Annotations: podSpecCtx.TopologySpec.PodTemplate.Annotations,
