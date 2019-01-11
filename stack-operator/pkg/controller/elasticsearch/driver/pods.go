@@ -8,9 +8,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -140,7 +141,7 @@ func deleteElasticsearchPod(
 	allDeletions []v1.Pod,
 	preDelete func() error,
 ) (reconcile.Result, error) {
-	isMigratingData := support.IsMigratingData(observedState, pod, allDeletions)
+	isMigratingData := migration.IsMigratingData(observedState, pod, allDeletions)
 	if isMigratingData {
 		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name))
 		reconcileState.UpdateElasticsearchMigrating(resourcesState, observedState)

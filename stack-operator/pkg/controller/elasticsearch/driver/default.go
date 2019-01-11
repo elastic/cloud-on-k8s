@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
@@ -275,7 +276,7 @@ func (d *defaultDriver) Reconcile(
 
 	// Start migrating data away from all pods to be deleted
 	leavingNodeNames := support.PodListToNames(performableChanges.ToDelete)
-	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
+	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
 		return results.WithError(errors.Wrap(err, "error during migrate data"))
 	}
 
