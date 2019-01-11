@@ -1,4 +1,4 @@
-package support
+package nodecerts
 
 // TrustRootConfig is the root of an Elasticsearch trust restrictions file
 type TrustRootConfig struct {

@@ -6,11 +6,11 @@ import (
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -66,8 +66,8 @@ func reconcileVersionWideResources(
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		// TODO: handle reconciling Data section if it already exists
-		trustRootCfg := support.TrustRootConfig{
-			Trust: support.TrustConfig{
+		trustRootCfg := nodecerts.TrustRootConfig{
+			Trust: nodecerts.TrustConfig{
 				// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
 				// this needs to be kept in sync with nodecerts.buildCertificateCommonName
 				SubjectName: []string{fmt.Sprintf(
