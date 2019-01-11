@@ -41,12 +41,7 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	expectedConfigMap := settings.NewConfigMapWithData(es, map[string]string{
-		// With a security manager present the JVM will cache hostname lookup results indefinitely.
-		// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
-		// See also: https://github.com/elastic/elasticsearch/pull/36570
-		settings.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
-	})
+	expectedConfigMap := configmap.NewConfigMapWithData(es, settings.DefaultConfigMapData)
 	err = configmap.ReconcileConfigMap(c, scheme, es, expectedConfigMap)
 	if err != nil {
 		return nil, err

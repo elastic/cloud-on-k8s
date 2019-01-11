@@ -1,25 +1,16 @@
 package settings
 
-import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
 const (
+	// SecurityPropsFile is the name of the security properties files
 	SecurityPropsFile = "security.properties"
+	// ManagedConfigPath is the path to our managed configuration files within the ES container
 	ManagedConfigPath = "/usr/share/elasticsearch/config/managed"
 )
 
-// NewConfigMapWithData constructs a new config map with the given data
-func NewConfigMapWithData(es v1alpha1.ElasticsearchCluster, data map[string]string) corev1.ConfigMap {
-	return corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      es.Name,
-			Namespace: es.Namespace,
-			Labels:    support.NewLabels(es),
-		},
-		Data: data,
-	}
+// DefaultConfigMapData is the default config map to create for every ES pod
+var DefaultConfigMapData = map[string]string{
+	// With a security manager present the JVM will cache hostname lookup results indefinitely.
+	// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
+	// See also: https://github.com/elastic/elasticsearch/pull/36570
+	SecurityPropsFile: "networkaddress.cache.ttl=60\n",
 }
