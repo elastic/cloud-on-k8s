@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,7 +21,7 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
-	SecurityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
+	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -38,7 +39,7 @@ func NewExpectedPodSpecs(
 				Version:         es.Spec.Version,
 				CustomImageName: es.Spec.Image,
 				ClusterName:     es.Name,
-				DiscoveryZenMinimumMasterNodes: support.ComputeMinimumMasterNodes(
+				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
 					es.Spec.Topologies,
 				),
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
@@ -213,7 +214,7 @@ func NewPod(
 }
 
 func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
-	minimumMasterNodes := support.ComputeMinimumMasterNodesFromPods(allPods)
+	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
 	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
 	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
 }

@@ -6,11 +6,12 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ESPod(image string, cpuLimit string) corev1.Pod {
@@ -160,12 +161,12 @@ func Test_podMatchesSpec(t *testing.T) {
 			args: args{
 				pod: corev1.Pod{
 					Spec: withEnv(
-						[]corev1.EnvVar{{Name: support.EnvNodeName, Value: "foo"}},
+						[]corev1.EnvVar{{Name: settings.EnvNodeName, Value: "foo"}},
 						ESPodSpecContext(defaultImage, defaultCPULimit),
 					).PodSpec,
 				},
 				spec: withEnv(
-					[]corev1.EnvVar{{Name: support.EnvNodeName, Value: "bar"}},
+					[]corev1.EnvVar{{Name: settings.EnvNodeName, Value: "bar"}},
 					ESPodSpecContext(defaultImage, defaultCPULimit),
 				),
 			},

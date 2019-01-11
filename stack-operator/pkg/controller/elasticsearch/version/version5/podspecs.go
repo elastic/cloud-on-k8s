@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	corev1 "k8s.io/api/core/v1"
@@ -55,58 +56,58 @@ func newEnvironmentVars(
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
 	return []corev1.EnvVar{
-		{Name: support.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+		{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
-		{Name: support.EnvDiscoveryZenPingUnicastHosts, Value: p.DiscoveryServiceName},
-		{Name: support.EnvClusterName, Value: p.ClusterName},
-		{Name: support.EnvDiscoveryZenMinimumMasterNodes, Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
-		{Name: support.EnvNetworkHost, Value: "0.0.0.0"},
-		{Name: support.EnvNetworkPublishHost, Value: "", ValueFrom: &corev1.EnvVarSource{
+		{Name: settings.EnvDiscoveryZenPingUnicastHosts, Value: p.DiscoveryServiceName},
+		{Name: settings.EnvClusterName, Value: p.ClusterName},
+		{Name: settings.EnvDiscoveryZenMinimumMasterNodes, Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
+		{Name: settings.EnvNetworkHost, Value: "0.0.0.0"},
+		{Name: settings.EnvNetworkPublishHost, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
 
-		{Name: support.EnvPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
-		{Name: support.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
+		{Name: settings.EnvPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
+		{Name: settings.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: support.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
+		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
 		// TODO: dedicated node types support
-		{Name: support.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
-		{Name: support.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
-		{Name: support.EnvNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},
-		{Name: support.EnvNodeML, Value: fmt.Sprintf("%t", p.NodeTypes.ML)},
+		{Name: settings.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
+		{Name: settings.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
+		{Name: settings.EnvNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},
+		{Name: settings.EnvNodeML, Value: fmt.Sprintf("%t", p.NodeTypes.ML)},
 
-		{Name: support.EnvXPackSecurityEnabled, Value: "true"},
-		{Name: support.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
-		{Name: support.EnvProbeUsername, Value: p.ProbeUser.Name},
-		{Name: support.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: support.EnvTransportProfilesClientPort, Value: strconv.Itoa(support.TransportClientPort)},
+		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
+		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
+		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(support.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(support.TransportClientPort)},
 
-		{Name: support.EnvReadinessProbeProtocol, Value: "https"},
+		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		// x-pack general settings
 		{
-			Name:  support.EnvXPackSslKey,
+			Name:  settings.EnvXPackSslKey,
 			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
 		},
 		{
-			Name:  support.EnvXPackSslCertificate,
+			Name:  settings.EnvXPackSslCertificate,
 			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
 		},
 		{
-			Name:  support.EnvXPackSslCertificateAuthorities,
+			Name:  settings.EnvXPackSslCertificateAuthorities,
 			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
 		},
 		// client profiles
-		{Name: support.EnvTransportProfilesClientXPackSecurityType, Value: "client"},
-		{Name: support.EnvTransportProfilesClientXPackSecuritySslClientAuthentication, Value: "none"},
+		{Name: settings.EnvTransportProfilesClientXPackSecurityType, Value: "client"},
+		{Name: settings.EnvTransportProfilesClientXPackSecuritySslClientAuthentication, Value: "none"},
 
 		// x-pack http settings
-		{Name: support.EnvXPackSecurityHttpSslEnabled, Value: "true"},
+		{Name: settings.EnvXPackSecurityHttpSslEnabled, Value: "true"},
 
 		// x-pack transport settings
-		{Name: support.EnvXPackSecurityTransportSslEnabled, Value: "true"},
-		{Name: support.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
+		{Name: settings.EnvXPackSecurityTransportSslEnabled, Value: "true"},
+		{Name: settings.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
 	}
 }

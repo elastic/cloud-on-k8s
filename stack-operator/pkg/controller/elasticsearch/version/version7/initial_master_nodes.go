@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"k8s.io/api/core/v1"
 )
@@ -41,7 +42,7 @@ func ClusterInitialMasterNodesEnforcer(
 
 		for i, container := range change.Pod.Spec.Containers {
 			container.Env = append(container.Env, v1.EnvVar{
-				Name:  support.EnvClusterInitialMasterNodes,
+				Name:  settings.EnvClusterInitialMasterNodes,
 				Value: strings.Join(masterEligibleNodeNames, ","),
 			})
 			change.Pod.Spec.Containers[i] = container

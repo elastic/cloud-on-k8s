@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strconv"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -62,7 +63,7 @@ func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVa
 	expectedByName := envVarsByName(expected)
 
 	// handle ignored vars do not require matching
-	for _, k := range support.IgnoredVarsDuringComparison {
+	for _, k := range settings.IgnoredVarsDuringComparison {
 		delete(actualUnmatchedByName, k)
 		delete(expectedByName, k)
 	}

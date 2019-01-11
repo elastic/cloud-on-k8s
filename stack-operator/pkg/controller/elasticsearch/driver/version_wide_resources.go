@@ -8,10 +8,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -40,11 +41,11 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	expectedConfigMap := support.NewConfigMapWithData(es, map[string]string{
+	expectedConfigMap := settings.NewConfigMapWithData(es, map[string]string{
 		// With a security manager present the JVM will cache hostname lookup results indefinitely.
 		// This will limit the caching to 60 seconds as we are relying on DNS for discovery in k8s.
 		// See also: https://github.com/elastic/elasticsearch/pull/36570
-		support.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
+		settings.SecurityPropsFile: "networkaddress.cache.ttl=60\n",
 	})
 	err = configmap.ReconcileConfigMap(c, scheme, es, expectedConfigMap)
 	if err != nil {

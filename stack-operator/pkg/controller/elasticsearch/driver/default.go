@@ -12,13 +12,14 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -340,7 +341,7 @@ func (d *defaultDriver) calculateChanges(
 			ExtraFilesRef:   k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
 			KeystoreConfig:  versionWideResources.KeyStoreConfig,
 			ProbeUser:       internalUsers.ControllerUser,
-			ConfigMapVolume: support.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, support.ManagedConfigPath),
+			ConfigMapVolume: support.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		resourcesState,
 	)

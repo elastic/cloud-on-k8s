@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
@@ -35,7 +36,7 @@ pod:
 	for _, change := range changes.ToCreate {
 		for _, container := range change.Pod.Spec.Containers {
 			for _, env := range container.Env {
-				if env.Name == support.EnvClusterInitialMasterNodes {
+				if env.Name == settings.EnvClusterInitialMasterNodes {
 					res[change.Pod.Name] = env.Value
 					continue pod
 				}
