@@ -56,6 +56,12 @@ stack-operator: generate fmt vet
 keystore-updater: generate fmt vet
 	go build -o bin/keystore-updater github.com/elastic/stack-operators/stack-operator/cmd/keystore-updater
 
+# CI job
+ci-prereq:
+	go get -u github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
+
+.PHONY: ci
+ci: ci-prereq dep-vendor-only stack-operator unit keystore-updater
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 OPERATOR_IMAGE?=no-operator-image
@@ -124,6 +130,10 @@ docker-push:
 requisites:
 ifndef GO
 	@ echo "-> go binary missing, $(INSTALL_HELP)"
+	@ exit 1
+endif
+ifndef DEP
+	@ echo "-> dep binary missing, $(INSTALL_HELP)"
 	@ exit 1
 endif
 ifndef GOIMPORTS
@@ -213,14 +223,13 @@ samples: requisites generate
 	@ echo "-> Pushing samples to Kubernetes cluster..."
 	@ kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/samples/deployments_v1alpha1_stack.yaml
 
-.PHONY: vendor
-vendor:
-ifndef DEP
-	@ echo "-> dep binary missing, $(INSTALL_HELP)"
-	@ exit 5
-endif
-	@ echo "-> Running dep..."
-	@ dep ensure
+.PHONY: dep
+dep:
+	dep ensure -v
+
+dep-vendor-only:
+	# don't attempt to upgrade Gopkg.lock
+	dep ensure --vendor-only -v
 
 .PHONY: set-dev-gke
 set-dev-gke:
