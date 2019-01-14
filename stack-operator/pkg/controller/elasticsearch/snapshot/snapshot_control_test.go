@@ -15,7 +15,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -132,13 +132,13 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    v1.Secret
+		want    corev1.Secret
 		wantErr bool
 	}{
 		{
 			name: "no config does not blow up",
 			args: args{repoConfig: nil},
-			want: v1.Secret{
+			want: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keystore.ManagedSecretName,
 					Namespace: "baz",
@@ -159,14 +159,14 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 					Type: v1alpha1.SnapshotRepositoryTypeGCS,
 					Settings: v1alpha1.SnapshotRepositorySettings{
 						BucketName: "foo",
-						Credentials: v1.SecretReference{
+						Credentials: corev1.SecretReference{
 							Name:      "bar",
 							Namespace: "baz",
 						},
 					},
 				},
 				initialObjects: []runtime.Object{
-					&v1.Secret{
+					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "bar",
 							Namespace: "baz",
@@ -178,7 +178,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 					&owner,
 				},
 			},
-			want: v1.Secret{
+			want: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      keystore.ManagedSecretName,
 					Namespace: "baz",

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -89,7 +89,7 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, err
 	}
 
-	service := v1.Service{}
+	service := corev1.Service{}
 
 	if err := f.client.Get(ctx, f.serviceNSN, &service); err != nil {
 		return nil, err
@@ -116,13 +116,13 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 		return nil, fmt.Errorf("service is not listening on port: %d", servicePort)
 	}
 
-	endpoints := v1.Endpoints{}
+	endpoints := corev1.Endpoints{}
 
 	if err := f.client.Get(ctx, f.serviceNSN, &endpoints); err != nil {
 		return nil, err
 	}
 
-	var podTargets []*v1.ObjectReference
+	var podTargets []*corev1.ObjectReference
 	for _, subset := range endpoints.Subsets {
 		foundPort := false
 		for _, port := range subset.Ports {
