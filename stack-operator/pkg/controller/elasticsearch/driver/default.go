@@ -19,8 +19,9 @@ import (
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -73,7 +74,7 @@ type defaultDriver struct {
 	) ([]support.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(es v1alpha1.ElasticsearchCluster, esClient *esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient *esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -138,7 +139,7 @@ func (d *defaultDriver) Reconcile(
 	}
 	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
 
-	observedState := d.observedStateResolver(es, esClient)
+	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(es.ObjectMeta), esClient)
 
 	resourcesState, err := d.resourcesStateResolver(d.Client, es)
 	if err != nil {

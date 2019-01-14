@@ -1,8 +1,8 @@
 package observer
 
 import (
-	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -12,11 +12,11 @@ const (
 
 // Finalizer returns a finalizer to be executed upon deletion of the given cluster,
 // that makes sure the cluster is not observed anymore
-func (m *Manager) Finalizer(es elasticsearchv1alpha1.ElasticsearchCluster) finalizer.Finalizer {
+func (m *Manager) Finalizer(clusterName types.NamespacedName) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: FinalizerName,
 		Execute: func() error {
-			m.StopObserving(es)
+			m.StopObserving(clusterName)
 			return nil
 		},
 	}

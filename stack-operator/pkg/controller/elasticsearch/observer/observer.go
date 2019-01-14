@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -33,7 +34,7 @@ var DefaultSettings = Settings{
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	clusterName string
+	clusterName types.NamespacedName
 	esClient    *client.Client
 
 	settings Settings
@@ -49,7 +50,7 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(clusterName string, esClient *client.Client, settings Settings) *Observer {
+func NewObserver(clusterName types.NamespacedName, esClient *client.Client, settings Settings) *Observer {
 	observer := Observer{
 		clusterName:  clusterName,
 		esClient:     esClient,

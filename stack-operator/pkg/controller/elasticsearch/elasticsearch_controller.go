@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -213,6 +214,6 @@ func (r *ReconcileElasticsearch) updateStatus(
 // finalizersFor returns the list of finalizers applying to a given es cluster
 func (r *ReconcileElasticsearch) finalizersFor(es elasticsearchv1alpha1.ElasticsearchCluster) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		r.esObservers.Finalizer(es),
+		r.esObservers.Finalizer(k8s.ExtractNamespacedName(es.ObjectMeta)),
 	}
 }
