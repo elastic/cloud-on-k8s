@@ -6,5 +6,6 @@ ci:
 		-v $(CURDIR):$(MOUNT_PATH) \
 		-w $(MOUNT_PATH) \
 		$(BASE_IMAGE) \
-		make -C stack-operator ci && \
-		make -C local-volume ci
+		bash -c \
+			"make -C stack-operator ci && \
+			 make -C local-volume ci"
