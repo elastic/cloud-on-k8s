@@ -101,6 +101,10 @@ func coalescingRetry(in <-chan func() error) {
 	attempt := func() {
 		err := request()
 		if err != nil {
+			log.Error(err, "failed to reload keystore")
+			if !timer.Stop() {
+				<-timer.C
+			}
 			timer.Reset(5 * time.Second) // TODO backoff/jitter etc
 			retryTimerCh = timer.C
 		} else {
@@ -114,7 +118,6 @@ func coalescingRetry(in <-chan func() error) {
 			request = r //effectively coalesces any pending requests into one
 			attempt()
 		case <-retryTimerCh:
-			retryTimerCh = nil
 			attempt()
 		}
 	}

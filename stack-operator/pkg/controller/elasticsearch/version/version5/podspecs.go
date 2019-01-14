@@ -48,6 +48,7 @@ func newSidecarContainers(
 	_ support.NewPodSpecParams,
 	_ map[string]support.VolumeLike,
 ) ([]corev1.Container, error) {
+	// TODO keystore is supported as of 5.3. Decide whether we continue supporting 5.x and branch off a 5.3 driver if so.
 	return []corev1.Container{}, nil
 }
 

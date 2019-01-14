@@ -88,7 +88,10 @@ func newSidecarContainers(
 	if !ok {
 		return []corev1.Container{}, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
 	}
-	certs := volumes[support.NodeCertificatesSecretVolumeName]
+	certs, ok := volumes[support.NodeCertificatesSecretVolumeName]
+	if !ok {
+		return []corev1.Container{}, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
+	}
 	return []corev1.Container{
 		{
 			Name:            "keystore-updater",

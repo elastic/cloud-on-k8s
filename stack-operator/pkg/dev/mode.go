@@ -1,6 +1,6 @@
 package dev
 
 var (
-	// Mode is whether we should be in development mode or not (affects logging and development-specific features)
-	Mode = false
+	// Enabled indicates whether we should be in development mode or not (affects logging and development-specific features)
+	Enabled = false
 )

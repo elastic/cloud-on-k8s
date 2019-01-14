@@ -15,10 +15,10 @@ func main() {
 	var rootCmd = &cobra.Command{Use: "stack-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
 	// development mode is only available as a command line flag to avoid accidentally enabling it
-	rootCmd.PersistentFlags().BoolVar(&dev.Mode, "development", false, "turns on development mode")
+	rootCmd.PersistentFlags().BoolVar(&dev.Enabled, "development", false, "turns on development mode")
 
 	cobra.OnInitialize(func() {
-		logf.SetLogger(logf.ZapLogger(dev.Mode))
+		logf.SetLogger(logf.ZapLogger(dev.Enabled))
 	})
 
 	if err := rootCmd.Execute(); err != nil {

@@ -79,7 +79,7 @@ func execute() {
 
 	var dialer net.Dialer
 	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
-	if !dev.Mode && autoPortForward {
+	if !dev.Enabled && autoPortForward {
 		panic(fmt.Sprintf(
 			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))

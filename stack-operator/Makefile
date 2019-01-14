@@ -58,7 +58,7 @@ keystore-updater: generate fmt vet
 
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-OPERATOR_IMAGE?=no-snapshotter-image
+OPERATOR_IMAGE?=no-operator-image
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	# Deploy on gke
