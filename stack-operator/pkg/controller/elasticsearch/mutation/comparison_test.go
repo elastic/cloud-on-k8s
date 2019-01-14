@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func ESPod(image string, cpuLimit string) corev1.Pod {
@@ -191,7 +191,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
+								ObjectMeta: metav1.ObjectMeta{
 									Name: "test",
 								},
 							},
@@ -212,7 +212,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
+								ObjectMeta: metav1.ObjectMeta{
 									Name: "test",
 								},
 							},
@@ -222,7 +222,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
 						},
 					},
 				},
@@ -240,7 +240,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
+								ObjectMeta: metav1.ObjectMeta{
 									Name: "foo",
 								},
 							},
@@ -250,7 +250,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
 						},
 					},
 				},
@@ -267,7 +267,7 @@ func Test_podMatchesSpec(t *testing.T) {
 					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
-								ObjectMeta: v1.ObjectMeta{
+								ObjectMeta: metav1.ObjectMeta{
 									Name: "foo",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
@@ -284,7 +284,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				state: support.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: v1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
 						},
 					},
 				},

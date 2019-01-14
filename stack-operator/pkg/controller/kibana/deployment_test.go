@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPseudoNamespacedResourceName(t *testing.T) {
@@ -17,11 +17,11 @@ func TestPseudoNamespacedResourceName(t *testing.T) {
 		want string
 	}{
 		{
-			args: args{kibana: v1alpha1.Kibana{ObjectMeta: v1.ObjectMeta{Name: "a-name"}}},
+			args: args{kibana: v1alpha1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "a-name"}}},
 			want: "a-name-kibana",
 		},
 		{
-			args: args{kibana: v1alpha1.Kibana{ObjectMeta: v1.ObjectMeta{Name: "another-name"}}},
+			args: args{kibana: v1alpha1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "another-name"}}},
 			want: "another-name-kibana",
 		},
 	}

@@ -17,7 +17,7 @@ import (
 
 	certs "k8s.io/api/certificates/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -110,7 +110,7 @@ func main() {
 	}
 
 	csr := certs.CertificateSigningRequest{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      podName,
 			Namespace: namespace,
 		},
@@ -120,12 +120,12 @@ func main() {
 	}
 
 	if ownerReferenceJSON != "" {
-		ownerRef := v1.OwnerReference{}
+		ownerRef := metav1.OwnerReference{}
 		if err := json.Unmarshal([]byte(ownerReferenceJSON), &ownerRef); err != nil {
 			log.Error(err, "unable to parse owner reference")
 			os.Exit(1)
 		}
-		csr.SetOwnerReferences([]v1.OwnerReference{ownerRef})
+		csr.SetOwnerReferences([]metav1.OwnerReference{ownerRef})
 	}
 
 	if annotationsJSON != "" {

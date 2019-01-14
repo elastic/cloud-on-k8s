@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,7 +20,7 @@ func ReconcileService(
 	c client.Client,
 	scheme *runtime.Scheme,
 	expected *corev1.Service,
-	owner v1.Object,
+	owner metav1.Object,
 ) (reconcile.Result, error) {
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
