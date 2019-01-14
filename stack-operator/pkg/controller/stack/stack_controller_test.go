@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -67,6 +67,18 @@ func TestReconcile(t *testing.T) {
 
 	// Create the stack resource, that should be reconciled
 	err = c.Create(context.TODO(), instance)
+	// Manually create users secret as Elasticsearch controller is not running
+	userSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      support.ElasticInternalUsersSecretName("foo"),
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			support.InternalKibanaServerUserName: []byte("blub"),
+		},
+	}
+	assert.NoError(t, c.Create(context.TODO(), userSecret))
+	
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {

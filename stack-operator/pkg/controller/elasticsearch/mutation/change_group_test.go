@@ -7,7 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
@@ -149,7 +149,7 @@ func TestChangeGroups_ChangeStats(t *testing.T) {
 			name: "sample",
 			fields: fields{
 				Definition: v1alpha1.GroupingDefinition{
-					Selector: v1.LabelSelector{},
+					Selector: metav1.LabelSelector{},
 				},
 				Changes: Changes{
 					ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},

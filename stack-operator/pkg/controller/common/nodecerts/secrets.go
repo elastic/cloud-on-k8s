@@ -13,7 +13,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -73,7 +73,7 @@ func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 func EnsureNodeCertificateSecretExists(
 	c client.Client,
 	scheme *runtime.Scheme,
-	owner v1.Object,
+	owner metav1.Object,
 	pod corev1.Pod,
 	nodeCertificateType string,
 ) (*corev1.Secret, error) {
@@ -84,7 +84,7 @@ func EnsureNodeCertificateSecretExists(
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		secret = corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretObjectKey.Name,
 				Namespace: secretObjectKey.Namespace,
 

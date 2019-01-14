@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,9 +23,9 @@ import (
 type VersionWideResources struct {
 	// ExtraFilesSecret contains some extra files we want to have access to in the containers, but had nowhere we wanted
 	// it to call home, so they ended up here.
-	ExtraFilesSecret v1.Secret
+	ExtraFilesSecret corev1.Secret
 	// GenericUnecryptedConfigurationFiles contains non-secret files Pods with this version should have access to.
-	GenericUnecryptedConfigurationFiles v1.ConfigMap
+	GenericUnecryptedConfigurationFiles corev1.ConfigMap
 	// KeyStoreConfig are secrets that should go into the ES keystore
 	KeyStoreConfig keystore.Config
 }
@@ -56,7 +56,7 @@ func reconcileVersionWideResources(
 		Namespace: es.Namespace,
 		Name:      fmt.Sprintf("%s-extrafiles", es.Name),
 	}
-	var extraFilesSecret v1.Secret
+	var extraFilesSecret corev1.Secret
 	if err := c.Get(
 		context.TODO(),
 		extraFilesSecretObjectKey,
@@ -79,7 +79,7 @@ func reconcileVersionWideResources(
 			return nil, err
 		}
 
-		extraFilesSecret = v1.Secret{
+		extraFilesSecret = corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(extraFilesSecretObjectKey),
 			Data: map[string][]byte{
 				"trust.yml": trustRootCfgData,
