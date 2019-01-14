@@ -9,7 +9,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,11 +21,11 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 		},
 	}
 	testIp := "1.2.3.4"
-	pod := v1.Pod{
+	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-pod-name",
 		},
-		Status: v1.PodStatus{
+		Status: corev1.PodStatus{
 			PodIP: testIp,
 		},
 	}
@@ -34,17 +34,17 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 		PublicKey:          &testRSAPrivateKey.PublicKey,
 	}
 
-	svc := v1.Service{
+	svc := corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-service",
 			Namespace: "default",
 		},
-		Spec: v1.ServiceSpec{
+		Spec: corev1.ServiceSpec{
 			ClusterIP: "2.2.3.3",
 		},
 	}
 
-	validatedCert, err := createValidatedCertificateTemplate(pod, es.Name, es.Namespace, []v1.Service{svc}, &csr)
+	validatedCert, err := createValidatedCertificateTemplate(pod, es.Name, es.Namespace, []corev1.Service{svc}, &csr)
 	require.NoError(t, err)
 
 	// roundtrip the certificate

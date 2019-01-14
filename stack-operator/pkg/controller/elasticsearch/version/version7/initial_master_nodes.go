@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
@@ -40,7 +40,7 @@ func ClusterInitialMasterNodesEnforcer(
 		}
 
 		for i, container := range change.Pod.Spec.Containers {
-			container.Env = append(container.Env, v1.EnvVar{
+			container.Env = append(container.Env, corev1.EnvVar{
 				Name:  support.EnvClusterInitialMasterNodes,
 				Value: strings.Join(masterEligibleNodeNames, ","),
 			})

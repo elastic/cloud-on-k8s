@@ -4,7 +4,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -12,9 +12,9 @@ import (
 // GenericResources are resources that all clusters have.
 type GenericResources struct {
 	// PublicService is the user-facing service
-	PublicService v1.Service
+	PublicService corev1.Service
 	// DiscoveryService is the service used by ES for discovery purposes
-	DiscoveryService v1.Service
+	DiscoveryService corev1.Service
 }
 
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
