@@ -101,7 +101,6 @@ func coalescingRetry(in <-chan func() error) {
 	attempt := func() {
 		err := request()
 		if err != nil {
-			log.Error(err, "failed to reload keystore")
 			if !timer.Stop() {
 				<-timer.C
 			}
