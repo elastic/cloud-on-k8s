@@ -58,7 +58,8 @@ keystore-updater: generate fmt vet
 
 # CI job
 .PHONY: ci
-ci: dep-vendor-only stack-operator integration keystore-updater
+# ci: dep-vendor-only stack-operator integration keystore-updater
+ci: integration
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 SNAPSHOTTER_IMAGE?=no-snapshotter-image
@@ -226,7 +227,7 @@ dep:
 
 dep-vendor-only:
 	# don't attempt to upgrade Gopkg.lock
-	dep ensure --vendor-only -v
+	#dep ensure --vendor-only -v
 
 .PHONY: set-dev-gke
 set-dev-gke:
