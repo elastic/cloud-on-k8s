@@ -1,4 +1,4 @@
-package support
+package pod
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"

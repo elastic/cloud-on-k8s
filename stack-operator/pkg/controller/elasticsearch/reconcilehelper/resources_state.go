@@ -1,10 +1,11 @@
-package support
+package reconcilehelper
 
 import (
 	"context"
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -29,7 +30,7 @@ type ResourcesState struct {
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
 func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster) (*ResourcesState, error) {
-	labelSelector, err := NewLabelSelectorForElasticsearch(es)
+	labelSelector, err := label.NewLabelSelectorForElasticsearch(es)
 	if err != nil {
 		return nil, err
 	}

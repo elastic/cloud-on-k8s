@@ -146,6 +146,10 @@ func TestReconcileResource(t *testing.T) {
 				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
 				assert.Equal(t, obj, withoutControllerRef(&found))
 			},
+			argAssertion: func(args args) {
+				// reconciled should be updated to the expected
+				assert.Equal(t, args.Expected, args.Reconciled)
+			},
 		},
 		{
 			name: "Returns server state via in/out param",

@@ -8,7 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +23,7 @@ func ReconcileNodeCertificateSecrets(
 	c client.Client,
 	ca *nodecerts.Ca,
 	es v1alpha1.ElasticsearchCluster,
-	services []v1.Service,
+	services []corev1.Service,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
 
@@ -36,7 +36,7 @@ func ReconcileNodeCertificateSecrets(
 		// todo: error checking if label does not exist
 		podName := secret.Labels[nodecerts.LabelAssociatedPod]
 
-		var pod v1.Pod
+		var pod corev1.Pod
 		if err := c.Get(context.TODO(), types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return reconcile.Result{}, err
@@ -87,8 +87,8 @@ func ReconcileNodeCertificateSecrets(
 func findNodeCertificateSecrets(
 	c client.Client,
 	es v1alpha1.ElasticsearchCluster,
-) ([]v1.Secret, error) {
-	var nodeCertificateSecrets v1.SecretList
+) ([]corev1.Secret, error) {
+	var nodeCertificateSecrets corev1.SecretList
 	listOptions := client.ListOptions{
 		Namespace: es.Namespace,
 		LabelSelector: labels.Set(map[string]string{

@@ -1,6 +1,6 @@
 package keystore
 
-import "k8s.io/api/core/v1"
+import v1 "k8s.io/api/core/v1"
 
 // Config contains all configuration to initialise a ES keystore
 type Config struct {

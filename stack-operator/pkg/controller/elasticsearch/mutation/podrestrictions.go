@@ -3,7 +3,7 @@ package mutation
 import (
 	"errors"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -28,10 +28,10 @@ func NewPodRestrictions(podsState PodsState) PodRestrictions {
 	// restrictions should only count master / data nodes that are known good
 	// this has the drawback of only being able to delete nodes when there is an elected master in the cluster.
 	for name, pod := range podsState.RunningReady {
-		if support.IsMasterNode(pod) {
+		if label.IsMasterNode(pod) {
 			masterEligiblePods[name] = empty
 		}
-		if support.IsDataNode(pod) {
+		if label.IsDataNode(pod) {
 			dataEligiblePods[name] = empty
 		}
 	}
@@ -45,9 +45,9 @@ func NewPodRestrictions(podsState PodsState) PodRestrictions {
 // CanDelete returns an error if the pod cannot be safely deleted
 func (r *PodRestrictions) CanDelete(pod corev1.Pod) error {
 	switch {
-	case support.IsMasterNode(pod) && isTheOnly(pod.Name, r.MasterNodeNames):
+	case label.IsMasterNode(pod) && isTheOnly(pod.Name, r.MasterNodeNames):
 		return ErrNotEnoughMasterEligiblePods
-	case support.IsDataNode(pod) && isTheOnly(pod.Name, r.DataNodeNames):
+	case label.IsDataNode(pod) && isTheOnly(pod.Name, r.DataNodeNames):
 		return ErrNotEnoughDataEligiblePods
 	default:
 		return nil

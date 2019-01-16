@@ -4,8 +4,8 @@ import (
 	"context"
 
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -29,7 +29,7 @@ func UpdateZen2Settings(
 
 	leavingMasters := make([]string, 0)
 	for _, pod := range performableChanges.ToDelete {
-		if support.IsMasterNode(pod) {
+		if label.IsMasterNode(pod) {
 			leavingMasters = append(leavingMasters, pod.Name)
 		}
 	}

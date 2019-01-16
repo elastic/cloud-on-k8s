@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var defaultPod = ESPod(defaultImage, defaultCPULimit)
@@ -16,7 +16,7 @@ var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
 func namedPod(name string) corev1.Pod {
 	return corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
 	}
@@ -24,9 +24,9 @@ func namedPod(name string) corev1.Pod {
 
 func namedPodWithCreationTimestamp(name string, creationTimestamp time.Time) corev1.Pod {
 	return corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:              name,
-			CreationTimestamp: v1.Time{Time: creationTimestamp},
+			CreationTimestamp: metav1.Time{Time: creationTimestamp},
 		},
 	}
 }
@@ -165,14 +165,14 @@ func TestChanges_IsEmpty(t *testing.T) {
 
 func TestChanges_Group(t *testing.T) {
 	fooMatchingGroupingDefinition := v1alpha1.GroupingDefinition{
-		Selector: v1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
+		Selector: metav1.LabelSelector{MatchLabels: map[string]string{"foo": "bar"}},
 	}
 
 	fooPod := withLabels(namedPod("1"), map[string]string{"foo": "bar"})
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
 	bazPodToCreate := PodToCreate{
 		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}),
-		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
+		PodSpecCtx: pod.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
 	foobarPod := withLabels(namedPod("4"), map[string]string{"foo": "bar", "bar": "baz"})
@@ -285,7 +285,7 @@ func TestChanges_Group(t *testing.T) {
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
 					{
-						Selector: v1.LabelSelector{
+						Selector: metav1.LabelSelector{
 							MatchLabels: map[string]string{
 								"foo": "bar",
 								"bar": "baz",
