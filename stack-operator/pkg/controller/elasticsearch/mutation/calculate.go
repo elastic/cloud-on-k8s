@@ -3,13 +3,14 @@ package mutation
 import (
 	"sort"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // PodBuilder is a function that is able to create pods from a PodSpecContext,
 // mostly used by the various supported versions
-type PodBuilder func(ctx support.PodSpecContext) (corev1.Pod, error)
+type PodBuilder func(ctx pod.PodSpecContext) (corev1.Pod, error)
 
 // PodComparisonResult holds information about pod comparison result
 type PodComparisonResult struct {
@@ -20,9 +21,9 @@ type PodComparisonResult struct {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []support.PodSpecContext, state support.ResourcesState, podBuilder PodBuilder) (Changes, error) {
+func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcilehelper.ResourcesState, podBuilder PodBuilder) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
-	expectedCopy := make([]support.PodSpecContext, len(expectedPodSpecCtxs))
+	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
 	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
 	copy(actualCopy, state.CurrentPods)
@@ -31,9 +32,9 @@ func CalculateChanges(expectedPodSpecCtxs []support.PodSpecContext, state suppor
 }
 
 func mutableCalculateChanges(
-	expectedPodSpecCtxs []support.PodSpecContext,
+	expectedPodSpecCtxs []pod.PodSpecContext,
 	actualPods []corev1.Pod,
-	state support.ResourcesState,
+	state reconcilehelper.ResourcesState,
 	podBuilder PodBuilder,
 ) (Changes, error) {
 	changes := EmptyChanges()
@@ -71,7 +72,7 @@ func mutableCalculateChanges(
 	return changes, nil
 }
 
-func getAndRemoveMatchingPod(podSpecCtx support.PodSpecContext, pods []corev1.Pod, state support.ResourcesState) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, state reconcilehelper.ResourcesState) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, pod := range pods {

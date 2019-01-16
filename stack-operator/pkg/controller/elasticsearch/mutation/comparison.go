@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -39,11 +41,11 @@ func NewStringComparison(expected string, actual string, name string) Comparison
 // getEsContainer returns the elasticsearch container in the given pod
 func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 	for _, c := range containers {
-		if c.Name == support.DefaultContainerName {
+		if c.Name == pod.DefaultContainerName {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", support.DefaultContainerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", pod.DefaultContainerName)
 }
 
 // envVarsByName turns the given list of env vars into a map: EnvVar.Name -> EnvVar
@@ -62,7 +64,7 @@ func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVa
 	expectedByName := envVarsByName(expected)
 
 	// handle ignored vars do not require matching
-	for _, k := range support.IgnoredVarsDuringComparison {
+	for _, k := range settings.IgnoredVarsDuringComparison {
 		delete(actualUnmatchedByName, k)
 		delete(expectedByName, k)
 	}
@@ -137,7 +139,7 @@ type volumeAndPVC struct {
 func comparePersistentVolumeClaims(
 	actual []corev1.Volume,
 	expected []corev1.PersistentVolumeClaim,
-	state support.ResourcesState,
+	state reconcilehelper.ResourcesState,
 ) Comparison {
 	// TODO: handle extra PVCs that are in volumes, but not in expected claim templates
 
@@ -248,7 +250,7 @@ func IsTainted(pod corev1.Pod) bool {
 	return false
 }
 
-func podMatchesSpec(pod corev1.Pod, spec support.PodSpecContext, state support.ResourcesState) (bool, []string, error) {
+func podMatchesSpec(pod corev1.Pod, spec pod.PodSpecContext, state reconcilehelper.ResourcesState) (bool, []string, error) {
 	actualContainer, err := getEsContainer(pod.Spec.Containers)
 	if err != nil {
 		return false, nil, err

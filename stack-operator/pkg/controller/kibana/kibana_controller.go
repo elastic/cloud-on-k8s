@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -169,7 +169,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCertsVolume := support.NewSecretVolumeWithMountPath(
+		esCertsVolume := volume.NewSecretVolumeWithMountPath(
 			*kb.Spec.Elasticsearch.CaCertSecret,
 			"elasticsearch-certs",
 			"/usr/share/kibana/config/elasticsearch-certs",

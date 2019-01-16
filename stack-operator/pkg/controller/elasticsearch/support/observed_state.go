@@ -5,7 +5,10 @@ import (
 	"time"
 
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
+
+var log = logf.Log.WithName("support")
 
 // ObservedState contains information about an observed state of Elasticsearch.
 type ObservedState struct {

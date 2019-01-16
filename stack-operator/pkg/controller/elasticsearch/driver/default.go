@@ -9,16 +9,20 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -44,7 +48,7 @@ type defaultDriver struct {
 		scheme *runtime.Scheme,
 		ca *nodecerts.Ca,
 		es v1alpha1.ElasticsearchCluster,
-		services []v1.Service,
+		services []corev1.Service,
 	) error
 
 	// internalUsersReconciler reconciles and returns the current internal users.
@@ -67,9 +71,9 @@ type defaultDriver struct {
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
-		paramsTmpl support.NewPodSpecParams,
-		resourcesState support.ResourcesState,
-	) ([]support.PodSpecContext, error)
+		paramsTmpl pod.NewPodSpecParams,
+		resourcesState reconcilehelper.ResourcesState,
+	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
 	observedStateResolver func(esClient *esclient.Client) support.ObservedState
@@ -78,18 +82,18 @@ type defaultDriver struct {
 	resourcesStateResolver func(
 		c client.Client,
 		es v1alpha1.ElasticsearchCluster,
-	) (*support.ResourcesState, error)
+	) (*reconcilehelper.ResourcesState, error)
 
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
 	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
 		performableChanges mutation.PerformableChanges,
-		resourcesState support.ResourcesState,
+		resourcesState reconcilehelper.ResourcesState,
 	) (*mutation.PerformableChanges, error)
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(esClient *esclient.Client, allPods []v1.Pod) error
+	zen1SettingsUpdater func(esClient *esclient.Client, allPods []corev1.Pod) error
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
@@ -126,7 +130,7 @@ func (d *defaultDriver) Reconcile(
 		d.Scheme,
 		d.ClusterCa,
 		es,
-		[]v1.Service{genericResources.PublicService, genericResources.DiscoveryService},
+		[]corev1.Service{genericResources.PublicService, genericResources.DiscoveryService},
 	); err != nil {
 		return results.WithError(err)
 	}
@@ -205,7 +209,7 @@ func (d *defaultDriver) Reconcile(
 		if err != nil {
 			// TODO decide should this be a reason to stop this reconciliation loop?
 			msg := "Could not ensure snapshot repository"
-			reconcileState.AddEvent(v1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
 		}
 	}
@@ -273,12 +277,12 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := support.PodListToNames(performableChanges.ToDelete)
-	if err = support.MigrateData(esClient, leavingNodeNames); err != nil {
+	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete)
+	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
 		return results.WithError(errors.Wrap(err, "error during migrate data"))
 	}
 
-	newState := make([]v1.Pod, len(resourcesState.CurrentPods))
+	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
 	copy(newState, resourcesState.CurrentPods)
 
 	// Shrink clusters by deleting deprecated pods
@@ -317,7 +321,7 @@ func (d *defaultDriver) Reconcile(
 }
 
 // removePodFromList removes a single pod from the list, matching by pod name.
-func removePodFromList(pods []v1.Pod, pod v1.Pod) []v1.Pod {
+func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 	for i, p := range pods {
 		if p.Name == pod.Name {
 			return append(pods[:i], pods[i+1:]...)
@@ -332,15 +336,15 @@ func (d *defaultDriver) calculateChanges(
 	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.ElasticsearchCluster,
-	resourcesState support.ResourcesState,
+	resourcesState reconcilehelper.ResourcesState,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
-		support.NewPodSpecParams{
+		pod.NewPodSpecParams{
 			ExtraFilesRef:   k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
 			KeystoreConfig:  versionWideResources.KeyStoreConfig,
 			ProbeUser:       internalUsers.ControllerUser,
-			ConfigMapVolume: support.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, support.ManagedConfigPath),
+			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		resourcesState,
 	)
@@ -351,7 +355,7 @@ func (d *defaultDriver) calculateChanges(
 	changes, err := mutation.CalculateChanges(
 		expectedPodSpecCtxs,
 		resourcesState,
-		func(ctx support.PodSpecContext) (v1.Pod, error) {
+		func(ctx pod.PodSpecContext) (corev1.Pod, error) {
 			return esversion.NewPod(d.Version, es, ctx)
 		},
 	)
@@ -362,11 +366,11 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service v1.Service, user esclient.User) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User) *esclient.Client {
 	certPool := x509.NewCertPool()
 	certPool.AddCert(d.ClusterCa.Cert)
 
-	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, support.HTTPPort)
+	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
 		d.Dialer, url, user, certPool,

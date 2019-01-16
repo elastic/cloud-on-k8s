@@ -1,4 +1,4 @@
-package support
+package volume
 
 import (
 	"testing"
@@ -6,13 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
-
-func TestNewEmptyDirVolume(t *testing.T) {
-	v := NewEmptyDirVolume("name", "/mountPath")
-	assert.Equal(t, v.Volume().Name, "name")
-	assert.Equal(t, v.VolumeMount().Name, "name")
-	assert.Equal(t, v.VolumeMount().MountPath, "/mountPath")
-}
 
 func TestSecretVolumeItemProjection(t *testing.T) {
 

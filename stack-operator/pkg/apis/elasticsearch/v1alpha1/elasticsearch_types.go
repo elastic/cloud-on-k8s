@@ -2,7 +2,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,7 +50,7 @@ type SnapshotRepositorySettings struct {
 	// BucketName is the name of the provider specific storage bucket to use.
 	BucketName string `json:"bucketName,omitempty"`
 	// Credentials is a reference to a secret containing credentials for the storage provider.
-	Credentials v1.SecretReference `json:"credentials,omitempty"`
+	Credentials corev1.SecretReference `json:"credentials,omitempty"`
 }
 
 // SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
@@ -93,7 +93,7 @@ type ElasticsearchTopologySpec struct {
 	// TODO: Define the behavior if a claim already exists with the same name.
 	// TODO: define special behavior based on claim metadata.name. (e.g data / logs volumes)
 	// +optional
-	VolumeClaimTemplates []v1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
+	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
 // ElasticsearchPodTemplateSpec describes the data a pod should have when created from a template
@@ -112,7 +112,7 @@ type ElasticsearchPodTemplateSpec struct {
 type ElasticsearchPodSpec struct {
 	// Affinity is the pod's scheduling constraints
 	// +optional
-	Affinity *v1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
+	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
 }
 
 // NodeTypesSpec define the

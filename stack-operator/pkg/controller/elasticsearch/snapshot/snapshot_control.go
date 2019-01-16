@@ -9,7 +9,7 @@ import (
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -56,7 +56,7 @@ func ReconcileSnapshotCredentials(c client.Client, repoConfig *v1alpha1.Snapshot
 			settings,
 			keystore.Setting{
 				Key:           RepositoryCredentialsKey(repoConfig),
-				ValueFilePath: path.Join(support.KeystoreSecretMountPath, k),
+				ValueFilePath: path.Join(volume.KeystoreSecretMountPath, k),
 			})
 	}
 	result.KeystoreSettings = settings

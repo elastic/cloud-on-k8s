@@ -1,4 +1,4 @@
-package support
+package secret
 
 import (
 	"sort"
