@@ -171,7 +171,7 @@ func (te *Environment) Start() (*rest.Config, error) {
 }
 
 func (te *Environment) startControlPlane() error {
-	numTries, maxRetries := 0, 5
+	numTries, maxRetries := 0, 20
 	for ; numTries < maxRetries; numTries++ {
 		// Start the control plane - retry if it fails
 		err := te.ControlPlane.Start()
