@@ -69,18 +69,23 @@ func (h *Handler) reconcileFinalizers(finalizers []Finalizer, objectMeta *metav1
 // Once a finalizer is executed, it is removed from the objectMeta's list,
 // and an update to the apiserver is issued for the given resource.
 func (h *Handler) executeFinalizers(finalizers []Finalizer, objectMeta *metav1.ObjectMeta, resource runtime.Object) error {
+	needUpdate := false
+	var finalizerErr error
 	for _, finalizer := range finalizers {
 		// for each registered finalizer, execute it, then remove from the list
 		if common.StringInSlice(finalizer.Name, objectMeta.Finalizers) {
 			log.Info("Executing finalizer", "name", finalizer.Name)
-			if err := finalizer.Execute(); err != nil {
-				return err
+			if finalizerErr = finalizer.Execute(); finalizerErr != nil {
+				break
 			}
+			needUpdate = true
 			objectMeta.Finalizers = common.RemoveString(objectMeta.Finalizers, finalizer.Name)
-			if err := h.client.Update(context.TODO(), resource); err != nil {
-				return err
-			}
 		}
 	}
-	return nil
+	if needUpdate {
+		if err := h.client.Update(context.TODO(), resource); err != nil {
+			return err
+		}
+	}
+	return finalizerErr
 }
