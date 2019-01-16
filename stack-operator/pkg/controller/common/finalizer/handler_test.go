@@ -115,7 +115,7 @@ func TestHandler_Handle(t *testing.T) {
 			handler := Handler{
 				client: fakeClient,
 			}
-			err := handler.Handle(&tt.resource.ObjectMeta, &tt.resource, tt.finalizers...)
+			err := handler.Handle(&tt.resource, tt.finalizers...)
 			if tt.wantErr != nil {
 				require.Error(t, tt.wantErr)
 				return

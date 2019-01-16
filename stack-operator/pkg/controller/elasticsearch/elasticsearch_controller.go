@@ -169,7 +169,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 ) *reconcilehelper.ReconcileResults {
 	results := &reconcilehelper.ReconcileResults{}
 
-	if err := r.finalizers.Handle(&es.ObjectMeta, &es, r.finalizersFor(es)...); err != nil {
+	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
 		return results.WithError(err)
 	}
 
