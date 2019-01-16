@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -57,7 +56,7 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 
 func (s *ReconcileState) updateWithPhase(
 	phase v1alpha1.ElasticsearchOrchestrationPhase,
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState observer.State,
 ) *ReconcileState {
 	if observedState.ClusterState != nil {
@@ -76,7 +75,7 @@ func (s *ReconcileState) updateWithPhase(
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s *ReconcileState) UpdateElasticsearchState(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState observer.State,
 ) *ReconcileState {
 	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
@@ -84,7 +83,7 @@ func (s *ReconcileState) UpdateElasticsearchState(
 
 // UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
 func (s *ReconcileState) UpdateElasticsearchOperational(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState observer.State,
 
 ) *ReconcileState {
@@ -101,7 +100,7 @@ func (s *ReconcileState) UpdateElasticsearchPending(pods []corev1.Pod) *Reconcil
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *ReconcileState) UpdateElasticsearchMigrating(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState observer.State,
 ) *ReconcileState {
 	s.AddEvent(

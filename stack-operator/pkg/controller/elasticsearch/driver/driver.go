@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version5"
@@ -63,7 +62,7 @@ func NewDriver(opts Options) (Driver, error) {
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
 		observedStateResolver:   opts.Observers.ObservedStateResolver,
-		resourcesStateResolver:  support.NewResourcesStateFromAPI,
+		resourcesStateResolver:  reconcilehelper.NewResourcesStateFromAPI,
 		internalUsersReconciler: user.ReconcileUsers,
 	}
 

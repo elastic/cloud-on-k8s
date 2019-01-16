@@ -1,10 +1,11 @@
-package support
+package pod
 
 import (
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -63,9 +64,9 @@ type NewPodSpecParams struct {
 	Resources commonv1alpha1.ResourcesSpec
 
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
-	UsersSecretVolume SecretVolume
+	UsersSecretVolume volume.SecretVolume
 	// ConfigMapVolume is a volume containing a config map with configuration files
-	ConfigMapVolume ConfigMapVolume
+	ConfigMapVolume volume.ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
 	// KeystoreConfig is configuration for the Elasticsearch key store setup

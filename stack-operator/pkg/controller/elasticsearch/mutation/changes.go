@@ -2,9 +2,9 @@ package mutation
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -19,7 +19,7 @@ type Changes struct {
 // the reasons why it doesn't match any existing pod
 type PodToCreate struct {
 	Pod             corev1.Pod
-	PodSpecCtx      support.PodSpecContext
+	PodSpecCtx      pod.PodSpecContext
 	MismatchReasons map[string][]string
 }
 
@@ -64,7 +64,7 @@ func (c Changes) Group(
 		group := ChangeGroup{
 			Name: indexedGroupName(i),
 		}
-		selector, err := v1.LabelSelectorAsSelector(&gd.Selector)
+		selector, err := metav1.LabelSelectorAsSelector(&gd.Selector)
 		if err != nil {
 			return nil, err
 		}

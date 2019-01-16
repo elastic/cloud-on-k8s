@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -77,13 +77,13 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 				network: "tcp",
 				addr:    "foo.bar.svc.cluster.local:9200",
 				client: fake.NewFakeClient(
-					&v1.Service{
+					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "bar",
 						},
-						Spec: v1.ServiceSpec{
-							Ports: []v1.ServicePort{
+						Spec: corev1.ServiceSpec{
+							Ports: []corev1.ServicePort{
 								{
 									Port:       9200,
 									TargetPort: intstr.FromInt(9200),
@@ -91,17 +91,17 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 							},
 						},
 					},
-					&v1.Endpoints{
+					&corev1.Endpoints{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "bar",
 						},
-						Subsets: []v1.EndpointSubset{
+						Subsets: []corev1.EndpointSubset{
 							{
-								Ports: []v1.EndpointPort{{Port: 9200}},
-								Addresses: []v1.EndpointAddress{
+								Ports: []corev1.EndpointPort{{Port: 9200}},
+								Addresses: []corev1.EndpointAddress{
 									{
-										TargetRef: &v1.ObjectReference{
+										TargetRef: &corev1.ObjectReference{
 											Kind:      "Pod",
 											Name:      "some-pod-name",
 											Namespace: "bar",
@@ -130,7 +130,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 				network: "tcp",
 				addr:    "foo.bar.svc.cluster.local:1234",
 				client: fake.NewFakeClient(
-					&v1.Service{
+					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "bar",

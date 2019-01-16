@@ -3,7 +3,9 @@ package snapshot
 import (
 	"path"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -54,8 +56,8 @@ func CronJobName(parent types.NamespacedName) string {
 // NewLabels constructs a new set of labels from a Elasticsearch definition.
 func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 	var labels = map[string]string{
-		support.ClusterNameLabelName: es.Name,
-		common.TypeLabelName:         Type,
+		label.ClusterNameLabelName: es.Name,
+		common.TypeLabelName:       Type,
 	}
 	return labels
 }
@@ -66,8 +68,8 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	completions := int32(1)
 	backoffLimit := int32(0) // don't retry on failure
 	// TODO brittle, by convention currently called like the stack
-	caCertSecret := support.NewSecretVolume(params.Parent.Name, "ca")
-	certPath := path.Join(support.DefaultSecretMountPath, nodecerts.SecretCAKey)
+	caCertSecret := volume.NewSecretVolume(params.Parent.Name, "ca")
+	certPath := path.Join(volume.DefaultSecretMountPath, nodecerts.SecretCAKey)
 
 	meta := metav1.ObjectMeta{
 		Namespace: params.Parent.Namespace,
@@ -98,7 +100,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: support.ElasticInternalUsersSecretName(params.Parent.Name),
+												Name: secret.ElasticInternalUsersSecretName(params.Parent.Name),
 											},
 											Key: params.User.Name,
 										},

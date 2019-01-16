@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -14,7 +14,7 @@ func TestNewPodsState(t *testing.T) {
 	exampleMasterNodePod := namedPod("master")
 
 	type args struct {
-		resourcesState support.ResourcesState
+		resourcesState reconcilehelper.ResourcesState
 		observedState  observer.State
 	}
 	tests := []struct {
@@ -25,7 +25,7 @@ func TestNewPodsState(t *testing.T) {
 		{
 			name: "should bucket pods into the expected states",
 			args: args{
-				resourcesState: support.ResourcesState{
+				resourcesState: reconcilehelper.ResourcesState{
 					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
@@ -60,7 +60,7 @@ func TestNewPodsState(t *testing.T) {
 		{
 			name: "should bucket pods into the expected states when no cluster state is available",
 			args: args{
-				resourcesState: support.ResourcesState{
+				resourcesState: reconcilehelper.ResourcesState{
 					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
