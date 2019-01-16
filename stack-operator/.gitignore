@@ -24,7 +24,7 @@ bin
 *~
 
 # ignore vendor/
-#tmp vendor/
+#    tmp vendor/
 
 # ignore devenv file
 .devenv

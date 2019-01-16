@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -24,7 +25,8 @@ var cfg *rest.Config
 func TestMain(m *testing.M) {
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "config", "crds")},
+		ControlPlaneStartTimeout: time.Duration(2 * time.Minute),
 	}
 	apis.AddToScheme(scheme.Scheme)
 
