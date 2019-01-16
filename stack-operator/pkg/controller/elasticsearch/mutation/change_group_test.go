@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,7 +48,7 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			want: &PerformableChanges{
 				Changes: Changes{
 					ToCreate: []PodToCreate{
-						{Pod: namedPod("1"), PodSpecCtx: support.PodSpecContext{}},
+						{Pod: namedPod("1"), PodSpecCtx: pod.PodSpecContext{}},
 					},
 				},
 				MaxUnavailableGroups: []string{"foo"},
@@ -109,7 +109,7 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			want: &PerformableChanges{
 				Changes: Changes{
 					ToCreate: []PodToCreate{
-						{Pod: namedPod("create-1"), PodSpecCtx: support.PodSpecContext{}},
+						{Pod: namedPod("create-1"), PodSpecCtx: pod.PodSpecContext{}},
 					},
 					ToDelete: []corev1.Pod{
 						namedPod("delete-1"),

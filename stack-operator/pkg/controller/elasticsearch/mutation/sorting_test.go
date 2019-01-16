@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -79,9 +79,9 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 
 func Test_sortPodsToCreateByMasterNodesFirstThenNameAsc(t *testing.T) {
 	masterNode5 := PodToCreate{Pod: namedPodWithCreationTimestamp("master5", time.Unix(5, 0))}
-	masterNode5.Pod.Labels = support.NodeTypesMasterLabelName.AsMap(true)
+	masterNode5.Pod.Labels = label.NodeTypesMasterLabelName.AsMap(true)
 	masterNode6 := PodToCreate{Pod: namedPodWithCreationTimestamp("master6", time.Unix(6, 0))}
-	masterNode6.Pod.Labels = support.NodeTypesMasterLabelName.AsMap(true)
+	masterNode6.Pod.Labels = label.NodeTypesMasterLabelName.AsMap(true)
 
 	type args struct {
 		pods []PodToCreate

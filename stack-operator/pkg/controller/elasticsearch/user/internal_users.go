@@ -4,7 +4,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,10 +17,10 @@ type InternalUsers struct {
 func NewInternalUsersFrom(users []esclient.User) InternalUsers {
 	internalUsers := InternalUsers{}
 	for _, user := range users {
-		if user.Name == support.InternalControllerUserName {
+		if user.Name == secret.InternalControllerUserName {
 			internalUsers.ControllerUser = user
 		}
-		if user.Name == support.InternalKibanaServerUserName {
+		if user.Name == secret.InternalKibanaServerUserName {
 			internalUsers.KibanaUser = user
 		}
 	}
@@ -43,7 +42,7 @@ func ReconcileUsers(
 	es v1alpha1.ElasticsearchCluster,
 ) (*InternalUsers, error) {
 
-	internalSecrets := support.NewInternalUserCredentials(es)
+	internalSecrets := secret.NewInternalUserCredentials(es)
 
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {
 		return nil, err
@@ -51,7 +50,7 @@ func ReconcileUsers(
 
 	users := internalSecrets.Users()
 	internalUsers := NewInternalUsersFrom(users)
-	externalSecrets := support.NewExternalUserCredentials(es)
+	externalSecrets := secret.NewExternalUserCredentials(es)
 
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
 		return nil, err
@@ -61,7 +60,7 @@ func ReconcileUsers(
 		users = append(users, u)
 	}
 
-	elasticUsersSecret, err := support.NewElasticUsersCredentials(es, users)
+	elasticUsersSecret, err := secret.NewElasticUsersCredentials(es, users)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,7 @@
 package mutation
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -38,8 +38,8 @@ func sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 }
 
 func comparePodByMasterNodesFirstThenNameAsc(iPod corev1.Pod, jPod corev1.Pod) bool {
-	iIsMaster := support.NodeTypesMasterLabelName.HasValue(true, iPod.Labels)
-	jIsMaster := support.NodeTypesMasterLabelName.HasValue(true, jPod.Labels)
+	iIsMaster := label.NodeTypesMasterLabelName.HasValue(true, iPod.Labels)
+	jIsMaster := label.NodeTypesMasterLabelName.HasValue(true, jPod.Labels)
 
 	switch {
 	case iIsMaster && !jIsMaster:

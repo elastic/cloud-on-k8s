@@ -4,7 +4,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -20,7 +19,7 @@ func ReconcileUserCredentialsSecret(
 	c client.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
-	creds support.UserCredentials,
+	creds UserCredentials,
 ) error {
 	expected := creds.Secret()
 	reconciled := &corev1.Secret{}

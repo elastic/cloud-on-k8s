@@ -6,7 +6,8 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,14 +31,14 @@ func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      DiscoveryServiceName(es.Name),
-			Labels:    support.NewLabels(es),
+			Labels:    label.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: support.NewLabels(es),
+			Selector: label.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     support.TransportPort,
+					Port:     pod.TransportPort,
 				},
 			},
 			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
@@ -59,7 +60,7 @@ func PublicServiceName(esName string) string {
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(support.HTTPPort))
+	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
@@ -69,14 +70,14 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      PublicServiceName(es.Name),
-			Labels:    support.NewLabels(es),
+			Labels:    label.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: support.NewLabels(es),
+			Selector: label.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     support.HTTPPort,
+					Port:     pod.HTTPPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,

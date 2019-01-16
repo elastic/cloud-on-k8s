@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -172,7 +172,7 @@ func TestChanges_Group(t *testing.T) {
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
 	bazPodToCreate := PodToCreate{
 		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}),
-		PodSpecCtx: support.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
+		PodSpecCtx: pod.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
 	foobarPod := withLabels(namedPod("4"), map[string]string{"foo": "bar", "bar": "baz"})

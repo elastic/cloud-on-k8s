@@ -60,7 +60,7 @@ func NewDriver(opts Options) (Driver, error) {
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
 		observedStateResolver:   support.NewObservedState,
-		resourcesStateResolver:  support.NewResourcesStateFromAPI,
+		resourcesStateResolver:  reconcilehelper.NewResourcesStateFromAPI,
 		internalUsersReconciler: user.ReconcileUsers,
 	}
 

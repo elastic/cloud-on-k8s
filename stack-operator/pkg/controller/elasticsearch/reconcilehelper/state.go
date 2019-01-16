@@ -56,7 +56,7 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 
 func (s *ReconcileState) updateWithPhase(
 	phase v1alpha1.ElasticsearchOrchestrationPhase,
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState support.ObservedState,
 ) *ReconcileState {
 	if observedState.ClusterState != nil {
@@ -75,7 +75,7 @@ func (s *ReconcileState) updateWithPhase(
 
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s *ReconcileState) UpdateElasticsearchState(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState support.ObservedState,
 ) *ReconcileState {
 	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
@@ -83,7 +83,7 @@ func (s *ReconcileState) UpdateElasticsearchState(
 
 // UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
 func (s *ReconcileState) UpdateElasticsearchOperational(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState support.ObservedState,
 
 ) *ReconcileState {
@@ -100,7 +100,7 @@ func (s *ReconcileState) UpdateElasticsearchPending(pods []corev1.Pod) *Reconcil
 
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *ReconcileState) UpdateElasticsearchMigrating(
-	resourcesState support.ResourcesState,
+	resourcesState ResourcesState,
 	observedState support.ObservedState,
 ) *ReconcileState {
 	s.AddEvent(

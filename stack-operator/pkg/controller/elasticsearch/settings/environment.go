@@ -1,4 +1,4 @@
-package support
+package settings
 
 const (
 	EnvClusterName = "cluster.name"

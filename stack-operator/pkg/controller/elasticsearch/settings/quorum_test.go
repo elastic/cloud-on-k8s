@@ -1,4 +1,4 @@
-package support
+package settings
 
 import (
 	"testing"
