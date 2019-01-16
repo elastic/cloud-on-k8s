@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,7 +27,7 @@ func createElasticsearchPod(
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	state *reconcilehelper.ReconcileState,
-	pod v1.Pod,
+	pod corev1.Pod,
 	podSpecCtx pod.PodSpecContext,
 ) error {
 	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
@@ -108,10 +108,10 @@ func createElasticsearchPod(
 		// append our PVC to the list of volumes
 		pod.Spec.Volumes = append(
 			pod.Spec.Volumes,
-			v1.Volume{
+			corev1.Volume{
 				Name: claimTemplate.Name,
-				VolumeSource: v1.VolumeSource{
-					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 						ClaimName: pvc.Name,
 						// TODO: support read only pvcs
 					},
@@ -126,7 +126,7 @@ func createElasticsearchPod(
 	if err := c.Create(context.TODO(), &pod); err != nil {
 		return err
 	}
-	state.AddEvent(v1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
+	state.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
 	log.Info("Created pod", "name", pod.Name, "namespace", pod.Namespace)
 
 	return nil
@@ -139,8 +139,8 @@ func deleteElasticsearchPod(
 	reconcileState *reconcilehelper.ReconcileState,
 	resourcesState reconcilehelper.ResourcesState,
 	observedState support.ObservedState,
-	pod v1.Pod,
-	allDeletions []v1.Pod,
+	pod corev1.Pod,
+	allDeletions []corev1.Pod,
 	preDelete func() error,
 ) (reconcile.Result, error) {
 	isMigratingData := migration.IsMigratingData(observedState, pod, allDeletions)
@@ -175,7 +175,7 @@ func deleteElasticsearchPod(
 		return reconcile.Result{}, err
 	}
 	reconcileState.AddEvent(
-		v1.EventTypeNormal, events.EventReasonDeleted, common.Concat("Deleted pod ", pod.Name),
+		corev1.EventTypeNormal, events.EventReasonDeleted, common.Concat("Deleted pod ", pod.Name),
 	)
 	log.Info("Deleted pod", "name", pod.Name, "namespace", pod.Namespace)
 

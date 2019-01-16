@@ -8,12 +8,14 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	esv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,10 +63,13 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Create the Elasticsearch object and expect the Reconcile and Deployment to be created
+	// Pretend secrets created by the Elasticsearch controller are there
+	secrets := mockSecrets(t, c)
+
+	// Create the stack resource, that should be reconciled
 	err = c.Create(context.TODO(), instance)
 	// Manually create users secret as Elasticsearch controller is not running
-	userSecret := &v1.Secret{
+	userSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secret.ElasticInternalUsersSecretName("foo"),
 			Namespace: "default",
@@ -74,6 +79,7 @@ func TestReconcile(t *testing.T) {
 		},
 	}
 	assert.NoError(t, c.Create(context.TODO(), userSecret))
+
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {
@@ -88,7 +94,7 @@ func TestReconcile(t *testing.T) {
 	es := &esv1alpha1.ElasticsearchCluster{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, es) })
 
-	// Kibana  should be created
+	// Kibana should be created
 	kibana := &kbv1alpha1.Kibana{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, kibana) })
 
@@ -101,6 +107,38 @@ func TestReconcile(t *testing.T) {
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
 	test.DeleteIfExists(t, c, es)
 	test.DeleteIfExists(t, c, kibana)
-	test.DeleteIfExists(t, c, userSecret)
+	for _, s := range secrets {
+		test.DeleteIfExists(t, c, s)
+	}
+}
 
+func mockSecrets(t *testing.T, c client.Client) []*v1.Secret {
+	// The Kibana resource needs some secrets to be created,
+	// but the Elasticsearch controller is not running.
+	// Here we are creating dummy secrets to pretend they exist.
+	// TODO: This would not be necessary if Kibana and Elasticsearch were less coupled.
+
+	userSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secret.ElasticInternalUsersSecretName("foo"),
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			secret.InternalKibanaServerUserName: []byte("blub"),
+		},
+	}
+	assert.NoError(t, c.Create(context.TODO(), userSecret))
+
+	caSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			nodecerts.SecretCAKey: []byte("fake-ca-cert"),
+		},
+	}
+	assert.NoError(t, c.Create(context.TODO(), caSecret))
+
+	return []*v1.Secret{userSecret, caSecret}
 }

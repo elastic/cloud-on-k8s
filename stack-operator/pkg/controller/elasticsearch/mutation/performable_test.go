@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestPerformableChanges_HasChanges(t *testing.T) {
@@ -88,9 +88,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 
 	updateStrategyWithZonesAsGroups := v1alpha1.UpdateStrategy{
 		Groups: []v1alpha1.GroupingDefinition{
-			{Selector: v1.LabelSelector{MatchLabels: map[string]string{"zone": "a"}}},
-			{Selector: v1.LabelSelector{MatchLabels: map[string]string{"zone": "b"}}},
-			{Selector: v1.LabelSelector{MatchLabels: map[string]string{"zone": "c"}}},
+			{Selector: metav1.LabelSelector{MatchLabels: map[string]string{"zone": "a"}}},
+			{Selector: metav1.LabelSelector{MatchLabels: map[string]string{"zone": "b"}}},
+			{Selector: metav1.LabelSelector{MatchLabels: map[string]string{"zone": "c"}}},
 		},
 	}
 

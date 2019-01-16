@@ -8,19 +8,19 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // newPod creates a new named potentially labeled as master
-func newPod(name string, master bool) v1.Pod {
-	pod := v1.Pod{
+func newPod(name string, master bool) corev1.Pod {
+	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: make(map[string]string),
 		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{{}},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{}},
 		},
 	}
 
@@ -70,7 +70,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 					},
 				},
 				resourcesState: reconcilehelper.ResourcesState{
-					CurrentPods: []v1.Pod{newPod("a", true)},
+					CurrentPods: []corev1.Pod{newPod("a", true)},
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
@@ -89,7 +89,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 					},
 				},
 				resourcesState: reconcilehelper.ResourcesState{
-					CurrentPods: []v1.Pod{newPod("a", false)},
+					CurrentPods: []corev1.Pod{newPod("a", false)},
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {

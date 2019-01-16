@@ -15,7 +15,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -120,7 +120,7 @@ func (c *Ca) CreateCertificate(
 func (c *Ca) ReconcilePublicCertsSecret(
 	cl client.Client,
 	objectKey types.NamespacedName,
-	owner v1.Object,
+	owner metav1.Object,
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.

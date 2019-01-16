@@ -10,11 +10,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testProbeUser = client.User{Name: "username", Password: "supersecure"}
-var testObjectMeta = v1.ObjectMeta{
+var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",
 }
