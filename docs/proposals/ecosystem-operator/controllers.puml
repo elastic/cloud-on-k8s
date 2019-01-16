@@ -1,0 +1,23 @@
+@startuml
+skinparam component {
+    BorderStyle<<placeholder>> dashed
+}
+
+package "Global operator" {
+    [**Namespace controller**] as NamespaceController
+    [Additional controllers] <<placeholder>>
+
+    ' Order the namespace controller to the left of the additional controllers
+    NamespaceController -[hidden]> [Additional controllers]
+}
+
+package "Namespace operator" as NamespaceOperator {
+    interface ElasticsearchCluster
+    [Elasticsearch controller] <--> ElasticsearchCluster : **reconciles**
+
+    interface Kibana
+    [Kibana controller] <--> Kibana : **reconciles**
+}
+
+NamespaceController =down=> NamespaceOperator : manages lifecycle
+@enduml
