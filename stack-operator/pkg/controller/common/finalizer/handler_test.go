@@ -3,7 +3,6 @@ package finalizer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -110,7 +109,6 @@ func TestHandler_Handle(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		fmt.Println("---")
 		t.Run(tt.name, func(t *testing.T) {
 			// pretend resource already exists in api server
 			fakeClient := fake.NewFakeClient(&tt.resource)

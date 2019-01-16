@@ -25,7 +25,7 @@ const (
 	DefaultRequestTimeout      = 1 * time.Minute
 )
 
-// DefaultSettings is an observer Params with default values
+// DefaultSettings is an observer's Params with default values
 var DefaultSettings = Settings{
 	ObservationInterval: DefaultObservationInterval,
 	RequestTimeout:      DefaultRequestTimeout,
