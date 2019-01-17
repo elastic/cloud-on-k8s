@@ -6,9 +6,9 @@ import (
 )
 
 // ParsePEMCerts returns a list of certificates from the given PEM certs data
-// Based on the code of x509.AppendCertsFromPEM (https://golang.org/src/crypto/x509/cert_pool.go)
-// We don't rely on x509.AppendCertsFromPEM here since it returns an interface from which
-// we cannot extract the actual certificates for comparison.
+// Based on the code of x509.CertPool.AppendCertsFromPEM (https://golang.org/src/crypto/x509/cert_pool.go)
+// We don't rely on x509.CertPool.AppendCertsFromPEM directly here since it returns an interface from which
+// we cannot extract the actual certificates if we need to compare them.
 func ParsePEMCerts(pemData []byte) ([]*x509.Certificate, error) {
 	certs := []*x509.Certificate{}
 	for len(pemData) > 0 {
