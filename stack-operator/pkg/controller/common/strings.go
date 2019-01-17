@@ -25,13 +25,15 @@ func StringInSlice(str string, list []string) bool {
 	return false
 }
 
-// RemoveString returns the given slice with occurences of string s removed
-func RemoveString(slice []string, s string) (result []string) {
+// RemoveStringInSlice returns a new slice with all occurrences of s removed,
+// keeping the given slice unmodified
+func RemoveStringInSlice(s string, slice []string) []string {
+	result := make([]string, 0, len(slice))
 	for _, item := range slice {
 		if item == s {
 			continue
 		}
 		result = append(result, item)
 	}
-	return
+	return result
 }

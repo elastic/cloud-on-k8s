@@ -90,7 +90,7 @@ func (h *Handler) executeFinalizers(finalizers []Finalizer, object metav1.Object
 				break
 			}
 			needUpdate = true
-			object.SetFinalizers(common.RemoveString(object.GetFinalizers(), finalizer.Name))
+			object.SetFinalizers(common.RemoveStringInSlice(finalizer.Name, object.GetFinalizers()))
 		}
 	}
 	return needUpdate, finalizerErr
