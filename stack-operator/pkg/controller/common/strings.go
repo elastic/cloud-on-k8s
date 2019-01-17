@@ -28,7 +28,7 @@ func StringInSlice(str string, list []string) bool {
 // RemoveStringInSlice returns a new slice with all occurrences of s removed,
 // keeping the given slice unmodified
 func RemoveStringInSlice(s string, slice []string) []string {
-	result := []string{}
+	result := make([]string, 0, len(slice))
 	for _, item := range slice {
 		if item == s {
 			continue
