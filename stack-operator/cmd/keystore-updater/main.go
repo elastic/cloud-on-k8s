@@ -91,22 +91,30 @@ func fatal(err error, msg string) {
 	os.Exit(1)
 }
 
+func simpleBackoff(attempt int) time.Duration {
+	return 5 * time.Second // TODO exp. backoff/jitter etc
+}
+
 // coalescingRetry attempts to run functions from in but coalescing any subsequent new incoming requests into
 // one while retrying. The underlying assumption being that all functions passed via in are idempotent.
-func coalescingRetry(in <-chan func() error) {
+func coalescingRetry(in <-chan func() error, backoff func(int) time.Duration) {
 	var request func() error
 	timer := time.NewTimer(0)
 	var retryTimerCh <-chan time.Time
+	var numAttempt int
 
-	attempt := func() {
+	attempt := func(cancelRetry bool) {
+		numAttempt++
 		err := request()
+		if cancelRetry && !timer.Stop() {
+			<-timer.C
+		}
 		if err != nil {
-			if !timer.Stop() {
-				<-timer.C
-			}
-			timer.Reset(5 * time.Second) // TODO backoff/jitter etc
+			timer.Reset(backoff(numAttempt))
 			retryTimerCh = timer.C
 		} else {
+			numAttempt = 0
+			retryTimerCh = nil
 			request = nil // success
 		}
 	}
@@ -114,10 +122,12 @@ func coalescingRetry(in <-chan func() error) {
 	for {
 		select {
 		case r := <-in:
-			request = r //effectively coalesces any pending requests into one
-			attempt()
+			request = r              //effectively coalesces any pending requests into one
+			if retryTimerCh == nil { // only attempt if we are not retrying
+				attempt(true) // cancel any pending retries see https://github.com/golang/go/issues/11513
+			}
 		case <-retryTimerCh:
-			attempt()
+			attempt(false) // retry channel already consumed, don't cancel
 		}
 	}
 }
@@ -266,7 +276,7 @@ func execute() {
 	config := validateConfig()
 
 	if config.ReloadCredentials {
-		go coalescingRetry(config.ReloadQueue)
+		go coalescingRetry(config.ReloadQueue, simpleBackoff)
 	}
 
 	//initial update/create
