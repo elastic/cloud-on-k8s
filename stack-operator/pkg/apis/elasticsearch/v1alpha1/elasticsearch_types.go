@@ -267,6 +267,14 @@ type ElasticsearchCluster struct {
 	Status ElasticsearchStatus `json:"status,omitempty"`
 }
 
+// IsMarkedForDeletion returns true if the ElasticsearchCluster is going to be deleted
+func (e ElasticsearchCluster) IsMarkedForDeletion() bool {
+	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
+		return false
+	}
+	return true
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ElasticsearchClusterList contains a list of Elasticsearch

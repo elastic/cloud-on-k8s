@@ -159,6 +159,12 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	state *reconcilehelper.ReconcileState,
 ) *reconcilehelper.ReconcileResults {
 	results := &reconcilehelper.ReconcileResults{}
+	if es.IsMarkedForDeletion() {
+		// resource will be deleted, nothing to reconcile
+		// pre-delete operations will be handled by finalizers
+		return results
+	}
+
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)
