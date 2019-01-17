@@ -25,6 +25,7 @@ bin
 
 # ignore vendor/
 #    tmp vendor/
+# TODO: remove this
 
 # ignore devenv file
 .devenv
