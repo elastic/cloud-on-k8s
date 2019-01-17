@@ -57,11 +57,8 @@ keystore-updater: generate fmt vet
 	go build -o bin/keystore-updater github.com/elastic/stack-operators/stack-operator/cmd/keystore-updater
 
 # CI job
-ci-prereq:
-	go get -u github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
-
 .PHONY: ci
-ci: ci-prereq dep-vendor-only stack-operator unit keystore-updater
+ci: dep-vendor-only stack-operator integration keystore-updater
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 OPERATOR_IMAGE?=no-operator-image

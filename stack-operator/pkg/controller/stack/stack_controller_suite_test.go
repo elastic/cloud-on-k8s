@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -24,7 +25,8 @@ func TestMain(m *testing.M) {
 	logf.SetLogger(logf.ZapLogger(false))
 
 	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
+		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "config", "crds")},
+		ControlPlaneStartTimeout: test.ControlPlaneStartTimeout,
 	}
 	apis.AddToScheme(scheme.Scheme)
 

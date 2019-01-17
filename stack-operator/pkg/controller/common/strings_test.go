@@ -1,10 +1,10 @@
 package common
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestStringInSlice(t *testing.T) {
@@ -44,8 +44,8 @@ func TestStringInSlice(t *testing.T) {
 
 func TestRemoveStringInSlice(t *testing.T) {
 	type args struct {
-		r    string
-		list []string
+		s     string
+		slice []string
 	}
 	tests := []struct {
 		name string
@@ -55,33 +55,31 @@ func TestRemoveStringInSlice(t *testing.T) {
 		{
 			name: "removes string from slice",
 			args: args{
-				r:    "b",
-				list: []string{"a", "b", "c"},
+				s:     "b",
+				slice: []string{"a", "b", "c"},
 			},
 			want: []string{"a", "c"},
 		},
 		{
 			name: "removes string from slice multiple occurrences",
 			args: args{
-				r:    "b",
-				list: []string{"a", "b", "c", "b"},
+				s:     "b",
+				slice: []string{"a", "b", "c", "b"},
 			},
 			want: []string{"a", "c"},
 		},
 		{
 			name: "noop when string not found",
 			args: args{
-				r:    "d",
-				list: []string{"a", "b", "c"},
+				s:     "d",
+				slice: []string{"a", "b", "c"},
 			},
 			want: []string{"a", "b", "c"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := RemoveStringInSlice(tt.args.r, tt.args.list); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("RemoveStringInSlice() = %v, want %v", got, tt.want)
-			}
+			require.ElementsMatch(t, tt.want, RemoveStringInSlice(tt.args.s, tt.args.slice))
 		})
 	}
 }
