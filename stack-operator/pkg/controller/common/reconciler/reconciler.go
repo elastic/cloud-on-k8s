@@ -3,6 +3,7 @@ package reconciler
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -79,7 +80,14 @@ func ReconcileResource(params Params) error {
 		// Create if needed
 		log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
 
-		err = params.Client.Create(context.TODO(), params.Expected)
+		// Copy the content of params.Expected into params.Reconciled.
+		// Unfortunately it's not straightforward to change the value of an interface underlying pointer,
+		// so we need a small bit of reflection here.
+		// This will panic if params.Expected and params.Reconciled don't have the same underlying type.
+		expectedCopyValue := reflect.ValueOf(params.Expected.DeepCopyObject()).Elem()
+		reflect.ValueOf(params.Reconciled).Elem().Set(expectedCopyValue)
+		// Create the object, which modifies params.Reconciled in-place
+		err = params.Client.Create(context.TODO(), params.Reconciled)
 		if err != nil {
 			return err
 		}

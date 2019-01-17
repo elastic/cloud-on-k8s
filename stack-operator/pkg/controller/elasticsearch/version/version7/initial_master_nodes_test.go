@@ -3,8 +3,10 @@ package version7
 import (
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +24,7 @@ func newPod(name string, master bool) corev1.Pod {
 		},
 	}
 
-	support.NodeTypesMasterLabelName.Set(master, pod.Labels)
+	label.NodeTypesMasterLabelName.Set(master, pod.Labels)
 
 	return pod
 }
@@ -35,7 +37,7 @@ pod:
 	for _, change := range changes.ToCreate {
 		for _, container := range change.Pod.Spec.Containers {
 			for _, env := range container.Env {
-				if env.Name == support.EnvClusterInitialMasterNodes {
+				if env.Name == settings.EnvClusterInitialMasterNodes {
 					res[change.Pod.Name] = env.Value
 					continue pod
 				}
@@ -49,7 +51,7 @@ pod:
 func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 	type args struct {
 		performableChanges mutation.PerformableChanges
-		resourcesState     support.ResourcesState
+		resourcesState     reconcilehelper.ResourcesState
 	}
 	tests := []struct {
 		name       string
@@ -67,7 +69,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						}},
 					},
 				},
-				resourcesState: support.ResourcesState{
+				resourcesState: reconcilehelper.ResourcesState{
 					CurrentPods: []corev1.Pod{newPod("a", true)},
 				},
 			},
@@ -86,7 +88,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						}},
 					},
 				},
-				resourcesState: support.ResourcesState{
+				resourcesState: reconcilehelper.ResourcesState{
 					CurrentPods: []corev1.Pod{newPod("a", false)},
 				},
 			},

@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
@@ -14,7 +15,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
@@ -228,7 +228,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	// TODO: be dynamic wrt to the service name
 	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", services.PublicServiceName(es.Name))
 
-	internalUsersSecretName := support.ElasticInternalUsersSecretName(es.Name)
+	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret corev1.Secret
 	internalUsersSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: internalUsersSecretName}
 	if err := r.Get(context.TODO(), internalUsersSecretKey, &internalUsersSecret); err != nil {
@@ -237,9 +237,9 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// TODO: can deliver through a shared secret instead?
 	kb.Spec.Elasticsearch.Auth.Inline = &v1alpha12.ElasticsearchInlineAuth{
-		Username: support.InternalKibanaServerUserName,
+		Username: secret.InternalKibanaServerUserName,
 		// TODO: error checking
-		Password: string(internalUsersSecret.Data[support.InternalKibanaServerUserName]),
+		Password: string(internalUsersSecret.Data[secret.InternalKibanaServerUserName]),
 	}
 
 	var publicCACertSecret corev1.Secret

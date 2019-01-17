@@ -1,4 +1,4 @@
-package support
+package pod
 
 // DefaultReadinessProbeScript is the verbatim shell script that acts as a readiness probe
 const DefaultReadinessProbeScript string = `

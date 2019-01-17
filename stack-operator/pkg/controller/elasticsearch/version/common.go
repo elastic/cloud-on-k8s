@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,28 +24,28 @@ import (
 
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
-	SecurityPropsFile   = path.Join(support.ManagedConfigPath, support.SecurityPropsFile)
+	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
-	paramsTmpl support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	paramsTmpl pod.NewPodSpecParams,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
-	newSideCarContainersFn func(imageName string, spec support.NewPodSpecParams, volumes map[string]support.VolumeLike) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
-) ([]support.PodSpecContext, error) {
-	podSpecs := make([]support.PodSpecContext, 0, es.Spec.NodeCount())
+) ([]pod.PodSpecContext, error) {
+	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, topology := range es.Spec.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
 			podSpec, err := podSpec(
-				support.NewPodSpecParams{
+				pod.NewPodSpecParams{
 					Version:         es.Spec.Version,
 					CustomImageName: es.Spec.Image,
 					ClusterName:     es.Name,
-					DiscoveryZenMinimumMasterNodes: support.ComputeMinimumMasterNodes(
+					DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
 						es.Spec.Topologies,
 					),
 					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
@@ -65,7 +68,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, support.PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
 		}
 	}
 
@@ -74,30 +77,30 @@ func NewExpectedPodSpecs(
 
 // podSpec creates a new PodSpec for an Elasticsearch node
 func podSpec(
-	p support.NewPodSpecParams,
-	newEnvironmentVarsFn func(support.NewPodSpecParams, support.SecretVolume, support.SecretVolume) []corev1.EnvVar,
+	p pod.NewPodSpecParams,
+	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
-	newSideCarContainersFn func(imageName string, spec support.NewPodSpecParams, volumes map[string]support.VolumeLike) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
-	imageName := common.Concat(support.DefaultImageRepository, ":", p.Version)
+	imageName := common.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
 		imageName = p.CustomImageName
 	}
 
-	terminationGracePeriodSeconds := support.DefaultTerminationGracePeriodSeconds
-	volumes := map[string]support.VolumeLike{
+	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
+	volumes := map[string]volume.VolumeLike{
 		p.ConfigMapVolume.Name():   p.ConfigMapVolume,
 		p.UsersSecretVolume.Name(): p.UsersSecretVolume,
 	}
 
-	probeSecret := support.NewSelectiveSecretVolumeWithMountPath(
-		support.ElasticInternalUsersSecretName(p.ClusterName), support.ProbeUserVolumeName,
-		support.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
+	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
+		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	volumes[probeSecret.Name()] = probeSecret
 
-	extraFilesSecretVolume := support.NewSecretVolumeWithMountPath(
+	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
@@ -107,15 +110,15 @@ func podSpec(
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := support.NewSecretVolumeWithMountPath(
+	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		support.NodeCertificatesSecretVolumeName,
-		support.NodeCertificatesSecretVolumeMountPath,
+		volume.NodeCertificatesSecretVolumeName,
+		volume.NodeCertificatesSecretVolumeMountPath,
 	)
 
 	volumes[nodeCertificatesVolume.Name()] = nodeCertificatesVolume
 
-	keystoreVolume := support.NewSecretVolumeWithMountPath(
+	keystoreVolume := volume.NewSecretVolumeWithMountPath(
 		p.KeystoreSecretRef.Name,
 		keystore.SecretVolumeName,
 		keystore.SecretMountPath)
@@ -137,8 +140,8 @@ func podSpec(
 			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, extraFilesSecretVolume),
 			Image:           imageName,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            support.DefaultContainerName,
-			Ports:           support.DefaultContainerPorts,
+			Name:            pod.DefaultContainerName,
+			Ports:           pod.DefaultContainerPorts,
 			Resources: corev1.ResourceRequirements{
 				Limits: resourceLimits,
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
@@ -155,7 +158,7 @@ func podSpec(
 						Command: []string{
 							"sh",
 							"-c",
-							support.DefaultReadinessProbeScript,
+							pod.DefaultReadinessProbeScript,
 						},
 					},
 				},
@@ -202,17 +205,17 @@ func podSpec(
 func NewPod(
 	version version.Version,
 	es v1alpha1.ElasticsearchCluster,
-	podSpecCtx support.PodSpecContext,
+	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
-	labels := support.NewLabels(es)
+	labels := label.NewLabels(es)
 	// add labels from the version
 	labels[ElasticsearchVersionLabelName] = version.String()
 
 	// add labels for node types
-	support.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
-	support.NodeTypesDataLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Data, labels)
-	support.NodeTypesIngestLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Ingest, labels)
-	support.NodeTypesMLLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.ML, labels)
+	label.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
+	label.NodeTypesDataLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Data, labels)
+	label.NodeTypesIngestLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.ML, labels)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior
@@ -224,7 +227,7 @@ func NewPod(
 
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        support.NewNodeName(es.Name),
+			Name:        pod.NewNodeName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
 			Annotations: podSpecCtx.TopologySpec.PodTemplate.Annotations,
@@ -236,7 +239,7 @@ func NewPod(
 }
 
 func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
-	minimumMasterNodes := support.ComputeMinimumMasterNodesFromPods(allPods)
+	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
 	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
 	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
 }

@@ -8,7 +8,9 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 
 	corev1 "k8s.io/api/core/v1"
@@ -23,9 +25,9 @@ var testObjectMeta = metav1.ObjectMeta{
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
-		p                      support.NewPodSpecParams
-		nodeCertificatesVolume support.SecretVolume
-		extraFilesSecretVolume support.SecretVolume
+		p                      pod.NewPodSpecParams
+		nodeCertificatesVolume volume.SecretVolume
+		extraFilesSecretVolume volume.SecretVolume
 	}
 
 	tests := []struct {
@@ -35,7 +37,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}{
 		{name: "2 nodes",
 			args: args{
-				p: support.NewPodSpecParams{
+				p: pod.NewPodSpecParams{
 					ClusterName:                    "cluster",
 					CustomImageName:                "myImage",
 					DiscoveryServiceName:           "discovery-service",
@@ -50,8 +52,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 					Version:          "1.2.3",
 					ProbeUser:        testProbeUser,
 				},
-				nodeCertificatesVolume: support.SecretVolume{},
-				extraFilesSecretVolume: support.SecretVolume{},
+				nodeCertificatesVolume: volume.SecretVolume{},
+				extraFilesSecretVolume: volume.SecretVolume{},
 			},
 			wantEnvSubset: []corev1.EnvVar{
 				{Name: "discovery.zen.ping.unicast.hosts", Value: "discovery-service"},
@@ -128,8 +130,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
-				support.NewPodSpecParams{ProbeUser: testProbeUser},
-				support.ResourcesState{},
+				pod.NewPodSpecParams{ProbeUser: testProbeUser},
+				reconcilehelper.ResourcesState{},
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
@@ -154,8 +156,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	}
 	podSpec, err := ExpectedPodSpecs(
 		es,
-		support.NewPodSpecParams{ProbeUser: testProbeUser},
-		support.ResourcesState{},
+		pod.NewPodSpecParams{ProbeUser: testProbeUser},
+		reconcilehelper.ResourcesState{},
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
@@ -170,7 +172,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
-	assert.ElementsMatch(t, support.DefaultContainerPorts, esContainer.Ports)
+	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
 	assert.Equal(t, 10, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
@@ -179,8 +181,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 func Test_newSidecarContainers(t *testing.T) {
 	type args struct {
 		imageName string
-		spec      support.NewPodSpecParams
-		volumes   map[string]support.VolumeLike
+		spec      pod.NewPodSpecParams
+		volumes   map[string]volume.VolumeLike
 	}
 	tests := []struct {
 		name    string
@@ -190,7 +192,7 @@ func Test_newSidecarContainers(t *testing.T) {
 	}{
 		{
 			name:    "error: no keystore volume",
-			args:    args{imageName: "test-operator-image", spec: support.NewPodSpecParams{}},
+			args:    args{imageName: "test-operator-image", spec: pod.NewPodSpecParams{}},
 			want:    []corev1.Container{},
 			wantErr: true,
 		},
@@ -198,9 +200,9 @@ func Test_newSidecarContainers(t *testing.T) {
 			name: "error: no probe user volume",
 			args: args{
 				imageName: "test-operator-image",
-				spec:      support.NewPodSpecParams{},
-				volumes: map[string]support.VolumeLike{
-					keystore.SecretVolumeName: support.SecretVolume{},
+				spec:      pod.NewPodSpecParams{},
+				volumes: map[string]volume.VolumeLike{
+					keystore.SecretVolumeName: volume.SecretVolume{},
 				},
 			},
 			want:    []corev1.Container{},
@@ -210,10 +212,10 @@ func Test_newSidecarContainers(t *testing.T) {
 			name: "error: no cert volume",
 			args: args{
 				imageName: "test-operator-image",
-				spec:      support.NewPodSpecParams{},
-				volumes: map[string]support.VolumeLike{
-					keystore.SecretVolumeName:   support.SecretVolume{},
-					support.ProbeUserVolumeName: support.SecretVolume{},
+				spec:      pod.NewPodSpecParams{},
+				volumes: map[string]volume.VolumeLike{
+					keystore.SecretVolumeName:  volume.SecretVolume{},
+					volume.ProbeUserVolumeName: volume.SecretVolume{},
 				},
 			},
 			want:    []corev1.Container{},
@@ -223,11 +225,11 @@ func Test_newSidecarContainers(t *testing.T) {
 			name: "success: expected container present",
 			args: args{
 				imageName: "test-operator-image",
-				spec:      support.NewPodSpecParams{},
-				volumes: map[string]support.VolumeLike{
-					keystore.SecretVolumeName:                support.NewSecretVolumeWithMountPath("keystore", "keystore", "/keystore"),
-					support.ProbeUserVolumeName:              support.NewSecretVolumeWithMountPath("user", "user", "/user"),
-					support.NodeCertificatesSecretVolumeName: support.NewSecretVolumeWithMountPath("ca.pem", "certs", "/certs"),
+				spec:      pod.NewPodSpecParams{},
+				volumes: map[string]volume.VolumeLike{
+					keystore.SecretVolumeName:               volume.NewSecretVolumeWithMountPath("keystore", "keystore", "/keystore"),
+					volume.ProbeUserVolumeName:              volume.NewSecretVolumeWithMountPath("user", "user", "/user"),
+					volume.NodeCertificatesSecretVolumeName: volume.NewSecretVolumeWithMountPath("ca.pem", "certs", "/certs"),
 				},
 			},
 			want: []corev1.Container{

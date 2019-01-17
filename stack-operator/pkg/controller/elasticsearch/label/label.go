@@ -1,4 +1,4 @@
-package support
+package label
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"

@@ -3,7 +3,8 @@ package mutation
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -12,8 +13,8 @@ func TestCalculateChanges(t *testing.T) {
 	var taintedPod = defaultPod
 	taintedPod.Annotations = map[string]string{TaintedAnnotationName: "true"}
 	type args struct {
-		expected []support.PodSpecContext
-		state    support.ResourcesState
+		expected []pod.PodSpecContext
+		state    reconcilehelper.ResourcesState
 	}
 	tests := []struct {
 		name string
@@ -23,16 +24,16 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "no changes",
 			args: args{
-				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []pod.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    reconcilehelper.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "2 new pods",
 			args: args{
-				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []pod.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    reconcilehelper.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod, defaultPod},
@@ -42,16 +43,16 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "2 less pods",
 			args: args{
-				expected: []support.PodSpecContext{},
-				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []pod.PodSpecContext{},
+				state:    reconcilehelper.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{ToDelete: []corev1.Pod{defaultPod, defaultPod}},
 		},
 		{
 			name: "1 pod replaced",
 			args: args{
-				expected: []support.PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
-				state:    support.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
+				expected: []pod.PodSpecContext{defaultPodSpecCtx, ESPodSpecContext("another-image", defaultCPULimit)},
+				state:    reconcilehelper.ResourcesState{CurrentPods: []corev1.Pod{defaultPod, defaultPod}},
 			},
 			want: Changes{
 				ToKeep:   []corev1.Pod{defaultPod},
@@ -62,15 +63,15 @@ func TestCalculateChanges(t *testing.T) {
 		{
 			name: "1 pod replaced on pod tainted",
 			args: args{
-				expected: []support.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    support.ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
+				expected: []pod.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    reconcilehelper.ResourcesState{CurrentPods: []corev1.Pod{taintedPod, defaultPod}},
 			},
 			want: Changes{ToKeep: []corev1.Pod{defaultPod}, ToDelete: []corev1.Pod{defaultPod}, ToCreate: []PodToCreate{PodToCreate{PodSpecCtx: defaultPodSpecCtx}}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.state, func(ctx support.PodSpecContext) (corev1.Pod, error) {
+			got, err := CalculateChanges(tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
 				return corev1.Pod{}, nil // TODO: fix
 			})
 			assert.NoError(t, err)
