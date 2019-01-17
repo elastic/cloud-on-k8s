@@ -2,6 +2,7 @@ package observer
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io/ioutil"
 	"net/http"
@@ -39,7 +40,7 @@ func TestObserver_retrieveState(t *testing.T) {
 		esClient: &fake,
 	}
 	require.Equal(t, observer.LastObservationTime(), time.Time{})
-	observer.retrieveState()
+	observer.retrieveState(context.Background())
 	require.NotEqual(t, observer.LastObservationTime(), time.Time{})
 }
 
@@ -59,7 +60,7 @@ func TestNewObserver(t *testing.T) {
 func TestObserver_Stop(t *testing.T) {
 	observer := createTestObserver()
 	// force at least one observation for time comparison
-	observer.retrieveState()
+	observer.retrieveState(context.Background())
 	observer.Stop()
 	// should be safe to call multiple times
 	observer.Stop()

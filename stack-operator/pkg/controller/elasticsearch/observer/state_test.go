@@ -2,10 +2,10 @@ package observer
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"net/http"
 	"testing"
-	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
@@ -27,12 +27,12 @@ func fakeEsClient(statusCodes []int) client.Client {
 
 func TestRetrieveState(t *testing.T) {
 	fakeClient := fakeEsClient([]int{200, 500})
-	state := RetrieveState(&fakeClient, 10*time.Second)
+	state := RetrieveState(context.Background(), &fakeClient)
 	require.NotNil(t, state.ClusterState)
 	require.Nil(t, state.ClusterHealth)
 	// and the other way around
 	fakeClient = fakeEsClient([]int{500, 200})
-	state = RetrieveState(&fakeClient, 10*time.Second)
+	state = RetrieveState(context.Background(), &fakeClient)
 	require.Nil(t, state.ClusterState)
 	require.NotNil(t, state.ClusterHealth)
 }

@@ -2,7 +2,6 @@ package observer
 
 import (
 	"context"
-	"time"
 
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 )
@@ -18,11 +17,8 @@ type State struct {
 }
 
 // RetrieveState returns the current Elasticsearch cluster state
-func RetrieveState(esClient *esclient.Client, timeout time.Duration) State {
+func RetrieveState(ctx context.Context, esClient *esclient.Client) State {
 	state := State{}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	clusterState, err := esClient.GetClusterState(ctx)
 	if err != nil {
@@ -32,9 +28,6 @@ func RetrieveState(esClient *esclient.Client, timeout time.Duration) State {
 	}
 
 	// TODO: if the above errored, we might want to consider bailing? or do the requests in parallel
-
-	ctx, cancel = context.WithTimeout(context.Background(), timeout)
-	defer cancel()
 
 	// TODO we could derive cluster health from the routing table and save this request
 	health, err := esClient.GetClusterHealth(ctx)

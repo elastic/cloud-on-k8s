@@ -1,6 +1,7 @@
 package observer
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -91,24 +92,36 @@ func (o *Observer) LastObservationTime() time.Time {
 
 // run the observer main loop, until stopped
 func (o *Observer) run() {
-	o.retrieveState()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go o.runPeriodically(ctx)
+	<-o.stopChan
+}
+
+// runPeriodically triggers a state retrieval every tick,
+// until the given context is cancelled
+func (o *Observer) runPeriodically(ctx context.Context) {
+	o.retrieveState(ctx)
 	ticker := time.NewTicker(o.settings.ObservationInterval)
+	defer ticker.Stop()
 	for {
 		select {
-		case <-o.stopChan:
-			log.Info("Stopping observer", "clusterName", o.clusterName)
-			ticker.Stop()
-			return
 		case <-ticker.C:
-			o.retrieveState()
+			o.retrieveState(ctx)
+		case <-ctx.Done():
+			log.Info("Stopping observer", "clusterName", o.clusterName)
+			return
 		}
 	}
 }
 
 // retrieveState retrieves the current ES state and stores it in lastState
-func (o *Observer) retrieveState() {
+func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(4).Info("Retrieving state", "clusterName", o.clusterName)
-	state := RetrieveState(o.esClient, o.settings.RequestTimeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
+	defer cancel()
+	state := RetrieveState(timeoutCtx, o.esClient)
 	o.mutex.Lock()
 	o.lastState = state
 	o.lastObservationTime = time.Now()
