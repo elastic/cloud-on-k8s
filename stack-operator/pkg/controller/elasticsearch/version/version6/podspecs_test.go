@@ -193,7 +193,6 @@ func Test_newSidecarContainers(t *testing.T) {
 		{
 			name:    "error: no keystore volume",
 			args:    args{imageName: "test-operator-image", spec: pod.NewPodSpecParams{}},
-			want:    []corev1.Container{},
 			wantErr: true,
 		},
 		{
@@ -205,7 +204,6 @@ func Test_newSidecarContainers(t *testing.T) {
 					keystore.SecretVolumeName: volume.SecretVolume{},
 				},
 			},
-			want:    []corev1.Container{},
 			wantErr: true,
 		},
 		{
@@ -218,7 +216,6 @@ func Test_newSidecarContainers(t *testing.T) {
 					volume.ProbeUserVolumeName: volume.SecretVolume{},
 				},
 			},
-			want:    []corev1.Container{},
 			wantErr: true,
 		},
 		{

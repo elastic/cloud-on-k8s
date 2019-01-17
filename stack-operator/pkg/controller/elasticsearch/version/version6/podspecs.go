@@ -86,15 +86,15 @@ func newSidecarContainers(
 
 	keystoreVolume, ok := volumes[keystore.SecretVolumeName]
 	if !ok {
-		return []corev1.Container{}, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
+		return nil, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
 	}
 	probeUser, ok := volumes[volume.ProbeUserVolumeName]
 	if !ok {
-		return []corev1.Container{}, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
+		return nil, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
 	}
 	certs, ok := volumes[volume.NodeCertificatesSecretVolumeName]
 	if !ok {
-		return []corev1.Container{}, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
+		return nil, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
 	}
 	return []corev1.Container{
 		{

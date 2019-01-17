@@ -13,9 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
@@ -104,6 +103,9 @@ func coalescingRetry(in <-chan func() error, backoff func(int) time.Duration) {
 	var numAttempt int
 
 	attempt := func(cancelRetry bool) {
+		if request == nil { // should never happen
+			return
+		}
 		numAttempt++
 		err := request()
 		if cancelRetry && !timer.Stop() {
@@ -245,11 +247,15 @@ func validateConfig() Config {
 		}
 
 		if user == "" || pass == "" {
+			passwordFeedback := pass
+			if pass != "" {
+				passwordFeedback = "REDACTED"
+			}
 			fatal(
 				fmt.Errorf(
 					"user and password are required but found username: %s password:%s",
 					user,
-					strings.Repeat("*", len(pass)),
+					passwordFeedback,
 				),
 				"Invalid config",
 			)
