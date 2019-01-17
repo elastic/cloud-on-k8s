@@ -3,6 +3,7 @@ package observer
 import (
 	"context"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 )
 
@@ -18,25 +19,33 @@ type State struct {
 
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(ctx context.Context, esClient *esclient.Client) State {
-	state := State{}
+	// retrieve both cluster state and health in parallel
+	clusterStateChan := make(chan *client.ClusterState)
+	healthChan := make(chan *client.Health)
 
-	clusterState, err := esClient.GetClusterState(ctx)
-	if err != nil {
-		log.Info("Unable to retrieve cluster state, continuing", "error", err.Error())
-	} else {
-		state.ClusterState = &clusterState
+	go func() {
+		clusterState, err := esClient.GetClusterState(ctx)
+		if err != nil {
+			log.Info("Unable to retrieve cluster state", "error", err.Error())
+			clusterStateChan <- nil
+			return
+		}
+		clusterStateChan <- &clusterState
+	}()
+
+	go func() {
+		health, err := esClient.GetClusterHealth(ctx)
+		if err != nil {
+			log.Info("Unable to retrieve cluster health", "error", err.Error())
+			healthChan <- nil
+			return
+		}
+		healthChan <- &health
+	}()
+
+	// return the state when ready, may contain nil values
+	return State{
+		ClusterHealth: <-healthChan,
+		ClusterState:  <-clusterStateChan,
 	}
-
-	// TODO: if the above errored, we might want to consider bailing? or do the requests in parallel
-
-	// TODO we could derive cluster health from the routing table and save this request
-	health, err := esClient.GetClusterHealth(ctx)
-	if err != nil {
-		// don't log this as error as this is expected when cluster is forming etc.
-		log.Info("Unable to retrieve cluster health, continuing", "error", err.Error())
-	} else {
-		state.ClusterHealth = &health
-	}
-
-	return state
 }
