@@ -63,6 +63,7 @@ type Config struct {
 	ReloadQueue chan func() error
 }
 
+// envToFlag reverses viper's autoenv so that we can specify ENV variables as constants and derive flags from them.
 func envToFlag(env string) string {
 	return strings.Replace(strings.ToLower(env), "_", "-", -1)
 }
