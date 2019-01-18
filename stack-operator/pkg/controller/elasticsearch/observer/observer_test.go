@@ -28,7 +28,7 @@ func fakeEsClient200() client.Client {
 
 func createTestObserver() *Observer {
 	fake := fakeEsClient200()
-	return NewObserver(clusterName("cluster"), &fake, Settings{
+	return NewObserver(cluster("cluster"), &fake, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
 	})

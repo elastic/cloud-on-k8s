@@ -35,8 +35,8 @@ var DefaultSettings = Settings{
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	clusterName types.NamespacedName
-	esClient    *client.Client
+	cluster  types.NamespacedName
+	esClient *client.Client
 
 	settings Settings
 
@@ -51,9 +51,9 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(clusterName types.NamespacedName, esClient *client.Client, settings Settings) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient *client.Client, settings Settings) *Observer {
 	observer := Observer{
-		clusterName:  clusterName,
+		cluster:      cluster,
 		esClient:     esClient,
 		creationTime: time.Now(),
 		settings:     settings,
@@ -61,7 +61,7 @@ func NewObserver(clusterName types.NamespacedName, esClient *client.Client, sett
 		stopOnce:     sync.Once{},
 		mutex:        sync.RWMutex{},
 	}
-	log.Info("Creating observer", "clusterName", clusterName)
+	log.Info("Creating observer", "cluster", cluster)
 	go observer.run()
 	return &observer
 }
@@ -110,7 +110,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 		case <-ticker.C:
 			o.retrieveState(ctx)
 		case <-ctx.Done():
-			log.Info("Stopping observer", "clusterName", o.clusterName)
+			log.Info("Stopping observer", "cluster", o.cluster)
 			return
 		}
 	}
@@ -118,7 +118,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 
 // retrieveState retrieves the current ES state and stores it in lastState
 func (o *Observer) retrieveState(ctx context.Context) {
-	log.V(4).Info("Retrieving state", "clusterName", o.clusterName)
+	log.V(4).Info("Retrieving state", "cluster", o.cluster)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 	state := RetrieveState(timeoutCtx, o.esClient)

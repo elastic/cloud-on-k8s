@@ -25,24 +25,24 @@ func NewManager(settings Settings) *Manager {
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(clusterName types.NamespacedName, esClient *client.Client) State {
-	return m.Observe(clusterName, esClient).LastState()
+func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient *client.Client) State {
+	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(clusterName types.NamespacedName, esClient *client.Client) *Observer {
+func (m *Manager) Observe(cluster types.NamespacedName, esClient *client.Client) *Observer {
 	m.lock.RLock()
-	observer, exists := m.observers[clusterName]
+	observer, exists := m.observers[cluster]
 	m.lock.RUnlock()
 
 	switch {
 	case !exists:
-		return m.createObserver(clusterName, esClient)
+		return m.createObserver(cluster, esClient)
 	case exists && !observer.esClient.Equal(esClient):
-		log.Info("Replacing observer HTTP client", "cluster", clusterName)
-		m.StopObserving(clusterName)
-		return m.createObserver(clusterName, esClient)
+		log.Info("Replacing observer HTTP client", "cluster", cluster)
+		m.StopObserving(cluster)
+		return m.createObserver(cluster, esClient)
 	default:
 		return observer
 	}
@@ -50,26 +50,26 @@ func (m *Manager) Observe(clusterName types.NamespacedName, esClient *client.Cli
 
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
-func (m *Manager) createObserver(clusterName types.NamespacedName, esClient *client.Client) *Observer {
-	observer := NewObserver(clusterName, esClient, m.settings)
+func (m *Manager) createObserver(cluster types.NamespacedName, esClient *client.Client) *Observer {
+	observer := NewObserver(cluster, esClient, m.settings)
 	m.lock.Lock()
-	m.observers[clusterName] = observer
+	m.observers[cluster] = observer
 	m.lock.Unlock()
 	return observer
 }
 
 // StopObserving stops and deletes the observer for the given cluster
 // aimed to be called automatically by a finalizer
-func (m *Manager) StopObserving(clusterName types.NamespacedName) {
+func (m *Manager) StopObserving(cluster types.NamespacedName) {
 	m.lock.RLock()
-	observer, exists := m.observers[clusterName]
+	observer, exists := m.observers[cluster]
 	m.lock.RUnlock()
 	if !exists {
 		return
 	}
 	observer.Stop()
 	m.lock.Lock()
-	delete(m.observers, clusterName)
+	delete(m.observers, cluster)
 	m.lock.Unlock()
 }
 
