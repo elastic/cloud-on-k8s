@@ -9,6 +9,7 @@ import (
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
@@ -88,8 +89,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	if err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, watches.SecretWatch); err != nil {
+		return err
+	}
 	// Watch secrets
-	if err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+	if err = watches.SecretWatch.AddWatch(&watches.OwnerWatch{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	}); err != nil {
