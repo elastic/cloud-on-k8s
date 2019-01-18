@@ -15,6 +15,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
+	"k8s.io/client-go/util/workqueue"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
@@ -34,6 +35,7 @@ var (
 	passwordFileFlag      = envToFlag(sidecar.EnvPasswordFile)
 	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
 	certPathFlag          = envToFlag(sidecar.EnvCertPath)
+	attemptReload         = "attempt-reload"
 
 	cmd = &cobra.Command{
 		Use: "keystore-updater",
@@ -60,7 +62,7 @@ type Config struct {
 	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
 	CACerts []byte
 	// ReloadQueue is a channel to schedule config reload requests
-	ReloadQueue chan func() error
+	ReloadQueue workqueue.DelayingInterface
 }
 
 // envToFlag reverses viper's autoenv so that we can specify ENV variables as constants and derive flags from them.
@@ -91,47 +93,27 @@ func fatal(err error, msg string) {
 	os.Exit(1)
 }
 
-func simpleBackoff(attempt int) time.Duration {
+func staticBackoff(attempt int) time.Duration {
 	return 5 * time.Second // TODO exp. backoff/jitter etc
 }
 
-// coalescingRetry attempts to run functions from in but coalescing any subsequent new incoming requests into
-// one while retrying. The underlying assumption being that all functions passed via in are idempotent.
-func coalescingRetry(in <-chan func() error, backoff func(int) time.Duration) {
-	var request func() error
-	timer := time.NewTimer(0)
-	var retryTimerCh <-chan time.Time
-	var numAttempt int
-
-	attempt := func(cancelRetry bool) {
-		if request == nil { // should never happen
-			return
-		}
-		numAttempt++
-		err := request()
-		if cancelRetry && !timer.Stop() {
-			<-timer.C
-		}
+// coalescingRetry attempts to reload the keystore coalescing subsequent requests into one when retrying.
+func coalescingRetry(cfg Config, backoff func(int) time.Duration) {
+	shutdown := false
+	var item interface{}
+	attempt := 0
+	for !shutdown {
+		item, shutdown = cfg.ReloadQueue.Get()
+		attempt++
+		err := reloadCredentials(cfg)
 		if err != nil {
-			timer.Reset(backoff(numAttempt))
-			retryTimerCh = timer.C
+			log.Error(err, "Error reloading credentials. Continuing.")
+			cfg.ReloadQueue.AddAfter(item, backoff(attempt))
 		} else {
-			numAttempt = 0
-			retryTimerCh = nil
-			request = nil // success
+			attempt = 0
+			log.Info("Successfully reloaded credentials")
 		}
-	}
-
-	for {
-		select {
-		case r := <-in:
-			request = r              //effectively coalesces any pending requests into one
-			if retryTimerCh == nil { // only attempt if we are not retrying
-				attempt(true) // cancel any pending retries see https://github.com/golang/go/issues/11513
-			}
-		case <-retryTimerCh:
-			attempt(false) // retry channel already consumed, don't cancel
-		}
+		cfg.ReloadQueue.Done(item)
 	}
 }
 
@@ -199,15 +181,7 @@ func updateKeystore(cfg Config) {
 	input := re.ReplaceAllString(string(bytes), " ")
 	log.Info("keystore updated", "settings", input)
 	if cfg.ReloadCredentials {
-		cfg.ReloadQueue <- func() error {
-			err := reloadCredentials(cfg)
-			if err != nil {
-				log.Error(err, "Error reloading credentials. Continuing.")
-			} else {
-				log.Info("Successfully reloaded credentials")
-			}
-			return err
-		}
+		cfg.ReloadQueue.Add(attemptReload)
 	}
 }
 
@@ -229,7 +203,7 @@ func validateConfig() Config {
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
-		ReloadQueue:       make(chan func() error),
+		ReloadQueue:       workqueue.NewDelayingQueue(),
 	}
 
 	if shouldReload {
@@ -283,7 +257,7 @@ func execute() {
 	config := validateConfig()
 
 	if config.ReloadCredentials {
-		go coalescingRetry(config.ReloadQueue, simpleBackoff)
+		go coalescingRetry(config, staticBackoff)
 	}
 
 	//initial update/create
