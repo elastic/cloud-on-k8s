@@ -93,24 +93,17 @@ func fatal(err error, msg string) {
 	os.Exit(1)
 }
 
-func staticBackoff(attempt int) time.Duration {
-	return 5 * time.Second // TODO exp. backoff/jitter etc
-}
-
 // coalescingRetry attempts to reload the keystore coalescing subsequent requests into one when retrying.
-func coalescingRetry(cfg Config, backoff func(int) time.Duration) {
+func coalescingRetry(cfg Config) {
 	shutdown := false
 	var item interface{}
-	attempt := 0
 	for !shutdown {
 		item, shutdown = cfg.ReloadQueue.Get()
-		attempt++
 		err := reloadCredentials(cfg)
 		if err != nil {
 			log.Error(err, "Error reloading credentials. Continuing.")
-			cfg.ReloadQueue.AddAfter(item, backoff(attempt))
+			cfg.ReloadQueue.AddAfter(item, 5 * time.Second) // TODO exp. backoff w/ jitter
 		} else {
-			attempt = 0
 			log.Info("Successfully reloaded credentials")
 		}
 		cfg.ReloadQueue.Done(item)
@@ -257,7 +250,7 @@ func execute() {
 	config := validateConfig()
 
 	if config.ReloadCredentials {
-		go coalescingRetry(config, staticBackoff)
+		go coalescingRetry(config)
 	}
 
 	//initial update/create
