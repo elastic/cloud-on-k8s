@@ -44,4 +44,9 @@ func (cm ConfigMapVolume) Volume() corev1.Volume {
 	}
 }
 
+// Name returns the name of the volume
+func (cm ConfigMapVolume) Name() string {
+	return cm.name
+}
+
 var _ VolumeLike = ConfigMapVolume{}

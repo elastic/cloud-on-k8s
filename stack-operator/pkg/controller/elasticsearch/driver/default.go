@@ -341,10 +341,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:   k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
-			KeystoreConfig:  versionWideResources.KeyStoreConfig,
-			ProbeUser:       internalUsers.ControllerUser,
-			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:     k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
+			KeystoreSecretRef: k8s.ExtractNamespacedName(versionWideResources.KeyStoreConfig.ObjectMeta),
+			ProbeUser:         internalUsers.ControllerUser,
+			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		resourcesState,
 	)

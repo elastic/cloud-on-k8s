@@ -49,7 +49,7 @@ func init() {
 	Cmd.Flags().StringP(userNameFlag, "u", "", "Elasticsearch user name")
 	Cmd.Flags().StringP(userPasswordFlag, "p", "", "Elasticsearch password")
 	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
-	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snaphshots retained")
+	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snapshots retained")
 
 	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
 		log.Error(err, "Unexpected error while binding flags")
@@ -60,7 +60,6 @@ func init() {
 }
 
 func execute() {
-
 	userName := viper.GetString(userNameFlag)
 	userPassword := viper.GetString(userPasswordFlag)
 	user := esclient.User{Name: userName, Password: userPassword}

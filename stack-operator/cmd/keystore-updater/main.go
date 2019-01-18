@@ -11,8 +11,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
+	"k8s.io/client-go/util/workqueue"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pkg/errors"
@@ -23,14 +26,16 @@ import (
 
 var (
 	log                   = logf.Log.WithName("keystore-updater")
-	sourceDirFlag         = "source-dir"
-	keystoreBinaryFlag    = "keystore-binary"
-	keystorePathFlag      = "keystore-path"
-	reloadCredentialsFlag = "reload-credentials"
-	usernameFlag          = "username"
-	passwordFlag          = "password"
-	endpointFlag          = "endpoint"
-	certPathFlag          = "certificates-path"
+	sourceDirFlag         = envToFlag(sidecar.EnvSourceDir)
+	keystoreBinaryFlag    = envToFlag(sidecar.EnvKeystoreBinary)
+	keystorePathFlag      = envToFlag(sidecar.EnvKeystorePath)
+	reloadCredentialsFlag = envToFlag(sidecar.EnvReloadCredentials)
+	usernameFlag          = envToFlag(sidecar.EnvUsername)
+	passwordFlag          = envToFlag(sidecar.EnvPassword)
+	passwordFileFlag      = envToFlag(sidecar.EnvPasswordFile)
+	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
+	certPathFlag          = envToFlag(sidecar.EnvCertPath)
+	attemptReload         = "attempt-reload"
 
 	cmd = &cobra.Command{
 		Use: "keystore-updater",
@@ -56,6 +61,13 @@ type Config struct {
 	Endpoint string
 	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
 	CACerts []byte
+	// ReloadQueue is a channel to schedule config reload requests
+	ReloadQueue workqueue.DelayingInterface
+}
+
+// envToFlag reverses viper's autoenv so that we can specify ENV variables as constants and derive flags from them.
+func envToFlag(env string) string {
+	return strings.Replace(strings.ToLower(env), "_", "-", -1)
 }
 
 func init() {
@@ -79,6 +91,23 @@ func init() {
 func fatal(err error, msg string) {
 	log.Error(err, msg)
 	os.Exit(1)
+}
+
+// coalescingRetry attempts to reload the keystore coalescing subsequent requests into one when retrying.
+func coalescingRetry(cfg Config) {
+	shutdown := false
+	var item interface{}
+	for !shutdown {
+		item, shutdown = cfg.ReloadQueue.Get()
+		err := reloadCredentials(cfg)
+		if err != nil {
+			log.Error(err, "Error reloading credentials. Continuing.")
+			cfg.ReloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
+		} else {
+			log.Info("Successfully reloaded credentials")
+		}
+		cfg.ReloadQueue.Done(item)
+	}
 }
 
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
@@ -123,6 +152,10 @@ func updateKeystore(cfg Config) {
 		fatal(err, "could not read source directory")
 	}
 	for _, file := range fileInfos {
+		if strings.HasPrefix(file.Name(), ".") {
+			log.Info(fmt.Sprintf("Ignoring %s", file.Name()))
+			continue
+		}
 		log.Info("Adding setting to keystore", "file", file.Name())
 		add := exec.Command(cfg.KeystoreBinary, "add-file", file.Name(), path.Join(cfg.SourceDir, file.Name()))
 		err := add.Run()
@@ -141,10 +174,7 @@ func updateKeystore(cfg Config) {
 	input := re.ReplaceAllString(string(bytes), " ")
 	log.Info("keystore updated", "settings", input)
 	if cfg.ReloadCredentials {
-		err := reloadCredentials(cfg)
-		if err != nil {
-			log.Error(err, "Error reloading credentials. Continuing.")
-		}
+		cfg.ReloadQueue.Add(attemptReload)
 	}
 }
 
@@ -161,46 +191,69 @@ func validateConfig() Config {
 		fatal(err, "keystore binary does not exist")
 	}
 	shouldReload := viper.GetBool(reloadCredentialsFlag)
-	user := viper.GetString(usernameFlag)
-	pass := viper.GetString(passwordFlag)
-	endpoint := viper.GetString(endpointFlag)
-	log.Info("should reload", "?", shouldReload)
-	caCerts := viper.GetString(certPathFlag)
-	if shouldReload && (user == "" || pass == "") {
-		fatal(
-			fmt.Errorf("user and password are required but found username: %s password:%s", user, strings.Repeat("*", len(pass))),
-			"Invalid config",
-		)
-	}
-
-	var certificates []byte
-	if shouldReload {
-		certificates, err = ioutil.ReadFile(caCerts)
-		if err != nil {
-			fatal(err, "CA certificates are required when reloading credentials but could not be read")
-		}
-	}
-
-	return Config{
+	config := Config{
 		SourceDir:         sourceDir,
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
-		Endpoint:          endpoint,
-		CACerts:           certificates,
-		User: client.User{
-			Name:     user,
-			Password: pass,
-		},
+		ReloadQueue:       workqueue.NewDelayingQueue(),
 	}
 
+	if shouldReload {
+		user := viper.GetString(usernameFlag)
+		pass := viper.GetString(passwordFlag)
+
+		caCerts := viper.GetString(certPathFlag)
+
+		if pass == "" {
+			passwordFile := viper.GetString(passwordFileFlag)
+			bytes, err := ioutil.ReadFile(passwordFile)
+			if err != nil {
+				fatal(err, fmt.Sprintf("password file %s could not be read", passwordFile))
+			}
+			pass = string(bytes)
+		}
+
+		if user == "" || pass == "" {
+			passwordFeedback := pass
+			if pass != "" {
+				passwordFeedback = "REDACTED"
+			}
+			fatal(
+				fmt.Errorf(
+					"user and password are required but found username: %s password:%s",
+					user,
+					passwordFeedback,
+				),
+				"Invalid config",
+			)
+		}
+		var certificates []byte
+		if shouldReload {
+			certificates, err = ioutil.ReadFile(caCerts)
+			if err != nil {
+				fatal(err, "CA certificates are required when reloading credentials but could not be read")
+			}
+		}
+		config.User = client.User{
+			Name:     user,
+			Password: pass,
+		}
+		config.Endpoint = viper.GetString(endpointFlag)
+		config.CACerts = certificates
+	}
+	return config
 }
 
 // execute updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func execute() {
 	config := validateConfig()
 
-	//initial update
+	if config.ReloadCredentials {
+		go coalescingRetry(config)
+	}
+
+	//initial update/create
 	updateKeystore(config)
 
 	watcher, err := fsnotify.NewWatcher()
@@ -216,6 +269,13 @@ func execute() {
 			case event, ok := <-watcher.Events:
 				if !ok {
 					return
+				}
+				// avoid noisy chmod events when k8s maps changes into the file system
+				// also k8s seems to use a couple of dot files to manage mapped secrets which create
+				// additional noise and should be safe to ignore
+				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(path.Base(event.Name), ".") {
+					log.Info("Ignoring:", "event", event)
+					continue
 				}
 				log.Info("Observed:", "event", event)
 				updateKeystore(config)
@@ -233,7 +293,6 @@ func execute() {
 		fatal(err, fmt.Sprintf("failed to add watch on %s", config.SourceDir))
 	}
 	<-done
-
 }
 
 func main() {

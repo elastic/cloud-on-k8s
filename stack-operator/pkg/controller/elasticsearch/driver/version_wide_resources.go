@@ -8,7 +8,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
@@ -28,7 +27,7 @@ type VersionWideResources struct {
 	// GenericUnecryptedConfigurationFiles contains non-secret files Pods with this version should have access to.
 	GenericUnecryptedConfigurationFiles corev1.ConfigMap
 	// KeyStoreConfig are secrets that should go into the ES keystore
-	KeyStoreConfig keystore.Config
+	KeyStoreConfig corev1.Secret
 }
 
 func reconcileVersionWideResources(
@@ -36,7 +35,7 @@ func reconcileVersionWideResources(
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 ) (*VersionWideResources, error) {
-	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, es.Spec.SnapshotRepository)
+	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository)
 	if err != nil {
 		return nil, err
 	}
