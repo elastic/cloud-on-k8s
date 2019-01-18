@@ -52,6 +52,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient *client.Client)
 // and create/replace its entry in the observers map
 func (m *Manager) createObserver(cluster types.NamespacedName, esClient *client.Client) *Observer {
 	observer := NewObserver(cluster, esClient, m.settings)
+	observer.Start()
 	m.lock.Lock()
 	m.observers[cluster] = observer
 	m.lock.Unlock()

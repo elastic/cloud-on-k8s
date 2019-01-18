@@ -26,12 +26,14 @@ func fakeEsClient200() client.Client {
 	})
 }
 
-func createTestObserver() *Observer {
+func createAndRunTestObserver() *Observer {
 	fake := fakeEsClient200()
-	return NewObserver(cluster("cluster"), &fake, Settings{
+	obs := NewObserver(cluster("cluster"), &fake, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
 	})
+	obs.Start()
+	return obs
 }
 
 func TestObserver_retrieveState(t *testing.T) {
@@ -45,7 +47,7 @@ func TestObserver_retrieveState(t *testing.T) {
 }
 
 func TestNewObserver(t *testing.T) {
-	observer := createTestObserver()
+	observer := createAndRunTestObserver()
 	initialObservationTime := observer.LastObservationTime()
 	// check observer is running by looking at its last observation time
 	test.RetryUntilSuccess(t, func() error {
@@ -58,7 +60,7 @@ func TestNewObserver(t *testing.T) {
 }
 
 func TestObserver_Stop(t *testing.T) {
-	observer := createTestObserver()
+	observer := createAndRunTestObserver()
 	// force at least one observation for time comparison
 	observer.retrieveState(context.Background())
 	observer.Stop()

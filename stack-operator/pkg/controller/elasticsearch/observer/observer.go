@@ -62,8 +62,12 @@ func NewObserver(cluster types.NamespacedName, esClient *client.Client, settings
 		mutex:        sync.RWMutex{},
 	}
 	log.Info("Creating observer", "cluster", cluster)
-	go observer.run()
 	return &observer
+}
+
+// Start the observer in a separate goroutine
+func (o *Observer) Start() {
+	go o.runUntilStopped()
 }
 
 // Stop the observer loop
@@ -91,7 +95,7 @@ func (o *Observer) LastObservationTime() time.Time {
 }
 
 // run the observer main loop, until stopped
-func (o *Observer) run() {
+func (o *Observer) runUntilStopped() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
