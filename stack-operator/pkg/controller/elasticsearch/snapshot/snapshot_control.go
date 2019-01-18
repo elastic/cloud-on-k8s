@@ -4,7 +4,6 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -123,38 +122,12 @@ func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.
 			}
 		}
 		existing = append(existing, ownerRef)
-		secret.SetOwnerReferences(existing)
+		secret.SetOwnerReferences(existing) // TODO replace owner reference based watch with dynamic watch
 		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name)
 		if err := c.Update(context.Background(), &secret); err != nil {
 			return err
 		}
-		if !common.StringInSlice(ExternalSecretFinalizer, owner.Finalizers) {
-			log.Info("Adding finalizer", "finalizer", ExternalSecretFinalizer)
-			owner.Finalizers = append(owner.Finalizers, ExternalSecretFinalizer)
-			return c.Update(context.Background(), &owner)
-		}
 		return nil
-	}
-
-	if common.StringInSlice(ExternalSecretFinalizer, owner.Finalizers) {
-		filtered := secret.GetOwnerReferences()[:0]
-		for _, r := range secret.GetOwnerReferences() {
-			if !reflect.DeepEqual(r, ownerRef) {
-				filtered = append(filtered, r)
-			}
-		}
-		// TODO if the user removes the secret from the cluster, owner ref will remain in place
-		// labeling as an alternative does not really work as it would prevent reuse of the secret in multiple
-		// clusters
-		secret.SetOwnerReferences(filtered)
-		log.Info("Removing owner", "secret", secret.Name, "elasticsearch", owner.Name)
-		if err := c.Update(context.Background(), &secret); err != nil {
-			return err
-		}
-
-		owner.Finalizers = common.RemoveStringInSlice(ExternalSecretFinalizer, owner.Finalizers)
-		log.Info("Removing finalizer", "finalizer", ExternalSecretFinalizer)
-		return c.Update(context.Background(), &owner)
 	}
 	return nil
 }
