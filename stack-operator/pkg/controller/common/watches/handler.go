@@ -2,10 +2,13 @@ package watches
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
+
 	"sync"
 )
 
@@ -18,11 +21,13 @@ type ToReconcileRequestTransformer interface {
 type DynamicEnqueueRequests struct {
 	mutex sync.RWMutex
 	transformers map[string]ToReconcileRequestTransformer
+	scheme *runtime.Scheme
 }
 
 func (d *DynamicEnqueueRequests) AddWatch(xform ToReconcileRequestTransformer) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
+	inject.SchemeInto(d.scheme, xform)
 	d.transformers[xform.Key()] = xform
 }
 
@@ -82,3 +87,10 @@ func (d *DynamicEnqueueRequests) Generic(evt event.GenericEvent, q workqueue.Rat
 		}
 	}
 }
+
+func (d *DynamicEnqueueRequests) InjectScheme(scheme *runtime.Scheme) error {
+	d.scheme = scheme
+	return nil
+}
+
+var _ inject.Scheme = &DynamicEnqueueRequests{}
