@@ -1,10 +1,10 @@
-## Design: Ecosystem operator and namespaced operators
+## Design: Global operator and namespaced operators
 
 Proposal state: RFC
 
 ### Summary
 
-This proposal explains the raison d'être for the *ecosystem operator*. The *ecosystem operator* is an operator that contains controllers for resources that span more than one deployment.
+This proposal explains the raison d'être for the *global operator*. The *global operator* is an operator that contains controllers for resources that span more than one deployment.
 
 Additionally, this proposal outlines deploying an operator per namespace that is responsible for managing namespace-local resources, such as individual Elasticsearch clusters and Kibana nodes.
 
@@ -54,10 +54,10 @@ Pros
 + Enables rolling out updates in a controlled manner.
 
 Cons
-- Introduces more than operator, complicating deployment and debugging. (See section for future improvements)
-- Controllers in the global operator, such as the CCR controller still needs to be scaled on a number-of-clusters / associations basis (but it does not need to connect to individual ES clusters).
+- Introduces more than one operator, complicating deployment and debugging. (See section for future improvements)
+- Controllers in the global operator, such as the CCR controller still need to be scaled on a number-of-clusters / associations basis (but it does not need to connect to individual ES clusters).
 
 
 ### Considered alternatives and future improvements
 
-Allow for a hybrid approach where the responsibilities of the global operator is possible to enable in the namespaced operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern above with the drawback that it might not be identical to a production-style deployment.
+Allow for a hybrid approach where it is possible to enable the components of both operators (global and namespaced) in a single operator in order to simplify small-scale deployments, or vice-versa, where the global operator takes on all responsibilities of the namespaced operator in addition to the installation wide ones. This addresses the main concern above with the drawback that it might not be identical to a production-style deployment.
