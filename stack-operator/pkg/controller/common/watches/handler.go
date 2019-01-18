@@ -1,4 +1,4 @@
-package events
+package watches
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +13,6 @@ type ToReconcileRequestTransformer interface {
 	Key() string
 	ToReconcileRequest(object metav1.Object) []reconcile.Request
 }
-
 
 
 type DynamicEnqueueRequests struct {
@@ -36,7 +35,6 @@ func (d *DynamicEnqueueRequests) RemoveWatchForKey(key string) {
 	defer d.mutex.Unlock()
 	delete(d.transformers, key)
 }
-
 
 // DynamicEnqueueRequests implements EventHandler
 var _ handler.EventHandler = &DynamicEnqueueRequests{}
@@ -84,4 +82,3 @@ func (d *DynamicEnqueueRequests) Generic(evt event.GenericEvent, q workqueue.Rat
 		}
 	}
 }
-
