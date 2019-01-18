@@ -102,7 +102,7 @@ func coalescingRetry(cfg Config) {
 		err := reloadCredentials(cfg)
 		if err != nil {
 			log.Error(err, "Error reloading credentials. Continuing.")
-			cfg.ReloadQueue.AddAfter(item, 5 * time.Second) // TODO exp. backoff w/ jitter
+			cfg.ReloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
 		} else {
 			log.Info("Successfully reloaded credentials")
 		}
