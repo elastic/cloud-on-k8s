@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -148,7 +148,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return reconcile.Result{}, err
 	}
 
-	state := reconcilehelper.NewReconcileState(es)
+	state := esreconcile.NewState(es)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	return results.WithError(err).Aggregate()
@@ -156,9 +156,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 func (r *ReconcileElasticsearch) internalReconcile(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
-	state *reconcilehelper.ReconcileState,
-) *reconcilehelper.ReconcileResults {
-	results := &reconcilehelper.ReconcileResults{}
+	reconcileState *esreconcile.State,
+) *esreconcile.Results {
+	results := &esreconcile.Results{}
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
 		// pre-delete operations will be handled by finalizers
@@ -183,15 +183,15 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	return driver.Reconcile(es, state)
+	return driver.Reconcile(es, reconcileState)
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
-	state *reconcilehelper.ReconcileState,
+	reconcileState *esreconcile.State,
 ) error {
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	events, cluster := state.Apply()
+	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.Info(fmt.Sprintf("Recording event %+v", evt))
 		r.recorder.Event(&es, evt.EventType, evt.Reason, evt.Message)

@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +51,7 @@ pod:
 func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 	type args struct {
 		performableChanges mutation.PerformableChanges
-		resourcesState     reconcilehelper.ResourcesState
+		resourcesState     reconcile.ResourcesState
 	}
 	tests := []struct {
 		name       string
@@ -69,7 +69,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						}},
 					},
 				},
-				resourcesState: reconcilehelper.ResourcesState{
+				resourcesState: reconcile.ResourcesState{
 					CurrentPods: []corev1.Pod{newPod("a", true)},
 				},
 			},
@@ -88,7 +88,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						}},
 					},
 				},
-				resourcesState: reconcilehelper.ResourcesState{
+				resourcesState: reconcile.ResourcesState{
 					CurrentPods: []corev1.Pod{newPod("a", false)},
 				},
 			},

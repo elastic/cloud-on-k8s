@@ -7,7 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
@@ -31,8 +31,8 @@ var (
 type Driver interface {
 	Reconcile(
 		es v1alpha1.ElasticsearchCluster,
-		state *reconcilehelper.ReconcileState,
-	) *reconcilehelper.ReconcileResults
+		reconcileState *esreconcile.State,
+	) *esreconcile.Results
 }
 
 // Options are used to create a driver. See NewDriver
@@ -60,7 +60,7 @@ func NewDriver(opts Options) (Driver, error) {
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
 		observedStateResolver:   support.NewObservedState,
-		resourcesStateResolver:  reconcilehelper.NewResourcesStateFromAPI,
+		resourcesStateResolver:  esreconcile.NewResourcesStateFromAPI,
 		internalUsersReconciler: user.ReconcileUsers,
 	}
 

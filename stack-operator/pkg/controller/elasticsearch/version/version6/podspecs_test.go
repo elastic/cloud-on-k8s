@@ -6,7 +6,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -127,7 +127,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
 				pod.NewPodSpecParams{ProbeUser: testProbeUser},
-				reconcilehelper.ResourcesState{},
+				reconcile.ResourcesState{},
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
@@ -153,7 +153,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	podSpec, err := ExpectedPodSpecs(
 		es,
 		pod.NewPodSpecParams{ProbeUser: testProbeUser},
-		reconcilehelper.ResourcesState{},
+		reconcile.ResourcesState{},
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))

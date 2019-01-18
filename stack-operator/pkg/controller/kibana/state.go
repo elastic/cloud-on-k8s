@@ -7,9 +7,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// ReconcileState holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana
+// State holds the accumulated state during the reconcile loop including the response and a pointer to a Kibana
 // resource for status updates.
-type ReconcileState struct {
+type State struct {
 	Kibana  *v1alpha1.Kibana
 	Result  reconcile.Result
 	Request reconcile.Request
@@ -17,14 +17,14 @@ type ReconcileState struct {
 	originalKibana *v1alpha1.Kibana
 }
 
-// NewReconcileState creates a new reconcile state based on the given request and Kibana resource with the resource
+// NewState creates a new reconcile state based on the given request and Kibana resource with the resource
 // state reset to empty.
-func NewReconcileState(request reconcile.Request, kb *v1alpha1.Kibana) ReconcileState {
-	return ReconcileState{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
+func NewState(request reconcile.Request, kb *v1alpha1.Kibana) State {
+	return State{Request: request, Kibana: kb, originalKibana: kb.DeepCopy()}
 }
 
 // UpdateKibanaState updates the Kibana status based on the given deployment.
-func (s ReconcileState) UpdateKibanaState(deployment v1.Deployment) {
+func (s State) UpdateKibanaState(deployment v1.Deployment) {
 	s.Kibana.Status.AvailableNodes = int(deployment.Status.AvailableReplicas) // TODO lossy type conversion
 	s.Kibana.Status.Health = v1alpha1.KibanaRed
 	for _, c := range deployment.Status.Conditions {
