@@ -35,16 +35,25 @@ func ExpectedPodSpecs(
 	// XXX: we need to ensure that a system key is available and used, otherwise connecting with a transport client
 	// potentially bypasses x-pack security.
 
-	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers)
+	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers, newSidecarContainers, []corev1.Volume{})
 }
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
 	imageName string,
-	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, keyStoreInit, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, setVMMaxMapCount)
+}
+
+// newSidecarContainers returns a list of sidecar containers.
+func newSidecarContainers(
+	_ string,
+	_ pod.NewPodSpecParams,
+	_ map[string]volume.VolumeLike,
+) ([]corev1.Container, error) {
+	// TODO keystore is supported as of 5.3. Decide whether we continue supporting 5.x and branch off a 5.3 driver if so.
+	return []corev1.Container{}, nil
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod

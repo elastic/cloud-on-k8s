@@ -7,11 +7,14 @@ import (
 	"time"
 
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,9 +55,11 @@ func newReconciler(mgr manager.Manager, dialer net.Dialer) (reconcile.Reconciler
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
-		esCa: esCa,
+		esCa:        esCa,
+		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		dialer: dialer,
+		dialer:     dialer,
+		finalizers: finalizer.NewHandler(mgr.GetClient()),
 	}, nil
 }
 
@@ -115,6 +120,10 @@ type ReconcileElasticsearch struct {
 
 	dialer net.Dialer
 
+	esObservers *observer.Manager
+
+	finalizers finalizer.Handler
+
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -163,9 +172,14 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	state *reconcilehelper.ReconcileState,
 ) *reconcilehelper.ReconcileResults {
 	results := &reconcilehelper.ReconcileResults{}
+
+	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
+		return results.WithError(err)
+	}
+
 	if es.IsMarkedForDeletion() {
 		// resource will be deleted, nothing to reconcile
-		// pre-delete operations will be handled by finalizers
+		// pre-delete operations are handled by finalizers
 		return results
 	}
 
@@ -182,6 +196,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		ClusterCa: r.esCa,
 		Dialer:    r.dialer,
+		Observers: r.esObservers,
 	})
 	if err != nil {
 		return results.WithError(err)
@@ -204,4 +219,11 @@ func (r *ReconcileElasticsearch) updateStatus(
 		return nil
 	}
 	return r.Status().Update(context.TODO(), cluster)
+}
+
+// finalizersFor returns the list of finalizers applying to a given es cluster
+func (r *ReconcileElasticsearch) finalizersFor(es elasticsearchv1alpha1.ElasticsearchCluster) []finalizer.Finalizer {
+	return []finalizer.Finalizer{
+		r.esObservers.Finalizer(k8s.ExtractNamespacedName(es.ObjectMeta)),
+	}
 }

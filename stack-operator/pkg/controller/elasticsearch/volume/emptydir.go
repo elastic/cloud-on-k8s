@@ -37,4 +37,9 @@ func (v EmptyDirVolume) VolumeMount() corev1.VolumeMount {
 	}
 }
 
+// Name returns the name of the volume
+func (v EmptyDirVolume) Name() string {
+	return v.name
+}
+
 var _ VolumeLike = EmptyDirVolume{}

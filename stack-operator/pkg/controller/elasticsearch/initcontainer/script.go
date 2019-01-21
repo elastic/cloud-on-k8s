@@ -3,8 +3,6 @@ package initcontainer
 import (
 	"bytes"
 	"html/template"
-
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 )
 
 // List of plugins to be installed on the ES instance
@@ -22,8 +20,6 @@ type TemplateParams struct {
 	SharedVolumes SharedVolumeArray
 	// LinkedFiles are files to link individually
 	LinkedFiles LinkedFilesArray
-	// KeyStoreSettings are settings to add to the keystore
-	KeyStoreSettings []keystore.Setting
 	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
 	ChownToElasticsearch []string
 }
@@ -78,26 +74,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	$PLUGIN_BIN list
 
 	echo "Plugins installation duration: $(duration $plugins_start) sec."
-
-	######################
-	#       KeyStore     #
-	######################
-
-	keystore_start=$(date +%s)
-
-	KEYSTORE_PATH=$CONFIG_DIR/elasticsearch.keystore
-	rm -rf $KEYSTORE_PATH
-	$KEYSTORE_BIN create --silent
-	{{range .KeyStoreSettings}}
-		echo "Installing key {{.}}"	
-		$KEYSTORE_BIN add-file {{.Key}} {{.ValueFilePath}}
-	{{end}}
-	chown elasticsearch:elasticsearch $KEYSTORE_PATH
-
-	echo "Installed settings:"
-	$KEYSTORE_BIN list
-
-	echo "Keystore initialisation duration: $(duration $keystore_start) sec."
 
 	######################
 	#  Config linking    #

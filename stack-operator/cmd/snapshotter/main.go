@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+
 	"io/ioutil"
 	"os"
 
@@ -49,7 +51,7 @@ func init() {
 	Cmd.Flags().StringP(userNameFlag, "u", "", "Elasticsearch user name")
 	Cmd.Flags().StringP(userPasswordFlag, "p", "", "Elasticsearch password")
 	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
-	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snaphshots retained")
+	Cmd.Flags().IntP(maxFlag, "m", 100, "Max number of snapshots retained")
 
 	if err := viper.BindPFlags(Cmd.Flags()); err != nil {
 		log.Error(err, "Unexpected error while binding flags")
@@ -60,26 +62,28 @@ func init() {
 }
 
 func execute() {
-
 	userName := viper.GetString(userNameFlag)
 	userPassword := viper.GetString(userPasswordFlag)
 	user := esclient.User{Name: userName, Password: userPassword}
 
 	certCfg := viper.GetString(certificateLocationFlag)
-	certPool := x509.NewCertPool()
+	var certs []*x509.Certificate
 	if certCfg != "" {
-		pemCerts, err := ioutil.ReadFile(certCfg)
+		pemData, err := ioutil.ReadFile(certCfg)
 		if err != nil {
 			unrecoverable(errors.Wrap(err, "Could not read ca certificate"))
 		}
-		certPool.AppendCertsFromPEM(pemCerts)
+		certs, err = certutil.ParsePEMCerts(pemData)
+		if err != nil {
+			unrecoverable(errors.Wrap(err, "Could not parse ca certificate"))
+		}
 	}
 
 	esURL := viper.GetString(esURLFlag)
 	if esURL == "" {
 		unrecoverable(errors.New(fmt.Sprintf("%s is required", esURLFlag)))
 	}
-	apiClient := esclient.NewElasticsearchClient(nil, esURL, user, certPool)
+	apiClient := esclient.NewElasticsearchClient(nil, esURL, user, certs)
 
 	interval := viper.GetDuration(intervalFlag)
 	max := viper.GetInt(maxFlag)
