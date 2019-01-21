@@ -26,7 +26,7 @@ func RetrieveState(ctx context.Context, esClient *esclient.Client) State {
 	go func() {
 		clusterState, err := esClient.GetClusterState(ctx)
 		if err != nil {
-			log.Info("Unable to retrieve cluster state", "error", err.Error())
+			log.V(3).Info("Unable to retrieve cluster state", "error", err)
 			clusterStateChan <- nil
 			return
 		}
@@ -36,7 +36,7 @@ func RetrieveState(ctx context.Context, esClient *esclient.Client) State {
 	go func() {
 		health, err := esClient.GetClusterHealth(ctx)
 		if err != nil {
-			log.Info("Unable to retrieve cluster health", "error", err.Error())
+			log.V(3).Info("Unable to retrieve cluster health", "error", err)
 			healthChan <- nil
 			return
 		}
