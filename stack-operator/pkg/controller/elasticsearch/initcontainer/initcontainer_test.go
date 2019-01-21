@@ -11,7 +11,6 @@ func TestNewInitContainers(t *testing.T) {
 		imageName        string
 		linkedFiles      LinkedFilesArray
 		SetVMMaxMapCount bool
-		keystoreSettings KeystoreInit
 	}
 	tests := []struct {
 		name                       string
@@ -39,7 +38,7 @@ func TestNewInitContainers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers, err := NewInitContainers(tt.args.imageName, tt.args.linkedFiles, tt.args.keystoreSettings, tt.args.SetVMMaxMapCount)
+			containers, err := NewInitContainers(tt.args.imageName, tt.args.linkedFiles, tt.args.SetVMMaxMapCount)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
 		})

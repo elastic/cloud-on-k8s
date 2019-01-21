@@ -11,12 +11,12 @@ import (
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -76,7 +77,7 @@ type defaultDriver struct {
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(esClient *esclient.Client) support.ObservedState
+	observedStateResolver func(clusterName types.NamespacedName, esClient *esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -139,10 +140,9 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-
 	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
 
-	observedState := d.observedStateResolver(esClient)
+	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(es.ObjectMeta), esClient)
 
 	resourcesState, err := d.resourcesStateResolver(d.Client, es)
 	if err != nil {
@@ -341,10 +341,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:   k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
-			KeystoreConfig:  versionWideResources.KeyStoreConfig,
-			ProbeUser:       internalUsers.ControllerUser,
-			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:     k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
+			KeystoreSecretRef: k8s.ExtractNamespacedName(versionWideResources.KeyStoreConfig.ObjectMeta),
+			ProbeUser:         internalUsers.ControllerUser,
+			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		resourcesState,
 	)
@@ -367,13 +367,10 @@ func (d *defaultDriver) calculateChanges(
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User) *esclient.Client {
-	certPool := x509.NewCertPool()
-	certPool.AddCert(d.ClusterCa.Cert)
-
 	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user, certPool,
+		d.Dialer, url, user, []*x509.Certificate{d.ClusterCa.Cert},
 	)
 	return esClient
 }

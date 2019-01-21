@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
@@ -31,30 +32,38 @@ func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
+	additionalVolumes []corev1.Volume,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, topology := range es.Spec.Topologies {
 		for i := int32(0); i < topology.NodeCount; i++ {
-			podSpec, err := podSpec(pod.NewPodSpecParams{
-				Version:         es.Spec.Version,
-				CustomImageName: es.Spec.Image,
-				ClusterName:     es.Name,
-				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-					es.Spec.Topologies,
-				),
-				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				NodeTypes:            topology.NodeTypes,
-				Affinity:             topology.PodTemplate.Spec.Affinity,
-				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-				Resources:            topology.Resources,
-				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
-				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
-				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
-				KeystoreConfig:       paramsTmpl.KeystoreConfig,
-				ProbeUser:            paramsTmpl.ProbeUser,
-			}, newEnvironmentVarsFn, newInitContainersFn)
+			podSpec, err := podSpec(
+				pod.NewPodSpecParams{
+					Version:         es.Spec.Version,
+					CustomImageName: es.Spec.Image,
+					ClusterName:     es.Name,
+					DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
+						es.Spec.Topologies,
+					),
+					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
+					NodeTypes:            topology.NodeTypes,
+					Affinity:             topology.PodTemplate.Spec.Affinity,
+					SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
+					Resources:            topology.Resources,
+					UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
+					ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
+					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
+					KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
+					ProbeUser:            paramsTmpl.ProbeUser,
+				},
+				newEnvironmentVarsFn,
+				newInitContainersFn,
+				newSideCarContainersFn,
+				additionalVolumes,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -70,7 +79,9 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, ki initcontainer.KeystoreInit, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
+	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
 	imageName := common.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -78,17 +89,24 @@ func podSpec(
 	}
 
 	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
+	volumes := map[string]volume.VolumeLike{
+		p.ConfigMapVolume.Name():   p.ConfigMapVolume,
+		p.UsersSecretVolume.Name(): p.UsersSecretVolume,
+	}
 
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		secret.ElasticInternalUsersSecretName(p.ClusterName), "probe-user",
+		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
+	volumes[probeSecret.Name()] = probeSecret
 
 	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
 		"/usr/share/elasticsearch/config/extrafiles",
 	)
+
+	volumes[extraFilesSecretVolume.Name()] = extraFilesSecretVolume
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
@@ -97,6 +115,15 @@ func podSpec(
 		volume.NodeCertificatesSecretVolumeName,
 		volume.NodeCertificatesSecretVolumeMountPath,
 	)
+
+	volumes[nodeCertificatesVolume.Name()] = nodeCertificatesVolume
+
+	keystoreVolume := volume.NewSecretVolumeWithMountPath(
+		p.KeystoreSecretRef.Name,
+		keystore.SecretVolumeName,
+		keystore.SecretMountPath)
+
+	volumes[keystoreVolume.Name()] = keystoreVolume
 
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
@@ -152,25 +179,21 @@ func podSpec(
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
+			keystoreVolume.Volume(),
 		),
 	}
 
-	// keystore init is optional, will only happen if snapshots are requested in the Elasticsearch resource
-	keyStoreInit := initcontainer.KeystoreInit{Settings: p.KeystoreConfig.KeystoreSettings}
-	if !p.KeystoreConfig.IsEmpty() {
-		keystoreVolume := volume.NewSecretVolumeWithMountPath(
-			p.KeystoreConfig.KeystoreSecretRef.Name,
-			"keystore-init",
-			volume.KeystoreSecretMountPath)
+	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)
 
-		podSpec.Volumes = append(podSpec.Volumes, keystoreVolume.Volume())
-		keyStoreInit.VolumeMount = keystoreVolume.VolumeMount()
+	// Setup sidecars if any
+	sidecars, err := newSideCarContainersFn(imageName, p, volumes)
+	if err != nil {
+		return corev1.PodSpec{}, err
 	}
+	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(
-		imageName, keyStoreInit, p.SetVMMaxMapCount,
-	)
+	initContainers, err := newInitContainersFn(imageName, p.SetVMMaxMapCount)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

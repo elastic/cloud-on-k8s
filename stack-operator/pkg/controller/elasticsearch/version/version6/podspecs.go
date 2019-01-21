@@ -1,10 +1,15 @@
 package version6
 
 import (
+	"errors"
 	"fmt"
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -32,6 +37,7 @@ var (
 			},
 		},
 	}
+	sideCarSharedVolume = volume.NewEmptyDirVolume("sidecar-bin", "/opt/sidecar/bin")
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
@@ -48,16 +54,70 @@ func ExpectedPodSpecs(
 		"users",
 	)
 
-	return version.NewExpectedPodSpecs(es, paramsTmpl, newEnvironmentVars, newInitContainers)
+	return version.NewExpectedPodSpecs(
+		es,
+		paramsTmpl,
+		newEnvironmentVars,
+		newInitContainers,
+		newSidecarContainers,
+		[]corev1.Volume{sideCarSharedVolume.Volume()},
+	)
 }
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
 	imageName string,
-	keyStoreInit initcontainer.KeystoreInit,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, linkedFiles6, keyStoreInit, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(
+		imageName,
+		linkedFiles6,
+		setVMMaxMapCount,
+		initcontainer.NewSidecarInitContainer(sideCarSharedVolume),
+	)
+}
+
+// newSidecarContainers returns a list of sidecar containers.
+func newSidecarContainers(
+	imageName string,
+	spec pod.NewPodSpecParams,
+	volumes map[string]volume.VolumeLike,
+) ([]corev1.Container, error) {
+
+	keystoreVolume, ok := volumes[keystore.SecretVolumeName]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
+	}
+	probeUser, ok := volumes[volume.ProbeUserVolumeName]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
+	}
+	certs, ok := volumes[volume.NodeCertificatesSecretVolumeName]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
+	}
+	return []corev1.Container{
+		{
+			Name:            "keystore-updater",
+			Image:           imageName,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Command:         []string{path.Join(sideCarSharedVolume.VolumeMount().MountPath, "keystore-updater")},
+			Env: []corev1.EnvVar{
+				{Name: sidecar.EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
+				{Name: sidecar.EnvReloadCredentials, Value: "true"},
+				{Name: sidecar.EnvUsername, Value: spec.ProbeUser.Name},
+				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, spec.ProbeUser.Name)},
+				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
+			},
+			VolumeMounts: append(
+				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				sideCarSharedVolume.VolumeMount(),
+				certs.VolumeMount(),
+				keystoreVolume.VolumeMount(),
+				probeUser.VolumeMount(),
+			),
+		},
+	}, nil
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod

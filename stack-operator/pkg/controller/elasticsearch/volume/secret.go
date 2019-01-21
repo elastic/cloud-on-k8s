@@ -66,4 +66,9 @@ func (sv SecretVolume) Volume() corev1.Volume {
 	}
 }
 
+// Name returns the name of the volume
+func (sv SecretVolume) Name() string {
+	return sv.name
+}
+
 var _ VolumeLike = SecretVolume{}

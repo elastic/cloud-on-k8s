@@ -5,9 +5,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/dev"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
@@ -27,9 +30,6 @@ const (
 )
 
 var (
-	// development is whether we should be in development mode or not (affects logging and development-specific features)
-	development = false
-
 	// Cmd is the cobra command to start the manager.
 	Cmd = &cobra.Command{
 		Use:   "manager",
@@ -45,13 +45,11 @@ var (
 )
 
 func init() {
-	// development mode is only available as a command line flag to avoid accidentally enabling it
-	Cmd.Flags().BoolVar(&development, "development", false, "turns on development mode")
 
 	Cmd.Flags().String(
-		snapshot.SnapshotterImageFlag,
+		operator.ImageFlag,
 		"",
-		"image to use for the snapshotter application",
+		"image containing the binaries for this operator",
 	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
@@ -78,13 +76,10 @@ func init() {
 }
 
 func execute() {
-	logf.SetLogger(logf.ZapLogger(development))
-
-	log := logf.Log.WithName("manager")
 
 	var dialer net.Dialer
 	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
-	if !development && autoPortForward {
+	if !dev.Enabled && autoPortForward {
 		panic(fmt.Sprintf(
 			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))
@@ -93,8 +88,8 @@ func execute() {
 		dialer = portforward.NewForwardingDialer()
 	}
 
-	if viper.GetString(snapshot.SnapshotterImageFlag) == "" {
-		log.Error(fmt.Errorf("%s is a required flag", snapshot.SnapshotterImageFlag),
+	if viper.GetString(operator.ImageFlag) == "" {
+		log.Error(fmt.Errorf("%s is a required flag", operator.ImageFlag),
 			"required configuration missing")
 		os.Exit(1)
 	}

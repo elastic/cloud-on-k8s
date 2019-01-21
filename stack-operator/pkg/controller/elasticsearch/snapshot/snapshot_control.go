@@ -2,20 +2,22 @@ package snapshot
 
 import (
 	"context"
-	"path"
 	"reflect"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,45 +25,111 @@ import (
 )
 
 const (
-	// SnapshotterImageFlag is the name of the flag/env-var containing the docker image of the snapshotter application.
-	SnapshotterImageFlag = "snapshotter_image"
+	// ExternalSecretFinalizer designates a finalizer to clean up owner references in secrets not controlled by this operator.
+	ExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
 )
 
-// ReconcileSnapshotCredentials checks the snapshot repository config for user provided, validates
-// snapshot repository configuration and transforms it into a keystore.Config to initialise
-// an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
-// created by the user containing valid snapshot repository credentials for the specified
-// repository provider.
-func ReconcileSnapshotCredentials(c client.Client, repoConfig *v1alpha1.SnapshotRepository) (keystore.Config, error) {
-	var result keystore.Config
+func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchCluster, repoConfig *v1alpha1.SnapshotRepository) (corev1.Secret, error) {
+	managedSecret := corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      keystore.ManagedSecretName,
+			Namespace: owner.Namespace,
+		},
+		Data: map[string][]byte{},
+	}
+
 	if repoConfig == nil {
-		return result, nil
+		return managedSecret, nil
 	}
 
 	secretRef := repoConfig.Settings.Credentials
 	userCreatedSecret := corev1.Secret{}
 	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
 	if err := c.Get(context.TODO(), key, &userCreatedSecret); err != nil {
-		return result, errors.Wrap(err, "configured snapshot secret could not be retrieved")
+		return managedSecret, errors.Wrap(err, "configured snapshot secret could not be retrieved")
 	}
 
 	err := ValidateSnapshotCredentials(repoConfig.Type, userCreatedSecret.Data)
 	if err != nil {
-		return result, err
+		return managedSecret, err
 	}
 
-	settings := make([]keystore.Setting, 0, len(userCreatedSecret.Data))
-	for k := range userCreatedSecret.Data {
-		settings = append(
-			settings,
-			keystore.Setting{
-				Key:           RepositoryCredentialsKey(repoConfig),
-				ValueFilePath: path.Join(volume.KeystoreSecretMountPath, k),
-			})
+	err = manageOwnerReference(c, userCreatedSecret, owner)
+	if err != nil {
+		return managedSecret, err
 	}
-	result.KeystoreSettings = settings
-	result.KeystoreSecretRef = secretRef
-	return result, nil
+	for _, v := range userCreatedSecret.Data {
+		// TODO multiple credentials?
+		managedSecret.Data[RepositoryCredentialsKey(repoConfig)] = v
+	}
+	return managedSecret, nil
+}
+
+// ReconcileSnapshotCredentials checks the snapshot repository config for user provided secrets, validates
+// snapshot repository configuration and transforms it into a managed secret to initialise
+// an Elasticsearch keystore. It currently relies on a secret reference pointing to a secret
+// created by the user containing valid snapshot repository credentials for the specified
+// repository provider.
+func ReconcileSnapshotCredentials(
+	c client.Client,
+	s *runtime.Scheme,
+	owner v1alpha1.ElasticsearchCluster,
+	repoConfig *v1alpha1.SnapshotRepository,
+) (corev1.Secret, error) {
+	managedSecret, err := reconcileUserCreatedSecret(c, owner, repoConfig)
+	if err != nil {
+		return managedSecret, err
+	}
+
+	reconciled := corev1.Secret{}
+	err = reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     s,
+		Owner:      &owner,
+		Expected:   &managedSecret,
+		Reconciled: &reconciled,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(managedSecret.Data, reconciled.Data)
+		},
+		UpdateReconciled: func() {
+			reconciled.Data = managedSecret.Data
+		},
+	})
+	return managedSecret, err
+}
+
+// manageOwnerReference set an owner reference into the user created secret to facilitate watching for changes
+// it also sets up a finalizer to remove the owner reference on cluster deletion
+func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.ElasticsearchCluster) error {
+	gvk := owner.GetObjectKind().GroupVersionKind()
+	blockOwnerDeletion := false
+	isController := false
+	ownerRef := v1.OwnerReference{
+		APIVersion:         gvk.GroupVersion().String(),
+		Kind:               gvk.Kind,
+		Name:               owner.GetName(),
+		UID:                owner.GetUID(),
+		BlockOwnerDeletion: &blockOwnerDeletion,
+		Controller:         &isController,
+	}
+
+	if owner.DeletionTimestamp.IsZero() {
+
+		existing := secret.GetOwnerReferences()
+		for _, r := range existing {
+			if reflect.DeepEqual(r, ownerRef) {
+				return nil
+			}
+		}
+		existing = append(existing, ownerRef)
+		secret.SetOwnerReferences(existing) // TODO replace owner reference based watch with dynamic watch
+		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name)
+		if err := c.Update(context.Background(), &secret); err != nil {
+			return err
+		}
+		return nil
+	}
+	return nil
 }
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
@@ -74,7 +142,7 @@ func ReconcileSnapshotterCronJob(
 	params := CronJobParams{
 		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
 		Elasticsearch:    es,
-		SnapshotterImage: viper.GetString(SnapshotterImageFlag),
+		SnapshotterImage: viper.GetString(operator.ImageFlag),
 		User:             user,
 		EsURL:            services.PublicServiceURL(es),
 	}

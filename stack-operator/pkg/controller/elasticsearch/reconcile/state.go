@@ -8,7 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -53,7 +53,7 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 func (s *State) updateWithPhase(
 	phase v1alpha1.ElasticsearchOrchestrationPhase,
 	resourcesState ResourcesState,
-	observedState support.ObservedState,
+	observedState observer.State,
 ) *State {
 	if observedState.ClusterState != nil {
 		s.status.ClusterUUID = observedState.ClusterState.ClusterUUID
@@ -72,7 +72,7 @@ func (s *State) updateWithPhase(
 // UpdateElasticsearchState updates the Elasticsearch section of the state resource status based on the given pods.
 func (s *State) UpdateElasticsearchState(
 	resourcesState ResourcesState,
-	observedState support.ObservedState,
+	observedState observer.State,
 ) *State {
 	return s.updateWithPhase(s.status.Phase, resourcesState, observedState)
 }
@@ -80,7 +80,7 @@ func (s *State) UpdateElasticsearchState(
 // UpdateElasticsearchOperational marks Elasticsearch as being operational in the resource status.
 func (s *State) UpdateElasticsearchOperational(
 	resourcesState ResourcesState,
-	observedState support.ObservedState,
+	observedState observer.State,
 
 ) *State {
 	return s.updateWithPhase(v1alpha1.ElasticsearchOperationalPhase, resourcesState, observedState)
@@ -97,7 +97,7 @@ func (s *State) UpdateElasticsearchPending(pods []corev1.Pod) *State {
 // UpdateElasticsearchMigrating marks Elasticsearch as being in the data migration phase in the resource status.
 func (s *State) UpdateElasticsearchMigrating(
 	resourcesState ResourcesState,
-	observedState support.ObservedState,
+	observedState observer.State,
 ) *State {
 	s.AddEvent(
 		corev1.EventTypeNormal,

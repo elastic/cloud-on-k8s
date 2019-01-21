@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -15,7 +15,7 @@ func TestNewPodsState(t *testing.T) {
 
 	type args struct {
 		resourcesState reconcile.ResourcesState
-		observedState  support.ObservedState
+		observedState  observer.State
 	}
 	tests := []struct {
 		name string
@@ -35,7 +35,7 @@ func TestNewPodsState(t *testing.T) {
 					},
 					DeletingPods: []corev1.Pod{namedPod("8")},
 				},
-				observedState: support.ObservedState{
+				observedState: observer.State{
 					ClusterState: &client.ClusterState{
 						MasterNode: "master-node-id",
 						Nodes: map[string]client.ClusterStateNode{
@@ -70,7 +70,7 @@ func TestNewPodsState(t *testing.T) {
 					},
 					DeletingPods: []corev1.Pod{namedPod("8")},
 				},
-				observedState: support.ObservedState{},
+				observedState: observer.State{},
 			},
 			want: PodsState{
 				Pending:        map[string]corev1.Pod{"1": namedPod("1")},
