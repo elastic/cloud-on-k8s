@@ -2,10 +2,13 @@ package snapshot
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
@@ -38,6 +41,11 @@ func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchClu
 		Data: map[string][]byte{},
 	}
 
+	err := manageDynamicWatch(c, repoConfig, k8s.ExtractNamespacedName(owner.ObjectMeta))
+	if err != nil {
+		return managedSecret, err
+	}
+
 	if repoConfig == nil {
 		return managedSecret, nil
 	}
@@ -49,15 +57,11 @@ func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchClu
 		return managedSecret, errors.Wrap(err, "configured snapshot secret could not be retrieved")
 	}
 
-	err := ValidateSnapshotCredentials(repoConfig.Type, userCreatedSecret.Data)
+	err = ValidateSnapshotCredentials(repoConfig.Type, userCreatedSecret.Data)
 	if err != nil {
 		return managedSecret, err
 	}
 
-	err = manageOwnerReference(c, userCreatedSecret, owner)
-	if err != nil {
-		return managedSecret, err
-	}
 	for _, v := range userCreatedSecret.Data {
 		// TODO multiple credentials?
 		managedSecret.Data[RepositoryCredentialsKey(repoConfig)] = v
@@ -98,38 +102,35 @@ func ReconcileSnapshotCredentials(
 	return managedSecret, err
 }
 
-// manageOwnerReference set an owner reference into the user created secret to facilitate watching for changes
-// it also sets up a finalizer to remove the owner reference on cluster deletion
-func manageOwnerReference(c client.Client, secret corev1.Secret, owner v1alpha1.ElasticsearchCluster) error {
-	gvk := owner.GetObjectKind().GroupVersionKind()
-	blockOwnerDeletion := false
-	isController := false
-	ownerRef := v1.OwnerReference{
-		APIVersion:         gvk.GroupVersion().String(),
-		Kind:               gvk.Kind,
-		Name:               owner.GetName(),
-		UID:                owner.GetUID(),
-		BlockOwnerDeletion: &blockOwnerDeletion,
-		Controller:         &isController,
+func watchLabel(owner types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-snapshot-secret", owner.Namespace, owner.Name)
+}
+
+func Finalizer(owner types.NamespacedName) finalizer.Finalizer {
+	return finalizer.Finalizer{
+		Name: ExternalSecretFinalizer,
+		Execute: func() error {
+			watches.SecretWatch.RemoveWatchForKey(watchLabel(owner))
+			return nil
+		},
 	}
+}
 
-	if owner.DeletionTimestamp.IsZero() {
-
-		existing := secret.GetOwnerReferences()
-		for _, r := range existing {
-			if reflect.DeepEqual(r, ownerRef) {
-				return nil
-			}
-		}
-		existing = append(existing, ownerRef)
-		secret.SetOwnerReferences(existing) // TODO replace owner reference based watch with dynamic watch
-		log.Info("Adding owner", "secret", secret.Name, "elasticsearch", owner.Name)
-		if err := c.Update(context.Background(), &secret); err != nil {
-			return err
-		}
+// manageDynamicWatch sets up a dynamic watch to keep track of changes in user created secrets linked to this ES cluster.
+func manageDynamicWatch(c client.Client, repoConfig *v1alpha1.SnapshotRepository, owner types.NamespacedName) error {
+	if repoConfig == nil {
+		watches.SecretWatch.RemoveWatchForKey(watchLabel(owner))
 		return nil
 	}
-	return nil
+
+	return watches.SecretWatch.AddWatch(watches.LabeledWatch{
+		Label: watchLabel(owner),
+		Watched: types.NamespacedName{
+			Namespace: repoConfig.Settings.Credentials.Namespace,
+			Name:      repoConfig.Settings.Credentials.Name,
+		},
+		Watcher: owner,
+	})
 }
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config

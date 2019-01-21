@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -108,6 +109,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	}
 
 	scheme := registerScheme(t)
+	watches.SecretWatch.InjectScheme(scheme) // TODO remove global watches
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewFakeClient(tt.args.initialObjects...)
