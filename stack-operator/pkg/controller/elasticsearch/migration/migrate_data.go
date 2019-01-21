@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/support"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -63,7 +63,7 @@ func nodeIsMigratingData(nodeName string, shards []client.Shard, exclusions map[
 // IsMigratingData looks only at the presence of shards on a given node
 // and checks if there is at least one other copy of the shard in the cluster
 // that is started and not relocating.
-func IsMigratingData(state support.ObservedState, pod corev1.Pod, exclusions []corev1.Pod) bool {
+func IsMigratingData(state observer.State, pod corev1.Pod, exclusions []corev1.Pod) bool {
 	clusterState := state.ClusterState
 	if clusterState.IsEmpty() {
 		return true // we don't know if the request timed out or the cluster has not formed yet
