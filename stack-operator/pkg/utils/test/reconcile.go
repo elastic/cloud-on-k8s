@@ -24,6 +24,16 @@ func CheckReconcileCalled(t *testing.T, requests chan reconcile.Request, expecte
 	}
 }
 
+// CheckReconcileNotCalled ensures that no reconcile requests are currently pending
+func CheckReconcileNotCalledWithin(t *testing.T, requests chan reconcile.Request, duration time.Duration) {
+	select {
+	case req := <-requests:
+		assert.Fail(t, fmt.Sprintf("No request expected but got %v", req))
+	case <-time.After(duration):
+		//no request received, OK moving on
+	}
+}
+
 // DeleteIfExists manually deletes the given object.
 func DeleteIfExists(t *testing.T, c client.Client, obj runtime.Object) {
 	if err := c.Delete(context.TODO(), obj); err != nil && !apierrors.IsNotFound(err) {

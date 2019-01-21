@@ -9,10 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
-
-var log = logf.Log.WithName("generic-reconciler")
 
 // OwnerWatch replicates functionality of controller-runtime/pkg/handler/enqueue_owner.go in the context of
 // a dynamic event handler. Code partially copied over :-(
@@ -28,7 +25,7 @@ type OwnerWatch struct {
 }
 
 func (o *OwnerWatch) Key() string {
-	return o.groupKind.String()
+	return o.groupKind.String() + "-owner"
 }
 
 func (o *OwnerWatch) ToReconcileRequest(object metav1.Object) []reconcile.Request {

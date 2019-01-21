@@ -1,0 +1,177 @@
+// +build integration
+
+package watches
+
+import (
+	"context"
+	"path/filepath"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+func TestMain(m *testing.M) {
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
+}
+
+// SetupTestWatch returns a reconcile.Reconcile implementation that
+// writes the request to requests after Reconcile is finished.
+func SetupTestWatch(t *testing.T, source source.Source, handler handler.EventHandler) (manager.Manager, chan reconcile.Request) {
+	requests := make(chan reconcile.Request)
+	fn := reconcile.Func(func(req reconcile.Request) (reconcile.Result, error) {
+		requests <- req
+		return reconcile.Result{}, nil
+	})
+
+	mgr, err := manager.New(test.Config, manager.Options{})
+	assert.NoError(t, err)
+
+	controller, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: fn})
+	assert.NoError(t, err)
+
+	controller.Watch(source, handler)
+	return mgr, requests
+}
+
+// StartTestManager adds recFn
+func StartTestManager(mgr manager.Manager, t *testing.T) (chan struct{}, *sync.WaitGroup) {
+	stop := make(chan struct{})
+	wg := &sync.WaitGroup{}
+	go func() {
+		wg.Add(1)
+		err := mgr.Start(stop)
+		assert.NoError(t, err)
+		wg.Done()
+	}()
+	return stop, wg
+}
+
+// TestDynamicEnqueueRequest tests all operations on dynamic watches in one big test to minimize time lost during
+// bootstrapping the test environment.
+func TestDynamicEnqueueRequest(t *testing.T) {
+	// Fixtures
+	watched1 := types.NamespacedName{
+		Namespace: "default",
+		Name:      "watched1",
+	}
+	watched2 := types.NamespacedName{
+		Namespace: "default",
+		Name:      "watched2",
+	}
+
+	testObject1 := &corev1.Secret{
+		ObjectMeta: k8s.ToObjectMeta(watched1),
+	}
+
+	testObject2 := &corev1.Secret{
+		ObjectMeta: k8s.ToObjectMeta(watched2),
+	}
+
+	watching := types.NamespacedName{
+		Namespace: "default",
+		Name:      "watcher",
+	}
+
+	watcherReconcileRequest := reconcile.Request{
+		NamespacedName: watching,
+	}
+	// Watch + Controller setup
+	source := &source.Kind{Type: &corev1.Secret{}}
+	handler := NewDynamicEnqueueRequest()
+	mgr, requests := SetupTestWatch(t, source, handler)
+	stopMgr, mgrStopped := StartTestManager(mgr, t)
+
+	oneSecond := 1 * time.Second
+
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
+
+	c := mgr.GetClient()
+
+	// Create the first object before registering any watches
+	assert.NoError(t, c.Create(context.TODO(), testObject1))
+
+	// Expect no reconcile requests as we don't have registered the watch yet
+	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+
+	// Add a watch for the first object
+	handler.AddWatch(LabeledWatch{
+		Watched: watched1,
+		Watcher: watching,
+		Label:   "test-watch-1",
+	})
+
+	// Update the first object and expect a reconcile request
+	testLabels := map[string]string{"test": "label"}
+	testObject1.Labels = testLabels
+	assert.NoError(t, c.Update(context.TODO(), testObject1))
+	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+
+	// Now register a second watch for the other object
+	watch := LabeledWatch{
+		Watched: watched2,
+		Watcher: watching,
+		Label:   "test-watch-2",
+	}
+	handler.AddWatch(watch)
+	// ... and create the second object and expect a corresponding reconcile request
+	assert.NoError(t, c.Create(context.TODO(), testObject2))
+	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+
+	// Remove the watch for object 1 again
+	handler.RemoveWatchForKey("test-watch-1")
+	// trigger another update but don't expect any requests as we have unregistered the watch
+	assert.NoError(t, c.Update(context.TODO(), testObject1))
+	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+
+	// The second watch should still work
+	testObject2.Labels = testLabels
+	assert.NoError(t, c.Update(context.TODO(), testObject2))
+	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+
+	// Until we remove it
+	handler.RemoveWatch(watch)
+	// update object 2 again and don't expect a request
+	testObject2.Labels = map[string]string{}
+	assert.NoError(t, c.Update(context.TODO(), testObject2))
+	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+
+	// Owner watches should work as before
+	ownerWatch := &OwnerWatch{
+		OwnerType:    testObject2,
+		IsController: true,
+	}
+	handler.AddWatch(ownerWatch)
+
+	// Let's make object 2 the owner of object 1
+	controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme)
+	assert.NoError(t, c.Update(context.TODO(), testObject1))
+	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
+
+	// We should be able to use both labeled watches and owner watches
+	handler.AddWatch(watch)
+	testObject2.Labels = testLabels
+	assert.NoError(t, c.Update(context.TODO(), testObject2))
+	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+
+	// Delete requests should be observable as well
+	assert.NoError(t, c.Delete(context.TODO(), testObject1))
+	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
+	assert.NoError(t, c.Delete(context.TODO(), testObject2))
+	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+}
