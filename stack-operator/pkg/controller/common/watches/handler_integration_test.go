@@ -27,8 +27,8 @@ func TestMain(m *testing.M) {
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
 }
 
-// SetupTestWatch returns a reconcile.Reconcile implementation that
-// writes the request to requests after Reconcile is finished.
+// SetupTestWatch sets up a reconcile.Reconcile with the given watch that
+// writes any reconcile requests to requests.
 func SetupTestWatch(t *testing.T, source source.Source, handler handler.EventHandler) (manager.Manager, chan reconcile.Request) {
 	requests := make(chan reconcile.Request)
 	fn := reconcile.Func(func(req reconcile.Request) (reconcile.Result, error) {
@@ -46,12 +46,12 @@ func SetupTestWatch(t *testing.T, source source.Source, handler handler.EventHan
 	return mgr, requests
 }
 
-// StartTestManager adds recFn
+// StartTestManager starts the controller manager and all controllers.
 func StartTestManager(mgr manager.Manager, t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	stop := make(chan struct{})
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		err := mgr.Start(stop)
 		assert.NoError(t, err)
 		wg.Done()

@@ -37,7 +37,7 @@ func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 }
 
 // DynamicEnqueueRequest is an EventHandler that allows addition and removal of
-// request transformers at runtime allowing dynamic watching of specific resources.
+// request transformers at runtime allowing dynamic reconciliation based on specific resources.
 type DynamicEnqueueRequest struct {
 	mutex        sync.RWMutex
 	transformers map[string]ToReconcileRequestTransformer
@@ -67,19 +67,19 @@ func (d *DynamicEnqueueRequest) RemoveWatchForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 	delete(d.transformers, key)
-	log.V(4).Info("Removed transformer", "Removed", key, "Now", d.transformers)
+	log.V(4).Info("Removed transformer", "removed", key, "now", d.transformers)
 }
 
 // DynamicEnqueueRequest implements EventHandler
 var _ handler.EventHandler = &DynamicEnqueueRequest{}
 
-// Create is called in response to an create event - e.g. Pod Creation.
+// Create is called in response to a create event - e.g. Pod Creation.
 func (d *DynamicEnqueueRequest) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
 		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("create event transformed")
+			log.V(4).Info("Create event transformed", "key", v.Key())
 			q.Add(req)
 		}
 	}
@@ -91,14 +91,13 @@ func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLi
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
 		for _, req := range v.ToReconcileRequest(evt.MetaOld) {
-			log.V(4).Info("update event transformed (old)")
+			log.V(4).Info("Update event transformed (old)", "key", v.Key())
 			q.Add(req)
 		}
 		for _, req := range v.ToReconcileRequest(evt.MetaNew) {
-			log.V(4).Info("update event transformed (new)")
+			log.V(4).Info("Update event transformed (new)", "key", v.Key())
 			q.Add(req)
 		}
-
 	}
 }
 
@@ -108,7 +107,7 @@ func (d *DynamicEnqueueRequest) Delete(evt event.DeleteEvent, q workqueue.RateLi
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
 		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("delete event transformed")
+			log.V(4).Info("Delete event transformed", "key", v.Key())
 			q.Add(req)
 		}
 	}
@@ -121,13 +120,13 @@ func (d *DynamicEnqueueRequest) Generic(evt event.GenericEvent, q workqueue.Rate
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
 		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("generic event transformed")
+			log.V(4).Info("Generic event transformed", "key", v.Key())
 			q.Add(req)
 		}
 	}
 }
 
-// Scheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and
+// InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and
 // Reconciles.
 func (d *DynamicEnqueueRequest) InjectScheme(scheme *runtime.Scheme) error {
 	d.scheme = scheme
