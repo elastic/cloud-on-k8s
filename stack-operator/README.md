@@ -7,6 +7,7 @@ Manage an Elastic stack in Kubernetes.
 * [go](https://golang.org/dl/)
 * [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
+* [kustomize](https://github.com/kubernetes-sigs/kustomize)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
