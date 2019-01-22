@@ -110,7 +110,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Add a watch for the first object
-	eventHandler.AddWatch(NamedWatch{
+	eventHandler.AddHandler(NamedWatch{
 		Watched: watched1,
 		Watcher: watching,
 		Name:    "test-watch-1",
@@ -128,13 +128,13 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}
-	eventHandler.AddWatch(watch)
+	eventHandler.AddHandler(watch)
 	// ... and create the second object and expect a corresponding reconcile request
 	assert.NoError(t, c.Create(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Remove the watch for object 1 again
-	eventHandler.RemoveWatchForKey("test-watch-1")
+	eventHandler.RemoveHandlerForKey("test-watch-1")
 	// trigger another update but don't expect any requests as we have unregistered the watch
 	assert.NoError(t, c.Update(context.TODO(), testObject1))
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
@@ -145,7 +145,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Until we remove it
-	eventHandler.RemoveWatch(watch)
+	eventHandler.RemoveHandler(watch)
 	// update object 2 again and don't expect a request
 	testObject2.Labels = map[string]string{}
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
@@ -158,7 +158,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 			IsController: true,
 		},
 	}
-	eventHandler.AddWatch(ownerWatch)
+	eventHandler.AddHandler(ownerWatch)
 
 	// Let's make object 2 the owner of object 1
 	controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme)
@@ -166,7 +166,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
 
 	// We should be able to use both labeled watches and owner watches
-	eventHandler.AddWatch(watch)
+	eventHandler.AddHandler(watch)
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)

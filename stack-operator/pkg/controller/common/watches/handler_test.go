@@ -8,42 +8,42 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
-type fakeTransformer struct {
+type fakeHandler struct {
 	name    string
 	handler handler.EventHandler
 }
 
-func (t fakeTransformer) Key() string {
+func (t fakeHandler) Key() string {
 	return t.name
 }
 
-func (t fakeTransformer) EventHandler() handler.EventHandler {
+func (t fakeHandler) EventHandler() handler.EventHandler {
 	return t.handler
 }
 
-var _ ToReconcileRequestTransformer = &fakeTransformer{}
+var _ HandlerRegistration = &fakeHandler{}
 
 func TestDynamicEnqueueRequest_AddWatch(t *testing.T) {
 	tests := []struct {
-		name                   string
-		setup                  func(handler *DynamicEnqueueRequest)
-		args                   ToReconcileRequestTransformer
-		wantErr                bool
-		registeredTransformers int
+		name               string
+		setup              func(handler *DynamicEnqueueRequest)
+		args               HandlerRegistration
+		wantErr            bool
+		registeredHandlers int
 	}{
 		{
-			name:    "fail on unitialized handler",
-			args:    &fakeTransformer{},
+			name:    "fail on uninitialized handler",
+			args:    &fakeHandler{},
 			wantErr: true,
 		},
 		{
 			name: "succeed on initialized handler",
-			args: &fakeTransformer{},
+			args: &fakeHandler{},
 			setup: func(handler *DynamicEnqueueRequest) {
 				handler.InjectScheme(scheme.Scheme)
 			},
-			wantErr:                false,
-			registeredTransformers: 1,
+			wantErr:            false,
+			registeredHandlers: 1,
 		},
 	}
 	for _, tt := range tests {
@@ -52,48 +52,48 @@ func TestDynamicEnqueueRequest_AddWatch(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(d)
 			}
-			if err := d.AddWatch(tt.args); (err != nil) != tt.wantErr {
-				t.Errorf("DynamicEnqueueRequest.AddWatch() error = %v, wantErr %v", err, tt.wantErr)
+			if err := d.AddHandler(tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("DynamicEnqueueRequest.AddHandler() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			assert.Equal(t, len(d.transformers), tt.registeredTransformers)
+			assert.Equal(t, len(d.registrations), tt.registeredHandlers)
 		})
 	}
 }
 
 func TestDynamicEnqueueRequest_RemoveWatch(t *testing.T) {
 	tests := []struct {
-		name                   string
-		setup                  func(handler *DynamicEnqueueRequest)
-		args                   ToReconcileRequestTransformer
-		registeredTransformers int
+		name               string
+		setup              func(handler *DynamicEnqueueRequest)
+		args               HandlerRegistration
+		registeredHandlers int
 	}{
 		{
 			name: "removal on empty handler is a NOOP",
-			args: &fakeTransformer{},
+			args: &fakeHandler{},
 		},
 		{
 			name: "succeed on initialized handler",
-			args: &fakeTransformer{},
+			args: &fakeHandler{},
 			setup: func(handler *DynamicEnqueueRequest) {
 				handler.InjectScheme(scheme.Scheme)
-				handler.AddWatch(&fakeTransformer{})
-				assert.Equal(t, len(handler.transformers), 1)
+				handler.AddHandler(&fakeHandler{})
+				assert.Equal(t, len(handler.registrations), 1)
 			},
-			registeredTransformers: 0,
+			registeredHandlers: 0,
 		},
 		{
 			name: "uses key to identify transformer",
-			args: &fakeTransformer{
+			args: &fakeHandler{
 				name: "bar",
 			},
 			setup: func(handler *DynamicEnqueueRequest) {
 				handler.InjectScheme(scheme.Scheme)
-				assert.NoError(t, handler.AddWatch(&fakeTransformer{
+				assert.NoError(t, handler.AddHandler(&fakeHandler{
 					name: "foo",
 				}))
-				assert.Equal(t, len(handler.transformers), 1)
+				assert.Equal(t, len(handler.registrations), 1)
 			},
-			registeredTransformers: 1,
+			registeredHandlers: 1,
 		},
 	}
 	for _, tt := range tests {
@@ -102,8 +102,8 @@ func TestDynamicEnqueueRequest_RemoveWatch(t *testing.T) {
 			if tt.setup != nil {
 				tt.setup(d)
 			}
-			d.RemoveWatch(tt.args)
-			assert.Equal(t, len(d.transformers), tt.registeredTransformers)
+			d.RemoveHandler(tt.args)
+			assert.Equal(t, len(d.registrations), tt.registeredHandlers)
 		})
 	}
 }

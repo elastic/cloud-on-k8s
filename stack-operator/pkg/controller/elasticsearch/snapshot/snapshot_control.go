@@ -110,7 +110,7 @@ func Finalizer(owner types.NamespacedName) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: ExternalSecretFinalizer,
 		Execute: func() error {
-			watches.SecretWatch.RemoveWatchForKey(watchLabel(owner))
+			watches.SecretWatch.RemoveHandlerForKey(watchLabel(owner))
 			return nil
 		},
 	}
@@ -119,11 +119,11 @@ func Finalizer(owner types.NamespacedName) finalizer.Finalizer {
 // manageDynamicWatch sets up a dynamic watch to keep track of changes in user created secrets linked to this ES cluster.
 func manageDynamicWatch(c client.Client, repoConfig *v1alpha1.SnapshotRepository, owner types.NamespacedName) error {
 	if repoConfig == nil {
-		watches.SecretWatch.RemoveWatchForKey(watchLabel(owner))
+		watches.SecretWatch.RemoveHandlerForKey(watchLabel(owner))
 		return nil
 	}
 
-	return watches.SecretWatch.AddWatch(watches.NamedWatch{
+	return watches.SecretWatch.AddHandler(watches.NamedWatch{
 		Name: watchLabel(owner),
 		Watched: types.NamespacedName{
 			Namespace: repoConfig.Settings.Credentials.Namespace,

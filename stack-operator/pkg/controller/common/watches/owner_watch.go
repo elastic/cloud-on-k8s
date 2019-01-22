@@ -16,4 +16,4 @@ func (o *OwnerWatch) EventHandler() handler.EventHandler {
 	return o
 }
 
-var _ ToReconcileRequestTransformer = &OwnerWatch{}
+var _ HandlerRegistration = &OwnerWatch{}

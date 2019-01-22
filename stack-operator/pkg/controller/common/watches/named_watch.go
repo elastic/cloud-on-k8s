@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// NamedWatch is a request transformer that allows watching a specific resource identified by
+// NamedWatch is a event handler that allows watching a specific resource identified by
 // Watched. Events will be handled by Watcher.
 type NamedWatch struct {
 	// Name identifies this watch for easier removal and deduplication.
@@ -75,4 +75,4 @@ func (w NamedWatch) toReconcileRequest(object metav1.Object) []reconcile.Request
 	return nil
 }
 
-var _ ToReconcileRequestTransformer = &NamedWatch{}
+var _ HandlerRegistration = &NamedWatch{}

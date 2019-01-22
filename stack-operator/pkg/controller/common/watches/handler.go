@@ -13,14 +13,14 @@ import (
 )
 
 var (
-	//SecretWatch TODO don't use a global variable for this, this is just for demonstration.
+	//SecretWatch TODO don't use a global variable for this.
 	SecretWatch = NewDynamicEnqueueRequest()
 	log         = logf.Log.WithName("dynamic-enqueue-request")
 )
 
-// ToReconcileRequestTransformer is the handler/transformer registration that can be added or removed
+// HandlerRegistration is the event handler registration that can be added or removed
 // from DynamicEnqueueRequest.
-type ToReconcileRequestTransformer interface {
+type HandlerRegistration interface {
 	// Key identifies the transformer
 	Key() string
 	// EventHandler transforms the event for object to one or many reconcile.Request if relevant.
@@ -30,42 +30,42 @@ type ToReconcileRequestTransformer interface {
 // NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
 func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 	return &DynamicEnqueueRequest{
-		transformers: make(map[string]ToReconcileRequestTransformer),
+		registrations: make(map[string]HandlerRegistration),
 	}
 }
 
 // DynamicEnqueueRequest is an EventHandler that allows addition and removal of
-// request transformers at runtime allowing dynamic reconciliation based on specific resources.
+// request registrations at runtime allowing dynamic reconciliation based on specific resources.
 type DynamicEnqueueRequest struct {
-	mutex        sync.RWMutex
-	transformers map[string]ToReconcileRequestTransformer
-	scheme       *runtime.Scheme
+	mutex         sync.RWMutex
+	registrations map[string]HandlerRegistration
+	scheme        *runtime.Scheme
 }
 
-// AddWatch adds a new request transformer to this DynamicEnqueueRequest.
-func (d *DynamicEnqueueRequest) AddWatch(xform ToReconcileRequestTransformer) error {
+// AddHandler adds a new request transformer to this DynamicEnqueueRequest.
+func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	if d.scheme == nil {
 		return errors.New("DynamicEnqueueRequest is not initialised yet. No scheme")
 	}
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	inject.SchemeInto(d.scheme, xform)
-	d.transformers[xform.Key()] = xform
-	log.V(4).Info("Added new transformer", "Now", d.transformers)
+	inject.SchemeInto(d.scheme, handler)
+	d.registrations[handler.Key()] = handler
+	log.V(4).Info("Added new handler registration", "Now", d.registrations)
 	return nil
 }
 
-// RemoveWatch removes the watch defined by the transformer.
-func (d *DynamicEnqueueRequest) RemoveWatch(xform ToReconcileRequestTransformer) {
-	d.RemoveWatchForKey(xform.Key())
+// RemoveHandler removes the watch defined by the transformer.
+func (d *DynamicEnqueueRequest) RemoveHandler(handler HandlerRegistration) {
+	d.RemoveHandlerForKey(handler.Key())
 }
 
-// RemoveWatchForKey removes the watch identified by the given key.
-func (d *DynamicEnqueueRequest) RemoveWatchForKey(key string) {
+// RemoveHandlerForKey removes the watch identified by the given key.
+func (d *DynamicEnqueueRequest) RemoveHandlerForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	delete(d.transformers, key)
-	log.V(4).Info("Removed transformer", "removed", key, "now", d.transformers)
+	delete(d.registrations, key)
+	log.V(4).Info("Removed handler registration", "removed", key, "now", d.registrations)
 }
 
 // DynamicEnqueueRequest implements EventHandler
@@ -75,7 +75,7 @@ var _ handler.EventHandler = &DynamicEnqueueRequest{}
 func (d *DynamicEnqueueRequest) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	for _, v := range d.transformers {
+	for _, v := range d.registrations {
 		v.EventHandler().Create(evt, q)
 	}
 }
@@ -84,7 +84,7 @@ func (d *DynamicEnqueueRequest) Create(evt event.CreateEvent, q workqueue.RateLi
 func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	for _, v := range d.transformers {
+	for _, v := range d.registrations {
 		v.EventHandler().Update(evt, q)
 	}
 }
@@ -93,7 +93,7 @@ func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLi
 func (d *DynamicEnqueueRequest) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	for _, v := range d.transformers {
+	for _, v := range d.registrations {
 		v.EventHandler().Delete(evt, q)
 	}
 }
@@ -103,7 +103,7 @@ func (d *DynamicEnqueueRequest) Delete(evt event.DeleteEvent, q workqueue.RateLi
 func (d *DynamicEnqueueRequest) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
-	for _, v := range d.transformers {
+	for _, v := range d.registrations {
 		v.EventHandler().Generic(evt, q)
 	}
 }
