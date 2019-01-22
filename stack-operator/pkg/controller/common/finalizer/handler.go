@@ -19,13 +19,13 @@ type Finalizer struct {
 	Execute func() error
 }
 
-// Handler handles registration and execution of finalizers
+// EventHandler handles registration and execution of finalizers
 // Note that it is not thread-safe.
 type Handler struct {
 	client client.Client
 }
 
-// NewHandler creates a Handler
+// NewHandler creates a EventHandler
 func NewHandler(client client.Client) Handler {
 	return Handler{
 		client: client,

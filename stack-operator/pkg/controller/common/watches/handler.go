@@ -4,12 +4,10 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -25,8 +23,8 @@ var (
 type ToReconcileRequestTransformer interface {
 	// Key identifies the transformer
 	Key() string
-	// ToReconcileRequest transforms the event for object to one or many reconcile.Request if relevant.
-	ToReconcileRequest(object metav1.Object) []reconcile.Request
+	// EventHandler transforms the event for object to one or many reconcile.Request if relevant.
+	EventHandler() handler.EventHandler
 }
 
 // NewDynamicEnqueueRequest creates a new DynamicEnqueueRequest
@@ -78,10 +76,7 @@ func (d *DynamicEnqueueRequest) Create(evt event.CreateEvent, q workqueue.RateLi
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
-		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("Create event transformed", "key", v.Key())
-			q.Add(req)
-		}
+		v.EventHandler().Create(evt, q)
 	}
 }
 
@@ -90,14 +85,7 @@ func (d *DynamicEnqueueRequest) Update(evt event.UpdateEvent, q workqueue.RateLi
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
-		for _, req := range v.ToReconcileRequest(evt.MetaOld) {
-			log.V(4).Info("Update event transformed (old)", "key", v.Key())
-			q.Add(req)
-		}
-		for _, req := range v.ToReconcileRequest(evt.MetaNew) {
-			log.V(4).Info("Update event transformed (new)", "key", v.Key())
-			q.Add(req)
-		}
+		v.EventHandler().Update(evt, q)
 	}
 }
 
@@ -106,10 +94,7 @@ func (d *DynamicEnqueueRequest) Delete(evt event.DeleteEvent, q workqueue.RateLi
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
-		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("Delete event transformed", "key", v.Key())
-			q.Add(req)
-		}
+		v.EventHandler().Delete(evt, q)
 	}
 }
 
@@ -119,10 +104,7 @@ func (d *DynamicEnqueueRequest) Generic(evt event.GenericEvent, q workqueue.Rate
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 	for _, v := range d.transformers {
-		for _, req := range v.ToReconcileRequest(evt.Meta) {
-			log.V(4).Info("Generic event transformed", "key", v.Key())
-			q.Add(req)
-		}
+		v.EventHandler().Generic(evt, q)
 	}
 }
 

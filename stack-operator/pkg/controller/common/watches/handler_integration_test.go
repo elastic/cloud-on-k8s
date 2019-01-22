@@ -90,8 +90,8 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	}
 	// Watch + Controller setup
 	source := &source.Kind{Type: &corev1.Secret{}}
-	handler := NewDynamicEnqueueRequest()
-	mgr, requests := SetupTestWatch(t, source, handler)
+	eventHandler := NewDynamicEnqueueRequest()
+	mgr, requests := SetupTestWatch(t, source, eventHandler)
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
 	oneSecond := 1 * time.Second
@@ -110,7 +110,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Add a watch for the first object
-	handler.AddWatch(NamedWatch{
+	eventHandler.AddWatch(NamedWatch{
 		Watched: watched1,
 		Watcher: watching,
 		Name:    "test-watch-1",
@@ -128,13 +128,13 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}
-	handler.AddWatch(watch)
+	eventHandler.AddWatch(watch)
 	// ... and create the second object and expect a corresponding reconcile request
 	assert.NoError(t, c.Create(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Remove the watch for object 1 again
-	handler.RemoveWatchForKey("test-watch-1")
+	eventHandler.RemoveWatchForKey("test-watch-1")
 	// trigger another update but don't expect any requests as we have unregistered the watch
 	assert.NoError(t, c.Update(context.TODO(), testObject1))
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
@@ -145,7 +145,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Until we remove it
-	handler.RemoveWatch(watch)
+	eventHandler.RemoveWatch(watch)
 	// update object 2 again and don't expect a request
 	testObject2.Labels = map[string]string{}
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
@@ -153,10 +153,12 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 
 	// Owner watches should work as before
 	ownerWatch := &OwnerWatch{
-		OwnerType:    testObject2,
-		IsController: true,
+		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+			OwnerType:    testObject2,
+			IsController: true,
+		},
 	}
-	handler.AddWatch(ownerWatch)
+	eventHandler.AddWatch(ownerWatch)
 
 	// Let's make object 2 the owner of object 1
 	controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme)
@@ -164,7 +166,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
 
 	// We should be able to use both labeled watches and owner watches
-	handler.AddWatch(watch)
+	eventHandler.AddWatch(watch)
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)

@@ -100,8 +100,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 	// Watch secrets
 	if err = watches.SecretWatch.AddWatch(&watches.OwnerWatch{
-		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+		},
 	}); err != nil {
 		return err
 	}
