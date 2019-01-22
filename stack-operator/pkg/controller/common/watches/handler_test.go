@@ -23,7 +23,7 @@ func (t fakeHandler) EventHandler() handler.EventHandler {
 
 var _ HandlerRegistration = &fakeHandler{}
 
-func TestDynamicEnqueueRequest_AddWatch(t *testing.T) {
+func TestDynamicEnqueueRequest_AddHandler(t *testing.T) {
 	tests := []struct {
 		name               string
 		setup              func(handler *DynamicEnqueueRequest)
@@ -40,7 +40,7 @@ func TestDynamicEnqueueRequest_AddWatch(t *testing.T) {
 			name: "succeed on initialized handler",
 			args: &fakeHandler{},
 			setup: func(handler *DynamicEnqueueRequest) {
-				handler.InjectScheme(scheme.Scheme)
+				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
 			},
 			wantErr:            false,
 			registeredHandlers: 1,
@@ -60,7 +60,7 @@ func TestDynamicEnqueueRequest_AddWatch(t *testing.T) {
 	}
 }
 
-func TestDynamicEnqueueRequest_RemoveWatch(t *testing.T) {
+func TestDynamicEnqueueRequest_RemoveHandler(t *testing.T) {
 	tests := []struct {
 		name               string
 		setup              func(handler *DynamicEnqueueRequest)
@@ -75,8 +75,8 @@ func TestDynamicEnqueueRequest_RemoveWatch(t *testing.T) {
 			name: "succeed on initialized handler",
 			args: &fakeHandler{},
 			setup: func(handler *DynamicEnqueueRequest) {
-				handler.InjectScheme(scheme.Scheme)
-				handler.AddHandler(&fakeHandler{})
+				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
+				assert.NoError(t, handler.AddHandler(&fakeHandler{}))
 				assert.Equal(t, len(handler.registrations), 1)
 			},
 			registeredHandlers: 0,
@@ -87,7 +87,7 @@ func TestDynamicEnqueueRequest_RemoveWatch(t *testing.T) {
 				name: "bar",
 			},
 			setup: func(handler *DynamicEnqueueRequest) {
-				handler.InjectScheme(scheme.Scheme)
+				assert.NoError(t, handler.InjectScheme(scheme.Scheme))
 				assert.NoError(t, handler.AddHandler(&fakeHandler{
 					name: "foo",
 				}))
