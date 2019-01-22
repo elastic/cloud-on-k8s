@@ -14,6 +14,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+// CheckReconcileCalledIn waits up to Timeout to receive the expected request on requests.
+func CheckReconcileCalledIn(t *testing.T, requests chan reconcile.Request, expected reconcile.Request, min, max int) {
+	var seen int
+	for seen < max {
+		select {
+		case req := <-requests:
+			seen++
+			assert.Equal(t, req, expected)
+		case <-time.After(Timeout/time.Duration(max)):
+			if seen < min {
+				assert.Fail(t, fmt.Sprintf("No request received after %s", Timeout))
+			}
+			return
+		}
+	}
+}
+
 // CheckReconcileCalled waits up to Timeout to receive the expected request on requests.
 func CheckReconcileCalled(t *testing.T, requests chan reconcile.Request, expected reconcile.Request) {
 	select {
