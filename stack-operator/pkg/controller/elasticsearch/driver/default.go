@@ -186,10 +186,10 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	log.Info(
-		"Going to apply the following topology changes",
-		"ToCreate:", len(changes.ToCreate),
-		"ToKeep:", len(changes.ToKeep),
-		"ToDelete:", len(changes.ToDelete),
+		"Calculated all required changes",
+		"to_create:", len(changes.ToCreate),
+		"to_keep:", len(changes.ToKeep),
+		"to_delete:", len(changes.ToDelete),
 	)
 
 	// figure out what changes we can perform right now
