@@ -23,7 +23,7 @@ var (
 type HandlerRegistration interface {
 	// Key identifies the transformer
 	Key() string
-	// EventHandler transforms the event for object to one or many reconcile.Request if relevant.
+	// EventHandler handles CRUD events and turns them into reconcile.Request if relevant.
 	EventHandler() handler.EventHandler
 }
 
@@ -35,14 +35,14 @@ func NewDynamicEnqueueRequest() *DynamicEnqueueRequest {
 }
 
 // DynamicEnqueueRequest is an EventHandler that allows addition and removal of
-// request registrations at runtime allowing dynamic reconciliation based on specific resources.
+// event handler registrations at runtime allowing dynamic reconciliation based on specific resources.
 type DynamicEnqueueRequest struct {
 	mutex         sync.RWMutex
 	registrations map[string]HandlerRegistration
 	scheme        *runtime.Scheme
 }
 
-// AddHandler adds a new request transformer to this DynamicEnqueueRequest.
+// AddHandler adds a new event handler to this DynamicEnqueueRequest.
 func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	if d.scheme == nil {
 		return errors.New("DynamicEnqueueRequest is not initialised yet. No scheme")
@@ -55,12 +55,12 @@ func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	return nil
 }
 
-// RemoveHandler removes the watch defined by the transformer.
+// RemoveHandler removes the handler defined by the transformer.
 func (d *DynamicEnqueueRequest) RemoveHandler(handler HandlerRegistration) {
 	d.RemoveHandlerForKey(handler.Key())
 }
 
-// RemoveHandlerForKey removes the watch identified by the given key.
+// RemoveHandlerForKey removes the handler identified by the given key.
 func (d *DynamicEnqueueRequest) RemoveHandlerForKey(key string) {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()

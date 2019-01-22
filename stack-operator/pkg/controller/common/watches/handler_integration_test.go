@@ -39,10 +39,10 @@ func SetupTestWatch(t *testing.T, source source.Source, handler handler.EventHan
 	mgr, err := manager.New(test.Config, manager.Options{})
 	assert.NoError(t, err)
 
-	controller, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: fn})
+	ctrl, err := controller.New("test-reconciler", mgr, controller.Options{Reconciler: fn})
 	assert.NoError(t, err)
 
-	controller.Watch(source, handler)
+	assert.NoError(t, ctrl.Watch(source, handler))
 	return mgr, requests
 }
 
@@ -89,9 +89,9 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		NamespacedName: watching,
 	}
 	// Watch + Controller setup
-	source := &source.Kind{Type: &corev1.Secret{}}
+	src := &source.Kind{Type: &corev1.Secret{}}
 	eventHandler := NewDynamicEnqueueRequest()
-	mgr, requests := SetupTestWatch(t, source, eventHandler)
+	mgr, requests := SetupTestWatch(t, src, eventHandler)
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
 	oneSecond := 1 * time.Second
@@ -110,11 +110,11 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Add a watch for the first object
-	eventHandler.AddHandler(NamedWatch{
+	assert.NoError(t, eventHandler.AddHandler(NamedWatch{
 		Watched: watched1,
 		Watcher: watching,
 		Name:    "test-watch-1",
-	})
+	}))
 
 	// Update the first object and expect a reconcile request
 	testLabels := map[string]string{"test": "label"}
@@ -128,7 +128,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 		Watcher: watching,
 		Name:    "test-watch-2",
 	}
-	eventHandler.AddHandler(watch)
+	assert.NoError(t, eventHandler.AddHandler(watch))
 	// ... and create the second object and expect a corresponding reconcile request
 	assert.NoError(t, c.Create(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
@@ -158,15 +158,15 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 			IsController: true,
 		},
 	}
-	eventHandler.AddHandler(ownerWatch)
+	assert.NoError(t, eventHandler.AddHandler(ownerWatch))
 
 	// Let's make object 2 the owner of object 1
-	controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme)
+	assert.NoError(t, controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme))
 	assert.NoError(t, c.Update(context.TODO(), testObject1))
 	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
 
 	// We should be able to use both labeled watches and owner watches
-	eventHandler.AddHandler(watch)
+	assert.NoError(t, eventHandler.AddHandler(watch))
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
