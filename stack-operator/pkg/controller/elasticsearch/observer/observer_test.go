@@ -67,9 +67,13 @@ func TestObserver_Stop(t *testing.T) {
 	// should be safe to call multiple times
 	observer.Stop()
 	// should stop running at some point
-	time.Sleep(1 * time.Millisecond)
-	observationTime := observer.LastObservationTime()
-	// optimistically check nothing new happened after 10ms
-	time.Sleep(10 * time.Millisecond)
-	require.Equal(t, observationTime, observer.LastObservationTime())
+	test.RetryUntilSuccess(t, func() error {
+		observationTime := observer.LastObservationTime()
+		// optimistically check nothing new happened after 50ms
+		time.Sleep(50 * time.Millisecond)
+		if observationTime != observer.LastObservationTime() {
+			return errors.New("Observer does not seem to be stopped yet")
+		}
+		return nil
+	})
 }

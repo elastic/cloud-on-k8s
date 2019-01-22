@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -26,7 +26,7 @@ func createElasticsearchPod(
 	c client.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
-	state *reconcilehelper.ReconcileState,
+	reconcileState *esreconcile.State,
 	pod corev1.Pod,
 	podSpecCtx pod.PodSpecContext,
 ) error {
@@ -126,7 +126,7 @@ func createElasticsearchPod(
 	if err := c.Create(context.TODO(), &pod); err != nil {
 		return err
 	}
-	state.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
+	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
 	log.Info("Created pod", "name", pod.Name, "namespace", pod.Namespace)
 
 	return nil
@@ -136,8 +136,8 @@ func createElasticsearchPod(
 // unless a data migration is in progress
 func deleteElasticsearchPod(
 	c client.Client,
-	reconcileState *reconcilehelper.ReconcileState,
-	resourcesState reconcilehelper.ResourcesState,
+	reconcileState *esreconcile.State,
+	resourcesState esreconcile.ResourcesState,
 	observedState observer.State,
 	pod corev1.Pod,
 	allDeletions []corev1.Pod,
