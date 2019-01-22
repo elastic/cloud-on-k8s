@@ -123,8 +123,8 @@ func manageDynamicWatch(c client.Client, repoConfig *v1alpha1.SnapshotRepository
 		return nil
 	}
 
-	return watches.SecretWatch.AddWatch(watches.LabeledWatch{
-		Label: watchLabel(owner),
+	return watches.SecretWatch.AddWatch(watches.NamedWatch{
+		Name: watchLabel(owner),
 		Watched: types.NamespacedName{
 			Namespace: repoConfig.Settings.Credentials.Namespace,
 			Name:      repoConfig.Settings.Credentials.Name,

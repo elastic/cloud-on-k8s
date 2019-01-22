@@ -6,11 +6,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// LabeledWatch is a request transformer that allows watching a specific resource identified by
+// NamedWatch is a request transformer that allows watching a specific resource identified by
 // Watched. Events will be handled by Watcher.
-type LabeledWatch struct {
-	// Label identifies this watch for easier removal and deduplication.
-	Label string
+type NamedWatch struct {
+	// Name identifies this watch for easier removal and deduplication.
+	Name string
 	// Watched is the resource being watched.
 	Watched types.NamespacedName
 	// Watcher is the receiver of the reconcile.Request
@@ -18,12 +18,12 @@ type LabeledWatch struct {
 }
 
 // Key identifies this transformer.
-func (w LabeledWatch) Key() string {
-	return w.Label
+func (w NamedWatch) Key() string {
+	return w.Name
 }
 
 // ToReconcileRequest transforms the event for object to one or many reconcile.Request if relevant.
-func (w LabeledWatch) ToReconcileRequest(object metav1.Object) []reconcile.Request {
+func (w NamedWatch) ToReconcileRequest(object metav1.Object) []reconcile.Request {
 	if object.GetName() == w.Watched.Name && object.GetNamespace() == w.Watched.Namespace {
 		return []reconcile.Request{
 			{
@@ -34,4 +34,4 @@ func (w LabeledWatch) ToReconcileRequest(object metav1.Object) []reconcile.Reque
 	return nil
 }
 
-var _ ToReconcileRequestTransformer = &LabeledWatch{}
+var _ ToReconcileRequestTransformer = &NamedWatch{}

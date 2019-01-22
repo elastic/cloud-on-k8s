@@ -110,10 +110,10 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Add a watch for the first object
-	handler.AddWatch(LabeledWatch{
+	handler.AddWatch(NamedWatch{
 		Watched: watched1,
 		Watcher: watching,
-		Label:   "test-watch-1",
+		Name:    "test-watch-1",
 	})
 
 	// Update the first object and expect a reconcile request
@@ -123,10 +123,10 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Now register a second watch for the other object
-	watch := LabeledWatch{
+	watch := NamedWatch{
 		Watched: watched2,
 		Watcher: watching,
-		Label:   "test-watch-2",
+		Name:    "test-watch-2",
 	}
 	handler.AddWatch(watch)
 	// ... and create the second object and expect a corresponding reconcile request
