@@ -9,7 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// NamedWatch is a event handler that allows watching a specific resource identified by
+// NamedWatch is an event handler that allows watching a specific resource identified by
 // Watched. Events will be handled by Watcher.
 type NamedWatch struct {
 	// Name identifies this watch for easier removal and deduplication.

@@ -22,7 +22,7 @@ func CheckReconcileCalledIn(t *testing.T, requests chan reconcile.Request, expec
 		case req := <-requests:
 			seen++
 			assert.Equal(t, req, expected)
-		case <-time.After(Timeout/time.Duration(max)):
+		case <-time.After(Timeout / time.Duration(max)):
 			if seen < min {
 				assert.Fail(t, fmt.Sprintf("No request received after %s", Timeout))
 			}

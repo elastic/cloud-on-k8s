@@ -142,6 +142,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// The second watch should still work
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
+	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
 	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Until we remove it
@@ -163,12 +164,14 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	// Let's make object 2 the owner of object 1
 	assert.NoError(t, controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme))
 	assert.NoError(t, c.Update(context.TODO(), testObject1))
+	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
 	test.CheckReconcileCalledIn(t, requests, reconcile.Request{NamespacedName: watched2}, 1, 2)
 
 	// We should be able to use both labeled watches and owner watches
 	assert.NoError(t, eventHandler.AddHandler(watch))
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject2))
+	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
 	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Delete requests should be observable as well
