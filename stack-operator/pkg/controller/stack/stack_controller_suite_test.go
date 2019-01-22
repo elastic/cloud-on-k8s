@@ -3,41 +3,18 @@
 package stack
 
 import (
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var cfg *rest.Config
-
 func TestMain(m *testing.M) {
-	logf.SetLogger(logf.ZapLogger(false))
-
-	t := &envtest.Environment{
-		CRDDirectoryPaths:        []string{filepath.Join("..", "..", "..", "config", "crds")},
-		ControlPlaneStartTimeout: test.ControlPlaneStartTimeout,
-	}
-	apis.AddToScheme(scheme.Scheme)
-
-	var err error
-	if cfg, err = t.Start(); err != nil {
-		log.Error(err, "Start failed")
-	}
-
-	code := m.Run()
-	t.Stop()
-	os.Exit(code)
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
