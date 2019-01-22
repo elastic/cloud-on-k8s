@@ -128,7 +128,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
-	state := NewReconcileState(request, kb)
+	state := NewState(request, kb)
 
 	state, err = r.reconcileKibanaDeployment(state, kb)
 	if err != nil {
@@ -145,9 +145,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileKibana) reconcileKibanaDeployment(
-	state ReconcileState,
+	state State,
 	kb *kibanav1alpha1.Kibana,
-) (ReconcileState, error) {
+) (State, error) {
 	var auth kibanav1alpha1.ElasticsearchInlineAuth
 	if kb.Spec.Elasticsearch.Auth.Inline != nil {
 		auth = *kb.Spec.Elasticsearch.Auth.Inline
@@ -232,7 +232,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 	return state, nil
 }
 
-func (r *ReconcileKibana) updateStatus(state ReconcileState) (reconcile.Result, error) {
+func (r *ReconcileKibana) updateStatus(state State) (reconcile.Result, error) {
 	current := state.originalKibana
 	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
 		return state.Result, nil

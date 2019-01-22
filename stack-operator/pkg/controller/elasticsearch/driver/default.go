@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
@@ -73,7 +73,7 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
 		paramsTmpl pod.NewPodSpecParams,
-		resourcesState reconcilehelper.ResourcesState,
+		resourcesState reconcile.ResourcesState,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
@@ -83,13 +83,13 @@ type defaultDriver struct {
 	resourcesStateResolver func(
 		c client.Client,
 		es v1alpha1.ElasticsearchCluster,
-	) (*reconcilehelper.ResourcesState, error)
+	) (*reconcile.ResourcesState, error)
 
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
 	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
 		performableChanges mutation.PerformableChanges,
-		resourcesState reconcilehelper.ResourcesState,
+		resourcesState reconcile.ResourcesState,
 	) (*mutation.PerformableChanges, error)
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
@@ -117,9 +117,9 @@ type defaultDriver struct {
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile(
 	es v1alpha1.ElasticsearchCluster,
-	reconcileState *reconcilehelper.ReconcileState,
-) *reconcilehelper.ReconcileResults {
-	results := &reconcilehelper.ReconcileResults{}
+	reconcileState *reconcile.State,
+) *reconcile.Results {
+	results := &reconcile.Results{}
 
 	genericResources, err := d.genericResourcesReconciler(d.Client, d.Scheme, es)
 	if err != nil {
@@ -264,7 +264,7 @@ func (d *defaultDriver) Reconcile(
 		if d.zen1SettingsUpdater != nil {
 			if err := d.zen1SettingsUpdater(
 				esClient,
-				reconcilehelper.AvailableElasticsearchNodes(resourcesState.CurrentPods),
+				reconcile.AvailableElasticsearchNodes(resourcesState.CurrentPods),
 			); err != nil {
 				// TODO: reconsider whether this error should be propagated with results instead?
 				log.Error(err, "Error during update discovery after having no changes, requeuing.")
@@ -336,7 +336,7 @@ func (d *defaultDriver) calculateChanges(
 	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.ElasticsearchCluster,
-	resourcesState reconcilehelper.ResourcesState,
+	resourcesState reconcile.ResourcesState,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,

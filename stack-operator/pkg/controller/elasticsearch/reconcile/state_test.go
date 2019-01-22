@@ -1,4 +1,4 @@
-package reconcilehelper
+package reconcile
 
 import (
 	"reflect"
@@ -126,11 +126,11 @@ func TestNodesAvailable(t *testing.T) {
 	}
 }
 
-func TestReconcileState_Apply(t *testing.T) {
+func TestState_Apply(t *testing.T) {
 	tests := []struct {
 		name       string
 		cluster    v1alpha1.ElasticsearchCluster
-		effects    func(s *ReconcileState)
+		effects    func(s *State)
 		wantEvents []Event
 		wantStatus *v1alpha1.ElasticsearchStatus
 	}{
@@ -143,7 +143,7 @@ func TestReconcileState_Apply(t *testing.T) {
 		{
 			name:    "health degraded",
 			cluster: v1alpha1.ElasticsearchCluster{},
-			effects: func(s *ReconcileState) {
+			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
 			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
@@ -163,7 +163,7 @@ func TestReconcileState_Apply(t *testing.T) {
 					ClusterUUID: "old",
 				},
 			},
-			effects: func(s *ReconcileState) {
+			effects: func(s *State) {
 				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
@@ -191,7 +191,7 @@ func TestReconcileState_Apply(t *testing.T) {
 					ClusterUUID: "old",
 				},
 			},
-			effects: func(s *ReconcileState) {
+			effects: func(s *State) {
 				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
@@ -220,7 +220,7 @@ func TestReconcileState_Apply(t *testing.T) {
 					Phase:      v1alpha1.ElasticsearchOperationalPhase,
 				},
 			},
-			effects: func(s *ReconcileState) {
+			effects: func(s *State) {
 				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
@@ -252,7 +252,7 @@ func TestReconcileState_Apply(t *testing.T) {
 					Phase:      v1alpha1.ElasticsearchOperationalPhase,
 				},
 			},
-			effects: func(s *ReconcileState) {
+			effects: func(s *State) {
 				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
 					ClusterHealth: &client.Health{
 						Status: "red",
@@ -275,13 +275,13 @@ func TestReconcileState_Apply(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewReconcileState(tt.cluster)
+			s := NewState(tt.cluster)
 			if tt.effects != nil {
 				tt.effects(s)
 			}
 			events, cluster := s.Apply()
 			if !reflect.DeepEqual(events, tt.wantEvents) {
-				t.Errorf("ReconcileState.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
+				t.Errorf("State.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
 
 			}
 			var actual *v1alpha1.ElasticsearchStatus
@@ -289,13 +289,13 @@ func TestReconcileState_Apply(t *testing.T) {
 				actual = &cluster.Status
 			}
 			if !reflect.DeepEqual(actual, tt.wantStatus) {
-				t.Errorf("ReconcileState.Apply() cluster = %v, wantStatus %v", cluster.Status, tt.wantStatus)
+				t.Errorf("State.Apply() cluster = %v, wantStatus %v", cluster.Status, tt.wantStatus)
 			}
 		})
 	}
 }
 
-func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
+func TestState_UpdateElasticsearchState(t *testing.T) {
 	type args struct {
 		resourcesState ResourcesState
 		observedState  observer.State
@@ -304,7 +304,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 		name            string
 		cluster         v1alpha1.ElasticsearchCluster
 		args            args
-		stateAssertions func(s *ReconcileState)
+		stateAssertions func(s *State)
 	}{
 		{
 			name: "phase is not changed by default",
@@ -313,14 +313,14 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 					Phase: v1alpha1.ElasticsearchPendingPhase,
 				},
 			},
-			stateAssertions: func(s *ReconcileState) {
+			stateAssertions: func(s *State) {
 				assert.EqualValues(t, v1alpha1.ElasticsearchPendingPhase, s.status.Phase)
 			},
 		},
 		{
 			name:    "health is unknown by default",
 			cluster: v1alpha1.ElasticsearchCluster{},
-			stateAssertions: func(s *ReconcileState) {
+			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "unknown", s.status.Health)
 			},
 		},
@@ -332,7 +332,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 					ClusterHealth: &client.Health{Status: "green"},
 				},
 			},
-			stateAssertions: func(s *ReconcileState) {
+			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "green", s.status.Health)
 
 			},
@@ -340,7 +340,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewReconcileState(tt.cluster)
+			s := NewState(tt.cluster)
 			s.UpdateElasticsearchState(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
@@ -349,7 +349,7 @@ func TestReconcileState_UpdateElasticsearchState(t *testing.T) {
 	}
 }
 
-func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
+func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 	type args struct {
 		result         reconcile.Result
 		resourcesState ResourcesState
@@ -359,7 +359,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 		name            string
 		cluster         v1alpha1.ElasticsearchCluster
 		args            args
-		stateAssertions func(s *ReconcileState)
+		stateAssertions func(s *State)
 	}{
 		{
 			name:    "base case",
@@ -367,7 +367,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 			args: args{
 				result: reconcile.Result{RequeueAfter: 10 * time.Minute},
 			},
-			stateAssertions: func(s *ReconcileState) {
+			stateAssertions: func(s *State) {
 				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
 				assert.Equal(t, []Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.events)
 			},
@@ -375,7 +375,7 @@ func TestReconcileState_UpdateElasticsearchMigrating(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewReconcileState(tt.cluster)
+			s := NewState(tt.cluster)
 			s.UpdateElasticsearchMigrating(tt.args.resourcesState, tt.args.observedState)
 			if tt.stateAssertions != nil {
 				tt.stateAssertions(s)
@@ -433,7 +433,7 @@ func Test_nextTakesPrecedence(t *testing.T) {
 	}
 }
 
-func TestReconcileResults(t *testing.T) {
+func TestResults(t *testing.T) {
 	tests := []struct {
 		name string
 		args []reconcile.Result
@@ -457,7 +457,7 @@ func TestReconcileResults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &ReconcileResults{
+			r := &Results{
 				results: tt.args,
 			}
 			if got, _ := r.Aggregate(); !reflect.DeepEqual(got, tt.want) {

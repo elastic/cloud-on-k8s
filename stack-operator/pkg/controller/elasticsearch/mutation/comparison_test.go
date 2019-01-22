@@ -7,7 +7,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcilehelper"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -71,7 +71,7 @@ func Test_podMatchesSpec(t *testing.T) {
 	type args struct {
 		pod   corev1.Pod
 		spec  pod.PodSpecContext
-		state reconcilehelper.ResourcesState
+		state reconcile.ResourcesState
 	}
 	tests := []struct {
 		name                      string
@@ -221,7 +221,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: reconcilehelper.ResourcesState{
+				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
@@ -249,7 +249,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: reconcilehelper.ResourcesState{
+				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
@@ -283,7 +283,7 @@ func Test_podMatchesSpec(t *testing.T) {
 						},
 					},
 				},
-				state: reconcilehelper.ResourcesState{
+				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
