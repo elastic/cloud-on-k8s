@@ -41,11 +41,15 @@ func Add(mgr manager.Manager, dialer net.Dialer) error {
 	if err != nil {
 		return err
 	}
-	return add(mgr, reconciler)
+	c, err := add(mgr, reconciler)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, reconciler.dynamicWatches)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, dialer net.Dialer) (reconcile.Reconciler, error) {
+func newReconciler(mgr manager.Manager, dialer net.Dialer) (*ReconcileElasticsearch, error) {
 	esCa, err := nodecerts.NewSelfSignedCa("elasticsearch-controller")
 	if err != nil {
 		return nil, err
@@ -59,19 +63,19 @@ func newReconciler(mgr manager.Manager, dialer net.Dialer) (reconcile.Reconciler
 		esCa:        esCa,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		dialer:     dialer,
-		finalizers: finalizer.NewHandler(mgr.GetClient()),
+		dialer:         dialer,
+		finalizers:     finalizer.NewHandler(mgr.GetClient()),
+		dynamicWatches: watches.NewDynamicWatches(),
 	}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
+	return controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
+}
 
+func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
 		&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
@@ -80,7 +84,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// watch any pods created by Elasticsearch
-	if err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	}); err != nil {
@@ -88,18 +92,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch services
-	if err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 	}); err != nil {
 		return err
 	}
 
-	if err = c.Watch(&source.Kind{Type: &corev1.Secret{}}, watches.SecretWatch); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, dynamicWatches.Secrets); err != nil {
 		return err
 	}
 	// Watch secrets
-	if err = watches.SecretWatch.AddHandler(&watches.OwnerWatch{
+	if err := dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
@@ -126,6 +130,8 @@ type ReconcileElasticsearch struct {
 	esObservers *observer.Manager
 
 	finalizers finalizer.Handler
+
+	dynamicWatches watches.DynamicWatches
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -176,7 +182,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 ) *esreconcile.Results {
 	results := &esreconcile.Results{}
 
-	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
+	if err := r.finalizers.Handle(&es, r.finalizersFor(es, r.dynamicWatches)...); err != nil {
 		return results.WithError(err)
 	}
 
@@ -197,9 +203,10 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		ClusterCa: r.esCa,
-		Dialer:    r.dialer,
-		Observers: r.esObservers,
+		ClusterCa:      r.esCa,
+		Dialer:         r.dialer,
+		Observers:      r.esObservers,
+		DynamicWatches: r.dynamicWatches,
 	})
 	if err != nil {
 		return results.WithError(err)
@@ -225,10 +232,13 @@ func (r *ReconcileElasticsearch) updateStatus(
 }
 
 // finalizersFor returns the list of finalizers applying to a given es cluster
-func (r *ReconcileElasticsearch) finalizersFor(es elasticsearchv1alpha1.ElasticsearchCluster) []finalizer.Finalizer {
+func (r *ReconcileElasticsearch) finalizersFor(
+	es elasticsearchv1alpha1.ElasticsearchCluster,
+	watched watches.DynamicWatches,
+) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(es.ObjectMeta)
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
-		snapshot.Finalizer(clusterName),
+		snapshot.Finalizer(clusterName, watched),
 	}
 }

@@ -109,7 +109,6 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	}
 
 	scheme := registerScheme(t)
-	watches.SecretWatch.InjectScheme(scheme) // TODO remove global watches
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewFakeClient(tt.args.initialObjects...)
@@ -194,10 +193,12 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 	}
 
 	scheme := registerScheme(t)
+	watches := watches.NewDynamicWatches()
+	watches.InjectScheme(scheme)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ReconcileSnapshotCredentials(
-				fake.NewFakeClientWithScheme(scheme, tt.args.initialObjects...), scheme, owner, tt.args.repoConfig,
+				fake.NewFakeClientWithScheme(scheme, tt.args.initialObjects...), scheme, owner, tt.args.repoConfig, watches,
 			)
 
 			if err != nil {

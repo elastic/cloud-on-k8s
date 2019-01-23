@@ -32,7 +32,12 @@ const (
 	ExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
 )
 
-func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchCluster, repoConfig *v1alpha1.SnapshotRepository) (corev1.Secret, error) {
+func reconcileUserCreatedSecret(
+	c client.Client,
+	owner v1alpha1.ElasticsearchCluster,
+	repoConfig *v1alpha1.SnapshotRepository,
+	watches watches.DynamicWatches,
+) (corev1.Secret, error) {
 	managedSecret := corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      keystore.ManagedSecretName,
@@ -41,7 +46,7 @@ func reconcileUserCreatedSecret(c client.Client, owner v1alpha1.ElasticsearchClu
 		Data: map[string][]byte{},
 	}
 
-	err := manageDynamicWatch(c, repoConfig, k8s.ExtractNamespacedName(owner.ObjectMeta))
+	err := manageDynamicWatch(watches, repoConfig, k8s.ExtractNamespacedName(owner.ObjectMeta))
 	if err != nil {
 		return managedSecret, err
 	}
@@ -79,8 +84,9 @@ func ReconcileSnapshotCredentials(
 	s *runtime.Scheme,
 	owner v1alpha1.ElasticsearchCluster,
 	repoConfig *v1alpha1.SnapshotRepository,
+	watched watches.DynamicWatches,
 ) (corev1.Secret, error) {
-	managedSecret, err := reconcileUserCreatedSecret(c, owner, repoConfig)
+	managedSecret, err := reconcileUserCreatedSecret(c, owner, repoConfig, watched)
 	if err != nil {
 		return managedSecret, err
 	}
@@ -102,29 +108,30 @@ func ReconcileSnapshotCredentials(
 	return managedSecret, err
 }
 
-func watchLabel(owner types.NamespacedName) string {
+func watchKey(owner types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-snapshot-secret", owner.Namespace, owner.Name)
 }
 
-func Finalizer(owner types.NamespacedName) finalizer.Finalizer {
+// Finalizer removes any dynamic watches on external user created snapshot secrets.
+func Finalizer(owner types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: ExternalSecretFinalizer,
 		Execute: func() error {
-			watches.SecretWatch.RemoveHandlerForKey(watchLabel(owner))
+			watched.Secrets.RemoveHandlerForKey(watchKey(owner))
 			return nil
 		},
 	}
 }
 
 // manageDynamicWatch sets up a dynamic watch to keep track of changes in user created secrets linked to this ES cluster.
-func manageDynamicWatch(c client.Client, repoConfig *v1alpha1.SnapshotRepository, owner types.NamespacedName) error {
+func manageDynamicWatch(watched watches.DynamicWatches, repoConfig *v1alpha1.SnapshotRepository, owner types.NamespacedName) error {
 	if repoConfig == nil {
-		watches.SecretWatch.RemoveHandlerForKey(watchLabel(owner))
+		watched.Secrets.RemoveHandlerForKey(watchKey(owner))
 		return nil
 	}
 
-	return watches.SecretWatch.AddHandler(watches.NamedWatch{
-		Name: watchLabel(owner),
+	return watched.Secrets.AddHandler(watches.NamedWatch{
+		Name: watchKey(owner),
 		Watched: types.NamespacedName{
 			Namespace: repoConfig.Settings.Credentials.Namespace,
 			Name:      repoConfig.Settings.Credentials.Name,

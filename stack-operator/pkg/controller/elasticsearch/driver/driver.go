@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/user"
@@ -49,6 +50,8 @@ type Options struct {
 	Dialer net.Dialer
 	// Observers that observe es clusters state
 	Observers *observer.Manager
+	// DynamicWatches are handles to currently registered dynamic watches.
+	DynamicWatches watches.DynamicWatches
 }
 
 // NewDriver returns a Driver that can operate the provided version

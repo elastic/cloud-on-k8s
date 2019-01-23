@@ -7,6 +7,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
@@ -34,8 +35,9 @@ func reconcileVersionWideResources(
 	c client.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
+	w watches.DynamicWatches,
 ) (*VersionWideResources, error) {
-	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository)
+	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository, w)
 	if err != nil {
 		return nil, err
 	}

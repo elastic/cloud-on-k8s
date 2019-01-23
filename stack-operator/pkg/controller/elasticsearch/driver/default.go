@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
@@ -64,6 +65,7 @@ type defaultDriver struct {
 		c client.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
+		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
@@ -160,7 +162,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es)
+	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, d.DynamicWatches)
 	if err != nil {
 		return results.WithError(err)
 	}
