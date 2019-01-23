@@ -120,7 +120,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	testLabels := map[string]string{"test": "label"}
 	testObject1.Labels = testLabels
 	assert.NoError(t, c.Update(context.TODO(), testObject1))
-	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Now register a second watch for the other object
 	watch := NamedWatch{
