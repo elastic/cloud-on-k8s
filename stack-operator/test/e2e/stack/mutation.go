@@ -61,7 +61,6 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Name: "Cluster health should not have been red during mutation process",
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
-					assert.NotZero(t, continuousHealthChecks.SuccessCount)
 					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 					for _, f := range continuousHealthChecks.Failures {
 						t.Errorf("Cluster health check failure at %s: %s", f.timestamp, f.err.Error())

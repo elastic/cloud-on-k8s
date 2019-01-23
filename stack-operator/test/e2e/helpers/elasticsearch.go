@@ -1,8 +1,6 @@
 package helpers
 
 import (
-	"crypto/x509"
-	"errors"
 	"flag"
 	"fmt"
 
@@ -34,16 +32,11 @@ func NewElasticsearchClient(stack v1alpha1.Stack, k *K8sHelper) (*client.Client,
 	if err != nil {
 		return nil, err
 	}
-	certPool := x509.NewCertPool()
-	ok := certPool.AppendCertsFromPEM(caCert)
-	if !ok {
-		return nil, errors.New("Cannot append CA cert to cert pool")
-	}
 	inClusterURL := fmt.Sprintf("https://%s-es-public.%s.svc.cluster.local:9200", stack.Name, stack.Namespace)
 	var dialer net.Dialer
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()
 	}
-	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, certPool)
+	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, caCert)
 	return client, nil
 }

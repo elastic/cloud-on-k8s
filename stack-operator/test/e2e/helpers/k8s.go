@@ -2,10 +2,12 @@ package helpers
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -131,7 +133,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 	return string(password), nil
 }
 
-func (k *K8sHelper) GetCACert(stackName string) ([]byte, error) {
+func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	secretName := stackName
 	var secret corev1.Secret
 	key := types.NamespacedName{
@@ -139,13 +141,13 @@ func (k *K8sHelper) GetCACert(stackName string) ([]byte, error) {
 		Name:      secretName,
 	}
 	if err := k.Client.Get(DefaultCtx, key, &secret); err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	CA, exists := secret.Data["ca.pem"]
+	caCert, exists := secret.Data["ca.pem"]
 	if !exists {
-		return []byte{}, fmt.Errorf("No %s value found for secret ca.pem")
+		return nil, fmt.Errorf("No value found for secret ca.pem")
 	}
-	return CA, nil
+	return certutil.ParsePEMCerts(caCert)
 }
 
 func ESPodListOptions(stackName string) client.ListOptions {
