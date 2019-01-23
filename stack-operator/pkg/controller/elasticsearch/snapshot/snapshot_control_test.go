@@ -2,7 +2,6 @@ package snapshot
 
 import (
 	"context"
-
 	"reflect"
 	"testing"
 
@@ -108,14 +107,14 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 		},
 	}
 
-	scheme := registerScheme(t)
+	sc := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := fake.NewFakeClient(tt.args.initialObjects...)
-			if err := ReconcileSnapshotterCronJob(client, scheme, tt.args.es, tt.args.user); (err != nil) != tt.wantErr {
+			fakeClient := fake.NewFakeClient(tt.args.initialObjects...)
+			if err := ReconcileSnapshotterCronJob(fakeClient, sc, tt.args.es, tt.args.user, "operator-image"); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotterCronJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			tt.clientAssertion(client)
+			tt.clientAssertion(fakeClient)
 		})
 	}
 }
@@ -192,13 +191,13 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 		},
 	}
 
-	scheme := registerScheme(t)
-	watches := watches.NewDynamicWatches()
-	watches.InjectScheme(scheme)
+	sc := registerScheme(t)
+	watched := watches.NewDynamicWatches()
+	assert.NoError(t, watched.InjectScheme(sc))
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ReconcileSnapshotCredentials(
-				fake.NewFakeClientWithScheme(scheme, tt.args.initialObjects...), scheme, owner, tt.args.repoConfig, watches,
+				fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...), sc, owner, tt.args.repoConfig, watched,
 			)
 
 			if err != nil {
@@ -207,7 +206,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 				}
 				return
 			}
-			controllerutil.SetControllerReference(&owner, &tt.want, scheme) // to facilitate comparison
+			assert.NoError(t, controllerutil.SetControllerReference(&owner, &tt.want, sc)) // to facilitate comparison
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotCredentials() = %v, want %v", got, tt.want)
 			}

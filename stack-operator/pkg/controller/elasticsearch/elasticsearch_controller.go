@@ -9,6 +9,7 @@ import (
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
@@ -16,7 +17,6 @@ import (
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,8 +36,8 @@ var (
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
-func Add(mgr manager.Manager, dialer net.Dialer) error {
-	reconciler, err := newReconciler(mgr, dialer)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	reconciler, err := newReconciler(mgr, params)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func Add(mgr manager.Manager, dialer net.Dialer) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, dialer net.Dialer) (*ReconcileElasticsearch, error) {
+func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
 	esCa, err := nodecerts.NewSelfSignedCa("elasticsearch-controller")
 	if err != nil {
 		return nil, err
@@ -63,9 +63,10 @@ func newReconciler(mgr manager.Manager, dialer net.Dialer) (*ReconcileElasticsea
 		esCa:        esCa,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		dialer:         dialer,
 		finalizers:     finalizer.NewHandler(mgr.GetClient()),
 		dynamicWatches: watches.NewDynamicWatches(),
+
+		Parameters: params,
 	}, nil
 }
 
@@ -120,12 +121,11 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 // ReconcileElasticsearch reconciles a Elasticsearch object
 type ReconcileElasticsearch struct {
 	client.Client
+	operator.Parameters
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
 	esCa *nodecerts.Ca
-
-	dialer net.Dialer
 
 	esObservers *observer.Manager
 
@@ -204,9 +204,9 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Version: *ver,
 
 		ClusterCa:      r.esCa,
-		Dialer:         r.dialer,
 		Observers:      r.esObservers,
 		DynamicWatches: r.dynamicWatches,
+		Parameters:     r.Parameters,
 	})
 	if err != nil {
 		return results.WithError(err)

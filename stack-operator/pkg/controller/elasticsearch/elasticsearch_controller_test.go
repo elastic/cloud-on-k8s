@@ -10,7 +10,6 @@ import (
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
@@ -53,8 +52,6 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
-	// TODO flow any flags as params into deeper levels of the code. Don't access viper params directly.
-	viper.Set(operator.ImageFlag, "testing-image")
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
@@ -63,7 +60,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	c = mgr.GetClient()
 
-	r, err := newReconciler(mgr, nil)
+	r, err := newReconciler(mgr, operator.Parameters{OperatorImage: "operator-image-dummy"})
 	require.NoError(t, err)
 	recFn, requests := SetupTestReconcile(r)
 	controller, err := add(mgr, recFn)

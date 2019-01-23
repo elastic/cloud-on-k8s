@@ -32,9 +32,10 @@ func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool) ([]corev1.Container, error),
 	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
+	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
@@ -59,6 +60,7 @@ func NewExpectedPodSpecs(
 					KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
 					ProbeUser:            paramsTmpl.ProbeUser,
 				},
+				operatorImage,
 				newEnvironmentVarsFn,
 				newInitContainersFn,
 				newSideCarContainersFn,
@@ -78,8 +80,9 @@ func NewExpectedPodSpecs(
 // podSpec creates a new PodSpec for an Elasticsearch node
 func podSpec(
 	p pod.NewPodSpecParams,
+	operatorImage string,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool) ([]corev1.Container, error),
 	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
@@ -193,7 +196,7 @@ func podSpec(
 	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(imageName, p.SetVMMaxMapCount)
+	initContainers, err := newInitContainersFn(imageName, operatorImage, p.SetVMMaxMapCount)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

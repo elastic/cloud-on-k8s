@@ -6,7 +6,6 @@ import (
 	"reflect"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
@@ -16,11 +15,10 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
-	"github.com/spf13/viper"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -146,11 +144,12 @@ func ReconcileSnapshotterCronJob(
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	user esclient.User,
+	operatorImage string,
 ) error {
 	params := CronJobParams{
 		Parent:           types.NamespacedName{Namespace: es.Namespace, Name: es.Name},
 		Elasticsearch:    es,
-		SnapshotterImage: viper.GetString(operator.ImageFlag),
+		SnapshotterImage: operatorImage,
 		User:             user,
 		EsURL:            services.PublicServiceURL(es),
 	}

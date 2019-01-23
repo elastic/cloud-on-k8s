@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
@@ -44,7 +43,7 @@ var (
 func ExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl pod.NewPodSpecParams,
-	resourcesState reconcile.ResourcesState,
+	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
 	// creation below.
@@ -61,19 +60,21 @@ func ExpectedPodSpecs(
 		newInitContainers,
 		newSidecarContainers,
 		[]corev1.Volume{sideCarSharedVolume.Volume()},
+		operatorImage,
 	)
 }
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
 	imageName string,
+	operatorImage string,
 	setVMMaxMapCount bool,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
 		imageName,
 		linkedFiles6,
 		setVMMaxMapCount,
-		initcontainer.NewSidecarInitContainer(sideCarSharedVolume),
+		initcontainer.NewSidecarInitContainer(sideCarSharedVolume, operatorImage),
 	)
 }
 
