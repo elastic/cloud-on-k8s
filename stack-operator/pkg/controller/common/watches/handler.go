@@ -40,6 +40,16 @@ type DynamicEnqueueRequest struct {
 	scheme        *runtime.Scheme
 }
 
+// AddHandlers adds the new event handlers to this DynamicEnqueueRequest.
+func (d *DynamicEnqueueRequest) AddHandlers(handlers ...HandlerRegistration) error {
+	for _, h := range handlers {
+		if err := d.AddHandler(h); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // AddHandler adds a new event handler to this DynamicEnqueueRequest.
 func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	if d.scheme == nil {

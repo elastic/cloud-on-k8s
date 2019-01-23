@@ -180,6 +180,34 @@ func (d *defaultDriver) Reconcile(
 		results.WithError(err)
 	}
 
+	esReachable, err := services.IsServiceReady(d.Client, genericResources.PublicService)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	if esReachable {
+		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
+		if err != nil {
+			// TODO decide should this be a reason to stop this reconciliation loop?
+			msg := "Could not ensure snapshot repository"
+			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg)
+		}
+	}
+
+	clusterKey := es.Namespace + "/" + es.Name
+
+	log.Info("expectations", "satisfied", d.PodsExpectations.SatisfiedExpectations(clusterKey))
+
+	// There might be some ongoing creations and deletions our k8s client cache
+	// hasn't seen yet. In such case, requeue until we are in-sync.
+	// Otherwise, we could end up re-creating multiple times the same pod with
+	// different generated names through multiple reconciliation iterations.
+	if !d.PodsExpectations.SatisfiedExpectations(clusterKey) {
+		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
+		return results.WithResult(defaultRequeue)
+	}
+
 	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, *resourcesState)
 	if err != nil {
 		return results.WithError(err)
@@ -203,11 +231,6 @@ func (d *defaultDriver) Reconcile(
 		"schedule_for_creation_count", len(performableChanges.ToCreate),
 		"schedule_for_deletion_count", len(performableChanges.ToDelete),
 	)
-
-	esReachable, err := services.IsServiceReady(d.Client, genericResources.PublicService)
-	if err != nil {
-		return results.WithError(err)
-	}
 
 	results.Apply(
 		"reconcile-cluster-license",
@@ -248,7 +271,10 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	for _, change := range performableChanges.ToCreate {
+	if err := d.PodsExpectations.ExpectCreations(clusterKey, len(performableChanges.ToCreate)); err != nil {
+		return results.WithError(err)
+	}
+	for i, change := range performableChanges.ToCreate {
 		if err := createElasticsearchPod(
 			d.Client,
 			d.Scheme,
@@ -257,6 +283,10 @@ func (d *defaultDriver) Reconcile(
 			change.Pod,
 			change.PodSpecCtx,
 		); err != nil {
+			// pod was not created, cancel non-created pods expectations by marking them observed
+			for range performableChanges.ToCreate[i:len(performableChanges.ToCreate)] {
+				d.PodsExpectations.CreationObserved(clusterKey)
+			}
 			return results.WithError(err)
 		}
 	}
@@ -312,8 +342,11 @@ func (d *defaultDriver) Reconcile(
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
 	copy(newState, resourcesState.CurrentPods)
 
+	if err := d.PodsExpectations.ExpectDeletions(clusterKey, pod.PodListToNames(performableChanges.ToDelete)); err != nil {
+		return results.WithError(err)
+	}
 	// Shrink clusters by deleting deprecated pods
-	for _, pod := range performableChanges.ToDelete {
+	for i, pod := range performableChanges.ToDelete {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {
 			if d.zen1SettingsUpdater != nil {
@@ -333,6 +366,10 @@ func (d *defaultDriver) Reconcile(
 			preDelete,
 		)
 		if err != nil {
+			// pod was not deleted, cancel our expectations by marking non-deleted pods as observed
+			for _, notDeleted := range performableChanges.ToDelete[i:len(performableChanges.ToDelete)] {
+				d.PodsExpectations.DeletionObserved(clusterKey, notDeleted.Name)
+			}
 			return results.WithError(err)
 		}
 		results.WithResult(result)

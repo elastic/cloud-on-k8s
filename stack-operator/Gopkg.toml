@@ -34,3 +34,13 @@ required = [
 name = "gopkg.in/fsnotify.v1"
 source = "https://github.com/fsnotify/fsnotify.git"
 version="v1.4.7"
+
+[[constraint]]
+  name = "k8s.io/kubernetes"
+  version = "=1.12.3"
+
+# make sure we get apiserver version 1.12.3
+# k8s.io/kubernetes internally vendors it using the git sha1, not the tag
+[[override]]
+  name = "k8s.io/apiserver"
+  revision = "92fdef3a232a23afb9644f6151119b5961b9feab"

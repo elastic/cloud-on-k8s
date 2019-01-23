@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	k8sctl "k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -47,7 +48,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler.dynamicWatches)
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -64,20 +65,21 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		esCa:        esCa,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		finalizers:     finalizer.NewHandler(mgr.GetClient()),
-		dynamicWatches: watches.NewDynamicWatches(),
+		finalizers:       finalizer.NewHandler(mgr.GetClient()),
+		dynamicWatches:   watches.NewDynamicWatches(),
+		podsExpectations: k8sctl.NewUIDTrackingControllerExpectations(k8sctl.NewControllerExpectations()),
 
 		Parameters: params,
 	}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
+func add(mgr manager.Manager, r *ReconcileElasticsearch) (controller.Controller, error) {
 	// Create a new controller
 	return controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
 }
 
-func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) error {
+func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
 		&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
@@ -85,11 +87,23 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 		return err
 	}
 
-	// watch any pods created by Elasticsearch
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
-	}); err != nil {
+	// Watch pods
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, r.dynamicWatches.Pods); err != nil {
+		return err
+	}
+	if err := r.dynamicWatches.Pods.AddHandlers(
+		// trigger reconconciliation loop on ES pods owned by this controller
+		&watches.OwnerWatch{
+			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+				IsController: true,
+				OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+			},
+		},
+		// reconcile pods expectations
+		watches.NewExpectationsWatch(
+			"pods-expectations",
+			r.podsExpectations,
+		)); err != nil {
 		return err
 	}
 
@@ -101,11 +115,11 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 		return err
 	}
 
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, dynamicWatches.Secrets); err != nil {
+	// Watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
-	// Watch secrets
-	if err := dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
+	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
@@ -115,7 +129,7 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 	}
 
 	// ClusterLicense
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, dynamicWatches.ClusterLicense); err != nil {
+	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
 		return err
 	}
 
@@ -138,6 +152,8 @@ type ReconcileElasticsearch struct {
 	finalizers finalizer.Handler
 
 	dynamicWatches watches.DynamicWatches
+
+	podsExpectations *k8sctl.UIDTrackingControllerExpectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -215,10 +231,11 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		ClusterCa:      r.esCa,
-		Observers:      r.esObservers,
-		DynamicWatches: r.dynamicWatches,
-		Parameters:     r.Parameters,
+		ClusterCa:        r.esCa,
+		Observers:        r.esObservers,
+		DynamicWatches:   r.dynamicWatches,
+		PodsExpectations: r.podsExpectations,
+		Parameters:       r.Parameters,
 	})
 	if err != nil {
 		return results.WithError(err)

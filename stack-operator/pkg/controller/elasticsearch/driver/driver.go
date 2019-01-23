@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version6"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version7"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -52,6 +53,9 @@ type Options struct {
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
 	DynamicWatches watches.DynamicWatches
+	// PodsExpectations control ongoing pod creations and deletions
+	// that might not be in-sync yet with our k8s client cache
+	PodsExpectations *controller.UIDTrackingControllerExpectations
 }
 
 // NewDriver returns a Driver that can operate the provided version

@@ -26,6 +26,17 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:d4f83648c3259dd3d07b0f98d505d3e2d2fd0c9388671a76d0e54041b8006338"
+  name = "github.com/docker/distribution"
+  packages = [
+    "digestset",
+    "reference",
+  ]
+  pruneopts = "T"
+  revision = "2461543d988979529609e8cb6fca9ca190dc48da"
+  version = "v2.7.1"
+
+[[projects]]
   branch = "master"
   digest = "1:0d4540d92fd82f9957e1f718e2b1e5f2d301ed8169e2923bba23558fbbbd08a1"
   name = "github.com/docker/spdystream"
@@ -358,6 +369,14 @@
   version = "v1.4.3"
 
 [[projects]]
+  digest = "1:ee4d4af67d93cc7644157882329023ce9a7bcfce956a079069a9405521c7cc8d"
+  name = "github.com/opencontainers/go-digest"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "279bed98673dd5bef374d3b6e4b09e2af76183bf"
+  version = "v1.0.0-rc1"
+
+[[projects]]
   digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
   name = "github.com/pborman/uuid"
   packages = ["."]
@@ -562,6 +581,9 @@
   packages = [
     "bcrypt",
     "blowfish",
+    "ed25519",
+    "ed25519/internal/edwards25519",
+    "pbkdf2",
     "ssh/terminal",
   ]
   pruneopts = "T"
@@ -709,6 +731,19 @@
   version = "v0.9.1"
 
 [[projects]]
+  digest = "1:0e107c42e4704bfa61957571b86f96c7611b0e747d36369ab675d9f6cfc5e40e"
+  name = "gopkg.in/square/go-jose.v2"
+  packages = [
+    ".",
+    "cipher",
+    "json",
+    "jwt",
+  ]
+  pruneopts = "T"
+  revision = "e94fb177d3668d35ab39c61cbb2f311550557e83"
+  version = "v2.2.2"
+
+[[projects]]
   branch = "v1"
   digest = "1:0caa92e17bc0b65a98c63e5bc76a9e844cd5e56493f8fdbb28fad101a16254d9"
   name = "gopkg.in/tomb.v1"
@@ -774,6 +809,7 @@
     "pkg/client/clientset/clientset",
     "pkg/client/clientset/clientset/scheme",
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
+    "pkg/features",
   ]
   pruneopts = "T"
   revision = "0cd23ebeb6882bd1cdc2cb15fc7b2d72e8a86a5b"
@@ -783,12 +819,15 @@
   digest = "1:bcf693d144a1d98dabdb4ab3bf18fbde8b2f7ee86d2fd8a3f74fb6a035627550"
   name = "k8s.io/apimachinery"
   packages = [
+    "pkg/api/equality",
     "pkg/api/errors",
     "pkg/api/meta",
     "pkg/api/resource",
+    "pkg/api/validation",
     "pkg/apis/meta/internalversion",
     "pkg/apis/meta/v1",
     "pkg/apis/meta/v1/unstructured",
+    "pkg/apis/meta/v1/validation",
     "pkg/apis/meta/v1beta1",
     "pkg/conversion",
     "pkg/conversion/queryparams",
@@ -834,6 +873,19 @@
   pruneopts = "T"
   revision = "eddba98df674a16931d2d4ba75edc3a389bf633a"
   version = "kubernetes-1.12.3"
+
+[[projects]]
+  digest = "1:9b61a7b3dd3d8de58061b642ac01ab2430068b9c435efe346e93cbfe62e45b1a"
+  name = "k8s.io/apiserver"
+  packages = [
+    "pkg/authentication/authenticator",
+    "pkg/authentication/serviceaccount",
+    "pkg/authentication/user",
+    "pkg/features",
+    "pkg/util/feature",
+  ]
+  pruneopts = "T"
+  revision = "92fdef3a232a23afb9644f6151119b5961b9feab"
 
 [[projects]]
   digest = "1:5aa94390c366adc57a82b19ad4f99482ab8fbeca0a2ff7b09db12d7baf590e46"
@@ -898,6 +950,7 @@
     "tools/portforward",
     "tools/record",
     "tools/reference",
+    "tools/watch",
     "transport",
     "transport/spdy",
     "util/buffer",
@@ -966,6 +1019,58 @@
   packages = ["pkg/util/proto"]
   pruneopts = "T"
   revision = "0317810137be915b9cf888946c6e115c1bfac693"
+
+[[projects]]
+  digest = "1:aa01a9fd14ae5bde57de45bad31e5249e37a292cf44d42d4cc52f4ec6b56736a"
+  name = "k8s.io/kubernetes"
+  packages = [
+    "pkg/api/legacyscheme",
+    "pkg/api/service",
+    "pkg/api/v1/pod",
+    "pkg/apis/autoscaling",
+    "pkg/apis/core",
+    "pkg/apis/core/helper",
+    "pkg/apis/core/install",
+    "pkg/apis/core/pods",
+    "pkg/apis/core/v1",
+    "pkg/apis/core/v1/helper",
+    "pkg/apis/core/validation",
+    "pkg/apis/extensions",
+    "pkg/apis/networking",
+    "pkg/apis/policy",
+    "pkg/apis/scheduling",
+    "pkg/capabilities",
+    "pkg/controller",
+    "pkg/features",
+    "pkg/fieldpath",
+    "pkg/kubelet/apis",
+    "pkg/kubelet/types",
+    "pkg/master/ports",
+    "pkg/scheduler/algorithm",
+    "pkg/scheduler/algorithm/priorities/util",
+    "pkg/scheduler/api",
+    "pkg/scheduler/cache",
+    "pkg/scheduler/util",
+    "pkg/security/apparmor",
+    "pkg/serviceaccount",
+    "pkg/util/file",
+    "pkg/util/hash",
+    "pkg/util/net/sets",
+    "pkg/util/node",
+    "pkg/util/parsers",
+    "pkg/util/taints",
+  ]
+  pruneopts = "T"
+  revision = "435f92c719f279a3a67808c80521ea17d5715c66"
+  version = "v1.12.3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:b25310752ed2f22da6e5d9281cb77c42ca6097a6a9a36780209e8452f3856bd0"
+  name = "k8s.io/utils"
+  packages = ["pointer"]
+  pruneopts = "T"
+  revision = "8a16e7dd8fb6d97d1331b0c79a16722f934b00b1"
 
 [[projects]]
   digest = "1:63405fd0a9cf28d074f8ef07f133f818ee633ae874935a1ed52f73c36564dce9"
@@ -1086,6 +1191,7 @@
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
+    "k8s.io/kubernetes/pkg/controller",
     "sigs.k8s.io/controller-runtime/pkg/client",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
