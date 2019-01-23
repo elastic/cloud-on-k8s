@@ -13,9 +13,7 @@ import (
 )
 
 var (
-	//SecretWatch TODO don't use a global variable for this.
-	SecretWatch = NewDynamicEnqueueRequest()
-	log         = logf.Log.WithName("dynamic-enqueue-request")
+	log = logf.Log.WithName("dynamic-enqueue-request")
 )
 
 // HandlerRegistration is the event handler registration that can be added or removed

@@ -66,7 +66,9 @@ func TestReconcile(t *testing.T) {
 	r, err := newReconciler(mgr, nil)
 	require.NoError(t, err)
 	recFn, requests := SetupTestReconcile(r)
-	assert.NoError(t, add(mgr, recFn))
+	controller, err := add(mgr, recFn)
+	assert.NoError(t, err)
+	assert.NoError(t, addWatches(controller, r.dynamicWatches))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
