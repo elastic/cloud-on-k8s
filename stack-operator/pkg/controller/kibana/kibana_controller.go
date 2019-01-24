@@ -13,8 +13,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,7 +41,7 @@ const (
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ net.Dialer) error {
+func Add(mgr manager.Manager, _ operator.Parameters) error {
 	return add(mgr, newReconciler(mgr))
 }
 

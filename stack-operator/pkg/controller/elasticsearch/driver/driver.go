@@ -6,6 +6,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
@@ -15,7 +16,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version5"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version6"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version7"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -38,6 +38,7 @@ type Driver interface {
 
 // Options are used to create a driver. See NewDriver
 type Options struct {
+	operator.Parameters
 	// Version is the version of Elasticsearch we want to reconcile towards
 	Version version.Version
 	// Client is used to access the Kubernetes API
@@ -46,8 +47,7 @@ type Options struct {
 
 	// ClusterCa is the CA that is used to issue certificates for nodes in the cluster
 	ClusterCa *nodecerts.Ca
-	// Dialer is used to create the Elasticsearch HTTP client.
-	Dialer net.Dialer
+
 	// Observers that observe es clusters state
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.

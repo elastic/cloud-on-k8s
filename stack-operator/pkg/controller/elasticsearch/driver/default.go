@@ -75,7 +75,7 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.ElasticsearchCluster,
 		paramsTmpl pod.NewPodSpecParams,
-		resourcesState reconcile.ResourcesState,
+		operatorImage string,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
@@ -172,6 +172,7 @@ func (d *defaultDriver) Reconcile(
 		d.Scheme,
 		es,
 		internalUsers.ControllerUser,
+		d.OperatorImage,
 	); err != nil {
 		// it's ok to continue even if we cannot reconcile the cron job
 		results.WithError(err)
@@ -348,7 +349,7 @@ func (d *defaultDriver) calculateChanges(
 			ProbeUser:         internalUsers.ControllerUser,
 			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
-		resourcesState,
+		d.OperatorImage,
 	)
 	if err != nil {
 		return nil, err

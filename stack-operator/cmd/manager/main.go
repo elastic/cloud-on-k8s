@@ -88,7 +88,8 @@ func execute() {
 		dialer = portforward.NewForwardingDialer()
 	}
 
-	if viper.GetString(operator.ImageFlag) == "" {
+	operatorImage := viper.GetString(operator.ImageFlag)
+	if operatorImage == "" {
 		log.Error(fmt.Errorf("%s is a required flag", operator.ImageFlag),
 			"required configuration missing")
 		os.Exit(1)
@@ -127,7 +128,10 @@ func execute() {
 
 	// Setup all Controllers
 	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr, dialer); err != nil {
+	if err := controller.AddToManager(mgr, operator.Parameters{
+		Dialer:        dialer,
+		OperatorImage: operatorImage,
+	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
 	}
