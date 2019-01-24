@@ -7,6 +7,7 @@ import (
 	"time"
 
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
@@ -54,7 +55,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 	if err != nil {
 		return nil, err
 	}
-
 	return &ReconcileElasticsearch{
 		Client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
@@ -168,6 +168,11 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	if common.IsPaused(es.ObjectMeta, r.Client) {
+		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		return common.PauseRequeue, nil
 	}
 
 	state := esreconcile.NewState(es)
