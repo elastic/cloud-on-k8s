@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
@@ -23,7 +24,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	k8sctl "k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -67,14 +67,14 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 
 		finalizers:       finalizer.NewHandler(mgr.GetClient()),
 		dynamicWatches:   watches.NewDynamicWatches(),
-		podsExpectations: k8sctl.NewUIDTrackingControllerExpectations(k8sctl.NewControllerExpectations()),
+		podsExpectations: reconciler.NewExpectations(),
 
 		Parameters: params,
 	}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r *ReconcileElasticsearch) (controller.Controller, error) {
+func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
 	return controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
 }
@@ -103,6 +103,8 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		watches.NewExpectationsWatch(
 			"pods-expectations",
 			r.podsExpectations,
+			// retrieve cluster name from pod labels
+			watches.ClusterFromResourceLabels,
 		)); err != nil {
 		return err
 	}
@@ -153,7 +155,7 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
-	podsExpectations *k8sctl.UIDTrackingControllerExpectations
+	podsExpectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64

@@ -195,15 +195,13 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	clusterKey := es.Namespace + "/" + es.Name
-
-	log.Info("expectations", "satisfied", d.PodsExpectations.SatisfiedExpectations(clusterKey))
+	namespacedName := k8s.ExtractNamespacedName(es.ObjectMeta)
 
 	// There might be some ongoing creations and deletions our k8s client cache
 	// hasn't seen yet. In such case, requeue until we are in-sync.
 	// Otherwise, we could end up re-creating multiple times the same pod with
 	// different generated names through multiple reconciliation iterations.
-	if !d.PodsExpectations.SatisfiedExpectations(clusterKey) {
+	if !d.PodsExpectations.Fullfilled(namespacedName) {
 		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
 		return results.WithResult(defaultRequeue)
 	}
@@ -271,10 +269,8 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	if err := d.PodsExpectations.ExpectCreations(clusterKey, len(performableChanges.ToCreate)); err != nil {
-		return results.WithError(err)
-	}
-	for i, change := range performableChanges.ToCreate {
+	for _, change := range performableChanges.ToCreate {
+		d.PodsExpectations.ExpectCreation(namespacedName)
 		if err := createElasticsearchPod(
 			d.Client,
 			d.Scheme,
@@ -283,13 +279,12 @@ func (d *defaultDriver) Reconcile(
 			change.Pod,
 			change.PodSpecCtx,
 		); err != nil {
-			// pod was not created, cancel non-created pods expectations by marking them observed
-			for range performableChanges.ToCreate[i:len(performableChanges.ToCreate)] {
-				d.PodsExpectations.CreationObserved(clusterKey)
-			}
+			// pod was not created, cancel our expectation by marking it observed
+			d.PodsExpectations.CreationObserved(namespacedName)
 			return results.WithError(err)
 		}
 	}
+	// passed this point, any pods resource listing should check expectations first
 
 	if !esReachable {
 		// We cannot manipulate ES allocation exclude settings if the ES cluster
@@ -342,11 +337,8 @@ func (d *defaultDriver) Reconcile(
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
 	copy(newState, resourcesState.CurrentPods)
 
-	if err := d.PodsExpectations.ExpectDeletions(clusterKey, pod.PodListToNames(performableChanges.ToDelete)); err != nil {
-		return results.WithError(err)
-	}
 	// Shrink clusters by deleting deprecated pods
-	for i, pod := range performableChanges.ToDelete {
+	for _, pod := range performableChanges.ToDelete {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {
 			if d.zen1SettingsUpdater != nil {
@@ -356,6 +348,7 @@ func (d *defaultDriver) Reconcile(
 			}
 			return nil
 		}
+		d.PodsExpectations.ExpectDeletion(namespacedName)
 		result, err := deleteElasticsearchPod(
 			d.Client,
 			reconcileState,
@@ -366,14 +359,14 @@ func (d *defaultDriver) Reconcile(
 			preDelete,
 		)
 		if err != nil {
-			// pod was not deleted, cancel our expectations by marking non-deleted pods as observed
-			for _, notDeleted := range performableChanges.ToDelete[i:len(performableChanges.ToDelete)] {
-				d.PodsExpectations.DeletionObserved(clusterKey, notDeleted.Name)
-			}
+			// pod was not deleted, cancel our expectation by marking it observed
+			d.PodsExpectations.DeletionObserved(namespacedName)
 			return results.WithError(err)
 		}
 		results.WithResult(result)
 	}
+	// passed this point, any pods resource listing should check expectations first
+
 	if changes.HasChanges() && !performableChanges.HasChanges() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later
 		results.WithResult(defaultRequeue)

@@ -1,59 +1,82 @@
 package watches
 
 import (
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	k8sctl "k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
 
-type ExpectationsWatch struct {
-	handlerKey   string
-	expectations *k8sctl.UIDTrackingControllerExpectations
+// ExpectationsResourceRetriever is a function that allows retrieving, from a given resource,
+// the associated resource that holds expectations resources.
+// For instance, from a given pod, we might want to retrieve the ElasticsearchCluster associated
+// to it (see `ClusterFromResourceLabels`).
+type ExpectationsResourceRetriever func(metaObject metav1.Object) (types.NamespacedName, bool)
+
+// ClusterFromResourceLabels returns the NamespacedName of the ElasticsearchCluster associated
+// to the given resource, by retrieving its name from the resource labels.
+// It does implicitly consider the cluster and the resource to be in the same namespace.
+func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, bool) {
+	resourceName, exists := metaObject.GetLabels()[label.ClusterNameLabelName]
+	return types.NamespacedName{
+		Namespace: metaObject.GetNamespace(),
+		Name:      resourceName,
+	}, exists
 }
 
-func NewExpectationsWatch(handlerKey string, expectations *k8sctl.UIDTrackingControllerExpectations) *ExpectationsWatch {
+// ExpectationsWatch is an event handler for watches that markes resources creations and deletions
+// as observed for the given reconciler expectations.
+type ExpectationsWatch struct {
+	handlerKey        string
+	expectations      *reconciler.Expectations
+	resourceRetriever ExpectationsResourceRetriever
+}
+
+// NewExpectationsWatch creates an ExpectationsWatch from the given arguments.
+func NewExpectationsWatch(handlerKey string, expectations *reconciler.Expectations, resourceRetriever ExpectationsResourceRetriever) *ExpectationsWatch {
 	return &ExpectationsWatch{
-		handlerKey:   handlerKey,
-		expectations: expectations,
+		handlerKey:        handlerKey,
+		expectations:      expectations,
+		resourceRetriever: resourceRetriever,
 	}
 }
 
+// Key returns the key associated to this handler.
 func (p *ExpectationsWatch) Key() string {
 	return p.handlerKey
 }
 
+// EventHandler returns the ExpectationsWatch as an handler.EventHandler.
 func (p *ExpectationsWatch) EventHandler() handler.EventHandler {
 	return p
 }
 
-// Create returns true if the Create event should be processed
+// Create marks a resource creation as observed in the expectations.
 func (p *ExpectationsWatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
-	clusterName, exists := evt.Meta.GetLabels()[label.ClusterNameLabelName]
+	resource, exists := p.resourceRetriever(evt.Meta)
 	if exists {
-		key := evt.Meta.GetNamespace() + "/" + clusterName
-		p.expectations.CreationObserved(key)
-		log.V(4).Info("Marking expectations creation observed", "key", key)
+		p.expectations.CreationObserved(resource)
+		log.V(4).Info("Marking creation observed in expectations", "resource", resource)
 	}
 }
 
-// Update returns true if the Update event should be processed
-func (p *ExpectationsWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
-}
-
-// Delete returns true if the Delete event should be processed
+// Create marks a resource deletion as observed in the expectations.
 func (p *ExpectationsWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
-	clusterName, exists := evt.Meta.GetLabels()[label.ClusterNameLabelName]
+	resource, exists := p.resourceRetriever(evt.Meta)
 	if exists {
-		key := evt.Meta.GetNamespace() + "/" + clusterName
-		p.expectations.DeletionObserved(key, evt.Meta.GetName())
-		log.V(4).Info("Marking expectations deletion observed", "key", key, "resource", evt.Meta.GetName())
+		p.expectations.DeletionObserved(resource)
+		log.V(4).Info("Marking deletion observed in expectations", "resource", resource)
 	}
 }
 
-// Generic returns true if the Generic event should be processed
-func (p *ExpectationsWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
-}
+// Update is a no-op operation in this context.
+func (p *ExpectationsWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {}
 
+// Generic is a no-op operation in this context.
+func (p *ExpectationsWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {}
+
+// Make sure our ExpectationsWatch implements HandlerRegistration.
 var _ HandlerRegistration = &ExpectationsWatch{}

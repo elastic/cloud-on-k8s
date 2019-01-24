@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
@@ -17,7 +18,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version6"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version7"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/kubernetes/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -55,7 +55,7 @@ type Options struct {
 	DynamicWatches watches.DynamicWatches
 	// PodsExpectations control ongoing pod creations and deletions
 	// that might not be in-sync yet with our k8s client cache
-	PodsExpectations *controller.UIDTrackingControllerExpectations
+	PodsExpectations *reconciler.Expectations
 }
 
 // NewDriver returns a Driver that can operate the provided version
