@@ -3,12 +3,12 @@
 Proposal state: RFC
 
 ### Summary 
-Purpose of this proposal is to outline implementation for license management for Elasticsearch clusters managed by the Elastic k8s operator.
+Purpose of this proposal is to outline an implementation for license management for Elasticsearch clusters managed by the Elastic k8s operator.
 
 ### Constraints 
 
 * gold/platinum level licenses can only be applied to clusters using internal TLS
-* user applying the license needs to have `manage` privileges if security features are enabled
+* user applying the license needs to have `manage` privileges if security features are enabled (which is always the case) 
 
 
 ### Option/Phase 1: Directly applied license
@@ -44,7 +44,7 @@ spec:
 
 ### Option/Phase  2: License pool and license controller 
 
-We support a pool of licenses and create a license controller that applies the most suitable license to the individual cluster deployments. Suitable is defined similar to our current practice in Cloud. It selects a license from the pool of license in descending precedence order of platinum, gold, standard and with the best match with regards to license validity (at least n days after license start, at least n days before license expiry)
+We support a pool of licenses and create a license controller that applies the most suitable license to the individual cluster deployments. Suitable is defined similar to our current practice in Cloud. It selects a license from the pool of licenses in descending precedence order of platinum, gold, standard and with the best match with regards to license validity (at least n days after license start, at least n days before license expiry). 
 
 * a license controller manages a set of secrets marked via label as Elasticsearch licenses `k8s.elastic.co\kind=license`
 
@@ -60,5 +60,7 @@ Cons:
 
 ### Questions: 
 
-* what kind of license will we support? gold, platinum, standardlicense?
-* for option 2 should we support an annotation on the cluster to disable automatic license management? 
+* What kind of license will we support? gold, platinum, standard license?
+* For option 2 should we support an annotation on the cluster to disable automatic license management? 
+* What do we do when the license expires. How do we recover from that?
+* Do we have have way of testing licensing. Can we generate test licenses?
