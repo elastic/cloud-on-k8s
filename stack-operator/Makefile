@@ -67,7 +67,7 @@ keystore-updater: generate fmt vet
 ci: dep-vendor-only stack-operator integration keystore-updater
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
-OPERATOR_IMAGE?=no-operator-image
+OPERATOR_IMAGE ?= $(IMG):$(IMG_TAG)
 run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	# Deploy on gke
@@ -188,8 +188,8 @@ dev-cluster:
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ $(MAKE) gke
 else
-	# A registry is deployed in minikube
-	@ $(MAKE) minikube registry
+	# A registry is deployed in minikube and the latest operator image is pushed in
+	@ $(MAKE) minikube registry lazy-push-latest-operator-image-in-local-registry
 endif
 
 .PHONY: delete-dev
@@ -224,6 +224,16 @@ endif
 registry:
 	@ echo "-> Deploying registry..."
 	@ kubectl apply -f config/dev/registry.yaml
+
+lazy-push-latest-operator-image-in-local-registry:
+	@ hack/registry.sh port-forward start
+	@ docker pull $(IMG):$(IMG_TAG) || $(MAKE) docker-build docker-push
+	@ hack/registry.sh port-forward stop
+
+force-push-latest-operator-image-in-local-registry:
+	@ hack/registry.sh port-forward start
+	@ $(MAKE) docker-build docker-push
+	@ hack/registry.sh port-forward stop
 
 # samples pushes the samples to the configured Kubernetes cluster.
 .PHONY: samples
