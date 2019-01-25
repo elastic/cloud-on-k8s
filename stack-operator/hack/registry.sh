@@ -19,7 +19,6 @@ main() {
   case $@ in
     start)
       main create
-      sleep 1
       main port-forward start
     ;;
     create)
