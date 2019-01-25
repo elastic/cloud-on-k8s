@@ -32,13 +32,13 @@ metadata:
   name: <cluster-name>
   namespace: <cluster-namespace>
 spec:
+  uid: "893361dc-9749-4997-93cb-802e3d7fa4xx" 
   type: "standard"
   issueDate: 1411948800000 # MicroTime?
   expiryDate: 1914278399999 # MicroTime?
   issuedTo: "issuedTo"
   issuer: "issuer"
-  signatureRef: 
-    name: <secret-ref>
+  signature: ""
 ```
 
 
@@ -64,3 +64,4 @@ Cons:
 * For option 2 should we support an annotation on the cluster to disable automatic license management? 
 * What do we do when the license expires. How do we recover from that?
 * Do we have have way of testing licensing. Can we generate test licenses?
+* Do we need to support enterprise licenses that contain individual cluster licenses?
