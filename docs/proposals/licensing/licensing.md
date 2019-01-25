@@ -65,3 +65,4 @@ Cons:
 * What do we do when the license expires. How do we recover from that?
 * Do we have have way of testing licensing. Can we generate test licenses?
 * Do we need to support enterprise licenses that contain individual cluster licenses?
+* Do we really need a custom resource definition for the license or could it just be a secret?
