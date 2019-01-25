@@ -2,7 +2,7 @@ package fixtures
 
 const (
 	LicenseUpdateResponseSample = `{"acknowledged":true,"license_status":"valid"}`
-	LicenseGetSample = `
+	LicenseGetSample            = `
 {
   "license" : {
     "status" : "active",

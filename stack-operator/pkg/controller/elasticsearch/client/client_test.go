@@ -372,7 +372,6 @@ func TestClient_UpdateLicense(t *testing.T) {
 	assert.Equal(t, "valid", got.LicenseStatus)
 }
 
-
 func TestClient_GetLicense(t *testing.T) {
 	expectedPath := "/_xpack/license"
 	testClient := NewMockClient(func(req *http.Request) *http.Response {
@@ -388,9 +387,9 @@ func TestClient_GetLicense(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", got.UID)
 	assert.Equal(t, "platinum", got.Type)
-	assert.Equal(t, time.Unix(0, 1548115200000 * int64(time.Millisecond)).UTC(), got.IssueDate)
+	assert.EqualValues(t, time.Unix(0, 1548115200000*int64(time.Millisecond)).UTC(), *got.IssueDate)
 	assert.Equal(t, int64(1548115200000), got.IssueDateInMillis)
-	assert.Equal(t, time.Unix(0, 1561247999999 * int64(time.Millisecond)).UTC(), got.ExpiryDate)
+	assert.EqualValues(t, time.Unix(0, 1561247999999*int64(time.Millisecond)).UTC(), *got.ExpiryDate)
 	assert.Equal(t, int64(1561247999999), got.ExpiryDateInMillis)
 	assert.Equal(t, 100, got.MaxNodes)
 	assert.Equal(t, "issuer", got.Issuer)

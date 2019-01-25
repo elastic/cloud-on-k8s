@@ -291,30 +291,34 @@ type ErrorResponse struct {
 
 // License models the Elasticsearch license applied to a cluster (signature can be empty dependin)
 type License struct {
-		Status             string    `json:"status"`
-		UID                string    `json:"uid"`
-		Type               string    `json:"type"`
-		IssueDate          time.Time `json:"issue_date"`
-		IssueDateInMillis  int64     `json:"issue_date_in_millis"`
-		ExpiryDate         time.Time `json:"expiry_date"`
-		ExpiryDateInMillis int64     `json:"expiry_date_in_millis"`
-		MaxNodes           int       `json:"max_nodes"`
-		IssuedTo           string    `json:"issued_to"`
-		Issuer             string    `json:"issuer"`
-		StartDateInMillis  int64     `json:"start_date_in_millis"`
-		Signature string `json:"signature"`
-	}
+	Status             string     `json:"status,omitempty"`
+	UID                string     `json:"uid"`
+	Type               string     `json:"type"`
+	IssueDate          *time.Time `json:"issue_date,omitempty"`
+	IssueDateInMillis  int64      `json:"issue_date_in_millis"`
+	ExpiryDate         *time.Time `json:"expiry_date,omitempty"`
+	ExpiryDateInMillis int64      `json:"expiry_date_in_millis"`
+	MaxNodes           int        `json:"max_nodes"`
+	IssuedTo           string     `json:"issued_to"`
+	Issuer             string     `json:"issuer"`
+	StartDateInMillis  int64      `json:"start_date_in_millis"`
+	Signature          string     `json:"signature,omitempty"`
+}
 
 // LicenseUpdateRequest is the request to apply a license to a cluster. Licenses must contain signature.
 type LicenseUpdateRequest struct {
-	Licenses []License
+	Licenses []License `json:"licenses"`
 }
 
 // LicenseUpdateResponse is the response to a license update request.
 type LicenseUpdateResponse struct {
-	Acknowledged  bool   `json:"acknowledged"`
+	Acknowledged bool `json:"acknowledged"`
 	// LicenseStatus can be one of 'valid', 'invalid', 'expired'
 	LicenseStatus string `json:"license_status"`
+}
+
+func (lr LicenseUpdateResponse) IsSuccess() bool {
+	return lr.LicenseStatus == "valid"
 }
 
 // LicenseResponse is the response to GET _xpack/license. Licenses won't contain signature.

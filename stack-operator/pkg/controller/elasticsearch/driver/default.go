@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -182,6 +184,18 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	results.Apply(
+		"reconcile-cluster-license",
+		func() (controller.Result, error) {
+			err := license.Reconcile(d.Client, esClient, observedState.ClusterLicense)
+			if err != nil && changes.HasRunningPods() {
+				reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, "Could not update cluster license")
+				return defaultRequeue, err
+			}
+			return controller.Result{}, nil
+		},
+	)
 
 	log.Info(
 		"Going to apply the following topology changes",

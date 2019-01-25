@@ -37,6 +37,11 @@ func (c Changes) HasChanges() bool {
 	return len(c.ToCreate) > 0 || len(c.ToDelete) > 0
 }
 
+// HasRunningPods returns true if there are existing pods to keep. Does not say that they form a working cluster.
+func (c Changes) HasRunningPods() bool {
+	return len(c.ToKeep) > 0
+}
+
 // IsEmpty returns true if this set has no deletion, creation or kept pods
 func (c Changes) IsEmpty() bool {
 	return len(c.ToCreate) == 0 && len(c.ToDelete) == 0 && len(c.ToKeep) == 0

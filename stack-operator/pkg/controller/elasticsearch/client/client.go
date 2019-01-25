@@ -313,7 +313,7 @@ func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
 // GetLicense returns the currently applied license. Can be empty.
 func (c *Client) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
-	return  license.License, c.get(ctx, "/_xpack/license", &license)
+	return license.License, c.get(ctx, "/_xpack/license", &license)
 }
 
 // UpdateLicense attempts to update cluster license with the given licenses.
