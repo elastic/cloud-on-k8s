@@ -63,6 +63,9 @@ Cons:
 * What kind of license will we support? gold, platinum, standard license?
 * For option 2 should we support an annotation on the cluster to disable automatic license management? 
 * What do we do when the license expires. How do we recover from that?
+  * The cluster does not disintegrate when the license expires. The operator will see the cluster as unhealthy as our current health checks start failing (do we need to handle this condition?) The license API stays responsive and cluster bounces back as soon as a valid license is put into place. 
+* How do we handle license downgrades to basic? 
+  * As basic does not support internal TLS I don't see a way at the moment to downgrade to basic. Should we prevent/validate this with a CRD and validation?
 * Do we have have way of testing licensing. Can we generate test licenses?
 * Do we need to support enterprise licenses that contain individual cluster licenses?
 * Do we really need a custom resource definition for the license or could it just be a secret?
