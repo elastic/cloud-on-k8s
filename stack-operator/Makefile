@@ -223,7 +223,7 @@ endif
 
 registry:
 	@ echo "-> Deploying registry..."
-	@ kubectl apply -f config/dev/registry.yaml
+	@ hack/registry.sh create
 
 lazy-push-latest-operator-image-in-local-registry:
 	@ hack/registry.sh port-forward start

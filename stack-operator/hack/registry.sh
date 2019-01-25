@@ -8,11 +8,11 @@ Usage:
   registry.sh [command]
 
 Commands:
-    apply               Deploy the registry k8s resources
+    create              Deploy the registry k8s resources
     port-forward start  Start to forward the localhost port 5000 to the registry port 5000
     port-forward stop   Stop the port forwarding
     delete              Delete the registry k8s resources
-    start               Execute the `apply` and `port-forward start` commands'
+    start               Execute the `create` and `port-forward start` commands'
 }
 
 main() {
