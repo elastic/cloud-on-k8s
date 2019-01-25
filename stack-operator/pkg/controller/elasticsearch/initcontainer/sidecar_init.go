@@ -13,9 +13,8 @@ var script = `
 
 func NewSidecarInitContainer(sharedVolume volume.VolumeLike, operatorImage string) corev1.Container {
 	return corev1.Container{
-		Name:            "sidecar-init",
-		Image:           operatorImage,
-		ImagePullPolicy: corev1.PullAlways,
+		Name:  "sidecar-init",
+		Image: operatorImage,
 		Env: []corev1.EnvVar{
 			{Name: "SHARED_BIN", Value: sharedVolume.VolumeMount().MountPath},
 		},
