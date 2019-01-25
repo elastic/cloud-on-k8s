@@ -28,10 +28,16 @@ GKE_LOCAL_SSD_COUNT ?= 1
 GKE_NODE_COUNT_PER_ZONE ?= 1
 GKE_KUBECTL_CONFIG = gke_$(GCLOUD_PROJECT)_$(GKE_CLUSTER_REGION)_$(GCLOUD_CLUSTER_NAME)
 
-GCR_REGION_NAME ?= eu.gcr.io
+GCR_REGISTRY ?= eu.gcr.io
+LOCAL_REGISTRY ?= localhost:5000
 # Image URL to use all building/pushing image targets
 IMG_TAG ?= $(shell find pkg -type f -print0 | xargs -0 sha1sum | sha1sum | awk '{print $$1}')
-IMG ?= $(GCR_REGION_NAME)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
+	IMG ?= $(GCR_REGISTRY)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+else
+	IMG ?= $(LOCAL_REGISTRY)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+endif
+
 E2E_IMG ?= $(IMG)-e2e-tests
 
 OPERATOR_NAMESPACE ?= stack-operators-system
@@ -182,7 +188,8 @@ dev-cluster:
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ $(MAKE) gke
 else
-	@ $(MAKE) minikube
+	# A registry is deployed in minikube
+	@ $(MAKE) minikube registry
 endif
 
 .PHONY: delete-dev
@@ -213,6 +220,10 @@ else
 	@ echo "-> minikube already started, skipping..."
 endif
 	@ echo "minikube" > $(CONFIG_FILE)
+
+registry:
+	@ echo "-> Deploying registry..."
+	@ kubectl apply -f config/dev/registry.yaml
 
 # samples pushes the samples to the configured Kubernetes cluster.
 .PHONY: samples
