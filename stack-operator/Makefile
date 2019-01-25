@@ -76,6 +76,8 @@ ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ $(MAKE) docker-build docker-push deploy
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
+	@ echo "-> Checking existence of the operator image in minikube..."
+	@ eval $$(minikube docker-env) ; docker pull $(OPERATOR_IMAGE) &> /dev/null
 	# Run the operator locally with port-forwarding enabled, so that
 	# it can reach services running in the cluster through k8s port-forward feature
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE) go run ./cmd/main.go manager --development $(MANAGER_ARGS)
