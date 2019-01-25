@@ -36,6 +36,7 @@ ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	IMG ?= $(GCR_REGISTRY)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
 else
 	IMG ?= $(LOCAL_REGISTRY)/$(GCLOUD_PROJECT)/$(subst _,,$(USER))
+	IMG_TAG = latest
 endif
 
 E2E_IMG ?= $(IMG)-e2e-tests
