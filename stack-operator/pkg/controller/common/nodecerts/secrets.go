@@ -68,14 +68,15 @@ func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 	return k8s.ExtractNamespacedName(pod.ObjectMeta)
 }
 
-// EnsureNodeCertificateSecretExists ensures that the corev1.Secret that at a later point in time will contain the node
-// certificates exists.
+// EnsureNodeCertificateSecretExists ensures the existence of the corev1.Secret that at a later point in time will
+// contain the node certificates.
 func EnsureNodeCertificateSecretExists(
 	c client.Client,
 	scheme *runtime.Scheme,
 	owner metav1.Object,
 	pod corev1.Pod,
 	nodeCertificateType string,
+	labels map[string]string,
 ) (*corev1.Secret, error) {
 	secretObjectKey := NodeCertificateSecretObjectKeyForPod(pod)
 
@@ -97,6 +98,11 @@ func EnsureNodeCertificateSecretExists(
 			},
 		}
 
+		// apply any provided labels
+		for key, value := range labels {
+			secret.Labels[key] = value
+		}
+
 		if err := controllerutil.SetControllerReference(owner, &secret, scheme); err != nil {
 			return nil, err
 		}
@@ -106,6 +112,7 @@ func EnsureNodeCertificateSecretExists(
 		}
 	}
 
+	// TODO: in the future we should consider reconciling the existing secret as well instead of leaving it untouched.
 	return &secret, nil
 }
 

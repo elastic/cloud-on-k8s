@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
@@ -39,6 +40,8 @@ func createElasticsearchPod(
 		&es,
 		pod,
 		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
+		// add the cluster name label so we select all the node certificates secrets associated with a cluster easily
+		map[string]string{label.ClusterNameLabelName: es.Name},
 	)
 	if err != nil {
 		return err
