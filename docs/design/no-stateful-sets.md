@@ -1,6 +1,6 @@
 # Why not relying on StatefulSets
 
-We manage stateful workloads. StatefulSets were designed in order to manage stateful workloads. Why are we not using StafulSets like everyone else is doing?
+We manage stateful workloads. StatefulSets were designed in order to manage stateful workloads. Why are we not using StatefulSets like everyone else is doing?
 
 ## StatefulSets overview
 
