@@ -9,13 +9,14 @@ import (
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
 		Secrets: NewDynamicEnqueueRequest(),
+		ClusterLicense: NewDynamicEnqueueRequest(),
 	}
 }
 
 // DynamicWatches contains stateful dynamic watches. Intended as facility to pass around stateful dynamic watches and
 // give each of them an identity.
 type DynamicWatches struct {
-	Secrets *DynamicEnqueueRequest
+	Secrets        *DynamicEnqueueRequest
 	ClusterLicense *DynamicEnqueueRequest
 }
 

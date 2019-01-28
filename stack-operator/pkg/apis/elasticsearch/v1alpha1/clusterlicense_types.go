@@ -43,7 +43,7 @@ type ClusterLicense struct {
 }
 
 // IsEmpty returns true if this license has an empty spec.
-func(cl ClusterLicense) IsEmpty() bool {
+func (cl ClusterLicense) IsEmpty() bool {
 	return cl.Spec.IsEmpty()
 }
 

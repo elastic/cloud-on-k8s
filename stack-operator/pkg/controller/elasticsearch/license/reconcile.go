@@ -20,4 +20,3 @@ func Reconcile(
 	}
 	return applyLinkedLicense(c, esCluster, clusterClient, current)
 }
-

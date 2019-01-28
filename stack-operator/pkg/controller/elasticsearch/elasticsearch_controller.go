@@ -247,6 +247,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
 		snapshot.Finalizer(clusterName, watched),
-		license.Finailzer(clusterName, watched),
+		license.Finalizer(clusterName, watched),
 	}
 }
