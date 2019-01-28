@@ -193,7 +193,7 @@ func (d *defaultDriver) Reconcile(
 				d.DynamicWatches,
 				k8s.ExtractNamespacedName(es.ObjectMeta),
 				esClient,
-				observedState.ClusterLicense
+				observedState.ClusterLicense,
 			)
 			if err != nil && changes.HasRunningPods() {
 				reconcileState.AddEvent(
