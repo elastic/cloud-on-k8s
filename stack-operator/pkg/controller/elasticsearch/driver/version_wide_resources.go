@@ -2,23 +2,20 @@ package driver
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // VersionWideResources are resources that are tied to a version, but no specific pod within that version
@@ -50,20 +47,6 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	// TODO: suffix and trim
-	extraFilesSecretObjectKey := types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      fmt.Sprintf("%s-extrafiles", es.Name),
-	}
-	var extraFilesSecret corev1.Secret
-	if err := c.Get(
-		context.TODO(),
-		extraFilesSecretObjectKey,
-		&extraFilesSecret,
-	); err != nil && !apierrors.IsNotFound(err) {
-		return nil, err
-	}
-
 	trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
 
 	// include the trust restrictions from the trust relationships info the trust restrictions config
@@ -76,40 +59,44 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	if apierrors.IsNotFound(err) {
-		extraFilesSecret = corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(extraFilesSecretObjectKey),
-			Data: map[string][]byte{
-				nodecerts.TrustRestrictionsFilename: trustRootCfgData,
-			},
-		}
+	expectedExtraFilesSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			// TODO: suffix and trim
+			Name: fmt.Sprintf("%s-extrafiles", es.Name),
+		},
+		Data: map[string][]byte{
+			nodecerts.TrustRestrictionsFilename: trustRootCfgData,
+		},
+	}
 
-		err = controllerutil.SetControllerReference(&es, &extraFilesSecret, scheme)
-		if err != nil {
-			return nil, err
-		}
+	var reconciledExtraFilesSecret corev1.Secret
 
-		log.Info("Creating version wide resources", "clusterName", es.ClusterName)
-
-		if err := c.Create(context.TODO(), &extraFilesSecret); err != nil {
-			return nil, err
-		}
-	} else {
-		currentTrustConfig, ok := extraFilesSecret.Data[nodecerts.TrustRestrictionsFilename]
-		extraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
-
-		if !ok || !bytes.Equal(currentTrustConfig, trustRootCfgData) {
-			log.Info("Updating version wide resources", "clusterName", es.ClusterName)
-
-			if err := c.Update(context.TODO(), &extraFilesSecret); err != nil {
-				return nil, err
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      &es,
+		Expected:   &expectedExtraFilesSecret,
+		Reconciled: &reconciledExtraFilesSecret,
+		NeedsUpdate: func() bool {
+			// .Data might be nil in the secret, so make sure to initialize it
+			if reconciledExtraFilesSecret.Data == nil {
+				reconciledExtraFilesSecret.Data = make(map[string][]byte, 1)
 			}
-		}
+			currentTrustConfig, ok := reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename]
+
+			return !ok || !bytes.Equal(currentTrustConfig, trustRootCfgData)
+		},
+		UpdateReconciled: func() {
+			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
+		},
+	}); err != nil {
+		return nil, err
 	}
 
 	return &VersionWideResources{
 		KeyStoreConfig:                      keystoreConfig,
 		GenericUnecryptedConfigurationFiles: expectedConfigMap,
-		ExtraFilesSecret:                    extraFilesSecret,
+		ExtraFilesSecret:                    reconciledExtraFilesSecret,
 	}, nil
 }
