@@ -7,15 +7,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
-
 	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/services"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -165,6 +164,15 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			if _, ok := es.Spec.FeatureFlags[k]; !ok {
 				es.Spec.FeatureFlags[k] = v
 			}
+		}
+	}
+	// TODO this is an ugly stop gap to avoid the need to create licenses for everyone right now
+	if stack.Labels != nil {
+		if es.Labels == nil {
+			es.Labels = make(map[string]string, len(stack.Labels))
+		}
+		for k, v := range stack.Labels {
+			es.Labels[k] = v
 		}
 	}
 

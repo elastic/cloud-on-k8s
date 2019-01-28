@@ -191,7 +191,7 @@ func (d *defaultDriver) Reconcile(
 			err := license.Reconcile(
 				d.Client,
 				d.DynamicWatches,
-				k8s.ExtractNamespacedName(es.ObjectMeta),
+				es,
 				esClient,
 				observedState.ClusterLicense,
 			)
