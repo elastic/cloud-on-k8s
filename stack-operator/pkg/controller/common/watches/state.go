@@ -8,7 +8,7 @@ import (
 // NewDynamicWatches creates an initialized DynamicWatches container.
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
-		Secrets: NewDynamicEnqueueRequest(),
+		Secrets:        NewDynamicEnqueueRequest(),
 		ClusterLicense: NewDynamicEnqueueRequest(),
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-
 func Test_secretRefResolver(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -44,7 +43,7 @@ func Test_secretRefResolver(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "error: multiple keys in secret",
+			name:    "error: multiple keys in secret",
 			wantErr: true,
 			initialObjs: []runtime.Object{
 				&v1.Secret{
@@ -60,7 +59,7 @@ func Test_secretRefResolver(t *testing.T) {
 			},
 		},
 		{
-			name: "error: empty secret",
+			name:    "error: empty secret",
 			wantErr: true,
 			initialObjs: []runtime.Object{
 				&v1.Secret{
