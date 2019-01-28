@@ -109,13 +109,13 @@ type defaultDriver struct {
 	) error
 
 	// TODO: implement
-	//// apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
-	//apiObjectsGarbageCollector func(
-	//	c client.Client,
-	//	es v1alpha1.ElasticsearchCluster,
-	//	version version.Version,
-	//	state mutation.PodsState,
-	//) (reconcile.Result, error) // could get away with one impl
+	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
+	// apiObjectsGarbageCollector func(
+	// 	c client.Client,
+	// 	es v1alpha1.ElasticsearchCluster,
+	// 	version version.Version,
+	// 	state mutation.PodsState,
+	// ) (reconcile.Result, error) // could get away with one impl
 }
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
@@ -188,9 +188,13 @@ func (d *defaultDriver) Reconcile(
 	results.Apply(
 		"reconcile-cluster-license",
 		func() (controller.Result, error) {
-			err := license.Reconcile(d.Client, esClient, observedState.ClusterLicense)
+			err := license.Reconcile(d.Client, k8s.ExtractNamespacedName(es.ObjectMeta), esClient, observedState.ClusterLicense)
 			if err != nil && changes.HasRunningPods() {
-				reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, "Could not update cluster license")
+				reconcileState.AddEvent(
+					corev1.EventTypeWarning,
+					events.EventReasonUnexpected,
+					fmt.Sprintf("Could not update cluster license: %s", err.Error()),
+				)
 				return defaultRequeue, err
 			}
 			return controller.Result{}, nil

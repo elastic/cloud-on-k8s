@@ -19,6 +19,11 @@ type ClusterLicenseSpec struct {
 	SignatureRef       corev1.SecretReference `json:"signatureRef"`
 }
 
+// IsEmpty returns true if this spec is empty.
+func (cls ClusterLicenseSpec) IsEmpty() bool {
+	return cls == ClusterLicenseSpec{}
+}
+
 // ClusterLicenseStatus defines the observed state of ClusterLicense
 type ClusterLicenseStatus struct {
 	LicenseStatus string `json:"licenseStatus"`
@@ -35,6 +40,11 @@ type ClusterLicense struct {
 
 	Spec   ClusterLicenseSpec   `json:"spec,omitempty"`
 	Status ClusterLicenseStatus `json:"status,omitempty"`
+}
+
+// IsEmpty returns true if this license has an empty spec.
+func(cl ClusterLicense) IsEmpty() bool {
+	return cl.Spec.IsEmpty()
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

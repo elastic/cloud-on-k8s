@@ -16,6 +16,7 @@ func NewDynamicWatches() DynamicWatches {
 // give each of them an identity.
 type DynamicWatches struct {
 	Secrets *DynamicEnqueueRequest
+	ClusterLicense *DynamicEnqueueRequest
 }
 
 // InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and

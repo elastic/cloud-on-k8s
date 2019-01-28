@@ -8,7 +8,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -16,27 +15,22 @@ import (
 // Reconcile reconciles the current Elasticsearch license with the desired one.
 func Reconcile(
 	c client.Client,
+	esCluster types.NamespacedName,
 	clusterClient *esclient.Client,
 	current *esclient.License,
 ) error {
 
-	var labelSelector labels.Selector // TODO how to list linked licenses (by owner)?
-	var licenseList v1alpha1.ClusterLicenseList
-	err := c.List(context.TODO(), &client.ListOptions{LabelSelector: labelSelector}, &licenseList)
+	var license v1alpha1.ClusterLicense
+	err := c.Get(context.TODO(), esCluster, &license)
 	if err != nil {
 		return err
 	}
-	switch len(licenseList.Items) {
-	case 1:
-		license := licenseList.Items[0]
-		sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
-		return updateLicense(clusterClient, current, license, sigResolver)
-	case 0:
-		return errors.New("no licenseList linked to this cluster")
-	default:
-		// TODO be smart here and select the most appropriate one?
-		return errors.New("more than one licenseList linked to this cluster")
+	if license.IsEmpty() {
+		return errors.New("empty license linked to this cluster")
 	}
+
+	sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
+	return updateLicense(clusterClient, current, license, sigResolver)
 }
 
 func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (string, error) {
