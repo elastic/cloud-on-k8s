@@ -15,6 +15,7 @@ import (
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
@@ -104,7 +105,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 			"pods-expectations",
 			r.podsExpectations,
 			// retrieve cluster name from pod labels
-			watches.ClusterFromResourceLabels,
+			label.ClusterFromResourceLabels,
 		)); err != nil {
 		return err
 	}

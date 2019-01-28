@@ -201,7 +201,7 @@ func (d *defaultDriver) Reconcile(
 	// hasn't seen yet. In such case, requeue until we are in-sync.
 	// Otherwise, we could end up re-creating multiple times the same pod with
 	// different generated names through multiple reconciliation iterations.
-	if !d.PodsExpectations.Fullfilled(namespacedName) {
+	if !d.PodsExpectations.Fulfilled(namespacedName) {
 		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
 		return results.WithResult(defaultRequeue)
 	}

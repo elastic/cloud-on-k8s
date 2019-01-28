@@ -2,7 +2,6 @@ package watches
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -13,19 +12,8 @@ import (
 // ExpectationsResourceRetriever is a function that allows retrieving, from a given resource,
 // the associated resource that holds expectations resources.
 // For instance, from a given pod, we might want to retrieve the ElasticsearchCluster associated
-// to it (see `ClusterFromResourceLabels`).
+// to it (see `label.ClusterFromResourceLabels`).
 type ExpectationsResourceRetriever func(metaObject metav1.Object) (types.NamespacedName, bool)
-
-// ClusterFromResourceLabels returns the NamespacedName of the ElasticsearchCluster associated
-// to the given resource, by retrieving its name from the resource labels.
-// It does implicitly consider the cluster and the resource to be in the same namespace.
-func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, bool) {
-	resourceName, exists := metaObject.GetLabels()[label.ClusterNameLabelName]
-	return types.NamespacedName{
-		Namespace: metaObject.GetNamespace(),
-		Name:      resourceName,
-	}, exists
-}
 
 // ExpectationsWatch is an event handler for watches that markes resources creations and deletions
 // as observed for the given reconciler expectations.
@@ -63,7 +51,7 @@ func (p *ExpectationsWatch) Create(evt event.CreateEvent, q workqueue.RateLimiti
 	}
 }
 
-// Create marks a resource deletion as observed in the expectations.
+// Delete marks a resource deletion as observed in the expectations.
 func (p *ExpectationsWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	resource, exists := p.resourceRetriever(evt.Meta)
 	if exists {

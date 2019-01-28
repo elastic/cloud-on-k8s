@@ -39,7 +39,7 @@ package reconciler
 //   whether we can move forward with an up-to-date cache to next reconciliation steps.
 // * The same goes for deletions.
 //
-// Expectations have a time-to-live (5 minutes). Once reached, we consider an expectation to be fullfilled, even
+// Expectations have a time-to-live (5 minutes). Once reached, we consider an expectation to be fulfilled, even
 // though its internal counters may not be 0. This is to avoid staying stuck with inconsistent expectation events.
 //
 // ## Why not reusing K8s expectations implementations?
@@ -57,7 +57,7 @@ package reconciler
 // * `expectations.RaiseExpectations(controllerKey string, add, del int)`: only works if expectations exist,
 //   meaning `expectations.SetExpectations was called at least once before.
 //
-// This is replaced in our implementation vy a simpler `expectations.ExpectCreations(controllerKey)`,
+// This is replaced in our implementation by a simpler `expectations.ExpectCreations(controllerKey)`,
 // that does increment the creation counter, and creates it if it doesn't exist yet.
 //
 // A few other things that differ in our implementation from the K8s one:
@@ -67,7 +67,7 @@ package reconciler
 //   we don't care about, since we don't have expectations for it).
 // * Once an expectations TTL is reached, we consider we probably missed an event, hence we choose to
 //   reset expectations to 0 explicitely, instead of keeping counters value but still consider expectations
-//   to be fullfilled.
+//   to be fulfilled.
 // * `controller.UIDTrackingControllerExpectations` is an extended expectations implementation meant to handle
 //   update events that have a non-zero DeletionTimestamp (can be issued multiple times but should be counted
 //   only once). Since we do rely on controller-runtime deletion events instead, but don't need this here.
@@ -77,8 +77,8 @@ package reconciler
 //
 // Expected usage pseudo-code:
 // ```
-// if !expectations.FullFilled(responsibleResourceID) {
-//     // expected creations and deletions are not fullfilled yet,
+// if !expectations.fulfilled(responsibleResourceID) {
+//     // expected creations and deletions are not fulfilled yet,
 //     // let's requeue
 //     return
 // }
@@ -153,10 +153,10 @@ func (e *Expectations) DeletionObserved(namespacedName types.NamespacedName) {
 	e.getOrCreateCounters(namespacedName).AddDeletions(-1)
 }
 
-// Fullfilled returns true if all the expectations for the given resource
-// are fullfilled (both creations and deletions). Meaning we can consider
+// Fulfilled returns true if all the expectations for the given resource
+// are fulfilled (both creations and deletions). Meaning we can consider
 // the controller is in-sync with resources in the apiserver.
-func (e *Expectations) Fullfilled(namespacedName types.NamespacedName) bool {
+func (e *Expectations) Fulfilled(namespacedName types.NamespacedName) bool {
 	creations, deletions := e.get(namespacedName)
 	if creations == 0 && deletions == 0 {
 		return true
@@ -184,6 +184,9 @@ func (e *Expectations) getOrCreateCounters(namespacedName types.NamespacedName) 
 func (e *Expectations) createCounters(namespacedName types.NamespacedName) *expectationsCounters {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
+	// if this method is called, counters probably don't exist yet
+	// still re-check with lock acquired in case they would be created
+	// in-between 2 concurrent calls to e.getOrCreateCounters
 	counters, exists := e.counters[namespacedName]
 	if exists {
 		return counters
@@ -284,7 +287,7 @@ func (e *expectationsCounters) getPtrValue(ptr *int64) int64 {
 // add increments the int64 stored at the given pointer with the given value,
 // which can be negative for substractions.
 // Meant to be used for internal values, eg. `add(e.creations, -1)`.
-// If the value goes below 0, it will be rest to 0.
+// If the value goes below 0, it will be reset to 0.
 func (e *expectationsCounters) add(ptr *int64, value int64) {
 	e.resetTimestamp()
 	newValue := atomic.AddInt64(ptr, value)

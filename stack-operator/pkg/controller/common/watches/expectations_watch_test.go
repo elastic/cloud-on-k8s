@@ -21,7 +21,7 @@ var testCluster = types.NamespacedName{
 }
 
 func TestExpectationsWatch_Key(t *testing.T) {
-	w := NewExpectationsWatch(testHandlerKey, nil, ClusterFromResourceLabels)
+	w := NewExpectationsWatch(testHandlerKey, nil, label.ClusterFromResourceLabels)
 	require.Equal(t, testHandlerKey, w.Key())
 }
 
@@ -42,17 +42,17 @@ func createPodMetaObject(t *testing.T, name string) metav1.Object {
 
 func TestExpectationsWatch_Create(t *testing.T) {
 	expectations := reconciler.NewExpectations()
-	w := NewExpectationsWatch(testHandlerKey, expectations, ClusterFromResourceLabels)
+	w := NewExpectationsWatch(testHandlerKey, expectations, label.ClusterFromResourceLabels)
 
 	tests := []struct {
-		name               string
-		events             func()
-		expectedFullfilled bool
+		name              string
+		events            func()
+		expectedFulfilled bool
 	}{
 		{
-			name:               "initially fulfilled",
-			events:             func() {},
-			expectedFullfilled: true,
+			name:              "initially fulfilled",
+			events:            func() {},
+			expectedFulfilled: true,
 		},
 		{
 			name: "expect 2 creations",
@@ -60,7 +60,7 @@ func TestExpectationsWatch_Create(t *testing.T) {
 				expectations.ExpectCreation(testCluster)
 				expectations.ExpectCreation(testCluster)
 			},
-			expectedFullfilled: false,
+			expectedFulfilled: false,
 		},
 		{
 			name: "observe 1 creation",
@@ -69,7 +69,7 @@ func TestExpectationsWatch_Create(t *testing.T) {
 					Meta: createPodMetaObject(t, "pod1"),
 				}, nil)
 			},
-			expectedFullfilled: false,
+			expectedFulfilled: false,
 		},
 		{
 			name: "observe the 2nd creation",
@@ -78,30 +78,30 @@ func TestExpectationsWatch_Create(t *testing.T) {
 					Meta: createPodMetaObject(t, "pod2"),
 				}, nil)
 			},
-			expectedFullfilled: true,
+			expectedFulfilled: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.events()
-			require.Equal(t, tt.expectedFullfilled, expectations.Fullfilled(testCluster))
+			require.Equal(t, tt.expectedFulfilled, expectations.Fulfilled(testCluster))
 		})
 	}
 }
 
 func TestExpectationsWatch_Delete(t *testing.T) {
 	expectations := reconciler.NewExpectations()
-	w := NewExpectationsWatch(testHandlerKey, expectations, ClusterFromResourceLabels)
+	w := NewExpectationsWatch(testHandlerKey, expectations, label.ClusterFromResourceLabels)
 
 	tests := []struct {
-		name               string
-		events             func()
-		expectedFullfilled bool
+		name              string
+		events            func()
+		expectedFulfilled bool
 	}{
 		{
-			name:               "initially fulfilled",
-			events:             func() {},
-			expectedFullfilled: true,
+			name:              "initially fulfilled",
+			events:            func() {},
+			expectedFulfilled: true,
 		},
 		{
 			name: "expect 2 deletions",
@@ -109,7 +109,7 @@ func TestExpectationsWatch_Delete(t *testing.T) {
 				expectations.ExpectDeletion(testCluster)
 				expectations.ExpectDeletion(testCluster)
 			},
-			expectedFullfilled: false,
+			expectedFulfilled: false,
 		},
 		{
 			name: "observe 1 deletion",
@@ -118,7 +118,7 @@ func TestExpectationsWatch_Delete(t *testing.T) {
 					Meta: createPodMetaObject(t, "pod1"),
 				}, nil)
 			},
-			expectedFullfilled: false,
+			expectedFulfilled: false,
 		},
 		{
 			name: "observe the 2nd deletions",
@@ -127,13 +127,13 @@ func TestExpectationsWatch_Delete(t *testing.T) {
 					Meta: createPodMetaObject(t, "pod2"),
 				}, nil)
 			},
-			expectedFullfilled: true,
+			expectedFulfilled: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.events()
-			require.Equal(t, tt.expectedFullfilled, expectations.Fullfilled(testCluster))
+			require.Equal(t, tt.expectedFulfilled, expectations.Fulfilled(testCluster))
 		})
 	}
 }

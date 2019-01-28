@@ -23,12 +23,12 @@ func checkExpectations(t *testing.T, e *Expectations, namespacedName types.Names
 	actualCreations, actualDeletions := e.get(namespacedName)
 	require.Equal(t, expectedCreations, actualCreations)
 	require.Equal(t, expectedDeletions, actualDeletions)
-	// check expectations fullfilled
+	// check expectations fulfilled
 	expectedFulfilled := false
 	if expectedCreations == 0 && expectedDeletions == 0 {
 		expectedFulfilled = true
 	}
-	require.Equal(t, expectedFulfilled, e.Fullfilled(namespacedName))
+	require.Equal(t, expectedFulfilled, e.Fulfilled(namespacedName))
 }
 
 func TestExpectationsTTL(t *testing.T) {
@@ -40,7 +40,7 @@ func TestExpectationsTTL(t *testing.T) {
 	exp = NewExpectations()
 	exp.ttl = 1 * time.Nanosecond
 	exp.ExpectCreation(nsn1)
-	// counters should be reset and expectations fullfilled
+	// counters should be reset and expectations fulfilled
 	// once TTL is reached
 	time.Sleep(2 * time.Nanosecond)
 	checkExpectations(t, exp, nsn1, 0, 0)
