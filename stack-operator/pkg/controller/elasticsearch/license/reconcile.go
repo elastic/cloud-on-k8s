@@ -2,7 +2,6 @@ package license
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -21,22 +20,22 @@ func Reconcile(
 	current *esclient.License,
 ) error {
 
-	var labelSelector labels.Selector
-	var secretList v1alpha1.ClusterLicenseList
-	err := c.List(context.TODO(), &client.ListOptions{LabelSelector: labelSelector}, &secretList)
+	var labelSelector labels.Selector // TODO how to list linked licenses (by owner)?
+	var licenseList v1alpha1.ClusterLicenseList
+	err := c.List(context.TODO(), &client.ListOptions{LabelSelector: labelSelector}, &licenseList)
 	if err != nil {
 		return err
 	}
-	switch len(secretList.Items) {
+	switch len(licenseList.Items) {
 	case 1:
-		license := secretList.Items[0]
+		license := licenseList.Items[0]
 		sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
 		return updateLicense(clusterClient, current, license, sigResolver)
 	case 0:
-		return errors.New("no license linked to this cluster")
+		return errors.New("no licenseList linked to this cluster")
 	default:
 		// TODO be smart here and select the most appropriate one?
-		return errors.New("more than one license linked to this cluster")
+		return errors.New("more than one licenseList linked to this cluster")
 	}
 }
 
@@ -51,7 +50,7 @@ func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (stri
 			return "", errors.New("not exactly one secret element found but no key specified") // TODO support keys
 		}
 		for _, v := range secret.Data {
-			return base64.StdEncoding.EncodeToString(v), nil
+			return string(v), nil
 		}
 		return "", errors.New("empty secret -- no data found")
 	}
