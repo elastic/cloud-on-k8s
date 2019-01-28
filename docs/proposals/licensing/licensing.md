@@ -101,7 +101,6 @@ Option 3 seems to have the least downsides for both ES controller and license co
 
 * What kind of license will we support? gold, platinum, standard license?
     * assume all license types for now  
-* For option 2 should we support an annotation on the cluster to disable automatic license management? 
 * What do we do when the license expires. How do we recover from that?
     * The cluster does not disintegrate when the license expires. The operator will see the cluster as unhealthy as our current health checks start failing only if the cluster never had a license. But we might continue starting out with a trial license until the cluster forms and is issued a proper license.  The license API stays responsive even without any license attached to the cluster and cluster bounces back as soon as a valid license is put into place. 
 * How do we handle license downgrades to basic? 
