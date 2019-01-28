@@ -24,8 +24,18 @@ func ReconcileNodeCertificateSecrets(
 	ca *nodecerts.Ca,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
+	trustRelationships []v1alpha1.TrustRelationship,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
+
+	additionalCAs := make([][]byte, 0, len(trustRelationships))
+	for _, trustRelationship := range trustRelationships {
+		if trustRelationship.Spec.CaCert == "" {
+			continue
+		}
+
+		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
+	}
 
 	nodeCertificateSecrets, err := findNodeCertificateSecrets(c, es)
 	if err != nil {
@@ -69,7 +79,7 @@ func ReconcileNodeCertificateSecrets(
 		switch certificateType {
 		case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
 			if res, err := nodecerts.ReconcileNodeCertificateSecret(
-				secret, pod, es.Name, es.Namespace, services, ca, c,
+				c, secret, pod, es.Name, es.Namespace, services, ca, additionalCAs,
 			); err != nil {
 				return res, err
 			}

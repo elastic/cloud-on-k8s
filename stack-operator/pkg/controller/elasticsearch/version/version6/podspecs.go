@@ -7,16 +7,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
+	esnodecerts "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -148,8 +148,12 @@ func newEnvironmentVars(
 		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
 		//       reusable component somehow.
 		{
-			Name:  settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
-			Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
+			Name: settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
+			Value: fmt.Sprintf(
+				"%s/%s",
+				extraFilesSecretVolume.VolumeMount().MountPath,
+				esnodecerts.TrustRestrictionsFilename,
+			),
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable

@@ -1,14 +1,15 @@
 package driver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
@@ -35,6 +36,7 @@ func reconcileVersionWideResources(
 	c client.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
+	trustRelationships []v1alpha1.TrustRelationship,
 	w watches.DynamicWatches,
 ) (*VersionWideResources, error) {
 	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository, w)
@@ -60,18 +62,25 @@ func reconcileVersionWideResources(
 		&extraFilesSecret,
 	); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
-	} else if apierrors.IsNotFound(err) {
-		// TODO: handle reconciling Data section if it already exists
-		trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
-		trustRootCfgData, err := json.Marshal(&trustRootCfg)
-		if err != nil {
-			return nil, err
-		}
+	}
 
+	trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
+
+	// include the trust restrictions from the trust relationships info the trust restrictions config
+	for _, trustRelationship := range trustRelationships {
+		trustRootCfg.Include(trustRelationship.Spec.TrustRestrictions)
+	}
+
+	trustRootCfgData, err := json.Marshal(&trustRootCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	if apierrors.IsNotFound(err) {
 		extraFilesSecret = corev1.Secret{
 			ObjectMeta: k8s.ToObjectMeta(extraFilesSecretObjectKey),
 			Data: map[string][]byte{
-				"trust.yml": trustRootCfgData,
+				nodecerts.TrustRestrictionsFilename: trustRootCfgData,
 			},
 		}
 
@@ -80,8 +89,21 @@ func reconcileVersionWideResources(
 			return nil, err
 		}
 
+		log.Info("Creating version wide resources", "clusterName", es.ClusterName)
+
 		if err := c.Create(context.TODO(), &extraFilesSecret); err != nil {
 			return nil, err
+		}
+	} else {
+		currentTrustConfig, ok := extraFilesSecret.Data[nodecerts.TrustRestrictionsFilename]
+		extraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
+
+		if !ok || !bytes.Equal(currentTrustConfig, trustRootCfgData) {
+			log.Info("Updating version wide resources", "clusterName", es.ClusterName)
+
+			if err := c.Update(context.TODO(), &extraFilesSecret); err != nil {
+				return nil, err
+			}
 		}
 	}
 

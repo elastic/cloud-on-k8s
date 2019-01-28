@@ -56,6 +56,18 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - trustrelationship
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - ""
   resources:
   - secrets

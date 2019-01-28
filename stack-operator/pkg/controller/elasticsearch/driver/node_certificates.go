@@ -17,6 +17,7 @@ func reconcileNodeCertificates(
 	ca *nodecerts.Ca,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
+	trustRelationships []v1alpha1.TrustRelationship,
 ) error {
 	// TODO: suffix with type (-ca?) and trim
 	clusterCAPublicSecretObjectKey := k8s.ExtractNamespacedName(es.ObjectMeta)
@@ -25,7 +26,7 @@ func reconcileNodeCertificates(
 	}
 
 	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
-	if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, es, services); err != nil {
+	if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, es, services, trustRelationships); err != nil {
 		return err
 	}
 
