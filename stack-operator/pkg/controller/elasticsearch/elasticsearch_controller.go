@@ -13,6 +13,7 @@ import (
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
@@ -110,6 +111,11 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 		},
 	}); err != nil {
+		return err
+	}
+
+	// ClusterLicense
+	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, dynamicWatches.ClusterLicense); err != nil {
 		return err
 	}
 
@@ -241,5 +247,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		r.esObservers.Finalizer(clusterName),
 		snapshot.Finalizer(clusterName, watched),
+		license.Finailzer(clusterName, watched),
 	}
 }

@@ -188,7 +188,13 @@ func (d *defaultDriver) Reconcile(
 	results.Apply(
 		"reconcile-cluster-license",
 		func() (controller.Result, error) {
-			err := license.Reconcile(d.Client, k8s.ExtractNamespacedName(es.ObjectMeta), esClient, observedState.ClusterLicense)
+			err := license.Reconcile(
+				d.Client,
+				d.DynamicWatches,
+				k8s.ExtractNamespacedName(es.ObjectMeta),
+				esClient,
+				observedState.ClusterLicense
+			)
 			if err != nil && changes.HasRunningPods() {
 				reconcileState.AddEvent(
 					corev1.EventTypeWarning,
