@@ -176,11 +176,20 @@ func (e *Expectations) getOrCreateCounters(namespacedName types.NamespacedName) 
 	counters, exists := e.counters[namespacedName]
 	e.mutex.RUnlock()
 	if !exists {
-		counters = newExpectationsCounters(e.ttl)
-		e.mutex.Lock()
-		e.counters[namespacedName] = counters
-		e.mutex.Unlock()
+		counters = e.createCounters(namespacedName)
 	}
+	return counters
+}
+
+func (e *Expectations) createCounters(namespacedName types.NamespacedName) *expectationsCounters {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	counters, exists := e.counters[namespacedName]
+	if exists {
+		return counters
+	}
+	counters = newExpectationsCounters(e.ttl)
+	e.counters[namespacedName] = counters
 	return counters
 }
 
