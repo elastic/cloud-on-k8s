@@ -118,6 +118,12 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
 	err := r.Get(context.TODO(), request.NamespacedName, kb)
+
+	if common.IsPaused(kb.ObjectMeta, r.Client) {
+		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		return common.PauseRequeue, nil
+	}
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.

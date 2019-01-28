@@ -15,6 +15,7 @@ import (
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	v1alpha12 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/diff"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
@@ -142,6 +143,11 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
+	}
+
+	if common.IsPaused(stack.ObjectMeta, r.Client) {
+		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		return common.PauseRequeue, nil
 	}
 
 	// use the same name for es and kibana resources for now
