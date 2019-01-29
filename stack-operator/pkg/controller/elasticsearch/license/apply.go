@@ -8,26 +8,32 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
+	errors2 "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func applyLinkedLicense(c client.Client,
+func applyLinkedLicense(c client.Reader,
 	esCluster types.NamespacedName,
-	clusterClient *esclient.Client,
-	current *esclient.License,
+	updater func(license v1alpha1.ClusterLicense) error,
 ) error {
 	var license v1alpha1.ClusterLicense
-	err := c.Get(context.TODO(), esCluster, &license) // TODO needs to change once we use a license pool
+	// the underlying assumption here is that either a user or a
+	// license controller has created a cluster license in the
+	// namespace of this cluster with the same name as the cluster
+	err := c.Get(context.TODO(), esCluster, &license)
 	if err != nil {
+		if errors2.IsNotFound(err) {
+			// no license linked to this cluster. Expected for clusters running on trial
+			return nil
+		}
 		return err
 	}
 	if license.IsEmpty() {
 		return errors.New("empty license linked to this cluster")
 	}
 
-	sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
-	return updateLicense(clusterClient, current, license, sigResolver)
+	return updater(license)
 }
 
 func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (string, error) {
@@ -43,7 +49,7 @@ func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (stri
 		for _, v := range secret.Data {
 			return string(v), nil
 		}
-		return "", errors.New("empty secret -- no data found")
+		return "", nil
 	}
 }
 
@@ -51,7 +57,8 @@ func updateLicense(
 	c *esclient.Client,
 	current *esclient.License,
 	desired v1alpha1.ClusterLicense,
-	sigResolver func() (string, error)) error {
+	sigResolver func() (string, error),
+) error {
 	if current != nil && current.UID == desired.Spec.UID {
 		return nil // we are done already applied
 	}

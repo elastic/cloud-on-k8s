@@ -289,7 +289,7 @@ type ErrorResponse struct {
 	} `json:"error"`
 }
 
-// License models the Elasticsearch license applied to a cluster (signature can be empty dependin)
+// License models the Elasticsearch license applied to a cluster. Signature will be empty on reads. IssueDate,  ExpiryDate and Status can be empty on writes.
 type License struct {
 	Status             string     `json:"status,omitempty"`
 	UID                string     `json:"uid"`

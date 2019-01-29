@@ -166,15 +166,6 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			}
 		}
 	}
-	// TODO this is an ugly stop gap to avoid the need to create licenses for everyone right now
-	if stack.Labels != nil {
-		if es.Labels == nil {
-			es.Labels = make(map[string]string, len(stack.Labels))
-		}
-		for k, v := range stack.Labels {
-			es.Labels[k] = v
-		}
-	}
 
 	if err := controllerutil.SetControllerReference(&stack, &es, r.scheme); err != nil {
 		return reconcile.Result{}, err

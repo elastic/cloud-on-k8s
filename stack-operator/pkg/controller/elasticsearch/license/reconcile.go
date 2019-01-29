@@ -12,7 +12,7 @@ const (
 	// Expectation the license type expected to be attached to the cluster.
 	Expectation = "k8s.elastic.co/expected-license"
 	// Trial is a 30-day trial license type.
-	Trial       = "trial"
+	Trial = "trial"
 )
 
 // Reconcile reconciles the current Elasticsearch license with the desired one.
@@ -32,5 +32,8 @@ func Reconcile(
 	if err := ensureLicenseWatch(clusterName, w); err != nil {
 		return err
 	}
-	return applyLinkedLicense(c, clusterName, clusterClient, current)
+	return applyLinkedLicense(c, clusterName, func(license v1alpha1.ClusterLicense) error {
+		sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
+		return updateLicense(clusterClient, current, license, sigResolver)
+	})
 }
