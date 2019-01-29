@@ -128,7 +128,7 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 			},
 		},
 		{
-			name: "should not create a secret if it does not already exist",
+			name: "should not create a new secret if it already exists",
 			args: args{
 				c: fake.NewFakeClient(preExistingSecret),
 			},
