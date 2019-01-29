@@ -96,7 +96,7 @@ func NewDriver(opts Options) (Driver, error) {
 			// 5.6.0 is the lowest wire compatibility version for 6.x
 			LowestSupportedVersion: version.MustParse("5.6.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.4.99"),
+			HighestSupportedVersion: version.MustParse("6.6.99"),
 		}
 	case 5:
 		driver.expectedPodsAndResourcesResolver = version5.ExpectedPodSpecs
