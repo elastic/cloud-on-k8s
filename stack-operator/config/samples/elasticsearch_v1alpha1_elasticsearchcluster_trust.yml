@@ -1,0 +1,63 @@
+# This sample shows two clusters "trust-one" and "trust-two" having established a mutual trust relationship which is
+# the basis of configuring remote clusters (a prerequisite for CCS/CCR).
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ElasticsearchCluster
+metadata:
+  name: trust-one
+spec:
+  version: "6.5.4"
+  setVmMaxMapCount: true
+  topologies:
+    - nodeTypes:
+        master: true
+        data: true
+        ingest: true
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 500m
+      nodeCount: 1
+  expose: ClusterIP
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ElasticsearchCluster
+metadata:
+  name: trust-two
+spec:
+  version: "6.5.4"
+  setVmMaxMapCount: true
+  topologies:
+    - nodeTypes:
+        master: true
+        data: true
+        ingest: true
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 500m
+      nodeCount: 1
+  expose: ClusterIP
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: TrustRelationship
+metadata:
+  labels:
+    elasticsearch.k8s.elastic.co/cluster-name: trust-one
+  name: trust-one-should-trust-two
+spec:
+  trustRestrictions:
+    trust:
+      subjectName:
+      - "*.node.trust-two.default.es.cluster.local"
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: TrustRelationship
+metadata:
+  labels:
+    elasticsearch.k8s.elastic.co/cluster-name: trust-two
+  name: trust-two-should-trust-one
+spec:
+  trustRestrictions:
+    trust:
+      subjectName:
+        - "*.node.trust-one.default.es.cluster.local"
