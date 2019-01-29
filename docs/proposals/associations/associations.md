@@ -96,7 +96,7 @@ Pros:
 
 Cons:
   - Requires additional client-side filter for list/watch operations.
-  - Not easily validated or type-checked by the API, so syntax errors become a possible source of errors.
+  - Not easily validated or type-checked by the API, so syntax errors are much more likely to occur.
 
 
 #### Option 3: Model the association as part of the source spec
@@ -130,7 +130,7 @@ Kibana requires:
   - Elasticsearch User to perform maintenance tasks.
   - Secure access to the Elasticsearch cluster CA certificates to ensure encryption.
 
-The Kibana resource and controller mandate that it should be possible to use without the Kibana instance existing within the same namespace (or within the Kubernetes installation), so these should be possible to provide both manually as well as be managed automatically (for the common case of running both ES and Kibana on Kubernetes).
+The Kibana resource and controller mandate that it should be possible to use them without the Kibana instance existing within the same namespace (or within the Kubernetes installation), so these should be possible to provide both manually as well as be managed automatically (for the common case of running both ES and Kibana on Kubernetes).
 
 Thus, we create a new association CRD:
 
