@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
 func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
@@ -59,25 +59,34 @@ func TestRetrieveState(t *testing.T) {
 		wantLicense bool
 	}{
 		{
-			name:        "both state and health ok",
+			name:        "state, health and license ok",
 			wantHealth:  true,
 			wantState:   true,
 			wantLicense: true,
 		},
 		{
-			name:       "state error",
-			wantHealth: true,
-			wantState:  false,
+			name:        "state error",
+			wantHealth:  true,
+			wantState:   false,
+			wantLicense: true,
 		},
 		{
-			name:       "health error",
-			wantHealth: false,
-			wantState:  true,
+			name:        "health error",
+			wantHealth:  false,
+			wantState:   true,
+			wantLicense: true,
 		},
 		{
-			name:       "health and state error",
-			wantHealth: false,
-			wantState:  false,
+			name:        "license error",
+			wantHealth:  false,
+			wantState:   false,
+			wantLicense: true,
+		},
+		{
+			name:        "health and state error",
+			wantHealth:  false,
+			wantState:   false,
+			wantLicense: true,
 		},
 	}
 	for _, tt := range tests {
