@@ -185,28 +185,6 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	results.Apply(
-		"reconcile-cluster-license",
-		func() (controller.Result, error) {
-			err := license.Reconcile(
-				d.Client,
-				d.DynamicWatches,
-				es,
-				esClient,
-				observedState.ClusterLicense,
-			)
-			if err != nil && changes.HasRunningPods() {
-				reconcileState.AddEvent(
-					corev1.EventTypeWarning,
-					events.EventReasonUnexpected,
-					fmt.Sprintf("Could not update cluster license: %s", err.Error()),
-				)
-				return defaultRequeue, err
-			}
-			return controller.Result{}, err
-		},
-	)
-
 	log.Info(
 		"Going to apply the following topology changes",
 		"ToCreate:", len(changes.ToCreate),
@@ -230,6 +208,28 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	results.Apply(
+		"reconcile-cluster-license",
+		func() (controller.Result, error) {
+			err := license.Reconcile(
+				d.Client,
+				d.DynamicWatches,
+				es,
+				esClient,
+				observedState.ClusterLicense,
+			)
+			if err != nil && esReachable {
+				reconcileState.AddEvent(
+					corev1.EventTypeWarning,
+					events.EventReasonUnexpected,
+					fmt.Sprintf("Could not update cluster license: %s", err.Error()),
+				)
+				return defaultRequeue, err
+			}
+			return controller.Result{}, err
+		},
+	)
 
 	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
 		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
