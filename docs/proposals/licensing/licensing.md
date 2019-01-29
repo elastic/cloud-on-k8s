@@ -57,8 +57,8 @@ We support a pool of licenses and create a license controller that applies the m
 * the actual license application is handled by the Elasticsearch cluster controller who has the necessary credentials. No need to have credentials in the license controller
 
 #### Option 1
-* user creates secrets with license data and maks the with a label as Elasticsearch licenses `k8s.elastic.co\kind=license` 
-* a license controller watches the set of secrets marked via lable
+* user creates secrets with license data and marks the secrets with a label as Elasticsearch licenses `k8s.elastic.co\kind=license` 
+* a license controller watches the set of secrets marked via label
 * it then creates `ClusterLicense` CRs for each cluster
 
 Pros: 
