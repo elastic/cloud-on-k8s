@@ -203,7 +203,7 @@ func (d *defaultDriver) Reconcile(
 				)
 				return defaultRequeue, err
 			}
-			return controller.Result{}, nil
+			return controller.Result{}, err
 		},
 	)
 
