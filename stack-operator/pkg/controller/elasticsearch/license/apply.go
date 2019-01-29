@@ -86,8 +86,8 @@ func updateLicense(
 	if err != nil {
 		return err
 	}
-	if response.IsSuccess() {
-		return nil
+	if !response.IsSuccess() {
+		return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
 	}
-	return fmt.Errorf("failed to apply license: %s", response.LicenseStatus)
+	return nil
 }
