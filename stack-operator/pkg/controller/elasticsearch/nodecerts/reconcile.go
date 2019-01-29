@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -92,6 +93,7 @@ func findNodeCertificateSecrets(
 	listOptions := client.ListOptions{
 		Namespace: es.Namespace,
 		LabelSelector: labels.Set(map[string]string{
+			label.ClusterNameLabelName: es.Name,
 			nodecerts.LabelSecretUsage: nodecerts.LabelSecretUsageNodeCertificates,
 		}).AsSelector(),
 	}
