@@ -365,7 +365,7 @@ func (d *defaultDriver) Reconcile(
 		}
 		results.WithResult(result)
 	}
-	// passed this point, any pods resource listing should check expectations first
+	// past this point, any pods resource listing should check expectations first
 
 	if changes.HasChanges() && !performableChanges.HasChanges() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later

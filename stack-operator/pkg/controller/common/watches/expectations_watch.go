@@ -23,6 +23,9 @@ type ExpectationsWatch struct {
 	resourceRetriever ExpectationsResourceRetriever
 }
 
+// Make sure our ExpectationsWatch implements HandlerRegistration.
+var _ HandlerRegistration = &ExpectationsWatch{}
+
 // NewExpectationsWatch creates an ExpectationsWatch from the given arguments.
 func NewExpectationsWatch(handlerKey string, expectations *reconciler.Expectations, resourceRetriever ExpectationsResourceRetriever) *ExpectationsWatch {
 	return &ExpectationsWatch{
@@ -65,6 +68,3 @@ func (p *ExpectationsWatch) Update(evt event.UpdateEvent, q workqueue.RateLimiti
 
 // Generic is a no-op operation in this context.
 func (p *ExpectationsWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {}
-
-// Make sure our ExpectationsWatch implements HandlerRegistration.
-var _ HandlerRegistration = &ExpectationsWatch{}

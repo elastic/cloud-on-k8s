@@ -156,6 +156,8 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
+	// podsExpectations help dealing with inconsistencies in our client cache,
+	// by marking Pods creation/deletion as expected, and waiting til they are effectively observed.
 	podsExpectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method

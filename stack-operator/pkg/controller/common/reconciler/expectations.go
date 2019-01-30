@@ -227,7 +227,6 @@ func newExpectationsCounters(ttl time.Duration) *expectationsCounters {
 func (e *expectationsCounters) Get() (creations, deletions int64) {
 	if e.isExpired() {
 		e.reset()
-		return 0, 0
 	}
 	return e.getPtrValue(e.creations), e.getPtrValue(e.deletions)
 }
