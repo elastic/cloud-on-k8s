@@ -28,7 +28,7 @@ main() {
       kubectl wait pods -l k8s-app=kube-registry -n=kube-system --for condition=Ready --timeout 10s
       local podName=$(kubectl get po -n kube-system | grep kube-registry-v0 | awk '{print $1}')
       kubectl port-forward -n=kube-system $podName 5000:5000 > /dev/null &
-      sleep 0.1
+      timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
     ;;
     "port-forward stop")
       local pid=$(ps aux | grep 'kubectl port-forward.*registry' | grep -v grep | awk '{print $2}')
