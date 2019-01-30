@@ -6,11 +6,18 @@ import (
 )
 
 // AddToManagerFuncs is a list of functions to add all Controllers to the Manager
-var AddToManagerFuncs []func(manager.Manager, operator.Parameters) error
+var AddToManagerFuncs = make(map[string][]func(manager.Manager, operator.Parameters) error)
+
+// Register a controller for a specific manager role.
+func Register(role string, add func(manager.Manager, operator.Parameters) error) {
+	fns := AddToManagerFuncs[role]
+	AddToManagerFuncs[role] = append(fns, add)
+
+}
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager, params operator.Parameters) error {
-	for _, f := range AddToManagerFuncs {
+func AddToManager(m manager.Manager, role string, params operator.Parameters) error {
+	for _, f := range AddToManagerFuncs[role] {
 		if err := f(m, params); err != nil {
 			return err
 		}

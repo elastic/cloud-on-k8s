@@ -2,14 +2,15 @@ package common
 
 import (
 	"context"
+	"reflect"
+	"strconv"
+	"time"
+
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strconv"
-	"time"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 var (
-	stack        = reflect.TypeOf(deploymentsv1alpha1.Stack{}).Name()
+	stack = reflect.TypeOf(deploymentsv1alpha1.Stack{}).Name()
 
 	// PauseRequeue is the default requeue result if controller is paused
 	PauseRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
