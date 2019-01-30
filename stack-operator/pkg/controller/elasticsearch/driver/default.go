@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -107,13 +109,13 @@ type defaultDriver struct {
 	) error
 
 	// TODO: implement
-	//// apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
-	//apiObjectsGarbageCollector func(
-	//	c client.Client,
-	//	es v1alpha1.ElasticsearchCluster,
-	//	version version.Version,
-	//	state mutation.PodsState,
-	//) (reconcile.Result, error) // could get away with one impl
+	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
+	// apiObjectsGarbageCollector func(
+	// 	c client.Client,
+	// 	es v1alpha1.ElasticsearchCluster,
+	// 	version version.Version,
+	// 	state mutation.PodsState,
+	// ) (reconcile.Result, error) // could get away with one impl
 }
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
@@ -206,6 +208,28 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	results.Apply(
+		"reconcile-cluster-license",
+		func() (controller.Result, error) {
+			err := license.Reconcile(
+				d.Client,
+				d.DynamicWatches,
+				es,
+				esClient,
+				observedState.ClusterLicense,
+			)
+			if err != nil && esReachable {
+				reconcileState.AddEvent(
+					corev1.EventTypeWarning,
+					events.EventReasonUnexpected,
+					fmt.Sprintf("Could not update cluster license: %s", err.Error()),
+				)
+				return defaultRequeue, err
+			}
+			return controller.Result{}, err
+		},
+	)
 
 	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
 		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)

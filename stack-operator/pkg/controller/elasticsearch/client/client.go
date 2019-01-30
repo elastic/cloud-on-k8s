@@ -309,3 +309,15 @@ func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
 	// restrict call to basic node info only
 	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
 }
+
+// GetLicense returns the currently applied license. Can be empty.
+func (c *Client) GetLicense(ctx context.Context) (License, error) {
+	var license LicenseResponse
+	return license.License, c.get(ctx, "/_xpack/license", &license)
+}
+
+// UpdateLicense attempts to update cluster license with the given licenses.
+func (c *Client) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
+	var response LicenseUpdateResponse
+	return response, c.post(ctx, "/_xpack/license", licenses, &response)
+}

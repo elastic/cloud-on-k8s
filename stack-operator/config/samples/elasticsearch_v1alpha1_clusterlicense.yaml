@@ -1,0 +1,28 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ClusterLicense
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: clusterlicense-sample
+spec:
+  startDateInMillis: 1548115200000
+  issuer: "John Doe"
+  issuedTo: "issuee"
+  maxNodes: 100
+  expiryDateInMillis: 1561247999999
+  issueDateInMillis: 1548115200000
+  type: "platinum"
+  uid: "893361dc-9749-4997-93cb-802e3d7fa4xx"
+  signatureRef:
+    namespace: "default"
+    name: "stack-sample-license"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "stack-sample-license"
+  namespace: "default"
+type: Opaque
+data:
+  sig: "not-a-valid-signature"
+
