@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	corev1 "k8s.io/api/core/v1"
-	errors2 "k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,7 +24,7 @@ func applyLinkedLicense(
 	// namespace of this cluster with the same name as the cluster
 	err := c.Get(context.TODO(), esCluster, &license)
 	if err != nil {
-		if errors2.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			// no license linked to this cluster. Expected for clusters running on trial
 			return nil
 		}
