@@ -13,7 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func applyLinkedLicense(c client.Reader,
+func applyLinkedLicense(
+	c client.Reader,
 	esCluster types.NamespacedName,
 	updater func(license v1alpha1.ClusterLicense) error,
 ) error {
