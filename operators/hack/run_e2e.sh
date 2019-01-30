@@ -1,5 +1,9 @@
 #! /usr/bin/env bash -eu
 
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License;
+# you may not use this file except in compliance with the Elastic License.
+
 #
 # Run end-to-end tests as a K8s batch job
 # Usage: ./hack/run_e2e.sh <e2e_docker_image_name> <image_pull_policy> <go_tests_matcher>
