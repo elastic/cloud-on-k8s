@@ -4,10 +4,10 @@ import (
 	"reflect"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,7 +17,7 @@ import (
 var log = logf.Log.WithName("stack-controller")
 
 func ReconcileService(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	expected *corev1.Service,
 	owner metav1.Object,

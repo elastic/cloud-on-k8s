@@ -7,14 +7,14 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func applyLinkedLicense(
-	c client.Reader,
+	c k8s.Client,
 	esCluster types.NamespacedName,
 	updater func(license v1alpha1.ClusterLicense) error,
 ) error {
@@ -22,7 +22,7 @@ func applyLinkedLicense(
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
 	// namespace of this cluster with the same name as the cluster
-	err := c.Get(context.TODO(), esCluster, &license)
+	err := c.Get(esCluster, &license)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// no license linked to this cluster. Expected for clusters running on trial
@@ -36,10 +36,10 @@ func applyLinkedLicense(
 	return updater(license)
 }
 
-func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (string, error) {
+func secretRefResolver(c k8s.Client, ref corev1.SecretReference) func() (string, error) {
 	return func() (string, error) {
 		var secret corev1.Secret
-		err := c.Get(context.TODO(), types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, &secret)
+		err := c.Get(types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, &secret)
 		if err != nil {
 			return "", err
 		}

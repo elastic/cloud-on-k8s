@@ -7,12 +7,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // reconcileNodeCertificates ensures that the CA cert is pushed to the API and node certificates are issued.
 func reconcileNodeCertificates(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	ca *nodecerts.Ca,
 	es v1alpha1.ElasticsearchCluster,

@@ -113,7 +113,7 @@ func TestHandler_Handle(t *testing.T) {
 			// pretend resource already exists in api server
 			fakeClient := fake.NewFakeClient(&tt.resource)
 			handler := Handler{
-				client: fakeClient,
+				client: k8s.WrapClient(fakeClient),
 			}
 			err := handler.Handle(&tt.resource, tt.finalizers...)
 			if tt.wantErr != nil {

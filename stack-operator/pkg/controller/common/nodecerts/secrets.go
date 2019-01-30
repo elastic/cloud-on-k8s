@@ -1,7 +1,6 @@
 package nodecerts
 
 import (
-	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -21,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -71,7 +69,7 @@ func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 // EnsureNodeCertificateSecretExists ensures the existence of the corev1.Secret that at a later point in time will
 // contain the node certificates.
 func EnsureNodeCertificateSecretExists(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	owner metav1.Object,
 	pod corev1.Pod,
@@ -81,7 +79,7 @@ func EnsureNodeCertificateSecretExists(
 	secretObjectKey := NodeCertificateSecretObjectKeyForPod(pod)
 
 	var secret corev1.Secret
-	if err := c.Get(context.TODO(), secretObjectKey, &secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(secretObjectKey, &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		secret = corev1.Secret{
@@ -107,7 +105,7 @@ func EnsureNodeCertificateSecretExists(
 			return nil, err
 		}
 
-		if err := c.Create(context.TODO(), &secret); err != nil {
+		if err := c.Create(&secret); err != nil {
 			return nil, err
 		}
 	}
@@ -127,7 +125,7 @@ func ReconcileNodeCertificateSecret(
 	clusterName, namespace string,
 	svcs []corev1.Service,
 	ca *Ca,
-	c client.Client,
+	c k8s.Client,
 ) (reconcile.Result, error) {
 	// a placeholder secret may have a nil secret.Data, so create it if it does not exist
 	if secret.Data == nil {
@@ -187,7 +185,7 @@ func ReconcileNodeCertificateSecret(
 			pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})...,
 		)
 
-		if err := c.Update(context.TODO(), &secret); err != nil {
+		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
 		}
 	}

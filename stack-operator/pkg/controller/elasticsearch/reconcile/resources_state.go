@@ -1,11 +1,11 @@
 package reconcile
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -29,7 +29,7 @@ type ResourcesState struct {
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
-func NewResourcesStateFromAPI(c client.Client, es v1alpha1.ElasticsearchCluster) (*ResourcesState, error) {
+func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*ResourcesState, error) {
 	labelSelector, err := label.NewLabelSelectorForElasticsearch(es)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (state ResourcesState) FindPVCByName(name string) (corev1.PersistentVolumeC
 
 // getPods returns list of pods in the current namespace with a specific set of selectors.
 func getPods(
-	c client.Client,
+	c k8s.Client,
 	es v1alpha1.ElasticsearchCluster,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
@@ -98,7 +98,7 @@ func getPods(
 		FieldSelector: fieldSelectors,
 	}
 
-	if err := c.List(context.TODO(), &listOpts, &podList); err != nil {
+	if err := c.List(&listOpts, &podList); err != nil {
 		return nil, err
 	}
 
@@ -107,7 +107,7 @@ func getPods(
 
 // getPersistentVolumeClaims returns a list of PVCs in the current namespace with a specific set of selectors.
 func getPersistentVolumeClaims(
-	c client.Client,
+	c k8s.Client,
 	es v1alpha1.ElasticsearchCluster,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
@@ -120,7 +120,7 @@ func getPersistentVolumeClaims(
 		FieldSelector: fieldSelectors,
 	}
 
-	if err := c.List(context.TODO(), &listOpts, &pvcs); err != nil {
+	if err := c.List(&listOpts, &pvcs); err != nil {
 		return nil, err
 	}
 

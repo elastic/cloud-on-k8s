@@ -1,7 +1,6 @@
 package kibana
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"reflect"
@@ -15,13 +14,13 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -48,7 +47,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileKibana{
-		Client:   mgr.GetClient(),
+		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("kibana-controller"),
 	}
@@ -90,7 +89,7 @@ var _ reconcile.Reconciler = &ReconcileKibana{}
 
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
-	client.Client
+	k8s.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
@@ -117,7 +116,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
-	err := r.Get(context.TODO(), request.NamespacedName, kb)
+	err := r.Get(request.NamespacedName, kb)
 
 	if common.IsPaused(kb.ObjectMeta, r.Client) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
@@ -141,7 +140,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return state.Result, err
 	}
 
-	res, err := common.ReconcileService(r, r.scheme, NewService(*kb), kb)
+	res, err := common.ReconcileService(r.Client, r.scheme, NewService(*kb), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
 		return res, err
@@ -187,7 +186,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		caChecksum := ""
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
-		if err := r.Get(context.TODO(), key, &esPublicCASecret); err != nil {
+		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return state, err
 		}
 		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
@@ -247,5 +246,5 @@ func (r *ReconcileKibana) updateStatus(state State) (reconcile.Result, error) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(context.TODO(), state.Kibana)
+	return state.Result, r.Status().Update(state.Kibana)
 }

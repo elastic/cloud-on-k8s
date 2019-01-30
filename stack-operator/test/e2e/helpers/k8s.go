@@ -1,13 +1,13 @@
 package helpers
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"os"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,10 +19,8 @@ import (
 
 const DefaultNamespace = "e2e"
 
-var DefaultCtx = context.TODO()
-
 type K8sHelper struct {
-	Client client.Client
+	Client k8s.Client
 }
 
 func NewK8sClient() (*K8sHelper, error) {
@@ -44,7 +42,7 @@ func NewK8sClientOrFatal() *K8sHelper {
 	return client
 }
 
-func CreateClient() (client.Client, error) {
+func CreateClient() (k8s.Client, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
@@ -56,12 +54,12 @@ func CreateClient() (client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return client, nil
+	return k8s.WrapClient(client), nil
 }
 
 func (k *K8sHelper) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {
 	var podList corev1.PodList
-	if err := k.Client.List(DefaultCtx, &listOpts, &podList); err != nil {
+	if err := k.Client.List(&listOpts, &podList); err != nil {
 		return nil, err
 	}
 	return podList.Items, nil
@@ -69,14 +67,14 @@ func (k *K8sHelper) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {
 
 func (k *K8sHelper) GetPod(name string) (corev1.Pod, error) {
 	var pod corev1.Pod
-	if err := k.Client.Get(DefaultCtx, types.NamespacedName{Namespace: DefaultNamespace, Name: name}, &pod); err != nil {
+	if err := k.Client.Get(types.NamespacedName{Namespace: DefaultNamespace, Name: name}, &pod); err != nil {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
 }
 
 func (k *K8sHelper) DeletePod(pod corev1.Pod) error {
-	return k.Client.Delete(DefaultCtx, &pod)
+	return k.Client.Delete(&pod)
 }
 
 func (k *K8sHelper) CheckPodCount(listOpts client.ListOptions, expectedCount int) error {
@@ -97,7 +95,7 @@ func (k *K8sHelper) GetService(name string) (*corev1.Service, error) {
 		Namespace: DefaultNamespace,
 		Name:      name,
 	}
-	if err := k.Client.Get(DefaultCtx, key, &service); err != nil {
+	if err := k.Client.Get(key, &service); err != nil {
 		return nil, err
 	}
 	return &service, nil
@@ -109,7 +107,7 @@ func (k *K8sHelper) GetEndpoints(name string) (*corev1.Endpoints, error) {
 		Namespace: DefaultNamespace,
 		Name:      name,
 	}
-	if err := k.Client.Get(DefaultCtx, key, &endpoints); err != nil {
+	if err := k.Client.Get(key, &endpoints); err != nil {
 		return nil, err
 	}
 	return &endpoints, nil
@@ -123,7 +121,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 		Namespace: DefaultNamespace,
 		Name:      secretName,
 	}
-	if err := k.Client.Get(DefaultCtx, key, &secret); err != nil {
+	if err := k.Client.Get(key, &secret); err != nil {
 		return "", err
 	}
 	password, exists := secret.Data[elasticUserKey]
@@ -140,7 +138,7 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 		Namespace: DefaultNamespace,
 		Name:      secretName,
 	}
-	if err := k.Client.Get(DefaultCtx, key, &secret); err != nil {
+	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
 	caCert, exists := secret.Data["ca.pem"]

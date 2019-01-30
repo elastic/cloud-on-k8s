@@ -2,18 +2,19 @@ package common
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 // Create a fake client that will return some owners
-func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string) client.Client {
+func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string) k8s.Client {
 	var stacks []runtime.Object
 	for i, annotation := range ownerAnnotationSequence {
 		stack := &v1alpha1.Stack{
@@ -29,7 +30,7 @@ func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string
 		}
 		stacks = append(stacks, stack)
 	}
-	return fake.NewFakeClientWithScheme(sc, stacks...)
+	return k8s.WrapClient(fake.NewFakeClientWithScheme(sc, stacks...))
 }
 
 type testcase struct {
@@ -56,7 +57,7 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 func TestPauseCondition(t *testing.T) {
 	tests := []testcase{
 		{
-			name:           "Simple pause/resume simulation (a.k.a the Happy Path)",
+			name: "Simple pause/resume simulation (a.k.a the Happy Path)",
 			annotationSequence: []map[string]string{
 				{PauseAnnotationName: "true"},
 				{PauseAnnotationName: "false"},
@@ -74,7 +75,7 @@ func TestPauseCondition(t *testing.T) {
 			},
 		},
 		{
-			name:           "Can't parse or empty annotation",
+			name: "Can't parse or empty annotation",
 			annotationSequence: []map[string]string{
 				{PauseAnnotationName: ""}, // empty annotation
 				{PauseAnnotationName: "true"},
@@ -94,7 +95,7 @@ func TestPauseCondition(t *testing.T) {
 			},
 		},
 		{
-			name:           "Owner (Stack) is paused",
+			name: "Owner (Stack) is paused",
 			annotationSequence: []map[string]string{
 				{PauseAnnotationName: ""},
 				{PauseAnnotationName: ""},

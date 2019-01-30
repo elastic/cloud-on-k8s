@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/net/context"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -52,8 +51,8 @@ func CheckReconcileNotCalledWithin(t *testing.T, requests chan reconcile.Request
 }
 
 // DeleteIfExists manually deletes the given object.
-func DeleteIfExists(t *testing.T, c client.Client, obj runtime.Object) {
-	if err := c.Delete(context.TODO(), obj); err != nil && !apierrors.IsNotFound(err) {
+func DeleteIfExists(t *testing.T, c k8s.Client, obj runtime.Object) {
+	if err := c.Delete(obj); err != nil && !apierrors.IsNotFound(err) {
 		// If the resource is already deleted, we don't care, but any other error is important
 		assert.NoError(t, err)
 	}
@@ -62,13 +61,13 @@ func DeleteIfExists(t *testing.T, c client.Client, obj runtime.Object) {
 // CheckResourceDeletionTriggersReconcile deletes the given resource and tests for recreation.
 func CheckResourceDeletionTriggersReconcile(
 	t *testing.T,
-	c client.Client,
+	c k8s.Client,
 	requests chan reconcile.Request,
 	objKey types.NamespacedName,
 	obj runtime.Object,
 	expected reconcile.Request,
 ) {
-	assert.NoError(t, c.Delete(context.TODO(), obj))
+	assert.NoError(t, c.Delete(obj))
 	CheckReconcileCalled(t, requests, expected)
-	RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), objKey, obj) })
+	RetryUntilSuccess(t, func() error { return c.Get(objKey, obj) })
 }

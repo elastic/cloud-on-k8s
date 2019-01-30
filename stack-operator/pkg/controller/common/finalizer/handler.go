@@ -1,13 +1,11 @@
 package finalizer
 
 import (
-	"context"
-
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -22,11 +20,11 @@ type Finalizer struct {
 // Handler handles registration and execution of finalizers
 // Note that it is not thread-safe.
 type Handler struct {
-	client client.Client
+	client k8s.Client
 }
 
 // NewHandler creates a Handler
-func NewHandler(client client.Client) Handler {
+func NewHandler(client k8s.Client) Handler {
 	return Handler{
 		client: client,
 	}
@@ -53,7 +51,7 @@ func (h *Handler) Handle(resource runtime.Object, finalizers ...Finalizer) error
 		needUpdate, finalizerErr = h.executeFinalizers(finalizers, metaObject, resource)
 	}
 	if needUpdate {
-		if updateErr := h.client.Update(context.TODO(), resource); updateErr != nil {
+		if updateErr := h.client.Update(resource); updateErr != nil {
 			return updateErr
 		}
 	}

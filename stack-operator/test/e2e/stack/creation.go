@@ -17,7 +17,7 @@ func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestS
 			helpers.TestStep{
 				Name: "Creating a stack should succeed",
 				Test: func(t *testing.T) {
-					err := k.Client.Create(helpers.DefaultCtx, &stack)
+					err := k.Client.Create(&stack)
 					require.NoError(t, err)
 				},
 			},
@@ -25,7 +25,7 @@ func CreationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestS
 				Name: "Stack should be created",
 				Test: func(t *testing.T) {
 					var createdStack v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &createdStack)
+					err := k.Client.Get(GetNamespacedName(stack), &createdStack)
 					require.NoError(t, err)
 					require.Equal(t, stack.Spec.Elasticsearch.Version, createdStack.Spec.Elasticsearch.Version)
 				},

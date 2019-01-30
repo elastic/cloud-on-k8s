@@ -1,7 +1,6 @@
 package snapshot
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
@@ -21,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -31,7 +29,7 @@ const (
 )
 
 func reconcileUserCreatedSecret(
-	c client.Client,
+	c k8s.Client,
 	owner v1alpha1.ElasticsearchCluster,
 	repoConfig *v1alpha1.SnapshotRepository,
 	watches watches.DynamicWatches,
@@ -56,7 +54,7 @@ func reconcileUserCreatedSecret(
 	secretRef := repoConfig.Settings.Credentials
 	userCreatedSecret := corev1.Secret{}
 	key := types.NamespacedName{Namespace: secretRef.Namespace, Name: secretRef.Name}
-	if err := c.Get(context.TODO(), key, &userCreatedSecret); err != nil {
+	if err := c.Get(key, &userCreatedSecret); err != nil {
 		return managedSecret, errors.Wrap(err, "configured snapshot secret could not be retrieved")
 	}
 
@@ -78,7 +76,7 @@ func reconcileUserCreatedSecret(
 // created by the user containing valid snapshot repository credentials for the specified
 // repository provider.
 func ReconcileSnapshotCredentials(
-	c client.Client,
+	c k8s.Client,
 	s *runtime.Scheme,
 	owner v1alpha1.ElasticsearchCluster,
 	repoConfig *v1alpha1.SnapshotRepository,
@@ -140,7 +138,7 @@ func manageDynamicWatch(watched watches.DynamicWatches, repoConfig *v1alpha1.Sna
 
 // ReconcileSnapshotterCronJob checks for an existing cron job and updates it based on the current config
 func ReconcileSnapshotterCronJob(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	user esclient.User,
@@ -159,10 +157,10 @@ func ReconcileSnapshotterCronJob(
 	}
 
 	found := &batchv1beta1.CronJob{}
-	err := c.Get(context.TODO(), k8s.ExtractNamespacedName(expected.ObjectMeta), found)
+	err := c.Get(k8s.ExtractNamespacedName(expected.ObjectMeta), found)
 	if err == nil && es.Spec.SnapshotRepository == nil {
 		log.Info("Deleting cronjob", "namespace", expected.Namespace, "name", expected.Name)
-		return c.Delete(context.TODO(), found)
+		return c.Delete(found)
 	}
 	if err != nil && apierrors.IsNotFound(err) {
 		if es.Spec.SnapshotRepository == nil {
@@ -170,7 +168,7 @@ func ReconcileSnapshotterCronJob(
 		}
 
 		log.Info("Creating cronjob", "namespace", expected.Namespace, "name", expected.Name)
-		err = c.Create(context.TODO(), expected)
+		err = c.Create(expected)
 		if err != nil {
 			return err
 		}
@@ -181,7 +179,7 @@ func ReconcileSnapshotterCronJob(
 	// TODO proper comparison
 	if !reflect.DeepEqual(expected.Spec, found.Spec) {
 		log.Info("Updating cronjob", "namespace", expected.Namespace, "name", expected.Name)
-		err := c.Update(context.TODO(), expected)
+		err := c.Update(expected)
 		if err != nil {
 			return err
 		}

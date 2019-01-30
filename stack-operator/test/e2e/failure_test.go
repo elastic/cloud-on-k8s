@@ -131,12 +131,12 @@ func TestKillKibanaDeployment(t *testing.T) {
 				Name: "Delete Kibana deployment",
 				Test: func(t *testing.T) {
 					var dep appsv1.Deployment
-					err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
+					err := k.Client.Get(types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
 						Name:      s.Name + "-kibana",
 					}, &dep)
 					require.NoError(t, err)
-					err = k.Client.Delete(helpers.DefaultCtx, &dep)
+					err = k.Client.Delete(&dep)
 					require.NoError(t, err)
 				},
 			},
@@ -155,7 +155,7 @@ func TestDeleteServices(t *testing.T) {
 				Test: func(t *testing.T) {
 					s, err := k.GetService(s.Name + "-es-discovery")
 					require.NoError(t, err)
-					err = k.Client.Delete(helpers.DefaultCtx, s)
+					err = k.Client.Delete(s)
 					require.NoError(t, err)
 				},
 			},
@@ -164,7 +164,7 @@ func TestDeleteServices(t *testing.T) {
 				Test: func(t *testing.T) {
 					s, err := k.GetService(s.Name + "-es-public")
 					require.NoError(t, err)
-					err = k.Client.Delete(helpers.DefaultCtx, s)
+					err = k.Client.Delete(s)
 					require.NoError(t, err)
 				},
 			},
@@ -186,9 +186,9 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 						Name:      s.Name + "-elastic-user",
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(helpers.DefaultCtx, key, &secret)
+					err := k.Client.Get(key, &secret)
 					require.NoError(t, err)
-					err = k.Client.Delete(helpers.DefaultCtx, &secret)
+					err = k.Client.Delete(&secret)
 					require.NoError(t, err)
 				},
 			},
@@ -209,9 +209,9 @@ func TestDeleteCACert(t *testing.T) {
 						Name:      s.Name, // that's the CA cert secret name \o/
 					}
 					var secret corev1.Secret
-					err := k.Client.Get(helpers.DefaultCtx, key, &secret)
+					err := k.Client.Get(key, &secret)
 					require.NoError(t, err)
-					err = k.Client.Delete(helpers.DefaultCtx, &secret)
+					err = k.Client.Delete(&secret)
 					require.NoError(t, err)
 				},
 			},

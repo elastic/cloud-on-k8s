@@ -27,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -41,14 +40,14 @@ type defaultDriver struct {
 
 	// genericResourcesReconciler reconciles non-version specific resources.
 	genericResourcesReconciler func(
-		c client.Client,
+		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
 	) (*GenericResources, error)
 
 	// nodeCertificatesReconciler reconciles node certificates
 	nodeCertificatesReconciler func(
-		c client.Client,
+		c k8s.Client,
 		scheme *runtime.Scheme,
 		ca *nodecerts.Ca,
 		es v1alpha1.ElasticsearchCluster,
@@ -57,14 +56,14 @@ type defaultDriver struct {
 
 	// internalUsersReconciler reconciles and returns the current internal users.
 	internalUsersReconciler func(
-		c client.Client,
+		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
 	) (*user.InternalUsers, error)
 
 	// versionWideResourcesReconciler reconciles resources that may be specific to a version
 	versionWideResourcesReconciler func(
-		c client.Client,
+		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
 		w watches.DynamicWatches,
@@ -85,7 +84,7 @@ type defaultDriver struct {
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
-		c client.Client,
+		c k8s.Client,
 		es v1alpha1.ElasticsearchCluster,
 	) (*reconcile.ResourcesState, error)
 
@@ -111,7 +110,7 @@ type defaultDriver struct {
 	// TODO: implement
 	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
 	// apiObjectsGarbageCollector func(
-	// 	c client.Client,
+	// 	c k8s.Client,
 	// 	es v1alpha1.ElasticsearchCluster,
 	// 	version version.Version,
 	// 	state mutation.PodsState,
@@ -232,7 +231,7 @@ func (d *defaultDriver) Reconcile(
 	)
 
 	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
-		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
+		err = snapshot.EnsureSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
 		if err != nil {
 			// TODO decide should this be a reason to stop this reconciliation loop?
 			msg := "Could not ensure snapshot repository"

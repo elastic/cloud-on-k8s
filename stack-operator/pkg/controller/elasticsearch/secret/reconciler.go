@@ -2,11 +2,11 @@ package secret
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -16,7 +16,7 @@ var (
 
 // ReconcileSecret creates or updates the given credentials.
 func ReconcileUserCredentialsSecret(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	creds UserCredentials,

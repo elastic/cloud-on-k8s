@@ -16,8 +16,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version5"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version6"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/version/version7"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -42,7 +42,7 @@ type Options struct {
 	// Version is the version of Elasticsearch we want to reconcile towards
 	Version version.Version
 	// Client is used to access the Kubernetes API
-	Client client.Client
+	Client k8s.Client
 	Scheme *runtime.Scheme
 
 	// ClusterCa is the CA that is used to issue certificates for nodes in the cluster

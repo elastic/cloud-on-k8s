@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -14,17 +13,17 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // createElasticsearchPod creates the given elasticsearch pod
 func createElasticsearchPod(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	reconcileState *esreconcile.State,
@@ -96,7 +95,7 @@ func createElasticsearchPod(
 			return err
 		}
 
-		if err := c.Create(context.TODO(), pvc); err != nil && !apierrors.IsAlreadyExists(err) {
+		if err := c.Create(pvc); err != nil && !apierrors.IsAlreadyExists(err) {
 			return err
 		}
 
@@ -126,7 +125,7 @@ func createElasticsearchPod(
 	if err := controllerutil.SetControllerReference(&es, &pod, scheme); err != nil {
 		return err
 	}
-	if err := c.Create(context.TODO(), &pod); err != nil {
+	if err := c.Create(&pod); err != nil {
 		return err
 	}
 	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
@@ -138,7 +137,7 @@ func createElasticsearchPod(
 // deleteElasticsearchPod deletes the given elasticsearch pod,
 // unless a data migration is in progress
 func deleteElasticsearchPod(
-	c client.Client,
+	c k8s.Client,
 	reconcileState *esreconcile.State,
 	resourcesState esreconcile.ResourcesState,
 	observedState observer.State,
@@ -166,7 +165,7 @@ func deleteElasticsearchPod(
 			return reconcile.Result{}, err
 		}
 
-		if err := c.Delete(context.TODO(), &pvc); err != nil && !apierrors.IsNotFound(err) {
+		if err := c.Delete(&pvc); err != nil && !apierrors.IsNotFound(err) {
 			return reconcile.Result{}, err
 		}
 	}
@@ -174,7 +173,7 @@ func deleteElasticsearchPod(
 	if err := preDelete(); err != nil {
 		return reconcile.Result{}, err
 	}
-	if err := c.Delete(context.TODO(), &pod); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Delete(&pod); err != nil && !apierrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 	reconcileState.AddEvent(
