@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
+	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
