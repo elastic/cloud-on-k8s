@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -141,7 +141,7 @@ func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
 func RepositoryCredentialsKey(repoConfig *v1alpha1.SnapshotRepository) string {
 	switch repoConfig.Type {
 	case v1alpha1.SnapshotRepositoryTypeGCS:
-		return common.Concat("gcs.client.", SnapshotClientName, ".credentials_file")
+		return stringsutil.Concat("gcs.client.", SnapshotClientName, ".credentials_file")
 	}
 	return ""
 }
@@ -192,7 +192,7 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 		return k8serrors.NewAggregate(errs)
 
 	default:
-		return errors.New(common.Concat("Unsupported snapshot repository type ", string(kind)))
+		return errors.New(stringsutil.Concat("Unsupported snapshot repository type ", string(kind)))
 	}
 }
 

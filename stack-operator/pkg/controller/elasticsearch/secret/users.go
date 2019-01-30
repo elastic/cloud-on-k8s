@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"golang.org/x/crypto/bcrypt"
@@ -30,12 +30,12 @@ const (
 
 // ElasticUsersSecretName is the name of the secret containing all users credentials in ES format.
 func ElasticUsersSecretName(ownerName string) string {
-	return common.Concat(ownerName, "-users")
+	return stringsutil.Concat(ownerName, "-users")
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials
 func ElasticInternalUsersSecretName(ownerName string) string {
-	return common.Concat(ownerName, "-internal-users")
+	return stringsutil.Concat(ownerName, "-internal-users")
 }
 
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.
@@ -165,7 +165,7 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
-				Name:      common.Concat(es.Name, "-elastic-user"),
+				Name:      stringsutil.Concat(es.Name, "-elastic-user"),
 				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
