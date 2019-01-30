@@ -104,14 +104,20 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// ExpectationsTTLNanosec is the default expectations time-to-live,
-// for cases where we expect an event (creation or deletion) that never happens.
-//
-// Set to 5 minutes similar to https://github.com/kubernetes/kubernetes/blob/v1.13.2/pkg/controller/controller_utils.go
-const ExpectationsTTLNanosec = 5 * time.Minute // time is internally represented as int64 nanoseconds
+const (
+	// ExpectationsTTLNanosec is the default expectations time-to-live,
+	// for cases where we expect an event (creation or deletion) that never happens.
+	//
+	// Set to 5 minutes similar to https://github.com/kubernetes/kubernetes/blob/v1.13.2/pkg/controller/controller_utils.go
+	ExpectationsTTLNanosec = 5 * time.Minute // time is internally represented as int64 nanoseconds
+
+	// ExpectationsFinalizerName designates a finalizer to clean up expectations on es cluster deletion.
+	ExpectationsFinalizerName = "expectations.finalizers.elasticsearch.stack.k8s.elastic.co"
+)
 
 // NewExpectations creates expectations with the default TTL.
 func NewExpectations() *Expectations {
@@ -301,4 +307,17 @@ func (e *expectationsCounters) add(ptr *int64, value int64) {
 // timestampNow returns the current unix timestamp in nanoseconds
 func timestampNow() int64 {
 	return time.Now().UnixNano()
+}
+
+// ExpectationsFinalizer removes the given cluster entry from the expectations map.
+func ExpectationsFinalizer(cluster types.NamespacedName, expectations *Expectations) finalizer.Finalizer {
+	return finalizer.Finalizer{
+		Name: ExpectationsFinalizerName,
+		Execute: func() error {
+			expectations.mutex.Lock()
+			defer expectations.mutex.Unlock()
+			delete(expectations.counters, cluster)
+			return nil
+		},
+	}
 }

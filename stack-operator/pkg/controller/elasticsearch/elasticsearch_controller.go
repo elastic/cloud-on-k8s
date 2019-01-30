@@ -272,6 +272,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(es.ObjectMeta)
 	return []finalizer.Finalizer{
+		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		snapshot.Finalizer(clusterName, watched),
 		license.Finalizer(clusterName, watched),

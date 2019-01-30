@@ -145,3 +145,16 @@ func TestExpectations(t *testing.T) {
 		})
 	}
 }
+
+func TestExpectationsFinalizer(t *testing.T) {
+	expectations := NewExpectations()
+	expectations.ExpectCreation(nsn1)
+	require.Contains(t, expectations.counters, nsn1)
+	// applying finalizer should remove the entry from the map
+	err := ExpectationsFinalizer(nsn1, expectations).Execute()
+	require.NoError(t, err)
+	require.NotContains(t, expectations.counters, nsn1)
+	// applying finalizer on non-existing entry should be fine
+	err = ExpectationsFinalizer(nsn1, expectations).Execute()
+	require.NoError(t, err)
+}
