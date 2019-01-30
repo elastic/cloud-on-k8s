@@ -33,7 +33,6 @@ func applyLinkedLicense(
 	if license.IsEmpty() {
 		return errors.New("empty license linked to this cluster")
 	}
-
 	return updater(license)
 }
 

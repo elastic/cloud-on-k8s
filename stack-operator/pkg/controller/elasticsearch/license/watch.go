@@ -16,7 +16,7 @@ func ensureLicenseWatch(esName types.NamespacedName, w watches.DynamicWatches) e
 	return w.ClusterLicense.AddHandler(watches.NamedWatch{
 		Name:    watchName(esName),
 		Watcher: esName,
-		Watched: esName, // For now simply has the same name will change once pool is introduced
+		Watched: esName, // license has the same name as the cluster
 	})
 }
 
