@@ -107,7 +107,6 @@ spec:
           - issuer
           - startDateInMillis
           - signatureRef
-          - clusterLicenses
           type: object
         status:
           properties:
