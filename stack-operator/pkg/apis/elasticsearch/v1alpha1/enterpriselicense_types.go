@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -37,6 +39,11 @@ type EnterpriseLicense struct {
 
 	Spec   EnterpriseLicenseSpec   `json:"spec,omitempty"`
 	Status EnterpriseLicenseStatus `json:"status,omitempty"`
+}
+
+func (l EnterpriseLicense) Valid(instant time.Time) bool {
+	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond)).Before(instant) &&
+		time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond)).After(instant)
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

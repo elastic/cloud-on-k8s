@@ -2,10 +2,9 @@ package license
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	v1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	match "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
@@ -79,11 +78,7 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	if err != nil {
 		return noLicense, err
 	}
-	bestMatch := match.BestMatch(licenseList.Items, kind)
-	if bestMatch == nil {
-		return noLicense, fmt.Errorf("could not find a matching license for %v", clusterName)
-	}
-	return *bestMatch, nil
+	return match.BestMatch(licenseList.Items, kind)
 }
 
 func assignLicense(c client.Client, clusterName types.NamespacedName) error {
