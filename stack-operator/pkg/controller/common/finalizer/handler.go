@@ -1,8 +1,8 @@
 package finalizer
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,7 +65,7 @@ func (h *Handler) reconcileFinalizers(finalizers []Finalizer, object metav1.Obje
 	needUpdate := false
 	for _, finalizer := range finalizers {
 		// add finalizer if not already there
-		if !common.StringInSlice(finalizer.Name, object.GetFinalizers()) {
+		if !stringsutil.StringInSlice(finalizer.Name, object.GetFinalizers()) {
 			log.Info("Registering finalizer", "name", finalizer.Name)
 			object.SetFinalizers(append(object.GetFinalizers(), finalizer.Name))
 			needUpdate = true
@@ -82,13 +82,13 @@ func (h *Handler) executeFinalizers(finalizers []Finalizer, object metav1.Object
 	var finalizerErr error
 	for _, finalizer := range finalizers {
 		// for each registered finalizer, execute it, then remove from the list
-		if common.StringInSlice(finalizer.Name, object.GetFinalizers()) {
+		if stringsutil.StringInSlice(finalizer.Name, object.GetFinalizers()) {
 			log.Info("Executing finalizer", "name", finalizer.Name)
 			if finalizerErr = finalizer.Execute(); finalizerErr != nil {
 				break
 			}
 			needUpdate = true
-			object.SetFinalizers(common.RemoveStringInSlice(finalizer.Name, object.GetFinalizers()))
+			object.SetFinalizers(stringsutil.RemoveStringInSlice(finalizer.Name, object.GetFinalizers()))
 		}
 	}
 	return needUpdate, finalizerErr

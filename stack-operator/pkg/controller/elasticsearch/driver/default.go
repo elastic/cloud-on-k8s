@@ -179,16 +179,42 @@ func (d *defaultDriver) Reconcile(
 		results.WithError(err)
 	}
 
+	esReachable, err := services.IsServiceReady(d.Client, genericResources.PublicService)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	if esReachable {
+		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
+		if err != nil {
+			// TODO decide should this be a reason to stop this reconciliation loop?
+			msg := "Could not ensure snapshot repository"
+			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg)
+		}
+	}
+
+	namespacedName := k8s.ExtractNamespacedName(es.ObjectMeta)
+
+	// There might be some ongoing creations and deletions our k8s client cache
+	// hasn't seen yet. In such case, requeue until we are in-sync.
+	// Otherwise, we could end up re-creating multiple times the same pod with
+	// different generated names through multiple reconciliation iterations.
+	if !d.PodsExpectations.Fulfilled(namespacedName) {
+		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
+		return results.WithResult(defaultRequeue)
+	}
+
 	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, *resourcesState)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	log.Info(
-		"Going to apply the following topology changes",
-		"ToCreate:", len(changes.ToCreate),
-		"ToKeep:", len(changes.ToKeep),
-		"ToDelete:", len(changes.ToDelete),
+		"Calculated all required changes",
+		"to_create:", len(changes.ToCreate),
+		"to_keep:", len(changes.ToKeep),
+		"to_delete:", len(changes.ToDelete),
 	)
 
 	// figure out what changes we can perform right now
@@ -202,11 +228,6 @@ func (d *defaultDriver) Reconcile(
 		"schedule_for_creation_count", len(performableChanges.ToCreate),
 		"schedule_for_deletion_count", len(performableChanges.ToDelete),
 	)
-
-	esReachable, err := services.IsServiceReady(d.Client, genericResources.PublicService)
-	if err != nil {
-		return results.WithError(err)
-	}
 
 	results.Apply(
 		"reconcile-cluster-license",
@@ -248,6 +269,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	for _, change := range performableChanges.ToCreate {
+		d.PodsExpectations.ExpectCreation(namespacedName)
 		if err := createElasticsearchPod(
 			d.Client,
 			d.Scheme,
@@ -256,9 +278,12 @@ func (d *defaultDriver) Reconcile(
 			change.Pod,
 			change.PodSpecCtx,
 		); err != nil {
+			// pod was not created, cancel our expectation by marking it observed
+			d.PodsExpectations.CreationObserved(namespacedName)
 			return results.WithError(err)
 		}
 	}
+	// passed this point, any pods resource listing should check expectations first
 
 	if !esReachable {
 		// We cannot manipulate ES allocation exclude settings if the ES cluster
@@ -322,6 +347,7 @@ func (d *defaultDriver) Reconcile(
 			}
 			return nil
 		}
+		d.PodsExpectations.ExpectDeletion(namespacedName)
 		result, err := deleteElasticsearchPod(
 			d.Client,
 			reconcileState,
@@ -332,10 +358,14 @@ func (d *defaultDriver) Reconcile(
 			preDelete,
 		)
 		if err != nil {
+			// pod was not deleted, cancel our expectation by marking it observed
+			d.PodsExpectations.DeletionObserved(namespacedName)
 			return results.WithError(err)
 		}
 		results.WithResult(result)
 	}
+	// past this point, any pods resource listing should check expectations first
+
 	if changes.HasChanges() && !performableChanges.HasChanges() {
 		// if there are changes we'd like to perform, but none that were performable, we try again later
 		results.WithResult(defaultRequeue)

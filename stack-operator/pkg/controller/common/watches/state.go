@@ -9,6 +9,7 @@ import (
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
 		Secrets:        NewDynamicEnqueueRequest(),
+		Pods:           NewDynamicEnqueueRequest(),
 		ClusterLicense: NewDynamicEnqueueRequest(),
 	}
 }
@@ -17,6 +18,7 @@ func NewDynamicWatches() DynamicWatches {
 // give each of them an identity.
 type DynamicWatches struct {
 	Secrets        *DynamicEnqueueRequest
+	Pods           *DynamicEnqueueRequest
 	ClusterLicense *DynamicEnqueueRequest
 }
 

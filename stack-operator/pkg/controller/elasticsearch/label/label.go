@@ -4,8 +4,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -61,4 +63,15 @@ func NewLabelSelectorForElasticsearch(es v1alpha1.ElasticsearchCluster) (labels.
 
 	sel := TypeSelector.DeepCopySelector().Add(*req)
 	return sel, nil
+}
+
+// ClusterFromResourceLabels returns the NamespacedName of the ElasticsearchCluster associated
+// to the given resource, by retrieving its name from the resource labels.
+// It does implicitly consider the cluster and the resource to be in the same namespace.
+func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, bool) {
+	resourceName, exists := metaObject.GetLabels()[ClusterNameLabelName]
+	return types.NamespacedName{
+		Namespace: metaObject.GetNamespace(),
+		Name:      resourceName,
+	}, exists
 }

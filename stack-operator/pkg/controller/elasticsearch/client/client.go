@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 )
 
@@ -175,7 +175,7 @@ func (c *Client) request(
 		body = bytes.NewBuffer(outData)
 	}
 
-	request, err := http.NewRequest(method, common.Concat(c.Endpoint, pathWithQuery), body)
+	request, err := http.NewRequest(method, stringsutil.Concat(c.Endpoint, pathWithQuery), body)
 	if err != nil {
 		return err
 	}

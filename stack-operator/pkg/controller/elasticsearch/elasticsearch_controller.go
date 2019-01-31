@@ -10,9 +10,11 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/finalizer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	commonversion "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
@@ -45,7 +47,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 	if err != nil {
 		return err
 	}
-	return addWatches(c, reconciler.dynamicWatches)
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -63,8 +65,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		esCa:        esCa,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		finalizers:     finalizer.NewHandler(client),
-		dynamicWatches: watches.NewDynamicWatches(),
+		finalizers:       finalizer.NewHandler(client),
+		dynamicWatches:   watches.NewDynamicWatches(),
+		podsExpectations: reconciler.NewExpectations(),
 
 		Parameters: params,
 	}, nil
@@ -76,7 +79,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 	return controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
 }
 
-func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) error {
+func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
 		&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
@@ -84,11 +87,29 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 		return err
 	}
 
-	// watch any pods created by Elasticsearch
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
-		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
-	}); err != nil {
+	// Watch pods
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, r.dynamicWatches.Pods); err != nil {
+		return err
+	}
+	if err := r.dynamicWatches.Pods.AddHandlers(
+		// trigger reconconciliation loop on ES pods owned by this controller
+		&watches.OwnerWatch{
+			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+				IsController: true,
+				OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+			},
+		},
+		// Reconcile pods expectations.
+		// This does not technically need to be part of a dynamic watch, since it will
+		// stay there forever (nothing dynamic here).
+		// Turns out our dynamic watch mechanism happens to be a pretty nice way to
+		// setup multiple "static" handlers for a single watch.
+		watches.NewExpectationsWatch(
+			"pods-expectations",
+			r.podsExpectations,
+			// retrieve cluster name from pod labels
+			label.ClusterFromResourceLabels,
+		)); err != nil {
 		return err
 	}
 
@@ -100,11 +121,11 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 		return err
 	}
 
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, dynamicWatches.Secrets); err != nil {
+	// Watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
-	// Watch secrets
-	if err := dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
+	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
 			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
@@ -114,7 +135,7 @@ func addWatches(c controller.Controller, dynamicWatches watches.DynamicWatches) 
 	}
 
 	// ClusterLicense
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, dynamicWatches.ClusterLicense); err != nil {
+	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
 		return err
 	}
 
@@ -137,6 +158,10 @@ type ReconcileElasticsearch struct {
 	finalizers finalizer.Handler
 
 	dynamicWatches watches.DynamicWatches
+
+	// podsExpectations help dealing with inconsistencies in our client cache,
+	// by marking Pods creation/deletion as expected, and waiting til they are effectively observed.
+	podsExpectations *reconciler.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -214,10 +239,11 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		ClusterCa:      r.esCa,
-		Observers:      r.esObservers,
-		DynamicWatches: r.dynamicWatches,
-		Parameters:     r.Parameters,
+		ClusterCa:        r.esCa,
+		Observers:        r.esObservers,
+		DynamicWatches:   r.dynamicWatches,
+		PodsExpectations: r.podsExpectations,
+		Parameters:       r.Parameters,
 	})
 	if err != nil {
 		return results.WithError(err)
@@ -249,6 +275,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(es.ObjectMeta)
 	return []finalizer.Finalizer{
+		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		snapshot.Finalizer(clusterName, watched),
 		license.Finalizer(clusterName, watched),

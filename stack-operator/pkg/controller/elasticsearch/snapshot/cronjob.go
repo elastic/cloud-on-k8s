@@ -6,6 +6,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
@@ -50,7 +51,7 @@ type CronJobParams struct {
 
 // CronJobName returns the name of the cronjob for the given parent resource (Elasticsearch).
 func CronJobName(parent types.NamespacedName) string {
-	return common.Concat(parent.Name, "-snapshotter")
+	return stringsutil.Concat(parent.Name, "-snapshotter")
 }
 
 // NewLabels constructs a new set of labels from a Elasticsearch definition.

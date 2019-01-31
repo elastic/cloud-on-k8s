@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,7 +21,7 @@ const (
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(esName string) string {
-	return common.Concat(esName, "-es-discovery")
+	return stringsutil.Concat(esName, "-es-discovery")
 }
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
@@ -54,12 +55,12 @@ func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 // PublicServiceName returns the name for the public service
 // associated to this cluster
 func PublicServiceName(esName string) string {
-	return common.Concat(esName, "-es-public")
+	return stringsutil.Concat(esName, "-es-public")
 }
 
 // PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
 func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	return common.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
+	return stringsutil.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
 }
 
 // NewPublicService returns the public service associated to the given cluster
