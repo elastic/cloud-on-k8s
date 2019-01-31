@@ -100,7 +100,11 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 				OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
 			},
 		},
-		// reconcile pods expectations
+		// Reconcile pods expectations.
+		// This does not technically need to be part of a dynamic watch, since it will
+		// stay there forever (nothing dynamic here).
+		// Turns out our dynamic watch mechanism happens to be a pretty nice way to
+		// setup multiple "static" handlers for a single watch.
 		watches.NewExpectationsWatch(
 			"pods-expectations",
 			r.podsExpectations,
