@@ -212,5 +212,5 @@ func nextResultTakesPrecedence(current, next reconcile.Result) bool {
 	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
 		return true // next requests a requeue and current does not or wants it only later
 	}
-	return false //default case
+	return false // default case
 }

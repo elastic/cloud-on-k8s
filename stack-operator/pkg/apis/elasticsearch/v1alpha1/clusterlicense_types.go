@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -45,6 +47,20 @@ type ClusterLicense struct {
 // IsEmpty returns true if this license has an empty spec.
 func (cl ClusterLicense) IsEmpty() bool {
 	return cl.Spec.IsEmpty()
+}
+
+type SafetyMargin struct {
+	ValidSince time.Duration
+	ValidFor time.Duration
+}
+
+
+func NewSafetyMargin() SafetyMargin {
+	return SafetyMargin{}
+}
+
+func (cl ClusterLicense) IsValidAt(instant time.Time, margin SafetyMargin) bool {
+	panic("implement me")
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
