@@ -51,9 +51,8 @@ func (cl ClusterLicense) IsEmpty() bool {
 
 type SafetyMargin struct {
 	ValidSince time.Duration
-	ValidFor time.Duration
+	ValidFor   time.Duration
 }
-
 
 func NewSafetyMargin() SafetyMargin {
 	return SafetyMargin{}

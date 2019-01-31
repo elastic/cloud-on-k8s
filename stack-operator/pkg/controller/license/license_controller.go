@@ -83,6 +83,7 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	if bestMatch == nil {
 		return noLicense, fmt.Errorf("could not find a matching license for %v", clusterName)
 	}
+	return *bestMatch, nil
 }
 
 func assignLicense(c client.Client, clusterName types.NamespacedName) error {

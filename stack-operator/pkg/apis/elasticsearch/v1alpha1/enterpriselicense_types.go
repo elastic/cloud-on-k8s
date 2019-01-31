@@ -18,7 +18,7 @@ type EnterpriseLicenseSpec struct {
 	StartDateInMillis  int64                  `json:"startDateInMillis"`
 	SignatureRef       corev1.SecretReference `json:"signatureRef"`
 	// +optional
-	ClusterLicenses    []ClusterLicense       `json:"clusterLicenses,omitempty"`
+	ClusterLicenses []ClusterLicense `json:"clusterLicenses,omitempty"`
 }
 
 // EnterpriseLicenseStatus defines the observed state of EnterpriseLicense
