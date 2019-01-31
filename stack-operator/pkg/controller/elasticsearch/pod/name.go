@@ -1,7 +1,7 @@
 package pod
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -26,7 +26,7 @@ func NewNodeName(clusterName string) string {
 		prefix = prefix[:maxPrefixLength]
 	}
 
-	return common.Concat(
+	return stringsutil.Concat(
 		prefix,
 		typeSuffix,
 		"-",

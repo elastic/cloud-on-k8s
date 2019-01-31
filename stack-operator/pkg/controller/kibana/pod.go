@@ -2,7 +2,7 @@ package kibana
 
 import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -23,7 +23,7 @@ type PodSpecParams struct {
 }
 
 func imageWithVersion(image string, version string) string {
-	return common.Concat(image, ":", version)
+	return stringsutil.Concat(image, ":", version)
 }
 
 func NewPodSpec(p PodSpecParams) corev1.PodSpec {

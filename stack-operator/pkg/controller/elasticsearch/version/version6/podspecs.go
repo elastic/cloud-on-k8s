@@ -10,9 +10,9 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
@@ -27,12 +27,12 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: common.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
 			},
 			{
-				Source: common.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
-				Target: common.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
 			},
 		},
 	}
