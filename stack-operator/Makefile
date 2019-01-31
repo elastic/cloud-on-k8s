@@ -64,7 +64,7 @@ keystore-updater: generate fmt vet
 
 # CI job
 .PHONY: ci
-ci: dep-vendor-only stack-operator integration keystore-updater
+ci: check-fmt dep-vendor-only stack-operator integration keystore-updater
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 OPERATOR_IMAGE ?= $(IMG):$(IMG_TAG)
@@ -103,6 +103,11 @@ manifests:
 # Run go fmt against code
 fmt:
 	goimports -w pkg cmd
+
+check-fmt:
+ifneq ($(shell goimports -l pkg cmd),)
+	$(error Invalid go formatting. Please run `make fmt`)
+endif
 
 # Run go vet against code
 vet:
