@@ -1,17 +1,66 @@
 package v1alpha1
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type License interface {
+	StartDate() time.Time
+	ExpiryDate() time.Time
+}
+
+// TODO not sure being able to do numeric comparisons is worth  all the grovelling that follows
+type LicenseType int
+
+const (
+	LicenseTypeStandard LicenseType = iota + 1
+	LicenseTypeGold
+	LicenseTypePlatinum
+)
+
+var licenseTypeToString = map[LicenseType]string{
+	LicenseTypeStandard: "standard",
+	LicenseTypeGold:     "gold",
+	LicenseTypePlatinum: "platinum",
+}
+
+var LicenseTypeFromString = map[string]LicenseType{
+	"standard": LicenseTypeStandard,
+	"gold":     LicenseTypeGold,
+	"platinum": LicenseTypePlatinum,
+}
+
+func (l LicenseType) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(l.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+func (s *LicenseType) UnmarshalJSON(b []byte) error {
+	var j string
+	err := json.Unmarshal(b, &j)
+	if err != nil {
+		return err
+	}
+	*s = LicenseTypeFromString[j]
+	return nil
+}
+
+func (l LicenseType) String() string {
+	return licenseTypeToString[l]
+}
+
 // ClusterLicenseSpec defines the desired state of ClusterLicense
 type ClusterLicenseSpec struct {
 	// UID is the license UID not the k8s API UID (!)
 	UID                string                 `json:"uid"`
-	Type               string                 `json:"type"`
+	Type               LicenseType            `json:"type,string"`
 	IssueDateInMillis  int64                  `json:"issueDateInMillis"`
 	ExpiryDateInMillis int64                  `json:"expiryDateInMillis"`
 	MaxNodes           int                    `json:"maxNodes"`
@@ -44,9 +93,17 @@ type ClusterLicense struct {
 	Status ClusterLicenseStatus `json:"status,omitempty"`
 }
 
+func (l *ClusterLicense) StartDate() time.Time {
+	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond))
+}
+
+func (l *ClusterLicense) ExpiryDate() time.Time {
+	return time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond))
+}
+
 // IsEmpty returns true if this license has an empty spec.
-func (cl ClusterLicense) IsEmpty() bool {
-	return cl.Spec.IsEmpty()
+func (l ClusterLicense) IsEmpty() bool {
+	return l.Spec.IsEmpty()
 }
 
 type SafetyMargin struct {
@@ -58,9 +115,12 @@ func NewSafetyMargin() SafetyMargin {
 	return SafetyMargin{}
 }
 
-func (cl ClusterLicense) IsValidAt(instant time.Time, margin SafetyMargin) bool {
-	panic("implement me")
+func (l ClusterLicense) IsValidAt(instant time.Time, margin SafetyMargin) bool {
+	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
+		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
 }
+
+var _ License = &ClusterLicense{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

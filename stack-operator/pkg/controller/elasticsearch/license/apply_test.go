@@ -239,7 +239,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 					ObjectMeta: k8s.ToObjectMeta(clusterName),
 					Spec: v1alpha1.ClusterLicenseSpec{
 						UID:  "some-uid",
-						Type: "platinum",
+						Type: v1alpha1.LicenseTypePlatinum,
 					},
 				},
 			},

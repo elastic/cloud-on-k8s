@@ -1,44 +1,132 @@
-// +build integration
-
 package v1alpha1
 
 import (
+	"fmt"
 	"testing"
-
-	"github.com/onsi/gomega"
-	"golang.org/x/net/context"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"time"
 )
 
-func TestStorageClusterLicense(t *testing.T) {
-	key := types.NamespacedName{
-		Name:      "foo",
-		Namespace: "default",
+// TODO remove duplication
+func millis(dateStr string) int64 {
+	layout := "2006-01-02"
+	parsed, err := time.Parse(layout, dateStr)
+	if err != nil {
+		panic(fmt.Sprintf("incorrect test setup can't parse date %v", err))
 	}
-	created := &ClusterLicense{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		}}
-	g := gomega.NewGomegaWithT(t)
+	return parsed.UnixNano() / int64(time.Millisecond)
+}
 
-	// Test Create
-	fetched := &ClusterLicense{}
-	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
+func TestClusterLicense_IsValidAt(t *testing.T) {
+	now := time.Date(2019, 01, 31, 0, 9, 0, 0, time.UTC)
+	type fields struct {
+		startMillis  int64
+		expiryMillis int64
+	}
+	type args struct {
+		margin SafetyMargin
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		{
+			name: "valid license - no margin",
+			fields: fields{
+				startMillis:  millis("2019-01-01"),
+				expiryMillis: millis("2019-12-31"),
+			},
+			want: true,
+		},
+		{
+			name: "valid license - with margin",
+			fields: fields{
+				startMillis:  millis("2019-01-01"),
+				expiryMillis: millis("2019-12-31"),
+			},
+			args: args{
+				margin: SafetyMargin{
+					ValidSince: 48 * time.Hour,
+					ValidFor:   30 * 24 * time.Hour,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "invalid license - because of margin",
+			fields: fields{
+				startMillis:  millis("2019-01-30"),
+				expiryMillis: millis("2019-12-31"),
+			},
+			args: args{
+				margin: SafetyMargin{
+					ValidSince: 7 * 24 * time.Hour,
+					ValidFor:   90 * 24 * time.Hour,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "invalid license - expired",
+			fields: fields{
+				startMillis:  millis("2018-01-01"),
+				expiryMillis: millis("2019-01-01"),
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := ClusterLicense{
+				Spec: ClusterLicenseSpec{
+					ExpiryDateInMillis: tt.fields.expiryMillis,
+					StartDateInMillis:  tt.fields.startMillis,
+				},
+			}
+			if got := l.IsValidAt(now, tt.args.margin); got != tt.want {
+				t.Errorf("ClusterLicense.IsValidAt() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(created))
-
-	// Test Updating the Labels
-	updated := fetched.DeepCopy()
-	updated.Labels = map[string]string{"hello": "world"}
-	g.Expect(c.Update(context.TODO(), updated)).NotTo(gomega.HaveOccurred())
-
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(updated))
-
-	// Test Delete
-	g.Expect(c.Delete(context.TODO(), fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(c.Get(context.TODO(), key, fetched)).To(gomega.HaveOccurred())
+func TestLicenseType_UnmarshalJSON(t *testing.T) {
+	type args struct {
+		b []byte
+	}
+	tests := []struct {
+		name    string
+		want    LicenseType
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "happy path",
+			want: LicenseTypePlatinum,
+			args: args{
+				b: []byte(`"platinum"`),
+			},
+			wantErr: false,
+		},
+		{
+			name: "illegal value",
+			want: 0,
+			args: args{
+				b: []byte(`"enterprise"`),
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := LicenseTypeStandard
+			if err := res.UnmarshalJSON(tt.args.b); (err != nil) != tt.wantErr {
+				t.Errorf("LicenseType.UnmarshalJSON() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if res != tt.want {
+				t.Errorf("LicenseType.UnmarshalJSON() got = %v, want %v", res, tt.want)
+			}
+		})
+	}
 }

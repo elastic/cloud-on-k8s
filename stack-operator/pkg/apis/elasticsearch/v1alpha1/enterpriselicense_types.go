@@ -41,10 +41,19 @@ type EnterpriseLicense struct {
 	Status EnterpriseLicenseStatus `json:"status,omitempty"`
 }
 
-func (l EnterpriseLicense) Valid(instant time.Time) bool {
-	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond)).Before(instant) &&
-		time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond)).After(instant)
+func (l *EnterpriseLicense) StartDate() time.Time {
+	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond))
 }
+
+func (l *EnterpriseLicense) ExpiryDate() time.Time {
+	return time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond))
+}
+
+func (l EnterpriseLicense) Valid(instant time.Time) bool {
+	return l.StartDate().Before(instant) && l.ExpiryDate().After(instant)
+}
+
+var _ License = &EnterpriseLicense{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

@@ -70,7 +70,7 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	var kind match.DesiredLicenseType
 	s, ok := cluster.Labels[license.Expectation]
 	if ok {
-		kind = match.DesiredLicenseType(&s)
+		kind = match.DesiredLicenseTypeFromString(s)
 	}
 
 	licenseList := v1alpha1.EnterpriseLicenseList{}

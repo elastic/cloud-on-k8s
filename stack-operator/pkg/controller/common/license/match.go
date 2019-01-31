@@ -8,9 +8,18 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 )
 
-type DesiredLicenseType *string
+type DesiredLicenseType *v1alpha1.LicenseType
 
-func typeMatches(d DesiredLicenseType, t string) bool {
+func DesiredLicenseTypeFromString(s string) DesiredLicenseType {
+	var dl DesiredLicenseType
+	lt := v1alpha1.LicenseTypeFromString[s]
+	if lt != 0 {
+		dl = &lt
+	}
+	return dl
+}
+
+func typeMatches(d DesiredLicenseType, t v1alpha1.LicenseType) bool {
 	return d == nil || *d == t
 }
 
@@ -37,6 +46,11 @@ func bestMatchAt(
 		return license, errors.New("no matching license found")
 	}
 	sort.Slice(valid, func(i, j int) bool {
+		t1, t2 := valid[i].l.Spec.Type, valid[j].l.Spec.Type
+		if t1 != t2 { // sort by type
+			return t1 < t2
+		}
+		// and by remaining time
 		return valid[i].remaining < valid[j].remaining
 	})
 	return valid[len(valid)-1].l, nil
@@ -44,14 +58,14 @@ func bestMatchAt(
 
 func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses []v1alpha1.EnterpriseLicense) []licenseWithTimeLeft {
 	// assuming the typical enterprise license contains 3 sets of the 3 license types
-	filtered := make([]licenseWithTimeLeft, len(licenses)*3*3)
+	filtered := make([]licenseWithTimeLeft, 0, len(licenses)*3*3)
 	for _, el := range licenses {
 		if el.Valid(now) {
 			for _, l := range el.Spec.ClusterLicenses {
 				if typeMatches(licenseType, l.Spec.Type) && l.IsValidAt(now, v1alpha1.NewSafetyMargin()) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						l:         l,
-						remaining: time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond)).Sub(now),
+						remaining: l.ExpiryDate().Sub(now),
 					})
 				}
 			}
