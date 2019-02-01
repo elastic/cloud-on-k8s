@@ -66,13 +66,6 @@ spec:
                     - startDateInMillis
                     - signatureRef
                     type: object
-                  status:
-                    properties:
-                      licenseStatus:
-                        type: string
-                    required:
-                    - licenseStatus
-                    type: object
                 type: object
               type: array
             expiryDateInMillis:
@@ -107,13 +100,6 @@ spec:
           - issuer
           - startDateInMillis
           - signatureRef
-          type: object
-        status:
-          properties:
-            licenseStatus:
-              type: string
-          required:
-          - licenseStatus
           type: object
   version: v1alpha1
 status:

@@ -23,11 +23,6 @@ type EnterpriseLicenseSpec struct {
 	ClusterLicenses []ClusterLicense `json:"clusterLicenses,omitempty"`
 }
 
-// EnterpriseLicenseStatus defines the observed state of EnterpriseLicense
-type EnterpriseLicenseStatus struct {
-	LicenseStatus string `json:"licenseStatus"`
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -37,8 +32,7 @@ type EnterpriseLicense struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   EnterpriseLicenseSpec   `json:"spec,omitempty"`
-	Status EnterpriseLicenseStatus `json:"status,omitempty"`
+	Spec EnterpriseLicenseSpec `json:"spec,omitempty"`
 }
 
 func (l *EnterpriseLicense) StartDate() time.Time {

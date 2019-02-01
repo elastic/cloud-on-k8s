@@ -53,11 +53,6 @@ func (cls ClusterLicenseSpec) IsEmpty() bool {
 	return cls == ClusterLicenseSpec{}
 }
 
-// ClusterLicenseStatus defines the observed state of ClusterLicense
-type ClusterLicenseStatus struct {
-	LicenseStatus string `json:"licenseStatus"`
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -67,8 +62,7 @@ type ClusterLicense struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ClusterLicenseSpec   `json:"spec,omitempty"`
-	Status ClusterLicenseStatus `json:"status,omitempty"`
+	Spec ClusterLicenseSpec `json:"spec,omitempty"`
 }
 
 func (l *ClusterLicense) StartDate() time.Time {
