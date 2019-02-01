@@ -60,9 +60,9 @@ func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
 // ClusterLicenseSpec defines the desired state of ClusterLicense
 type ClusterLicenseSpec struct {
 	LicenseMeta
-	MaxNodes     int                    `json:"maxNodes"`
-	Type         LicenseType            `json:"type"`
-	SignatureRef corev1.SecretReference `json:"signatureRef"`
+	MaxNodes     int                      `json:"maxNodes"`
+	Type         LicenseType              `json:"type"`
+	SignatureRef corev1.SecretKeySelector `json:"signatureRef"`
 }
 
 // IsEmpty returns true if this spec is empty.

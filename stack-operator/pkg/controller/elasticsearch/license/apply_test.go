@@ -45,12 +45,9 @@ func Test_secretRefResolver(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "error: no secret found",
-			wantErr: true,
-		},
-		{
-			name:    "error: multiple keys in secret",
-			wantErr: true,
+			name:    "happy-path: multiple keys in secret",
+			wantErr: false,
+			want:    "v",
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -58,12 +55,17 @@ func Test_secretRefResolver(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						"1": []byte("v"),
-						"2": []byte("v"),
+						"k":     []byte("v"),
+						"other": []byte("other"),
 					},
 				},
 			},
 		},
+		{
+			name:    "error: no secret found",
+			wantErr: true,
+		},
+
 		{
 			name:    "error: empty secret",
 			wantErr: true,
@@ -80,12 +82,14 @@ func Test_secretRefResolver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := fake.NewFakeClient(tt.initialObjs...)
-			ref := corev1.SecretReference{
-				Name:      "test",
-				Namespace: "default",
+			ref := corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "test",
+				},
+				Key: "k",
 			}
-			got, err := secretRefResolver(c, ref)()
-			if err != nil && !tt.wantErr {
+			got, err := secretRefResolver(c, "default", ref)()
+			if (err != nil && !tt.wantErr) || err == nil && tt.wantErr {
 				t.Errorf("secretRefResolver() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err == nil && !reflect.DeepEqual(got, tt.want) {

@@ -36,20 +36,18 @@ func applyLinkedLicense(
 	return updater(license)
 }
 
-func secretRefResolver(c client.Client, ref corev1.SecretReference) func() (string, error) {
+func secretRefResolver(c client.Client, ns string, ref corev1.SecretKeySelector) func() (string, error) {
 	return func() (string, error) {
 		var secret corev1.Secret
-		err := c.Get(context.TODO(), types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, &secret)
+		err := c.Get(context.TODO(), types.NamespacedName{Namespace: ns, Name: ref.Name}, &secret)
 		if err != nil {
 			return "", err
 		}
-		if len(secret.Data) != 1 {
-			return "", errors.New("not exactly one secret element found but no key specified") // TODO support keys
+		bytes, ok := secret.Data[ref.Key]
+		if !ok {
+			return "", fmt.Errorf("requested secret key could not be found in secret %v", ref)
 		}
-		for _, v := range secret.Data {
-			return string(v), nil
-		}
-		return "", nil
+		return string(bytes), nil
 	}
 }
 

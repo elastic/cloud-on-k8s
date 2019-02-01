@@ -10,9 +10,9 @@ import (
 // EnterpriseLicenseSpec defines the desired state of EnterpriseLicense
 type EnterpriseLicenseSpec struct {
 	LicenseMeta
-	Type         string                 `json:"type"`
-	MaxInstances int                    `json:"maxInstances"`
-	SignatureRef corev1.SecretReference `json:"signatureRef"`
+	Type         string                   `json:"type"`
+	MaxInstances int                      `json:"maxInstances"`
+	SignatureRef corev1.SecretKeySelector `json:"signatureRef"`
 	// +optional
 	ClusterLicenseSpecs []ClusterLicenseSpec `json:"clusterLicenses,omitempty"`
 }

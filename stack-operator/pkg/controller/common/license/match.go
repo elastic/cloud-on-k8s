@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type DesiredLicenseType *v1alpha1.LicenseType
@@ -55,7 +56,13 @@ func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses 
 			for _, l := range el.Spec.ClusterLicenseSpecs {
 				if typeMatches(licenseType, l.Type) && l.IsValid(now, v1alpha1.NewSafetyMargin()) {
 					filtered = append(filtered, licenseWithTimeLeft{
-						l:         v1alpha1.ClusterLicense{Spec: l},
+						l: v1alpha1.ClusterLicense{
+							ObjectMeta: v1.ObjectMeta{
+								Name:      el.Name,
+								Namespace: el.Namespace,
+							},
+							Spec: l,
+						},
 						remaining: l.ExpiryDate().Sub(now),
 					})
 				}

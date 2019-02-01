@@ -11,11 +11,12 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/kubernetes/staging/src/k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -31,6 +32,25 @@ func listClusterLicenses(t *testing.T, c client.Client) []v1alpha1.ClusterLicens
 	return clusterLicenses.Items
 }
 
+func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {
+	metaObj, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	owners := metaObj.GetOwnerReferences()
+	if len(owners) != 1 {
+		return fmt.Errorf("expected exactly 1 owner, got %d", len(owners))
+	}
+
+	ownerName := owners[0].Name
+	ownerKind := owners[0].Kind
+	expectedKind := "ElasticsearchCluster"
+	if ownerName != cluster.Name || ownerKind != expectedKind {
+		return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
+	}
+	return nil
+}
+
 func TestReconcile(t *testing.T) {
 
 	thirtyDays := 30 * 24 * time.Hour
@@ -38,7 +58,7 @@ func TestReconcile(t *testing.T) {
 	startDate := now.Add(-thirtyDays)
 	expiryDate := now.Add(thirtyDays)
 
-	instance := &v1alpha1.EnterpriseLicense{
+	enterpriseLicense := &v1alpha1.EnterpriseLicense{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "elastic-system"},
 		Spec: v1alpha1.EnterpriseLicenseSpec{
 			LicenseMeta: v1alpha1.LicenseMeta{
@@ -46,17 +66,31 @@ func TestReconcile(t *testing.T) {
 				ExpiryDateInMillis: test.ToMillis(expiryDate),
 			},
 			Type:         "enterprise",
-			SignatureRef: v1.SecretReference{},
+			SignatureRef: corev1.SecretKeySelector{},
 			ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 				{
 					LicenseMeta: v1alpha1.LicenseMeta{
 						ExpiryDateInMillis: test.ToMillis(expiryDate),
 						StartDateInMillis:  test.ToMillis(startDate),
 					},
-					Type:         v1alpha1.LicenseTypePlatinum,
-					SignatureRef: v1.SecretReference{},
+					Type: v1alpha1.LicenseTypePlatinum,
+					SignatureRef: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "ctrl-secret",
+						},
+						Key: "sig",
+					},
 				},
 			},
+		},
+	}
+	controllerSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "ctrl-secret",
+			Namespace: "elastic-system",
+		},
+		Data: map[string][]byte{
+			"sig": []byte("blah"),
 		},
 	}
 
@@ -76,16 +110,13 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Create the EnterpriseLicense object and expect the Reconcile and Deployment to be created
-	err = c.Create(context.TODO(), instance)
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
-	}
-	assert.NoError(t, err)
-	defer c.Delete(context.TODO(), instance)
+	// Create the EnterpriseLicense object
+	assert.NoError(t, c.Create(context.TODO(), enterpriseLicense))
+	defer c.Delete(context.TODO(), enterpriseLicense)
+
+	// Create the linked secret
+	assert.NoError(t, c.Create(context.TODO(), controllerSecret))
+	defer c.Delete(context.TODO(), controllerSecret)
 
 	cluster := &v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
@@ -109,17 +140,17 @@ func TestReconcile(t *testing.T) {
 		if numLicenses != 1 {
 			return fmt.Errorf("expected exactly 1 cluster license got %d", numLicenses)
 		}
-		owners := licenses[0].OwnerReferences
-		if len(owners) != 1 {
-			return fmt.Errorf("expected exactly 1 owner, got %d", len(owners))
-		}
+		validateOwnerRef(&licenses[0], cluster.ObjectMeta)
+		return nil
+	})
 
-		ownerName := owners[0].Name
-		ownerKind := owners[0].Kind
-		expectedKind := "ElasticsearchCluster"
-		if ownerName != cluster.Name || ownerKind != expectedKind {
-			return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
+	test.RetryUntilSuccess(t, func() error {
+		var secret corev1.Secret
+		err := c.Get(context.TODO(), types.NamespacedName{Name: "foo-license", Namespace: "default"}, &secret)
+		if err != nil {
+			return err
 		}
+		validateOwnerRef(&secret, cluster.ObjectMeta)
 		return nil
 	})
 

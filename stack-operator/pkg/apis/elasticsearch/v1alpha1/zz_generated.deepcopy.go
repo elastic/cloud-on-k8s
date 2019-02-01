@@ -31,7 +31,7 @@ func (in *ClusterLicense) DeepCopyInto(out *ClusterLicense) {
 	*out = *in
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
-	out.Spec = in.Spec
+	in.Spec.DeepCopyInto(&out.Spec)
 	return
 }
 
@@ -90,7 +90,7 @@ func (in *ClusterLicenseList) DeepCopyObject() runtime.Object {
 func (in *ClusterLicenseSpec) DeepCopyInto(out *ClusterLicenseSpec) {
 	*out = *in
 	out.LicenseMeta = in.LicenseMeta
-	out.SignatureRef = in.SignatureRef
+	in.SignatureRef.DeepCopyInto(&out.SignatureRef)
 	return
 }
 
@@ -347,11 +347,13 @@ func (in *EnterpriseLicenseList) DeepCopyObject() runtime.Object {
 func (in *EnterpriseLicenseSpec) DeepCopyInto(out *EnterpriseLicenseSpec) {
 	*out = *in
 	out.LicenseMeta = in.LicenseMeta
-	out.SignatureRef = in.SignatureRef
+	in.SignatureRef.DeepCopyInto(&out.SignatureRef)
 	if in.ClusterLicenseSpecs != nil {
 		in, out := &in.ClusterLicenseSpecs, &out.ClusterLicenseSpecs
 		*out = make([]ClusterLicenseSpec, len(*in))
-		copy(*out, *in)
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
 	}
 	return
 }

@@ -8,12 +8,15 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	match "github.com/elastic/stack-operators/stack-operator/pkg/controller/common/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -110,6 +113,48 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	return match.BestMatch(licenseList.Items, kind)
 }
 
+func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v1alpha1.ClusterLicense) (corev1.SecretKeySelector, error) {
+	secretName := cluster.Name + "-license"
+	secretKey := "sig"
+	selector := corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: secretName,
+		},
+		Key: secretKey,
+	}
+
+	var controllerSecret corev1.Secret
+	err := c.Get(newContext(), types.NamespacedName{Namespace: l.Namespace, Name: l.Spec.SignatureRef.Name}, &controllerSecret)
+	if err != nil {
+		return selector, err
+	}
+
+	expected := corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      secretName,
+			Namespace: cluster.Namespace,
+		},
+		Data: map[string][]byte{
+			secretKey: controllerSecret.Data[l.Spec.SignatureRef.Key],
+		},
+	}
+	var reconciled corev1.Secret
+	err = reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     scheme.Scheme,
+		Owner:      &cluster,
+		Expected:   &expected,
+		Reconciled: &reconciled,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(reconciled.Data, expected.Data)
+		},
+		UpdateReconciled: func() {
+			reconciled.Data = expected.Data
+		},
+	})
+	return selector, err
+}
+
 func assignLicense(c client.Client, cluster v1alpha1.ElasticsearchCluster) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
@@ -117,8 +162,14 @@ func assignLicense(c client.Client, cluster v1alpha1.ElasticsearchCluster) (time
 	if err != nil {
 		return noResult, err
 	}
+	selector, err := reconcileSecret(c, cluster, match)
+	if err != nil {
+		return noResult, err
+	}
+
 	toAssign := match.DeepCopy()
 	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
+	toAssign.Spec.SignatureRef = selector
 	err = setOwnerReference(c, toAssign, cluster)
 	if err != nil {
 		return noResult, err
@@ -151,8 +202,9 @@ func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense,
 	return nil
 }
 
-func reassignLicense(c client.Client, clusterName types.NamespacedName) (time.Time, error) {
+func reassignLicense(c client.Client, cluster v1alpha1.ElasticsearchCluster) (time.Time, error) {
 	var noResult time.Time
+	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
 	match, err := findLicenseFor(c, clusterName)
 	if err != nil {
 		return noResult, err
@@ -163,7 +215,9 @@ func reassignLicense(c client.Client, clusterName types.NamespacedName) (time.Ti
 	if err != nil {
 		return noResult, err
 	}
-	existing.Spec = match.Spec
+	selector, err := reconcileSecret(c, cluster, match)
+	existing.Spec = *match.Spec.DeepCopy()
+	existing.Spec.SignatureRef = selector
 	return match.ExpiryDate(), c.Update(newContext(), &existing)
 }
 
@@ -201,7 +255,7 @@ func (r *ReconcileLicenses) internalReconcile(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 	if !instance.IsValid(time.Now(), safetyMargin) {
-		newExpiry, err := reassignLicense(r, request.NamespacedName)
+		newExpiry, err := reassignLicense(r, owner)
 		if err != nil {
 			return reconcile.Result{Requeue: true}, err
 		}
