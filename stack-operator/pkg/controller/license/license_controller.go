@@ -102,15 +102,16 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	return match.BestMatch(licenseList.Items, kind)
 }
 
-func assignLicense(c client.Client, clusterName types.NamespacedName) (time.Time, error) {
+func assignLicense(c client.Client, cluster v1alpha1.ElasticsearchCluster) (time.Time, error) {
 	var noResult time.Time
+	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
 	match, err := findLicenseFor(c, clusterName)
 	if err != nil {
 		return noResult, err
 	}
 	toAssign := match.DeepCopy()
 	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
-	err = setOwnerReference(c, toAssign, clusterName)
+	err = setOwnerReference(c, toAssign, cluster)
 	if err != nil {
 		return noResult, err
 	}
@@ -118,12 +119,7 @@ func assignLicense(c client.Client, clusterName types.NamespacedName) (time.Time
 	return match.ExpiryDate(), c.Create(newContext(), toAssign)
 }
 
-func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense, clusterName types.NamespacedName) error {
-	owner := v1alpha1.ElasticsearchCluster{}
-	err := c.Get(newContext(), clusterName, &owner)
-	if err != nil {
-		return err
-	}
+func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense, owner v1alpha1.ElasticsearchCluster) error {
 	gvk := owner.GetObjectKind().GroupVersionKind()
 	blockOwnerDeletion := false
 	isController := false
@@ -168,14 +164,25 @@ func reassignLicense(c client.Client, clusterName types.NamespacedName) (time.Ti
 }
 
 func (r *ReconcileLicenses) internalReconcile(request reconcile.Request) (reconcile.Result, error) {
+	// Fetch the cluster to ensure it still exists
+	owner := v1alpha1.ElasticsearchCluster{}
+	err := r.Get(newContext(), request.NamespacedName, &owner)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// nothing to do
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	}
+
 	// Fetch the cluster license in the namespace of the cluster
 	safetyMargin := defaultSafetyMargin()
 	instance := &v1alpha1.ClusterLicense{}
 	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
-	err := r.Get(newContext(), request.NamespacedName, instance)
+	err = r.Get(newContext(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			newExpiry, err := assignLicense(r, request.NamespacedName)
+			newExpiry, err := assignLicense(r, owner)
 			if err != nil {
 				return reconcile.Result{Requeue: true}, err
 			}
