@@ -13,6 +13,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -122,4 +123,90 @@ func TestReconcile(t *testing.T) {
 	test.DeleteIfExists(t, c, cluster)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// ClusterLicense should be GC'ed but can't be tested here
+}
+
+// purpose of this test is mostly to understand and document the delaying queue behaviour
+// can be removed or skipped when it causes trouble in CI because they are non-deterministic
+func TestDelayingQueueInvariants(t *testing.T) {
+	item := types.NamespacedName{Name: "foo", Namespace: "bar"}
+	tests := []struct {
+		name                 string
+		adds                 func(workqueue.DelayingInterface)
+		expectedObservations int
+		timeout              time.Duration
+	}{
+		{
+			name: "single add",
+			adds: func(q workqueue.DelayingInterface) {
+				q.Add(item)
+			},
+			expectedObservations: 1,
+			timeout:              10 * time.Millisecond,
+		},
+		{
+			name: "deduplication",
+			adds: func(q workqueue.DelayingInterface) {
+				q.Add(item)
+				q.Add(item)
+			},
+			expectedObservations: 1,
+			timeout:              500 * time.Millisecond,
+		},
+		{
+			name: "no dedup'ing when delaying",
+			adds: func(q workqueue.DelayingInterface) {
+				q.Add(item)
+				q.AddAfter(item, 1*time.Millisecond)
+			},
+			expectedObservations: 2,
+			timeout:              10 * time.Millisecond,
+		},
+		{
+			name: "but dedup's and updates item within the wait queue",
+			adds: func(q workqueue.DelayingInterface) {
+				q.AddAfter(item, 1*time.Hour)
+				q.AddAfter(item, 1*time.Millisecond)
+			},
+			expectedObservations: 1,
+			timeout:              10 * time.Millisecond,
+		},
+		{
+			name: "direct add and delayed add are independent",
+			adds: func(q workqueue.DelayingInterface) {
+				q.AddAfter(item, 10*time.Millisecond)
+				q.Add(item) //should work despite one item in the work queu
+			},
+			expectedObservations: 2,
+			timeout:              20 * time.Millisecond,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			q := workqueue.NewDelayingQueue()
+			tt.adds(q)
+			results := make(chan int)
+			var seen int
+			go func() {
+				for {
+					item, _ := q.Get()
+					results <- 1
+					q.Done(item)
+				}
+			}()
+			collect := func() {
+				for {
+					select {
+					case r := <-results:
+						seen += r
+					case <-time.After(tt.timeout):
+						return
+					}
+				}
+
+			}
+			collect()
+			assert.Equal(t, tt.expectedObservations, seen)
+		})
+	}
+
 }
