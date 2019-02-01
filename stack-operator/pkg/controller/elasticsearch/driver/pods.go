@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
@@ -14,6 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
 	esreconcile "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -129,7 +129,7 @@ func createElasticsearchPod(
 	if err := c.Create(context.TODO(), &pod); err != nil {
 		return err
 	}
-	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, common.Concat("Created pod ", pod.Name))
+	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, stringsutil.Concat("Created pod ", pod.Name))
 	log.Info("Created pod", "name", pod.Name, "namespace", pod.Namespace)
 
 	return nil
@@ -148,7 +148,7 @@ func deleteElasticsearchPod(
 ) (reconcile.Result, error) {
 	isMigratingData := migration.IsMigratingData(observedState, pod, allDeletions)
 	if isMigratingData {
-		log.Info(common.Concat("Migrating data, skipping deletes because of ", pod.Name))
+		log.Info(stringsutil.Concat("Migrating data, skipping deletes because of ", pod.Name))
 		reconcileState.UpdateElasticsearchMigrating(resourcesState, observedState)
 		return defaultRequeue, nil
 	}
@@ -178,7 +178,7 @@ func deleteElasticsearchPod(
 		return reconcile.Result{}, err
 	}
 	reconcileState.AddEvent(
-		corev1.EventTypeNormal, events.EventReasonDeleted, common.Concat("Deleted pod ", pod.Name),
+		corev1.EventTypeNormal, events.EventReasonDeleted, stringsutil.Concat("Deleted pod ", pod.Name),
 	)
 	log.Info("Deleted pod", "name", pod.Name, "namespace", pod.Namespace)
 

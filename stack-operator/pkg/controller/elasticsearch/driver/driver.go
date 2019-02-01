@@ -7,6 +7,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/version"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
@@ -52,6 +53,9 @@ type Options struct {
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
 	DynamicWatches watches.DynamicWatches
+	// PodsExpectations control ongoing pod creations and deletions
+	// that might not be in-sync yet with our k8s client cache
+	PodsExpectations *reconciler.Expectations
 }
 
 // NewDriver returns a Driver that can operate the provided version

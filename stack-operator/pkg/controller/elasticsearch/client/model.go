@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
 )
 
 // Info represents the response from /
@@ -160,7 +160,7 @@ func (s Shard) IsInitializing() bool {
 // Key is a composite key of index name and shard number that identifies all
 // copies of a shard across nodes.
 func (s Shard) Key() string {
-	return common.Concat(s.Index, "/", strconv.Itoa(s.Shard))
+	return stringsutil.Concat(s.Index, "/", strconv.Itoa(s.Shard))
 }
 
 // AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.
