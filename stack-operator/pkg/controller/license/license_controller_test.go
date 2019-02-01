@@ -174,7 +174,7 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			name: "direct add and delayed add are independent",
 			adds: func(q workqueue.DelayingInterface) {
 				q.AddAfter(item, 10*time.Millisecond)
-				q.Add(item) //should work despite one item in the work queu
+				q.Add(item) // should work despite one item in the work queu
 			},
 			expectedObservations: 2,
 			timeout:              20 * time.Millisecond,

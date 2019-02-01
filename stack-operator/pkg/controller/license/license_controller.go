@@ -37,6 +37,20 @@ func newContext() context.Context {
 	return context.TODO()
 }
 
+func defaultSafetyMargin() v1alpha1.SafetyMargin {
+	return v1alpha1.SafetyMargin{
+		ValidSince: 2 * 24 * time.Hour,
+		ValidFor:   30 * 24 * time.Hour,
+	}
+}
+
+func nextReconcile(expiry time.Time, safety v1alpha1.SafetyMargin) reconcile.Result {
+	return reconcile.Result{
+		// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
+		RequeueAfter: time.Until(expiry.Add(-1 * (safety.ValidFor / 2))),
+	}
+}
+
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
@@ -83,18 +97,19 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	return match.BestMatch(licenseList.Items, kind)
 }
 
-func assignLicense(c client.Client, clusterName types.NamespacedName) error {
+func assignLicense(c client.Client, clusterName types.NamespacedName) (time.Time, error) {
+	var noResult time.Time
 	match, err := findLicenseFor(c, clusterName)
 	if err != nil {
-		return err
+		return noResult, err
 	}
 	toAssign := match.DeepCopy()
 	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
 	err = setOwnerReference(c, toAssign, clusterName)
 	if err != nil {
-		return err
+		return noResult, err
 	}
-	return c.Create(newContext(), toAssign)
+	return match.ExpiryDate(), c.Create(newContext(), toAssign)
 }
 
 func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense, clusterName types.NamespacedName) error {
@@ -130,48 +145,53 @@ func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense,
 	return nil
 }
 
-func reassignLicense(c client.Client, clusterName types.NamespacedName) error {
+func reassignLicense(c client.Client, clusterName types.NamespacedName) (time.Time, error) {
+	var noResult time.Time
 	match, err := findLicenseFor(c, clusterName)
 	if err != nil {
-		return err
+		return noResult, err
 	}
 	existing := v1alpha1.ClusterLicense{}
 	err = c.Get(newContext(), clusterName, &existing)
 	if err != nil {
-		return err
+		return noResult, err
 	}
 	existing.Spec = match.Spec
-	return c.Update(newContext(), &existing)
+	return match.ExpiryDate(), c.Update(newContext(), &existing)
 }
 
-// Reconcile reads that state of the cluster for a license object and makes changes based on the state read
-// and what is in the license spec
+// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
+// If there is none it assigns a new one.
+// In any case it schedules a new reconcile request to be processed when the license is about to expire.
+// This happens independently from any watch triggered reconcile request.
+//
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster license in the namespace of the cluster
+	safetyMargin := defaultSafetyMargin()
 	instance := &v1alpha1.ClusterLicense{}
 	err := r.Get(newContext(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err := assignLicense(r, request.NamespacedName) // TODO requeue / recheck
+			newExpiry, err := assignLicense(r, request.NamespacedName)
 			if err != nil {
 				return reconcile.Result{Requeue: true}, err
 			}
-			return reconcile.Result{}, nil
+			return nextReconcile(newExpiry, safetyMargin), nil
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	if !instance.IsValidAt(time.Now(), v1alpha1.NewSafetyMargin()) { // TODO use actual safety margin
-		err := reassignLicense(r, request.NamespacedName) // TODO requeue / recheck
+	if !instance.IsValidAt(time.Now(), safetyMargin) {
+		newExpiry, err := reassignLicense(r, request.NamespacedName)
 		if err != nil {
 			return reconcile.Result{Requeue: true}, err
 		}
-		return reconcile.Result{}, nil
+		return nextReconcile(newExpiry, safetyMargin), nil
 	}
 
-	// nothing to do
-	return reconcile.Result{}, nil
+	// nothing but reschedule/update any previously scheduled items
+	return nextReconcile(instance.ExpiryDate(), safetyMargin), nil
 }
