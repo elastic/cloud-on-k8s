@@ -39,18 +39,20 @@ func TestReconcile(t *testing.T) {
 	instance := &v1alpha1.EnterpriseLicense{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "elastic-system"},
 		Spec: v1alpha1.EnterpriseLicenseSpec{
-			UID:                "test",
-			Type:               "enterprise",
-			ExpiryDateInMillis: test.ToMillis(expiryDate),
-			SignatureRef:       v1.SecretReference{},
-			ClusterLicenses: []v1alpha1.ClusterLicense{
+			LicenseMeta: v1alpha1.LicenseMeta{
+				UID:                "test",
+				ExpiryDateInMillis: test.ToMillis(expiryDate),
+			},
+			Type:         "enterprise",
+			SignatureRef: v1.SecretReference{},
+			ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 				{
-					Spec: v1alpha1.ClusterLicenseSpec{
-						Type:               v1alpha1.LicenseTypePlatinum,
+					LicenseMeta: v1alpha1.LicenseMeta{
 						ExpiryDateInMillis: test.ToMillis(expiryDate),
 						StartDateInMillis:  test.ToMillis(startDate),
-						SignatureRef:       v1.SecretReference{},
 					},
+					Type:         v1alpha1.LicenseTypePlatinum,
+					SignatureRef: v1.SecretReference{},
 				},
 			},
 		},

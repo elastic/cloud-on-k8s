@@ -25,80 +25,29 @@ spec:
             clusterLicenses:
               items:
                 properties:
-                  apiVersion:
-                    type: string
-                  kind:
-                    type: string
-                  metadata:
+                  maxNodes:
+                    format: int64
+                    type: integer
+                  signatureRef:
                     type: object
-                  spec:
-                    properties:
-                      expiryDateInMillis:
-                        format: int64
-                        type: integer
-                      issueDateInMillis:
-                        format: int64
-                        type: integer
-                      issuedTo:
-                        type: string
-                      issuer:
-                        type: string
-                      maxNodes:
-                        format: int64
-                        type: integer
-                      signatureRef:
-                        type: object
-                      startDateInMillis:
-                        format: int64
-                        type: integer
-                      type:
-                        type: string
-                      uid:
-                        type: string
-                    required:
-                    - uid
-                    - type
-                    - issueDateInMillis
-                    - expiryDateInMillis
-                    - maxNodes
-                    - issuedTo
-                    - issuer
-                    - startDateInMillis
-                    - signatureRef
-                    type: object
+                  type:
+                    type: string
+                required:
+                - maxNodes
+                - type
+                - signatureRef
                 type: object
               type: array
-            expiryDateInMillis:
-              format: int64
-              type: integer
-            issueDateInMillis:
-              format: int64
-              type: integer
-            issuedTo:
-              type: string
-            issuer:
-              type: string
-            maxNodes:
+            maxInstances:
               format: int64
               type: integer
             signatureRef:
               type: object
-            startDateInMillis:
-              format: int64
-              type: integer
             type:
               type: string
-            uid:
-              type: string
           required:
-          - uid
           - type
-          - issueDateInMillis
-          - expiryDateInMillis
-          - maxNodes
-          - issuedTo
-          - issuer
-          - startDateInMillis
+          - maxInstances
           - signatureRef
           type: object
   version: v1alpha1

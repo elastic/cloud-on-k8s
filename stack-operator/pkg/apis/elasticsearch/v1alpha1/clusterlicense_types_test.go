@@ -71,8 +71,10 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			l := ClusterLicense{
 				Spec: ClusterLicenseSpec{
-					ExpiryDateInMillis: tt.fields.expiryMillis,
-					StartDateInMillis:  tt.fields.startMillis,
+					LicenseMeta: LicenseMeta{
+						ExpiryDateInMillis: tt.fields.expiryMillis,
+						StartDateInMillis:  tt.fields.startMillis,
+					},
 				},
 			}
 			if got := l.IsValidAt(now, tt.args.margin); got != tt.want {

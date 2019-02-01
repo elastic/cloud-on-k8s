@@ -9,18 +9,12 @@ import (
 
 // EnterpriseLicenseSpec defines the desired state of EnterpriseLicense
 type EnterpriseLicenseSpec struct {
-	// TODO unify (embed?) with cluster license
-	UID                string                 `json:"uid"`
-	Type               string                 `json:"type"`
-	IssueDateInMillis  int64                  `json:"issueDateInMillis"`
-	ExpiryDateInMillis int64                  `json:"expiryDateInMillis"`
-	MaxNodes           int                    `json:"maxNodes"`
-	IssuedTo           string                 `json:"issuedTo"`
-	Issuer             string                 `json:"issuer"`
-	StartDateInMillis  int64                  `json:"startDateInMillis"`
-	SignatureRef       corev1.SecretReference `json:"signatureRef"`
+	LicenseMeta
+	Type         string                 `json:"type"`
+	MaxInstances int                    `json:"maxInstances"`
+	SignatureRef corev1.SecretReference `json:"signatureRef"`
 	// +optional
-	ClusterLicenses []ClusterLicense `json:"clusterLicenses,omitempty"`
+	ClusterLicenseSpecs []ClusterLicenseSpec `json:"clusterLicenses,omitempty"`
 }
 
 // +genclient
@@ -36,11 +30,11 @@ type EnterpriseLicense struct {
 }
 
 func (l *EnterpriseLicense) StartDate() time.Time {
-	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond))
+	return l.Spec.StartDate()
 }
 
 func (l *EnterpriseLicense) ExpiryDate() time.Time {
-	return time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond))
+	return l.Spec.ExpiryDate()
 }
 
 func (l EnterpriseLicense) Valid(instant time.Time) bool {

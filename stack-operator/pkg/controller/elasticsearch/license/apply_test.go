@@ -172,7 +172,9 @@ func Test_updateLicense(t *testing.T) {
 				},
 				desired: v1alpha1.ClusterLicense{
 					Spec: v1alpha1.ClusterLicenseSpec{
-						UID: "this-is-a-uid",
+						LicenseMeta: v1alpha1.LicenseMeta{
+							UID: "this-is-a-uid",
+						},
 					},
 				},
 				sigResolver: defaultSigResolver,
@@ -238,7 +240,9 @@ func Test_applyLinkedLicense(t *testing.T) {
 				&v1alpha1.ClusterLicense{
 					ObjectMeta: k8s.ToObjectMeta(clusterName),
 					Spec: v1alpha1.ClusterLicenseSpec{
-						UID:  "some-uid",
+						LicenseMeta: v1alpha1.LicenseMeta{
+							UID: "some-uid",
+						},
 						Type: v1alpha1.LicenseTypePlatinum,
 					},
 				},

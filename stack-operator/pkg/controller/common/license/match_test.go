@@ -59,28 +59,28 @@ var (
 	gold     = v1alpha1.LicenseTypeGold
 	platinum = v1alpha1.LicenseTypePlatinum
 	standard = v1alpha1.LicenseTypeStandard
-	oneMonth = v1alpha1.ClusterLicense{
-		Spec: v1alpha1.ClusterLicenseSpec{
+	oneMonth = v1alpha1.ClusterLicenseSpec{
+		LicenseMeta: v1alpha1.LicenseMeta{
 			ExpiryDateInMillis: Millis("2019-02-28"),
 			StartDateInMillis:  Millis("2019-01-01"),
 		},
 	}
-	twoMonth = v1alpha1.ClusterLicense{
-		Spec: v1alpha1.ClusterLicenseSpec{
+	twoMonth = v1alpha1.ClusterLicenseSpec{
+		LicenseMeta: v1alpha1.LicenseMeta{
 			ExpiryDateInMillis: Millis("2019-03-31"),
 			StartDateInMillis:  Millis("2019-01-01"),
 		},
 	}
-	twelveMonth = v1alpha1.ClusterLicense{
-		Spec: v1alpha1.ClusterLicenseSpec{
+	twelveMonth = v1alpha1.ClusterLicenseSpec{
+		LicenseMeta: v1alpha1.LicenseMeta{
 			ExpiryDateInMillis: Millis("2020-01-31"),
 			StartDateInMillis:  Millis("2019-01-01"),
 		},
 	}
 )
 
-func license(l v1alpha1.ClusterLicense, t v1alpha1.LicenseType) v1alpha1.ClusterLicense {
-	l.Spec.Type = t
+func license(l v1alpha1.ClusterLicenseSpec, t v1alpha1.LicenseType) v1alpha1.ClusterLicenseSpec {
+	l.Type = t
 	return l
 }
 
@@ -92,7 +92,7 @@ func Test_bestMatchAt(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    v1alpha1.ClusterLicense
+		want    v1alpha1.ClusterLicenseSpec
 		wantErr bool
 	}{
 		{
@@ -104,9 +104,11 @@ func Test_bestMatchAt(t *testing.T) {
 			args: args{
 				licenses: []v1alpha1.EnterpriseLicense{{
 					Spec: v1alpha1.EnterpriseLicenseSpec{
-						ExpiryDateInMillis: Millis("2017-12-31"),
-						StartDateInMillis:  Millis("2017-01-01"),
-						Type:               "enterprise",
+						LicenseMeta: v1alpha1.LicenseMeta{
+							ExpiryDateInMillis: Millis("2017-12-31"),
+							StartDateInMillis:  Millis("2017-01-01"),
+						},
+						Type: "enterprise",
 					},
 				}},
 			},
@@ -118,13 +120,13 @@ func Test_bestMatchAt(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-
-							ExpiryDateInMillis: Millis("2019-12-31"),
-							StartDateInMillis:  Millis("2018-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2019-12-31"),
+								StartDateInMillis:  Millis("2018-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								{
-
-									Spec: v1alpha1.ClusterLicenseSpec{
+									LicenseMeta: v1alpha1.LicenseMeta{
 										ExpiryDateInMillis: Millis("2018-12-31"),
 										StartDateInMillis:  Millis("2018-01-01"),
 									},
@@ -134,7 +136,7 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				},
 			},
-			want:    v1alpha1.ClusterLicense{},
+			want:    v1alpha1.ClusterLicenseSpec{},
 			wantErr: true,
 		},
 		{
@@ -143,9 +145,11 @@ func Test_bestMatchAt(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2020-01-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2020-01-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(oneMonth, platinum),
 								license(twoMonth, platinum),
 								license(twelveMonth, platinum),
@@ -163,9 +167,11 @@ func Test_bestMatchAt(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2019-03-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2019-03-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(oneMonth, platinum),
 								license(twoMonth, platinum),
 							},
@@ -173,9 +179,11 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2020-01-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2020-01-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(twelveMonth, platinum),
 							},
 						},
@@ -191,9 +199,11 @@ func Test_bestMatchAt(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2019-03-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2019-03-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(oneMonth, gold),
 								license(twoMonth, platinum),
 							},
@@ -201,9 +211,11 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2020-01-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2020-01-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(twoMonth, gold),
 								license(twelveMonth, platinum),
 							},
@@ -221,9 +233,11 @@ func Test_bestMatchAt(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2019-03-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2019-03-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(oneMonth, gold),
 								license(twoMonth, platinum),
 								license(twelveMonth, standard),
@@ -232,9 +246,11 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2020-01-31"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2020-01-31"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								license(twoMonth, platinum),
 								license(twelveMonth, gold),
 							},
@@ -253,7 +269,7 @@ func Test_bestMatchAt(t *testing.T) {
 				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !reflect.DeepEqual(got, v1alpha1.ClusterLicense{Spec: tt.want}) {
 				t.Errorf("bestMatchAt() = %v, want %v", got, tt.want)
 			}
 		})
@@ -281,12 +297,14 @@ func Test_filterValidForType(t *testing.T) {
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
 						Spec: v1alpha1.EnterpriseLicenseSpec{
-							ExpiryDateInMillis: Millis("2020-01-01"),
-							StartDateInMillis:  Millis("2019-01-01"),
-							ClusterLicenses: []v1alpha1.ClusterLicense{
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2020-01-01"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
+							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 								{
-									Spec: v1alpha1.ClusterLicenseSpec{
-										Type:               v1alpha1.LicenseTypePlatinum,
+									Type: v1alpha1.LicenseTypePlatinum,
+									LicenseMeta: v1alpha1.LicenseMeta{
 										ExpiryDateInMillis: Millis("2019-02-01"),
 										StartDateInMillis:  Millis("2019-01-01"),
 									},
@@ -300,9 +318,11 @@ func Test_filterValidForType(t *testing.T) {
 				{
 					l: v1alpha1.ClusterLicense{
 						Spec: v1alpha1.ClusterLicenseSpec{
-							Type:               v1alpha1.LicenseTypePlatinum,
-							ExpiryDateInMillis: Millis("2019-02-01"),
-							StartDateInMillis:  Millis("2019-01-01"),
+							Type: v1alpha1.LicenseTypePlatinum,
+							LicenseMeta: v1alpha1.LicenseMeta{
+								ExpiryDateInMillis: Millis("2019-02-01"),
+								StartDateInMillis:  Millis("2019-01-01"),
+							},
 						},
 					},
 					remaining: 24 * time.Hour,

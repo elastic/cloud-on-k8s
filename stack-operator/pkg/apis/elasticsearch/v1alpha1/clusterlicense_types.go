@@ -34,18 +34,35 @@ func LicenseTypeFromString(s string) *LicenseType {
 	return &res
 }
 
+type LicenseMeta struct {
+	// UID is the license UID not the k8s API UID (!)
+	UID                string `json:"uid"`
+	IssueDateInMillis  int64  `json:"issueDateInMillis"`
+	ExpiryDateInMillis int64  `json:"expiryDateInMillis"`
+	IssuedTo           string `json:"issuedTo"`
+	Issuer             string `json:"issuer"`
+	StartDateInMillis  int64  `json:"startDateInMillis"`
+}
+
+func (l LicenseMeta) StartDate() time.Time {
+	return time.Unix(0, l.StartDateInMillis*int64(time.Millisecond))
+}
+
+func (l LicenseMeta) ExpiryDate() time.Time {
+	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
+}
+
+func (l LicenseMeta) IsValidAt(instant time.Time, margin SafetyMargin) bool {
+	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
+		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
+}
+
 // ClusterLicenseSpec defines the desired state of ClusterLicense
 type ClusterLicenseSpec struct {
-	// UID is the license UID not the k8s API UID (!)
-	UID                string                 `json:"uid"`
-	Type               LicenseType            `json:"type"`
-	IssueDateInMillis  int64                  `json:"issueDateInMillis"`
-	ExpiryDateInMillis int64                  `json:"expiryDateInMillis"`
-	MaxNodes           int                    `json:"maxNodes"`
-	IssuedTo           string                 `json:"issuedTo"`
-	Issuer             string                 `json:"issuer"`
-	StartDateInMillis  int64                  `json:"startDateInMillis"`
-	SignatureRef       corev1.SecretReference `json:"signatureRef"`
+	LicenseMeta
+	MaxNodes     int                    `json:"maxNodes"`
+	Type         LicenseType            `json:"type"`
+	SignatureRef corev1.SecretReference `json:"signatureRef"`
 }
 
 // IsEmpty returns true if this spec is empty.
@@ -66,11 +83,11 @@ type ClusterLicense struct {
 }
 
 func (l *ClusterLicense) StartDate() time.Time {
-	return time.Unix(0, l.Spec.StartDateInMillis*int64(time.Millisecond))
+	return l.Spec.StartDate()
 }
 
 func (l *ClusterLicense) ExpiryDate() time.Time {
-	return time.Unix(0, l.Spec.ExpiryDateInMillis*int64(time.Millisecond))
+	return l.Spec.ExpiryDate()
 }
 
 // IsEmpty returns true if this license has an empty spec.
@@ -88,8 +105,7 @@ func NewSafetyMargin() SafetyMargin {
 }
 
 func (l ClusterLicense) IsValidAt(instant time.Time, margin SafetyMargin) bool {
-	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
-		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
+	return l.Spec.IsValidAt(instant, margin)
 }
 
 var _ License = &ClusterLicense{}

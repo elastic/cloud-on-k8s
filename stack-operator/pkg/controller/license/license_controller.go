@@ -19,7 +19,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+)
+
+var (
+	log = logf.Log.WithName("license-controller")
 )
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -109,6 +114,7 @@ func assignLicense(c client.Client, clusterName types.NamespacedName) (time.Time
 	if err != nil {
 		return noResult, err
 	}
+	log.Info("Assigning license", "cluster", clusterName, "license", match.Spec.UID, "expiry", match.ExpiryDate())
 	return match.ExpiryDate(), c.Create(newContext(), toAssign)
 }
 
@@ -146,11 +152,13 @@ func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense,
 }
 
 func reassignLicense(c client.Client, clusterName types.NamespacedName) (time.Time, error) {
+	log.Info("Assigning new license", "cluster", clusterName)
 	var noResult time.Time
 	match, err := findLicenseFor(c, clusterName)
 	if err != nil {
 		return noResult, err
 	}
+	log.Info("Updating license to", "cluster", clusterName, "license", match.Spec.UID, "expiry", match.ExpiryDate())
 	existing := v1alpha1.ClusterLicense{}
 	err = c.Get(newContext(), clusterName, &existing)
 	if err != nil {
@@ -172,6 +180,7 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	// Fetch the cluster license in the namespace of the cluster
 	safetyMargin := defaultSafetyMargin()
 	instance := &v1alpha1.ClusterLicense{}
+	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
 	err := r.Get(newContext(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
