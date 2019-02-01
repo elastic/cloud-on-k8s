@@ -37,7 +37,7 @@ func (l *EnterpriseLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
 }
 
-func (l EnterpriseLicense) Valid(instant time.Time) bool {
+func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 	return l.StartDate().Before(instant) && l.ExpiryDate().After(instant)
 }
 

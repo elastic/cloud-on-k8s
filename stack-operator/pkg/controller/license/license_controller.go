@@ -140,18 +140,14 @@ func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense,
 		Controller:         &isController,
 	}
 
-	if owner.DeletionTimestamp.IsZero() {
-
-		existing := clusterLicense.GetOwnerReferences()
-		for _, r := range existing {
-			if reflect.DeepEqual(r, ownerRef) {
-				return nil
-			}
+	existing := clusterLicense.GetOwnerReferences()
+	for _, r := range existing {
+		if reflect.DeepEqual(r, ownerRef) {
+			return nil
 		}
-		existing = append(existing, ownerRef)
-		clusterLicense.SetOwnerReferences(existing)
-		return nil
 	}
+	existing = append(existing, ownerRef)
+	clusterLicense.SetOwnerReferences(existing)
 	return nil
 }
 
@@ -177,10 +173,15 @@ func (r *ReconcileLicenses) internalReconcile(request reconcile.Request) (reconc
 	err := r.Get(newContext(), request.NamespacedName, &owner)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// nothing to do
+			// nothing to do no cluster
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
+	}
+
+	if !owner.DeletionTimestamp.IsZero() {
+		// cluster is being deleted nothing to do
+		return reconcile.Result{}, nil
 	}
 
 	// Fetch the cluster license in the namespace of the cluster
@@ -199,7 +200,7 @@ func (r *ReconcileLicenses) internalReconcile(request reconcile.Request) (reconc
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	if !instance.IsValidAt(time.Now(), safetyMargin) {
+	if !instance.IsValid(time.Now(), safetyMargin) {
 		newExpiry, err := reassignLicense(r, request.NamespacedName)
 		if err != nil {
 			return reconcile.Result{Requeue: true}, err

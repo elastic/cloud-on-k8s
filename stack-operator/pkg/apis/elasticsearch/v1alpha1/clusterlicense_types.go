@@ -52,7 +52,7 @@ func (l LicenseMeta) ExpiryDate() time.Time {
 	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
 }
 
-func (l LicenseMeta) IsValidAt(instant time.Time, margin SafetyMargin) bool {
+func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
 	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
 		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
 }
@@ -104,8 +104,8 @@ func NewSafetyMargin() SafetyMargin {
 	return SafetyMargin{}
 }
 
-func (l ClusterLicense) IsValidAt(instant time.Time, margin SafetyMargin) bool {
-	return l.Spec.IsValidAt(instant, margin)
+func (l ClusterLicense) IsValid(instant time.Time, margin SafetyMargin) bool {
+	return l.Spec.IsValid(instant, margin)
 }
 
 var _ License = &ClusterLicense{}

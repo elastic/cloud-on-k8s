@@ -77,8 +77,8 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 					},
 				},
 			}
-			if got := l.IsValidAt(now, tt.args.margin); got != tt.want {
-				t.Errorf("ClusterLicense.IsValidAt() = %v, want %v", got, tt.want)
+			if got := l.IsValid(now, tt.args.margin); got != tt.want {
+				t.Errorf("ClusterLicense.IsValid() = %v, want %v", got, tt.want)
 			}
 		})
 	}

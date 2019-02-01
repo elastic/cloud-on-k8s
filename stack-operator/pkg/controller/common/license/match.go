@@ -51,9 +51,9 @@ func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses 
 	// assuming the typical enterprise license contains 3 sets of the 3 license types
 	filtered := make([]licenseWithTimeLeft, 0, len(licenses)*3*3)
 	for _, el := range licenses {
-		if el.Valid(now) {
+		if el.IsValid(now) {
 			for _, l := range el.Spec.ClusterLicenseSpecs {
-				if typeMatches(licenseType, l.Type) && l.IsValidAt(now, v1alpha1.NewSafetyMargin()) {
+				if typeMatches(licenseType, l.Type) && l.IsValid(now, v1alpha1.NewSafetyMargin()) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						l:         v1alpha1.ClusterLicense{Spec: l},
 						remaining: l.ExpiryDate().Sub(now),
