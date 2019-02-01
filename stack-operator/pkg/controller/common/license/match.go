@@ -10,15 +10,6 @@ import (
 
 type DesiredLicenseType *v1alpha1.LicenseType
 
-func DesiredLicenseTypeFromString(s string) DesiredLicenseType {
-	var dl DesiredLicenseType
-	lt := v1alpha1.LicenseTypeFromString[s]
-	if lt != 0 {
-		dl = &lt
-	}
-	return dl
-}
-
 func typeMatches(d DesiredLicenseType, t v1alpha1.LicenseType) bool {
 	return d == nil || *d == t
 }
@@ -46,7 +37,7 @@ func bestMatchAt(
 		return license, errors.New("no matching license found")
 	}
 	sort.Slice(valid, func(i, j int) bool {
-		t1, t2 := valid[i].l.Spec.Type, valid[j].l.Spec.Type
+		t1, t2 := v1alpha1.LicenseTypeOrder[valid[i].l.Spec.Type], v1alpha1.LicenseTypeOrder[valid[j].l.Spec.Type]
 		if t1 != t2 { // sort by type
 			return t1 < t2
 		}

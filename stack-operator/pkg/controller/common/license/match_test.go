@@ -67,6 +67,7 @@ var (
 	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
 	gold     = v1alpha1.LicenseTypeGold
 	platinum = v1alpha1.LicenseTypePlatinum
+	standard = v1alpha1.LicenseTypeStandard
 	oneMonth = v1alpha1.ClusterLicense{
 		Spec: v1alpha1.ClusterLicenseSpec{
 			ExpiryDateInMillis: millis("2019-02-28"),
@@ -234,6 +235,7 @@ func Test_bestMatchAt(t *testing.T) {
 							ClusterLicenses: []v1alpha1.ClusterLicense{
 								license(oneMonth, gold),
 								license(twoMonth, platinum),
+								license(twelveMonth, standard),
 							},
 						},
 					},

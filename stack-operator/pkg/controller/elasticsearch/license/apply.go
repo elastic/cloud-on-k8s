@@ -71,7 +71,7 @@ func updateLicense(
 			{
 
 				UID:                desired.Spec.UID,
-				Type:               desired.Spec.Type.String(),
+				Type:               string(desired.Spec.Type),
 				IssueDateInMillis:  desired.Spec.IssueDateInMillis,
 				ExpiryDateInMillis: desired.Spec.ExpiryDateInMillis,
 				MaxNodes:           desired.Spec.MaxNodes,
