@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -29,7 +27,6 @@ func RunWithK8s(m *testing.M, crdPath string) {
 		CRDDirectoryPaths:        []string{crdPath},
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
 	}
-	apis.AddToScheme(scheme.Scheme)
 
 	var err error
 	if Config, err = t.Start(); err != nil {

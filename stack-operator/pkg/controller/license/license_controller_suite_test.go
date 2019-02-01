@@ -1,17 +1,15 @@
 package license
 
 import (
-	"log"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
-	"github.com/onsi/gomega"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -19,19 +17,8 @@ import (
 var cfg *rest.Config
 
 func TestMain(m *testing.M) {
-	t := &envtest.Environment{
-		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "config", "crds")},
-	}
-	apis.AddToScheme(scheme.Scheme)
-
-	var err error
-	if cfg, err = t.Start(); err != nil {
-		log.Fatal(err)
-	}
-
-	code := m.Run()
-	t.Stop()
-	os.Exit(code)
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 
 // SetupTestReconcile returns a reconcile.Reconcile implementation that delegates to inner and
@@ -47,12 +34,12 @@ func SetupTestReconcile(inner reconcile.Reconciler) (reconcile.Reconciler, chan 
 }
 
 // StartTestManager adds recFn
-func StartTestManager(mgr manager.Manager, g *gomega.GomegaWithT) (chan struct{}, *sync.WaitGroup) {
+func StartTestManager(mgr manager.Manager, t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	stop := make(chan struct{})
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
-		g.Expect(mgr.Start(stop)).NotTo(gomega.HaveOccurred())
+		assert.NoError(t, mgr.Start(stop))
 		wg.Done()
 	}()
 	return stop, wg

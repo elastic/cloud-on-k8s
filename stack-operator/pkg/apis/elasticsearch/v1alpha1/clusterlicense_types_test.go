@@ -1,20 +1,11 @@
 package v1alpha1
 
 import (
-	"fmt"
 	"testing"
 	"time"
-)
 
-// TODO remove duplication
-func millis(dateStr string) int64 {
-	layout := "2006-01-02"
-	parsed, err := time.Parse(layout, dateStr)
-	if err != nil {
-		panic(fmt.Sprintf("incorrect test setup can't parse date %v", err))
-	}
-	return parsed.UnixNano() / int64(time.Millisecond)
-}
+	. "github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+)
 
 func TestClusterLicense_IsValidAt(t *testing.T) {
 	now := time.Date(2019, 01, 31, 0, 9, 0, 0, time.UTC)
@@ -34,16 +25,16 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "valid license - no margin",
 			fields: fields{
-				startMillis:  millis("2019-01-01"),
-				expiryMillis: millis("2019-12-31"),
+				startMillis:  Millis("2019-01-01"),
+				expiryMillis: Millis("2019-12-31"),
 			},
 			want: true,
 		},
 		{
 			name: "valid license - with margin",
 			fields: fields{
-				startMillis:  millis("2019-01-01"),
-				expiryMillis: millis("2019-12-31"),
+				startMillis:  Millis("2019-01-01"),
+				expiryMillis: Millis("2019-12-31"),
 			},
 			args: args{
 				margin: SafetyMargin{
@@ -56,8 +47,8 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "invalid license - because of margin",
 			fields: fields{
-				startMillis:  millis("2019-01-30"),
-				expiryMillis: millis("2019-12-31"),
+				startMillis:  Millis("2019-01-30"),
+				expiryMillis: Millis("2019-12-31"),
 			},
 			args: args{
 				margin: SafetyMargin{
@@ -70,8 +61,8 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "invalid license - expired",
 			fields: fields{
-				startMillis:  millis("2018-01-01"),
-				expiryMillis: millis("2019-01-01"),
+				startMillis:  Millis("2018-01-01"),
+				expiryMillis: Millis("2019-01-01"),
 			},
 			want: false,
 		},

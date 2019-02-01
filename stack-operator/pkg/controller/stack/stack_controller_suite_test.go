@@ -7,13 +7,16 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestMain(m *testing.M) {
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 

@@ -7,7 +7,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 
@@ -16,6 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 
