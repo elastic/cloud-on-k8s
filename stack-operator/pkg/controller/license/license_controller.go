@@ -50,9 +50,17 @@ func defaultSafetyMargin() v1alpha1.SafetyMargin {
 }
 
 func nextReconcile(expiry time.Time, safety v1alpha1.SafetyMargin) reconcile.Result {
+	return nextReconcileRelativeTo(time.Now(), expiry, safety)
+}
+
+func nextReconcileRelativeTo(now, expiry time.Time, safety v1alpha1.SafetyMargin) reconcile.Result {
+	requeueAfter := expiry.Add(-1 * (safety.ValidFor / 2)).Sub(now)
+	if requeueAfter <= 0 {
+		return reconcile.Result{Requeue: true}
+	}
 	return reconcile.Result{
 		// requeue at expiry minus safetyMargin/2 to ensure we actually reissue a license on the next attempt
-		RequeueAfter: time.Until(expiry.Add(-1 * (safety.ValidFor / 2))),
+		RequeueAfter: requeueAfter,
 	}
 }
 
@@ -215,6 +223,9 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	result, err := r.internalReconcile(request)
 	if result.RequeueAfter > 0 {
 		log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
+	}
+	if result.Requeue {
+		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
 	}
 	return result, err
 }
