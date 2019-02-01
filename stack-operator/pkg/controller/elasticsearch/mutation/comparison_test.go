@@ -68,6 +68,8 @@ var defaultCPULimit = "800m"
 var defaultImage = "image"
 
 func Test_podMatchesSpec(t *testing.T) {
+	fs := corev1.PersistentVolumeFilesystem
+	block := corev1.PersistentVolumeBlock
 	type args struct {
 		pod   corev1.Pod
 		spec  pod.PodSpecContext
@@ -232,6 +234,72 @@ func Test_podMatchesSpec(t *testing.T) {
 			want:                      false,
 			wantErr:                   nil,
 			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes [ foo]",
+		},
+		{
+			name: "Pod has a PVC with an empty VolumeMode",
+			args: args{
+				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				spec: pod.PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "data",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									VolumeMode: nil,
+								},
+							},
+						},
+					},
+				},
+				state: reconcile.ResourcesState{
+					PVCs: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-sample-es-7gnc85w7ll-data"},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								VolumeMode: &fs,
+							},
+						},
+					},
+				},
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			name: "Pod has a PVC with a VolumeMode set to something else than default setting",
+			args: args{
+				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				spec: pod.PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "data",
+								},
+								Spec: corev1.PersistentVolumeClaimSpec{
+									VolumeMode: &block,
+								},
+							},
+						},
+					},
+				},
+				state: reconcile.ResourcesState{
+					PVCs: []corev1.PersistentVolumeClaim{
+						{
+							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-sample-es-7gnc85w7ll-data"},
+							Spec: corev1.PersistentVolumeClaimSpec{
+								VolumeMode: &block,
+							},
+						},
+					},
+				},
+			},
+			want:    true,
+			wantErr: nil,
 		},
 		{
 			name: "Pod has matching PVC",
