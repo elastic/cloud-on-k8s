@@ -17,9 +17,13 @@ func Register(role string, add func(manager.Manager, operator.Parameters) error)
 
 // AddToManager adds all Controllers to the Manager
 func AddToManager(m manager.Manager, role string, params operator.Parameters) error {
-	for _, f := range AddToManagerFuncs[role] {
-		if err := f(m, params); err != nil {
-			return err
+	for k, fs := range AddToManagerFuncs {
+		if role == operator.All || k == role {
+			for _, f := range fs {
+				if err := f(m, params); err != nil {
+					return err
+				}
+			}
 		}
 	}
 	return nil

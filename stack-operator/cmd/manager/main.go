@@ -64,7 +64,7 @@ func init() {
 	)
 	Cmd.Flags().String(
 		operator.RoleFlag,
-		operator.ApplicationOperator,
+		operator.All,
 		"Role this operator manager should assume (either applications or licensing)",
 	)
 
