@@ -97,10 +97,23 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Create(context.TODO(), cluster))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
+	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
-		numLicenses := len(listClusterLicenses(t, c))
+		licenses := listClusterLicenses(t, c)
+		numLicenses := len(licenses)
 		if numLicenses != 1 {
 			return fmt.Errorf("expected exactly 1 cluster license got %d", numLicenses)
+		}
+		owners := licenses[0].OwnerReferences
+		if len(owners) != 1 {
+			return fmt.Errorf("expected exactly 1 owner, got %d", len(owners))
+		}
+
+		ownerName := owners[0].Name
+		ownerKind := owners[0].Kind
+		expectedKind := "ElasticsearchCluster"
+		if ownerName != cluster.Name || ownerKind != expectedKind {
+			return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
 		}
 		return nil
 	})

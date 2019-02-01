@@ -2,6 +2,7 @@ package license
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
@@ -10,6 +11,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/license"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -88,7 +90,44 @@ func assignLicense(c client.Client, clusterName types.NamespacedName) error {
 	}
 	toAssign := match.DeepCopy()
 	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
+	err = setOwnerReference(c, toAssign, clusterName)
+	if err != nil {
+		return err
+	}
 	return c.Create(newContext(), toAssign)
+}
+
+func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense, clusterName types.NamespacedName) error {
+	owner := v1alpha1.ElasticsearchCluster{}
+	err := c.Get(newContext(), clusterName, &owner)
+	if err != nil {
+		return err
+	}
+	gvk := owner.GetObjectKind().GroupVersionKind()
+	blockOwnerDeletion := false
+	isController := false
+	ownerRef := v1.OwnerReference{
+		APIVersion:         gvk.GroupVersion().String(),
+		Kind:               gvk.Kind,
+		Name:               owner.GetName(),
+		UID:                owner.GetUID(),
+		BlockOwnerDeletion: &blockOwnerDeletion,
+		Controller:         &isController,
+	}
+
+	if owner.DeletionTimestamp.IsZero() {
+
+		existing := clusterLicense.GetOwnerReferences()
+		for _, r := range existing {
+			if reflect.DeepEqual(r, ownerRef) {
+				return nil
+			}
+		}
+		existing = append(existing, ownerRef)
+		clusterLicense.SetOwnerReferences(existing)
+		return nil
+	}
+	return nil
 }
 
 func reassignLicense(c client.Client, clusterName types.NamespacedName) error {
@@ -109,13 +148,14 @@ func reassignLicense(c client.Client, clusterName types.NamespacedName) error {
 // and what is in the license spec
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster license in the namespace of the cluster
 	instance := &v1alpha1.ClusterLicense{}
 	err := r.Get(newContext(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err := assignLicense(r, request.NamespacedName)
+			err := assignLicense(r, request.NamespacedName) // TODO requeue / recheck
 			if err != nil {
 				return reconcile.Result{Requeue: true}, err
 			}
@@ -124,8 +164,8 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	if !instance.IsValidAt(time.Now(), v1alpha1.NewSafetyMargin()) {
-		err := reassignLicense(r, request.NamespacedName)
+	if !instance.IsValidAt(time.Now(), v1alpha1.NewSafetyMargin()) { // TODO use actual safety margin
+		err := reassignLicense(r, request.NamespacedName) // TODO requeue / recheck
 		if err != nil {
 			return reconcile.Result{Requeue: true}, err
 		}
