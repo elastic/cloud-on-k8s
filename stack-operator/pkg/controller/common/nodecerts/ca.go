@@ -144,7 +144,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 			if reconciled.Data == nil {
 				reconciled.Data = make(map[string][]byte)
 			}
-			caKey, ok := clusterCASecret.Data[SecretCAKey]
+			caKey, ok := reconciled.Data[SecretCAKey]
 			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
 		},

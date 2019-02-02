@@ -5,11 +5,21 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"reflect"
 	"testing"
 	"time"
 
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	corev1 "k8s.io/api/core/v1"
+	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -82,4 +92,34 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 		Roots:   pool,
 	})
 	assert.NoError(t, err)
+}
+
+func TestReconcilePublicCertsSecret(t *testing.T) {
+	fooCa, _ := NewSelfSignedCa("foo")
+	nsn := types.NamespacedName{
+		Namespace: "ns1",
+		Name:      "a-secret-to-update",
+	}
+	fakeOwner := &corev1.Secret{ObjectMeta: k8s.ToObjectMeta(nsn)}
+
+	// Create an outdated secret
+	c := k8s.WrapClient(fake.NewFakeClient(
+		&corev1.Secret{
+			ObjectMeta: apiV1.ObjectMeta{
+				Name:      nsn.Name,
+				Namespace: nsn.Namespace,
+			},
+			Data: map[string][]byte{"ca.pem": []byte("awronginitialsupersecret1")},
+		}))
+
+	// Reconciliation must update it
+	err := fooCa.ReconcilePublicCertsSecret(c, nsn, fakeOwner, scheme.Scheme)
+	assert.NoError(t, err, "Ooops")
+
+	// Check if the secret has been updated
+	updated := &corev1.Secret{}
+	c.Get(nsn, updated)
+
+	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: fooCa.Cert.Raw})
+	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data["ca.pem"]))
 }
