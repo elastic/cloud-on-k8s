@@ -11,8 +11,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
-	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -30,8 +30,8 @@ func Test_secretRefResolver(t *testing.T) {
 		{
 			name: "happy-path: exactly one sig",
 			initialObjs: []runtime.Object{
-				&v1.Secret{
-					ObjectMeta: v12.ObjectMeta{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "default",
 					},
@@ -51,8 +51,8 @@ func Test_secretRefResolver(t *testing.T) {
 			name:    "error: multiple keys in secret",
 			wantErr: true,
 			initialObjs: []runtime.Object{
-				&v1.Secret{
-					ObjectMeta: v12.ObjectMeta{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "default",
 					},
@@ -67,8 +67,8 @@ func Test_secretRefResolver(t *testing.T) {
 			name:    "error: empty secret",
 			wantErr: true,
 			initialObjs: []runtime.Object{
-				&v1.Secret{
-					ObjectMeta: v12.ObjectMeta{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "default",
 					},
@@ -79,7 +79,7 @@ func Test_secretRefResolver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrapClient(fake.NewFakeClient(tt.initialObjs...))
-			ref := v1.SecretReference{
+			ref := corev1.SecretReference{
 				Name:      "test",
 				Namespace: "default",
 			}
@@ -248,7 +248,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			wantErr: true,
 			initialObjs: []runtime.Object{
 				&v1alpha1.ClusterLicense{
-					ObjectMeta: v12.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-license",
 						Namespace: "default",
 					},
