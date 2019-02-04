@@ -65,7 +65,7 @@ func init() {
 	Cmd.Flags().String(
 		operator.RoleFlag,
 		operator.All,
-		"Role this operator manager should assume (either applications or licensing)",
+		"Role this operator manager should assume (either applications, licensing or all)",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
