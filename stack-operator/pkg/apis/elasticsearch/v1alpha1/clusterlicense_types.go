@@ -7,11 +7,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// License common interface for licenses.
 type License interface {
 	StartDate() time.Time
 	ExpiryDate() time.Time
 }
 
+// LicenseType the type of a license.
 type LicenseType string
 
 const (
@@ -20,12 +22,14 @@ const (
 	LicenseTypePlatinum LicenseType = "platinum"
 )
 
+// LicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var LicenseTypeOrder = map[LicenseType]int{
 	LicenseTypeStandard: 1, // default value 0 for invalid types
 	LicenseTypeGold:     2,
 	LicenseTypePlatinum: 3,
 }
 
+// LicenseTypeFromString converts a given string to a license type if possible.
 func LicenseTypeFromString(s string) *LicenseType {
 	var res LicenseType
 	if LicenseTypeOrder[LicenseType(s)] > 0 {
@@ -34,6 +38,7 @@ func LicenseTypeFromString(s string) *LicenseType {
 	return &res
 }
 
+// LicenseMeta contains license (meta) information shared between enterprise and cluster licenses.
 type LicenseMeta struct {
 	// UID is the license UID not the k8s API UID (!)
 	UID                string `json:"uid"`
@@ -44,14 +49,17 @@ type LicenseMeta struct {
 	StartDateInMillis  int64  `json:"startDateInMillis"`
 }
 
+// StartDate is the date as of which this license is valid.
 func (l LicenseMeta) StartDate() time.Time {
 	return time.Unix(0, l.StartDateInMillis*int64(time.Millisecond))
 }
 
+// ExpiryDate is the date as of which the license is no longer valid.
 func (l LicenseMeta) ExpiryDate() time.Time {
 	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
 }
 
+// IsValid returns true if the license is still valid a the given point in time factoring in the given safety margin.
 func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
 	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
 		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
