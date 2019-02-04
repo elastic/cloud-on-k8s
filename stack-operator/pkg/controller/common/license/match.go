@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type DesiredLicenseType *v1alpha1.LicenseType
@@ -57,7 +57,7 @@ func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses 
 				if typeMatches(licenseType, l.Type) && l.IsValid(now, v1alpha1.NewSafetyMargin()) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						l: v1alpha1.ClusterLicense{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Name:      el.Name,
 								Namespace: el.Namespace,
 							},

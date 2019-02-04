@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -130,7 +130,7 @@ func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v
 	}
 
 	expected := corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: cluster.Namespace,
 		},
@@ -182,7 +182,7 @@ func setOwnerReference(c client.Client, clusterLicense *v1alpha1.ClusterLicense,
 	gvk := owner.GetObjectKind().GroupVersionKind()
 	blockOwnerDeletion := false
 	isController := false
-	ownerRef := v1.OwnerReference{
+	ownerRef := metav1.OwnerReference{
 		APIVersion:         gvk.GroupVersion().String(),
 		Kind:               gvk.Kind,
 		Name:               owner.GetName(),
