@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
+	"github.com/pkg/errors"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/fsnotify/fsnotify"
@@ -58,8 +59,8 @@ type Config struct {
 	User client.User
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
 	Endpoint string
-	// CACerts contains the CA certificate chain to call the Elasticsearch API. Can be empty if ReloadCredentials is false.
-	CACerts []byte
+	// CACerts loads the CA certificate chain to call the Elasticsearch API. Can be a NOOP if ReloadCredentials is false.
+	CACerts func() ([]byte, error)
 	// ReloadQueue is a channel to schedule config reload requests
 	ReloadQueue workqueue.DelayingInterface
 }
@@ -112,7 +113,17 @@ func coalescingRetry(cfg Config) {
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
 // to reload reloadable settings after the keystore has been updated.
 func reloadCredentials(cfg Config) error {
-	caCerts, err := certutil.ParsePEMCerts(cfg.CACerts)
+	if cfg.CACerts == nil {
+		fatal(
+			errors.New("configuration error: CA certs are not configured but credential reload requested"),
+			"while attempting secure credential reload",
+		)
+	}
+	caBytes, err := cfg.CACerts()
+	if err != nil {
+		return err
+	}
+	caCerts, err := certutil.ParsePEMCerts(caBytes)
 	if err != nil {
 		fatal(err, "Cannot create Elasticsearch client from CA cert")
 	}
@@ -225,9 +236,12 @@ func validateConfig() Config {
 				"Invalid config",
 			)
 		}
-		var certificates []byte
+		var caLoader func() ([]byte, error)
 		if shouldReload {
-			certificates, err = ioutil.ReadFile(caCerts)
+			caLoader = func() ([]byte, error) {
+				return ioutil.ReadFile(caCerts)
+			}
+			_, err := caLoader() // test run
 			if err != nil {
 				fatal(err, "CA certificates are required when reloading credentials but could not be read")
 			}
@@ -237,7 +251,7 @@ func validateConfig() Config {
 			Password: pass,
 		}
 		config.Endpoint = viper.GetString(endpointFlag)
-		config.CACerts = certificates
+		config.CACerts = caLoader
 	}
 	return config
 }
@@ -250,7 +264,7 @@ func execute() {
 		go coalescingRetry(config)
 	}
 
-	//initial update/create
+	// initial update/create
 	updateKeystore(config)
 
 	watcher, err := fsnotify.NewWatcher()
