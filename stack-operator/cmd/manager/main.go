@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller"
 	"github.com/elastic/stack-operators/stack-operator/pkg/dev/portforward"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
 	"github.com/elastic/stack-operators/stack-operator/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -27,6 +28,7 @@ const (
 	DefaultMetricPort = 8080
 
 	AutoPortForwardFlagName = "auto-port-forward"
+	NamespaceFlagName       = "namespace"
 )
 
 var (
@@ -46,6 +48,11 @@ var (
 
 func init() {
 
+	Cmd.Flags().String(
+		NamespaceFlagName,
+		k8s.GuessCurrentNamespace("default"),
+		"namespace in which this operator should manage resources (for dev use only)",
+	)
 	Cmd.Flags().String(
 		operator.ImageFlag,
 		"",
@@ -105,7 +112,10 @@ func execute() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("setting up manager")
-	opts := manager.Options{}
+	opts := manager.Options{
+		// restrict the operator to watch resources within a single namespace
+		Namespace: viper.GetString(NamespaceFlagName),
+	}
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)

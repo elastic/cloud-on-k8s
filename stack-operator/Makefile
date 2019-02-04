@@ -80,7 +80,7 @@ else
 	# Run the operator locally with port-forwarding enabled, so that
 	# it can reach services running in the cluster through k8s port-forward feature
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-		go run ./cmd/main.go manager --development $(MANAGER_ARGS)
+		go run ./cmd/main.go manager --development $(MANAGER_ARGS) --namespace $(OPERATOR_NAMESPACE)
 endif
 
 .PHONY: logs
