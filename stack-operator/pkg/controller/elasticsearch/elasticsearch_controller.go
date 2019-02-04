@@ -1,7 +1,6 @@
 package elasticsearch
 
 import (
-	"context"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -25,7 +24,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -58,15 +56,16 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 	if err != nil {
 		return nil, err
 	}
+	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
-		Client:   mgr.GetClient(),
+		Client:   client,
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		esCa:        esCa,
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
-		finalizers:       finalizer.NewHandler(mgr.GetClient()),
+		finalizers:       finalizer.NewHandler(client),
 		dynamicWatches:   watches.NewDynamicWatches(),
 		podsExpectations: reconciler.NewExpectations(),
 
@@ -147,7 +146,7 @@ var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 
 // ReconcileElasticsearch reconciles a Elasticsearch object
 type ReconcileElasticsearch struct {
-	client.Client
+	k8s.Client
 	operator.Parameters
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
@@ -191,7 +190,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 
 	// Fetch the Elasticsearch instance
 	es := elasticsearchv1alpha1.ElasticsearchCluster{}
-	err := r.Get(context.TODO(), request.NamespacedName, &es)
+	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -266,7 +265,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	if cluster == nil {
 		return nil
 	}
-	return r.Status().Update(context.TODO(), cluster)
+	return r.Status().Update(cluster)
 }
 
 // finalizersFor returns the list of finalizers applying to a given es cluster

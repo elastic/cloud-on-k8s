@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -15,6 +14,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	certs "k8s.io/api/certificates/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,11 +73,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	c, err := client.New(cfg, client.Options{})
+	client, err := client.New(cfg, client.Options{})
 	if err != nil {
 		log.Error(err, "cannot create kubernetes client")
 		os.Exit(1)
 	}
+	c := k8s.WrapClient(client)
 
 	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	if err != nil {
@@ -146,7 +147,7 @@ func main() {
 		csr.ObjectMeta.Labels = labels
 	}
 
-	if err := c.Create(context.TODO(), &csr); err != nil && !apierrors.IsAlreadyExists(err) {
+	if err := c.Create(&csr); err != nil && !apierrors.IsAlreadyExists(err) {
 		log.Error(err, "unable to create CSR resource")
 		os.Exit(1)
 	}

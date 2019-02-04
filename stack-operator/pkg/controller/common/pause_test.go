@@ -5,16 +5,16 @@ import (
 	"testing"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // Create a fake client that will return some owners
-func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string) client.Client {
+func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string) k8s.Client {
 	var stacks []runtime.Object
 	for i, annotation := range ownerAnnotationSequence {
 		stack := &v1alpha1.Stack{
@@ -30,7 +30,7 @@ func ownerClient(sc *runtime.Scheme, ownerAnnotationSequence []map[string]string
 		}
 		stacks = append(stacks, stack)
 	}
-	return fake.NewFakeClientWithScheme(sc, stacks...)
+	return k8s.WrapClient(fake.NewFakeClientWithScheme(sc, stacks...))
 }
 
 type testcase struct {

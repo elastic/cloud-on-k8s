@@ -6,21 +6,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 
 	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"golang.org/x/net/context"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c client.Client
+var c k8s.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var depKey = types.NamespacedName{Name: "foo-kibana", Namespace: "default"}
@@ -35,7 +34,7 @@ func TestReconcile(t *testing.T) {
 	// channel when it is finished.
 	mgr, err := manager.New(test.Config, manager.Options{})
 	assert.NoError(t, err)
-	c = mgr.GetClient()
+	c = k8s.WrapClient(mgr.GetClient())
 
 	recFn, requests := SetupTestReconcile(newReconciler(mgr))
 	assert.NoError(t, add(mgr, recFn))
@@ -48,7 +47,7 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Create the Kibana object and expect the Reconcile and Deployment to be created
-	err = c.Create(context.TODO(), instance)
+	err = c.Create(instance)
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {
@@ -56,20 +55,20 @@ func TestReconcile(t *testing.T) {
 		return
 	}
 	assert.NoError(t, err)
-	defer c.Delete(context.TODO(), instance)
+	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	deploy := &appsv1.Deployment{}
 	test.RetryUntilSuccess(t, func() error {
-		return c.Get(context.TODO(), depKey, deploy)
+		return c.Get(depKey, deploy)
 	})
 
 	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
-	assert.NoError(t, c.Delete(context.TODO(), deploy))
+	assert.NoError(t, c.Delete(deploy))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	test.RetryUntilSuccess(t, func() error {
-		return c.Get(context.TODO(), depKey, deploy)
+		return c.Get(depKey, deploy)
 	})
 	// Manually delete Deployment since GC isn't enabled in the test control plane
 	test.DeleteIfExists(t, c, deploy)

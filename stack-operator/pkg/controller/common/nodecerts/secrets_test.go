@@ -7,13 +7,13 @@ import (
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -103,7 +103,7 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 	preExistingSecret := &corev1.Secret{}
 
 	type args struct {
-		c                   client.Client
+		c                   k8s.Client
 		scheme              *runtime.Scheme
 		owner               metav1.Object
 		pod                 corev1.Pod
@@ -119,7 +119,7 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 		{
 			name: "should create a secret if it does not already exist",
 			args: args{
-				c:                   fake.NewFakeClient(),
+				c:                   k8s.WrapClient(fake.NewFakeClient()),
 				nodeCertificateType: LabelNodeCertificateTypeElasticsearchAll,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
@@ -130,7 +130,7 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 		{
 			name: "should not create a new secret if it already exists",
 			args: args{
-				c: fake.NewFakeClient(preExistingSecret),
+				c: k8s.WrapClient(fake.NewFakeClient(preExistingSecret)),
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				assert.Equal(t, preExistingSecret, secret)

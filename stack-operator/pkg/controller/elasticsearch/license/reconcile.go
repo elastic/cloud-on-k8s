@@ -5,7 +5,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -17,7 +16,7 @@ const (
 
 // Reconcile reconciles the current Elasticsearch license with the desired one.
 func Reconcile(
-	c client.Client,
+	c k8s.Client,
 	w watches.DynamicWatches,
 	esCluster v1alpha1.ElasticsearchCluster,
 	clusterClient *esclient.Client,

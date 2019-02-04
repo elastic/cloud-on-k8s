@@ -1,7 +1,6 @@
 package nodecerts
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -21,7 +21,7 @@ import (
 var log = logf.KBLog.WithName("nodecerts")
 
 func ReconcileNodeCertificateSecrets(
-	c client.Client,
+	c k8s.Client,
 	ca *nodecerts.Ca,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
@@ -38,7 +38,7 @@ func ReconcileNodeCertificateSecrets(
 		podName := secret.Labels[nodecerts.LabelAssociatedPod]
 
 		var pod corev1.Pod
-		if err := c.Get(context.TODO(), types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
+		if err := c.Get(types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
 			if !apierrors.IsNotFound(err) {
 				return reconcile.Result{}, err
 			}
@@ -47,7 +47,7 @@ func ReconcileNodeCertificateSecrets(
 			if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
 				// if the secret has existed for too long without an associated pod, it's time to GC it
 				log.Info("Unable to find pod associated with secret, GCing", "secret", secret.Name)
-				if err := c.Delete(context.TODO(), &secret); err != nil {
+				if err := c.Delete(&secret); err != nil {
 					return reconcile.Result{}, err
 				}
 			} else {
@@ -86,7 +86,7 @@ func ReconcileNodeCertificateSecrets(
 }
 
 func findNodeCertificateSecrets(
-	c client.Client,
+	c k8s.Client,
 	es v1alpha1.ElasticsearchCluster,
 ) ([]corev1.Secret, error) {
 	var nodeCertificateSecrets corev1.SecretList
@@ -98,7 +98,7 @@ func findNodeCertificateSecrets(
 		}).AsSelector(),
 	}
 
-	if err := c.List(context.TODO(), &listOptions, &nodeCertificateSecrets); err != nil {
+	if err := c.List(&listOptions, &nodeCertificateSecrets); err != nil {
 		return nil, err
 	}
 
