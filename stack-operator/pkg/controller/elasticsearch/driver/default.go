@@ -247,6 +247,8 @@ func (d *defaultDriver) Reconcile(
 			msg := "Could not reconcile snapshot repository"
 			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
+			// requeue to retry but continue as failure might be cause by transient inconsistency between ES and operator
+			// e.g. after certificates have been rotated
 			results.WithResult(defaultRequeue)
 		}
 	}
