@@ -195,15 +195,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 	return found.ExpiryDate(), err
 }
 
-// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
-// If there is none it assigns a new one.
-// In any case it schedules a new reconcile request to be processed when the license is about to expire.
-// This happens independently from any watch triggered reconcile request.
-//
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
-func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileLicenses) reconcileAux(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster to ensure it still exists
 	owner := v1alpha1.ElasticsearchCluster{}
 	err := r.Get(newContext(), request.NamespacedName, &owner)
@@ -220,13 +212,29 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 		return reconcile.Result{}, nil
 	}
 	safetyMargin := defaultSafetyMargin()
-	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
 	newExpiry, err := r.reconcileClusterLicense(owner, safetyMargin)
 	if err != nil {
-		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
 		return reconcile.Result{Requeue: true}, err
 	}
-	result := nextReconcile(newExpiry, safetyMargin)
-	log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
-	return result, nil
+	return nextReconcile(newExpiry, safetyMargin), nil
+}
+
+// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
+// If there is none it assigns a new one.
+// In any case it schedules a new reconcile request to be processed when the license is about to expire.
+// This happens independently from any watch triggered reconcile request.
+//
+// Automatically generate RBAC rules to allow the Controller to read and write Deployments
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
+func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
+	result, err := r.reconcileAux(request)
+	if result.Requeue {
+		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
+	}
+	if result.RequeueAfter > 0 {
+		log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
+	}
+	return result, err
 }
