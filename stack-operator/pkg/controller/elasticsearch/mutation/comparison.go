@@ -232,7 +232,8 @@ func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim,
 		return false
 	}
 
-	if !reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualVolumeAndPVC.pvc.Spec.VolumeMode) {
+	if pvcTemplate.Spec.VolumeMode != nil &&
+		!reflect.DeepEqual(pvcTemplate.Spec.VolumeMode, actualVolumeAndPVC.pvc.Spec.VolumeMode) {
 		return false
 	}
 
