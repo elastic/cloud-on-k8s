@@ -34,9 +34,11 @@ func NewStackBuilder(name string) Builder {
 				Namespace: helpers.DefaultNamespace,
 			},
 			Spec: stacktype.StackSpec{
-				Elasticsearch: estype.ElasticsearchSpec{},
-				Kibana:        kbtype.KibanaSpec{},
-				Version:       defaultVersion,
+				Elasticsearch: estype.ElasticsearchSpec{
+					SetVMMaxMapCount: true,
+				},
+				Kibana:  kbtype.KibanaSpec{},
+				Version: defaultVersion,
 			},
 		},
 	}
