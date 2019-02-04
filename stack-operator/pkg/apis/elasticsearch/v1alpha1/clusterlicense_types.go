@@ -59,7 +59,7 @@ func (l LicenseMeta) ExpiryDate() time.Time {
 	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
 }
 
-// IsValid returns true if the license is still valid a the given point in time factoring in the given safety margin.
+// IsValid returns true if the license is still valid at the given point in time factoring in the given safety margin.
 func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
 	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
 		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
@@ -117,7 +117,7 @@ func NoSafetyMargin() SafetyMargin {
 	return SafetyMargin{}
 }
 
-// IsValid returns true if the license is still valid a the given point in time factoring in the given safety margin.
+// IsValid returns true if the license is still valid at the given point in time factoring in the given safety margin.
 func (l ClusterLicense) IsValid(instant time.Time, margin SafetyMargin) bool {
 	return l.Spec.IsValid(instant, margin)
 }
