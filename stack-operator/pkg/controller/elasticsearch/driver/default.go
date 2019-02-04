@@ -251,16 +251,6 @@ func (d *defaultDriver) Reconcile(
 		},
 	)
 
-	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
-		err = snapshot.EnsureSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
-		if err != nil {
-			// TODO decide should this be a reason to stop this reconciliation loop?
-			msg := "Could not ensure snapshot repository"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
-		}
-	}
-
 	if d.clusterInitialMasterNodesEnforcer != nil {
 		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
 		if err != nil {
