@@ -1,4 +1,4 @@
-SHELL := /bin/bash
+export SHELL := /bin/bash
 INSTALL_HELP = "please refer to the README.md for how to install it."
 GO := $(shell command -v go)
 GOIMPORTS := $(shell command -v goimports)
