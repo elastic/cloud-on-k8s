@@ -12,7 +12,7 @@ import (
 func Test_typeMatches(t *testing.T) {
 	platinum := v1alpha1.LicenseTypePlatinum
 	type args struct {
-		d DesiredLicenseType
+		d v1alpha1.LicenseType
 		t v1alpha1.LicenseType
 	}
 	tests := []struct {
@@ -23,7 +23,7 @@ func Test_typeMatches(t *testing.T) {
 		{
 			name: "types match",
 			args: args{
-				d: &platinum,
+				d: platinum,
 				t: v1alpha1.LicenseTypePlatinum,
 			},
 			want: true,
@@ -31,7 +31,6 @@ func Test_typeMatches(t *testing.T) {
 		{
 			name: "types match: no type requested",
 			args: args{
-				d: nil,
 				t: v1alpha1.LicenseTypeGold,
 			},
 			want: true,
@@ -39,7 +38,7 @@ func Test_typeMatches(t *testing.T) {
 		{
 			name: "types differ",
 			args: args{
-				d: &platinum,
+				d: platinum,
 				t: v1alpha1.LicenseTypeGold,
 			},
 			want: false,
@@ -87,7 +86,7 @@ func license(l v1alpha1.ClusterLicenseSpec, t v1alpha1.LicenseType) v1alpha1.Clu
 func Test_bestMatchAt(t *testing.T) {
 	type args struct {
 		licenses       []v1alpha1.EnterpriseLicense
-		desiredLicense DesiredLicenseType
+		desiredLicense v1alpha1.LicenseType
 	}
 	tests := []struct {
 		name    string
@@ -222,7 +221,7 @@ func Test_bestMatchAt(t *testing.T) {
 						},
 					},
 				},
-				desiredLicense: &gold,
+				desiredLicense: gold,
 			},
 			want:    license(twoMonth, gold),
 			wantErr: false,
@@ -278,7 +277,7 @@ func Test_bestMatchAt(t *testing.T) {
 
 func Test_filterValidForType(t *testing.T) {
 	type args struct {
-		licenseType DesiredLicenseType
+		licenseType v1alpha1.LicenseType
 		licenses    []v1alpha1.EnterpriseLicense
 	}
 	tests := []struct {
