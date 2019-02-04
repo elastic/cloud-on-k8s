@@ -199,8 +199,8 @@ func TestDelayingQueueInvariants(t *testing.T) {
 		{
 			name: "but dedup's and updates item within the wait queue",
 			adds: func(q workqueue.DelayingInterface) {
-				q.AddAfter(item, 1*time.Hour)
-				q.AddAfter(item, 1*time.Millisecond)
+				q.AddAfter(item, 1*time.Hour)        // schedule for an hour from now
+				q.AddAfter(item, 1*time.Millisecond) // update scheduled item for a millisecond from now
 			},
 			expectedObservations: 1,
 			timeout:              10 * time.Millisecond,
@@ -209,7 +209,7 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			name: "direct add and delayed add are independent",
 			adds: func(q workqueue.DelayingInterface) {
 				q.AddAfter(item, 10*time.Millisecond)
-				q.Add(item) // should work despite one item in the work queu
+				q.Add(item) // should work despite one item in the work queue
 			},
 			expectedObservations: 2,
 			timeout:              20 * time.Millisecond,

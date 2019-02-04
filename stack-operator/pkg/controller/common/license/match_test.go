@@ -263,12 +263,12 @@ func Test_bestMatchAt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := bestMatchAt(now, tt.args.licenses, tt.args.desiredLicense)
+			got, _, err := bestMatchAt(now, tt.args.licenses, tt.args.desiredLicense)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
 				return
 			}
-			if !reflect.DeepEqual(got, v1alpha1.ClusterLicense{Spec: tt.want}) {
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("bestMatchAt() = %v, want %v", got, tt.want)
 			}
 		})
@@ -315,13 +315,11 @@ func Test_filterValidForType(t *testing.T) {
 			},
 			want: []licenseWithTimeLeft{
 				{
-					l: v1alpha1.ClusterLicense{
-						Spec: v1alpha1.ClusterLicenseSpec{
-							Type: v1alpha1.LicenseTypePlatinum,
-							LicenseMeta: v1alpha1.LicenseMeta{
-								ExpiryDateInMillis: Millis("2019-02-01"),
-								StartDateInMillis:  Millis("2019-01-01"),
-							},
+					license: v1alpha1.ClusterLicenseSpec{
+						Type: v1alpha1.LicenseTypePlatinum,
+						LicenseMeta: v1alpha1.LicenseMeta{
+							ExpiryDateInMillis: Millis("2019-02-01"),
+							StartDateInMillis:  Millis("2019-01-01"),
 						},
 					},
 					remaining: 24 * time.Hour,

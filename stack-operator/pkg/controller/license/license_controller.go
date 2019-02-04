@@ -89,24 +89,30 @@ type ReconcileLicenses struct {
 }
 
 // findLicenseFor tries to find a matching license for the given cluster identified by its namespaced name.
-func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicense, error) {
-	var noLicense v1alpha1.ClusterLicense
-	cluster := v1alpha1.ElasticsearchCluster{}
+func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
+	var noLicense v1alpha1.ClusterLicenseSpec
+	var noParent metav1.ObjectMeta
+	var cluster v1alpha1.ElasticsearchCluster
 	err := c.Get(clusterName, &cluster)
 	if err != nil {
-		return noLicense, err
+		return noLicense, noParent, err
 	}
 	desiredType := v1alpha1.LicenseTypeFromString(cluster.Labels[license.Expectation])
 	licenseList := v1alpha1.EnterpriseLicenseList{}
 	err = c.List(&client.ListOptions{}, &licenseList)
 	if err != nil {
-		return noLicense, err
+		return noLicense, noParent, err
 	}
 	return match.BestMatch(licenseList.Items, desiredType)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
-func reconcileSecret(c k8s.Client, cluster v1alpha1.ElasticsearchCluster, l v1alpha1.ClusterLicense) (corev1.SecretKeySelector, error) {
+func reconcileSecret(
+	c k8s.Client,
+	cluster v1alpha1.ElasticsearchCluster,
+	ref corev1.SecretKeySelector,
+	ns string,
+) (corev1.SecretKeySelector, error) {
 	secretName := cluster.Name + "-license"
 	secretKey := "sig"
 	selector := corev1.SecretKeySelector{
@@ -117,7 +123,7 @@ func reconcileSecret(c k8s.Client, cluster v1alpha1.ElasticsearchCluster, l v1al
 	}
 
 	var controllerSecret corev1.Secret
-	err := c.Get(types.NamespacedName{Namespace: l.Namespace, Name: l.Spec.SignatureRef.Name}, &controllerSecret)
+	err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &controllerSecret)
 	if err != nil {
 		return selector, err
 	}
@@ -128,7 +134,7 @@ func reconcileSecret(c k8s.Client, cluster v1alpha1.ElasticsearchCluster, l v1al
 			Namespace: cluster.Namespace,
 		},
 		Data: map[string][]byte{
-			secretKey: controllerSecret.Data[l.Spec.SignatureRef.Key],
+			secretKey: controllerSecret.Data[ref.Key],
 		},
 	}
 	var reconciled corev1.Secret
@@ -155,17 +161,19 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
-	found, err := findLicenseFor(r, clusterName)
+	found, parent, err := findLicenseFor(r, clusterName)
 	if err != nil {
 		return noResult, err
 	}
-	selector, err := reconcileSecret(r, cluster, found)
+	selector, err := reconcileSecret(r, cluster, found.SignatureRef, parent.Namespace)
 	if err != nil {
 		return noResult, err
 	}
 
-	toAssign := found.DeepCopy()
-	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
+	toAssign := &v1alpha1.ClusterLicense{
+		ObjectMeta: k8s.ToObjectMeta(clusterName),
+		Spec:       found,
+	}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{
@@ -182,10 +190,10 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 			reconciled.Spec = toAssign.Spec
 		},
 		OnCreate: func() {
-			log.Info("Assigning license", "cluster", clusterName, "license", found.Spec.UID, "expiry", found.ExpiryDate())
+			log.Info("Assigning license", "cluster", clusterName, "license", found.UID, "expiry", found.ExpiryDate())
 		},
 		OnUpdate: func() {
-			log.Info("Updating license to", "cluster", clusterName, "license", found.Spec.UID, "expiry", found.ExpiryDate())
+			log.Info("Updating license to", "cluster", clusterName, "license", found.UID, "expiry", found.ExpiryDate())
 		},
 	})
 	return found.ExpiryDate(), err

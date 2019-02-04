@@ -81,8 +81,9 @@ func ReconcileResource(params Params) error {
 	err = params.Client.Get(types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
-		if params.OnCreate == nil {
-			log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
+		log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
+		if params.OnCreate != nil {
+			params.OnCreate()
 		}
 
 		// Copy the content of params.Expected into params.Reconciled.
@@ -104,8 +105,9 @@ func ReconcileResource(params Params) error {
 
 	// Update if needed
 	if params.NeedsUpdate() {
-		if params.OnUpdate == nil {
-			log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
+		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
+		if params.OnUpdate != nil {
+			params.OnUpdate()
 		}
 		params.UpdateReconciled()
 		err := params.Client.Update(params.Reconciled)
