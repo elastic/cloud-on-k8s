@@ -184,16 +184,6 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if esReachable {
-		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
-		if err != nil {
-			// TODO decide should this be a reason to stop this reconciliation loop?
-			msg := "Could not ensure snapshot repository"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
-		}
-	}
-
 	namespacedName := k8s.ExtractNamespacedName(es.ObjectMeta)
 
 	// There might be some ongoing creations and deletions our k8s client cache
@@ -251,13 +241,13 @@ func (d *defaultDriver) Reconcile(
 		},
 	)
 
-	if esReachable { // TODO this needs to happen outside of reconcileElasticsearchPods pending refactoring
-		err = snapshot.EnsureSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
+	if esReachable {
+		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
 		if err != nil {
-			// TODO decide should this be a reason to stop this reconciliation loop?
-			msg := "Could not ensure snapshot repository"
+			msg := "Could not reconcile snapshot repository"
 			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
+			results.WithResult(defaultRequeue)
 		}
 	}
 
