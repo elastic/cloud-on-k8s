@@ -18,8 +18,9 @@ namePrefix: stack-operators-
 # YAML string, with resources separated by document
 # markers ("---").
 resources:
-- ../rbac/rbac_role.yaml
-- ../rbac/rbac_role_binding.yaml
+- ../rbac/namespaced_role_binding.yaml
+- ../rbac/namespaced_role.yaml
+- ../rbac/namespaced_service_account.yaml
 - ../manager/manager.yaml
 
 patches:
