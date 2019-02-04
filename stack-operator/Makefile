@@ -304,7 +304,7 @@ TESTS_MATCH ?= ""
 # run e2e tests
 # can be overriden with the name of the test to run, eg.:
 # make e2e TESTS_MATCH=TestMutationMoreNodes
-e2e: docker-e2e
+e2e: e2e-rbac docker-e2e
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	# always pull latest img on gke
 	./hack/run_e2e.sh "$(E2E_IMG):$(IMG_TAG)" Always "$(TESTS_MATCH)"
@@ -315,7 +315,7 @@ endif
 
 # run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding
-e2e-local:
+e2e-local: e2e-rbac
 	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Build and (maybe) push e2e tests Docker image
@@ -329,3 +329,11 @@ else
 	eval $$(minikube docker-env) ;\
 	docker build -t $(E2E_IMG):$(IMG_TAG) -f test/e2e/Dockerfile .
 endif
+
+# Run the operator in the e2e namespace
+run-e2e-operator: e2e-rbac
+	$(MAKE) run OPERATOR_NAMESPACE=e2e
+
+# Apply e2e rbac resources to the k8s cluster
+e2e-rbac:
+	kubectl apply -f config/e2e/rbac.yaml
