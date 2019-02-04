@@ -51,7 +51,7 @@ func bestMatchAt(
 }
 
 func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses []v1alpha1.EnterpriseLicense) []licenseWithTimeLeft {
-	// assuming the typical enterprise license contains 3 sets of the 3 license types
+	// optimistically assuming the typical enterprise license contains 3 sets of the 3 license types
 	filtered := make([]licenseWithTimeLeft, 0, len(licenses)*3*3)
 	for _, el := range licenses {
 		if el.IsValid(now) {

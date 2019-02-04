@@ -164,16 +164,16 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
-	match, err := findLicenseFor(r, clusterName)
+	found, err := findLicenseFor(r, clusterName)
 	if err != nil {
 		return noResult, err
 	}
-	selector, err := reconcileSecret(r, cluster, match)
+	selector, err := reconcileSecret(r, cluster, found)
 	if err != nil {
 		return noResult, err
 	}
 
-	toAssign := match.DeepCopy()
+	toAssign := found.DeepCopy()
 	toAssign.ObjectMeta = k8s.ToObjectMeta(clusterName)
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
@@ -191,13 +191,13 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 			reconciled.Spec = toAssign.Spec
 		},
 		OnCreate: func() {
-			log.Info("Assigning license", "cluster", clusterName, "license", match.Spec.UID, "expiry", match.ExpiryDate())
+			log.Info("Assigning license", "cluster", clusterName, "license", found.Spec.UID, "expiry", found.ExpiryDate())
 		},
 		OnUpdate: func() {
-			log.Info("Updating license to", "cluster", clusterName, "license", match.Spec.UID, "expiry", match.ExpiryDate())
+			log.Info("Updating license to", "cluster", clusterName, "license", found.Spec.UID, "expiry", found.ExpiryDate())
 		},
 	})
-	return match.ExpiryDate(), err
+	return found.ExpiryDate(), err
 }
 
 // Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
