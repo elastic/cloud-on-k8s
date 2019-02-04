@@ -11,7 +11,7 @@ import (
 )
 
 func Test_nextReconcileRelativeTo(t *testing.T) {
-	now := test.Time("2019-02-01")
+	now := test.MustParseTime("2019-02-01")
 	type args struct {
 		expiry time.Time
 		safety v1alpha1.SafetyMargin
@@ -24,7 +24,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		{
 			name: "remaining time too short: requeue immediately ",
 			args: args{
-				expiry: test.Time("2019-02-02"),
+				expiry: test.MustParseTime("2019-02-02"),
 				safety: v1alpha1.SafetyMargin{
 					ValidFor: 30 * 24 * time.Hour,
 				},
@@ -34,7 +34,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		{
 			name: "default: requeue after expiry - safety/2 ",
 			args: args{
-				expiry: test.Time("2019-02-03"),
+				expiry: test.MustParseTime("2019-02-03"),
 				safety: v1alpha1.SafetyMargin{
 					ValidFor: 48 * time.Hour,
 				},

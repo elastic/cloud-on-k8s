@@ -29,6 +29,25 @@ var (
 	log = logf.Log.WithName("license-controller")
 )
 
+// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
+// If there is none it assigns a new one.
+// In any case it schedules a new reconcile request to be processed when the license is about to expire.
+// This happens independently from any watch triggered reconcile request.
+//
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
+func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
+	result, err := r.reconcileInternal(request)
+	if result.Requeue {
+		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
+	}
+	if result.RequeueAfter > 0 {
+		log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
+	}
+	return result, err
+}
+
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {
@@ -122,8 +141,8 @@ func reconcileSecret(
 		Key: secretKey,
 	}
 
-	var controllerSecret corev1.Secret
-	err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &controllerSecret)
+	var globalSecret corev1.Secret
+	err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &globalSecret)
 	if err != nil {
 		return selector, err
 	}
@@ -134,7 +153,7 @@ func reconcileSecret(
 			Namespace: cluster.Namespace,
 		},
 		Data: map[string][]byte{
-			secretKey: controllerSecret.Data[ref.Key],
+			secretKey: globalSecret.Data[ref.Key],
 		},
 	}
 	var reconciled corev1.Secret
@@ -161,18 +180,18 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
-	found, parent, err := findLicenseFor(r, clusterName)
+	matchingSpec, parent, err := findLicenseFor(r, clusterName)
 	if err != nil {
 		return noResult, err
 	}
-	selector, err := reconcileSecret(r, cluster, found.SignatureRef, parent.Namespace)
+	selector, err := reconcileSecret(r, cluster, matchingSpec.SignatureRef, parent.Namespace)
 	if err != nil {
 		return noResult, err
 	}
 
 	toAssign := &v1alpha1.ClusterLicense{
-		ObjectMeta: k8s.ToObjectMeta(clusterName),
-		Spec:       found,
+		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
+		Spec:       matchingSpec,
 	}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
@@ -186,20 +205,19 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 			return !reconciled.IsValid(time.Now(), margin)
 		},
 		UpdateReconciled: func() {
-
 			reconciled.Spec = toAssign.Spec
 		},
 		OnCreate: func() {
-			log.Info("Assigning license", "cluster", clusterName, "license", found.UID, "expiry", found.ExpiryDate())
+			log.Info("Assigning license", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
 		},
 		OnUpdate: func() {
-			log.Info("Updating license to", "cluster", clusterName, "license", found.UID, "expiry", found.ExpiryDate())
+			log.Info("Updating license to", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
 		},
 	})
-	return found.ExpiryDate(), err
+	return matchingSpec.ExpiryDate(), err
 }
 
-func (r *ReconcileLicenses) reconcileAux(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster to ensure it still exists
 	owner := v1alpha1.ElasticsearchCluster{}
 	err := r.Get(request.NamespacedName, &owner)
@@ -221,24 +239,4 @@ func (r *ReconcileLicenses) reconcileAux(request reconcile.Request) (reconcile.R
 		return reconcile.Result{Requeue: true}, err
 	}
 	return nextReconcile(newExpiry, safetyMargin), nil
-}
-
-// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
-// If there is none it assigns a new one.
-// In any case it schedules a new reconcile request to be processed when the license is about to expire.
-// This happens independently from any watch triggered reconcile request.
-//
-// Automatically generate RBAC rules to allow the Controller to read and write Deployments
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
-func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
-	result, err := r.reconcileAux(request)
-	if result.Requeue {
-		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
-	}
-	if result.RequeueAfter > 0 {
-		log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
-	}
-	return result, err
 }

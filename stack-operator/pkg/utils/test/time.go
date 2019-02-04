@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// Time is a convenience function to create a 0 hour 0 minute time value from a string with layourt 2006-01-02.
+// MustParseTime is a convenience function to create a 0 hour 0 minute time value from a string with layout 2006-01-02.
 // Panics! Convenience function for testing purposes only.
-func Time(dateStr string) time.Time {
+func MustParseTime(dateStr string) time.Time {
 	layout := "2006-01-02"
 	parsed, err := time.Parse(layout, dateStr)
 	if err != nil {
@@ -19,7 +19,7 @@ func Time(dateStr string) time.Time {
 // Millis calculates milliseconds from the given date string with layout 2006-01-02.
 // Panics! Convenience function for testing purposes only.
 func Millis(dateStr string) int64 {
-	return ToMillis(Time(dateStr))
+	return ToMillis(MustParseTime(dateStr))
 }
 
 // ToMillis returns t in milliseconds.
