@@ -9,10 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type DesiredLicenseType *v1alpha1.LicenseType
-
-func typeMatches(d DesiredLicenseType, t v1alpha1.LicenseType) bool {
-	return d == nil || *d == t
+func typeMatches(d v1alpha1.LicenseType, t v1alpha1.LicenseType) bool {
+	return d == "" || v1alpha1.LicenseType(d) == t
 }
 
 type licenseWithTimeLeft struct {
@@ -24,7 +22,7 @@ type licenseWithTimeLeft struct {
 // desired license type and the remaining validity period of the license.
 func BestMatch(
 	licenses []v1alpha1.EnterpriseLicense,
-	desiredLicense DesiredLicenseType,
+	desiredLicense v1alpha1.LicenseType,
 ) (v1alpha1.ClusterLicense, error) {
 	return bestMatchAt(time.Now(), licenses, desiredLicense)
 }
@@ -32,7 +30,7 @@ func BestMatch(
 func bestMatchAt(
 	now time.Time,
 	licenses []v1alpha1.EnterpriseLicense,
-	desiredLicense DesiredLicenseType,
+	desiredLicense v1alpha1.LicenseType,
 ) (v1alpha1.ClusterLicense, error) {
 	var license v1alpha1.ClusterLicense
 	valid := filterValidForType(desiredLicense, now, licenses)
@@ -50,13 +48,13 @@ func bestMatchAt(
 	return valid[len(valid)-1].l, nil
 }
 
-func filterValidForType(licenseType DesiredLicenseType, now time.Time, licenses []v1alpha1.EnterpriseLicense) []licenseWithTimeLeft {
+func filterValidForType(desiredLicense v1alpha1.LicenseType, now time.Time, licenses []v1alpha1.EnterpriseLicense) []licenseWithTimeLeft {
 	// optimistically assuming the typical enterprise license contains 3 sets of the 3 license types
 	filtered := make([]licenseWithTimeLeft, 0, len(licenses)*3*3)
 	for _, el := range licenses {
 		if el.IsValid(now) {
 			for _, l := range el.Spec.ClusterLicenseSpecs {
-				if typeMatches(licenseType, l.Type) && l.IsValid(now, v1alpha1.NoSafetyMargin()) {
+				if typeMatches(desiredLicense, l.Type) && l.IsValid(now, v1alpha1.NoSafetyMargin()) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						l: v1alpha1.ClusterLicense{
 							// this allows us to convey information about the origin namespace/name of this license spec

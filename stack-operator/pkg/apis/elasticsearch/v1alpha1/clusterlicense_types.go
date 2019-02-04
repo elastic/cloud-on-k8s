@@ -30,12 +30,12 @@ var LicenseTypeOrder = map[LicenseType]int{
 }
 
 // LicenseTypeFromString converts a given string to a license type if possible.
-func LicenseTypeFromString(s string) *LicenseType {
+func LicenseTypeFromString(s string) LicenseType {
 	var res LicenseType
 	if LicenseTypeOrder[LicenseType(s)] > 0 {
 		res = LicenseType(s)
 	}
-	return &res
+	return res
 }
 
 // LicenseMeta contains license (meta) information shared between enterprise and cluster licenses.

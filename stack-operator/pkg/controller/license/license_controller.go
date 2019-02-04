@@ -100,18 +100,13 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	if err != nil {
 		return noLicense, err
 	}
-	var kind match.DesiredLicenseType
-	s, ok := cluster.Labels[license.Expectation]
-	if ok {
-		kind = v1alpha1.LicenseTypeFromString(s)
-	}
-
+	desiredType := v1alpha1.LicenseTypeFromString(cluster.Labels[license.Expectation])
 	licenseList := v1alpha1.EnterpriseLicenseList{}
 	err = c.List(newContext(), &client.ListOptions{}, &licenseList)
 	if err != nil {
 		return noLicense, err
 	}
-	return match.BestMatch(licenseList.Items, kind)
+	return match.BestMatch(licenseList.Items, desiredType)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
