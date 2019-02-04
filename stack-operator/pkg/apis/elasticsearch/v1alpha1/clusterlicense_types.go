@@ -24,7 +24,8 @@ const (
 
 // LicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var LicenseTypeOrder = map[LicenseType]int{
-	LicenseTypeStandard: 1, // default value 0 for invalid types
+	// default value 0 for invalid types
+	LicenseTypeStandard: 1,
 	LicenseTypeGold:     2,
 	LicenseTypePlatinum: 3,
 }
@@ -67,7 +68,7 @@ func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
 
 // ClusterLicenseSpec defines the desired state of ClusterLicense
 type ClusterLicenseSpec struct {
-	LicenseMeta
+	LicenseMeta  `json:",inline"`
 	MaxNodes     int                      `json:"maxNodes"`
 	Type         LicenseType              `json:"type"`
 	SignatureRef corev1.SecretKeySelector `json:"signatureRef"`

@@ -25,27 +25,69 @@ spec:
             clusterLicenses:
               items:
                 properties:
+                  expiryDateInMillis:
+                    format: int64
+                    type: integer
+                  issueDateInMillis:
+                    format: int64
+                    type: integer
+                  issuedTo:
+                    type: string
+                  issuer:
+                    type: string
                   maxNodes:
                     format: int64
                     type: integer
                   signatureRef:
                     type: object
+                  startDateInMillis:
+                    format: int64
+                    type: integer
                   type:
                     type: string
+                  uid:
+                    type: string
                 required:
+                - uid
+                - issueDateInMillis
+                - expiryDateInMillis
+                - issuedTo
+                - issuer
+                - startDateInMillis
                 - maxNodes
                 - type
                 - signatureRef
                 type: object
               type: array
+            expiryDateInMillis:
+              format: int64
+              type: integer
+            issueDateInMillis:
+              format: int64
+              type: integer
+            issuedTo:
+              type: string
+            issuer:
+              type: string
             maxInstances:
               format: int64
               type: integer
             signatureRef:
               type: object
+            startDateInMillis:
+              format: int64
+              type: integer
             type:
               type: string
+            uid:
+              type: string
           required:
+          - uid
+          - issueDateInMillis
+          - expiryDateInMillis
+          - issuedTo
+          - issuer
+          - startDateInMillis
           - type
           - maxInstances
           - signatureRef
