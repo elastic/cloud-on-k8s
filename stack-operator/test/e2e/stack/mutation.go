@@ -46,11 +46,11 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Test: func(t *testing.T) {
 					// get stack so we have a versioned k8s resource we can update
 					var stackRes v1alpha1.Stack
-					err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &stackRes)
+					err := k.Client.Get(GetNamespacedName(stack), &stackRes)
 					require.NoError(t, err)
 					// update with new stack spec
 					stackRes.Spec = stack.Spec
-					err = k.Client.Update(helpers.DefaultCtx, &stackRes)
+					err = k.Client.Update(&stackRes)
 					require.NoError(t, err)
 				},
 			}).

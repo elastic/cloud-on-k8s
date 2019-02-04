@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -118,7 +117,7 @@ func (c *Ca) CreateCertificate(
 // ReconcilePublicCertsSecret ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
 // objectKey
 func (c *Ca) ReconcilePublicCertsSecret(
-	cl client.Client,
+	cl k8s.Client,
 	objectKey types.NamespacedName,
 	owner metav1.Object,
 	scheme *runtime.Scheme,
@@ -145,7 +144,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 			if reconciled.Data == nil {
 				reconciled.Data = make(map[string][]byte)
 			}
-			caKey, ok := clusterCASecret.Data[SecretCAKey]
+			caKey, ok := reconciled.Data[SecretCAKey]
 			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
 		},

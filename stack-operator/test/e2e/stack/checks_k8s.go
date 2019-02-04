@@ -39,7 +39,7 @@ func CheckKibanaDeployment(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.T
 		Name: "Kibana deployment should be set",
 		Test: helpers.Eventually(func() error {
 			var dep appsv1.Deployment
-			err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
+			err := k.Client.Get(types.NamespacedName{
 				Namespace: helpers.DefaultNamespace,
 				Name:      stack.Name + "-kibana",
 			}, &dep)
@@ -175,7 +175,7 @@ func CheckClusterHealth(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Test
 		Name: "Cluster health should eventually be green",
 		Test: helpers.Eventually(func() error {
 			var stackRes v1alpha1.Stack
-			err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &stackRes)
+			err := k.Client.Get(GetNamespacedName(stack), &stackRes)
 			if err != nil {
 				return err
 			}
@@ -273,7 +273,7 @@ func CheckClusterUUID(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSt
 		Name: "Cluster UUID should eventually appear in the stack status",
 		Test: helpers.Eventually(func() error {
 			var s v1alpha1.Stack
-			err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
+			err := k.Client.Get(GetNamespacedName(stack), &s)
 			if err != nil {
 				return err
 			}

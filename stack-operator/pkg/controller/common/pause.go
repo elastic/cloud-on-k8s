@@ -1,15 +1,14 @@
 package common
 
 import (
-	"context"
 	"reflect"
 	"strconv"
 	"time"
 
 	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -26,18 +25,18 @@ var (
 )
 
 // IsPaused computes if a given controller is paused.
-func IsPaused(meta metav1.ObjectMeta, client client.Client) bool {
+func IsPaused(meta metav1.ObjectMeta, client k8s.Client) bool {
 	return getBoolFromAnnotation(meta.Annotations) || IsStackOwnerPaused(meta.Namespace, meta.OwnerReferences, client)
 }
 
 // IsStackOwnerPaused checks if the parent Stack is paused.
-func IsStackOwnerPaused(namespace string, owners []metav1.OwnerReference, client client.Client) bool {
+func IsStackOwnerPaused(namespace string, owners []metav1.OwnerReference, client k8s.Client) bool {
 	// Check if annotation is set on owner.
 	for _, owner := range owners {
 		if owner.Kind == stack {
 			var stackInstance deploymentsv1alpha1.Stack
 			name := types.NamespacedName{Namespace: namespace, Name: owner.Name}
-			if err := client.Get(context.TODO(), name, &stackInstance); err != nil {
+			if err := client.Get(name, &stackInstance); err != nil {
 				log.Error(err, "Cannot retrieve stack instance")
 				return false
 			}

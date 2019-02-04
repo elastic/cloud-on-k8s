@@ -1,7 +1,6 @@
 package license
 
 import (
-	"context"
 	"reflect"
 	"time"
 
@@ -38,11 +37,8 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileLicenses{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
-}
-
-func newContext() context.Context {
-	return context.TODO()
+	c := k8s.WrapClient(mgr.GetClient())
+	return &ReconcileLicenses{Client: c, scheme: mgr.GetScheme()}
 }
 
 func defaultSafetyMargin() v1alpha1.SafetyMargin {
@@ -88,21 +84,21 @@ var _ reconcile.Reconciler = &ReconcileLicenses{}
 
 // ReconcileLicenses reconciles EnterpriseLicenses with existing Elasticsearch clusters and creates ClusterLicenses for them.
 type ReconcileLicenses struct {
-	client.Client
+	k8s.Client
 	scheme *runtime.Scheme
 }
 
 // findLicenseFor tries to find a matching license for the given cluster identified by its namespaced name.
-func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicense, error) {
+func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicense, error) {
 	var noLicense v1alpha1.ClusterLicense
 	cluster := v1alpha1.ElasticsearchCluster{}
-	err := c.Get(newContext(), clusterName, &cluster)
+	err := c.Get(clusterName, &cluster)
 	if err != nil {
 		return noLicense, err
 	}
 	desiredType := v1alpha1.LicenseTypeFromString(cluster.Labels[license.Expectation])
 	licenseList := v1alpha1.EnterpriseLicenseList{}
-	err = c.List(newContext(), &client.ListOptions{}, &licenseList)
+	err = c.List(&client.ListOptions{}, &licenseList)
 	if err != nil {
 		return noLicense, err
 	}
@@ -110,7 +106,7 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
-func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v1alpha1.ClusterLicense) (corev1.SecretKeySelector, error) {
+func reconcileSecret(c k8s.Client, cluster v1alpha1.ElasticsearchCluster, l v1alpha1.ClusterLicense) (corev1.SecretKeySelector, error) {
 	secretName := cluster.Name + "-license"
 	secretKey := "sig"
 	selector := corev1.SecretKeySelector{
@@ -121,7 +117,7 @@ func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v
 	}
 
 	var controllerSecret corev1.Secret
-	err := c.Get(newContext(), types.NamespacedName{Namespace: l.Namespace, Name: l.Spec.SignatureRef.Name}, &controllerSecret)
+	err := c.Get(types.NamespacedName{Namespace: l.Namespace, Name: l.Spec.SignatureRef.Name}, &controllerSecret)
 	if err != nil {
 		return selector, err
 	}
@@ -198,7 +194,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 func (r *ReconcileLicenses) reconcileAux(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster to ensure it still exists
 	owner := v1alpha1.ElasticsearchCluster{}
-	err := r.Get(newContext(), request.NamespacedName, &owner)
+	err := r.Get(request.NamespacedName, &owner)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// nothing to do no cluster

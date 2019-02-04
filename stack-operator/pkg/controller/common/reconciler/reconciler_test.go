@@ -1,7 +1,6 @@
 package reconciler
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -16,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -59,7 +57,7 @@ func TestReconcileResource(t *testing.T) {
 		initialObjects  []runtime.Object
 		argAssertion    func(args args)
 		errorAssertion  func(err error)
-		clientAssertion func(c client.Client)
+		clientAssertion func(c k8s.Client)
 	}{
 		{
 			name: "Error: Expected must not be nil",
@@ -141,9 +139,9 @@ func TestReconcileResource(t *testing.T) {
 					},
 				}
 			},
-			clientAssertion: func(c client.Client) {
+			clientAssertion: func(c k8s.Client) {
 				var found corev1.Secret
-				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
+				assert.NoError(t, c.Get(objectKey, &found))
 				assert.Equal(t, obj, withoutControllerRef(&found))
 			},
 			argAssertion: func(args args) {
@@ -203,9 +201,9 @@ func TestReconcileResource(t *testing.T) {
 				// should be unchanged
 				assert.Equal(t, "be quiet", string(args.Expected.(*corev1.Secret).Data["bar"]))
 			},
-			clientAssertion: func(c client.Client) {
+			clientAssertion: func(c k8s.Client) {
 				var found corev1.Secret
-				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
+				assert.NoError(t, c.Get(objectKey, &found))
 				assert.Equal(t, "be quiet", string(found.Data["bar"]))
 			},
 		},
@@ -248,9 +246,9 @@ func TestReconcileResource(t *testing.T) {
 				// should be updated to the server state
 				assert.Equal(t, "other", string(args.Reconciled.(*corev1.Secret).Labels["label"]))
 			},
-			clientAssertion: func(c client.Client) {
+			clientAssertion: func(c k8s.Client) {
 				var found corev1.Secret
-				assert.NoError(t, c.Get(context.TODO(), objectKey, &found))
+				assert.NoError(t, c.Get(objectKey, &found))
 				// should be unchanged as it is ignored by the custom differ
 				assert.Equal(t, "other", string(found.Labels["label"]))
 			},
@@ -259,7 +257,7 @@ func TestReconcileResource(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			client := fake.NewFakeClient(tt.initialObjects...)
+			client := k8s.WrapClient(fake.NewFakeClient(tt.initialObjects...))
 			args := tt.args()
 			p := Params{
 				Client:           client,

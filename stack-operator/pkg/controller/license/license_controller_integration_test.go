@@ -3,12 +3,12 @@
 package license
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -22,13 +22,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c client.Client
+var c k8s.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 
-func listClusterLicenses(t *testing.T, c client.Client) []v1alpha1.ClusterLicense {
+func listClusterLicenses(t *testing.T, c k8s.Client) []v1alpha1.ClusterLicense {
 	clusterLicenses := v1alpha1.ClusterLicenseList{}
-	assert.NoError(t, c.List(context.TODO(), &client.ListOptions{}, &clusterLicenses))
+	assert.NoError(t, c.List(&client.ListOptions{}, &clusterLicenses))
 	return clusterLicenses.Items
 }
 
@@ -98,7 +98,7 @@ func TestReconcile(t *testing.T) {
 	// channel when it is finished.
 	mgr, err := manager.New(test.Config, manager.Options{})
 	assert.NoError(t, err)
-	c = mgr.GetClient()
+	c = k8s.WrapClient(mgr.GetClient())
 
 	recFn, requests := SetupTestReconcile(newReconciler(mgr))
 	assert.NoError(t, add(mgr, recFn))
@@ -111,12 +111,12 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Create the EnterpriseLicense object
-	assert.NoError(t, c.Create(context.TODO(), enterpriseLicense))
-	defer c.Delete(context.TODO(), enterpriseLicense)
+	assert.NoError(t, c.Create(enterpriseLicense))
+	defer c.Delete(enterpriseLicense)
 
 	// Create the linked secret
-	assert.NoError(t, c.Create(context.TODO(), controllerSecret))
-	defer c.Delete(context.TODO(), controllerSecret)
+	assert.NoError(t, c.Create(controllerSecret))
+	defer c.Delete(controllerSecret)
 
 	cluster := &v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
@@ -130,7 +130,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, c.Create(context.TODO(), cluster))
+	assert.NoError(t, c.Create(cluster))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// test license assignment and ownership being triggered on cluster create
@@ -146,7 +146,7 @@ func TestReconcile(t *testing.T) {
 
 	test.RetryUntilSuccess(t, func() error {
 		var secret corev1.Secret
-		err := c.Get(context.TODO(), types.NamespacedName{Name: "foo-license", Namespace: "default"}, &secret)
+		err := c.Get(types.NamespacedName{Name: "foo-license", Namespace: "default"}, &secret)
 		if err != nil {
 			return err
 		}

@@ -21,7 +21,7 @@ func InitTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestSte
 			Name: "K8S should be accessible",
 			Test: func(t *testing.T) {
 				pods := corev1.PodList{}
-				err := k.Client.List(helpers.DefaultCtx, &client.ListOptions{}, &pods)
+				err := k.Client.List(&client.ListOptions{}, &pods)
 				require.NoError(t, err)
 			},
 		},
@@ -34,7 +34,7 @@ func InitTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestSte
 						Name: helpers.DefaultNamespace,
 					},
 				}
-				err := k.Client.Create(helpers.DefaultCtx, &namespace)
+				err := k.Client.Create(&namespace)
 				if err != nil && !apierrors.IsAlreadyExists(err) {
 					require.NoError(t, err)
 				}
@@ -45,7 +45,7 @@ func InitTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestSte
 			Name: "Stack CRD should exist",
 			Test: func(t *testing.T) {
 				stacks := v1alpha1.StackList{}
-				err := k.Client.List(helpers.DefaultCtx, &client.ListOptions{}, &stacks)
+				err := k.Client.List(&client.ListOptions{}, &stacks)
 				require.NoError(t, err)
 			},
 		},
@@ -53,7 +53,7 @@ func InitTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestSte
 		{
 			Name: "Remove the stack if it already exists",
 			Test: func(t *testing.T) {
-				err := k.Client.Delete(helpers.DefaultCtx, &stack)
+				err := k.Client.Delete(&stack)
 				if err != nil {
 					// might not exist, which is ok
 					require.True(t, apierrors.IsNotFound(err))

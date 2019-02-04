@@ -1,7 +1,6 @@
 package license
 
 import (
-	"context"
 	"net/http"
 	"reflect"
 	"testing"
@@ -81,7 +80,7 @@ func Test_secretRefResolver(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := fake.NewFakeClient(tt.initialObjs...)
+			c := k8s.WrapClient(fake.NewFakeClient(tt.initialObjs...))
 			ref := corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: "test",
@@ -199,24 +198,20 @@ func Test_updateLicense(t *testing.T) {
 	}
 }
 
-type fakeReader struct {
-	fakeClient client.Client
-	errors     map[client.ObjectKey]error
+type fakeClient struct {
+	k8s.Client
+	errors map[client.ObjectKey]error
 }
 
-func (f *fakeReader) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(key client.ObjectKey, obj runtime.Object) error {
 	err := f.errors[key]
 	if err != nil {
 		return err
 	}
-	return f.fakeClient.Get(ctx, key, obj)
+	return f.Client.Get(key, obj)
 }
 
-func (f *fakeReader) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
-	return f.fakeClient.List(ctx, opts, list)
-}
-
-var _ client.Reader = &fakeReader{}
+var _ k8s.Client = &fakeClient{}
 
 func registerScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
@@ -278,9 +273,9 @@ func Test_applyLinkedLicense(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &fakeReader{
-				fakeClient: fake.NewFakeClientWithScheme(registerScheme(t), tt.initialObjs...),
-				errors:     tt.errors,
+			c := &fakeClient{
+				Client: k8s.WrapClient(fake.NewFakeClientWithScheme(registerScheme(t), tt.initialObjs...)),
+				errors: tt.errors,
 			}
 			if err := applyLinkedLicense(
 				c,

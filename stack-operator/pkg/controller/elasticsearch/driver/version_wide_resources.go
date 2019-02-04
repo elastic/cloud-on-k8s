@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 
@@ -16,7 +15,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -32,7 +30,7 @@ type VersionWideResources struct {
 }
 
 func reconcileVersionWideResources(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 	w watches.DynamicWatches,
@@ -55,7 +53,6 @@ func reconcileVersionWideResources(
 	}
 	var extraFilesSecret corev1.Secret
 	if err := c.Get(
-		context.TODO(),
 		extraFilesSecretObjectKey,
 		&extraFilesSecret,
 	); err != nil && !apierrors.IsNotFound(err) {
@@ -80,7 +77,7 @@ func reconcileVersionWideResources(
 			return nil, err
 		}
 
-		if err := c.Create(context.TODO(), &extraFilesSecret); err != nil {
+		if err := c.Create(&extraFilesSecret); err != nil {
 			return nil, err
 		}
 	}

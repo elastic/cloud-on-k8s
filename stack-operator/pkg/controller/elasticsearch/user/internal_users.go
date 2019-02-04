@@ -4,8 +4,8 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // InternalUsers are Elasticsearch users intended for system use.
@@ -37,7 +37,7 @@ func NewInternalUsersFrom(users []esclient.User) InternalUsers {
 // A second file called 'users_roles' is contained in this third secret as well which describes
 // role assignments for the users specified in the first file.
 func ReconcileUsers(
-	c client.Client,
+	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
 ) (*InternalUsers, error) {

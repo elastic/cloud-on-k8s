@@ -17,7 +17,7 @@ func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 		{
 			Name: "Deleting stack should return no error",
 			Test: func(t *testing.T) {
-				err := k.Client.Delete(helpers.DefaultCtx, &stack)
+				err := k.Client.Delete(&stack)
 				require.NoError(t, err)
 			},
 		},
@@ -25,7 +25,7 @@ func DeletionTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 			Name: "Stack should not be there anymore",
 			Test: func(t *testing.T) {
 				var s v1alpha1.Stack
-				err := k.Client.Get(helpers.DefaultCtx, types.NamespacedName{
+				err := k.Client.Get(types.NamespacedName{
 					Name:      stack.GetName(),
 					Namespace: stack.GetNamespace(),
 				}, &s)

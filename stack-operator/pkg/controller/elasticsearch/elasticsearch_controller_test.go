@@ -9,10 +9,10 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c client.Client
+var c k8s.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
@@ -34,7 +34,7 @@ func getESPods(t *testing.T) []corev1.Pod {
 	err := esPodSelector.SetLabelSelector("common.k8s.elastic.co/type=elasticsearch")
 	assert.NoError(t, err)
 	test.RetryUntilSuccess(t, func() error {
-		return c.List(context.TODO(), &esPodSelector, esPods)
+		return c.List(&esPodSelector, esPods)
 	})
 	return esPods.Items
 }
@@ -58,7 +58,7 @@ func TestReconcile(t *testing.T) {
 	mgr, err := manager.New(test.Config, manager.Options{})
 
 	assert.NoError(t, err)
-	c = mgr.GetClient()
+	c = k8s.WrapClient(mgr.GetClient())
 
 	r, err := newReconciler(mgr, operator.Parameters{OperatorImage: "operator-image-dummy"})
 	require.NoError(t, err)
@@ -76,10 +76,10 @@ func TestReconcile(t *testing.T) {
 
 	// Pre-create dependent Endpoint which will not be created automatically as only the Elasticsearch controller is running.
 	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
-	err = c.Create(context.TODO(), endpoints)
+	err = c.Create(endpoints)
 	assert.NoError(t, err)
 	// Create the Elasticsearch object and expect the Reconcile and Deployment to be created
-	err = c.Create(context.TODO(), instance)
+	err = c.Create(instance)
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {
@@ -87,7 +87,7 @@ func TestReconcile(t *testing.T) {
 		return
 	}
 	assert.NoError(t, err)
-	defer c.Delete(context.TODO(), instance)
+	defer c.Delete(instance)
 
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
@@ -97,13 +97,13 @@ func TestReconcile(t *testing.T) {
 
 	// Services should be created
 	discoveryService := &corev1.Service{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), discoveryServiceKey, discoveryService) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(discoveryServiceKey, discoveryService) })
 	publicService := &corev1.Service{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), publicServiceKey, publicService) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(publicServiceKey, publicService) })
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES pod
-	assert.NoError(t, c.Delete(context.TODO(), &esPods[0]))
+	assert.NoError(t, c.Delete(&esPods[0]))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
 		nPods := len(getESPods(t))

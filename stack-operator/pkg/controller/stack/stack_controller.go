@@ -1,7 +1,6 @@
 package stack
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -23,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -62,7 +60,7 @@ func newReconciler(mgr manager.Manager) (reconcile.Reconciler, error) {
 	}
 
 	return &ReconcileStack{
-		Client:   mgr.GetClient(),
+		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
 		esCa:     esCa,
 		kibanaCa: kibanaCa,
@@ -106,7 +104,7 @@ var _ reconcile.Reconciler = &ReconcileStack{}
 
 // ReconcileStack reconciles a Elasticsearch object
 type ReconcileStack struct {
-	client.Client
+	k8s.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
@@ -178,13 +176,13 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	var currentEs v1alpha1.ElasticsearchCluster
-	if err := r.Get(context.TODO(), esAndKbKey, &currentEs); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.Get(esAndKbKey, &currentEs); err != nil && !apierrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 
 	if currentEs.UID == "" {
 		log.Info("Creating ElasticsearchCluster spec")
-		if err := r.Create(context.TODO(), &es); err != nil {
+		if err := r.Create(&es); err != nil {
 			return reconcile.Result{}, err
 		}
 		currentEs = es
@@ -199,7 +197,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 			)
 
 			currentEs.Spec = es.Spec
-			if err := r.Update(context.TODO(), &currentEs); err != nil {
+			if err := r.Update(&currentEs); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
@@ -236,7 +234,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret corev1.Secret
 	internalUsersSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: internalUsersSecretName}
-	if err := r.Get(context.TODO(), internalUsersSecretKey, &internalUsersSecret); err != nil {
+	if err := r.Get(internalUsersSecretKey, &internalUsersSecret); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -249,19 +247,19 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	var publicCACertSecret corev1.Secret
 	publicCACertSecretKey := types.NamespacedName{Namespace: stack.Namespace, Name: es.Name}
-	if err = r.Get(context.TODO(), publicCACertSecretKey, &publicCACertSecret); err != nil {
+	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return defaultRequeue, err // maybe not created yet
 	}
 	kb.Spec.Elasticsearch.CaCertSecret = &publicCACertSecret.Name
 
 	var currentKb v1alpha12.Kibana
-	if err := r.Get(context.TODO(), esAndKbKey, &currentKb); err != nil && !apierrors.IsNotFound(err) {
+	if err := r.Get(esAndKbKey, &currentKb); err != nil && !apierrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}
 
 	if currentKb.UID == "" {
 		log.Info("Creating Kibana spec")
-		if err := r.Create(context.TODO(), &kb); err != nil {
+		if err := r.Create(&kb); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -271,7 +269,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		if !reflect.DeepEqual(currentKb.Spec, kb.Spec) {
 			currentKb.Spec = kb.Spec
 			log.Info("Updating Kibana spec")
-			if err := r.Update(context.TODO(), &currentKb); err != nil {
+			if err := r.Update(&currentKb); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
@@ -283,7 +281,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	stack.Status.Kibana = currentKb.Status
 
 	if !reflect.DeepEqual(*origStatus, stack.Status) {
-		if err := r.Status().Update(context.TODO(), &stack); err != nil {
+		if err := r.Status().Update(&stack); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -294,7 +292,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 // GetStack obtains the stack from the backend kubernetes API.
 func (r *ReconcileStack) GetStack(name types.NamespacedName) (deploymentsv1alpha1.Stack, error) {
 	var stackInstance deploymentsv1alpha1.Stack
-	if err := r.Get(context.TODO(), name, &stackInstance); err != nil {
+	if err := r.Get(name, &stackInstance); err != nil {
 		return stackInstance, err
 	}
 	return stackInstance, nil

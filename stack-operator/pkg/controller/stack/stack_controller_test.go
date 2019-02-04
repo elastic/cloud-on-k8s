@@ -10,21 +10,20 @@ import (
 	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c client.Client
+var c k8s.Client
 
 var resourceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
 var expectedRequest = reconcile.Request{NamespacedName: resourceKey}
@@ -48,7 +47,7 @@ func TestReconcile(t *testing.T) {
 	// channel when it is finished.
 	mgr, err := manager.New(test.Config, manager.Options{})
 	assert.NoError(t, err)
-	c = mgr.GetClient()
+	c = k8s.WrapClient(mgr.GetClient())
 
 	rec, err := newReconciler(mgr)
 	require.NoError(t, err)
@@ -66,7 +65,7 @@ func TestReconcile(t *testing.T) {
 	secrets := mockSecrets(t, c)
 
 	// Create the stack resource, that should be reconciled
-	err = c.Create(context.TODO(), instance)
+	err = c.Create(instance)
 
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
@@ -75,16 +74,16 @@ func TestReconcile(t *testing.T) {
 		return
 	}
 	assert.NoError(t, err)
-	defer c.Delete(context.TODO(), instance)
+	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Elasticsearch cluster should be created
 	es := &esv1alpha1.ElasticsearchCluster{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, es) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(resourceKey, es) })
 
 	// Kibana should be created
 	kibana := &kbv1alpha1.Kibana{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(context.TODO(), resourceKey, kibana) })
+	test.RetryUntilSuccess(t, func() error { return c.Get(resourceKey, kibana) })
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES cluster
@@ -100,7 +99,7 @@ func TestReconcile(t *testing.T) {
 	}
 }
 
-func mockSecrets(t *testing.T, c client.Client) []*v1.Secret {
+func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
 	// The Kibana resource needs some secrets to be created,
 	// but the Elasticsearch controller is not running.
 	// Here we are creating dummy secrets to pretend they exist.
@@ -115,7 +114,7 @@ func mockSecrets(t *testing.T, c client.Client) []*v1.Secret {
 			secret.InternalKibanaServerUserName: []byte("blub"),
 		},
 	}
-	assert.NoError(t, c.Create(context.TODO(), userSecret))
+	assert.NoError(t, c.Create(userSecret))
 
 	caSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -126,7 +125,7 @@ func mockSecrets(t *testing.T, c client.Client) []*v1.Secret {
 			nodecerts.SecretCAKey: []byte("fake-ca-cert"),
 		},
 	}
-	assert.NoError(t, c.Create(context.TODO(), caSecret))
+	assert.NoError(t, c.Create(caSecret))
 
 	return []*v1.Secret{userSecret, caSecret}
 }

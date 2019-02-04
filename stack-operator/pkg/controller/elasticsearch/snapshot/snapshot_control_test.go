@@ -1,7 +1,6 @@
 package snapshot
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -20,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -63,14 +61,14 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 		name            string
 		args            args
 		wantErr         bool
-		clientAssertion func(c client.Client)
+		clientAssertion func(c k8s.Client)
 	}{
 		{
 			name:    "no snapshot config no creation",
 			args:    args{esSample, esClient.User{}, []runtime.Object{}},
 			wantErr: false,
-			clientAssertion: func(c client.Client) {
-				assert.True(t, errors.IsNotFound(c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{})))
+			clientAssertion: func(c k8s.Client) {
+				assert.True(t, errors.IsNotFound(c.Get(cronName, &batchv1beta1.CronJob{})))
 
 			},
 		},
@@ -82,8 +80,8 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: k8s.ToObjectMeta(cronName)}},
 			},
 			wantErr: false,
-			clientAssertion: func(c client.Client) {
-				assert.True(t, errors.IsNotFound(c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{})))
+			clientAssertion: func(c k8s.Client) {
+				assert.True(t, errors.IsNotFound(c.Get(cronName, &batchv1beta1.CronJob{})))
 			},
 		},
 		{
@@ -101,8 +99,8 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 				[]runtime.Object{},
 			},
 			wantErr: false,
-			clientAssertion: func(c client.Client) {
-				assert.NoError(t, c.Get(context.TODO(), cronName, &batchv1beta1.CronJob{}))
+			clientAssertion: func(c k8s.Client) {
+				assert.NoError(t, c.Get(cronName, &batchv1beta1.CronJob{}))
 			},
 		},
 	}
@@ -110,7 +108,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	sc := registerScheme(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := fake.NewFakeClient(tt.args.initialObjects...)
+			fakeClient := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 			if err := ReconcileSnapshotterCronJob(fakeClient, sc, tt.args.es, tt.args.user, "operator-image"); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileElasticsearch.ReconcileSnapshotterCronJob() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -197,7 +195,8 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ReconcileSnapshotCredentials(
-				fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...), sc, owner, tt.args.repoConfig, watched,
+				k8s.WrapClient(fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...)),
+				sc, owner, tt.args.repoConfig, watched,
 			)
 
 			if err != nil {

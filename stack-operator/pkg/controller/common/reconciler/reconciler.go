@@ -1,17 +1,16 @@
 package reconciler
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 
+	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -22,7 +21,7 @@ var (
 
 // Params is a parameter object for the ReconcileResources function
 type Params struct {
-	Client client.Client
+	Client k8s.Client
 	// Scheme with all custom resources kinds registered.
 	Scheme *runtime.Scheme
 	// Owner will be set as the controller reference
@@ -79,7 +78,7 @@ func ReconcileResource(params Params) error {
 	}
 
 	// Check if already exists
-	err = params.Client.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
+	err = params.Client.Get(types.NamespacedName{Name: name, Namespace: namespace}, params.Reconciled)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
 		if params.OnCreate == nil {
@@ -93,7 +92,7 @@ func ReconcileResource(params Params) error {
 		expectedCopyValue := reflect.ValueOf(params.Expected.DeepCopyObject()).Elem()
 		reflect.ValueOf(params.Reconciled).Elem().Set(expectedCopyValue)
 		// Create the object, which modifies params.Reconciled in-place
-		err = params.Client.Create(context.TODO(), params.Reconciled)
+		err = params.Client.Create(params.Reconciled)
 		if err != nil {
 			return err
 		}
@@ -109,7 +108,7 @@ func ReconcileResource(params Params) error {
 			log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
 		}
 		params.UpdateReconciled()
-		err := params.Client.Update(context.TODO(), params.Reconciled)
+		err := params.Client.Update(params.Reconciled)
 		if err != nil {
 			return err
 		}

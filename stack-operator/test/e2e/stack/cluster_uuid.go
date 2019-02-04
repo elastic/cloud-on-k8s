@@ -15,7 +15,7 @@ func RetrieveClusterUUIDStep(stack v1alpha1.Stack, k *helpers.K8sHelper, futureC
 		Name: "Retrieve cluster UUID for comparison purpose",
 		Test: helpers.Eventually(func() error {
 			var s v1alpha1.Stack
-			err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
+			err := k.Client.Get(GetNamespacedName(stack), &s)
 			if err != nil {
 				return err
 			}
@@ -36,7 +36,7 @@ func CompareClusterUUIDStep(stack v1alpha1.Stack, k *helpers.K8sHelper, previous
 		Name: "Cluster UUID should have been preserved",
 		Test: func(t *testing.T) {
 			var s v1alpha1.Stack
-			err := k.Client.Get(helpers.DefaultCtx, GetNamespacedName(stack), &s)
+			err := k.Client.Get(GetNamespacedName(stack), &s)
 			require.NoError(t, err)
 			newClusterUUID := s.Status.Elasticsearch.ClusterUUID
 			require.NotEmpty(t, *previousClusterUUID)
