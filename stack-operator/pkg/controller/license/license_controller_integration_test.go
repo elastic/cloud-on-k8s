@@ -161,7 +161,7 @@ func TestReconcile(t *testing.T) {
 }
 
 // purpose of this test is mostly to understand and document the delaying queue behaviour
-// can be removed or skipped when it causes trouble in CI because they are non-deterministic
+// can be removed or skipped when it causes trouble in CI because these tests are non-deterministic
 func TestDelayingQueueInvariants(t *testing.T) {
 	item := types.NamespacedName{Name: "foo", Namespace: "bar"}
 	tests := []struct {

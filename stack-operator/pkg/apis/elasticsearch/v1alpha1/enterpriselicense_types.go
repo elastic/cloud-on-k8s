@@ -29,16 +29,19 @@ type EnterpriseLicense struct {
 	Spec EnterpriseLicenseSpec `json:"spec,omitempty"`
 }
 
+// StartDate is the date as of which this license is valid.
 func (l *EnterpriseLicense) StartDate() time.Time {
 	return l.Spec.StartDate()
 }
 
+// ExpiryDate is the date as of which the license is no longer valid.
 func (l *EnterpriseLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
 }
 
+// IsValid returns true if the license is still valid a the given point in time.
 func (l EnterpriseLicense) IsValid(instant time.Time) bool {
-	return l.StartDate().Before(instant) && l.ExpiryDate().After(instant)
+	return l.Spec.IsValid(instant, NoSafetyMargin())
 }
 
 var _ License = &EnterpriseLicense{}

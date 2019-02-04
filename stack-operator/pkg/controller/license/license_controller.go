@@ -92,6 +92,7 @@ type ReconcileLicenses struct {
 	scheme *runtime.Scheme
 }
 
+// findLicenseFor tries to find a matching license for the given cluster identified by its namespaced name.
 func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicense, error) {
 	var noLicense v1alpha1.ClusterLicense
 	cluster := v1alpha1.ElasticsearchCluster{}
@@ -113,6 +114,7 @@ func findLicenseFor(c client.Client, clusterName types.NamespacedName) (v1alpha1
 	return match.BestMatch(licenseList.Items, kind)
 }
 
+// reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v1alpha1.ClusterLicense) (corev1.SecretKeySelector, error) {
 	secretName := cluster.Name + "-license"
 	secretKey := "sig"
@@ -155,6 +157,7 @@ func reconcileSecret(c client.Client, cluster v1alpha1.ElasticsearchCluster, l v
 	return selector, err
 }
 
+// reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 func (r *ReconcileLicenses) reconcileClusterLicense(
 	cluster v1alpha1.ElasticsearchCluster,
 	margin v1alpha1.SafetyMargin,

@@ -82,10 +82,12 @@ type ClusterLicense struct {
 	Spec ClusterLicenseSpec `json:"spec,omitempty"`
 }
 
+// StartDate is the date as of which this license is valid.
 func (l *ClusterLicense) StartDate() time.Time {
 	return l.Spec.StartDate()
 }
 
+// ExpiryDate is the date as of which the license is no longer valid.
 func (l *ClusterLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
 }
@@ -95,15 +97,19 @@ func (l ClusterLicense) IsEmpty() bool {
 	return l.Spec.IsEmpty()
 }
 
+// SafetyMargin expresses the desire to have a temporal buffer relative to the
+// beginning and the end of the validity period of a license.
 type SafetyMargin struct {
 	ValidSince time.Duration
 	ValidFor   time.Duration
 }
 
-func NewSafetyMargin() SafetyMargin {
+// NoSafetyMargin returns an empty (= no) safety margin.
+func NoSafetyMargin() SafetyMargin {
 	return SafetyMargin{}
 }
 
+// IsValid returns true if the license is still valid a the given point in time factoring in the given safety margin.
 func (l ClusterLicense) IsValid(instant time.Time, margin SafetyMargin) bool {
 	return l.Spec.IsValid(instant, margin)
 }
