@@ -3,7 +3,7 @@ package lvm
 import (
 	"regexp"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
 // LogicalVolume represents an LVM logical volume

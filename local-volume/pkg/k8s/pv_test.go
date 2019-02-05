@@ -3,7 +3,7 @@ package k8s
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/provider"
+	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
