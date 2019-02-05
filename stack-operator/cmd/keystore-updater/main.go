@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/sidecar"
-	"github.com/pkg/errors"
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/fsnotify/fsnotify"
@@ -59,8 +59,8 @@ type Config struct {
 	User client.User
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
 	Endpoint string
-	// CACerts loads the CA certificate chain to call the Elasticsearch API. Can be a NOOP if ReloadCredentials is false.
-	CACerts func() ([]byte, error)
+	// CACertsPath points to the CA certificate chain to call the Elasticsearch API.
+	CACertsPath string
 	// ReloadQueue is a channel to schedule config reload requests
 	ReloadQueue workqueue.DelayingInterface
 }
@@ -110,22 +110,20 @@ func coalescingRetry(cfg Config) {
 	}
 }
 
+func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
+	bytes, err := ioutil.ReadFile(caCertPath)
+	if err != nil {
+		return nil, err
+	}
+	return certutil.ParsePEMCerts(bytes)
+}
+
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
 // to reload reloadable settings after the keystore has been updated.
 func reloadCredentials(cfg Config) error {
-	if cfg.CACerts == nil {
-		fatal(
-			errors.New("configuration error: CA certs are not configured but credential reload requested"),
-			"while attempting secure credential reload",
-		)
-	}
-	caBytes, err := cfg.CACerts()
+	caCerts, err := loadCerts(cfg.CACertsPath)
 	if err != nil {
-		return err
-	}
-	caCerts, err := certutil.ParsePEMCerts(caBytes)
-	if err != nil {
-		fatal(err, "Cannot create Elasticsearch client from CA cert")
+		fatal(err, "Cannot create Elasticsearch client with CA certs")
 	}
 	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, caCerts)
 	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
@@ -211,8 +209,6 @@ func validateConfig() Config {
 		user := viper.GetString(usernameFlag)
 		pass := viper.GetString(passwordFlag)
 
-		caCerts := viper.GetString(certPathFlag)
-
 		if pass == "" {
 			passwordFile := viper.GetString(passwordFileFlag)
 			bytes, err := ioutil.ReadFile(passwordFile)
@@ -236,22 +232,18 @@ func validateConfig() Config {
 				"Invalid config",
 			)
 		}
-		var caLoader func() ([]byte, error)
-		if shouldReload {
-			caLoader = func() ([]byte, error) {
-				return ioutil.ReadFile(caCerts)
-			}
-			_, err := caLoader() // test run
-			if err != nil {
-				fatal(err, "CA certificates are required when reloading credentials but could not be read")
-			}
-		}
 		config.User = client.User{
 			Name:     user,
 			Password: pass,
 		}
+
+		caCerts := viper.GetString(certPathFlag)
+		_, err := loadCerts(caCerts)
+		if err != nil {
+			fatal(err, "CA certificates are required when reloading credentials but could not be read")
+		}
+		config.CACertsPath = caCerts
 		config.Endpoint = viper.GetString(endpointFlag)
-		config.CACerts = caLoader
 	}
 	return config
 }
