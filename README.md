@@ -1,4 +1,3 @@
-# Stack Operators
+# Elastic operators and tooling for Kubernetes
 
-This repository contains logic responsible to manage Elastic Stack resources
-within a Kubernetes cluster.
+This repository contains operators and related tooling for running Elastic products on Kubernetes.
