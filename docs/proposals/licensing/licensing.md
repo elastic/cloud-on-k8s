@@ -39,7 +39,6 @@ spec:
   issuedTo: "issuedTo"
   issuer: "issuer"
   signatureRef: {
-    namespace: <secret-namespace>
     name: <secret-name>
     key: <optional secret key for secrets containing multiple sigs> 
   }
@@ -74,12 +73,11 @@ spec:
   issuedTo: "issuedTo"
   issuer: "issuer"
   signatureRef: {
-    namespace: <secret-namespace>
     name: <secret-name>
     key: <optional secret key for secrets containing multiple sigs> 
   }
   clusterLicenses: 
-    - name <cluster-license-name>
+    - uid <cluster-license-spec-inline>
 ```
 
 
