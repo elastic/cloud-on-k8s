@@ -24,6 +24,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
+// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
+const defaultSafetyMargin = 30 * 24 * time.Hour
 
 var (
 	log = logf.Log.WithName("license-controller")
@@ -59,8 +62,6 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{Client: c, scheme: mgr.GetScheme()}
 }
-
-var defaultSafetyMargin = 30 * 24 * time.Hour
 
 func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {
 	return nextReconcileRelativeTo(time.Now(), expiry, safety)
@@ -136,6 +137,7 @@ func reconcileSecret(
 		Key: secretKey,
 	}
 
+	// fetch the user created secret from the controllers (global) namespace
 	var globalSecret corev1.Secret
 	err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &globalSecret)
 	if err != nil {
@@ -151,6 +153,7 @@ func reconcileSecret(
 			secretKey: globalSecret.Data[ref.Key],
 		},
 	}
+	// create/update a secret in the cluster's namespace containing the same data
 	var reconciled corev1.Secret
 	err = reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
@@ -179,11 +182,12 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 	if err != nil {
 		return noResult, err
 	}
+	// make sure the signature secret is created in the cluster's namespace
 	selector, err := reconcileSecret(r, cluster, matchingSpec.SignatureRef, parent.Namespace)
 	if err != nil {
 		return noResult, err
 	}
-
+	// reconcile the corresponding ClusterLicense also in the cluster's namespace
 	toAssign := &v1alpha1.ClusterLicense{
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
 		Spec:       matchingSpec,
