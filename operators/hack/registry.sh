@@ -41,7 +41,7 @@ main() {
       kubectl wait pods -l k8s-app=kube-registry -n=kube-system --for condition=Ready --timeout 40s
       local podName=$(kubectl get po -n kube-system | grep kube-registry-v0 | awk '{print $1}')
       kubectl-in-docker port-forward -n=kube-system $podName 5000:5000
-      timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
+      docker exec registry-port-forwarder timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
     ;;
     "port-forward stop")
       docker rm --force registry-port-forwarder
