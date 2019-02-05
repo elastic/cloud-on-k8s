@@ -8,13 +8,13 @@ COPY cmd/    cmd/
 COPY vendor/ vendor/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o stack-operator github.com/elastic/k8s-operators/operators/cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o elastic-operator github.com/elastic/k8s-operators/operators/cmd
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o keystore-updater github.com/elastic/k8s-operators/operators/cmd/keystore-updater
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest
 WORKDIR /root/
-COPY --from=builder /go/src/github.com/elastic/k8s-operators/operators/stack-operator .
+COPY --from=builder /go/src/github.com/elastic/k8s-operators/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/k8s-operators/operators/keystore-updater .
-ENTRYPOINT ["./stack-operator"]
+ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]

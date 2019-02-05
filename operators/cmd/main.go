@@ -12,7 +12,7 @@ import (
 var log = logf.KBLog.WithName("main")
 
 func main() {
-	var rootCmd = &cobra.Command{Use: "stack-operator"}
+	var rootCmd = &cobra.Command{Use: "elastic-operator"}
 	rootCmd.AddCommand(manager.Cmd, snapshotter.Cmd)
 	// development mode is only available as a command line flag to avoid accidentally enabling it
 	rootCmd.PersistentFlags().BoolVar(&dev.Enabled, "development", false, "turns on development mode")

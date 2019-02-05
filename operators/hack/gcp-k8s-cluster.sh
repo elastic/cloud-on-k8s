@@ -31,4 +31,4 @@ gcloud beta container --project ${GCLOUD_PROJECT} clusters create ${GKE_CLUSTER_
     --subnetwork "projects/elastic-cloud-dev/regions/europe-west3/subnetworks/default"
 
 # Create required role binding between the GCP account and the K8s cluster.
-kubectl create clusterrolebinding stack-operators--manager-rolebinding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+kubectl create clusterrolebinding elastic-operators--manager-rolebinding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")

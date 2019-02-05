@@ -9,7 +9,7 @@ IMG="$1" # Docker image name
 PULL_POLICY="$2"
 TESTS_MATCH="$3" # Expression to match go test names (can be "")
 
-JOB_NAME="stack-operator-e2e-tests"
+JOB_NAME="elastic-operators-e2e-tests"
 NAMESPACE="e2e"
 
 # apply rbac

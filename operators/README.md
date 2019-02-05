@@ -1,6 +1,6 @@
-# Stack Operator
+# Elastic operators and controllers for Kubernetes
 
-Manage an Elastic stack in Kubernetes.
+Managed Elastic products and services in Kubernetes.
 
 ## Requirements
 
@@ -39,8 +39,8 @@ go generate ./pkg/... ./cmd/...
 go fmt ./pkg/... ./cmd/...
 go vet ./pkg/... ./cmd/...
 go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-CRD manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/operators/config/crds'
-RBAC manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/operators/config/rbac'
+CRD manifests generated under '.../go/src/github.com/elastic/k8s-operators/operators/config/crds'
+RBAC manifests generated under '.../go/src/github.com/elastic/k8s-operators/operators/config/rbac'
 go test ./pkg/... ./cmd/... -coverprofile cover.out
 ?   	github.com/elastic/k8s-operators/operators/pkg/apis	[no test files]
 ?   	github.com/elastic/k8s-operators/operators/pkg/apis/deployments	[no test files]
