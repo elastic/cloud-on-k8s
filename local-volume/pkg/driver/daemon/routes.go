@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pathutil"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/pathutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 

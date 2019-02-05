@@ -3,8 +3,8 @@ package daemon
 import (
 	"net/http"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
-	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers/empty"
+	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

@@ -1,8 +1,8 @@
 package empty
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 )
 
 // Mount mounts a directory to be used as volume by a pod

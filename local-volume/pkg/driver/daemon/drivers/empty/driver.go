@@ -1,8 +1,8 @@
 package empty
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 )
 
 // DriverKind represents the empty driver
