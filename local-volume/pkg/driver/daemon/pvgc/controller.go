@@ -3,7 +3,7 @@ package pvgc
 import (
 	"context"
 	"fmt"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

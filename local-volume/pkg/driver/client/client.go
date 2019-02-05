@@ -3,7 +3,7 @@ package client
 import (
 	"encoding/json"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 )
 
 // Init performs a call to the /init path using the client.

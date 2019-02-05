@@ -1,7 +1,7 @@
 package diskutil
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
 // BindMount bind mounts the source directory to the target directory on the host filesystem

@@ -1,3 +1,4 @@
+export SHELL := /bin/bash
 DEP := $(shell command -v dep)
 IMG_TAG ?= latest
 IMG_MINIKUBE = localhost:5000/elastic-cloud-dev/elastic-local
