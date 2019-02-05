@@ -6,9 +6,9 @@ import (
 
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/events"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )

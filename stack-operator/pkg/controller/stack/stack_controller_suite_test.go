@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

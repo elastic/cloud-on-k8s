@@ -8,10 +8,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	estype "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	estype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,8 +1,8 @@
 package finalizer
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

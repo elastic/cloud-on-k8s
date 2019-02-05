@@ -5,13 +5,13 @@ package stack
 import (
 	"testing"
 
-	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	esv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	kbv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	deploymentsv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	esv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	kbv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/test"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

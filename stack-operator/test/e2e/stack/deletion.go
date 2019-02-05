@@ -3,10 +3,10 @@ package stack
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
+	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 )

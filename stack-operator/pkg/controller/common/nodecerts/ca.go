@@ -10,9 +10,9 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/reconciler"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/stack"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/stack"
 )
 
 func init() {

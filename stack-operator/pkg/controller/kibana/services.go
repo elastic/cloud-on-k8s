@@ -1,8 +1,8 @@
 package kibana
 
 import (
-	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+	kibanav1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

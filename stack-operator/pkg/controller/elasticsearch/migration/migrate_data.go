@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 )
 

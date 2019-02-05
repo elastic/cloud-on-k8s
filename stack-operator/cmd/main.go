@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/cmd/manager"
-	"github.com/elastic/stack-operators/stack-operator/cmd/snapshotter"
-	"github.com/elastic/stack-operators/stack-operator/pkg/dev"
+	"github.com/elastic/k8s-operators/stack-operator/cmd/manager"
+	"github.com/elastic/k8s-operators/stack-operator/cmd/snapshotter"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/dev"
 	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"

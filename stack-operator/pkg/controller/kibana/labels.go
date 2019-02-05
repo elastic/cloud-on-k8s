@@ -1,6 +1,6 @@
 package kibana
 
-import "github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
+import "github.com/elastic/k8s-operators/stack-operator/pkg/controller/common"
 
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources

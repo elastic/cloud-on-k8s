@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/operator"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 

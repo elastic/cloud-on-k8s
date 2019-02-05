@@ -1,7 +1,7 @@
 package pod
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 

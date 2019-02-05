@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

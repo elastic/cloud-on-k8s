@@ -3,8 +3,8 @@ package watches
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"

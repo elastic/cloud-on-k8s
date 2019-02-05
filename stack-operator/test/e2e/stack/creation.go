@@ -3,8 +3,8 @@ package stack
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/test/e2e/helpers"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 )

@@ -3,12 +3,12 @@ package services
 import (
 	"strconv"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

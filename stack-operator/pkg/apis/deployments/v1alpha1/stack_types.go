@@ -1,9 +1,9 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/common/v1alpha1"
-	elasticsearchv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/common/v1alpha1"
+	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	kibanav1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

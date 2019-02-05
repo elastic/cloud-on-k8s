@@ -14,7 +14,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	certs "k8s.io/api/certificates/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

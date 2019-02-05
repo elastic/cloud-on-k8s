@@ -1,8 +1,8 @@
 package common
 
 import (
-	deploymentsv1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	deploymentsv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 )
 
 // StackID returns the qualified identifier for this stack deployment

@@ -3,8 +3,8 @@ package mutation
 import (
 	"sort"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
 )
 

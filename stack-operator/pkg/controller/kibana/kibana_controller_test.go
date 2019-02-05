@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 
-	kibanav1alpha1 "github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	kibanav1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

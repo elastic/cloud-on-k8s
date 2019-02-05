@@ -1,7 +1,7 @@
 package mutation
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 )
 
 var (

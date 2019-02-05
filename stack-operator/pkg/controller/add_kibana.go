@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/kibana"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/kibana"
 )
 
 func init() {

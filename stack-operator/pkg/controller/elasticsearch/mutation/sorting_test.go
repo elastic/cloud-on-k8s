@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )

@@ -1,10 +1,10 @@
 package secret
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"

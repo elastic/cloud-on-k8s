@@ -10,8 +10,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"

@@ -1,10 +1,10 @@
 package license
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/watches"
-	esclient "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/watches"
+	esclient "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 )
 
 const (

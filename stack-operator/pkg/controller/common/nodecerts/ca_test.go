@@ -11,7 +11,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

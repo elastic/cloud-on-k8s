@@ -3,7 +3,7 @@ package observer
 import (
 	"sync"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"k8s.io/apimachinery/pkg/types"
 )
 

@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/pvgc"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/pvgc"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
+	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 )
 

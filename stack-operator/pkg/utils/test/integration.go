@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"

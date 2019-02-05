@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

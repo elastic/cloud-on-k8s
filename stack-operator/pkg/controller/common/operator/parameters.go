@@ -1,6 +1,6 @@
 package operator
 
-import "github.com/elastic/stack-operators/stack-operator/pkg/utils/net"
+import "github.com/elastic/k8s-operators/stack-operator/pkg/utils/net"
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {

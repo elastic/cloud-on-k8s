@@ -7,9 +7,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"

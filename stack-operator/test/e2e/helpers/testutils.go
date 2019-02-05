@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/retry"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

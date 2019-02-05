@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

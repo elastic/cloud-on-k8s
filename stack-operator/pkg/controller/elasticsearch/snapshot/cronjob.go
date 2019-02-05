@@ -3,15 +3,15 @@ package snapshot
 import (
 	"path"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/nodecerts"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
 
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"

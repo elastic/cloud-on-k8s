@@ -56,11 +56,11 @@ integration: generate fmt vet manifests
 
 # Build stack-operator binary
 stack-operator: generate fmt vet
-	go build -o bin/stack-operator github.com/elastic/stack-operators/stack-operator/cmd
+	go build -o bin/stack-operator github.com/elastic/k8s-operators/stack-operator/cmd
 
 # Build keystore updater
 keystore-updater: generate fmt vet
-	go build -o bin/keystore-updater github.com/elastic/stack-operators/stack-operator/cmd/keystore-updater
+	go build -o bin/keystore-updater github.com/elastic/k8s-operators/stack-operator/cmd/keystore-updater
 
 # CI job
 .PHONY: ci

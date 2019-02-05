@@ -3,8 +3,8 @@ package kibana
 import (
 	"reflect"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/reconciler"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

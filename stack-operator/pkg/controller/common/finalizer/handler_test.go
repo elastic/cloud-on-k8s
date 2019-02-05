@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

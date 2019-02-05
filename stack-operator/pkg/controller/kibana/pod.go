@@ -1,8 +1,8 @@
 package kibana
 
 import (
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"

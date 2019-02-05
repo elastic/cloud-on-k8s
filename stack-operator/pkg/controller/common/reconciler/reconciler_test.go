@@ -6,7 +6,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
 
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
