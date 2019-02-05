@@ -1,0 +1,40 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: EnterpriseLicense
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: enterpriselicense-sample
+spec:
+  startDateInMillis: 1548115200000
+  issuer: "Ben Bitdiddle"
+  issuedTo: "issuee"
+  maxInstances: 100
+  expiryDateInMillis: 1561247999999
+  issueDateInMillis: 1548115200000
+  type: "enterprise"
+  uid: "893361dc-9749-4997-93cb-802e3d7fa4xx"
+  signatureRef:
+    key: "el"
+    name: "stack-sample-license"
+  clusterLicenses:
+    - startDateInMillis: 1548115200000
+      issuer: "Ben Bitdiddle"
+      issuedTo: "issuee"
+      maxNodes: 40
+      expiryDateInMillis: 1561247999999
+      issueDateInMillis: 1548115200000
+      type: "platinum"
+      uid: "893361dc-9749-4997-93cb-xx2e3d7fa4xx"
+      signatureRef:
+        key: "cl"
+        name: "stack-sample-license"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: "stack-sample-license"
+  namespace: "default"
+type: Opaque
+data:
+  el: "not-a-valid-signature"
+  cl: "another-made-up-signature"

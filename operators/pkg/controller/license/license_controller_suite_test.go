@@ -1,6 +1,6 @@
 // +build integration
 
-package kibana
+package license
 
 import (
 	"path/filepath"
@@ -8,14 +8,15 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/scheme"
-
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
-
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+var cfg *rest.Config
 
 func TestMain(m *testing.M) {
 	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
@@ -38,10 +39,9 @@ func SetupTestReconcile(inner reconcile.Reconciler) (reconcile.Reconciler, chan 
 func StartTestManager(mgr manager.Manager, t *testing.T) (chan struct{}, *sync.WaitGroup) {
 	stop := make(chan struct{})
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
-		err := mgr.Start(stop)
-		assert.NoError(t, err)
+		assert.NoError(t, mgr.Start(stop))
 		wg.Done()
 	}()
 	return stop, wg

@@ -62,6 +62,11 @@ func init() {
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
 	)
+	Cmd.Flags().String(
+		operator.RoleFlag,
+		operator.All,
+		"Role this operator manager should assume (either applications, licensing or all)",
+	)
 
 	viper.BindPFlags(Cmd.Flags())
 	// enable using dashed notation in flags and underscores in env
@@ -128,7 +133,7 @@ func execute() {
 
 	// Setup all Controllers
 	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr, operator.Parameters{
+	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
 		Dialer:        dialer,
 		OperatorImage: operatorImage,
 	}); err != nil {

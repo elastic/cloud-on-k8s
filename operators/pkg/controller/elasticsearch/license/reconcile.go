@@ -32,7 +32,7 @@ func Reconcile(
 		return err
 	}
 	return applyLinkedLicense(c, clusterName, func(license v1alpha1.ClusterLicense) error {
-		sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
+		sigResolver := secretRefResolver(c, clusterName.Namespace, license.Spec.SignatureRef)
 		return updateLicense(clusterClient, current, license, sigResolver)
 	})
 }

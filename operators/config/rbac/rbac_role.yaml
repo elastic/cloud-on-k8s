@@ -153,6 +153,26 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - enterpriselicenses
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearchclusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - deployments.k8s.elastic.co
   resources:
   - stacks

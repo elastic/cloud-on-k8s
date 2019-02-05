@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
 }
 

@@ -44,12 +44,9 @@ func Test_secretRefResolver(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "error: no secret found",
-			wantErr: true,
-		},
-		{
-			name:    "error: multiple keys in secret",
-			wantErr: true,
+			name:    "happy-path: multiple keys in secret",
+			wantErr: false,
+			want:    "v",
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
@@ -57,12 +54,17 @@ func Test_secretRefResolver(t *testing.T) {
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						"1": []byte("v"),
-						"2": []byte("v"),
+						"k":     []byte("v"),
+						"other": []byte("other"),
 					},
 				},
 			},
 		},
+		{
+			name:    "error: no secret found",
+			wantErr: true,
+		},
+
 		{
 			name:    "error: empty secret",
 			wantErr: true,
@@ -79,12 +81,14 @@ func Test_secretRefResolver(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := k8s.WrapClient(fake.NewFakeClient(tt.initialObjs...))
-			ref := corev1.SecretReference{
-				Name:      "test",
-				Namespace: "default",
+			ref := corev1.SecretKeySelector{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: "test",
+				},
+				Key: "k",
 			}
-			got, err := secretRefResolver(c, ref)()
-			if err != nil && !tt.wantErr {
+			got, err := secretRefResolver(c, "default", ref)()
+			if (err != nil && !tt.wantErr) || err == nil && tt.wantErr {
 				t.Errorf("secretRefResolver() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
@@ -171,7 +175,9 @@ func Test_updateLicense(t *testing.T) {
 				},
 				desired: v1alpha1.ClusterLicense{
 					Spec: v1alpha1.ClusterLicenseSpec{
-						UID: "this-is-a-uid",
+						LicenseMeta: v1alpha1.LicenseMeta{
+							UID: "this-is-a-uid",
+						},
 					},
 				},
 				sigResolver: defaultSigResolver,
@@ -233,8 +239,10 @@ func Test_applyLinkedLicense(t *testing.T) {
 				&v1alpha1.ClusterLicense{
 					ObjectMeta: k8s.ToObjectMeta(clusterName),
 					Spec: v1alpha1.ClusterLicenseSpec{
-						UID:  "some-uid",
-						Type: "platinum",
+						LicenseMeta: v1alpha1.LicenseMeta{
+							UID: "some-uid",
+						},
+						Type: v1alpha1.LicenseTypePlatinum,
 					},
 				},
 			},

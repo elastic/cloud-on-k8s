@@ -4,12 +4,12 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: clusterlicenses.elasticsearch.k8s.elastic.co
+  name: enterpriselicenses.elasticsearch.k8s.elastic.co
 spec:
   group: elasticsearch.k8s.elastic.co
   names:
-    kind: ClusterLicense
-    plural: clusterlicenses
+    kind: EnterpriseLicense
+    plural: enterpriselicenses
   scope: Namespaced
   validation:
     openAPIV3Schema:
@@ -22,6 +22,43 @@ spec:
           type: object
         spec:
           properties:
+            clusterLicenses:
+              items:
+                properties:
+                  expiryDateInMillis:
+                    format: int64
+                    type: integer
+                  issueDateInMillis:
+                    format: int64
+                    type: integer
+                  issuedTo:
+                    type: string
+                  issuer:
+                    type: string
+                  maxNodes:
+                    format: int64
+                    type: integer
+                  signatureRef:
+                    type: object
+                  startDateInMillis:
+                    format: int64
+                    type: integer
+                  type:
+                    type: string
+                  uid:
+                    type: string
+                required:
+                - uid
+                - issueDateInMillis
+                - expiryDateInMillis
+                - issuedTo
+                - issuer
+                - startDateInMillis
+                - maxNodes
+                - type
+                - signatureRef
+                type: object
+              type: array
             expiryDateInMillis:
               format: int64
               type: integer
@@ -32,7 +69,7 @@ spec:
               type: string
             issuer:
               type: string
-            maxNodes:
+            maxInstances:
               format: int64
               type: integer
             signatureRef:
@@ -51,8 +88,8 @@ spec:
           - issuedTo
           - issuer
           - startDateInMillis
-          - maxNodes
           - type
+          - maxInstances
           - signatureRef
           type: object
   version: v1alpha1
