@@ -10,5 +10,5 @@ ci: build-image
 		-w $(MOUNT_PATH) \
 		$(CI_IMAGE_NAME) \
 		bash -c \
-			"make -C elastic-operator ci && \
+			"make -C operators ci && \
 			 make -C local-volume ci"
