@@ -1,0 +1,58 @@
+@startuml resources.png
+class ElasticsearchCluster << (R,darkseagreen) >> {
+    .. ObjectMeta ..
+    name: my-cluster-id
+    .. Spec ..
+    ... **Option 0** ...
+    users:
+    \t - name: foo
+    \t   password-hash: ...
+    \t   ...
+
+}
+
+class User << (R,darkseagreen) >> {
+    .. ObjectMeta ..
+        name: my-cluster-id-foo // <-- convention to avoid collisions
+    .. Labels ..
+    ... **Option 1** ...
+        elasticsearch.k8s.elastic.co/cluster: my-cluster-id
+    ... **Option 2** ...
+        k8s.elastic.co/relations: {"cluster": "my-cluster-id"}
+    --
+    .. Spec ..
+        username: foo
+        password-hash: {bcrypt2}
+        user-roles: [foo]
+        roles:
+        \t name: foo
+        \t spec:
+        \t \t /ES security cluster role definition/
+    ..  **Option 3** ..
+        clusterSelector:
+        \t matchLabels:
+        \t \t elasticsearch.k8s.elastic.co/cluster: my-cluster-id
+}
+
+ElasticsearchCluster -> User: lists and applies
+
+note bottom of User
+In a real-world example, collisions and/or conflicts between users and
+roles defined through these resources would need to be handled, but
+is considered out of scope for the purposes of this document.
+end note
+@enduml
+
+@startuml one-to-one.png
+class ElasticsearchCluster << (R,darkseagreen) >> {
+    .. ObjectMeta ..
+    name: **my-cluster-id**
+}
+
+class ClusterLicense << (R,darkseagreen) >> {
+    .. ObjectMeta ..
+        name: **my-cluster-id**
+}
+
+ElasticsearchCluster -> ClusterLicense: get/watch by name and use
+@enduml

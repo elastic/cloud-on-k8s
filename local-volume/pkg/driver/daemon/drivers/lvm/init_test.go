@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 )
 
 func TestDriver_Init(t *testing.T) {

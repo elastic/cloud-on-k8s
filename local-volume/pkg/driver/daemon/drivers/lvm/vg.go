@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
 )
 
 // VolumeGroup represents a volumegroup with a name
