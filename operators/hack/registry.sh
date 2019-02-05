@@ -15,6 +15,19 @@ Commands:
     start               Execute the `create` and `port-forward start` commands'
 }
 
+kubectl-in-docker() {
+  local build_tools_image=docker.elastic.co/k8s/build-tools
+
+  if [[ "$(docker images -q $build_tools_image 2> /dev/null)" == "" ]]; then
+    local dockerfile_path=../build/build-tools-image
+    docker build -t $build_tools_image -f $dockerfile_path/Dockerfile $dockerfile_path
+  fi
+
+  docker run -d --name registry-port-forwarder --net=host \
+    -v ~/.kube:/root/.kube -v ~/.minikube:$HOME/.minikube \
+    $build_tools_image kubectl $@
+}
+
 main() {
   case $@ in
     start)
@@ -25,14 +38,13 @@ main() {
       kubectl apply -f config/dev/registry.yaml
     ;;
     "port-forward start")
-      kubectl wait pods -l k8s-app=kube-registry -n=kube-system --for condition=Ready --timeout 10s
+      kubectl wait pods -l k8s-app=kube-registry -n=kube-system --for condition=Ready --timeout 40s
       local podName=$(kubectl get po -n kube-system | grep kube-registry-v0 | awk '{print $1}')
-      kubectl port-forward -n=kube-system $podName 5000:5000 > /dev/null &
+      kubectl-in-docker port-forward -n=kube-system $podName 5000:5000
       timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
     ;;
     "port-forward stop")
-      local pid=$(ps aux | grep 'kubectl port-forward.*registry' | grep -v grep | awk '{print $2}')
-      kill $pid
+      docker rm --force registry-port-forwarder
     ;;
     delete)
       kubectl delete -f config/dev/registry.yaml
