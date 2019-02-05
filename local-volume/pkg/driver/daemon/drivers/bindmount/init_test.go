@@ -3,8 +3,8 @@ package bindmount
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 	"github.com/stretchr/testify/assert"
 )
 

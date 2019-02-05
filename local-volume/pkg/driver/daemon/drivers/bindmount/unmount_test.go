@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 )
 
 func TestDriver_Unmount(t *testing.T) {

@@ -1,7 +1,7 @@
 package lvm
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 )
 
 // Init initializes the driver and returns a response

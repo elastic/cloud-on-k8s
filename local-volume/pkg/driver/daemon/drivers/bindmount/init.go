@@ -1,7 +1,7 @@
 package bindmount
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 )
 
 // Init returns a successful response when the driver is ready
