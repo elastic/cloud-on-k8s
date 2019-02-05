@@ -1,11 +1,11 @@
 package nodecerts
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/stack-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -47,9 +47,9 @@ func (t *TrustRootConfig) Include(tr v1alpha1.TrustRestrictions) {
 }
 
 // LoadTrustRelationships loads the trust relationships from the API.
-func LoadTrustRelationships(c client.Client, clusterName, namespace string) ([]v1alpha1.TrustRelationship, error) {
+func LoadTrustRelationships(c k8s.Client, clusterName, namespace string) ([]v1alpha1.TrustRelationship, error) {
 	var trustRelationships v1alpha1.TrustRelationshipList
-	if err := c.List(context.Background(), &client.ListOptions{
+	if err := c.List(&client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{label.ClusterNameLabelName: clusterName}),
 		Namespace:     namespace,
 	}, &trustRelationships); err != nil {
