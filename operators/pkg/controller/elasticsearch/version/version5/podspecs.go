@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/secret"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/version"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 

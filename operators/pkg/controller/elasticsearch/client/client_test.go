@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts"
-	fixtures "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/dev/portforward"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

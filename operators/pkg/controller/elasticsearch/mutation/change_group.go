@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
 const (

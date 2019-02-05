@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/test"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

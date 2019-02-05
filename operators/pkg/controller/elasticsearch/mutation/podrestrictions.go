@@ -3,7 +3,7 @@ package mutation
 import (
 	"errors"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 )
 

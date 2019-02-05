@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

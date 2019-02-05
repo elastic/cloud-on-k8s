@@ -3,9 +3,9 @@ package reconcile
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"

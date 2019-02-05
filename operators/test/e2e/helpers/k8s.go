@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"

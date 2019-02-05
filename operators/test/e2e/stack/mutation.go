@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	estype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	esclient "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

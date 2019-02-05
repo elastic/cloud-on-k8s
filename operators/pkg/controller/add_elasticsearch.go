@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch"
 )
 
 func init() {

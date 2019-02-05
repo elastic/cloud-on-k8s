@@ -1,11 +1,11 @@
 package stack
 
 import (
-	common "github.com/elastic/k8s-operators/stack-operator/pkg/apis/common/v1alpha1"
-	stacktype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	estype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
+	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	stacktype "github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"

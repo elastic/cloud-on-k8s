@@ -39,17 +39,17 @@ go generate ./pkg/... ./cmd/...
 go fmt ./pkg/... ./cmd/...
 go vet ./pkg/... ./cmd/...
 go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-CRD manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/stack-operator/config/crds'
-RBAC manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/stack-operator/config/rbac'
+CRD manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/operators/config/crds'
+RBAC manifests generated under '/Users/marc/go/src/github.com/elastic/k8s-operators/operators/config/rbac'
 go test ./pkg/... ./cmd/... -coverprofile cover.out
-?   	github.com/elastic/k8s-operators/stack-operator/pkg/apis	[no test files]
-?   	github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments	[no test files]
-ok  	github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1	9.841s	coverage: 20.0% of statements
-?   	github.com/elastic/k8s-operators/stack-operator/pkg/controller	[no test files]
-ok  	github.com/elastic/k8s-operators/stack-operator/pkg/controller/stack	11.236s	coverage: 67.6% of statements
-?   	github.com/elastic/k8s-operators/stack-operator/pkg/webhook	[no test files]
-?   	github.com/elastic/k8s-operators/stack-operator/cmd/manager	[no test files]
-go build -o bin/manager github.com/elastic/k8s-operators/stack-operator/cmd/manager
+?   	github.com/elastic/k8s-operators/operators/pkg/apis	[no test files]
+?   	github.com/elastic/k8s-operators/operators/pkg/apis/deployments	[no test files]
+ok  	github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1	9.841s	coverage: 20.0% of statements
+?   	github.com/elastic/k8s-operators/operators/pkg/controller	[no test files]
+ok  	github.com/elastic/k8s-operators/operators/pkg/controller/stack	11.236s	coverage: 67.6% of statements
+?   	github.com/elastic/k8s-operators/operators/pkg/webhook	[no test files]
+?   	github.com/elastic/k8s-operators/operators/cmd/manager	[no test files]
+go build -o bin/manager github.com/elastic/k8s-operators/operators/cmd/manager
 kubectl apply -f config/crds
 customresourcedefinition.apiextensions.k8s.io/stacks.deployments.k8s.elastic.co configured
 stack.deployments.k8s.elastic.co/stack-sample unchanged

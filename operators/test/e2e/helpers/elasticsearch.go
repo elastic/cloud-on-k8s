@@ -4,10 +4,10 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/net"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
 // if `--auto-port-forward` is passed to `go test`, then use a custom

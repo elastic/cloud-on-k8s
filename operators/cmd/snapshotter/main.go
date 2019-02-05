@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 
 	"io/ioutil"
 	"os"
 
-	esclient "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/snapshot"
+	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 

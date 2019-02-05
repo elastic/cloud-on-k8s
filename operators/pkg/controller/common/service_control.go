@@ -3,8 +3,8 @@ package common
 import (
 	"reflect"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

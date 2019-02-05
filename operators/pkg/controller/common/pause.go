@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	deploymentsv1alpha1 "github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/k8s"
+	deploymentsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"

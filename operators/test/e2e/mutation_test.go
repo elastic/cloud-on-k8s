@@ -3,8 +3,8 @@ package e2e
 import (
 	"testing"
 
-	common "github.com/elastic/k8s-operators/stack-operator/pkg/apis/common/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/test/e2e/stack"
+	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )

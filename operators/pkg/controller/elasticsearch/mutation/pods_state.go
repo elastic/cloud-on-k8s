@@ -1,9 +1,9 @@
 package mutation
 
 import (
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
 )
 

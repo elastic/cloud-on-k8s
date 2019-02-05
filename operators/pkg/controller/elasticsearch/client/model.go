@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 )
 
 // Info represents the response from /

@@ -2,7 +2,7 @@
 FROM golang:1.11
 
 # Copy in the go src
-WORKDIR /go/src/github.com/elastic/k8s-operators/stack-operator
+WORKDIR /go/src/github.com/elastic/k8s-operators/operators
 COPY pkg/    pkg/
 COPY config/ config/
 COPY test/   test/

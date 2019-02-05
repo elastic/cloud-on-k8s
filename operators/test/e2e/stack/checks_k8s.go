@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis/deployments/v1alpha1"
-	estype "github.com/elastic/k8s-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/stack-operator/test/e2e/helpers"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"

@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client"
-	fixtures "github.com/elastic/k8s-operators/stack-operator/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
 func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {

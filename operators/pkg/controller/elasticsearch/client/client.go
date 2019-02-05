@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/net"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 )
 

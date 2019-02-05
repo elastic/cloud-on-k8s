@@ -5,15 +5,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/dev"
+	"github.com/elastic/k8s-operators/operators/pkg/dev"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 
-	"github.com/elastic/k8s-operators/stack-operator/pkg/apis"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/controller"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/utils/net"
-	"github.com/elastic/k8s-operators/stack-operator/pkg/webhook"
+	"github.com/elastic/k8s-operators/operators/pkg/apis"
+	"github.com/elastic/k8s-operators/operators/pkg/controller"
+	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/k8s-operators/operators/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
