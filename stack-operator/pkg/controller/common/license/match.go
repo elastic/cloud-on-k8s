@@ -57,7 +57,7 @@ func filterValidForType(desiredLicense v1alpha1.LicenseType, now time.Time, lice
 	for _, el := range licenses {
 		if el.IsValid(now) {
 			for _, l := range el.Spec.ClusterLicenseSpecs {
-				if typeMatches(desiredLicense, l.Type) && l.IsValid(now, v1alpha1.NoSafetyMargin()) {
+				if typeMatches(desiredLicense, l.Type) && l.IsValid(now) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						license:    l,
 						parentMeta: el.ObjectMeta,

@@ -8,13 +8,13 @@ import (
 )
 
 func TestClusterLicense_IsValidAt(t *testing.T) {
-	now := time.Date(2019, 01, 31, 0, 9, 0, 0, time.UTC)
+	now := time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
 	type fields struct {
 		startMillis  int64
 		expiryMillis int64
 	}
 	type args struct {
-		margin SafetyMargin
+		offset time.Duration
 	}
 	tests := []struct {
 		name   string
@@ -23,7 +23,15 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		want   bool
 	}{
 		{
-			name: "valid license - no margin",
+			name: "valid license - starts now",
+			fields: fields{
+				startMillis:  Millis("2019-01-31"),
+				expiryMillis: Millis("2019-12-31"),
+			},
+			want: true,
+		},
+		{
+			name: "valid license - no offset",
 			fields: fields{
 				startMillis:  Millis("2019-01-01"),
 				expiryMillis: Millis("2019-12-31"),
@@ -31,30 +39,24 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "valid license - with margin",
+			name: "valid license - with offset",
 			fields: fields{
 				startMillis:  Millis("2019-01-01"),
 				expiryMillis: Millis("2019-12-31"),
 			},
 			args: args{
-				margin: SafetyMargin{
-					ValidSince: 48 * time.Hour,
-					ValidFor:   30 * 24 * time.Hour,
-				},
+				offset: 30 * 24 * time.Hour,
 			},
 			want: true,
 		},
 		{
-			name: "invalid license - because of margin",
+			name: "invalid license - because of offset",
 			fields: fields{
 				startMillis:  Millis("2019-01-30"),
-				expiryMillis: Millis("2019-12-31"),
+				expiryMillis: Millis("2019-02-28"),
 			},
 			args: args{
-				margin: SafetyMargin{
-					ValidSince: 7 * 24 * time.Hour,
-					ValidFor:   90 * 24 * time.Hour,
-				},
+				offset: 90 * 24 * time.Hour,
 			},
 			want: false,
 		},
@@ -77,7 +79,7 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 					},
 				},
 			}
-			if got := l.IsValid(now, tt.args.margin); got != tt.want {
+			if got := l.IsValid(now.Add(tt.args.offset)); got != tt.want {
 				t.Errorf("ClusterLicense.IsValid() = %v, want %v", got, tt.want)
 			}
 		})

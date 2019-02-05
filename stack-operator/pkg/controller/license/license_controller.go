@@ -60,19 +60,14 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileLicenses{Client: c, scheme: mgr.GetScheme()}
 }
 
-func defaultSafetyMargin() v1alpha1.SafetyMargin {
-	return v1alpha1.SafetyMargin{
-		ValidSince: 2 * 24 * time.Hour,
-		ValidFor:   30 * 24 * time.Hour,
-	}
-}
+var defaultSafetyMargin = 30 * 24 * time.Hour
 
-func nextReconcile(expiry time.Time, safety v1alpha1.SafetyMargin) reconcile.Result {
+func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {
 	return nextReconcileRelativeTo(time.Now(), expiry, safety)
 }
 
-func nextReconcileRelativeTo(now, expiry time.Time, safety v1alpha1.SafetyMargin) reconcile.Result {
-	requeueAfter := expiry.Add(-1 * (safety.ValidFor / 2)).Sub(now)
+func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconcile.Result {
+	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)
 	if requeueAfter <= 0 {
 		return reconcile.Result{Requeue: true}
 	}
@@ -176,7 +171,7 @@ func reconcileSecret(
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 func (r *ReconcileLicenses) reconcileClusterLicense(
 	cluster v1alpha1.ElasticsearchCluster,
-	margin v1alpha1.SafetyMargin,
+	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
@@ -202,7 +197,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		Expected:   toAssign,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			return !reconciled.IsValid(time.Now(), margin)
+			return !reconciled.IsValid(time.Now().Add(margin))
 		},
 		UpdateReconciled: func() {
 			reconciled.Spec = toAssign.Spec
@@ -233,7 +228,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 		// cluster is being deleted nothing to do
 		return reconcile.Result{}, nil
 	}
-	safetyMargin := defaultSafetyMargin()
+	safetyMargin := defaultSafetyMargin
 	newExpiry, err := r.reconcileClusterLicense(owner, safetyMargin)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err

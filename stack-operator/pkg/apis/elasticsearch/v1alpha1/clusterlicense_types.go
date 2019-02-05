@@ -60,10 +60,10 @@ func (l LicenseMeta) ExpiryDate() time.Time {
 	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
 }
 
-// IsValid returns true if the license is still valid at the given point in time factoring in the given safety margin.
-func (l LicenseMeta) IsValid(instant time.Time, margin SafetyMargin) bool {
-	return l.StartDate().Add(margin.ValidSince).Before(instant) &&
-		l.ExpiryDate().Add(-1*margin.ValidFor).After(instant)
+// IsValid returns true if the license is still valid at the given point in time.
+func (l LicenseMeta) IsValid(instant time.Time) bool {
+	return (l.StartDate().Equal(instant) || l.StartDate().Before(instant)) &&
+		l.ExpiryDate().After(instant)
 }
 
 // ClusterLicenseSpec defines the desired state of ClusterLicense
@@ -106,21 +106,9 @@ func (l ClusterLicense) IsEmpty() bool {
 	return l.Spec.IsEmpty()
 }
 
-// SafetyMargin expresses the desire to have a temporal buffer relative to the
-// beginning and the end of the validity period of a license.
-type SafetyMargin struct {
-	ValidSince time.Duration
-	ValidFor   time.Duration
-}
-
-// NoSafetyMargin returns an empty (= no) safety margin.
-func NoSafetyMargin() SafetyMargin {
-	return SafetyMargin{}
-}
-
-// IsValid returns true if the license is still valid at the given point in time factoring in the given safety margin.
-func (l ClusterLicense) IsValid(instant time.Time, margin SafetyMargin) bool {
-	return l.Spec.IsValid(instant, margin)
+// IsValid returns true if the license is still valid at the given point in time.
+func (l ClusterLicense) IsValid(instant time.Time) bool {
+	return l.Spec.IsValid(instant)
 }
 
 var _ License = &ClusterLicense{}

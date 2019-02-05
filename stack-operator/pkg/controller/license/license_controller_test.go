@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/stack-operators/stack-operator/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/stack-operators/stack-operator/pkg/utils/test"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -14,7 +13,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	now := test.MustParseTime("2019-02-01")
 	type args struct {
 		expiry time.Time
-		safety v1alpha1.SafetyMargin
+		safety time.Duration
 	}
 	tests := []struct {
 		name string
@@ -25,9 +24,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 			name: "remaining time too short: requeue immediately ",
 			args: args{
 				expiry: test.MustParseTime("2019-02-02"),
-				safety: v1alpha1.SafetyMargin{
-					ValidFor: 30 * 24 * time.Hour,
-				},
+				safety: 30 * 24 * time.Hour,
 			},
 			want: reconcile.Result{Requeue: true},
 		},
@@ -35,9 +32,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 			name: "default: requeue after expiry - safety/2 ",
 			args: args{
 				expiry: test.MustParseTime("2019-02-03"),
-				safety: v1alpha1.SafetyMargin{
-					ValidFor: 48 * time.Hour,
-				},
+				safety: 48 * time.Hour,
 			},
 			want: reconcile.Result{RequeueAfter: 24 * time.Hour},
 		},

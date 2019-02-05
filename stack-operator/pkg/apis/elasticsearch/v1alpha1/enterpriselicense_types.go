@@ -41,7 +41,7 @@ func (l *EnterpriseLicense) ExpiryDate() time.Time {
 
 // IsValid returns true if the license is still valid at the given point in time.
 func (l EnterpriseLicense) IsValid(instant time.Time) bool {
-	return l.Spec.IsValid(instant, NoSafetyMargin())
+	return l.Spec.IsValid(instant)
 }
 
 var _ License = &EnterpriseLicense{}
