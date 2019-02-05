@@ -1,5 +1,5 @@
 MOUNT_PATH ?= /go/src/github.com/elastic/k8s-operators
-CI_IMAGE_NAME ?= stack-operators-ci
+CI_IMAGE_NAME ?= elastic-operators-ci
 
 build-image:
 	docker build -f Dockerfile.ci -t $(CI_IMAGE_NAME) .
@@ -10,5 +10,5 @@ ci: build-image
 		-w $(MOUNT_PATH) \
 		$(CI_IMAGE_NAME) \
 		bash -c \
-			"make -C stack-operator ci && \
+			"make -C elastic-operator ci && \
 			 make -C local-volume ci"
