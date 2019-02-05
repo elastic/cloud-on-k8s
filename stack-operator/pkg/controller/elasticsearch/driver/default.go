@@ -184,6 +184,18 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
+	if esReachable {
+		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
+		if err != nil {
+			msg := "Could not reconcile snapshot repository"
+			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
+			log.Error(err, msg)
+			// requeue to retry but continue as failure might be cause by transient inconsistency between ES and operator
+			// e.g. after certificates have been rotated
+			results.WithResult(defaultRequeue)
+		}
+	}
+
 	namespacedName := k8s.ExtractNamespacedName(es.ObjectMeta)
 
 	// There might be some ongoing creations and deletions our k8s client cache
@@ -240,18 +252,6 @@ func (d *defaultDriver) Reconcile(
 			return controller.Result{}, err
 		},
 	)
-
-	if esReachable {
-		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
-		if err != nil {
-			msg := "Could not reconcile snapshot repository"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
-			// requeue to retry but continue as failure might be cause by transient inconsistency between ES and operator
-			// e.g. after certificates have been rotated
-			results.WithResult(defaultRequeue)
-		}
-	}
 
 	if d.clusterInitialMasterNodesEnforcer != nil {
 		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
