@@ -24,3 +24,10 @@ func ExtractNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
 		Name:      objectMeta.Name,
 	}
 }
+
+func NamespacedNameFromObj(obj metav1.Object) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+	}
+}

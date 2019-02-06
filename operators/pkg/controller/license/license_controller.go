@@ -97,6 +97,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	); err != nil {
 		return err
 	}
+
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+			clusters := listAffectedLicenses(mgr.GetClient(), k8s.NamespacedNameFromObj(object.Meta))
+			names := make([]reconcile.Request, len(clusters))
+			for _, c := range clusters {
+				names = append(names, reconcile.Request{NamespacedName: types.NamespacedName{
+					Namespace: c.Namespace,
+					Name:      clusterNameFromLicense(c.Name), //TODO alternative to string mangling: check owner ref
+				}})
+			}
+			return names
+
+		}),
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -133,7 +150,7 @@ func reconcileSecret(
 	ref corev1.SecretKeySelector,
 	ns string,
 ) (corev1.SecretKeySelector, error) {
-	secretName := cluster.Name + "-license"
+	secretName := licenseNameFromCluster(cluster.Name)
 	secretKey := "sig"
 	selector := corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
@@ -197,6 +214,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
 		Spec:       matchingSpec,
 	}
+	toAssign.Labels = map[string]string{EnterpriseLicenseLabelName: parent.Name}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{
