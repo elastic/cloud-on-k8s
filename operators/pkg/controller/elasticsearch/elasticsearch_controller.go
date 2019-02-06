@@ -123,10 +123,8 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 			labels := obj.Meta.GetLabels()
 			if clusterName, ok := labels[label.ClusterNameLabelName]; ok {
-				// this is not capable of quite properly dealing with a situation where the target cluster label value
-				// is changed: in this scenario the old cluster will still have the trust relationship associated with
-				// it until it's reconciled for another reason. it seems it is not possible to determine that a value was
-				// changed from/to another value at this point in the code, unless we add an internal annotation for it.
+				// we don't need to special case the handling of this label to support in-place changes to its value
+				// as controller-runtime will ask this func to map both the old and the new resources on updates.
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{Namespace: obj.Meta.GetNamespace(), Name: clusterName}},
 				}
