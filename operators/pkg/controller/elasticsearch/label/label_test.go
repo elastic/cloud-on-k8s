@@ -3,12 +3,14 @@ package label
 import (
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/apimachinery/pkg/types"
-
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func TestClusterFromResourceLabels(t *testing.T) {
@@ -32,4 +34,30 @@ func TestClusterFromResourceLabels(t *testing.T) {
 		Namespace: "namespace",
 		Name:      "clusterName",
 	}, cluster)
+}
+
+func TestNewLabelSelectorForElasticsearch(t *testing.T) {
+	type args struct {
+		es v1alpha1.ElasticsearchCluster
+	}
+	tests := []struct {
+		name       string
+		args       args
+		assertions func(*testing.T, args, labels.Selector)
+	}{
+		{
+			name: "should match labels from NewLabels",
+			args: args{es: v1alpha1.ElasticsearchCluster{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
+			assertions: func(t *testing.T, a args, sel labels.Selector) {
+				esLabels := NewLabels(a.es)
+				assert.True(t, sel.Matches(labels.Set(esLabels)))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewLabelSelectorForElasticsearch(tt.args.es)
+			tt.assertions(t, tt.args, got)
+		})
+	}
 }

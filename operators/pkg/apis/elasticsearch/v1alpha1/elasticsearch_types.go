@@ -293,19 +293,19 @@ type TrustRelationshipSpec struct {
 	TrustRestrictions TrustRestrictions `json:"trustRestrictions,omitempty"`
 }
 
-// TrustRestrictions is the trust restrictions of an Elasticsearch cluster
+// TrustRestrictions is the trust restrictions of an Elasticsearch cluster.
 type TrustRestrictions struct {
-	// Trust contains configuration for the Elasticsearch trust restrictions
+	// Trust contains configuration for the Elasticsearch trust restrictions.
 	Trust Trust `json:"trust,omitempty"`
 }
 
-// Trust contains configuration for the Elasticsearch trust restrictions
+// Trust contains configuration for the Elasticsearch trust restrictions.
 type Trust struct {
-	// SubjectName is a list of patterns that incoming TLS client certificates must match
+	// SubjectName is a list of patterns that incoming TLS client certificates must match.
 	SubjectName []string `json:"subjectName,omitempty"`
 }
 
-// TrustRelationship describes one direction of the trust relationship between two Elasticsearch cluster
+// TrustRelationship describes one direction of the trust relationship between two Elasticsearch clusters.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 type TrustRelationship struct {
@@ -315,7 +315,7 @@ type TrustRelationship struct {
 	Spec TrustRelationshipSpec `json:"spec,omitempty"`
 }
 
-// TrustRelationshipList contains a list of TrustRelationships
+// TrustRelationshipList contains a list of TrustRelationships.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TrustRelationshipList struct {
 	metav1.TypeMeta `json:",inline"`

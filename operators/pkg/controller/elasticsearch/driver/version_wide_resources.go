@@ -49,7 +49,7 @@ func reconcileVersionWideResources(
 
 	trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
 
-	// include the trust restrictions from the trust relationships info the trust restrictions config
+	// include the trust restrictions from the trust relationships into the trust restrictions config
 	for _, trustRelationship := range trustRelationships {
 		trustRootCfg.Include(trustRelationship.Spec.TrustRestrictions)
 	}

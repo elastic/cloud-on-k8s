@@ -128,7 +128,7 @@ func ReconcileNodeCertificateSecret(
 	ca *Ca,
 	additionalTrustedCAsPemEncoded [][]byte,
 ) (reconcile.Result, error) {
-	// dirty indicates whether we need to update the secret if it already exist
+	// dirty indicates whether we need to update the secret if it already exists
 	dirty := false
 
 	// a placeholder secret may have a nil secret.Data, so create it if it does not exist

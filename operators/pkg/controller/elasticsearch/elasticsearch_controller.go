@@ -114,15 +114,15 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// watch trust relationships and queue reconciliation for their associated cluster when it changes
+	// watch trust relationships and queue reconciliation for their associated cluster on changes
 	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.TrustRelationship{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 			labels := obj.Meta.GetLabels()
 			if clusterName, ok := labels[label.ClusterNameLabelName]; ok {
-				// this is not capable of quite properly dealing with a situation where the target cluster changes, as
-				// the old cluster will not have the old trust relationship still associated with it until a separate
-				// reconciliation request is queued for it, which is not possible to determine at this point in the
-				// code.
+				// this is not capable of quite properly dealing with a situation where the target cluster label value
+				// is changed: in this scenario the old cluster will still have the trust relationship associated with
+				// it until it's reconciled for another reason. it seems it is not possible to determine that a value was
+				// changed from/to another value at this point in the code, unless we add an internal annotation for it.
 				return []reconcile.Request{
 					{NamespacedName: types.NamespacedName{Namespace: obj.Meta.GetNamespace(), Name: clusterName}},
 				}
