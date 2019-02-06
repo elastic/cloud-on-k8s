@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package license
 
 import (
@@ -32,7 +36,7 @@ func Reconcile(
 		return err
 	}
 	return applyLinkedLicense(c, clusterName, func(license v1alpha1.ClusterLicense) error {
-		sigResolver := secretRefResolver(c, license.Spec.SignatureRef)
+		sigResolver := secretRefResolver(c, clusterName.Namespace, license.Spec.SignatureRef)
 		return updateLicense(clusterClient, current, license, sigResolver)
 	})
 }

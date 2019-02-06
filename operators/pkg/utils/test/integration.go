@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package test
 
 import (
@@ -5,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -29,7 +31,6 @@ func RunWithK8s(m *testing.M, crdPath string) {
 		CRDDirectoryPaths:        []string{crdPath},
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
 	}
-	apis.AddToScheme(scheme.Scheme)
 
 	var err error
 	if Config, err = t.Start(); err != nil {

@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package reconciler
 
 import (
@@ -35,6 +39,10 @@ type Params struct {
 	NeedsUpdate func() bool
 	// UpdateReconciled modifies the resource pointed to by Reconciled to reflect the state of Expected
 	UpdateReconciled func()
+	// OnCreate allows for side-effects (logging) when a new resource will be created.
+	OnCreate func()
+	// OnUpdate allows for side-effects (logging) when a resources will be updated.
+	OnUpdate func()
 }
 
 func (p Params) CheckNilValues() error {
@@ -78,6 +86,9 @@ func ReconcileResource(params Params) error {
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
 		log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
+		if params.OnCreate != nil {
+			params.OnCreate()
+		}
 
 		// Copy the content of params.Expected into params.Reconciled.
 		// Unfortunately it's not straightforward to change the value of an interface underlying pointer,
@@ -99,6 +110,9 @@ func ReconcileResource(params Params) error {
 	// Update if needed
 	if params.NeedsUpdate() {
 		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
+		if params.OnUpdate != nil {
+			params.OnUpdate()
+		}
 		params.UpdateReconciled()
 		err := params.Client.Update(params.Reconciled)
 		if err != nil {

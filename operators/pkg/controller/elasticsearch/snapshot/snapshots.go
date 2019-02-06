@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package snapshot
 
 import (
@@ -196,8 +200,8 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 	}
 }
 
-// EnsureSnapshotRepository attempts to upsert a repository definition into the given cluster.
-func EnsureSnapshotRepository(ctx context.Context, es *client.Client, repo *v1alpha1.SnapshotRepository) error {
+// ReconcileSnapshotRepository attempts to upsert a repository definition into the given cluster.
+func ReconcileSnapshotRepository(ctx context.Context, es *client.Client, repo *v1alpha1.SnapshotRepository) error {
 
 	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
 	if err != nil && !client.IsNotFound(err) {

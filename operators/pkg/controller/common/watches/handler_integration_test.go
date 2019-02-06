@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 // +build integration
 
 package watches
@@ -8,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +28,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
 }
 

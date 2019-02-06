@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 // package portforward provides a dialer that uses the Kubernetes API to automatically forward connections to
 // Kubernetes services and pods using the "port-forward" feature of kubectl.
 //

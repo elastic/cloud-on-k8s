@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package driver
 
 import (
@@ -196,12 +200,14 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	if esReachable {
-		err = snapshot.EnsureSnapshotRepository(context.TODO(), esClient, es.Spec.SnapshotRepository)
+		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
 		if err != nil {
-			// TODO decide should this be a reason to stop this reconciliation loop?
-			msg := "Could not ensure snapshot repository"
+			msg := "Could not reconcile snapshot repository"
 			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
+			// requeue to retry but continue, as the failure might be caused by transient inconsistency between ES and
+			// operator e.g. after certificates have been rotated
+			results.WithResult(defaultRequeue)
 		}
 	}
 

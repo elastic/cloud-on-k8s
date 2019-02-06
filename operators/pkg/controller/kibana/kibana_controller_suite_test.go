@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 // +build integration
 
 package kibana
@@ -7,7 +11,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 
@@ -16,6 +22,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 

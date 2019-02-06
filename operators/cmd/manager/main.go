@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package manager
 
 import (
@@ -61,6 +65,11 @@ func init() {
 		MetricsPortFlag,
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
+	)
+	Cmd.Flags().String(
+		operator.RoleFlag,
+		operator.All,
+		"Role this operator manager should assume (either applications, licensing or all)",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
@@ -128,7 +137,7 @@ func execute() {
 
 	// Setup all Controllers
 	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr, operator.Parameters{
+	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
 		Dialer:        dialer,
 		OperatorImage: operatorImage,
 	}); err != nil {

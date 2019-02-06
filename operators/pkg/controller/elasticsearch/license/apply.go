@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package license
 
 import (
@@ -36,20 +40,18 @@ func applyLinkedLicense(
 	return updater(license)
 }
 
-func secretRefResolver(c k8s.Client, ref corev1.SecretReference) func() (string, error) {
+func secretRefResolver(c k8s.Client, ns string, ref corev1.SecretKeySelector) func() (string, error) {
 	return func() (string, error) {
 		var secret corev1.Secret
-		err := c.Get(types.NamespacedName{Namespace: ref.Namespace, Name: ref.Name}, &secret)
+		err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &secret)
 		if err != nil {
 			return "", err
 		}
-		if len(secret.Data) != 1 {
-			return "", errors.New("not exactly one secret element found but no key specified") // TODO support keys
+		bytes, ok := secret.Data[ref.Key]
+		if !ok {
+			return "", fmt.Errorf("requested secret key could not be found in secret %v", ref)
 		}
-		for _, v := range secret.Data {
-			return string(v), nil
-		}
-		return "", nil
+		return string(bytes), nil
 	}
 }
 
@@ -71,7 +73,7 @@ func updateLicense(
 			{
 
 				UID:                desired.Spec.UID,
-				Type:               desired.Spec.Type,
+				Type:               string(desired.Spec.Type),
 				IssueDateInMillis:  desired.Spec.IssueDateInMillis,
 				ExpiryDateInMillis: desired.Spec.ExpiryDateInMillis,
 				MaxNodes:           desired.Spec.MaxNodes,

@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package reconcile
 
 import (
@@ -212,5 +216,5 @@ func nextResultTakesPrecedence(current, next reconcile.Result) bool {
 	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
 		return true // next requests a requeue and current does not or wants it only later
 	}
-	return false //default case
+	return false // default case
 }

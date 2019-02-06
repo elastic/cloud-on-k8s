@@ -46,21 +46,14 @@ spec:
               type: string
           required:
           - uid
-          - type
           - issueDateInMillis
           - expiryDateInMillis
-          - maxNodes
           - issuedTo
           - issuer
           - startDateInMillis
+          - maxNodes
+          - type
           - signatureRef
-          type: object
-        status:
-          properties:
-            licenseStatus:
-              type: string
-          required:
-          - licenseStatus
           type: object
   version: v1alpha1
 status:
