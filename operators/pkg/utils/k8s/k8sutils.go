@@ -5,9 +5,6 @@
 package k8s
 
 import (
-	"io/ioutil"
-	"strings"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -32,16 +29,4 @@ func ExtractNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
 		Namespace: objectMeta.Namespace,
 		Name:      objectMeta.Name,
 	}
-}
-
-// GuessCurrentNamespace tries to retrieve the current namespace
-// this program might be running in, by checking the filesystem.
-// In case of error, or if not running within a K8s cluster,
-// it returns the provided fallback namespace.
-func GuessCurrentNamespace(fallback string) string {
-	namespaceName, err := ioutil.ReadFile(InClusterNamespacePath)
-	if err != nil {
-		return fallback
-	}
-	return strings.TrimSpace(string(namespaceName))
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/controller"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -54,8 +53,8 @@ func init() {
 
 	Cmd.Flags().String(
 		NamespaceFlagName,
-		k8s.GuessCurrentNamespace("default"),
-		"namespace in which this operator should manage resources (for dev use only)",
+		"",
+		"namespace in which this operator should manage resources (defaults to all namespaces)",
 	)
 	Cmd.Flags().String(
 		operator.ImageFlag,
@@ -122,7 +121,7 @@ func execute() {
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("setting up manager")
 	opts := manager.Options{
-		// restrict the operator to watch resources within a single namespace
+		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
 	metricsPort := viper.GetInt(MetricsPortFlag)

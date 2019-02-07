@@ -4,6 +4,6 @@ namespace: elastic-system
 resources:
 - namespace.yaml
 - cluster_role_bindings.yaml
-- cluster_roles.yaml
+- cluster_role.yaml
 - service_account.yaml
 - operator.yaml
