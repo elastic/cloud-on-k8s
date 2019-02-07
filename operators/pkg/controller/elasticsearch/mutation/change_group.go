@@ -119,7 +119,15 @@ func (s ChangeGroup) calculatePerformableChanges(
 
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
 	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
-	maxSurge := budget.MaxSurge
+
+	// MaxSurge should not exceed the number of PODs that will be deleted
+	toDelete := len(s.Changes.ToDelete)
+	var maxSurge int
+	if budget.MaxSurge > toDelete {
+		maxSurge = toDelete
+	} else {
+		maxSurge = budget.MaxSurge
+	}
 	//maxSurge, err := intstr.GetValueFromIntOrPercent(
 	//	&s.Definition.ChangeBudget.MaxSurge,
 	//	targetPodsCount,

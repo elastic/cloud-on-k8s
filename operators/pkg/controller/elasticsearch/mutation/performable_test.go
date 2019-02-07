@@ -129,7 +129,8 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				Changes: Changes{}, // We want no change
+				Changes:        Changes{}, // We want no change
+				MaxSurgeGroups: []string{UnmatchedGroupName, AllGroupName},
 			}),
 		},
 		{
