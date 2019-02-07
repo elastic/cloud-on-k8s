@@ -1,10 +1,14 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package bindmount
 
 import (
 	"testing"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/flex"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
 	"github.com/stretchr/testify/assert"
 )
 

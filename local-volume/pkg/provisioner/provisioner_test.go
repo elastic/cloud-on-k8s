@@ -1,8 +1,12 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package provisioner
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/protocol"
-	"github.com/elastic/stack-operators/local-volume/pkg/provider"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"testing"

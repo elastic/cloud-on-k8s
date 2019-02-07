@@ -1,3 +1,8 @@
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License;
+# you may not use this file except in compliance with the Elastic License.
+
+export SHELL := /bin/bash
 DEP := $(shell command -v dep)
 IMG_TAG ?= latest
 IMG_MINIKUBE = localhost:5000/elastic-cloud-dev/elastic-local

@@ -35,7 +35,7 @@ kubectl apply -f config/pod-sample.yaml
 
 ## Architecture
 
-![architecture](https://github.com/elastic/stack-operators/blob/master/local-volume/architecture.svg)
+![architecture](https://github.com/elastic/k8s-operators/blob/master/local-volume/architecture.svg)
 
 The provisioner only interacts with the APIServer: it watches any new PVC matching our storageclass provisioner, and dynamically creates a matching PV.
 

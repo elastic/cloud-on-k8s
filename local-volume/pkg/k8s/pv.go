@@ -1,7 +1,11 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package k8s
 
 import (
-	"github.com/elastic/stack-operators/local-volume/pkg/provider"
+	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"

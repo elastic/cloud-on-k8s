@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package main
 
 import (
@@ -5,11 +9,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/cmdutil"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/bindmount"
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/lvm"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers/bindmount"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers/lvm"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

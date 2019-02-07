@@ -1,10 +1,14 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package daemon
 
 import (
 	"net/http"
 
-	"github.com/elastic/stack-operators/local-volume/pkg/driver/daemon/drivers/empty"
-	"github.com/elastic/stack-operators/local-volume/pkg/k8s"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers/empty"
+	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
