@@ -107,16 +107,12 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			clusters := listAffectedLicenses(mgr.GetClient(), k8s.NamespacedNameFromObj(object.Meta))
-			var requests []reconcile.Request
-			for _, c := range clusters {
-				requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
-					Namespace: c.Namespace,
-					Name:      clusterNameFromLicense(c.Name), //TODO alternative to string mangling: check owner ref
-				}})
+			requests, err := listAffectedLicenses(mgr.GetClient(), mgr.GetScheme(), k8s.NamespacedNameFromObj(object.Meta))
+			if err != nil {
+				// dropping the event(s) at this point
+				log.Error(err, "failed to list affected clusters in enterprise license watch")
 			}
 			return requests
-
 		}),
 	}); err != nil {
 		return err

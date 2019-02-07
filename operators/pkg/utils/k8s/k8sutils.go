@@ -6,6 +6,7 @@ package k8s
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -30,4 +31,19 @@ func NamespacedNameFromObj(obj metav1.Object) types.NamespacedName {
 		Namespace: obj.GetNamespace(),
 		Name:      obj.GetName(),
 	}
+}
+
+func GetKind(s *runtime.Scheme, obj runtime.Object) (string, error) {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	// if the object referenced is actually persisted, we can just get kind from meta
+	// if we are building an object reference to something not yet persisted, we fallback to scheme
+	kind := gvk.Kind
+	if len(kind) == 0 {
+		gvks, _, err := s.ObjectKinds(obj)
+		if err != nil {
+			return "", err
+		}
+		kind = gvks[0].Kind
+	}
+	return kind, nil
 }

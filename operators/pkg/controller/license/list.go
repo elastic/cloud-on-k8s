@@ -6,27 +6,46 @@ package license
 import (
 	"context"
 
-	"k8s.io/client-go/util/retry"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func listAffectedLicenses(c client.Client, license types.NamespacedName) []v1alpha1.ClusterLicense {
+func listAffectedLicenses(c client.Client, s *runtime.Scheme, license types.NamespacedName) ([]reconcile.Request, error) {
+	var requests []reconcile.Request
 	var list = v1alpha1.ClusterLicenseList{}
-	// errors here are unlikely to be recoverable try again anyway
-	err := wait.ExponentialBackoff(retry.DefaultBackoff, func() (done bool, err error) {
-		err = c.List(context.Background(), &client.ListOptions{
-			LabelSelector: NewClusterByLicenseSelector(license),
-		}, &list)
-		return err == nil, err
-
-	})
+	kind, err := k8s.GetKind(s, &v1alpha1.ElasticsearchCluster{})
 	if err != nil {
+		log.Error(err, "failed to get ElasticsearchCluster kind", "enterprise-license", license)
+		return requests, err
+	}
+
+	// retries don't seem appropriate here as we are reading from a cache anyway
+	err = c.List(context.Background(), &client.ListOptions{
+		LabelSelector: NewClusterByLicenseSelector(license),
+	}, &list)
+
+	if err != nil {
+		// we are effectively dropping the event at this point
 		log.Error(err, "failed to list affected clusters", "enterprise-license", license)
 	}
-	return list.Items
+
+	for _, cl := range list.Items {
+		for _, o := range cl.GetOwnerReferences() {
+			if o.Controller != nil && *o.Controller == true && o.Kind == kind {
+				requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+					Namespace: cl.Namespace,
+					Name:      o.Name,
+				}})
+			}
+		}
+
+	}
+	return requests, nil
 
 }
