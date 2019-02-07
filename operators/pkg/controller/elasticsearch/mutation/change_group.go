@@ -243,8 +243,14 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 		}
 	}
 
+	var remaining PodsState
 	// update the current pod states to match the simulated changes
-	s.PodsState, _ = s.PodsState.Partition(s.Changes)
+	s.PodsState, remaining = s.PodsState.Partition(s.Changes)
+	// keep track of the pods that are being deleted in the simulation
+	// otherwise PodsState.CurrentPodsCount will be wrong
+	for _, pod := range remaining.Deleting {
+		s.PodsState.Deleting[pod.Name] = pod
+	}
 
 	// deleted pods should eventually go into a Deleting state,
 	// simulate that for deleted pods to be counted as unavailable
