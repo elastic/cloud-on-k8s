@@ -10,5 +10,5 @@ import (
 )
 
 func init() {
-	Register(operator.ApplicationOperator, kibana.Add)
+	Register(operator.NamespaceOperator, kibana.Add)
 }

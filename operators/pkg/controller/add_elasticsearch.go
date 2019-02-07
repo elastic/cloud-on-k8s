@@ -10,5 +10,5 @@ import (
 )
 
 func init() {
-	Register(operator.ApplicationOperator, elasticsearch.Add)
+	Register(operator.NamespaceOperator, elasticsearch.Add)
 }
