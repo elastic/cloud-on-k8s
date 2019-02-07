@@ -184,7 +184,7 @@ endif
 # -- dev
 
 .PHONY: dev
-dev: dev-cluster dep-vendor-only unit elastic-operator install samples
+dev: dep-vendor-only dev-cluster unit elastic-operator install samples
 	@ echo "-> Development environment started"
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	@ echo "-> Run \"make run\" to build, push and deploy the controller in a docker image."
