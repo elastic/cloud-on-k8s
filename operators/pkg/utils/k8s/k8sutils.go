@@ -9,12 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-const (
-	// InClusterNamespacePath is the path to the file containing the current namespace
-	// this pod is running in (when running in K8s).
-	InClusterNamespacePath = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-)
-
 // ToObjectMeta returns an ObjectMeta based on the given NamespacedName
 func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
