@@ -281,13 +281,55 @@ func (e ElasticsearchCluster) IsMarkedForDeletion() bool {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ElasticsearchClusterList contains a list of Elasticsearch
+// ElasticsearchClusterList contains a list of Elasticsearch clusters
 type ElasticsearchClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ElasticsearchCluster `json:"items"`
 }
 
+// TrustRelationShipSpec contains configuration for trust restrictions.
+type TrustRelationshipSpec struct {
+	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
+	CaCert string `json:"caCert,omitempty"`
+	// TrustRestrictions contains configuration for the trust restrictions feature of Elasticsearch for this
+	// relationship
+	TrustRestrictions TrustRestrictions `json:"trustRestrictions,omitempty"`
+}
+
+// TrustRestrictions is the trust restrictions of an Elasticsearch cluster.
+type TrustRestrictions struct {
+	// Trust contains configuration for the Elasticsearch trust restrictions.
+	Trust Trust `json:"trust,omitempty"`
+}
+
+// Trust contains configuration for the Elasticsearch trust restrictions.
+type Trust struct {
+	// SubjectName is a list of patterns that incoming TLS client certificates must match.
+	SubjectName []string `json:"subjectName,omitempty"`
+}
+
+// TrustRelationship describes one direction of the trust relationship between two Elasticsearch clusters.
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+type TrustRelationship struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec TrustRelationshipSpec `json:"spec,omitempty"`
+}
+
+// TrustRelationshipList contains a list of TrustRelationships.
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type TrustRelationshipList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []TrustRelationship `json:"items"`
+}
+
 func init() {
-	SchemeBuilder.Register(&ElasticsearchCluster{}, &ElasticsearchClusterList{})
+	SchemeBuilder.Register(
+		&ElasticsearchCluster{}, &ElasticsearchClusterList{},
+		&TrustRelationship{}, &TrustRelationshipList{},
+	)
 }

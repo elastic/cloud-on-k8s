@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -55,18 +54,14 @@ func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForElasticsearch(es v1alpha1.ElasticsearchCluster) (labels.Selector, error) {
-	req, err := labels.NewRequirement(
-		ClusterNameLabelName,
-		selection.Equals,
-		[]string{es.Name},
-	)
-	if err != nil {
-		return nil, err
-	}
+func NewLabelSelectorForElasticsearch(es v1alpha1.ElasticsearchCluster) labels.Selector {
+	return NewLabelSelectorForElasticsearchClusterName(es.Name)
+}
 
-	sel := TypeSelector.DeepCopySelector().Add(*req)
-	return sel, nil
+// NewLabelSelectorForElasticsearchClusterName returns a labels.Selector that matches the labels as constructed by
+// NewLabels for the provided cluster name.
+func NewLabelSelectorForElasticsearchClusterName(clusterName string) labels.Selector {
+	return labels.SelectorFromSet(map[string]string{ClusterNameLabelName: clusterName})
 }
 
 // ClusterFromResourceLabels returns the NamespacedName of the ElasticsearchCluster associated

@@ -11,18 +11,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -152,8 +152,12 @@ func newEnvironmentVars(
 		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
 		//       reusable component somehow.
 		{
-			Name:  settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
-			Value: fmt.Sprintf("%s/trust.yml", extraFilesSecretVolume.VolumeMount().MountPath),
+			Name: settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
+			Value: fmt.Sprintf(
+				"%s/%s",
+				extraFilesSecretVolume.VolumeMount().MountPath,
+				esnodecerts.TrustRestrictionsFilename,
+			),
 		},
 
 		// TODO: the JVM options are hardcoded, but should be configurable

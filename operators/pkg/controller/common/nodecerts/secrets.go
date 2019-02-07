@@ -124,15 +124,20 @@ func EnsureNodeCertificateSecretExists(
 // TODO: method should not generate the private key
 // TODO: method should take a CSR argument instead of creating it
 func ReconcileNodeCertificateSecret(
+	c k8s.Client,
 	secret corev1.Secret,
 	pod corev1.Pod,
 	clusterName, namespace string,
 	svcs []corev1.Service,
 	ca *Ca,
-	c k8s.Client,
+	additionalTrustedCAsPemEncoded [][]byte,
 ) (reconcile.Result, error) {
+	// dirty indicates whether we need to update the secret if it already exists
+	dirty := false
+
 	// a placeholder secret may have a nil secret.Data, so create it if it does not exist
 	if secret.Data == nil {
+		dirty = true
 		secret.Data = make(map[string][]byte)
 	}
 
@@ -148,13 +153,19 @@ func ReconcileNodeCertificateSecret(
 			Bytes: x509.MarshalPKCS1PrivateKey(key),
 		})
 
+		dirty = true
 		secret.Data[SecretPrivateKeyKey] = pemKeyBytes
 	}
 
 	issueNewCertificate := shouldIssueNewCertificate(secret, ca, pod)
 
 	if issueNewCertificate {
-		log.Info("Issuing new certificate", "secret", secret.Name)
+		log.Info(
+			"Issuing new certificate",
+			"secret", secret.Name,
+			"clusterName", clusterName,
+			"namespace", namespace,
+		)
 
 		block, _ := pem.Decode(secret.Data[SecretPrivateKeyKey])
 		key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -183,12 +194,22 @@ func ReconcileNodeCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
+		dirty = true
 		secret.Data[SecretCAKey] = pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})
 		secret.Data[SecretCertKey] = append(
 			pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
 			pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})...,
 		)
+	}
 
+	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
+		// TODO: consider de-duplicating certificates properly
+		dirty = true
+		secret.Data[SecretCAKey] = append(secret.Data[SecretCAKey], caPemBytes...)
+	}
+
+	if dirty {
+		log.Info("Updating node certificate secret", "secret", secret.Name)
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
 		}

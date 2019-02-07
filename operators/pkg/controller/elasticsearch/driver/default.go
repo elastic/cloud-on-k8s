@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -56,6 +57,7 @@ type defaultDriver struct {
 		ca *nodecerts.Ca,
 		es v1alpha1.ElasticsearchCluster,
 		services []corev1.Service,
+		trustRelationships []v1alpha1.TrustRelationship,
 	) error
 
 	// internalUsersReconciler reconciles and returns the current internal users.
@@ -70,6 +72,7 @@ type defaultDriver struct {
 		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
+		trustRelationships []v1alpha1.TrustRelationship,
 		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
 
@@ -133,12 +136,18 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
+	trustRelationships, err := esnodecerts.LoadTrustRelationships(d.Client, es.Name, es.Namespace)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	if err := d.nodeCertificatesReconciler(
 		d.Client,
 		d.Scheme,
 		d.ClusterCa,
 		es,
 		[]corev1.Service{genericResources.PublicService, genericResources.DiscoveryService},
+		trustRelationships,
 	); err != nil {
 		return results.WithError(err)
 	}
@@ -167,7 +176,9 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, d.DynamicWatches)
+	versionWideResources, err := d.versionWideResourcesReconciler(
+		d.Client, d.Scheme, es, trustRelationships, d.DynamicWatches,
+	)
 	if err != nil {
 		return results.WithError(err)
 	}

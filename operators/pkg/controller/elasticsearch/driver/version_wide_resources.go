@@ -5,21 +5,21 @@
 package driver
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // VersionWideResources are resources that are tied to a version, but no specific pod within that version
@@ -37,6 +37,7 @@ func reconcileVersionWideResources(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.ElasticsearchCluster,
+	trustRelationships []v1alpha1.TrustRelationship,
 	w watches.DynamicWatches,
 ) (*VersionWideResources, error) {
 	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository, w)
@@ -50,45 +51,56 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	// TODO: suffix and trim
-	extraFilesSecretObjectKey := types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      fmt.Sprintf("%s-extrafiles", es.Name),
+	trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
+
+	// include the trust restrictions from the trust relationships into the trust restrictions config
+	for _, trustRelationship := range trustRelationships {
+		trustRootCfg.Include(trustRelationship.Spec.TrustRestrictions)
 	}
-	var extraFilesSecret corev1.Secret
-	if err := c.Get(
-		extraFilesSecretObjectKey,
-		&extraFilesSecret,
-	); err != nil && !apierrors.IsNotFound(err) {
+
+	trustRootCfgData, err := json.Marshal(&trustRootCfg)
+	if err != nil {
 		return nil, err
-	} else if apierrors.IsNotFound(err) {
-		// TODO: handle reconciling Data section if it already exists
-		trustRootCfg := nodecerts.NewTrustRootConfig(es.Name, es.Namespace)
-		trustRootCfgData, err := json.Marshal(&trustRootCfg)
-		if err != nil {
-			return nil, err
-		}
+	}
 
-		extraFilesSecret = corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(extraFilesSecretObjectKey),
-			Data: map[string][]byte{
-				"trust.yml": trustRootCfgData,
-			},
-		}
+	expectedExtraFilesSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			// TODO: suffix and trim
+			Name: fmt.Sprintf("%s-extrafiles", es.Name),
+		},
+		Data: map[string][]byte{
+			nodecerts.TrustRestrictionsFilename: trustRootCfgData,
+		},
+	}
 
-		err = controllerutil.SetControllerReference(&es, &extraFilesSecret, scheme)
-		if err != nil {
-			return nil, err
-		}
+	var reconciledExtraFilesSecret corev1.Secret
 
-		if err := c.Create(&extraFilesSecret); err != nil {
-			return nil, err
-		}
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      &es,
+		Expected:   &expectedExtraFilesSecret,
+		Reconciled: &reconciledExtraFilesSecret,
+		NeedsUpdate: func() bool {
+			// .Data might be nil in the secret, so make sure to initialize it
+			if reconciledExtraFilesSecret.Data == nil {
+				reconciledExtraFilesSecret.Data = make(map[string][]byte, 1)
+			}
+			currentTrustConfig, ok := reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename]
+
+			return !ok || !bytes.Equal(currentTrustConfig, trustRootCfgData)
+		},
+		UpdateReconciled: func() {
+			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
+		},
+	}); err != nil {
+		return nil, err
 	}
 
 	return &VersionWideResources{
 		KeyStoreConfig:                      keystoreConfig,
 		GenericUnecryptedConfigurationFiles: expectedConfigMap,
-		ExtraFilesSecret:                    extraFilesSecret,
+		ExtraFilesSecret:                    reconciledExtraFilesSecret,
 	}, nil
 }
