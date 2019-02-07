@@ -1,0 +1,9 @@
+# namespace to be applied to all resources
+namespace: elastic-namespace-operators
+
+resources:
+- namespace.yaml
+- role_bindings.yaml
+- roles.yaml
+- service_account.yaml
+- operator.yaml

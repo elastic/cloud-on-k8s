@@ -76,7 +76,7 @@ run: generate fmt vet
 ifeq ($(KUBECTL_CONFIG),$(GKE_KUBECTL_CONFIG))
 	# Deploy on gke
 	@ gcloud auth configure-docker
-	@ $(MAKE) docker-build docker-push deploy
+	@ $(MAKE) docker-build docker-push deploy-namespace-operator deploy-global-operator
 	@ echo "-> type \"make logs\" to tail the controller's logs."
 else
 	@ echo "-> Checking existence of the operator image in minikube..."
@@ -95,10 +95,15 @@ logs:
 install: manifests
 	kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/crds
 
-# Deploy controller in the configured Kubernetes cluster in ~/.kube/config
-deploy: manifests
+# Deploy the namespace operator in the configured Kubernetes cluster in ~/.kube/config
+deploy-namespace-operator: manifests
 	kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/crds
-	kustomize build config/default | kubectl --cluster=$(KUBECTL_CONFIG) apply --namespace $(OPERATOR_NAMESPACE) -f -
+	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(IMG):$(IMG_TAG)|g' | kubectl --cluster=$(KUBECTL_CONFIG) apply -f -
+
+# Deploy the global operator in the configured Kubernetes cluster in ~/.kube/config
+deploy-global-operator: manifests
+	kubectl --cluster=$(KUBECTL_CONFIG) apply -f config/crds
+	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(IMG):$(IMG_TAG)|g' | kubectl --cluster=$(KUBECTL_CONFIG) apply -f -
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests:
@@ -124,14 +129,6 @@ generate:
 # Build the docker image
 docker-build: unit
 	docker build . -t $(IMG):$(IMG_TAG)
-	@ echo "-> Updating kustomize image patch file for manager resource"
-	@ cp config/default/manager_image_patch.orig.yaml config/default/manager_image_patch.yaml
-	@ $(eval EXTRASEDFLAG := "''")
-ifeq ($(shell uname -s),Linux)
-	@ $(eval EXTRASEDFLAG := "-e")
-endif
-	sed -i ${EXTRASEDFLAG} 's@image: .*@image: '"$(IMG):$(IMG_TAG)"'@' config/default/manager_image_patch.yaml
-	sed -i ${EXTRASEDFLAG} 's@value: .*@value: '"$(IMG):$(IMG_TAG)"'@' config/default/manager_image_patch.yaml
 
 # Push the docker image
 docker-push:

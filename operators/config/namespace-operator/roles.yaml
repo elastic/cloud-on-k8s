@@ -52,6 +52,7 @@ rules:
   - elasticsearchclusters
   - elasticsearchclusters/status
   - clusterlicenses
+  - trustrelationships
   verbs:
   - get
   - list
