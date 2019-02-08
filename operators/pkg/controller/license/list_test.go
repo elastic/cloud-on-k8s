@@ -8,17 +8,31 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/reference"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
+
+type failingClient struct {
+	k8s.Client
+	Error error
+}
+
+func (f *failingClient) List(opts *client.ListOptions, list runtime.Object) error {
+	return f.Error
+}
+
+var _ k8s.Client = &failingClient{}
 
 func Test_listAffectedLicenses(t *testing.T) {
 	s := scheme.Scheme
@@ -43,10 +57,11 @@ func Test_listAffectedLicenses(t *testing.T) {
 		initialObjects []runtime.Object
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []reconcile.Request
-		wantErr bool
+		name          string
+		args          args
+		injectedError error
+		want          []reconcile.Request
+		wantErr       bool
 	}{
 		{
 			name: "happy path",
@@ -83,10 +98,43 @@ func Test_listAffectedLicenses(t *testing.T) {
 			}},
 			wantErr: false,
 		},
+		{
+			name: "list error",
+			args: args{
+				license: types.NamespacedName{
+					Namespace: "default",
+					Name:      "bar",
+				},
+			},
+			injectedError: errors.New("listing failed"),
+			wantErr:       true,
+		},
+		{
+			name: "no owner reference leads to event being dropped",
+			args: args{
+				license: types.NamespacedName{
+					Namespace: "default",
+					Name:      "baz",
+				},
+				initialObjects: []runtime.Object{
+					&v1alpha1.ClusterLicense{
+						ObjectMeta: v1.ObjectMeta{
+							Name:      "foo-license",
+							Namespace: "default",
+							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := fake.NewFakeClient(tt.args.initialObjects...)
+			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+			if tt.injectedError != nil {
+				client = &failingClient{Client: client, Error: tt.injectedError}
+			}
 
 			got, err := listAffectedLicenses(client, s, tt.args.license)
 			if (err != nil) != tt.wantErr {

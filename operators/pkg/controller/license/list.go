@@ -4,8 +4,6 @@
 package license
 
 import (
-	"context"
-
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -16,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func listAffectedLicenses(c client.Client, s *runtime.Scheme, license types.NamespacedName) ([]reconcile.Request, error) {
+func listAffectedLicenses(c k8s.Client, s *runtime.Scheme, license types.NamespacedName) ([]reconcile.Request, error) {
 	var requests []reconcile.Request
 	var list = v1alpha1.ClusterLicenseList{}
 	kind, err := k8s.GetKind(s, &v1alpha1.ElasticsearchCluster{})
@@ -26,13 +24,11 @@ func listAffectedLicenses(c client.Client, s *runtime.Scheme, license types.Name
 	}
 
 	// retries don't seem appropriate here as we are reading from a cache anyway
-	err = c.List(context.Background(), &client.ListOptions{
+	err = c.List(&client.ListOptions{
 		LabelSelector: NewClusterByLicenseSelector(license),
 	}, &list)
-
 	if err != nil {
-		// we are effectively dropping the event at this point
-		log.Error(err, "failed to list affected clusters", "enterprise-license", license)
+		return requests, err
 	}
 
 	for _, cl := range list.Items {
