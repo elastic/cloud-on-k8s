@@ -7,40 +7,29 @@ package license
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func listAffectedLicenses(c k8s.Client, s *runtime.Scheme, license types.NamespacedName) ([]reconcile.Request, error) {
+func listAffectedLicenses(c k8s.Client, enterpriseLicense types.NamespacedName) ([]reconcile.Request, error) {
 	var requests []reconcile.Request
 	var list = v1alpha1.ClusterLicenseList{}
-	kind, err := k8s.GetKind(s, &v1alpha1.ElasticsearchCluster{})
-	if err != nil {
-		log.Error(err, "failed to get ElasticsearchCluster kind", "enterprise-license", license)
-		return requests, err
-	}
-
-	// retries don't seem appropriate here as we are reading from a cache anyway
-	err = c.List(&client.ListOptions{
-		LabelSelector: NewClusterByLicenseSelector(license),
+	// list all cluster licenses referencing the given enterprise license
+	err := c.List(&client.ListOptions{
+		LabelSelector: NewLicenseSelector(enterpriseLicense),
 	}, &list)
 	if err != nil {
 		return requests, err
 	}
 
+	// enqueue a reconcile request for each cluster license found leveraging the fact that cluster and license
+	// share the same name
 	for _, cl := range list.Items {
-		for _, o := range cl.GetOwnerReferences() {
-			if o.Controller != nil && *o.Controller == true && o.Kind == kind {
-				requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
-					Namespace: cl.Namespace,
-					Name:      o.Name,
-				}})
-			}
-		}
-
+		requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+			Namespace: cl.Namespace,
+			Name:      cl.Name,
+		}})
 	}
 	return requests, nil
-
 }

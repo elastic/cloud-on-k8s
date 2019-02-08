@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/reference"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -39,16 +38,6 @@ func Test_listAffectedLicenses(t *testing.T) {
 		assert.Fail(t, "failed to build custom scheme")
 	}
 
-	clusterRef, err := reference.GetReference(s, &v1alpha1.ElasticsearchCluster{
-		ObjectMeta: v1.ObjectMeta{
-			Name:         "foo",
-			GenerateName: "",
-			Namespace:    "default",
-			SelfLink:     "/apis/elasticsearch.k8s.elastic.co/",
-			UID:          "not-a-real-uid",
-		},
-	})
-	assert.NoError(t, err)
 	true := true
 
 	type args struct {
@@ -72,18 +61,11 @@ func Test_listAffectedLicenses(t *testing.T) {
 				initialObjects: []runtime.Object{
 					&v1alpha1.ClusterLicense{
 						ObjectMeta: v1.ObjectMeta{
-							Name:      "foo-license",
+							Name:      "foo-cluster",
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
-							OwnerReferences: []v1.OwnerReference{
-								{
-									APIVersion:         clusterRef.APIVersion,
-									Kind:               clusterRef.Kind,
-									Name:               clusterRef.Name,
-									UID:                clusterRef.UID,
-									Controller:         &true,
-									BlockOwnerDeletion: &true,
-								},
+							Labels: map[string]string{
+								EnterpriseLicenseLabelName: "enterprise-license",
 							},
 						},
 					},
@@ -92,7 +74,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 			want: []reconcile.Request{{
 				NamespacedName: types.NamespacedName{
 					Namespace: "default",
-					Name:      "foo",
+					Name:      "foo-cluster",
 				},
 			}},
 			wantErr: false,
@@ -108,25 +90,6 @@ func Test_listAffectedLicenses(t *testing.T) {
 			injectedError: errors.New("listing failed"),
 			wantErr:       true,
 		},
-		{
-			name: "no owner reference leads to event being dropped",
-			args: args{
-				license: types.NamespacedName{
-					Namespace: "default",
-					Name:      "baz",
-				},
-				initialObjects: []runtime.Object{
-					&v1alpha1.ClusterLicense{
-						ObjectMeta: v1.ObjectMeta{
-							Name:      "foo-license",
-							Namespace: "default",
-							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
-						},
-					},
-				},
-			},
-			wantErr: false,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -135,7 +98,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 				client = &failingClient{Client: client, Error: tt.injectedError}
 			}
 
-			got, err := listAffectedLicenses(client, s, tt.args.license)
+			got, err := listAffectedLicenses(client, tt.args.license)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("listAffectedLicenses() error = %v, wantErr %v", err, tt.wantErr)
 				return

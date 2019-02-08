@@ -108,7 +108,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
 			requests, err := listAffectedLicenses(
-				k8s.WrapClient(mgr.GetClient()), mgr.GetScheme(), k8s.ExtractNamespacedName(object.Meta),
+				k8s.WrapClient(mgr.GetClient()), k8s.ExtractNamespacedName(object.Meta),
 			)
 			if err != nil {
 				// dropping the event(s) at this point
@@ -157,7 +157,7 @@ func reconcileSecret(
 	ref corev1.SecretKeySelector,
 	ns string,
 ) (corev1.SecretKeySelector, error) {
-	secretName := licenseNameFromCluster(cluster.Name)
+	secretName := cluster.Name + "-license"
 	secretKey := "sig"
 	selector := corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
