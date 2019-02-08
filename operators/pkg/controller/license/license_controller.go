@@ -70,7 +70,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileLicenses {
+func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileLicenses{Client: c, scheme: mgr.GetScheme()}
 }
@@ -91,7 +91,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r *ReconcileLicenses) error {
+func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	c, err := controller.New("license-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -107,7 +107,7 @@ func add(mgr manager.Manager, r *ReconcileLicenses) error {
 
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			requests, err := listAffectedLicenses(r.Client, r.scheme, k8s.NamespacedNameFromObj(object.Meta))
+			requests, err := listAffectedLicenses(k8s.WrapClient(mgr.GetClient()), mgr.GetScheme(), k8s.NamespacedNameFromObj(object.Meta))
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
