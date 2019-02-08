@@ -5,6 +5,6 @@ node('swarm') {
 	    checkout scm
     }
     stage("Make ci") {
-        sh 'make ci'
+        sh 'make -C build/ci ci-pr'
     }
 }
