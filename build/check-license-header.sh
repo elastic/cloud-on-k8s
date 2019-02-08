@@ -4,6 +4,8 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
+# Check that the Elastic license is applied to all files.
+
 set -eu
 
 : "${CHECK_PATH:=$(dirname $0)/../*}" # root project directory
