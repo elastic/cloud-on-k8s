@@ -22,7 +22,7 @@ By default it will use `minikube` as the environment to develop against, if you 
 ### Minikube
 
 ```console
-$ make dev
+$ make bootstrap-minikube
 -> Starting minikube...
 Starting local Kubernetes v1.12.0 cluster...
 Starting VM...
@@ -72,29 +72,10 @@ After you've performed changes in the controller code you can re-deploy the imag
 ### Useful development targets
 
 * `make samples`: Updates the samples.
-* `make minikube`: Ensures that minikube is started.
-* `make vendor`: Runs `dep ensure`
-* `make set-dev-gke`: Sets the development environment to target GKE.
-* `make set-dev-minikube`: Sets the development environment to run in `minikube`.
-* `make dev-cluster`: Starts / Ensures that the development resources are created and started, to select which environment you want to use, run one of the two targets above. Defaults to `minikube`.
-* `make delete-dev`: Deletes the currently set development resources.
-* `make purge-env`: Deletes all the resources from the configured Kubernetes cluster on the `default` namespace.
-* `make run`: Builds, pushes and deploys the controller's docker image to the GKE cluster or runs the manager locally against the local Minikube environment.
-
-
-
-### Makefile variables
-
-* `KUBECTL_CONFIG`: Sets up the config on which to work (defaults to `minikube`.
-* `MINIKUBE_KUBERNETES_VERSION`: Configures the Kubernetes version that `minikube` will use for the VM.
-* `GCLOUD_PROJECT`: Sets the gcloud project to run aginst (defaults to `elastic-cloud-dev`).
-* `GCLOUD_CLUSTER_NAME`: Sets the GKE cluster name to be created (defaults to `${USER}-dev-cluster`).
-* `GKE_CLUSTER_REGION`: Sets the gcloud region to run aginst (defaults to `europe-west3`).
-* `GKE_ADMIN_USERNAME`: Sets the GKE cluster administrative user (defaults to `admin`).
-* `GKE_CLUSTER_VERSION`: Sets the GKE kubernetes version to use (defaults to `1.11.2-gke.15`).
-* `GKE_MACHINE_TYPE`: Sets the GCP instance types to use (defaults to `n1-highmem-4`).
-* `GKE_LOCAL_SSD_COUNT`: Sets the number of locally attached SSD disks attached to each GCP instance (defaults to `1`). Each disk is 375GB.
-* `GKE_NODE_COUNT_PER_ZONE`: Sets the amount of nodes per GCP zone (defaults to `1`). By default the GKE cluster is spun accross 3 zones.
+* `make bootstrap-minikube`: Sets up a Minikube cluster with required resources.
+* `make bootstrap-gke`: Sets up a Minikube cluster with required resources.
+* `make run`: Run the operator locally.
+* `make deploy`: Deploy the operator into the configured k8s cluster.
 
 ### Using snapshot repositories
 
