@@ -46,7 +46,7 @@ func reconcileUserCreatedSecret(
 		Data: map[string][]byte{},
 	}
 
-	err := manageDynamicWatch(watches, repoConfig, k8s.ExtractNamespacedName(owner.ObjectMeta))
+	err := manageDynamicWatch(watches, repoConfig, k8s.ExtractNamespacedName(&owner))
 	if err != nil {
 		return managedSecret, err
 	}
@@ -161,7 +161,7 @@ func ReconcileSnapshotterCronJob(
 	}
 
 	found := &batchv1beta1.CronJob{}
-	err := c.Get(k8s.ExtractNamespacedName(expected.ObjectMeta), found)
+	err := c.Get(k8s.ExtractNamespacedName(expected), found)
 	if err == nil && es.Spec.SnapshotRepository == nil {
 		log.Info("Deleting cronjob", "namespace", expected.Namespace, "name", expected.Name)
 		return c.Delete(found)

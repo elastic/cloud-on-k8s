@@ -67,7 +67,7 @@ const (
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
 	// TODO: trim and suffix?
-	return k8s.ExtractNamespacedName(pod.ObjectMeta)
+	return k8s.ExtractNamespacedName(&pod)
 }
 
 // EnsureNodeCertificateSecretExists ensures the existence of the corev1.Secret that at a later point in time will

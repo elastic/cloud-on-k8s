@@ -19,17 +19,10 @@ func ToObjectMeta(namespacedName types.NamespacedName) metav1.ObjectMeta {
 }
 
 // ExtractNamespacedName returns an NamespacedName based on the given ObjectMeta
-func ExtractNamespacedName(objectMeta metav1.ObjectMeta) types.NamespacedName {
+func ExtractNamespacedName(object metav1.Object) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: objectMeta.Namespace,
-		Name:      objectMeta.Name,
-	}
-}
-
-func NamespacedNameFromObj(obj metav1.Object) types.NamespacedName {
-	return types.NamespacedName{
-		Namespace: obj.GetNamespace(),
-		Name:      obj.GetName(),
+		Namespace: object.GetNamespace(),
+		Name:      object.GetName(),
 	}
 }
 

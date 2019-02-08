@@ -107,7 +107,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			requests, err := listAffectedLicenses(k8s.WrapClient(mgr.GetClient()), mgr.GetScheme(), k8s.NamespacedNameFromObj(object.Meta))
+			requests, err := listAffectedLicenses(
+				k8s.WrapClient(mgr.GetClient()), mgr.GetScheme(), k8s.ExtractNamespacedName(object.Meta),
+			)
 			if err != nil {
 				// dropping the event(s) at this point
 				log.Error(err, "failed to list affected clusters in enterprise license watch")
@@ -204,7 +206,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
-	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
+	clusterName := k8s.ExtractNamespacedName(&cluster)
 	matchingSpec, parent, err := findLicenseFor(r, clusterName)
 	if err != nil {
 		return noResult, err
