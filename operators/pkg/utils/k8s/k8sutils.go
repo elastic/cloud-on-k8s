@@ -26,6 +26,7 @@ func ExtractNamespacedName(object metav1.Object) types.NamespacedName {
 	}
 }
 
+// GetKind returns the kind of the given runtime object.
 func GetKind(s *runtime.Scheme, obj runtime.Object) (string, error) {
 	gvk := obj.GetObjectKind().GroupVersionKind()
 	// if the object referenced is actually persisted, we can just get kind from meta

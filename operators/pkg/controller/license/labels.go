@@ -9,8 +9,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// EnterpriseLicenseLabelName a label pointing to the name of the source enterprise license.
 const EnterpriseLicenseLabelName = "k8s.elastic.co/enterprise-license-name"
 
+// NewClusterByLicenseSelector is a list selector to filter by a label containing the license name.
 func NewClusterByLicenseSelector(license types.NamespacedName) labels.Selector {
 	return labels.Set(map[string]string{EnterpriseLicenseLabelName: license.Name}).AsSelector()
 }
