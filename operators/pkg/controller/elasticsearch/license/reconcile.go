@@ -14,8 +14,6 @@ import (
 const (
 	// Expectation the license type expected to be attached to the cluster.
 	Expectation = "k8s.elastic.co/expected-license"
-	// Trial is a 30-day trial license type.
-	Trial = "trial"
 )
 
 // Reconcile reconciles the current Elasticsearch license with the desired one.
@@ -27,7 +25,7 @@ func Reconcile(
 	current *esclient.License,
 ) error {
 	// This is mostly for dev mode, no license management when trial is requested
-	if esCluster.Labels[Expectation] == Trial {
+	if v1alpha1.LicenseTypeFromString(esCluster.Labels[Expectation]) == v1alpha1.LicenseTypeTrial {
 		return nil
 	}
 
