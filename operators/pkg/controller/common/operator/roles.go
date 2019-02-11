@@ -4,8 +4,12 @@
 
 package operator
 
+// Roles that an operator can assume
 const (
-	ApplicationOperator = "applications"
-	LicenseOperator     = "licensing"
-	All                 = "all"
+	// NamespaceOperator manages applications in a single namespace
+	NamespaceOperator = "namespace"
+	// GlobalOperator manages cross-namespace resources (licensing, CCS, CCR, etc.)
+	GlobalOperator = "global"
+	// All acts as both global and namespace operators
+	All = "all"
 )
