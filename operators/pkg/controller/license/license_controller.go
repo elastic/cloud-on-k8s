@@ -284,7 +284,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 	if err != nil {
 		switch err.(type) {
 		case clusterOnTrialError:
-			log.Info(err.Error()) // non treated as an error here, no license management for trials required
+			log.Info(err.Error()) // not treated as an error here, no license management for trials required
 			return reconcile.Result{}, nil
 		default:
 			return reconcile.Result{Requeue: true}, err

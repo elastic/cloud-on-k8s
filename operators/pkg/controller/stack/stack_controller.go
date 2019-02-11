@@ -169,6 +169,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 	}
 
+	// initially sync labels from stack resource to Elasticsearch (mainly to propagate licensing labels atm)
 	if len(stack.Labels) > 0 {
 		if es.Labels == nil {
 			es.Labels = make(map[string]string, len(stack.Labels))
