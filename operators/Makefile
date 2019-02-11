@@ -9,9 +9,10 @@
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
-## -- Docker image
-
+KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
 GCLOUD_PROJECT ?= elastic-cloud-dev
+
+## -- Docker image
 # default to GCR registry
 REGISTRY ?= eu.gcr.io
 ifeq ($(KUBECTL_CLUSTER), minikube)
@@ -121,8 +122,6 @@ show-credentials:
 ##########################################
 ##  --    K8s clusters bootstrap    --  ##
 ##########################################
-
-KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
 
 cluster-bootstrap: dep-vendor-only elastic-operator install-crds
 
