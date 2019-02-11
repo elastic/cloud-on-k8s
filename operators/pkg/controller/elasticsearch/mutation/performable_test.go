@@ -129,7 +129,9 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				}),
 			},
 			want: initializePerformableChanges(PerformableChanges{
-				Changes:        Changes{}, // We want no change
+				Changes: Changes{
+					ToCreate: podToCreateList(generatePodsN(1, "new-", map[string]string{"zone": "a"})),
+				},
 				MaxSurgeGroups: []string{UnmatchedGroupName, AllGroupName},
 			}),
 		},

@@ -119,15 +119,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 
 	// TODO: MaxUnavailable and MaxSurge would be great to have as intstrs, but due to
 	// https://github.com/kubernetes-sigs/kubebuilder/issues/442 this is not currently an option.
-
-	// MaxSurge should not exceed the number of PODs that will be deleted
-	toDelete := len(s.Changes.ToDelete)
-	var maxSurge int
-	if budget.MaxSurge > toDelete {
-		maxSurge = toDelete
-	} else {
-		maxSurge = budget.MaxSurge
-	}
+	maxSurge := budget.MaxSurge
 	//maxSurge, err := intstr.GetValueFromIntOrPercent(
 	//	&s.Definition.ChangeBudget.MaxSurge,
 	//	targetPodsCount,
@@ -254,8 +246,9 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	var remaining PodsState
 	// update the current pod states to match the simulated changes
 	s.PodsState, remaining = s.PodsState.Partition(s.Changes)
-	// keep track of the pods that are being deleted in the simulation
-	// otherwise PodsState.CurrentPodsCount will be wrong
+	// The partition above removes any pods not part of the .Changes from the PodsState, which includes pods that have
+	// been deleted by an external process or another reconciliation iteration. These should still exist in the
+	// simulated PodsState, so we need to add these back in specifically.
 	for _, pod := range remaining.Deleting {
 		s.PodsState.Deleting[pod.Name] = pod
 	}
