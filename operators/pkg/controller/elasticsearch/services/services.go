@@ -80,8 +80,14 @@ func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 			Selector: label.NewLabels(es),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
+					Name:     "https",
 					Protocol: corev1.ProtocolTCP,
 					Port:     pod.HTTPPort,
+				},
+				corev1.ServicePort{
+					Name:     "transport",
+					Protocol: corev1.ProtocolTCP,
+					Port:     pod.TransportClientPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
