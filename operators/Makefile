@@ -126,11 +126,14 @@ show-credentials:
 cluster-bootstrap: dep-vendor-only elastic-operator install-crds
 
 clean-k8s-cluster:
-	kubectl delete deployments --all
-	kubectl delete statefulsets --all
-	kubectl delete svc --all
-	kubectl delete rc --all
-	kubectl delete po --all
+	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
+		echo "Deleting resources in $$ns"; \
+		kubectl delete statefulsets -n $$ns --all; \
+		kubectl delete deployments -n $$ns --all; \
+		kubectl delete svc -n $$ns --all; \
+		kubectl delete rc -n $$ns --all; \
+		kubectl delete po -n $$ns --all; \
+	done
 
 ## -- minikube
 
