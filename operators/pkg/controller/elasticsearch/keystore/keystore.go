@@ -6,7 +6,7 @@ package keystore
 
 const (
 	managedSecretSuffix = "-keystore"
-	// SecretMountPath Mountpath for keystore secrets in init container.
+	// SecretMountPath is the mount path for keystore secrets in init container.
 	SecretMountPath = "/keystore-secrets"
 	// SecretVolumeName is the name of the volume where the keystore secret is referenced.
 	SecretVolumeName = "keystore"
