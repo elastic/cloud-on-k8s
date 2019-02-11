@@ -586,3 +586,71 @@ func Test_compareResources(t *testing.T) {
 		})
 	}
 }
+
+func Test_equalResourceList(t *testing.T) {
+	type args struct {
+		resListA corev1.ResourceList
+		resListB corev1.ResourceList
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "same A and B",
+			args: args{
+				resListA: corev1.ResourceList{
+					"key": mustParseQuantity("100m"),
+				},
+				resListB: corev1.ResourceList{
+					"key": mustParseQuantity("100m"),
+				},
+			},
+			want: true,
+		},
+		{
+			name: "different A and B",
+			args: args{
+				resListA: corev1.ResourceList{
+					"key": mustParseQuantity("100m"),
+				},
+				resListB: corev1.ResourceList{
+					"key": mustParseQuantity("200m"),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "more values in A",
+			args: args{
+				resListA: corev1.ResourceList{
+					"key":  mustParseQuantity("100m"),
+					"key2": mustParseQuantity("100m"),
+				},
+				resListB: corev1.ResourceList{
+					"key": mustParseQuantity("100m"),
+				},
+			},
+			want: false,
+		},
+		{
+			name: "more values in B",
+			args: args{
+				resListA: corev1.ResourceList{
+					"key": mustParseQuantity("100m"),
+				},
+				resListB: corev1.ResourceList{
+					"key":  mustParseQuantity("100m"),
+					"key2": mustParseQuantity("100m"),
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, equalResourceList(tt.args.resListA, tt.args.resListB))
+		})
+	}
+}
