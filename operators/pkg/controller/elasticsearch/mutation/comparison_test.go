@@ -410,3 +410,179 @@ func withPVCs(pod corev1.Pod, nameAndClaimNames ...string) corev1.Pod {
 	}
 	return pod
 }
+
+func mustParseQuantity(quantity string) resource.Quantity {
+	parsed, err := resource.ParseQuantity(quantity)
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}
+
+func Test_compareResources(t *testing.T) {
+	type args struct {
+		actual   corev1.ResourceRequirements
+		expected corev1.ResourceRequirements
+	}
+	tests := []struct {
+		name      string
+		args      args
+		wantMatch bool
+	}{
+		{
+			name: "same memory",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi")},
+				},
+			},
+			wantMatch: true,
+		},
+		{
+			name: "different memory",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("2Gi")},
+				},
+			},
+			wantMatch: false,
+		},
+		{
+			name: "same memory expressed differently",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1024Mi"),
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1024Mi")},
+				},
+			},
+			wantMatch: true,
+		},
+		{
+			name: "same cpu",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m")},
+				},
+			},
+			wantMatch: true,
+		},
+		{
+			name: "different cpu",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu": mustParseQuantity("400m"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu": mustParseQuantity("500m")},
+				},
+			},
+			wantMatch: false,
+		},
+		{
+			name: "same cpu, different memory",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu":    mustParseQuantity("500m"),
+						"memory": mustParseQuantity("1Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu":    mustParseQuantity("500m"),
+						"memory": mustParseQuantity("1Gi"),
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"cpu":    mustParseQuantity("500m"),
+						"memory": mustParseQuantity("2Gi"),
+					},
+					Requests: corev1.ResourceList{
+						"cpu":    mustParseQuantity("500m"),
+						"memory": mustParseQuantity("2Gi"),
+					},
+				},
+			},
+			wantMatch: false,
+		},
+		{
+			name: "defaulted memory",
+			args: args{
+				actual: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"), // defaulted
+					},
+					Requests: corev1.ResourceList{
+						"memory": mustParseQuantity("1Gi"), // defaulted
+					},
+				},
+				expected: corev1.ResourceRequirements{
+					Limits:   corev1.ResourceList{}, // use default
+					Requests: corev1.ResourceList{}, // use default
+				},
+			},
+			wantMatch: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := compareResources(tt.args.actual, tt.args.expected)
+			assert.Equal(t, tt.wantMatch, res.Match)
+		})
+	}
+}
