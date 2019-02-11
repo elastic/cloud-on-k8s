@@ -240,4 +240,4 @@ check-requisites:
 	@ hack/check-requisites.sh
 
 check-license-header:
-	../build/check-license-header
+	../build/check-license-header.sh
