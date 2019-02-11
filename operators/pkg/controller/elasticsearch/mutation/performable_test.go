@@ -118,6 +118,24 @@ func TestCalculatePerformableChanges(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name: "3 dying pods",
+			args: args{
+				strategy: v1alpha1.UpdateStrategy{},
+				allPodChanges: Changes{
+					ToCreate: podToCreateList(generatePodsN(3, "new-", map[string]string{"zone": "a"})),
+				},
+				allPodsState: initializePodsState(PodsState{
+					Deleting: podListToMap(generatePodsN(3, "old-", map[string]string{"zone": "a"})),
+				}),
+			},
+			want: initializePerformableChanges(PerformableChanges{
+				Changes: Changes{
+					ToCreate: podToCreateList(generatePodsN(1, "new-", map[string]string{"zone": "a"})),
+				},
+				MaxSurgeGroups: []string{UnmatchedGroupName, AllGroupName},
+			}),
+		},
+		{
 			name: "scale down two pods",
 			args: args{
 				strategy: v1alpha1.UpdateStrategy{},
