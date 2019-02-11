@@ -25,9 +25,10 @@ kubectl -n e2e get job $JOB_NAME && \
 set -e
 
 # apply e2e job
-cat config/e2e/batch_job.yaml |  \
-    sed "s;\$IMG;$IMG;g" | \
-    sed "s;\$TESTS_MATCH;$TESTS_MATCH;g" | \
+sed \
+    -e "s;\$IMG;$IMG;g" \
+    -e "s;\$TESTS_MATCH;$TESTS_MATCH;g" \
+    config/e2e/batch_job.yaml | \
     kubectl apply -f -
 
 # retrieve pod responsible for running the job
