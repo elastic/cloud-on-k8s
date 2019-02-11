@@ -34,6 +34,10 @@ unit:
 .PHONY: ci
 ci: dep-vendor-only build unit
 
+
+check-license-header:
+	../build/check-license-header.sh
+
 ##
 ## Docker stuff
 ## ------------
