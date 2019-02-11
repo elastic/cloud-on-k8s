@@ -22,9 +22,15 @@ Commands:
 kubectl-in-docker() {
   local build_tools_image=docker.elastic.co/k8s/build-tools
 
+  # Build the image if it does not exist
   if [[ "$(docker images -q $build_tools_image 2> /dev/null)" == "" ]]; then
     local dockerfile_path=../build/build-tools-image
     docker build -t $build_tools_image -f $dockerfile_path/Dockerfile $dockerfile_path
+  fi
+
+  # Remove potential existing container
+  if [[ "$(docker ps --filter=name=registry-port-forwarder -q)" != "" ]]; then
+    docker rm --force registry-port-forwarder
   fi
 
   docker run -d --name registry-port-forwarder --net=host \
