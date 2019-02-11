@@ -4,8 +4,6 @@
 
 package keystore
 
-import "k8s.io/apimachinery/pkg/types"
-
 const (
 	managedSecretSuffix = "-keystore"
 	// SecretMountPath Mountpath for keystore secrets in init container.
@@ -15,6 +13,6 @@ const (
 )
 
 // ManagedSecretName the name of the operator managed secret containing Elasticsearch keystore data.
-func ManagedSecretName(cluster types.NamespacedName) string {
-	return cluster.Name + managedSecretSuffix
+func ManagedSecretName(clusterName string) string {
+	return clusterName + managedSecretSuffix
 }

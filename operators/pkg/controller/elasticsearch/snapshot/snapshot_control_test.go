@@ -142,7 +142,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 			args: args{repoConfig: nil},
 			want: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      keystore.ManagedSecretName(k8s.ExtractNamespacedName(&owner)),
+					Name:      keystore.ManagedSecretName(owner.Name),
 					Namespace: "baz",
 				},
 				Data: map[string][]byte{},
@@ -182,7 +182,7 @@ func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
 			},
 			want: corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      keystore.ManagedSecretName(k8s.ExtractNamespacedName(&owner)),
+					Name:      keystore.ManagedSecretName(owner.Name),
 					Namespace: "baz",
 				},
 				Data: map[string][]byte{

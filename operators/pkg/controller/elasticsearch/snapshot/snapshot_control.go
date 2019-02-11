@@ -40,7 +40,7 @@ func reconcileUserCreatedSecret(
 ) (corev1.Secret, error) {
 	managedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      keystore.ManagedSecretName(k8s.ExtractNamespacedName(&owner)),
+			Name:      keystore.ManagedSecretName(owner.Name),
 			Namespace: owner.Namespace,
 		},
 		Data: map[string][]byte{},
