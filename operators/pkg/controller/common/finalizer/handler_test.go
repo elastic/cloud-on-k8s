@@ -127,7 +127,7 @@ func TestHandler_Handle(t *testing.T) {
 			require.NoError(t, err)
 			// retrieve resource back from the apiserver
 			var res v1.Secret
-			err = fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(tt.resource.ObjectMeta), &res)
+			err = fakeClient.Get(context.Background(), k8s.ExtractNamespacedName(&tt.resource), &res)
 			require.NoError(t, err)
 			// make sure resource's finalizers are the expected ones
 			require.ElementsMatch(t, tt.wantRegisteredFinalizers, res.ObjectMeta.Finalizers)

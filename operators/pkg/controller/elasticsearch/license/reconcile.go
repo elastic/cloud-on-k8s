@@ -31,7 +31,7 @@ func Reconcile(
 		return nil
 	}
 
-	clusterName := k8s.ExtractNamespacedName(esCluster.ObjectMeta)
+	clusterName := k8s.ExtractNamespacedName(&esCluster)
 	if err := ensureLicenseWatch(clusterName, w); err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -24,6 +25,6 @@ func TestExtractNamespacedName(t *testing.T) {
 	assert.Equal(
 		t,
 		types.NamespacedName{Namespace: "namespace", Name: "name"},
-		ExtractNamespacedName(metav1.ObjectMeta{Namespace: "namespace", Name: "name"}),
+		ExtractNamespacedName(&v1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "namespace", Name: "name"}}),
 	)
 }

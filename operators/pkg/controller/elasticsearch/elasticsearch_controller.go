@@ -297,7 +297,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	es elasticsearchv1alpha1.ElasticsearchCluster,
 	watched watches.DynamicWatches,
 ) []finalizer.Finalizer {
-	clusterName := k8s.ExtractNamespacedName(es.ObjectMeta)
+	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),

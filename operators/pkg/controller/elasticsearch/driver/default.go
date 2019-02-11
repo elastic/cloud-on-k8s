@@ -158,7 +158,7 @@ func (d *defaultDriver) Reconcile(
 	}
 	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
 
-	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(es.ObjectMeta), esClient)
+	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
 	resourcesState, err := d.resourcesStateResolver(d.Client, es)
 	if err != nil {
@@ -211,7 +211,7 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	namespacedName := k8s.ExtractNamespacedName(es.ObjectMeta)
+	namespacedName := k8s.ExtractNamespacedName(&es)
 
 	// There might be some ongoing creations and deletions our k8s client cache
 	// hasn't seen yet. In such case, requeue until we are in-sync.
@@ -404,8 +404,8 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:     k8s.ExtractNamespacedName(versionWideResources.ExtraFilesSecret.ObjectMeta),
-			KeystoreSecretRef: k8s.ExtractNamespacedName(versionWideResources.KeyStoreConfig.ObjectMeta),
+			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
 			ProbeUser:         internalUsers.ControllerUser,
 			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
