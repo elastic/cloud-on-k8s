@@ -12,7 +12,7 @@ const (
 	SecretVolumeName = "keystore"
 )
 
-// ManagedSecretName the name of the operator managed secret containing Elasticsearch keystore data.
+// ManagedSecretName returns the name of the operator managed secret containing Elasticsearch keystore data.
 func ManagedSecretName(clusterName string) string {
 	return clusterName + managedSecretSuffix
 }
