@@ -4,10 +4,16 @@
 
 package keystore
 
+import "k8s.io/apimachinery/pkg/types"
+
 const (
-	ManagedSecretName = "keystore-secret"
+	managedSecretSuffix = "-keystore"
 	// SecretMountPath Mountpath for keystore secrets in init container.
 	SecretMountPath = "/keystore-secrets"
 	// SecretVolumeName is the name of the volume where the keystore secret is referenced.
 	SecretVolumeName = "keystore"
 )
+
+func ManagedSecretName(cluster types.NamespacedName) string {
+	return cluster.Name + managedSecretSuffix
+}
