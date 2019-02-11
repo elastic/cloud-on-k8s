@@ -115,3 +115,19 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 	}
 	return false, nil
 }
+
+// GetPublicService returns the public service associated to the given Elasticsearch cluster.
+func GetPublicService(c k8s.Client, es v1alpha1.ElasticsearchCluster) (corev1.Service, error) {
+	var svc corev1.Service
+
+	namespacedName := types.NamespacedName{
+		Namespace: es.Namespace,
+		Name:      PublicServiceName(es.Name),
+	}
+
+	if err := c.Get(namespacedName, &svc); err != nil {
+		return corev1.Service{}, err
+	}
+
+	return svc, nil
+}

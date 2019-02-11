@@ -63,10 +63,12 @@ func (s *State) updateWithPhase(
 		s.status.ClusterUUID = observedState.ClusterState.ClusterUUID
 		s.status.MasterNode = observedState.ClusterState.MasterNodeName()
 	}
-	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
-	s.status.Health = v1alpha1.ElasticsearchHealth("unknown")
-	s.status.Phase = phase
 
+	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
+	s.status.Phase = phase
+	s.status.PublicService = resourcesState.PublicService.Name
+
+	s.status.Health = v1alpha1.ElasticsearchHealth("unknown")
 	if observedState.ClusterHealth != nil && observedState.ClusterHealth.Status != "" {
 		s.status.Health = v1alpha1.ElasticsearchHealth(observedState.ClusterHealth.Status)
 	}

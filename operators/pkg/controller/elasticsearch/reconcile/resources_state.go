@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +31,8 @@ type ResourcesState struct {
 	DeletingPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
+	// PublicService is the public service related to the Elasticsearch cluster.
+	PublicService corev1.Service
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
@@ -62,6 +65,14 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*
 	}
 
 	pvcs, err := getPersistentVolumeClaims(c, es, labelSelector, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	publicService, err := services.GetPublicService(c, es)
+	if err != nil {
+		return nil, err
+	}
 
 	state := ResourcesState{
 		AllPods:            allPods,
@@ -69,6 +80,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*
 		CurrentPodsByPhase: currentPodsByPhase,
 		DeletingPods:       deletingPods,
 		PVCs:               pvcs,
+		PublicService:      publicService,
 	}
 
 	return &state, nil
