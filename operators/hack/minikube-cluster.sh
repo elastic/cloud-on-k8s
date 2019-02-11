@@ -8,8 +8,9 @@
 # of the necessary default settings so that no environment variable has to
 # be specified.
 
-: "${MINIKUBE_KUBERNETES_VERSION:=v1.12.0}"
 set -eu
+
+: "${MINIKUBE_KUBERNETES_VERSION:=v1.11.6}"
 : "${MINIKUBE_MEMORY:=8192}"
 : "${MINIKUBE_CPUS:=4}"
 
