@@ -17,9 +17,6 @@ TESTS_MATCH="$2" # Expression to match go test names (can be "")
 JOB_NAME="elastic-operators-e2e-tests"
 NAMESPACE="e2e"
 
-# apply rbac
-kubectl apply -f config/e2e/rbac.yaml
-
 # exit early if another job already exists
 set +e
 kubectl -n e2e get job $JOB_NAME && \

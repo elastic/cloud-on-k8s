@@ -23,7 +23,7 @@ func reconcileNodeCertificates(
 	trustRelationships []v1alpha1.TrustRelationship,
 ) error {
 	// TODO: suffix with type (-ca?) and trim
-	clusterCAPublicSecretObjectKey := k8s.ExtractNamespacedName(es.ObjectMeta)
+	clusterCAPublicSecretObjectKey := k8s.ExtractNamespacedName(&es)
 	if err := ca.ReconcilePublicCertsSecret(c, clusterCAPublicSecretObjectKey, &es, scheme); err != nil {
 		return err
 	}

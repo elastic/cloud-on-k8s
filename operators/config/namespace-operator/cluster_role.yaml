@@ -1,50 +1,58 @@
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: e2e
-  labels:
-    name: e2e
-
----
-
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: e2e
-  namespace: e2e
-
----
-
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  namespace: e2e
-  name: e2e
+  creationTimestamp: null
+  name: elastic-namespace-operator
 rules:
 - apiGroups:
   - ""
   resources:
   - pods
-  - services
   - endpoints
+  - events
+  - persistentvolumeclaims
   - secrets
+  - services
+  - configmaps
   verbs:
   - get
   - list
   - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
-  - "apps"
+  - apps
   resources:
   - deployments
   verbs:
   - get
   - list
   - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
 - apiGroups:
   - elasticsearch.k8s.elastic.co
   resources:
   - elasticsearchclusters
   - elasticsearchclusters/status
+  - clusterlicenses
+  - trustrelationships
   verbs:
   - get
   - list
@@ -79,19 +87,16 @@ rules:
   - update
   - patch
   - delete
----
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  creationTimestamp: null
-  name: e2e
-  namespace: e2e
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: e2e
-subjects:
-- kind: ServiceAccount
-  name: e2e
-  namespace: e2e
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete

@@ -21,7 +21,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: "stack-sample-license"
-  namespace: "default"
 type: Opaque
 data:
   sig: "not-a-valid-signature"

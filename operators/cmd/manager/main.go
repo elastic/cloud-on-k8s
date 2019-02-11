@@ -31,6 +31,7 @@ const (
 	DefaultMetricPort = 8080
 
 	AutoPortForwardFlagName = "auto-port-forward"
+	NamespaceFlagName       = "namespace"
 )
 
 var (
@@ -51,6 +52,11 @@ var (
 func init() {
 
 	Cmd.Flags().String(
+		NamespaceFlagName,
+		"",
+		"namespace in which this operator should manage resources (defaults to all namespaces)",
+	)
+	Cmd.Flags().String(
 		operator.ImageFlag,
 		"",
 		"image containing the binaries for this operator",
@@ -69,7 +75,7 @@ func init() {
 	Cmd.Flags().String(
 		operator.RoleFlag,
 		operator.All,
-		"Role this operator manager should assume (either applications, licensing or all)",
+		"Role this operator should assume (either namespace, global or all)",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
@@ -114,7 +120,10 @@ func execute() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("setting up manager")
-	opts := manager.Options{}
+	opts := manager.Options{
+		// restrict the operator to watch resources within a single namespace, unless empty
+		Namespace: viper.GetString(NamespaceFlagName),
+	}
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)

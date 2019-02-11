@@ -10,5 +10,5 @@ import (
 )
 
 func init() {
-	Register(operator.ApplicationOperator, stack.Add)
+	Register(operator.NamespaceOperator, stack.Add)
 }

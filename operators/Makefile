@@ -1,22 +1,39 @@
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
+
+#################################
+##  --      Variables      --  ##
+#################################
+
+# make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
-OPERATOR_NAMESPACE ?= elastic-operators-system
+## -- Docker image
 
 GCLOUD_PROJECT ?= elastic-cloud-dev
+# default to GCR registry
 REGISTRY ?= eu.gcr.io
 ifeq ($(KUBECTL_CLUSTER), minikube)
-	# on minikube, use a local registry
+	# but on minikube, use a local registry
 	REGISTRY = localhost:5000
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(GCLOUD_PROJECT)/k8s-operators$(IMG_SUFFIX)
+# use git sha1 as the default image tag
 GIT_SHA1 = $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(GIT_SHA1)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
+
+## -- Namespaces
+
+# namespace in which the global operator is deployed (see config/global-operator)
+GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
+# namespace in which the namespace operator is deployed (see config/namespace-operator)
+NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
+# namespace in which the namespace operator should watch resources
+MANAGED_NAMESPACE ?= default
 
 
 #####################################
@@ -76,23 +93,27 @@ install-crds: generate
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds
-	# Run the operator locally, with sidecar image set to latest
+	# Run the operator locally with role All, with sidecar image set to latest
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
-		go run ./cmd/main.go manager --development
+		go run ./cmd/main.go manager --development --operator-role=all --namespace $(MANAGED_NAMESPACE)
 
-# Deploy the operator in the configured Kubernetes cluster
+# Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
-	kustomize build config/default | kubectl apply -f -
-	@ echo "-> type \"make logs\" to tail the operator logs."
+	kubectl apply -f config/crds
+	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
+	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 
-logs:
-	@ kubectl --namespace=$(OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-operators-controller-manager
+logs-namespace-operator:
+	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
+
+logs-global-operator:
+	@ kubectl --namespace=$(GLOBAL_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-global-operator
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
 	@ kubectl apply -f config/samples/deployments_v1alpha1_stack.yaml
 
-# display elasticsearch credentials for the first stack
+# Display elasticsearch credentials of the first stack
 show-credentials:
 	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
 
@@ -101,7 +122,7 @@ show-credentials:
 ##  --    K8s clusters bootstrap    --  ##
 ##########################################
 
-KUBECTL_CLUSTER = $(shell kubectl config current-context)
+KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
 
 cluster-bootstrap: dep-vendor-only elastic-operator install-crds
 
@@ -121,7 +142,6 @@ set-context-minikube:
 bootstrap-minikube: 
 	hack/minikube-cluster.sh
 	$(MAKE) set-context-minikube registry lazy-push-latest-operator-image-in-local-registry cluster-bootstrap
-
 
 ## -- gke
 
@@ -160,18 +180,10 @@ force-push-latest-operator-image-in-local-registry:
 
 docker-build:
 	docker build . -t $(OPERATOR_IMAGE)
-	@ echo "-> Updating kustomize image patch file for manager resource"
-	# TODO: fix this on merge conflict with PR #342
-	@ cp config/default/manager_image_patch.orig.yaml config/default/manager_image_patch.yaml
-	@ $(eval EXTRASEDFLAG := "''")
-ifeq ($(shell uname -s),Linux)
-	@ $(eval EXTRASEDFLAG := "-e")
-endif
-	sed -i ${EXTRASEDFLAG} 's@image: .*@image: '"$(OPERATOR_IMAGE)"'@' config/default/manager_image_patch.yaml
-	sed -i ${EXTRASEDFLAG} 's@value: .*@value: '"$(OPERATOR_IMAGE)"'@' config/default/manager_image_patch.yaml
 
 docker-push:
 ifeq ($(KUBECTL_CLUSTER), minikube)
+	# use the minikube registry
 	@ hack/registry.sh port-forward start
 	docker push $(OPERATOR_IMAGE)
 	@ hack/registry.sh port-forward stop
@@ -216,7 +228,8 @@ clean-e2e:
 
 ci: check-fmt dep-vendor-only unit integration docker-build
 
-# Run e2e tests in a dedicated gke cluster
+# Run e2e tests in a dedicated gke cluster,
+# that we delete if everything went fine
 ci-e2e: bootstrap-gke docker-build docker-push deploy e2e delete-gke
 
 

@@ -121,12 +121,6 @@ type ReconcileStack struct {
 
 // Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and what is in
 // the Elasticsearch.Spec
-//
-// Automatically generate RBAC rules:
-// +kubebuilder:rbac:groups=deployments.k8s.elastic.co,resources=stacks;stacks/status,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=kibana.k8s.elastic.co,resources=kibanas,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch;create;update;patch;delete
 func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)

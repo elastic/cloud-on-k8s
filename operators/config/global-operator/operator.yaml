@@ -1,21 +1,15 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: system
----
+# Very similar to namespace_operator.yaml, but with
+# a different service account and different run arguments
 apiVersion: v1
 kind: Service
 metadata:
-  name: controller-manager-service
-  namespace: system
+  name: elastic-global-operator
   labels:
-    control-plane: controller-manager
+    control-plane: elastic-global-operator
     controller-tools.k8s.io: "1.0"
 spec:
   selector:
-    control-plane: controller-manager
+    control-plane: elastic-global-operator
     controller-tools.k8s.io: "1.0"
   ports:
   - port: 443
@@ -23,34 +17,37 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: controller-manager
-  namespace: system
+  name: elastic-global-operator
   labels:
-    control-plane: controller-manager
+    control-plane: elastic-global-operator
     controller-tools.k8s.io: "1.0"
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: elastic-global-operator
       controller-tools.k8s.io: "1.0"
-  serviceName: controller-manager-service
+  serviceName: elastic-global-operator
   template:
     metadata:
       labels:
-        control-plane: controller-manager
+        control-plane: elastic-global-operator
         controller-tools.k8s.io: "1.0"
     spec:
+      serviceAccountName: elastic-global-operator
       containers:
-      - image: controller:latest
+      - image: $OPERATOR_IMAGE
         imagePullPolicy: Always
         name: manager
+        args: ["manager", "--development", "--operator-role", "global"]
         env:
           - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: SECRET_NAME
-            value: $(WEBHOOK_SECRET_NAME)
+            value: webhook-server-secret
+          - name: OPERATOR_IMAGE
+            value: $OPERATOR_IMAGE
         resources:
           limits:
             cpu: 100m
@@ -77,4 +74,3 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: webhook-server-secret
-  namespace: system

@@ -6,6 +6,7 @@ package license
 
 import (
 	"reflect"
+	"sync/atomic"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -41,11 +42,14 @@ var (
 // If there is none it assigns a new one.
 // In any case it schedules a new reconcile request to be processed when the license is about to expire.
 // This happens independently from any watch triggered reconcile request.
-//
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=enterpriselicenses,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=elasticsearch.k8s.elastic.co,resources=elasticsearchclusters,verbs=get;list;watch
 func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	log.Info("Reconciling licenses", "cluster", request.NamespacedName)
+	// atomically update the iteration to support concurrent runs.
+	currentIteration := atomic.AddInt64(&r.iteration, 1)
+	iterationStartTime := time.Now()
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
+	defer func() {
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+	}()
 	result, err := r.reconcileInternal(request)
 	if result.Requeue {
 		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
@@ -97,6 +101,21 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	); err != nil {
 		return err
 	}
+
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+			requests, err := listAffectedLicenses(
+				k8s.WrapClient(mgr.GetClient()), k8s.ExtractNamespacedName(object.Meta),
+			)
+			if err != nil {
+				// dropping the event(s) at this point
+				log.Error(err, "failed to list affected clusters in enterprise license watch")
+			}
+			return requests
+		}),
+	}); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -106,6 +125,8 @@ var _ reconcile.Reconciler = &ReconcileLicenses{}
 type ReconcileLicenses struct {
 	k8s.Client
 	scheme *runtime.Scheme
+	// iteration is the number of times this controller has run its Reconcile method
+	iteration int64
 }
 
 // findLicenseFor tries to find a matching license for the given cluster identified by its namespaced name.
@@ -182,7 +203,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
-	clusterName := k8s.ExtractNamespacedName(cluster.ObjectMeta)
+	clusterName := k8s.ExtractNamespacedName(&cluster)
 	matchingSpec, parent, err := findLicenseFor(r, clusterName)
 	if err != nil {
 		return noResult, err
@@ -197,6 +218,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
 		Spec:       matchingSpec,
 	}
+	toAssign.Labels = map[string]string{EnterpriseLicenseLabelName: parent.Name}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{

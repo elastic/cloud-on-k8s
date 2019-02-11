@@ -10,5 +10,5 @@ import (
 )
 
 func init() {
-	Register(operator.LicenseOperator, license.Add)
+	Register(operator.GlobalOperator, license.Add)
 }
