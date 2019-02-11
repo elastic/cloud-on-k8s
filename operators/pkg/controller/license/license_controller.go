@@ -5,6 +5,7 @@
 package license
 
 import (
+	"fmt"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -37,6 +38,22 @@ const defaultSafetyMargin = 30 * 24 * time.Hour
 var (
 	log = logf.Log.WithName("license-controller")
 )
+
+// clusterOnTrialError represents an error condition where reconciliation is aborted because a cluster is running
+// on trial by explicit user request.
+type clusterOnTrialError struct {
+	nsn types.NamespacedName
+}
+
+func newClusterOnTrialError(name types.NamespacedName) *clusterOnTrialError {
+	return &clusterOnTrialError{nsn: name}
+}
+
+func (c clusterOnTrialError) Error() string {
+	return fmt.Sprintf("cluster %v is explicitly on trial, no reconciliation needed", c.nsn)
+}
+
+var _ error = clusterOnTrialError{}
 
 // Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
 // If there is none it assigns a new one.
@@ -139,6 +156,9 @@ func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.Cl
 		return noLicense, noParent, err
 	}
 	desiredType := v1alpha1.LicenseTypeFromString(cluster.Labels[license.Expectation])
+	if desiredType == v1alpha1.LicenseTypeTrial {
+		return noLicense, noParent, newClusterOnTrialError(clusterName)
+	}
 	licenseList := v1alpha1.EnterpriseLicenseList{}
 	err = c.List(&client.ListOptions{}, &licenseList)
 	if err != nil {
@@ -262,7 +282,13 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 	safetyMargin := defaultSafetyMargin
 	newExpiry, err := r.reconcileClusterLicense(owner, safetyMargin)
 	if err != nil {
-		return reconcile.Result{Requeue: true}, err
+		switch err.(type) {
+		case clusterOnTrialError:
+			log.Info(err.Error()) // non treated as an error here, no license management for trials required
+			return reconcile.Result{}, nil
+		default:
+			return reconcile.Result{Requeue: true}, err
+		}
 	}
 	return nextReconcile(newExpiry, safetyMargin), nil
 }

@@ -91,3 +91,39 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		})
 	}
 }
+
+func TestLicenseTypeFromString(t *testing.T) {
+	tests := []struct {
+		name string
+		args string
+		want LicenseType
+	}{
+		{
+			name: "empty type: enterprise is not a cluster license type",
+			args: "enterprise",
+			want: "",
+		},
+		{
+			name: "empty type: garbage in empty out",
+			args: "foo",
+			want: "",
+		},
+		{
+			name: "success: valid type",
+			args: "platinum",
+			want: LicenseTypePlatinum,
+		},
+		{
+			name: "success: trial is valid cluster license type",
+			args: "trial",
+			want: LicenseTypeTrial,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := LicenseTypeFromString(tt.args); got != tt.want {
+				t.Errorf("LicenseTypeFromString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
