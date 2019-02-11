@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#! /usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
@@ -10,6 +10,8 @@
 #
 # Usage: gke-cluster.sh (create|delete|name)
 #
+
+set -eu
 
 : "${GCLOUD_PROJECT:=elastic-cloud-dev}"
 : "${GKE_CLUSTER_NAME:=${USER//_}-dev-cluster}"

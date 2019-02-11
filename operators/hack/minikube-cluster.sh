@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#! /usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
@@ -9,6 +9,7 @@
 # be specified.
 
 : "${MINIKUBE_KUBERNETES_VERSION:=v1.12.0}"
+set -eu
 : "${MINIKUBE_MEMORY:=8192}"
 : "${MINIKUBE_CPUS:=4}"
 
