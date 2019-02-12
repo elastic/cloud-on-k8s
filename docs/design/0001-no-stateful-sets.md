@@ -69,13 +69,13 @@ Overall, we would lose a lot of flexibility in the way we'd like to run rolling 
 
 We decided to implement our own controller that manages pods directly.
 
-### Positive Consequences <!-- optional -->
+### Positive Consequences
 * The immediate benefit in working with Pods directly is more control over the the cluster lifecycle. We can handle rolling upgrades, version migrations, cluster growth, volume reuse (or not), multi-AZ orchestration, etc. with much more flexibility.
 * Relying on StatefulSets forces us to depend on the StatefulSet controller releases, updates and bug fixes, since it has direct control over the pods themselves. 
 * Pods are a core concept of K8s, with well-known behaviours thoroughly tested in the field. Their spec and behaviour is less likely to evolve in a direction that does not suit us.
 * We could rely on StatefulSets: it would simplify a part of the code, and complexify another part of the code. Because of complex cluster topologies, we would still need to handle several StatefulSets for a single cluster, which is not much more simpler than handling several pods directly. 
 
-### Negative Consequences <!-- optional -->
+### Negative Consequences
 * Things we need to reimplement since we're not using StatefulSet
    - Orchestration: need to manually create and delete pods, by comparing expected pods to actual pods. By using StatefulSets, we would only compare StatefulSets specs.
    - Rolling upgrades: need to be manually handled (which gives us more flexibility).
