@@ -1,14 +1,24 @@
-# Why not relying on StatefulSets
+# 1. Stateful set or custom controller
+
+* Status: accepted 
+* Deciders: @nkvoll
+* Date: 2019-02-12
+
+## Context and Problem Statement
 
 We manage stateful workloads. StatefulSets were designed in order to manage stateful workloads. Why are we not using StatefulSets like everyone else is doing?
 
-## StatefulSets overview
+
+## Decision Drivers <!-- optional -->
+
+### StatefulSets overview
 
 > Manages the deployment and scaling of a set of Pods , and provides guarantees about the ordering and uniqueness of these Pods.
 
 Each pod ends up with a sticky network identifier and an ordinal index, reused on rescheduling, along with its persistent storage. There is a global order in pods of a StatefulSet (pod-1, pod-2, pod-3, etc.) which determines scaling and ordering in rolling operations.
 
-## Elasticsearch topologies
+
+### Elasticsearch topologies
 
 In a given StatefulSet, all pods have the exact same spec.
 
@@ -28,7 +38,7 @@ In complex production-ready scenarios, we might want to configure a cluster with
 
 Mapping these to StatefulSets definitions would probably lead to at least 5 different StatefulSets resources for a single cluster.
 
-## Rolling upgrades
+### Rolling upgrades
 
 A good way to rolling-upgrade an Elasticsearch cluster:
 
@@ -46,23 +56,32 @@ Some of these steps are very specific to Elasticsearch, and cannot be accomplish
 
 For certain scenarios, we might prefer upgrading the cluster in a "grow-and-shrink" fashion: add extra nodes, then remove old ones. This is the case of 1-node clusters for instance. It is not easy to achieve with StatefulSets, and probably requires some manual tweaks with partitioned rolling upgrades.
 
-Overall, we would loose a lot of flexibility in the way we'd like to run rolling upgrades by using StatefulSets.
+Overall, we would lose a lot of flexibility in the way we'd like to run rolling upgrades by using StatefulSets.
 
-## Close to the metal
 
-Relying on StatefulSets forces us to depend on the StatefulSet controller releases, updates and bug fixes, since it has direct control over the pods themselves.
+## Considered Options
 
-Pods are a core concept of K8s, with well-known behaviours thoroughly tested in the field. Their spec and behaviour is less likely to evolve in a direction that does not suit us.
+* (multiple) stateful sets
+* implementing our own custom controller
 
-## Things we need to reimplement since we're not using StatefulSet
 
-- Orchestration: need to manually create and delete pods, by comparing expected pods to actual pods. By using StatefulSets, we would only compare StatefulSets specs.
-- Rolling upgrades: need to be manually handled (which gives us more flexibility).
-- Non-determistic identities and cache inconsistencies: need to handle potential resources cache inconsistencies by relying on Expectations, similar to ReplicaSets.
+## Decision Outcome
 
-## Summary
+We decided to implement our own controller that manages pods directly.
 
-We could rely on StatefulSets: it would simplify a part of the code, and complexify another part of the code. Because of complex cluster topologies, we would still need to handle several StatefulSets for a single cluster, which is not much more simpler than handling several pods directly. The immediate benefit in working with Pods directly is more control over the the cluster lifecycle. We can handle rolling upgrades, version migrations, cluster growth, volume reuse (or not), multi-AZ orchestration, etc. with much more flexibility.
+### Positive Consequences <!-- optional -->
+* The immediate benefit in working with Pods directly is more control over the the cluster lifecycle. We can handle rolling upgrades, version migrations, cluster growth, volume reuse (or not), multi-AZ orchestration, etc. with much more flexibility.
+* Relying on StatefulSets forces us to depend on the StatefulSet controller releases, updates and bug fixes, since it has direct control over the pods themselves. 
+* Pods are a core concept of K8s, with well-known behaviours thoroughly tested in the field. Their spec and behaviour is less likely to evolve in a direction that does not suit us.
+* We could rely on StatefulSets: it would simplify a part of the code, and complexify another part of the code. Because of complex cluster topologies, we would still need to handle several StatefulSets for a single cluster, which is not much more simpler than handling several pods directly. 
+
+### Negative Consequences <!-- optional -->
+* Things we need to reimplement since we're not using StatefulSet
+   - Orchestration: need to manually create and delete pods, by comparing expected pods to actual pods. By using StatefulSets, we would only compare StatefulSets specs.
+   - Rolling upgrades: need to be manually handled (which gives us more flexibility).
+   - Non-determistic identities and cache inconsistencies: need to handle potential resources cache inconsistencies by relying on Expectations, similar to ReplicaSets.
+
+
 
 ## Links
 
