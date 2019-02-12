@@ -228,11 +228,11 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: check-fmt dep-vendor-only unit integration docker-build
+ci: dep-vendor-only check-fmt unit integration docker-build
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
-ci-e2e: bootstrap-gke docker-build docker-push deploy e2e delete-gke
+ci-e2e: bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke
 
 
 ##########################
