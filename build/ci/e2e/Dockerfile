@@ -6,7 +6,6 @@ ENV KUSTOMIZE_VERSION=1.0.11
 ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION 1.13.2
 ENV DOCKER_VERSION=18.03.1-ce
-ENV DOCKER_API_VERSION=1.23
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
 RUN curl -L -O https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
