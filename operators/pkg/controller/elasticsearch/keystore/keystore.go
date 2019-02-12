@@ -5,9 +5,14 @@
 package keystore
 
 const (
-	ManagedSecretName = "keystore-secret"
-	// SecretMountPath Mountpath for keystore secrets in init container.
+	managedSecretSuffix = "-keystore"
+	// SecretMountPath is the mount path for keystore secrets in the init container.
 	SecretMountPath = "/keystore-secrets"
 	// SecretVolumeName is the name of the volume where the keystore secret is referenced.
 	SecretVolumeName = "keystore"
 )
+
+// ManagedSecretName returns the name of the operator managed secret containing Elasticsearch keystore data.
+func ManagedSecretName(clusterName string) string {
+	return clusterName + managedSecretSuffix
+}
