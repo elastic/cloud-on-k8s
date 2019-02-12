@@ -1,4 +1,4 @@
-# Global operator and namespaced operators
+# 2. Global operator and namespaced operators
 
 * Status: proposed 
 * Deciders: k8s team
