@@ -15,7 +15,9 @@ check-license-header:
 	./../check-license-header.sh
 
 vault-gke-creds:
-	vault read -field=service-account $(VAULT_GKE_CREDS_SECRET) > $(GKE_CREDS_FILE)
+	vault read \
+		-address=$(VAULT_ADDR) \
+		-field=service-account $(VAULT_GKE_CREDS_SECRET) > $(GKE_CREDS_FILE)
 
 ## -- Job executed on all PRs
 
