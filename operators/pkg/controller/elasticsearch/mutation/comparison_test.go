@@ -411,14 +411,6 @@ func withPVCs(pod corev1.Pod, nameAndClaimNames ...string) corev1.Pod {
 	return pod
 }
 
-func mustParseQuantity(quantity string) resource.Quantity {
-	parsed, err := resource.ParseQuantity(quantity)
-	if err != nil {
-		panic(err)
-	}
-	return parsed
-}
-
 func Test_compareResources(t *testing.T) {
 	type args struct {
 		actual   corev1.ResourceRequirements
@@ -434,18 +426,18 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi")},
+						"memory": resource.MustParse("1Gi")},
 				},
 			},
 			wantMatch: true,
@@ -455,18 +447,18 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("2Gi"),
+						"memory": resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("2Gi")},
+						"memory": resource.MustParse("2Gi")},
 				},
 			},
 			wantMatch: false,
@@ -476,18 +468,18 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"),
+						"memory": resource.MustParse("1Gi"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1024Mi"),
+						"memory": resource.MustParse("1024Mi"),
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1024Mi")},
+						"memory": resource.MustParse("1024Mi")},
 				},
 			},
 			wantMatch: true,
@@ -497,18 +489,18 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m"),
+						"cpu": resource.MustParse("500m"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m"),
+						"cpu": resource.MustParse("500m"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m"),
+						"cpu": resource.MustParse("500m"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m")},
+						"cpu": resource.MustParse("500m")},
 				},
 			},
 			wantMatch: true,
@@ -518,18 +510,18 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m"),
+						"cpu": resource.MustParse("500m"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m"),
+						"cpu": resource.MustParse("500m"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu": mustParseQuantity("400m"),
+						"cpu": resource.MustParse("400m"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu": mustParseQuantity("500m")},
+						"cpu": resource.MustParse("500m")},
 				},
 			},
 			wantMatch: false,
@@ -539,22 +531,22 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu":    mustParseQuantity("500m"),
-						"memory": mustParseQuantity("1Gi"),
+						"cpu":    resource.MustParse("500m"),
+						"memory": resource.MustParse("1Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu":    mustParseQuantity("500m"),
-						"memory": mustParseQuantity("1Gi"),
+						"cpu":    resource.MustParse("500m"),
+						"memory": resource.MustParse("1Gi"),
 					},
 				},
 				expected: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"cpu":    mustParseQuantity("500m"),
-						"memory": mustParseQuantity("2Gi"),
+						"cpu":    resource.MustParse("500m"),
+						"memory": resource.MustParse("2Gi"),
 					},
 					Requests: corev1.ResourceList{
-						"cpu":    mustParseQuantity("500m"),
-						"memory": mustParseQuantity("2Gi"),
+						"cpu":    resource.MustParse("500m"),
+						"memory": resource.MustParse("2Gi"),
 					},
 				},
 			},
@@ -565,10 +557,10 @@ func Test_compareResources(t *testing.T) {
 			args: args{
 				actual: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"), // defaulted
+						"memory": resource.MustParse("1Gi"), // defaulted
 					},
 					Requests: corev1.ResourceList{
-						"memory": mustParseQuantity("1Gi"), // defaulted
+						"memory": resource.MustParse("1Gi"), // defaulted
 					},
 				},
 				expected: corev1.ResourceRequirements{
@@ -601,10 +593,10 @@ func Test_equalResourceList(t *testing.T) {
 			name: "same A and B",
 			args: args{
 				resListA: corev1.ResourceList{
-					"key": mustParseQuantity("100m"),
+					"key": resource.MustParse("100m"),
 				},
 				resListB: corev1.ResourceList{
-					"key": mustParseQuantity("100m"),
+					"key": resource.MustParse("100m"),
 				},
 			},
 			want: true,
@@ -613,10 +605,10 @@ func Test_equalResourceList(t *testing.T) {
 			name: "different A and B",
 			args: args{
 				resListA: corev1.ResourceList{
-					"key": mustParseQuantity("100m"),
+					"key": resource.MustParse("100m"),
 				},
 				resListB: corev1.ResourceList{
-					"key": mustParseQuantity("200m"),
+					"key": resource.MustParse("200m"),
 				},
 			},
 			want: false,
@@ -625,11 +617,11 @@ func Test_equalResourceList(t *testing.T) {
 			name: "more values in A",
 			args: args{
 				resListA: corev1.ResourceList{
-					"key":  mustParseQuantity("100m"),
-					"key2": mustParseQuantity("100m"),
+					"key":  resource.MustParse("100m"),
+					"key2": resource.MustParse("100m"),
 				},
 				resListB: corev1.ResourceList{
-					"key": mustParseQuantity("100m"),
+					"key": resource.MustParse("100m"),
 				},
 			},
 			want: false,
@@ -638,11 +630,11 @@ func Test_equalResourceList(t *testing.T) {
 			name: "more values in B",
 			args: args{
 				resListA: corev1.ResourceList{
-					"key": mustParseQuantity("100m"),
+					"key": resource.MustParse("100m"),
 				},
 				resListB: corev1.ResourceList{
-					"key":  mustParseQuantity("100m"),
-					"key2": mustParseQuantity("100m"),
+					"key":  resource.MustParse("100m"),
+					"key2": resource.MustParse("100m"),
 				},
 			},
 			want: false,
