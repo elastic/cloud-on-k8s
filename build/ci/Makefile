@@ -7,17 +7,20 @@
 ROOT_DIR = $(CURDIR)/../..
 GO_MOUNT_PATH ?= /go/src/github.com/elastic/k8s-operators
 
-VAULT_ADDR ?= https://secrets.elastic.co:8200
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
 
 check-license-header:
 	./../check-license-header.sh
 
+# login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
-	vault read \
-		-address=$(VAULT_ADDR) \
-		-field=service-account $(VAULT_GKE_CREDS_SECRET) > $(GKE_CREDS_FILE)
+	VAULT_TOKEN=$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
+		vault read \
+			-address=$(VAULT_ADDR) \
+			-field=service-account \
+			$(VAULT_GKE_CREDS_SECRET) \
+			> $(GKE_CREDS_FILE)
 
 ## -- Job executed on all PRs
 
