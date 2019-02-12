@@ -99,21 +99,15 @@ func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVa
 
 // equalResourceList returns true if both ResourceList are considered equal
 func equalResourceList(resListA, resListB corev1.ResourceList) bool {
-	// consider A and B to be equal if all resources from A are in B,
-	// and all resources from B are in A
-	includedIn := func(resListA, resListB corev1.ResourceList) bool {
-		for key, valueInA := range resListA {
-			valueInB, exists := resListB[key]
-			if !exists || valueInA.Cmp(valueInB) != 0 {
-				return false
-			}
+	if len(resListA) != len(resListB) {
+		return false
+	}
+	for k1, v1 := range resListA {
+		if valB, ok := resListB[k1]; !ok || v1.Cmp(valB) != 0 {
+			return false
 		}
-		return true
 	}
-	if includedIn(resListA, resListB) && includedIn(resListB, resListA) {
-		return true
-	}
-	return false
+	return true
 }
 
 // compareResources returns true if both resources match
