@@ -1,10 +1,16 @@
-## Associations and relations between resources
+# 3. Associations and relations between resources
 
-Proposal state: RFC
+* Status: accepted 
+* Deciders: k8s team
+* Date: 2019-02-12
 
-### Summary
+
+## Context and Problem Statement
 
 This proposal presents different ways to model associations between resources along with recommendations for when to use them.
+
+
+## Decision Drivers <!-- optional -->
 
 ### Goals
 
@@ -19,7 +25,6 @@ We want to end up with implementations that meet the following goals:
 - If a resource is user-provided, we should not write to its spec, except in rare circumstances -- and then usually only to a well-defined sub-section. (e.g service controllers writing to `.spec.clusterIP`).
 
 - Have one clear owner of each resource object and avoid having multiple writers unless necessary.
-
 
 ### Prior art
 
@@ -51,9 +56,9 @@ Similar to a network policy, the PDB contains a selector for the pods (for which
 
 #### Service
 
-In the [Service](https://kubernetes.io/docs/concepts/services-networking/service/) resource, `.spec.clusterIP` is written to by the service controller. This is writing into a subsection of a cluster-provided resource instead of being part of the `.status` sub-resource because it's also the source of truth for this IP (it's not stored anywhere else). The user may delete it to have a new one assigned or provide a custom one that should be used. This is a scenario where a user may provide an optional value which the system can generate a default for. 
+In the [Service](https://kubernetes.io/docs/concepts/services-networking/service/) resource, `.spec.clusterIP` is written to by the service controller. This is writing into a subsection of a cluster-provided resource instead of being part of the `.status` sub-resource because it's also the source of truth for this IP (it's not stored anywhere else). The user may delete it to have a new one assigned or provide a custom one that should be used. This is a scenario where a user may provide an optional value which the system can generate a default for.
 
-### Implementation options:
+## Considered Options
 
 What follows is an overview of different implementation options with pros/cons. A diagram with the options is provided for convenience.
 
@@ -118,9 +123,10 @@ If it's a one-to-one mapping between the source and target, the fact that differ
 
 ![](one-to-one.png)
 
-### Recommendations
+## Decision Outcome
 
 On a general basis, **option 1** should be preferred, but **option 3** is also considered a good choice if it fits the association order better. **Option 4** is the strongest candidate for one-to-one associations.
+
 
 
 ### Case study: Kibana-to-Elasticsearch association
