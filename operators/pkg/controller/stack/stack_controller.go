@@ -239,7 +239,7 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// TODO: be dynamic wrt to the service name
-	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", services.PublicServiceName(es.Name))
+	kb.Spec.Elasticsearch.URL = fmt.Sprintf("https://%s:9200", services.ExternalServiceName(es.Name))
 
 	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret corev1.Secret

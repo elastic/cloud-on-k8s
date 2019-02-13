@@ -15,8 +15,8 @@ import (
 
 // GenericResources are resources that all clusters have.
 type GenericResources struct {
-	// PublicService is the user-facing service
-	PublicService corev1.Service
+	// ExternalService is the user-facing service
+	ExternalService corev1.Service
 	// DiscoveryService is the service used by ES for discovery purposes
 	DiscoveryService corev1.Service
 }
@@ -36,11 +36,11 @@ func reconcileGenericResources(
 		return nil, err
 	}
 
-	publicService := services.NewPublicService(es)
-	_, err = common.ReconcileService(c, scheme, publicService, &es)
+	externalService := services.NewExternalService(es)
+	_, err = common.ReconcileService(c, scheme, externalService, &es)
 	if err != nil {
 		return nil, err
 	}
 
-	return &GenericResources{DiscoveryService: *discoveryService, PublicService: *publicService}, nil
+	return &GenericResources{DiscoveryService: *discoveryService, ExternalService: *externalService}, nil
 }

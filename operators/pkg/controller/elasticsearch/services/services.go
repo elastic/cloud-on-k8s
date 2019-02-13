@@ -56,24 +56,24 @@ func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 	}
 }
 
-// PublicServiceName returns the name for the public service
+// ExternalServiceName returns the name for the external service
 // associated to this cluster
-func PublicServiceName(esName string) string {
-	return stringsutil.Concat(esName, "-es-public")
+func ExternalServiceName(esName string) string {
+	return stringsutil.Concat(esName, "-es")
 }
 
-// PublicServiceURL returns the URL used to reach Elasticsearch public endpoint
-func PublicServiceURL(es v1alpha1.ElasticsearchCluster) string {
-	return stringsutil.Concat("https://", PublicServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
+// ExternalServiceURL returns the URL used to reach Elasticsearch external endpoint
+func ExternalServiceURL(es v1alpha1.ElasticsearchCluster) string {
+	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
 }
 
-// NewPublicService returns the public service associated to the given cluster
+// NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewPublicService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
+func NewExternalService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      PublicServiceName(es.Name),
+			Name:      ExternalServiceName(es.Name),
 			Labels:    label.NewLabels(es),
 		},
 		Spec: corev1.ServiceSpec{
@@ -116,13 +116,13 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 	return false, nil
 }
 
-// GetPublicService returns the public service associated to the given Elasticsearch cluster.
-func GetPublicService(c k8s.Client, es v1alpha1.ElasticsearchCluster) (corev1.Service, error) {
+// GetExternalService returns the external service associated to the given Elasticsearch cluster.
+func GetExternalService(c k8s.Client, es v1alpha1.ElasticsearchCluster) (corev1.Service, error) {
 	var svc corev1.Service
 
 	namespacedName := types.NamespacedName{
 		Namespace: es.Namespace,
-		Name:      PublicServiceName(es.Name),
+		Name:      ExternalServiceName(es.Name),
 	}
 
 	if err := c.Get(namespacedName, &svc); err != nil {
