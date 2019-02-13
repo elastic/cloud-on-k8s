@@ -40,7 +40,7 @@ We want to be able to address the following concerns:
 
 This ends up looking like this:
 
-![](./0002-global-operator/controllers.png)
+![](controllers.png)
 
 Examples of the "placeholder" controllers (additional controllers) that would be candidates to have in the global operator are (non-exhaustively):
 
