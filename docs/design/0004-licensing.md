@@ -1,17 +1,24 @@
-## Design: Licensing
+# 4. Licensing
 
-Proposal state: RFC
+* Status:  accepted 
+* Deciders: k8s Team
+* Date: 2019-02-12
 
-### Summary 
-Purpose of this proposal is to outline an implementation for license management for Elasticsearch clusters managed by the Elastic k8s operator.
 
-### Constraints 
+## Context and Problem Statement
+
+Purpose of this decision record is to outline an implementation for license management for Elasticsearch clusters managed by the Elastic k8s operator.
+
+## Decision Drivers <!-- optional -->
 
 * gold/platinum level licenses can only be applied to clusters using internal TLS
-* user applying the license needs to have `manage` privileges if security features are enabled (which is always the case) 
+* user applying the license needs to have `manage` privileges if security features are enabled (which is always the case)
+* enterprise licenses should be shared between multiple clusters
+* in some use cases we might want to isolate enterprise licenses from clusters by using a different namespace 
 
+## Considered Options
 
-### Phase 1: Directly applied license
+### Option 1: Directly applied license
 
 Simplest option. We support a new resource type `ClusterLicense` which is linked one-to-one to a cluster (Option 4 in the associations proposal).
 
@@ -45,7 +52,7 @@ spec:
 ```
 
 
-### Phase  2: License pool and license controller 
+### Option  2: License pool and license controller 
 
 We support a pool of licenses and create a license controller that applies the most suitable license to the individual cluster deployments.  Pool of licenses is to be understood as one or more enterprise licenses in the namespace of the license controller. The controller selects a license from the pool of licenses using one of two heuristics:
 1. find a suitable license. Suitable is defined similar to our current practice in ESS: in descending precedence order of platinum, gold, standard and with the best match with regards to license validity (at least n days after license start, at least n days before license expiry). 
@@ -81,10 +88,22 @@ spec:
 ```
 
 
+## Decision Outcome
+
+Option 1 and 2 are both valid as two separate implementation phases. Without a running license controller option 1 still ensures licenses can be applied to Elasticsearch.
+
+### Positive Consequences <!-- optional -->
+
+* both options are orthogonal to each other
+* when used in combination user just needs to create Enterprise licenses in the namespace of the license controller
+* one license controller can manage licenses for all Elasticsearch clusters 
+
+### Negative Consequences <!-- optional -->
+
+* we are limited to Enterprise licenses for option 2 at the moment (could be revisited)
 
 
-
-### Questions: 
+## Questions: 
 
 * What kind of license will we support? gold, platinum, standard license?
     * assume all license types for now  
@@ -98,3 +117,5 @@ spec:
     * Yes, in phase 2 the license pool shout support enterprise licenses
 * Do we really need a custom resource definition for the license or could it just be a secret?
     * In theory a secret would suffice. We opted for a custom resource type with a secret reference to have a structured resource with known fields instead of a generic associative bag. A custom resource also allows validations if we want that.
+
+

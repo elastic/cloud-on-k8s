@@ -97,6 +97,19 @@ func compareEnvironmentVariables(actual []corev1.EnvVar, expected []corev1.EnvVa
 	return ComparisonMatch
 }
 
+// equalResourceList returns true if both ResourceList are considered equal
+func equalResourceList(resListA, resListB corev1.ResourceList) bool {
+	if len(resListA) != len(resListB) {
+		return false
+	}
+	for k1, v1 := range resListA {
+		if valB, ok := resListB[k1]; !ok || v1.Cmp(valB) != 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // compareResources returns true if both resources match
 func compareResources(actual corev1.ResourceRequirements, expected corev1.ResourceRequirements) Comparison {
 	originalExpected := expected.DeepCopy()
@@ -109,7 +122,7 @@ func compareResources(actual corev1.ResourceRequirements, expected corev1.Resour
 			expected.Limits[k] = v
 		}
 	}
-	if !reflect.DeepEqual(actual.Limits, expected.Limits) {
+	if !equalResourceList(expected.Limits, actual.Limits) {
 		return ComparisonMismatch(
 			fmt.Sprintf("Different resource limits: expected %+v, actual %+v", expected.Limits, actual.Limits),
 		)
@@ -125,7 +138,7 @@ func compareResources(actual corev1.ResourceRequirements, expected corev1.Resour
 			expected.Requests[k] = v
 		}
 	}
-	if !reflect.DeepEqual(actual.Requests, expected.Requests) {
+	if !equalResourceList(expected.Requests, actual.Requests) {
 		return ComparisonMismatch(
 			fmt.Sprintf("Different resource requests: expected %+v, actual %+v", expected.Requests, actual.Requests),
 		)
