@@ -13,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+var defaultPodSpecCtxV2 = ESPodSpecContext(defaultImage, "1000m")
+
 func TestCalculateChanges(t *testing.T) {
 	var taintedPod = defaultPod
 	taintedPod.Annotations = map[string]string{TaintedAnnotationName: "true"}
@@ -25,6 +27,29 @@ func TestCalculateChanges(t *testing.T) {
 		args args
 		want Changes
 	}{
+		{
+			name: "Wait for 2 pods to be terminated, create 1",
+			args: args{
+				expected: []pod.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx, defaultPodSpecCtx},
+				state:    reconcile.ResourcesState{DeletingPods: []corev1.Pod{defaultPod, defaultPod}},
+			},
+			want: Changes{
+				ToKeep:   []corev1.Pod{defaultPod, defaultPod},
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtx}},
+			},
+		},
+		{
+			name: "Do not wait for 2 pods to be terminated, create 3",
+			args: args{
+				expected: []pod.PodSpecContext{defaultPodSpecCtxV2, defaultPodSpecCtxV2, defaultPodSpecCtxV2},
+				state:    reconcile.ResourcesState{DeletingPods: []corev1.Pod{defaultPod, defaultPod}},
+			},
+			want: Changes{
+				ToKeep:   []corev1.Pod{},
+				ToDelete: []corev1.Pod{},
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtxV2}, {PodSpecCtx: defaultPodSpecCtxV2}, {PodSpecCtx: defaultPodSpecCtxV2}},
+			},
+		},
 		{
 			name: "no changes",
 			args: args{
