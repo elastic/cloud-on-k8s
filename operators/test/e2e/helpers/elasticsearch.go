@@ -36,7 +36,7 @@ func NewElasticsearchClient(stack v1alpha1.Stack, k *K8sHelper) (*client.Client,
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := fmt.Sprintf("https://%s-es-public.%s.svc.cluster.local:9200", stack.Name, stack.Namespace)
+	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", stack.Name, stack.Namespace)
 	var dialer net.Dialer
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()

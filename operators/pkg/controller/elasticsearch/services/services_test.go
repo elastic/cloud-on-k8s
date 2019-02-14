@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestPublicServiceURL(t *testing.T) {
+func TestExternalServiceURL(t *testing.T) {
 	type args struct {
 		es v1alpha1.ElasticsearchCluster
 	}
@@ -30,7 +30,7 @@ func TestPublicServiceURL(t *testing.T) {
 					Namespace: "default",
 				},
 			}},
-			want: "https://an-es-name-es-public.default.svc.cluster.local:9200",
+			want: "https://an-es-name-es.default.svc.cluster.local:9200",
 		},
 		{
 			name: "Another Service URL",
@@ -40,12 +40,12 @@ func TestPublicServiceURL(t *testing.T) {
 					Namespace: "default",
 				},
 			}},
-			want: "https://another-es-name-es-public.default.svc.cluster.local:9200",
+			want: "https://another-es-name-es.default.svc.cluster.local:9200",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := PublicServiceURL(tt.args.es)
+			got := ExternalServiceURL(tt.args.es)
 			assert.Equal(t, tt.want, got)
 		})
 	}

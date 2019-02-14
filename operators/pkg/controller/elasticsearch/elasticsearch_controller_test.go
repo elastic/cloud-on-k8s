@@ -30,7 +30,7 @@ var c k8s.Client
 
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var discoveryServiceKey = types.NamespacedName{Name: "foo-es-discovery", Namespace: "default"}
-var publicServiceKey = types.NamespacedName{Name: "foo-es-public", Namespace: "default"}
+var externalServiceKey = types.NamespacedName{Name: "foo-es", Namespace: "default"}
 
 func getESPods(t *testing.T) []corev1.Pod {
 	esPods := &corev1.PodList{}
@@ -79,7 +79,7 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Pre-create dependent Endpoint which will not be created automatically as only the Elasticsearch controller is running.
-	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es-public", Namespace: "default"}}
+	endpoints := &corev1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: "foo-es", Namespace: "default"}}
 	err = c.Create(endpoints)
 	assert.NoError(t, err)
 	// Create the Elasticsearch object and expect the Reconcile and Deployment to be created
@@ -102,8 +102,8 @@ func TestReconcile(t *testing.T) {
 	// Services should be created
 	discoveryService := &corev1.Service{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(discoveryServiceKey, discoveryService) })
-	publicService := &corev1.Service{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(publicServiceKey, publicService) })
+	externalService := &corev1.Service{}
+	test.RetryUntilSuccess(t, func() error { return c.Get(externalServiceKey, externalService) })
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES pod
@@ -118,11 +118,11 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Services
-	test.CheckResourceDeletionTriggersReconcile(t, c, requests, publicServiceKey, publicService, expectedRequest)
+	test.CheckResourceDeletionTriggersReconcile(t, c, requests, externalServiceKey, externalService, expectedRequest)
 	test.CheckResourceDeletionTriggersReconcile(t, c, requests, discoveryServiceKey, discoveryService, expectedRequest)
 
 	// Manually delete Deployment and Services since GC might not be enabled in the test control plane
-	test.DeleteIfExists(t, c, publicService)
+	test.DeleteIfExists(t, c, externalService)
 	test.DeleteIfExists(t, c, discoveryService)
 	test.DeleteIfExists(t, c, endpoints)
 

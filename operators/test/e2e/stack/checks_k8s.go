@@ -230,7 +230,7 @@ func CheckServices(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep 
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
 				stack.Name + "-es-discovery",
-				stack.Name + "-es-public",
+				stack.Name + "-es",
 				stack.Name + "-kibana",
 			} {
 				if _, err := k.GetService(s); err != nil {
@@ -250,7 +250,7 @@ func CheckServicesEndpoints(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.
 			for endpointName, addrCount := range map[string]int{
 				stack.Name + "-es-discovery": int(stack.Spec.Elasticsearch.NodeCount()),
 				stack.Name + "-kibana":       int(stack.Spec.Kibana.NodeCount),
-				stack.Name + "-es-public":    int(stack.Spec.Elasticsearch.NodeCount()),
+				stack.Name + "-es":           int(stack.Spec.Elasticsearch.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this stack

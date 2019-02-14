@@ -146,7 +146,7 @@ func (d *defaultDriver) Reconcile(
 		d.Scheme,
 		d.ClusterCa,
 		es,
-		[]corev1.Service{genericResources.PublicService, genericResources.DiscoveryService},
+		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
 		trustRelationships,
 	); err != nil {
 		return results.WithError(err)
@@ -156,7 +156,7 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	esClient := d.newElasticsearchClient(genericResources.PublicService, internalUsers.ControllerUser)
+	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser)
 
 	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
@@ -194,7 +194,7 @@ func (d *defaultDriver) Reconcile(
 		results.WithError(err)
 	}
 
-	esReachable, err := services.IsServiceReady(d.Client, genericResources.PublicService)
+	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -297,7 +297,7 @@ func (d *defaultDriver) Reconcile(
 		// cannot be reached, hence we cannot delete pods.
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
-		log.Info("ES public service not ready yet for shard migration reconciliation. Requeuing.")
+		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.")
 
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
 

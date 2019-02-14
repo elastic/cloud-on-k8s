@@ -164,9 +164,9 @@ func TestDeleteServices(t *testing.T) {
 				},
 			},
 			{
-				Name: "Delete public service",
+				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Name + "-es-public")
+					s, err := k.GetService(s.Name + "-es")
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)

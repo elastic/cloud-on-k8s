@@ -153,7 +153,7 @@ func ReconcileSnapshotterCronJob(
 		Elasticsearch:    es,
 		SnapshotterImage: operatorImage,
 		User:             user,
-		EsURL:            services.PublicServiceURL(es),
+		EsURL:            services.ExternalServiceURL(es),
 	}
 	expected := NewCronJob(params)
 	if err := controllerutil.SetControllerReference(&es, expected, scheme); err != nil {

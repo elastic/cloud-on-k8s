@@ -31,8 +31,8 @@ type ResourcesState struct {
 	DeletingPods []corev1.Pod
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
-	// PublicService is the public service related to the Elasticsearch cluster.
-	PublicService corev1.Service
+	// ExternalService is the user-facing service related to the Elasticsearch cluster.
+	ExternalService corev1.Service
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
@@ -69,7 +69,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*
 		return nil, err
 	}
 
-	publicService, err := services.GetPublicService(c, es)
+	externalService, err := services.GetExternalService(c, es)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*
 		CurrentPodsByPhase: currentPodsByPhase,
 		DeletingPods:       deletingPods,
 		PVCs:               pvcs,
-		PublicService:      publicService,
+		ExternalService:    externalService,
 	}
 
 	return &state, nil
