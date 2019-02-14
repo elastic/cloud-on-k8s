@@ -7,15 +7,17 @@ Managed Elastic products and services in Kubernetes.
 * [go](https://golang.org/dl/)
 * [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
+* [golangci-lint](https://github.com/golangci/golangci-lint)
 * [kustomize](https://github.com/kubernetes-sigs/kustomize)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
 * [gcloud](https://cloud.google.com/sdk/gcloud/)
+* sha1sum (For Mac `brew install md5sha1sum`)
 
 ## Development
-
-After installing the [requirements](#requirements), you can jump straight to development with `make bootstrap-gke` or `make bootstrap-minikube` to setup a development kubernetes cluster.
+Run `make check-requisites` to check that all dependencies are installed.    
+After installing the [requirements](#requirements), you can jump straight to development with `make bootstrap-gke` or `make bootstrap-minikube` to setup a development kubernetes cluster.    
 Then, use either `make run` to run the operator locally, or `make deploy` to deploy the operators on the cluster.
 
 ### Useful development targets
