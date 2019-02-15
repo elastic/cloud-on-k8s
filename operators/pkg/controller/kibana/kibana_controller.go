@@ -116,7 +116,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	kb := &kibanav1alpha1.Kibana{}
 	err := r.Get(request.NamespacedName, kb)
 
-	if common.IsPaused(kb.ObjectMeta, r.Client) {
+	if common.IsPaused(kb.ObjectMeta) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
