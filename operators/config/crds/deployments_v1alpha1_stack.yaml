@@ -194,7 +194,7 @@ spec:
                   type: string
                 phase:
                   type: string
-                publicService:
+                service:
                   type: string
               type: object
             kibana:
