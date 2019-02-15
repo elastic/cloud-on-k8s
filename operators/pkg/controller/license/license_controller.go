@@ -283,7 +283,7 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 	newExpiry, err := r.reconcileClusterLicense(owner, safetyMargin)
 	if err != nil {
 		switch err.(type) {
-		case clusterOnTrialError:
+		case *clusterOnTrialError:
 			log.Info(err.Error()) // not treated as an error here, no license management for trials required
 			return reconcile.Result{}, nil
 		default:
