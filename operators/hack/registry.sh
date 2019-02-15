@@ -56,7 +56,10 @@ main() {
       docker exec registry-port-forwarder timeout 15 sh -c 'until nc -z localhost 5000; do sleep 0.5; done'
     ;;
     "port-forward stop")
-      docker rm --force registry-port-forwarder
+      # Delete the container if it exists
+      if [[ "$(docker ps --filter=name=registry-port-forwarder -q)" != "" ]]; then
+        docker rm --force registry-port-forwarder
+      fi
     ;;
     delete)
       kubectl delete -f config/dev/registry.yaml
