@@ -24,7 +24,7 @@ var (
 			Name:      "my-es",
 			Namespace: "default",
 		}}
-	testUser = []client.User{client.User{Name: "foo", Password: "bar"}}
+	testUser = []client.User{{Name: "foo", Password: "bar"}}
 )
 
 func TestNewUserSecrets(t *testing.T) {
