@@ -406,7 +406,7 @@ func (d *defaultDriver) calculateChanges(
 		pod.NewPodSpecParams{
 			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
 			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
-			ProbeUser:         internalUsers.ControllerUser,
+			ProbeUser:         internalUsers.ProbeUser,
 			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,

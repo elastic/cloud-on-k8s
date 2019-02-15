@@ -40,7 +40,7 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-es-internal-users",
-			expectedKeys: []string{InternalControllerUserName, InternalKibanaServerUserName},
+			expectedKeys: []string{InternalControllerUserName, InternalKibanaServerUserName, InternalProbeUserName},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),

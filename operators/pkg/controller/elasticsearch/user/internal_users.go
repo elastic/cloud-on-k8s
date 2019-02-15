@@ -15,6 +15,7 @@ import (
 // InternalUsers are Elasticsearch users intended for system use.
 type InternalUsers struct {
 	ControllerUser esclient.User
+	ProbeUser      esclient.User
 	KibanaUser     esclient.User
 }
 
@@ -23,6 +24,9 @@ func NewInternalUsersFrom(users []esclient.User) InternalUsers {
 	for _, user := range users {
 		if user.Name == secret.InternalControllerUserName {
 			internalUsers.ControllerUser = user
+		}
+		if user.Name == secret.InternalProbeUserName {
+			internalUsers.ProbeUser = user
 		}
 		if user.Name == secret.InternalKibanaServerUserName {
 			internalUsers.KibanaUser = user
