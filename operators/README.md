@@ -12,7 +12,7 @@ Managed Elastic products and services in Kubernetes.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-* [gcloud](https://cloud.google.com/sdk/gcloud/)
+* [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (For Mac `brew install md5sha1sum`)
 
 ## Development
