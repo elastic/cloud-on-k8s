@@ -127,9 +127,9 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 	}
 
 	for _, u := range hc.users {
-		bytes, ok := otherUsers[u.Name]
+		otherPasswordBytes, ok := otherUsers[u.Name]
 		// this could turn out to be too expensive
-		if !ok || bcrypt.CompareHashAndPassword(bytes, []byte(u.Password)) != nil {
+		if !ok || bcrypt.CompareHashAndPassword(otherPasswordBytes, []byte(u.Password)) != nil {
 			return true
 		}
 	}
