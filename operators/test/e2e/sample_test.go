@@ -9,7 +9,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -23,14 +25,22 @@ const sampleStackFile = "../../config/samples/deployments_v1alpha1_stack.yaml"
 // TestStackSample runs a test suite using the sample stack
 func TestStackSample(t *testing.T) {
 	// build stack from yaml sample
-	var sampleStack v1alpha1.Stack
+	var sampleStack stack.Builder
 	yamlFile, err := os.Open(sampleStackFile)
 	helpers.ExitOnErr(err)
-	err = yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile)).Decode(&sampleStack)
-	helpers.ExitOnErr(err)
+	var es estype.ElasticsearchCluster
+	var kb kbtype.Kibana
+	var assoc assoctype.KibanaElasticsearchAssociation
+	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
+	helpers.ExitOnErr(decoder.Decode(&es))
+	helpers.ExitOnErr(decoder.Decode(&kb))
+	helpers.ExitOnErr(decoder.Decode(&assoc))
 
+	sampleStack.Elasticsearch = es
+	sampleStack.Kibana = kb
+	sampleStack.Association = assoc
 	// set namespace
-	sampleStack.ObjectMeta.Namespace = helpers.DefaultNamespace
+	sampleStack.WithNamespace(helpers.DefaultNamespace)
 
 	// run, with mutation to the same stack (should work and do nothing)
 	stack.RunCreationMutationDeletionTests(t, sampleStack, sampleStack)

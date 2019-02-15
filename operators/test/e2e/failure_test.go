@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
@@ -22,7 +21,7 @@ import (
 
 type failureTestFunc func(k *helpers.K8sHelper) helpers.TestStepList
 
-func RunFailureTest(t *testing.T, s v1alpha1.Stack, f failureTestFunc) {
+func RunFailureTest(t *testing.T, s stack.Builder, f failureTestFunc) {
 	k := helpers.NewK8sClientOrFatal()
 
 	var clusterUUID string
@@ -30,18 +29,18 @@ func RunFailureTest(t *testing.T, s v1alpha1.Stack, f failureTestFunc) {
 	helpers.TestStepList{}.
 		WithSteps(stack.InitTestSteps(s, k)...).
 		WithSteps(stack.CreationTestSteps(s, k)...).
-		WithSteps(stack.RetrieveClusterUUIDStep(s, k, &clusterUUID)).
+		WithSteps(stack.RetrieveClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
 		// Trigger some kind of catastrophe
 		WithSteps(f(k)...).
 		// Check we recover
 		WithSteps(stack.CheckStackSteps(s, k)...).
 		// And that the cluster UUID has not changed
-		WithSteps(stack.CompareClusterUUIDStep(s, k, &clusterUUID)).
+		WithSteps(stack.CompareClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
 		WithSteps(stack.DeletionTestSteps(s, k)...).
 		RunSequential(t)
 }
 
-func killNodeTest(t *testing.T, s v1alpha1.Stack, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
+func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		var killedPod corev1.Pod
 		return helpers.TestStepList{
@@ -78,24 +77,22 @@ func TestKillOneDataNode(t *testing.T) {
 	// 1 master + 2 data nodes
 	s := stack.NewStackBuilder("test-failure-kill-one-data-node").
 		WithESMasterNodes(1, stack.DefaultResources).
-		WithESDataNodes(2, stack.DefaultResources).
-		Stack
+		WithESDataNodes(2, stack.DefaultResources)
 	matchDataNode := func(p corev1.Pod) bool {
 		return label.IsDataNode(p) && !label.IsMasterNode(p)
 	}
-	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchDataNode)
+	killNodeTest(t, s, helpers.ESPodListOptions(s.Elasticsearch.Name), matchDataNode)
 }
 
 func TestKillOneMasterNode(t *testing.T) {
 	// 2 master + 2 data nodes
 	s := stack.NewStackBuilder("test-failure-kill-one-master-node").
 		WithESMasterNodes(2, stack.DefaultResources).
-		WithESDataNodes(2, stack.DefaultResources).
-		Stack
+		WithESDataNodes(2, stack.DefaultResources)
 	matchMasterNode := func(p corev1.Pod) bool {
 		return !label.IsDataNode(p) && label.IsMasterNode(p)
 	}
-	killNodeTest(t, s, helpers.ESPodListOptions(s.Name), matchMasterNode)
+	killNodeTest(t, s, helpers.ESPodListOptions(s.Elasticsearch.Name), matchMasterNode)
 }
 
 func TestKillSingleNodeReusePV(t *testing.T) {
@@ -116,19 +113,17 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 func TestKillKibanaPod(t *testing.T) {
 	s := stack.NewStackBuilder("test-kill-kibana-pod").
 		WithESMasterDataNodes(1, stack.DefaultResources).
-		WithKibana(1).
-		Stack
+		WithKibana(1)
 	matchFirst := func(p corev1.Pod) bool {
 		return true
 	}
-	killNodeTest(t, s, helpers.KibanaPodListOptions(s.Name), matchFirst)
+	killNodeTest(t, s, helpers.KibanaPodListOptions(s.Kibana.Name), matchFirst)
 }
 
 func TestKillKibanaDeployment(t *testing.T) {
 	s := stack.NewStackBuilder("test-kill-kibana-deployment").
 		WithESMasterDataNodes(1, stack.DefaultResources).
-		WithKibana(1).
-		Stack
+		WithKibana(1)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
@@ -137,7 +132,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Name + "-kibana",
+						Name:      s.Kibana.Name,
 					}, &dep)
 					require.NoError(t, err)
 					err = k.Client.Delete(&dep)
@@ -150,14 +145,13 @@ func TestKillKibanaDeployment(t *testing.T) {
 
 func TestDeleteServices(t *testing.T) {
 	s := stack.NewStackBuilder("test-failure-delete-services").
-		WithESMasterDataNodes(1, stack.DefaultResources).
-		Stack
+		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
 				Name: "Delete discovery service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Name + "-es-discovery")
+					s, err := k.GetService(s.Elasticsearch.Name + "-es-discovery")
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)
@@ -166,7 +160,7 @@ func TestDeleteServices(t *testing.T) {
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Name + "-es")
+					s, err := k.GetService(s.Elasticsearch.Name + "-es")
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)
@@ -178,8 +172,7 @@ func TestDeleteServices(t *testing.T) {
 
 func TestDeleteElasticUserSecret(t *testing.T) {
 	s := stack.NewStackBuilder("test-failure-delete-elastic-user-secret").
-		WithESMasterDataNodes(1, stack.DefaultResources).
-		Stack
+		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
@@ -187,7 +180,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Name + "-elastic-user",
+						Name:      s.Elasticsearch.Name + "-elastic-user",
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)
@@ -201,8 +194,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 }
 func TestDeleteCACert(t *testing.T) {
 	s := stack.NewStackBuilder("test-failure-delete-ca-cert").
-		WithESMasterDataNodes(1, stack.DefaultResources).
-		Stack
+		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
@@ -210,7 +202,7 @@ func TestDeleteCACert(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Name, // that's the CA cert secret name \o/
+						Name:      s.Elasticsearch.Name, // that's the CA cert secret name \o/
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)

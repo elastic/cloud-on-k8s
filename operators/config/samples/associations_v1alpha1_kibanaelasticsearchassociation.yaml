@@ -5,5 +5,9 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibanaelasticsearchassociation-sample
 spec:
-  # Add fields here
-  foo: bar
+  elasticsearch:
+    name: "foo"
+    namespace: "default"
+  kiban:
+    name: "bar"
+    namespace: "default"
