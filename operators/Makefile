@@ -123,7 +123,7 @@ show-credentials:
 ##  --    K8s clusters bootstrap    --  ##
 ##########################################
 
-cluster-bootstrap: dep-vendor-only elastic-operator install-crds
+cluster-bootstrap: dep-vendor-only install-crds
 
 clean-k8s-cluster:
 	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
