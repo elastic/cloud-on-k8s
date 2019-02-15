@@ -38,7 +38,7 @@ const (
 
 // KibanaElasticsearchAssociationStatus defines the observed state of KibanaElasticsearchAssociation
 type KibanaElasticsearchAssociationStatus struct {
-	AssociationStatus AssociationStatus
+	AssociationStatus AssociationStatus `json:"associationStatus"`
 }
 
 // +genclient
@@ -46,6 +46,9 @@ type KibanaElasticsearchAssociationStatus struct {
 
 // KibanaElasticsearchAssociation is the Schema for the kibanaelasticsearchassociations API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
+// +kubebuilder:categories=elastic
+// +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.associationStatus"
 type KibanaElasticsearchAssociation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

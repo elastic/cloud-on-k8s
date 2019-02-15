@@ -6,11 +6,19 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibanaelasticsearchassociations.associations.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.associationStatus
+    name: status
+    type: string
   group: associations.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: KibanaElasticsearchAssociation
     plural: kibanaelasticsearchassociations
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -57,6 +65,11 @@ spec:
           - kibana
           type: object
         status:
+          properties:
+            associationStatus:
+              type: string
+          required:
+          - associationStatus
           type: object
   version: v1alpha1
 status:
