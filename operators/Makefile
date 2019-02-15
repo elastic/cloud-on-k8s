@@ -100,7 +100,6 @@ run: install-crds
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
-	kubectl apply -f config/crds
 	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 
