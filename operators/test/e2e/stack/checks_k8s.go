@@ -7,6 +7,7 @@ package stack
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -179,9 +180,17 @@ func CheckClusterHealth(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Test
 		Name: "Cluster health should eventually be green",
 		Test: helpers.Eventually(func() error {
 			var stackRes v1alpha1.Stack
-			err := k.Client.Get(GetNamespacedName(stack), &stackRes)
-			if err != nil {
-				return err
+			count := 0
+			for stackRes.Status.Elasticsearch.Health != estype.ElasticsearchGreenHealth {
+				count++
+				if count > 6 {
+					break
+				}
+				time.Sleep(5 * time.Second)
+				err := k.Client.Get(GetNamespacedName(stack), &stackRes)
+				if err != nil {
+					return err
+				}
 			}
 			if stackRes.Status.Elasticsearch.Health != estype.ElasticsearchGreenHealth {
 				return fmt.Errorf("Health is %s", stackRes.Status.Elasticsearch.Health)
