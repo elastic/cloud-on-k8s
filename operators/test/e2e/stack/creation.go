@@ -7,7 +7,8 @@ package stack
 import (
 	"testing"
 
-	v1alpha12 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
@@ -30,8 +31,8 @@ func CreationTestSteps(stack Builder, k *helpers.K8sHelper) helpers.TestStepList
 			helpers.TestStep{
 				Name: "Stack should be created",
 				Test: func(t *testing.T) {
-					var createdEs v1alpha12.ElasticsearchCluster
-					err := k.Client.Get(GetNamespacedName(stack), &createdEs)
+					var createdEs estype.ElasticsearchCluster
+					err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &createdEs)
 					require.NoError(t, err)
 					require.Equal(t, stack.Elasticsearch.Spec.Version, createdEs.Spec.Version)
 					//TODO this is incomplete

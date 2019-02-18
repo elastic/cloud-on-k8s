@@ -132,7 +132,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Kibana.Name,
+						Name:      s.Kibana.Name + "-kibana",
 					}, &dep)
 					require.NoError(t, err)
 					err = k.Client.Delete(&dep)

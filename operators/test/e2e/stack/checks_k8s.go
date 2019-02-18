@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -178,7 +179,7 @@ func CheckClusterHealth(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Name: "Cluster health should eventually be green",
 		Test: helpers.Eventually(func() error {
 			var es estype.ElasticsearchCluster
-			err := k.Client.Get(GetNamespacedName(stack), &es)
+			err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &es)
 			if err != nil {
 				return err
 			}
@@ -276,7 +277,7 @@ func CheckClusterUUID(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Name: "Cluster UUID should eventually appear in the stack status",
 		Test: helpers.Eventually(func() error {
 			var es estype.ElasticsearchCluster
-			err := k.Client.Get(GetNamespacedName(stack), &es)
+			err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &es)
 			if err != nil {
 				return err
 			}

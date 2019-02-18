@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const defaultVersion = "6.4.2"
@@ -129,11 +128,4 @@ func (b Builder) WithKibana(count int) Builder {
 
 func (b Builder) RuntimeObjects() []runtime.Object {
 	return []runtime.Object{&b.Elasticsearch, &b.Kibana, &b.Association}
-}
-
-func GetNamespacedName(stack Builder) types.NamespacedName {
-	return types.NamespacedName{
-		Name:      stack.Elasticsearch.Name,
-		Namespace: stack.Elasticsearch.Namespace,
-	}
 }
