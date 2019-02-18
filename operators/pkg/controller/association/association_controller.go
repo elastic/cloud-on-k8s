@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	v1alpha12 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
@@ -53,10 +54,11 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) (*ReconcileStack, error) {
+func newReconciler(mgr manager.Manager) (*ReconcileAssociation, error) {
 
-	return &ReconcileStack{
-		Client:   k8s.WrapClient(mgr.GetClient()),
+	client := k8s.WrapClient(mgr.GetClient())
+	return &ReconcileAssociation{
+		Client:   client,
 		scheme:   mgr.GetScheme(),
 		watches:  watches.NewDynamicWatches(),
 		recorder: mgr.GetRecorder("association-controller"),
@@ -73,7 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 	return c, nil
 }
 
-func addWatches(c controller.Controller, r *ReconcileStack) error {
+func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 
 	// Watch for changes to the Stack
 	if err := c.Watch(&source.Kind{Type: &associations.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
@@ -93,10 +95,10 @@ func addWatches(c controller.Controller, r *ReconcileStack) error {
 	return nil
 }
 
-var _ reconcile.Reconciler = &ReconcileStack{}
+var _ reconcile.Reconciler = &ReconcileAssociation{}
 
-// ReconcileStack reconciles a Elasticsearch object
-type ReconcileStack struct {
+// ReconcileAssociation reconciles a Kibana-Elasticsearch association object
+type ReconcileAssociation struct {
 	k8s.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
@@ -108,7 +110,7 @@ type ReconcileStack struct {
 
 // Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and what is in
 // the Elasticsearch.Spec
-func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
@@ -126,9 +128,22 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 		return reconcile.Result{}, err
 	}
+
 	if common.IsPaused(association.ObjectMeta) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
 		return common.PauseRequeue, nil
+	}
+
+	handler := finalizer.NewHandler(r)
+	err = handler.Handle(&association, watchFinalizer(association.Name, r.watches))
+	if err != nil {
+		// failed to prepare finalizer or run finalizer: retry
+		return defaultRequeue, err
+	}
+
+	// Association is being deleted short-circuit reconciliation
+	if !association.DeletionTimestamp.IsZero() {
+		return reconcile.Result{}, nil
 	}
 
 	newStatus, err := r.reconcileInternal(association)
@@ -145,6 +160,25 @@ func (r *ReconcileStack) Reconcile(request reconcile.Request) (reconcile.Result,
 
 }
 
+func elasticsearchWatchName(assocName string) string {
+	return assocName + "-es-watch"
+}
+
+func kibanaWatchName(assocName string) string {
+	return assocName + "-kb-watch"
+}
+
+func watchFinalizer(assocName string, w watches.DynamicWatches) finalizer.Finalizer {
+	return finalizer.Finalizer{
+		Name: "dynamic-watches",
+		Execute: func() error {
+			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocName))
+			w.Clusters.RemoveHandlerForKey(elasticsearchWatchName(assocName))
+			return nil
+		},
+	}
+}
+
 func resultFromStatus(status associations.AssociationStatus) reconcile.Result {
 	switch status {
 	case associations.AssociationPending:
@@ -158,10 +192,32 @@ func resultFromStatus(status associations.AssociationStatus) reconcile.Result {
 
 // Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and what is in
 // the Elasticsearch.Spec
-func (r *ReconcileStack) reconcileInternal(association associations.KibanaElasticsearchAssociation) (associations.AssociationStatus, error) {
+func (r *ReconcileAssociation) reconcileInternal(association associations.KibanaElasticsearchAssociation) (associations.AssociationStatus, error) {
+
+	assocKey := k8s.ExtractNamespacedName(&association)
+
+	// Make sure we see events from Kibana+Elasticsearch using a dynamic watch
+	// will become more relevant once we refactor user handling to CRDs and implement
+	// syncing of user credentials across namespaces
+	err := r.watches.Clusters.AddHandler(watches.NamedWatch{
+		Name:    elasticsearchWatchName(association.Name),
+		Watched: association.Spec.Elasticsearch.NamespacedName(),
+		Watcher: assocKey,
+	})
+	if err != nil {
+		return associations.AssociationFailed, err
+	}
+	err = r.watches.Kibanas.AddHandler(watches.NamedWatch{
+		Name:    kibanaWatchName(association.Name),
+		Watched: association.Spec.Kibana.NamespacedName(),
+		Watcher: assocKey,
+	})
+	if err != nil {
+		return associations.AssociationFailed, err
+	}
 
 	var es v1alpha1.ElasticsearchCluster
-	err := r.Get(association.Spec.Elasticsearch.NamespacedName(), &es)
+	err = r.Get(association.Spec.Elasticsearch.NamespacedName(), &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
