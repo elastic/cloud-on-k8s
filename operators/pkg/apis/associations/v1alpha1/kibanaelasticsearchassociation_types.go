@@ -9,11 +9,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+// ObjectSelector allows to specify a reference to an object across namespace boundaries.
 type ObjectSelector struct {
 	Name      string `json:"name"`
 	Namespace string `json:"namespace"`
 }
 
+// NamespacedName is a convenience method to turn an ObjectSelector into a NamespaceName.
 func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	return types.NamespacedName{
 		Name:      s.Name,
@@ -28,6 +30,7 @@ type KibanaElasticsearchAssociationSpec struct {
 	Monitoring    ObjectSelector `json:"monitoring,omitempty"`
 }
 
+// AssociationStatus is the status of an assocation resource.
 type AssociationStatus string
 
 const (

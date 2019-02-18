@@ -38,9 +38,8 @@ var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
-// Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// Add creates a new Assocation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this deployments.Add(mgr) to install this Controller
 func Add(mgr manager.Manager, _ operator.Parameters) error {
 	r, err := newReconciler(mgr)
 	if err != nil {
@@ -55,7 +54,6 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) (*ReconcileAssociation, error) {
-
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileAssociation{
 		Client:   client,
@@ -76,7 +74,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 }
 
 func addWatches(c controller.Controller, r *ReconcileAssociation) error {
-
 	// Watch for changes to the Stack
 	if err := c.Watch(&source.Kind{Type: &associations.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -190,10 +187,9 @@ func resultFromStatus(status associations.AssociationStatus) reconcile.Result {
 	}
 }
 
-// Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and what is in
-// the Elasticsearch.Spec
+// Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
+// the Association.Spec
 func (r *ReconcileAssociation) reconcileInternal(association associations.KibanaElasticsearchAssociation) (associations.AssociationStatus, error) {
-
 	assocKey := k8s.ExtractNamespacedName(&association)
 
 	// Make sure we see events from Kibana+Elasticsearch using a dynamic watch
