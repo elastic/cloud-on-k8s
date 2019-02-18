@@ -40,8 +40,8 @@ func TestStackSample(t *testing.T) {
 	sampleStack.Kibana = kb
 	sampleStack.Association = assoc
 	// set namespace
-	sampleStack.WithNamespace(helpers.DefaultNamespace)
+	namespaced := sampleStack.WithNamespace(helpers.DefaultNamespace)
 
 	// run, with mutation to the same stack (should work and do nothing)
-	stack.RunCreationMutationDeletionTests(t, sampleStack, sampleStack)
+	stack.RunCreationMutationDeletionTests(t, namespaced, namespaced)
 }
