@@ -42,6 +42,11 @@ func ElasticInternalUsersSecretName(ownerName string) string {
 	return stringsutil.Concat(ownerName, "-internal-users")
 }
 
+// ElasticExternalUsersSecretName is the name of the secret containing the external users' credentials.
+func ElasticExternalUsersSecretName(ownerName string) string {
+	return stringsutil.Concat(ownerName, "-elastic-user")
+}
+
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.
 type UserCredentials interface {
 	Users() []client.User
@@ -147,7 +152,7 @@ func (hc *HashedCredentials) Users() []client.User {
 	return hc.users
 }
 
-// NewInternalUserCredentials creates a secret for the ES user used by the controller.
+// NewInternalUserCredentials creates a secret for the ES user used by the controller
 func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
@@ -169,7 +174,7 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
-				Name:      stringsutil.Concat(es.Name, "-elastic-user"),
+				Name:      ElasticExternalUsersSecretName(es.Name),
 				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
