@@ -51,29 +51,27 @@ func ReconcileUsers(
 ) (*InternalUsers, error) {
 
 	internalSecrets := secret.NewInternalUserCredentials(es)
-
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {
+		return nil, err
+	}
+
+	externalSecrets := secret.NewExternalUserCredentials(es)
+	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
 		return nil, err
 	}
 
 	users := internalSecrets.Users()
 	internalUsers := NewInternalUsersFrom(users)
-	externalSecrets := secret.NewExternalUserCredentials(es)
+	users = append(users, externalSecrets.Users()...)
+	roles := secret.InternalRoles
 
-	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
-		return nil, err
-	}
-
-	for _, u := range externalSecrets.Users() {
-		users = append(users, u)
-	}
-
-	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users)
+	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users, roles)
 	if err != nil {
 		return nil, err
 	}
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersRolesSecret); err != nil {
 		return nil, err
 	}
+
 	return &internalUsers, err
 }

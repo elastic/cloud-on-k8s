@@ -5,6 +5,9 @@
 package secret
 
 import (
+	"bytes"
+	"encoding/json"
+	"errors"
 	"sort"
 	"strings"
 
@@ -13,6 +16,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/ghodss/yaml"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +28,11 @@ const (
 	ElasticUsersFile = "users"
 	// ElasticUsersRolesFile is the name of the users_roles file in the ES config dir.
 	ElasticUsersRolesFile = "users_roles"
+	// ElasticRolesFile is the name of the roles file in the ES config dir.
+	ElasticRolesFile = "roles.yml"
+
+	// UsersSecretKey is the secret data key used to store users.
+	UsersSecretKey = "users"
 	// ExternalUserName also known as the 'elastic' user.
 	ExternalUserName = "elastic"
 	// InternalControllerUserName a user to be used from this controller when interacting with ES.
@@ -39,7 +48,7 @@ func ElasticUsersRolesSecretName(ownerName string) string {
 	return stringsutil.Concat(ownerName, "-es-roles-users")
 }
 
-// ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials
+// ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials.
 func ElasticInternalUsersSecretName(ownerName string) string {
 	return stringsutil.Concat(ownerName, "-internal-users")
 }
@@ -86,13 +95,10 @@ func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 	return !keysEqual(c.secret.Data, other.Data)
 }
 
-// Users returns a slice of users based on secret as source of truth
+// Users returns a slice of users based on secret as source of truth.
 func (c *ClearTextCredentials) Users() []client.User {
-	var result []client.User
-	for user, pw := range c.secret.Data {
-		result = append(result, client.User{Name: user, Password: string(pw)})
-	}
-	return result
+	users, _ := secretDataToUsers(c.secret.Data)
+	return users
 }
 
 // Secret returns the underlying secret.
@@ -117,13 +123,25 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 		return true
 	}
 
-	otherRoles, found := other.Data[ElasticUsersRolesFile]
+	// Check for roles update
+	otherRoles, found := other.Data[ElasticRolesFile]
 	if !found {
 		return true
 	}
-	if string(otherRoles) != string(hc.secret.Data[ElasticUsersRolesFile]) {
+	if !bytes.Equal(otherRoles, hc.secret.Data[ElasticRolesFile]) {
 		return true
 	}
+
+	// Check for users_roles update
+	otherUsersRoles, found := other.Data[ElasticUsersRolesFile]
+	if !found {
+		return true
+	}
+	if !bytes.Equal(otherUsersRoles, hc.secret.Data[ElasticUsersRolesFile]) {
+		return true
+	}
+
+	// Check for users update
 	otherUsers := make(map[string][]byte)
 	for _, user := range strings.Split(string(other.Data[ElasticUsersFile]), "\n") {
 		userPw := strings.Split(user, ":")
@@ -149,13 +167,19 @@ func (hc *HashedCredentials) Secret() corev1.Secret {
 	return hc.secret
 }
 
-// Users returns the user array stored in the struct
+// Users returns the user array stored in the struct.
 func (hc *HashedCredentials) Users() []client.User {
 	return hc.users
 }
 
-// NewInternalUserCredentials creates a secret for the ES user used by the controller
+// NewInternalUserCredentials creates a secret for the ES user used by the controller.
 func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
+	internalUsers := []client.User{
+		{Name: InternalControllerUserName, Role: SuperUserBuiltinRole, Password: rand.String(24)},
+		{Name: InternalKibanaServerUserName, Role: KibanaUserBuiltinRole, Password: rand.String(24)},
+		{Name: InternalProbeUserName, Role: ProbeUserRole, Password: rand.String(24)},
+	}
+
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -163,16 +187,16 @@ func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 				Name:      ElasticInternalUsersSecretName(es.Name),
 				Labels:    label.NewLabels(es),
 			},
-			Data: map[string][]byte{
-				InternalControllerUserName:   []byte(rand.String(24)),
-				InternalKibanaServerUserName: []byte(rand.String(24)),
-				InternalProbeUserName:        []byte(rand.String(24)),
-			},
+			Data: usersToSecretData(internalUsers),
 		}}
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
 func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
+	externalUsers := []client.User{
+		{Name: ExternalUserName, Password: rand.String(24), Role: SuperUserBuiltinRole},
+	}
+
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -180,47 +204,56 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 				Name:      ElasticExternalUsersSecretName(es.Name),
 				Labels:    label.NewLabels(es),
 			},
-			Data: map[string][]byte{
-				ExternalUserName: []byte(rand.String(24)),
-			},
+			Data: usersToSecretData(externalUsers),
 		},
 	}
+}
 
+// usersToSecretData transforms a list of users in a secret data.
+func usersToSecretData(users []client.User) map[string][]byte {
+	jsonBytes, _ := json.Marshal(users)
+
+	return map[string][]byte{UsersSecretKey: jsonBytes}
+}
+
+// secretDataToUsers transforms a secret data in a list of users.
+func secretDataToUsers(data map[string][]byte) ([]client.User, error) {
+	var users []client.User
+
+	jsonBytes, ok := data[UsersSecretKey]
+	if !ok{
+		return nil, errors.New("key `users` not found in data secret")
+	}
+
+	err := json.Unmarshal(jsonBytes, &users)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
 }
 
 // NewElasticUsersCredentialsAndRoles creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
-func NewElasticUsersCredentialsAndRoles(es v1alpha1.ElasticsearchCluster, users []client.User) (*HashedCredentials, error) {
+func NewElasticUsersCredentialsAndRoles(es v1alpha1.ElasticsearchCluster, users []client.User, roles map[string]client.Role) (*HashedCredentials, error) {
 	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].Name < users[j].Name
 	})
-	hashedCreds, roles := strings.Builder{}, strings.Builder{}
-	// TODO all superusers -> role mappings
-	// safe to ignore errors from strings.Builder.WriteString as it cannot error
-	roles.WriteString("superuser:") // #nosec G104
 
-	for i, user := range users {
-		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-		if err != nil {
-			return &HashedCredentials{}, err
-		}
+	usersFileBytes, err := getUsersFileBytes(users)
+	if err != nil {
+		return &HashedCredentials{}, err
+	}
 
-		notLast := i+1 < len(users)
-		/* #nosec G104 */ // ignore unhandled errors in this block since strings.Builder.WriteString cannot error out
-		{
-			hashedCreds.WriteString(user.Name)
-			hashedCreds.WriteString(":")
-			hashedCreds.Write(hash)
-			if notLast {
-				hashedCreds.WriteString("\n")
-			}
+	userRolesFileBytes, err := getUsersRolesFileBytes(users/*, roles*/)
+	if err != nil {
+		return &HashedCredentials{}, err
+	}
 
-			roles.WriteString(user.Name)
-			if notLast {
-				roles.WriteString(",")
-			}
-		}
+	rolesFileBytes, err := getRolesFileBytes(roles)
+	if err != nil {
+		return &HashedCredentials{}, err
 	}
 
 	return &HashedCredentials{
@@ -228,13 +261,67 @@ func NewElasticUsersCredentialsAndRoles(es v1alpha1.ElasticsearchCluster, users 
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
-				Name:      ElasticUsersSecretName(es.Name),
+				Name:      ElasticUsersRolesSecretName(es.Name),
 				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{
-				ElasticUsersFile:      []byte(hashedCreds.String()),
-				ElasticUsersRolesFile: []byte(roles.String()),
+				ElasticUsersFile:      usersFileBytes,
+				ElasticUsersRolesFile: userRolesFileBytes,
+				ElasticRolesFile:      rolesFileBytes,
 			},
 		},
 	}, nil
+}
+
+func getUsersFileBytes(users []client.User) ([]byte, error) {
+	lines := make([]string, len(users))
+	for i, user := range users {
+		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, err
+		}
+
+		lines[i] = user.Name + ":" + string(hash)
+	}
+
+	return []byte(strings.Join(lines, "\n")), nil
+}
+
+func getUsersRolesFileBytes(users []client.User/*, roles map[string]client.Role*/) ([]byte, error) {
+	rolesUsers := map[string][]string{}
+	for _, user := range users {
+		role := user.Role
+		// TODO: Should we validate the existence of the role?
+		// Then how to manage the built-in roles (which evolves with the versions of ES)?
+		/* if _, ok := roles[role]; !ok {
+			return nil, fmt.Errorf("role `%s` not found", role)
+			continue
+		} */
+		roleUsers := rolesUsers[role]
+		if roleUsers == nil {
+			roleUsers = []string{}
+		}
+		rolesUsers[role] = append(roleUsers, user.Name)
+	}
+
+	var lines []string
+	for role, users := range rolesUsers {
+		lines = append(lines, role+":"+strings.Join(users, ","))
+	}
+
+	// sort to avoid unnecessary diffs and API resource updates
+	sort.SliceStable(lines, func(i, j int) bool {
+		return lines[i] < lines[j]
+	})
+
+	return []byte(strings.Join(lines, "\n")), nil
+}
+
+func getRolesFileBytes(roles map[string]client.Role) ([]byte, error) {
+	rolesYamlBytes, err := yaml.Marshal(roles)
+	if err != nil {
+		return nil, err
+	}
+
+	return rolesYamlBytes, nil
 }

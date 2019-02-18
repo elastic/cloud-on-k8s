@@ -35,6 +35,10 @@ var (
 				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
 			},
 			{
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticRolesFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticRolesFile),
+			},
+			{
 				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
 				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
 			},

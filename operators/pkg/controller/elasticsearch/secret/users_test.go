@@ -24,12 +24,14 @@ var (
 			Name:      "my-es",
 			Namespace: "default",
 		}}
-	testUser = []client.User{{Name: "foo", Password: "bar"}}
+	testUser = []client.User{{Name: "foo", Password: "bar", Role: "role1"}}
+	testRole = map[string]client.Role{
+		"role1": {Cluster: []string{"all"}},
+	}
 )
 
 func TestNewUserSecrets(t *testing.T) {
-
-	elasticUsers, err := NewElasticUsersCredentialsAndRoles(testES, testUser, InternalRoles)
+	elasticUsers, err := NewElasticUsersCredentialsAndRoles(testES, testUser, testRole)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -40,17 +42,17 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-es-internal-users",
-			expectedKeys: []string{InternalControllerUserName, InternalKibanaServerUserName, InternalProbeUserName},
+			expectedKeys: []string{UsersSecretKey},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
 			expectedName: "my-es-elastic-user",
-			expectedKeys: []string{ExternalUserName},
+			expectedKeys: []string{UsersSecretKey},
 		},
 		{
 			subject:      elasticUsers,
-			expectedName: "my-es-users",
-			expectedKeys: []string{ElasticUsersFile, ElasticUsersRolesFile},
+			expectedName: "my-es-es-roles-users",
+			expectedKeys: []string{ElasticRolesFile, ElasticUsersFile, ElasticUsersRolesFile},
 		},
 	}
 
@@ -67,27 +69,25 @@ func TestNewUserSecrets(t *testing.T) {
 }
 
 func TestNewElasticUsersSecret(t *testing.T) {
-	creds, err := NewElasticUsersCredentialsAndRoles(testES, testUser, InternalRoles)
+	creds, err := NewElasticUsersCredentialsAndRoles(testES, testUser, testRole)
 	assert.NoError(t, err)
-	assert.Equal(t, "superuser:foo", string(creds.Secret().Data[ElasticUsersRolesFile]))
+	assert.Equal(t, "role1:foo", string(creds.Secret().Data[ElasticUsersRolesFile]))
 
 	for _, user := range strings.Split(string(creds.Secret().Data[ElasticUsersFile]), "\n") {
 		userPw := strings.Split(user, ":")
 		assert.Equal(t, "foo", userPw[0])
 		assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(userPw[1]), []byte("bar")))
 	}
-
+	assert.Equal(t, "role1:\n  cluster:\n  - all\n", string(creds.Secret().Data[ElasticRolesFile]))
 }
 
 func newTestCredentials(t *testing.T, users []client.User) UserCredentials {
-	creds, err := NewElasticUsersCredentialsAndRoles(testES, users, InternalRoles)
+	creds, err := NewElasticUsersCredentialsAndRoles(testES, users, testRole)
 	assert.NoError(t, err)
 	return creds
-
 }
 
 func TestNeedsUpdate(t *testing.T) {
-
 	otherUser := client.User{Name: "baz", Password: "secret"}
 
 	tests := []struct {
@@ -117,7 +117,13 @@ func TestNeedsUpdate(t *testing.T) {
 		{
 			desc:        "hashed creds: changed password warrants an update of the secret",
 			subject1:    newTestCredentials(t, testUser),
-			subject2:    newTestCredentials(t, []client.User{client.User{Name: "foo", Password: "changed!"}}),
+			subject2:    newTestCredentials(t, []client.User{{Name: "foo", Password: "changed!", Role: "role1"}}),
+			needsUpdate: true,
+		},
+		{
+			desc:        "hashed creds: changed role warrants an update of the secret",
+			subject1:    newTestCredentials(t, testUser),
+			subject2:    newTestCredentials(t, []client.User{{Name: "foo", Password: "bar", Role: "role2"}}),
 			needsUpdate: true,
 		},
 		{
