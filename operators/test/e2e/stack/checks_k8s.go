@@ -44,7 +44,7 @@ func CheckKibanaDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestStep
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: helpers.DefaultNamespace,
-				Name:      stack.Kibana.Name,
+				Name:      stack.Kibana.Name + "-kibana",
 			}, &dep)
 			if stack.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
 				return nil
