@@ -47,6 +47,7 @@ type KibanaElasticsearchAssociationStatus struct {
 // KibanaElasticsearchAssociation is the Schema for the kibanaelasticsearchassociations API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=kea
 // +kubebuilder:categories=elastic
 // +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.associationStatus"
 type KibanaElasticsearchAssociation struct {

@@ -16,6 +16,8 @@ spec:
     - elastic
     kind: KibanaElasticsearchAssociation
     plural: kibanaelasticsearchassociations
+    shortNames:
+    - kea
   scope: Namespaced
   subresources:
     status: {}
