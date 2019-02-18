@@ -53,7 +53,7 @@ func ExpectedPodSpecs(
 	// creation below.
 	// TODO: make this association clearer.
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolume(
-		secret.ElasticUsersSecretName(es.Name),
+		secret.ElasticUsersRolesSecretName(es.Name),
 		"users",
 	)
 

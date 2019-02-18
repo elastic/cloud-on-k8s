@@ -32,9 +32,9 @@ const (
 	InternalKibanaServerUserName = "elastic-internal-kibana"
 )
 
-// ElasticUsersSecretName is the name of the secret containing all users credentials in ES format.
-func ElasticUsersSecretName(ownerName string) string {
-	return stringsutil.Concat(ownerName, "-users")
+// ElasticUsersRolesSecretName is the name of the secret containing all users and roles information in ES format.
+func ElasticUsersRolesSecretName(ownerName string) string {
+	return stringsutil.Concat(ownerName, "-es-roles-users")
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials
