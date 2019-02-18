@@ -31,7 +31,7 @@ kubectl-in-docker() {
   fi
 
   # Remove potential existing container
-  if [[ "$(docker ps --filter=name=registry-port-forwarder -q)" != "" ]]; then
+  if [[ "$(docker ps -a --filter=name=registry-port-forwarder -q)" != "" ]]; then
     docker rm --force registry-port-forwarder
   fi
 
@@ -57,7 +57,7 @@ main() {
     ;;
     "port-forward stop")
       # Delete the container if it exists
-      if [[ "$(docker ps --filter=name=registry-port-forwarder -q)" != "" ]]; then
+      if [[ "$(docker ps -a --filter=name=registry-port-forwarder -q)" != "" ]]; then
         docker rm --force registry-port-forwarder
       fi
     ;;
