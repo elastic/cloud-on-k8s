@@ -174,46 +174,40 @@ func (hc *HashedCredentials) Users() []client.User {
 
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
 func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
-	internalUsers := []client.User{
+	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), []client.User{
 		{Name: InternalControllerUserName, Role: SuperUserBuiltinRole, Password: rand.String(24)},
 		{Name: InternalKibanaServerUserName, Role: KibanaUserBuiltinRole, Password: rand.String(24)},
 		{Name: InternalProbeUserName, Role: ProbeUserRole, Password: rand.String(24)},
-	}
-
-	return &ClearTextCredentials{
-		secret: corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: es.Namespace,
-				Name:      ElasticInternalUsersSecretName(es.Name),
-				Labels:    label.NewLabels(es),
-			},
-			Data: usersToSecretData(internalUsers),
-		}}
+	})
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
 func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
-	externalUsers := []client.User{
+	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), []client.User{
 		{Name: ExternalUserName, Password: rand.String(24), Role: SuperUserBuiltinRole},
+	})
+}
+
+func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName string, users []client.User) *ClearTextCredentials {
+	// Store all users with their role and password in 1 secret data key in JSON format
+	jsonBytes, _ := json.Marshal(users)
+	data := map[string][]byte{UsersSecretKey: jsonBytes}
+
+	// Store also each users' passwords in separate keys
+	for _, user := range users {
+		data[user.Name] = []byte(user.Password)
 	}
 
 	return &ClearTextCredentials{
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
-				Name:      ElasticExternalUsersSecretName(es.Name),
+				Name:      secretName,
 				Labels:    label.NewLabels(es),
 			},
-			Data: usersToSecretData(externalUsers),
+			Data: data,
 		},
 	}
-}
-
-// usersToSecretData transforms a list of users in a secret data.
-func usersToSecretData(users []client.User) map[string][]byte {
-	jsonBytes, _ := json.Marshal(users)
-
-	return map[string][]byte{UsersSecretKey: jsonBytes}
 }
 
 // secretDataToUsers transforms a secret data in a list of users.

@@ -42,12 +42,12 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-es-internal-users",
-			expectedKeys: []string{UsersSecretKey},
+			expectedKeys: []string{InternalControllerUserName, InternalKibanaServerUserName, InternalProbeUserName, UsersSecretKey},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
 			expectedName: "my-es-elastic-user",
-			expectedKeys: []string{UsersSecretKey},
+			expectedKeys: []string{ExternalUserName, UsersSecretKey},
 		},
 		{
 			subject:      elasticUsers,
