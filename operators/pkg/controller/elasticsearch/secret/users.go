@@ -221,7 +221,7 @@ func secretDataToUsers(data map[string][]byte) ([]client.User, error) {
 	var users []client.User
 
 	jsonBytes, ok := data[UsersSecretKey]
-	if !ok{
+	if !ok {
 		return nil, errors.New("key `users` not found in data secret")
 	}
 
@@ -246,7 +246,7 @@ func NewElasticUsersCredentialsAndRoles(es v1alpha1.ElasticsearchCluster, users 
 		return &HashedCredentials{}, err
 	}
 
-	userRolesFileBytes, err := getUsersRolesFileBytes(users/*, roles*/)
+	userRolesFileBytes, err := getUsersRolesFileBytes(users /*, roles*/)
 	if err != nil {
 		return &HashedCredentials{}, err
 	}
@@ -287,7 +287,7 @@ func getUsersFileBytes(users []client.User) ([]byte, error) {
 	return []byte(strings.Join(lines, "\n")), nil
 }
 
-func getUsersRolesFileBytes(users []client.User/*, roles map[string]client.Role*/) ([]byte, error) {
+func getUsersRolesFileBytes(users []client.User /*, roles map[string]client.Role*/) ([]byte, error) {
 	rolesUsers := map[string][]string{}
 	for _, user := range users {
 		role := user.Role

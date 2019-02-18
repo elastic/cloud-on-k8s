@@ -29,7 +29,7 @@ const DefaultVotingConfigExclusionsTimeout = "30s"
 type User struct {
 	Name     string
 	Password string
-	Role 	 string
+	Role     string
 }
 
 // Role represents an Elasticsearch role.
