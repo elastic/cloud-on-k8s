@@ -26,14 +26,11 @@ type OrphanedPersistentVolumeClaims struct {
 	orphanedPersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
-// FindOrphanedVolumeClaims returns PVC which are not used in any POD within a given namespace
+// FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
 func FindOrphanedVolumeClaims(
 	c k8s.Client,
 	es v1alpha1.ElasticsearchCluster,
 ) (*OrphanedPersistentVolumeClaims, error) {
-	var persistentVolumeClaims corev1.PersistentVolumeClaimList
-	var pods corev1.PodList
-
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	// List PVC
 	listPVCOptions := client.ListOptions{
@@ -41,6 +38,7 @@ func FindOrphanedVolumeClaims(
 		LabelSelector: labelSelector,
 	}
 
+	var persistentVolumeClaims corev1.PersistentVolumeClaimList
 	if err := c.List(&listPVCOptions, &persistentVolumeClaims); err != nil {
 		return nil, err
 	}
@@ -55,12 +53,13 @@ func FindOrphanedVolumeClaims(
 	}
 
 	// List running pods
-	listPODSOptions := client.ListOptions{
+	listPodSOptions := client.ListOptions{
 		Namespace:     es.Namespace,
 		LabelSelector: labelSelector,
 	}
 
-	if err := c.List(&listPODSOptions, &pods); err != nil {
+	var pods corev1.PodList
+	if err := c.List(&listPodSOptions, &pods); err != nil {
 		return nil, err
 	}
 
@@ -74,19 +73,19 @@ func FindOrphanedVolumeClaims(
 	}
 
 	// The result is the remaining list of PVC
-	orphanedPVCs := make([]corev1.PersistentVolumeClaim, len(pvcByName))
-	idx := 0
-	for _, value := range pvcByName {
-		orphanedPVCs[idx] = value
-		idx++
+	orphanedPVCs := make([]corev1.PersistentVolumeClaim, 0, len(pvcByName))
+	for _, pvc := range pvcByName {
+		orphanedPVCs = append(orphanedPVCs, pvc)
 	}
 
 	return &OrphanedPersistentVolumeClaims{orphanedPersistentVolumeClaims: orphanedPVCs}, nil
 }
 
-// FindOrphanedVolumeClaim extract and remove a matching existing and orphaned PVC
-func (o *OrphanedPersistentVolumeClaims) FindOrphanedVolumeClaim(expectedLabels map[string]string,
-	claim *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
+// GetOrphanedVolumeClaim extract and remove a matching existing and orphaned PVC, returns nil if none is found
+func (o *OrphanedPersistentVolumeClaims) GetOrphanedVolumeClaim(
+	expectedLabels map[string]string,
+	claim *corev1.PersistentVolumeClaim,
+) *corev1.PersistentVolumeClaim {
 	for i := 0; i < len(o.orphanedPersistentVolumeClaims); i++ {
 		candidate := o.orphanedPersistentVolumeClaims[i]
 		if compareLabels(expectedLabels, candidate.Labels) &&
@@ -115,7 +114,7 @@ func compareStorageClass(claim, candidate *corev1.PersistentVolumeClaim) bool {
 	return standardStorageClassname == *candidate.Spec.StorageClassName
 }
 
-// compare two map but ignore the label.NodeNameLabelName key
+// compare two maps but ignore the label.NodeNameLabelName key
 // TODO : do we really need a strict comparison ?
 func compareLabels(labels1 map[string]string, labels2 map[string]string) bool {
 	if labels1 == nil || labels2 == nil {
@@ -124,11 +123,11 @@ func compareLabels(labels1 map[string]string, labels2 map[string]string) bool {
 	if len(labels1) != len(labels2) {
 		return false
 	}
-	for k1, v1 := range labels1 {
-		if k1 == label.NodeNameLabelName {
+	for key1, val1 := range labels1 {
+		if key1 == label.NodeNameLabelName {
 			continue
 		}
-		if val, ok := labels2[k1]; !ok || val != v1 {
+		if val2, ok := labels2[key1]; !ok || val2 != val1 {
 			return false
 		}
 	}

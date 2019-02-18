@@ -10,7 +10,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_newPVCFromTemplate(t *testing.T) {
@@ -27,12 +27,12 @@ func Test_newPVCFromTemplate(t *testing.T) {
 			name: "Create a simple PVC from a template and a pod",
 			args: args{
 				claimTemplate: corev1.PersistentVolumeClaim{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "data",
 					},
 				},
 				pod: &corev1.Pod{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-sample-es-6bw9qkw77k",
 						Labels: map[string]string{
 							"l1": "v1",
@@ -42,7 +42,7 @@ func Test_newPVCFromTemplate(t *testing.T) {
 				},
 			},
 			want: &corev1.PersistentVolumeClaim{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "elasticsearch-sample-es-6bw9qkw77k-data",
 					Labels: map[string]string{
 						"l1":                    "v1",

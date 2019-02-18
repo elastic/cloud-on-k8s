@@ -25,12 +25,12 @@ var (
 	sampleLabels2        = map[string]string{"label1": "value1", "label2": "value3"}
 )
 
-func makePVC(podName string, pvcName string, sourceLabels map[string]string,
+func newPVC(podName string, pvcName string, sourceLabels map[string]string,
 	storageQty string, storageClassName *string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   pvcName,
-			Labels: makePodLabel(podName, sourceLabels),
+			Labels: newPodLabel(podName, sourceLabels),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: storageClassName,
@@ -49,16 +49,16 @@ func deletePVC(pvc *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim 
 	return pvc
 }
 
-func makePOD(name string, sourceLabels map[string]string) *corev1.Pod {
+func newPod(name string, sourceLabels map[string]string) *corev1.Pod {
 	return &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   name,
-			Labels: makePodLabel(name, sourceLabels),
+			Labels: newPodLabel(name, sourceLabels),
 		},
 	}
 }
 
-func makePodLabel(podName string, sourceLabels map[string]string) map[string]string {
+func newPodLabel(podName string, sourceLabels map[string]string) map[string]string {
 	newMap := make(map[string]string)
 	for key, value := range sourceLabels {
 		newMap[key] = value
@@ -84,9 +84,9 @@ func withPVC(pod *corev1.Pod, volumeName string, claimName string) *corev1.Pod {
 }
 
 func TestFindOrphanedVolumeClaims(t *testing.T) {
-	pvc1 := makePVC("elasticsearch-sample-es-2l59jptdq6", "elasticsearch-sample-es-2l59jptdq6-data", sampleLabels1, "1Gi", nil)
-	pvc2 := makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", nil)
-	pvc3 := makePVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels2, "1Gi", nil)
+	pvc1 := newPVC("elasticsearch-sample-es-2l59jptdq6", "elasticsearch-sample-es-2l59jptdq6-data", sampleLabels1, "1Gi", nil)
+	pvc2 := newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", nil)
+	pvc3 := newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels2, "1Gi", nil)
 	type args struct {
 		initialObjects []runtime.Object
 		es             v1alpha1.ElasticsearchCluster
@@ -101,8 +101,8 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 			name: "Simple",
 			args: args{
 				initialObjects: []runtime.Object{
-					// create 1 POD
-					withPVC(makePOD("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+					// create 1 Pod
+					withPVC(newPod("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 						"data", "elasticsearch-sample-es-2l59jptdq6-data"),
 					// create 3 PVCs
 					pvc1,
@@ -122,8 +122,8 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 			name: "With a deleted PVC",
 			args: args{
 				initialObjects: []runtime.Object{
-					// create 1 POD
-					withPVC(makePOD("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+					// create 1 Pod
+					withPVC(newPod("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 						"data", "elasticsearch-sample-es-2l59jptdq6-data"),
 					// create 3 PVCs, but one of them is scheduled to be deleted
 					pvc1,
@@ -155,7 +155,7 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 	}
 }
 
-func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
+func TestOrphanedPersistentVolumeClaims_FindOrphanedVolumeClaim(t *testing.T) {
 	type fields struct {
 		orphanedPersistentVolumeClaims []corev1.PersistentVolumeClaim
 	}
@@ -173,11 +173,11 @@ func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
 			name: "Simple test with a standard storage class and 1Gi of storage",
 			fields: fields{
 				[]corev1.PersistentVolumeClaim{
-					*makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
-					*makePVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &standardStorageClassname),
 				}},
 			args: args{
-				expectedLabels: makePodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+				expectedLabels: newPodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 				claim: &corev1.PersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						Resources: corev1.ResourceRequirements{
@@ -188,16 +188,16 @@ func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
 					},
 				},
 			},
-			want: makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
+			want: newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
 		}, {
 			name: "Labels mismatch",
 			fields: fields{
 				[]corev1.PersistentVolumeClaim{
-					*makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels2, "1Gi", &standardStorageClassname),
-					*makePVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels2, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels2, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels2, "1Gi", &standardStorageClassname),
 				}},
 			args: args{
-				expectedLabels: makePodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+				expectedLabels: newPodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 				claim: &corev1.PersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						Resources: corev1.ResourceRequirements{
@@ -213,11 +213,11 @@ func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
 			name: "Matching storage class",
 			fields: fields{
 				[]corev1.PersistentVolumeClaim{
-					*makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &fastStorageClassname),
-					*makePVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &fastStorageClassname),
+					*newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &fastStorageClassname),
+					*newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &fastStorageClassname),
 				}},
 			args: args{
-				expectedLabels: makePodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+				expectedLabels: newPodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 				claim: &corev1.PersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: &fastStorageClassname,
@@ -229,17 +229,17 @@ func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
 					},
 				},
 			},
-			want: makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &fastStorageClassname),
+			want: newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &fastStorageClassname),
 		},
 		{
 			name: "Storage class mismatch",
 			fields: fields{
 				[]corev1.PersistentVolumeClaim{
-					*makePVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
-					*makePVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6bw9qkw77k", "elasticsearch-sample-es-6bw9qkw77k-data", sampleLabels1, "1Gi", &standardStorageClassname),
+					*newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels1, "1Gi", &standardStorageClassname),
 				}},
 			args: args{
-				expectedLabels: makePodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
+				expectedLabels: newPodLabel("elasticsearch-sample-es-2l59jptdq6", sampleLabels1),
 				claim: &corev1.PersistentVolumeClaim{
 					Spec: corev1.PersistentVolumeClaimSpec{
 						StorageClassName: &fastStorageClassname,
@@ -259,8 +259,8 @@ func TestOrphanVolumeFinder_FindOrphanedVolumeClaim(t *testing.T) {
 			o := &OrphanedPersistentVolumeClaims{
 				orphanedPersistentVolumeClaims: tt.fields.orphanedPersistentVolumeClaims,
 			}
-			if got := o.FindOrphanedVolumeClaim(tt.args.expectedLabels, tt.args.claim); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("OrphanedPersistentVolumeClaims.FindOrphanedVolumeClaim() = %v, want %v", got, tt.want)
+			if got := o.GetOrphanedVolumeClaim(tt.args.expectedLabels, tt.args.claim); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OrphanedPersistentVolumeClaims.GetOrphanedVolumeClaim() = %v, want %v", got, tt.want)
 			}
 		})
 	}
