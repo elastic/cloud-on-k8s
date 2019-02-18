@@ -64,12 +64,11 @@ func ReconcileUsers(
 		users = append(users, u)
 	}
 
-	elasticUsersSecret, err := secret.NewElasticUsersCredentials(es, users)
+	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersSecret); err != nil {
+	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersRolesSecret); err != nil {
 		return nil, err
 	}
 	return &internalUsers, err

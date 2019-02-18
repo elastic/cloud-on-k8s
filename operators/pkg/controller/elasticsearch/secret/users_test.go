@@ -29,7 +29,7 @@ var (
 
 func TestNewUserSecrets(t *testing.T) {
 
-	elasticUsers, err := NewElasticUsersCredentials(testES, testUser)
+	elasticUsers, err := NewElasticUsersCredentialsAndRoles(testES, testUser, InternalRoles)
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -67,7 +67,7 @@ func TestNewUserSecrets(t *testing.T) {
 }
 
 func TestNewElasticUsersSecret(t *testing.T) {
-	creds, err := NewElasticUsersCredentials(testES, testUser)
+	creds, err := NewElasticUsersCredentialsAndRoles(testES, testUser, InternalRoles)
 	assert.NoError(t, err)
 	assert.Equal(t, "superuser:foo", string(creds.Secret().Data[ElasticUsersRolesFile]))
 
@@ -80,7 +80,7 @@ func TestNewElasticUsersSecret(t *testing.T) {
 }
 
 func newTestCredentials(t *testing.T, users []client.User) UserCredentials {
-	creds, err := NewElasticUsersCredentials(testES, users)
+	creds, err := NewElasticUsersCredentialsAndRoles(testES, users, InternalRoles)
 	assert.NoError(t, err)
 	return creds
 

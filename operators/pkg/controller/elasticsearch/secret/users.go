@@ -185,9 +185,9 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 
 }
 
-// NewElasticUsersCredentials creates a k8s secret with user credentials and roles readable by ES
+// NewElasticUsersCredentialsAndRoles creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
-func NewElasticUsersCredentials(es v1alpha1.ElasticsearchCluster, users []client.User) (*HashedCredentials, error) {
+func NewElasticUsersCredentialsAndRoles(es v1alpha1.ElasticsearchCluster, users []client.User) (*HashedCredentials, error) {
 	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
 		return users[i].Name < users[j].Name
