@@ -242,7 +242,7 @@ func Test_newSidecarContainers(t *testing.T) {
 						{Name: "SOURCE_DIR", Value: "/keystore"},
 						{Name: "RELOAD_CREDENTIALS", Value: "true"},
 						{Name: "USERNAME", Value: ""}, // because dummy probe user is used
-						{Name: "PASSWORD_FILE", Value: "/probe-user"},
+						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/probe-user"},
 						{Name: "CERTIFICATES_PATH", Value: "/certs/ca.pem"},
 					},
 					VolumeMounts: []corev1.VolumeMount{
