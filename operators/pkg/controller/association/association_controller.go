@@ -248,8 +248,12 @@ func (r *ReconcileAssociation) reconcileInternal(association associations.Kibana
 	kb.CaCertSecret = &publicCACertSecret.Name
 
 	var currentKb v1alpha12.Kibana
-	if err := r.Get(association.Spec.Kibana.NamespacedName(), &currentKb); err != nil && !apierrors.IsNotFound(err) {
-		return associations.AssociationPending, err
+	err = r.Get(association.Spec.Kibana.NamespacedName(), &currentKb)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return associations.AssociationPending, err
+		}
+		return associations.AssociationFailed, err
 	}
 
 	// TODO: this is a bit rough
