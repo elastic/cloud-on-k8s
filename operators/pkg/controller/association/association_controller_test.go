@@ -56,7 +56,7 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Assume an Elasticsearch cluster and a Kibana has been created
+	// Assume an Elasticsearch cluster and a Kibana have been created
 	es := &esv1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -74,7 +74,7 @@ func TestReconcile(t *testing.T) {
 	// Pretend secrets created by the Elasticsearch controller are there
 	secrets := mockSecrets(t, c)
 
-	// Create the stack resource, that should be reconciled
+	// Create the association resource, that should be reconciled
 	instance := &v1alpha1.KibanaElasticsearchAssociation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      resourceKey.Name,

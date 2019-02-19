@@ -74,17 +74,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 }
 
 func addWatches(c controller.Controller, r *ReconcileAssociation) error {
-	// Watch for changes to the Stack
+	// Watch for changes to the association
 	if err := c.Watch(&source.Kind{Type: &associations.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
-	// Watch elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, r.watches.Clusters); err != nil {
+	// Watch Elasticsearch cluster objects
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, r.watches.ElasticsearchClusters); err != nil {
 		return err
 	}
 
-	// Watch kibana objects
+	// Watch Kibana objects
 	if err := c.Watch(&source.Kind{Type: &v1alpha12.Kibana{}}, r.watches.Kibanas); err != nil {
 		return err
 	}
@@ -105,8 +105,8 @@ type ReconcileAssociation struct {
 	iteration int64
 }
 
-// Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and what is in
-// the Elasticsearch.Spec
+// Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
+// the Association.Spec
 func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -170,7 +170,7 @@ func watchFinalizer(assocName string, w watches.DynamicWatches) finalizer.Finali
 		Name: "dynamic-watches",
 		Execute: func() error {
 			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocName))
-			w.Clusters.RemoveHandlerForKey(elasticsearchWatchName(assocName))
+			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocName))
 			return nil
 		},
 	}
@@ -187,15 +187,13 @@ func resultFromStatus(status associations.AssociationStatus) reconcile.Result {
 	}
 }
 
-// Reconcile reads that state of the cluster for an Association object and makes changes based on the state read and what is in
-// the Association.Spec
 func (r *ReconcileAssociation) reconcileInternal(association associations.KibanaElasticsearchAssociation) (associations.AssociationStatus, error) {
 	assocKey := k8s.ExtractNamespacedName(&association)
 
 	// Make sure we see events from Kibana+Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces
-	err := r.watches.Clusters.AddHandler(watches.NamedWatch{
+	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
 		Name:    elasticsearchWatchName(association.Name),
 		Watched: association.Spec.Elasticsearch.NamespacedName(),
 		Watcher: assocKey,

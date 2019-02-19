@@ -8,6 +8,6 @@ spec:
   elasticsearch:
     name: "foo"
     namespace: "default"
-  kiban:
+  kibana:
     name: "bar"
     namespace: "default"
