@@ -407,6 +407,7 @@ func (d *defaultDriver) calculateChanges(
 			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
 			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
 			ProbeUser:         internalUsers.ProbeUser,
+			ReloadCredsUser:   internalUsers.ReloadCredsUser,
 			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,

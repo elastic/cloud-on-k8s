@@ -97,9 +97,9 @@ func newSidecarContainers(
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
 	}
-	probeUser, ok := volumes[volume.ProbeUserVolumeName]
+	reloadCredsUser, ok := volumes[volume.ReloadCredsUserVolumeName]
 	if !ok {
-		return nil, errors.New(fmt.Sprintf("no probe user volume present %v", volumes))
+		return nil, errors.New(fmt.Sprintf("no reload creds user volume present %v", volumes))
 	}
 	certs, ok := volumes[volume.NodeCertificatesSecretVolumeName]
 	if !ok {
@@ -114,8 +114,8 @@ func newSidecarContainers(
 			Env: []corev1.EnvVar{
 				{Name: sidecar.EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
-				{Name: sidecar.EnvUsername, Value: spec.ProbeUser.Name},
-				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, spec.ProbeUser.Name)},
+				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
+				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
 			},
 			VolumeMounts: append(
@@ -123,7 +123,7 @@ func newSidecarContainers(
 				sideCarSharedVolume.VolumeMount(),
 				certs.VolumeMount(),
 				keystoreVolume.VolumeMount(),
-				probeUser.VolumeMount(),
+				reloadCredsUser.VolumeMount(),
 			),
 		},
 	}, nil

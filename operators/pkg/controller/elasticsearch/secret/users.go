@@ -39,8 +39,10 @@ const (
 	InternalControllerUserName = "elastic-internal"
 	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
 	InternalKibanaServerUserName = "elastic-internal-kibana"
-	// InternalProbeUserName a user to be used from the liveness/readiness probes when interacting with ES.
+	// InternalProbeUserName is a user to be used from the liveness/readiness probes when interacting with ES.
 	InternalProbeUserName = "elastic-internal-probe"
+	// InternalReloadCredsUserName is a user to be used for reloading ES credentials.
+	InternalReloadCredsUserName = "elastic-internal-reload-creds"
 )
 
 // ElasticUsersRolesSecretName is the name of the secret containing all users and roles information in ES format.
@@ -178,6 +180,7 @@ func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 		{Name: InternalControllerUserName, Role: SuperUserBuiltinRole, Password: rand.String(24)},
 		{Name: InternalKibanaServerUserName, Role: KibanaUserBuiltinRole, Password: rand.String(24)},
 		{Name: InternalProbeUserName, Role: ProbeUserRole, Password: rand.String(24)},
+		{Name: InternalReloadCredsUserName, Role: ReloadCredsUserRole, Password: rand.String(24)},
 	})
 }
 

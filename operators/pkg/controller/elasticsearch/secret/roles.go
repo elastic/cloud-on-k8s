@@ -13,11 +13,16 @@ const (
 	KibanaUserBuiltinRole = "kibana_user"
 	// ProbeUserRole is the name of the custom probe_user role
 	ProbeUserRole = "probe_user"
+	// ReloadCredsUserRole is the name of the custom reload_creds_user role
+	ReloadCredsUserRole = "reload_creds_user"
 )
 
 // InternalRoles are roles used by internal users
 var InternalRoles = map[string]client.Role{
 	ProbeUserRole: {
 		Cluster: []string{"monitor"},
+	},
+	ReloadCredsUserRole: {
+		Cluster: []string{"all"},
 	},
 }
