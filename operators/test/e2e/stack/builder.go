@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -33,7 +33,7 @@ type Builder struct {
 }
 
 func NewStackBuilder(name string) Builder {
-	meta := v1.ObjectMeta{
+	meta := metav1.ObjectMeta{
 		Name:      name,
 		Namespace: helpers.DefaultNamespace,
 	}

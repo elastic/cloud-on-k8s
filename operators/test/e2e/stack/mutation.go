@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	v1alpha12 "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -60,7 +60,7 @@ func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 					curKb.Spec = stack.Kibana.Spec
 					require.NoError(t, k.Client.Update(&curKb))
 
-					var curAssoc v1alpha12.KibanaElasticsearchAssociation
+					var curAssoc assoctype.KibanaElasticsearchAssociation
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Association), &curAssoc))
 					curAssoc.Spec = stack.Association.Spec
 					require.NoError(t, k.Client.Update(&curAssoc))
