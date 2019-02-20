@@ -166,6 +166,18 @@ func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.ExecutableFactory, name
 	return LogicalVolume{}, ErrLogicalVolumeNotFound
 }
 
+// GetLogicalVolume gets the logical volume with the given name,
+func (vg VolumeGroup) GetLogicalVolume(newCmd cmdutil.ExecutableFactory, name string) (*LogicalVolume, error) {
+	logicalVolume, err := vg.LookupLogicalVolume(newCmd, name)
+	if err != nil {
+		if err == ErrLogicalVolumeNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &logicalVolume, nil
+}
+
 // LookupThinPool returns the thinpool with the given name
 func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.ExecutableFactory, name string) (ThinPool, error) {
 	result, err := vg.lookupLV(newCmd, name)

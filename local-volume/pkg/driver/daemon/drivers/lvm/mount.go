@@ -34,21 +34,36 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	// build logical volume name based on PVC name
 	lvName := pathutil.ExtractPVCID(params.TargetDir)
 
-	// check if lv already exists, and reuse
-	// TODO: call LookupLogicalVolume()
-
-	lv, err := d.CreateLV(vg, lvName, requestedSize)
+	// TODO: only the volume name is used, not the specifications of the logical volumes
+	existingLV, err := vg.GetLogicalVolume(d.options.ExecutableFactory, lvName)
 	if err != nil {
-		return flex.Failure(err.Error())
+		return flex.Failure(fmt.Sprintf("error while looking for logical volume: %s", err.Error()))
 	}
 
-	lvPath, err := lv.Path(d.options.ExecutableFactory)
-	if err != nil {
-		return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
-	}
+	var logicalVolume LogicalVolume
+	var lvPath string
+	if existingLV != nil {
+		// ReUse the logical volume
+		logicalVolume = *existingLV
+		lvPath, err = logicalVolume.Path(d.options.ExecutableFactory)
+		if err != nil {
+			return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
+		}
+	} else {
+		// Create a new logical volume
+		logicalVolume, err = d.CreateLV(vg, lvName, requestedSize)
+		if err != nil {
+			return flex.Failure(err.Error())
+		}
 
-	if err := diskutil.FormatDevice(d.options.ExecutableFactory, lvPath, fsType); err != nil {
-		return flex.Failure(fmt.Sprintf("cannot format logical volume %s as %s: %s", lv.name, fsType, err.Error()))
+		lvPath, err = logicalVolume.Path(d.options.ExecutableFactory)
+		if err != nil {
+			return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
+		}
+
+		if err := diskutil.FormatDevice(d.options.ExecutableFactory, lvPath, fsType); err != nil {
+			return flex.Failure(fmt.Sprintf("cannot format logical volume %s as %s: %s", logicalVolume.name, fsType, err.Error()))
+		}
 	}
 
 	// mount device to the pods dir
