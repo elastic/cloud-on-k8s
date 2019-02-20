@@ -7,7 +7,7 @@ metadata:
   creationTimestamp: null
   name: elastic-namespace-operator
   # namespace in which we watch resources
-  namespace: default
+  namespace: $MANAGED_NAMESPACE
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
