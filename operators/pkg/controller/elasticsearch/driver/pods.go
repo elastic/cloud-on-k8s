@@ -5,8 +5,6 @@
 package driver
 
 import (
-	"fmt"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
@@ -14,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	pvcutils "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -34,30 +33,10 @@ func createElasticsearchPod(
 	pod corev1.Pod,
 	podSpecCtx pod.PodSpecContext,
 ) error {
-	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
-	// originating from the pod after it has started and produced a CSR
-	log.Info(fmt.Sprintf("Ensuring that node certificate secret exists for pod %s", pod.Name))
-	nodeCertificatesSecret, err := nodecerts.EnsureNodeCertificateSecretExists(
-		c,
-		scheme,
-		&es,
-		pod,
-		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
-		// add the cluster name label so we select all the node certificates secrets associated with a cluster easily
-		map[string]string{label.ClusterNameLabelName: es.Name},
-	)
+	orphanedPVCs, err := pvcutils.FindOrphanedVolumeClaims(c, es)
 	if err != nil {
 		return err
 	}
-
-	// we finally have the node certificates secret made, so we can inject the secret volume into the pod
-	nodeCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
-		nodeCertificatesSecret.Name,
-		volume.NodeCertificatesSecretVolumeName,
-		volume.NodeCertificatesSecretVolumeMountPath,
-	)
-	// add the node certificates volume to volumes
-	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
 
 	// when can we re-use a metav1.PersistentVolumeClaim?
 	// - It is the same size, storageclass etc, or resizable as such
@@ -81,25 +60,9 @@ func createElasticsearchPod(
 	//   - E.g, List PVCs, if a PVC we want to use exist
 
 	for _, claimTemplate := range podSpecCtx.TopologySpec.VolumeClaimTemplates {
-		pvc := claimTemplate.DeepCopy()
-		// generate unique name for this pvc.
-		// TODO: this may become too long?
-		pvc.Name = pod.Name + "-" + claimTemplate.Name
-		pvc.Namespace = pod.Namespace
-
-		// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
-		// reflecting state from K8s.
-		pvc.Labels = pod.Labels
-		pvc.Annotations = pod.Annotations
-		// TODO: add more labels or annotations?
-
-		log.Info(fmt.Sprintf("Creating PVC for pod %s: %s", pod.Name, pvc.Name))
-
-		if err := controllerutil.SetControllerReference(&es, pvc, scheme); err != nil {
-			return err
-		}
-
-		if err := c.Create(pvc); err != nil && !apierrors.IsAlreadyExists(err) {
+		// TODO : we are creating PVC way too far in the process, it's almost too late to compare them with existing ones
+		pvc, err := getOrCreatePVC(&pod, claimTemplate, orphanedPVCs, c, scheme, es)
+		if err != nil {
 			return err
 		}
 
@@ -126,6 +89,31 @@ func createElasticsearchPod(
 		)
 	}
 
+	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+	// originating from the pod after it has started and produced a CSR
+	log.Info("Ensuring that node certificate secret exists for pod", "pod", pod.Name)
+	nodeCertificatesSecret, err := nodecerts.EnsureNodeCertificateSecretExists(
+		c,
+		scheme,
+		&es,
+		pod,
+		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
+		// add the cluster name label so we select all the node certificates secrets associated with a cluster easily
+		map[string]string{label.ClusterNameLabelName: es.Name},
+	)
+	if err != nil {
+		return err
+	}
+
+	// we finally have the node certificates secret made, so we can inject the secret volume into the pod
+	nodeCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
+		nodeCertificatesSecret.Name,
+		volume.NodeCertificatesSecretVolumeName,
+		volume.NodeCertificatesSecretVolumeMountPath,
+	)
+	// add the node certificates volume to volumes
+	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
+
 	if err := controllerutil.SetControllerReference(&es, &pod, scheme); err != nil {
 		return err
 	}
@@ -136,6 +124,60 @@ func createElasticsearchPod(
 	log.Info("Created pod", "name", pod.Name, "namespace", pod.Namespace)
 
 	return nil
+}
+
+// getOrCreatePVC tries to attach a PVC that already exists or attaches a new one otherwise.
+func getOrCreatePVC(pod *corev1.Pod,
+	claimTemplate corev1.PersistentVolumeClaim,
+	orphanedPVCs *pvcutils.OrphanedPersistentVolumeClaims,
+	c k8s.Client,
+	scheme *runtime.Scheme,
+	es v1alpha1.ElasticsearchCluster,
+) (*corev1.PersistentVolumeClaim, error) {
+	// Generate the desired PVC from the template
+	pvc := newPVCFromTemplate(claimTemplate, pod)
+	// Seek for an orphaned PVC that matches the desired one
+	orphanedPVC := orphanedPVCs.GetOrphanedVolumeClaim(pod.Labels, pvc)
+
+	if orphanedPVC != nil {
+		// ReUSE the orphaned PVC
+		pvc = orphanedPVC
+		// Update the name of the pod to reflect the change
+		podName, err := pvcutils.GetPodNameFromLabels(pvc)
+		if err != nil {
+			return nil, err
+		}
+		pod.Name = podName
+		log.Info("Reusing PVC", "pod", pod.Name, "pvc", pvc.Name)
+		return pvc, nil
+	}
+
+	// No match, create a new PVC
+	log.Info("Creating PVC", "pod", pod.Name, "pvc", pvc.Name)
+	if err := controllerutil.SetControllerReference(&es, pvc, scheme); err != nil {
+		return nil, err
+	}
+	err := c.Create(pvc)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return nil, err
+	}
+	return pvc, nil
+}
+
+func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
+	pvc := claimTemplate.DeepCopy()
+	// generate unique name for this pvc.
+	// TODO: this may become too long?
+	pvc.Name = pod.Name + "-" + claimTemplate.Name
+	pvc.Namespace = pod.Namespace
+	// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
+	// reflecting state from K8s.
+	pvc.Labels = pod.Labels
+	// Add the current pod name as a label
+	pvc.Labels[label.PodNameLabelName] = pod.Name
+	pvc.Annotations = pod.Annotations
+	// TODO: add more labels or annotations?
+	return pvc
 }
 
 // deleteElasticsearchPod deletes the given elasticsearch pod,
