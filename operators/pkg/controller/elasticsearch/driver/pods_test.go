@@ -45,9 +45,9 @@ func Test_newPVCFromTemplate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "elasticsearch-sample-es-6bw9qkw77k-data",
 					Labels: map[string]string{
-						"l1":                    "v1",
-						"l2":                    "v2",
-						label.NodeNameLabelName: "elasticsearch-sample-es-6bw9qkw77k",
+						"l1":                   "v1",
+						"l2":                   "v2",
+						label.PodNameLabelName: "elasticsearch-sample-es-6bw9qkw77k",
 					},
 				},
 			},

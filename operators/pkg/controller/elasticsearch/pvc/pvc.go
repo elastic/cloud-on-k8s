@@ -114,7 +114,7 @@ func compareStorageClass(claim, candidate *corev1.PersistentVolumeClaim) bool {
 	return standardStorageClassname == *candidate.Spec.StorageClassName
 }
 
-// compare two maps but ignore the label.NodeNameLabelName key
+// compare two maps but ignore the label.PodNameLabelName key
 // TODO : do we really need a strict comparison ?
 func compareLabels(labels1 map[string]string, labels2 map[string]string) bool {
 	if labels1 == nil || labels2 == nil {
@@ -124,7 +124,7 @@ func compareLabels(labels1 map[string]string, labels2 map[string]string) bool {
 		return false
 	}
 	for key1, val1 := range labels1 {
-		if key1 == label.NodeNameLabelName {
+		if key1 == label.PodNameLabelName {
 			continue
 		}
 		if val2, ok := labels2[key1]; !ok || val2 != val1 {
@@ -135,7 +135,7 @@ func compareLabels(labels1 map[string]string, labels2 map[string]string) bool {
 }
 
 func GetPodNameFromLabels(pvc *corev1.PersistentVolumeClaim) (string, error) {
-	if name, ok := pvc.Labels[label.NodeNameLabelName]; ok {
+	if name, ok := pvc.Labels[label.PodNameLabelName]; ok {
 		return name, nil
 	}
 	return "", ErrNotNodeNameLabelNotFound

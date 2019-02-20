@@ -174,7 +174,7 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	// reflecting state from K8s.
 	pvc.Labels = pod.Labels
 	// Add the current pod name as a label
-	pvc.Labels[label.NodeNameLabelName] = pod.Name
+	pvc.Labels[label.PodNameLabelName] = pod.Name
 	pvc.Annotations = pod.Annotations
 	// TODO: add more labels or annotations?
 	return pvc

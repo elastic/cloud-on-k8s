@@ -63,7 +63,7 @@ func newPodLabel(podName string, sourceLabels map[string]string) map[string]stri
 	for key, value := range sourceLabels {
 		newMap[key] = value
 	}
-	newMap[label.NodeNameLabelName] = podName
+	newMap[label.PodNameLabelName] = podName
 	newMap[label.ClusterNameLabelName] = "elasticsearch-sample"
 	return newMap
 }

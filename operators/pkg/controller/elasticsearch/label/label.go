@@ -17,8 +17,8 @@ const (
 	// ClusterNameLabelName used to represent a cluster in k8s resources
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"
 
-	// NodeName is used to store the name of the node on other objects
-	NodeNameLabelName = "elasticsearch.k8s.elastic.co/node-name"
+	// PodNameLabelName is used to store the name of the pod on other objects
+	PodNameLabelName = "elasticsearch.k8s.elastic.co/node-name"
 
 	// Type represents the elasticsearch type
 	Type = "elasticsearch"
