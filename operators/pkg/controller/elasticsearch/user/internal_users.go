@@ -67,7 +67,7 @@ func ReconcileUsers(
 	users := internalSecrets.Users()
 	internalUsers := NewInternalUsersFrom(users)
 	users = append(users, externalSecrets.Users()...)
-	roles := secret.InternalRoles
+	roles := secret.PredefinedRoles
 
 	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users, roles)
 	if err != nil {
