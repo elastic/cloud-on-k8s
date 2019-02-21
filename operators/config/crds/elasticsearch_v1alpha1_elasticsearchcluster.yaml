@@ -33,35 +33,59 @@ spec:
     openAPIV3Schema:
       properties:
         apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
         spec:
           properties:
             expose:
+              description: 'Expose determines which service type to use for this workload.
+                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
               enum:
               - ClusterIP
               - LoadBalancer
               - NodePort
               type: string
             featureFlags:
+              description: FeatureFlags are instance-specific flags that enable or
+                disable specific experimental features
               type: object
             image:
+              description: Image represents the docker image that will be used.
               type: string
             setVmMaxMapCount:
+              description: SetVMMaxMapCount indicates whether a init container should
+                be used to ensure that the `vm.max_map_count` is set according to
+                https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+                Setting this to true requires the kubelet to allow running privileged
+                containers.
               type: boolean
             snapshotRepository:
+              description: SnapshotRepository defines a snapshot repository to be
+                used for automatic snapshots.
               properties:
                 settings:
+                  description: Settings are provider specific repository settings
                   properties:
                     bucketName:
+                      description: BucketName is the name of the provider specific
+                        storage bucket to use.
                       type: string
                     credentials:
+                      description: Credentials is a reference to a secret containing
+                        credentials for the storage provider.
                       type: object
                   type: object
                 type:
+                  description: Type of repository
                   enum:
                   - gcs
                   type: string
@@ -70,51 +94,104 @@ spec:
               - settings
               type: object
             topologies:
+              description: Topologies represent a list of node topologies to be part
+                of the cluster
               items:
                 properties:
                   nodeCount:
+                    description: NodeCount defines how many nodes have this topology
                     format: int32
                     type: integer
                   nodeTypes:
+                    description: NodeTypes represents the node type
                     properties:
                       data:
+                        description: Data represents a data node
                         type: boolean
                       ingest:
+                        description: Ingest represents an ingest node
                         type: boolean
                       master:
+                        description: Master represents a master node
                         type: boolean
                       ml:
+                        description: ML represents a machine learning node
                         type: boolean
                     type: object
                   resources:
+                    description: Resources to be allocated for this topology
                     properties:
                       limits:
+                        description: Limits represents the limits to considerate for
+                          these resources
                         type: object
                     type: object
                   template:
+                    description: PodTemplate is the object that describes the Elasticsearch
+                      pods.
                     properties:
                       metadata:
+                        description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
                         type: object
                       spec:
+                        description: 'Specification of the desired behavior of the
+                          pod. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status'
                         properties:
                           affinity:
+                            description: Affinity is the pod's scheduling constraints
                             type: object
                         type: object
                     type: object
                   volumeClaimTemplates:
+                    description: 'VolumeClaimTemplates is a list of claims that pods
+                      are allowed to reference. Every claim in this list must have
+                      at least one matching (by name) volumeMount in one container
+                      in the template. A claim in this list takes precedence over
+                      any volumes in the template, with the same name. TODO: Define
+                      the behavior if a claim already exists with the same name. TODO:
+                      define special behavior based on claim metadata.name. (e.g data
+                      / logs volumes)'
                     items:
                       type: object
                     type: array
                 type: object
               type: array
             updateStrategy:
+              description: UpdateStrategy specifies how updates to the cluster should
+                be performed.
               properties:
                 changeBudget:
+                  description: ChangeBudget is the change budget that should be used
+                    when performing mutations to the cluster.
                   properties:
                     maxSurge:
+                      description: 'MaxSurge is the maximum number of pods that can
+                        be scheduled above the original number of pods. By default,
+                        a fixed value of 1 is used. Value can be an absolute number
+                        (ex: 5) or a percentage of total pods at the start of the
+                        update (ex: 10%). This can not be 0 if MaxUnavailable is 0
+                        if you want automatic rolling updates to be applied. Absolute
+                        number is calculated from percentage by rounding up. Example:
+                        when this is set to 30%, the new group can be scaled up by
+                        30% immediately when the rolling update starts. Once old pods
+                        have been killed, new group can be scaled up further, ensuring
+                        that total number of pods running at any time during the update
+                        is at most 130% of the target number of pods.'
                       format: int64
                       type: integer
                     maxUnavailable:
+                      description: 'MaxUnavailable is the maximum number of pods that
+                        can be unavailable during the update. Value can be an absolute
+                        number (ex: 5) or a percentage of total pods at the start
+                        of update (ex: 10%). Absolute number is calculated from percentage
+                        by rounding down. This can not be 0 if MaxSurge is 0 if you
+                        want automatic rolling changes to be applied. By default,
+                        a fixed value of 0 is used. Example: when this is set to 30%,
+                        the group can be scaled down by 30% immediately when the rolling
+                        update starts. Once new pods are ready, the group can be scaled
+                        down further, followed by scaling up the group, ensuring that
+                        at least 70% of the target number of pods are available at
+                        all times during the update.'
                       format: int64
                       type: integer
                   required:
@@ -122,14 +199,20 @@ spec:
                   - maxSurge
                   type: object
                 groups:
+                  description: Groups is a list of groups that should have their cluster
+                    mutations considered in a fair manner with a strict change budget
+                    (not allowing any surge or unavailability) before the entire cluster
+                    is reconciled with the full change budget.
                   items:
                     properties:
                       selector:
+                        description: Selector is the selector used to match pods.
                         type: object
                     type: object
                   type: array
               type: object
             version:
+              description: Version represents the version of the stack
               type: string
           type: object
         status:
@@ -142,7 +225,7 @@ spec:
               type: string
             phase:
               type: string
-            publicService:
+            service:
               type: string
           type: object
   version: v1alpha1
