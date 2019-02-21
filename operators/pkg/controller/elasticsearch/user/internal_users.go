@@ -69,15 +69,6 @@ func ReconcileUsers(
 	users = append(users, externalSecrets.Users()...)
 	roles := secret.PredefinedRoles
 
-	// Resolve users' role
-	for i, user := range users {
-		role, err := secret.ResolveRole(user.Name)
-		if err != nil {
-			return nil, err
-		}
-		users[i].Role = role
-	}
-
 	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users, roles)
 	if err != nil {
 		return nil, err

@@ -7,9 +7,10 @@ package secret
 import (
 	"bytes"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/rand"
 	"sort"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/rand"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
@@ -56,6 +57,7 @@ type UserCredentials interface {
 
 // ClearTextCredentials store a secret with clear text passwords.
 type ClearTextCredentials struct {
+	users  []client.User
 	secret corev1.Secret
 }
 
@@ -80,16 +82,17 @@ func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 // NeedsUpdate is true for clear text credentials if the secret contains the same keys as the reference secret.
 func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 	// for generated secrets as long as the key exists we can work with it. Rotate secrets by deleting them (?)
-	return !keysEqual(c.secret.Data, other.Data)
+	for _, user := range c.users {
+		if _, ok := other.Data[user.Name]; !ok {
+			return true
+		}
+	}
+	return false
 }
 
-// Users returns a slice of users based on secret as source of truth.
+// Users returns the users slice stored in the struct.
 func (c *ClearTextCredentials) Users() []client.User {
-	var result []client.User
-	for user, pw := range c.secret.Data {
-		result = append(result, client.User{Name: user, Password: string(pw)})
-	}
-	return result
+	return c.users
 }
 
 // Secret returns the underlying secret.
@@ -164,7 +167,7 @@ func (hc *HashedCredentials) Secret() corev1.Secret {
 	return hc.secret
 }
 
-// Users returns the user array stored in the struct.
+// Users returns the users slice stored in the struct.
 func (hc *HashedCredentials) Users() []client.User {
 	return hc.users
 }
@@ -186,6 +189,7 @@ func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName st
 	}
 
 	return &ClearTextCredentials{
+		users: users,
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
