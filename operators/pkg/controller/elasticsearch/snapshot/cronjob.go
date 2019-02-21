@@ -82,6 +82,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 		Labels:    NewLabels(params.Elasticsearch),
 	}
 
+	automountServiceAccountToken := false
 	return &batchv1beta1.CronJob{
 		ObjectMeta: meta,
 		Spec: batchv1beta1.CronJobSpec{
@@ -121,6 +122,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 							Volumes: []corev1.Volume{
 								caCertSecret.Volume(),
 							},
+							AutomountServiceAccountToken: &automountServiceAccountToken,
 						},
 					},
 				},
