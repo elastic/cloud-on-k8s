@@ -99,8 +99,11 @@ func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 
 // Users returns a slice of users based on secret as source of truth.
 func (c *ClearTextCredentials) Users() []client.User {
-	users, _ := secretDataToUsers(c.secret.Data)
-	return users
+	var result []client.User
+	for user, pw := range c.secret.Data {
+		result = append(result, client.User{Name: user, Password: string(pw)})
+	}
+	return result
 }
 
 // Secret returns the underlying secret.
@@ -198,11 +201,7 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 }
 
 func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName string, users []client.User) *ClearTextCredentials {
-	// Store all users with their role and password in 1 secret data key in JSON format
-	jsonBytes, _ := json.Marshal(users)
-	data := map[string][]byte{UsersSecretKey: jsonBytes}
-
-	// Store also each users' passwords in separate keys
+	data := make(map[string][]byte, len(users))
 	for _, user := range users {
 		data[user.Name] = []byte(user.Password)
 	}
@@ -217,23 +216,6 @@ func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName st
 			Data: data,
 		},
 	}
-}
-
-// secretDataToUsers transforms a secret data in a list of users.
-func secretDataToUsers(data map[string][]byte) ([]client.User, error) {
-	var users []client.User
-
-	jsonBytes, ok := data[UsersSecretKey]
-	if !ok {
-		return nil, errors.New("key `users` not found in data secret")
-	}
-
-	err := json.Unmarshal(jsonBytes, &users)
-	if err != nil {
-		return nil, err
-	}
-
-	return users, nil
 }
 
 // NewElasticUsersCredentialsAndRoles creates a k8s secret with user credentials and roles readable by ES
