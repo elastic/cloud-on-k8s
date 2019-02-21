@@ -63,6 +63,9 @@ elastic-operator: generate
 keystore-updater: generate
 	go build -o bin/keystore-updater github.com/elastic/k8s-operators/operators/cmd/keystore-updater
 
+cert-initializer: generate
+	go build -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+
 fmt:
 	goimports -w pkg cmd
 
