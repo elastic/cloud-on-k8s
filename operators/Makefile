@@ -154,6 +154,8 @@ set-context-gke:
 bootstrap-gke:
 	./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
+	# push "latest" operator image to be used for init containers when running the operator locally
+	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
 delete-gke:
 	./hack/gke-cluster.sh delete
