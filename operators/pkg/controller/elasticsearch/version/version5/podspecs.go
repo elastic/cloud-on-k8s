@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
@@ -104,7 +105,7 @@ func newEnvironmentVars(
 		// x-pack general settings
 		{
 			Name:  settings.EnvXPackSslKey,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		},
 		{
 			Name:  settings.EnvXPackSslCertificate,

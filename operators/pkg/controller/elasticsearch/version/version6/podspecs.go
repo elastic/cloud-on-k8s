@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
@@ -191,7 +190,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityHttpSslEnabled, Value: "true"},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslKey,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificate,
@@ -205,7 +204,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityTransportSslEnabled, Value: "true"},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslKey,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificate,
