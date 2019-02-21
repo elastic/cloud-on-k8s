@@ -11,8 +11,8 @@ import (
 // Default values for the volume name and paths
 const (
 	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
-	DefaultSecretMountPath                = "/secrets"
-	ProbeUserSecretMountPath              = "/probe-user"
+	DefaultSecretMountPath                = "/mnt/elastic/secrets"
+	ProbeUserSecretMountPath              = "/mnt/elastic/probe-user"
 	ProbeUserVolumeName                   = "probe-user"
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"

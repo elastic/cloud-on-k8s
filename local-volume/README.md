@@ -12,8 +12,27 @@ This project is composed of 3 main components:
 * The driver client: binary deployed on k8s nodes that respects k8s flex interface. Called by kubelet when a scheduled pod needs a local persistent volume to be mounted. Contacts the driver daemon through a unix socket.
 * The driver daemon: daemonset with one pod per k8s node. Listens to calls from the client. Creates a logical volume for the pod on the underlying host (eg. /mnt/storage/my-pvc), and bind mount it within the pod directory on the underlying host (eg. /var/lib/kubelet/pods/pod-id/volumes/elastic-local/my-pvc).
 
-## Usage
+## Requirements
 
+To start, get a working Kubernetes cluster:
+
+```bash
+make -C ../operators bootstrap-minikube # or bootstrap-gke
+```
+
+If you chose minikube then attach a new disk to the virtual machine:
+
+```bash
+make minikube-attach-disk
+```
+
+Finally initialize a logical volume group:
+
+```bash
+make minikube-create-vg # or gke-create-vg
+```
+
+## Usage
 Build docker image:
 
 ```bash
@@ -43,6 +62,7 @@ When the pod gets scheduled on a host, the kubelet calls our driver binary in or
 
 ## Limitations
 
+* Thinly provisioned volumes are not supported on GKE
 * We don't handle total storage capacity requirements.
 
 ## Flex spec

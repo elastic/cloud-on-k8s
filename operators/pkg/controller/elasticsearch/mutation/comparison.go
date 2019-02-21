@@ -217,6 +217,12 @@ ExpectedTemplates:
 
 // templateMatchesActualVolumeAndPvc returns true if the pvc matches the volumeAndPVC
 func templateMatchesActualVolumeAndPvc(pvcTemplate corev1.PersistentVolumeClaim, actualVolumeAndPVC volumeAndPVC) bool {
+
+	if actualVolumeAndPVC.pvc.DeletionTimestamp != nil {
+		// PVC is being deleted
+		return false
+	}
+
 	if pvcTemplate.Name != actualVolumeAndPVC.volume.Name {
 		// name from template does not match actual, no match
 		return false

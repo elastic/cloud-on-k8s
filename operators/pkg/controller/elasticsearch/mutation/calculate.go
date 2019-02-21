@@ -31,8 +31,10 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.
 	copy(expectedCopy, expectedPodSpecCtxs)
 	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
 	copy(actualCopy, state.CurrentPods)
+	deletingCopy := make([]corev1.Pod, len(state.DeletingPods))
+	copy(deletingCopy, state.DeletingPods)
 
-	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder)
+	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder, deletingCopy)
 }
 
 func mutableCalculateChanges(
@@ -40,31 +42,48 @@ func mutableCalculateChanges(
 	actualPods []corev1.Pod,
 	state reconcile.ResourcesState,
 	podBuilder PodBuilder,
+	deletingPods []corev1.Pod,
 ) (Changes, error) {
 	changes := EmptyChanges()
 
 	for _, expectedPodSpecCtx := range expectedPodSpecCtxs {
-		comparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods, state)
+
+		// look for a matching pod in the current ones
+		actualComparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods, state)
 		if err != nil {
 			return changes, err
 		}
-		if comparisonResult.IsMatch {
+		if actualComparisonResult.IsMatch {
 			// matching pod already exists, keep it
-			changes.ToKeep = append(changes.ToKeep, comparisonResult.MatchingPod)
+			changes.ToKeep = append(changes.ToKeep, actualComparisonResult.MatchingPod)
 			// one less pod to compare with
-			actualPods = comparisonResult.RemainingPods
-		} else {
-			// no matching pod, a new one should be created
-			pod, err := podBuilder(expectedPodSpecCtx)
-			if err != nil {
-				return changes, err
-			}
-			changes.ToCreate = append(changes.ToCreate, PodToCreate{
-				Pod:             pod,
-				PodSpecCtx:      expectedPodSpecCtx,
-				MismatchReasons: comparisonResult.MismatchReasonsPerPod,
-			})
+			actualPods = actualComparisonResult.RemainingPods
+			continue
 		}
+
+		// look for a matching pod in the ones that are being deleted
+		deletingComparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, deletingPods, state)
+		if err != nil {
+			return changes, err
+		}
+		if deletingComparisonResult.IsMatch {
+			// a matching pod is terminating, wait in order to reuse its resources
+			changes.ToKeep = append(changes.ToKeep, deletingComparisonResult.MatchingPod)
+			// one less pod to compare with
+			deletingPods = deletingComparisonResult.RemainingPods
+			continue
+		}
+
+		// no matching pod, a new one should be created
+		pod, err := podBuilder(expectedPodSpecCtx)
+		if err != nil {
+			return changes, err
+		}
+		changes.ToCreate = append(changes.ToCreate, PodToCreate{
+			Pod:             pod,
+			PodSpecCtx:      expectedPodSpecCtx,
+			MismatchReasons: actualComparisonResult.MismatchReasonsPerPod,
+		})
 	}
 	// remaining actual pods should be deleted
 	changes.ToDelete = actualPods
