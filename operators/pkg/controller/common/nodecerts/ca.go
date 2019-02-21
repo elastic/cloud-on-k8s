@@ -118,8 +118,8 @@ func (c *Ca) CreateCertificate(
 	return certData, err
 }
 
-// ReconcilePublicCertsSecret ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
-// objectKey
+// ReconcilePublicCertsSecret ensures that a secret containing
+// the CA certificate referenced with objectKey exists.
 func (c *Ca) ReconcilePublicCertsSecret(
 	cl k8s.Client,
 	objectKey types.NamespacedName,
@@ -132,7 +132,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	clusterCASecret := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(objectKey),
 		Data: map[string][]byte{
-			SecretCAKey: expectedCaKeyBytes,
+			CAFileName: expectedCaKeyBytes,
 		},
 	}
 
@@ -148,12 +148,12 @@ func (c *Ca) ReconcilePublicCertsSecret(
 			if reconciled.Data == nil {
 				reconciled.Data = make(map[string][]byte)
 			}
-			caKey, ok := reconciled.Data[SecretCAKey]
+			caKey, ok := reconciled.Data[CAFileName]
 			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
 		},
 		UpdateReconciled: func() {
-			reconciled.Data[SecretCAKey] = expectedCaKeyBytes
+			reconciled.Data[CAFileName] = expectedCaKeyBytes
 		},
 	})
 

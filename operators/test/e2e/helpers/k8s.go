@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -145,9 +146,9 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
-	caCert, exists := secret.Data["ca.pem"]
+	caCert, exists := secret.Data[nodecerts.CAFileName]
 	if !exists {
-		return nil, fmt.Errorf("No value found for secret ca.pem")
+		return nil, fmt.Errorf("No value found for secret %s", CAFileName)
 	}
 	return certutil.ParsePEMCerts(caCert)
 }

@@ -112,7 +112,7 @@ func newSidecarContainers(
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
 				{Name: sidecar.EnvUsername, Value: spec.ProbeUser.Name},
 				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, spec.ProbeUser.Name)},
-				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.SecretCAKey)},
+				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.CAFileName)},
 			},
 			VolumeMounts: append(
 				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
@@ -192,11 +192,11 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificate,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificateAuthorities,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
 		},
 		// x-pack security transport settings
 		{Name: settings.EnvXPackSecurityTransportSslEnabled, Value: "true"},
@@ -206,11 +206,11 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificate,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificateAuthorities,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
 		},
 	}
 }

@@ -113,7 +113,7 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 				Name:      nsn.Name,
 				Namespace: nsn.Namespace,
 			},
-			Data: map[string][]byte{"ca.pem": []byte("awronginitialsupersecret1")},
+			Data: map[string][]byte{CAFileName: []byte("awronginitialsupersecret1")},
 		}))
 
 	// Reconciliation must update it
@@ -125,5 +125,5 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 	c.Get(nsn, updated)
 
 	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: fooCa.Cert.Raw})
-	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data["ca.pem"]))
+	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data[CAFileName]))
 }

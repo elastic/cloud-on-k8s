@@ -126,7 +126,7 @@ func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			nodecerts.SecretCAKey: []byte("fake-ca-cert"),
+			nodecerts.CAFileName: []byte("fake-ca-cert"),
 		},
 	}
 	assert.NoError(t, c.Create(caSecret))

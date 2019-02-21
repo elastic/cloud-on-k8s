@@ -48,12 +48,12 @@ const (
 )
 
 const (
-	// SecretCAKey is used for the CA Certificates inside a secret
-	SecretCAKey = "ca.pem"
-	// SecretCertKey is used for the Certificates inside a secret
-	SecretCertKey = "cert.pem"
 	// SecretPrivateKeyKey is used for the private keys inside a secret
 	SecretPrivateKeyKey = "node.key"
+	// CAFileName is used for the CA Certificates inside a secret
+	CAFileName = "ca.pem"
+	// CertFileName is used for the Certificates inside a secret
+	CertFileName = "cert.pem"
 )
 
 const (
