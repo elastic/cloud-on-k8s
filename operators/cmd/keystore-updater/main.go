@@ -17,13 +17,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -261,46 +262,14 @@ func execute() {
 		go coalescingRetry(config)
 	}
 
-	// initial update/create
-	updateKeystore(config)
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		fatal(err, "Failed to create watcher")
+	// on each filesystem event for config.SourceDir, update the keystore
+	onEvent := func() (stop bool, err error) {
+		updateKeystore(config)
+		return false, nil // run forever
 	}
-	defer watcher.Close()
-
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-				// avoid noisy chmod events when k8s maps changes into the file system
-				// also k8s seems to use a couple of dot files to manage mapped secrets which create
-				// additional noise and should be safe to ignore
-				if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(path.Base(event.Name), ".") {
-					log.Info("Ignoring:", "event", event)
-					continue
-				}
-				log.Info("Observed:", "event", event)
-				updateKeystore(config)
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Error(err, "watcher error")
-			}
-		}
-	}()
-
-	err = watcher.Add(config.SourceDir)
-	if err != nil {
-		fatal(err, fmt.Sprintf("failed to add watch on %s", config.SourceDir))
+	if err := fs.WatchPath(config.SourceDir, onEvent, log); err != nil {
+		log.Error(err, "Cannot watch filesystem", "path", config.SourceDir)
 	}
-	<-done
 }
 
 func main() {
