@@ -53,9 +53,8 @@ var (
 	testRSAPrivateKey *rsa.PrivateKey
 )
 
-func init() {
+func initTestVars() {
 	var err error
-
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
 		panic("Failed to parse private key: " + err.Error())
@@ -64,7 +63,11 @@ func init() {
 	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
+}
+
+func init() {
 	logf.SetLogger(logf.ZapLogger(false))
+	initTestVars()
 }
 
 func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
