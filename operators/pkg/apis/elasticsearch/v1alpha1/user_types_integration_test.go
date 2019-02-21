@@ -11,7 +11,6 @@ import (
 
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -23,14 +22,9 @@ func TestStorageUser(t *testing.T) {
 	}
 
 	spec := UserSpec{
-		Name: "kibana-user",
-		PasswordRef: corev1.SecretKeySelector{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: "user-passwords",
-			},
-			Key: "kibana-user",
-		},
-		UserRoles: []string{"kibana-system"},
+		Name:         "kibana-user",
+		PasswordHash: "ksksk",
+		UserRoles:    []string{"kibana-system"},
 	}
 	created := &User{
 		ObjectMeta: metav1.ObjectMeta{

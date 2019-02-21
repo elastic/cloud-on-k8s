@@ -5,15 +5,14 @@
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // UserSpec defines the desired state of User.
 type UserSpec struct {
-	Name        string                   `json:"name"`
-	PasswordRef corev1.SecretKeySelector `json:"passwordRef"`
-	UserRoles   []string                 `json:"userRoles"`
+	Name         string   `json:"name"`
+	PasswordHash string   `json:"passwordHash"`
+	UserRoles    []string `json:"userRoles"`
 	// We don't need custom roles right now and we would need an adapter layer anyway to translate into the
 	// version specific representations of any role spec'ed here for Elasticsearch
 	// roles       []RoleSpec         `json:"roles"`
