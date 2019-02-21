@@ -36,7 +36,7 @@ func NewExpectedPodSpecs(
 	es v1alpha1.ElasticsearchCluster,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
 	operatorImage string,
@@ -86,13 +86,13 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool) ([]corev1.Container, error),
-	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newSideCarContainersFn func(elasticsearchImage string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
 	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
-	imageName := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
+	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
-		imageName = p.CustomImageName
+		elasticsearchImage = p.CustomImageName
 	}
 
 	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
@@ -145,7 +145,7 @@ func podSpec(
 
 		Containers: []corev1.Container{{
 			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, extraFilesSecretVolume),
-			Image:           imageName,
+			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,
 			Ports:           pod.DefaultContainerPorts,
@@ -171,7 +171,8 @@ func podSpec(
 				},
 			},
 			VolumeMounts: append(
-				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
+				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.ConfigMapVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
@@ -181,7 +182,8 @@ func podSpec(
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(
-			initcontainer.SharedVolumes.Volumes(),
+			initcontainer.PrepareFsSharedVolumes.Volumes(),
+			initcontainer.PrivateKeySharedVolume.Volume(),
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
@@ -193,14 +195,14 @@ func podSpec(
 	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)
 
 	// Setup sidecars if any
-	sidecars, err := newSideCarContainersFn(imageName, p, volumes)
+	sidecars, err := newSideCarContainersFn(elasticsearchImage, p, volumes)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}
 	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(imageName, operatorImage, p.SetVMMaxMapCount)
+	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}

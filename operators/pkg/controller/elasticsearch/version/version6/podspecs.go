@@ -70,14 +70,17 @@ func ExpectedPodSpecs(
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
-	imageName string,
+	elasticsearchImage string,
 	operatorImage string,
 	setVMMaxMapCount bool,
+	nodeCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
-		imageName,
+		elasticsearchImage,
+		operatorImage,
 		linkedFiles6,
 		setVMMaxMapCount,
+		nodeCertificatesVolume,
 		initcontainer.NewSidecarInitContainer(sideCarSharedVolume, operatorImage),
 	)
 }
@@ -115,7 +118,7 @@ func newSidecarContainers(
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.CAFileName)},
 			},
 			VolumeMounts: append(
-				initcontainer.SharedVolumes.EsContainerVolumeMounts(),
+				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				sideCarSharedVolume.VolumeMount(),
 				certs.VolumeMount(),
 				keystoreVolume.VolumeMount(),

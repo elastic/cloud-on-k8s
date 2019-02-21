@@ -42,11 +42,12 @@ func ExpectedPodSpecs(
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
-	imageName string,
-	_ string,
+	elasticsearchImage string,
+	operatorImage string,
 	setVMMaxMapCount bool,
+	nodeCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(elasticsearchImage, operatorImage, initcontainer.LinkedFilesArray{}, setVMMaxMapCount, nodeCertificatesVolume)
 }
 
 // newSidecarContainers returns a list of sidecar containers.
