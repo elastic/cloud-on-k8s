@@ -21,6 +21,7 @@ type KibanaSpec struct {
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
 	// Elasticsearch configures how Kibana connects to Elasticsearch
+	// +optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
