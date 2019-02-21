@@ -5,14 +5,13 @@
 package association
 
 import (
-	"fmt"
 	"reflect"
 	"sync/atomic"
 	"time"
 
-	associations "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	v1alpha12 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
@@ -75,17 +74,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 	// Watch for changes to the association
-	if err := c.Watch(&source.Kind{Type: &associations.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &assoctype.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
 	}
 
 	// Watch Elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, r.watches.ElasticsearchClusters); err != nil {
+	if err := c.Watch(&source.Kind{Type: &estype.ElasticsearchCluster{}}, r.watches.ElasticsearchClusters); err != nil {
 		return err
 	}
 
 	// Watch Kibana objects
-	if err := c.Watch(&source.Kind{Type: &v1alpha12.Kibana{}}, r.watches.Kibanas); err != nil {
+	if err := c.Watch(&source.Kind{Type: &kbtype.Kibana{}}, r.watches.Kibanas); err != nil {
 		return err
 	}
 
@@ -116,7 +115,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	var association associations.KibanaElasticsearchAssociation
+	var association assoctype.KibanaElasticsearchAssociation
 	err := r.Get(request.NamespacedName, &association)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -132,7 +131,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	handler := finalizer.NewHandler(r)
-	err = handler.Handle(&association, watchFinalizer(association.Name, r.watches))
+	err = handler.Handle(&association, watchFinalizer(k8s.ExtractNamespacedName(&association), r.watches))
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
@@ -157,84 +156,87 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 }
 
-func elasticsearchWatchName(assocName string) string {
-	return assocName + "-es-watch"
+func elasticsearchWatchName(assocKey types.NamespacedName) string {
+	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
 }
 
-func kibanaWatchName(assocName string) string {
-	return assocName + "-kb-watch"
+func kibanaWatchName(assocKey types.NamespacedName) string {
+	return assocKey.Namespace + "-" + assocKey.Name + "-kb-watch"
 }
 
-func watchFinalizer(assocName string, w watches.DynamicWatches) finalizer.Finalizer {
+// watchFinalizer ensure that we remove watches for Kibanas and Elasticsearch clusters that we are not longer interested
+// because the assocation has been deleted.
+func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "dynamic-watches",
 		Execute: func() error {
-			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocName))
-			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocName))
+			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocKey))
+			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
 			return nil
 		},
 	}
 }
 
-func resultFromStatus(status associations.AssociationStatus) reconcile.Result {
+func resultFromStatus(status assoctype.AssociationStatus) reconcile.Result {
 	switch status {
-	case associations.AssociationPending:
+	case assoctype.AssociationPending:
 		return defaultRequeue // retry again
-	case associations.AssociationEstablished, associations.AssociationFailed:
+	case assoctype.AssociationEstablished, assoctype.AssociationFailed:
 		return reconcile.Result{} // we are done or there is not much we can do
 	default:
 		return reconcile.Result{} // make the compiler happy
 	}
 }
 
-func (r *ReconcileAssociation) reconcileInternal(association associations.KibanaElasticsearchAssociation) (associations.AssociationStatus, error) {
+func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaElasticsearchAssociation) (assoctype.AssociationStatus, error) {
 	assocKey := k8s.ExtractNamespacedName(&association)
 
 	// Make sure we see events from Kibana+Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces
 	err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
-		Name:    elasticsearchWatchName(association.Name),
+		Name:    elasticsearchWatchName(assocKey),
 		Watched: association.Spec.Elasticsearch.NamespacedName(),
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return associations.AssociationFailed, err
+		return assoctype.AssociationFailed, err
 	}
 	err = r.watches.Kibanas.AddHandler(watches.NamedWatch{
-		Name:    kibanaWatchName(association.Name),
+		Name:    kibanaWatchName(assocKey),
 		Watched: association.Spec.Kibana.NamespacedName(),
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return associations.AssociationFailed, err
+		return assoctype.AssociationFailed, err
 	}
 
-	var es v1alpha1.ElasticsearchCluster
+	var es estype.ElasticsearchCluster
 	err = r.Get(association.Spec.Elasticsearch.NamespacedName(), &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
-			return associations.AssociationPending, nil
+			return assoctype.AssociationPending, nil
 		}
-		return associations.AssociationFailed, err
+		return assoctype.AssociationFailed, err
 	}
 
 	// TODO reconcile external user CRD here
 
-	var kb v1alpha12.BackendElasticsearch
-	// TODO: be dynamic wrt to the service name
-	kb.URL = fmt.Sprintf("https://%s:9200", services.ExternalServiceName(es.Name))
+	var expectedEsConfig kbtype.BackendElasticsearch
 
 	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
 	var internalUsersSecret corev1.Secret
 	internalUsersSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: internalUsersSecretName}
 	if err := r.Get(internalUsersSecretKey, &internalUsersSecret); err != nil {
-		return associations.AssociationPending, err
+		if apierrors.IsNotFound(err) {
+			return assoctype.AssociationPending, err
+		}
+		return assoctype.AssociationFailed, err
 	}
 
 	// TODO: can deliver through a shared secret instead?
-	kb.Auth.Inline = &v1alpha12.ElasticsearchInlineAuth{
+	expectedEsConfig.Auth.Inline = &kbtype.ElasticsearchInlineAuth{
 		Username: secret.InternalKibanaServerUserName,
 		// TODO: error checking
 		Password: string(internalUsersSecret.Data[secret.InternalKibanaServerUserName]),
@@ -243,27 +245,28 @@ func (r *ReconcileAssociation) reconcileInternal(association associations.Kibana
 	var publicCACertSecret corev1.Secret
 	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
-		return associations.AssociationPending, err // maybe not created yet
+		return assoctype.AssociationPending, err // maybe not created yet
 	}
-	kb.CaCertSecret = &publicCACertSecret.Name
+	// TODO this is currently limiting the association to the same namespace
+	expectedEsConfig.CaCertSecret = &publicCACertSecret.Name
+	expectedEsConfig.URL = services.ExternalServiceURL(es)
 
-	var currentKb v1alpha12.Kibana
+	var currentKb kbtype.Kibana
 	err = r.Get(association.Spec.Kibana.NamespacedName(), &currentKb)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return associations.AssociationPending, err
+			return assoctype.AssociationPending, err
 		}
-		return associations.AssociationFailed, err
+		return assoctype.AssociationFailed, err
 	}
 
 	// TODO: this is a bit rough
-	if !reflect.DeepEqual(currentKb.Spec.Elasticsearch, kb) {
-		currentKb.Spec.Elasticsearch = kb
-		log.Info("Updating Kibana spec")
+	if !reflect.DeepEqual(currentKb.Spec.Elasticsearch, expectedEsConfig) {
+		currentKb.Spec.Elasticsearch = expectedEsConfig
+		log.Info("Updating Kibana spec with Elasticsearch backend configuration")
 		if err := r.Update(&currentKb); err != nil {
-			return associations.AssociationPending, err
+			return assoctype.AssociationPending, err
 		}
 	}
-
-	return associations.AssociationEstablished, nil
+	return assoctype.AssociationEstablished, nil
 }

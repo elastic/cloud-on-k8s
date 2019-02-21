@@ -7,6 +7,7 @@
 package association
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
@@ -30,9 +31,9 @@ import (
 
 var c k8s.Client
 
-var resourceKey = types.NamespacedName{Name: "baz", Namespace: "default"}
+var associationKey = types.NamespacedName{Name: "baz", Namespace: "default"}
 var kibanaKey = types.NamespacedName{Name: "bar", Namespace: "default"}
-var expectedRequest = reconcile.Request{NamespacedName: resourceKey}
+var expectedRequest = reconcile.Request{NamespacedName: associationKey}
 
 func TestReconcile(t *testing.T) {
 
@@ -47,7 +48,7 @@ func TestReconcile(t *testing.T) {
 	recFn, requests := SetupTestReconcile(rec)
 	controller, err := add(mgr, recFn)
 	assert.NoError(t, err)
-	addWatches(controller, rec)
+	assert.NoError(t, addWatches(controller, rec))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
@@ -77,8 +78,8 @@ func TestReconcile(t *testing.T) {
 	// Create the association resource, that should be reconciled
 	instance := &v1alpha1.KibanaElasticsearchAssociation{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      resourceKey.Name,
-			Namespace: resourceKey.Namespace,
+			Name:      associationKey.Name,
+			Namespace: associationKey.Namespace,
 		},
 		Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
 			Elasticsearch: v1alpha1.ObjectSelector{
@@ -112,23 +113,37 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		err = errors.New("Not reconciled yet")
-
 		switch e := kibana.Spec.Elasticsearch; {
 		case e.URL == "", e.CaCertSecret == nil, e.Auth.Inline.Username == "", e.Auth.Inline.Password == "":
-			return err
+			return errors.New("Not reconciled yet")
 		default:
 			return nil
 		}
 	})
 
-	// TODO what should happen on delete of one of the vertices of the association?
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
 	test.DeleteIfExists(t, c, es)
-	test.DeleteIfExists(t, c, kibana)
 	for _, s := range secrets {
 		test.DeleteIfExists(t, c, s)
 	}
+
+	// Ensure association goes back to pending if one of the vertices is deleted
+	test.CheckReconcileCalled(t, requests, expectedRequest)
+	test.RetryUntilSuccess(t, func() error {
+		fetched := v1alpha1.KibanaElasticsearchAssociation{}
+		err := c.Get(associationKey, &fetched)
+		if err != nil {
+			return err
+		}
+		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
+			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		}
+		return nil
+	})
+
+	// Delete Kibana as well
+	test.DeleteIfExists(t, c, kibana)
+
 }
 
 func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
