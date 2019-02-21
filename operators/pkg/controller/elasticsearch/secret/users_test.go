@@ -129,6 +129,12 @@ func TestNeedsUpdate(t *testing.T) {
 			needsUpdate: true,
 		},
 		{
+			desc:        "hashed creds: adding a user warrants an update of the secret",
+			subject1:    newTestCredentials(t, testUser),
+			subject2:    newTestCredentials(t, append(testUser, otherUser)),
+			needsUpdate: true,
+		},
+		{
 			desc:        "hashed creds: order of user credentials should not matter",
 			subject1:    newTestCredentials(t, []client.User{testUser[0], otherUser}),
 			subject2:    newTestCredentials(t, []client.User{otherUser, testUser[0]}),

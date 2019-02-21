@@ -153,6 +153,12 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 		otherUsers[userPw[0]] = []byte(userPw[1])
 	}
 
+	// Check for the addition or removal of users
+	if len(hc.users) != len(otherUsers) {
+		return true
+	}
+
+	// Check for user passwords update
 	for _, u := range hc.users {
 		otherPasswordBytes, ok := otherUsers[u.Name]
 		// this could turn out to be too expensive
