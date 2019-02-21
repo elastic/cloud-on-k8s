@@ -6,6 +6,7 @@ package secret
 
 import (
 	"bytes"
+	"fmt"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sort"
 	"strings"
@@ -259,6 +260,10 @@ func getUsersRolesFileBytes(users []client.User) ([]byte, error) {
 	rolesUsers := map[string][]string{}
 	for _, user := range users {
 		role := user.Role
+		if role == "" {
+			return nil, fmt.Errorf("role not defined for user `%s`", user.Name)
+		}
+
 		roleUsers := rolesUsers[role]
 		if roleUsers == nil {
 			roleUsers = []string{}

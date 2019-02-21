@@ -90,7 +90,7 @@ func newTestCredentials(t *testing.T, users []client.User) UserCredentials {
 }
 
 func TestNeedsUpdate(t *testing.T) {
-	otherUser := client.User{Name: "baz", Password: "secret"}
+	otherUser := client.User{Name: "baz", Password: "secret", Role: "yolo"}
 
 	tests := []struct {
 		desc        string

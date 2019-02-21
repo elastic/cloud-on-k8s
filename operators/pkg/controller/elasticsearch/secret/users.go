@@ -5,6 +5,7 @@
 package secret
 
 import (
+	"fmt"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 )
 
@@ -30,7 +31,8 @@ const (
 	ReloadCredsUserRole = "reload_creds_user"
 )
 
-// Predefined users and roles. .
+// Predefined users and roles.
+// Note: The role of a user is not persisted in a k8s secret, that's why ResolveRole(username) exists.
 var (
 	externalUsers = []client.User{
 		{Name: ExternalUserName, Role: SuperUserBuiltinRole},
@@ -52,3 +54,13 @@ var (
 		},
 	}
 )
+
+// ResolveRole try to find the role of a user by searching in the predefined users.
+func ResolveRole(username string) (string, error) {
+	for _, predefinedUser := range predefinedUsers {
+		if username == predefinedUser.Name && predefinedUser.Role != "" {
+			return predefinedUser.Role, nil
+		}
+	}
+	return "", fmt.Errorf("cannot resolve role for user `%s`", username)
+}
