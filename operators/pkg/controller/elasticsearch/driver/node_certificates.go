@@ -18,6 +18,7 @@ func reconcileNodeCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	ca *nodecerts.Ca,
+	csrClient nodecerts.CSRClient,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
@@ -29,7 +30,7 @@ func reconcileNodeCertificates(
 	}
 
 	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
-	if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, es, services, trustRelationships); err != nil {
+	if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships); err != nil {
 		return err
 	}
 

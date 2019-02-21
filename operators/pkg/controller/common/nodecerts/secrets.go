@@ -127,6 +127,7 @@ func ReconcileNodeCertificateSecret(
 	c k8s.Client,
 	secret corev1.Secret,
 	pod corev1.Pod,
+	csrClient CSRClient,
 	clusterName, namespace string,
 	svcs []corev1.Service,
 	ca *Ca,
