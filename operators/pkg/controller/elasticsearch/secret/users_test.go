@@ -57,10 +57,12 @@ func TestNewUserSecrets(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.expectedName, tt.subject.Secret().Name)
+		secret := tt.subject.Secret()
+		assert.Equal(t, tt.expectedName, secret.Name)
 		var keys []string
-		for k := range tt.subject.Secret().Data {
+		for k, v := range secret.Data {
 			keys = append(keys, k)
+			assert.NotEmpty(t, v)
 		}
 		sort.Strings(keys)
 		assert.EqualValues(t, tt.expectedKeys, keys)
