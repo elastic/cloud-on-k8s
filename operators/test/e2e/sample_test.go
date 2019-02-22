@@ -32,9 +32,9 @@ func TestStackSample(t *testing.T) {
 	var kb kbtype.Kibana
 	var assoc assoctype.KibanaElasticsearchAssociation
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
+	helpers.ExitOnErr(decoder.Decode(&assoc))
 	helpers.ExitOnErr(decoder.Decode(&es))
 	helpers.ExitOnErr(decoder.Decode(&kb))
-	helpers.ExitOnErr(decoder.Decode(&assoc))
 
 	sampleStack.Elasticsearch = es
 	sampleStack.Kibana = kb
