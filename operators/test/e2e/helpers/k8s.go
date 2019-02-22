@@ -148,7 +148,7 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	}
 	caCert, exists := secret.Data[nodecerts.CAFileName]
 	if !exists {
-		return nil, fmt.Errorf("No value found for secret %s", CAFileName)
+		return nil, fmt.Errorf("No value found for secret %s", nodecerts.CAFileName)
 	}
 	return certutil.ParsePEMCerts(caCert)
 }
