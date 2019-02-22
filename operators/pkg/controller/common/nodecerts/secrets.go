@@ -63,13 +63,6 @@ const (
 	CSRFileName = "csr.pem"
 )
 
-const (
-	// BlockTypeRSAPrivateKey is the PEM preamble type for an RSA private key
-	BlockTypeRSAPrivateKey = "RSA PRIVATE KEY"
-	// BlockTypeCertificate is the PEM preamble type for an X509 certificate
-	BlockTypeCertificate = "CERTIFICATE"
-)
-
 // NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
@@ -226,15 +219,12 @@ func ReconcileNodeCertificateSecret(
 	}
 
 	// store CA cert, CSR and signed certificate in a secret mounted into the pod
-	secret.Data[CAFileName] = pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})
+	secret.Data[CAFileName] = certutil.EncodePEMCert(ca.Cert.Raw)
 	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
 		secret.Data[CAFileName] = append(secret.Data[CAFileName], caPemBytes...)
 	}
 	secret.Data[CSRFileName] = csr
-	secret.Data[CertFileName] = append(
-		pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-		pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: ca.Cert.Raw})...,
-	)
+	secret.Data[CertFileName] = certutil.EncodePEMCert(certData, ca.Cert.Raw)
 	// store last CSR update in the pod annotations
 	secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 

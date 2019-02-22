@@ -10,9 +10,10 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"math/big"
 	"time"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 
@@ -127,7 +128,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: c.Cert.Raw})
+	expectedCaKeyBytes := certutil.EncodePEMCert(c.Cert.Raw)
 
 	clusterCASecret := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(objectKey),

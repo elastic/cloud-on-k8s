@@ -7,12 +7,12 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/pem"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -64,7 +64,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	asPem := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certData})
+	asPem := certutil.EncodePEMCert(certData)
 	return ioutil.WriteFile(path, asPem, 644)
 }
 

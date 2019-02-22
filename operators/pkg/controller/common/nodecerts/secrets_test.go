@@ -7,7 +7,6 @@ package nodecerts
 import (
 	cryptorand "crypto/rand"
 	"crypto/x509"
-	"encoding/pem"
 	"net"
 	"reflect"
 	"testing"
@@ -31,6 +30,7 @@ var (
 	testCSR                      *x509.CertificateRequest
 	validatedCertificateTemplate *ValidatedCertificateTemplate
 	certData                     []byte
+	pemCert                      []byte
 	testIP                       = "1.2.3.4"
 	testPod                      = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -103,6 +103,7 @@ func init() {
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
+	pemCert = certutil.EncodePEMCert(certData, testCa.Cert.Raw)
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
@@ -250,10 +251,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: append(
-							pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-							pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: testCa.Cert.Raw})...,
-						),
+						CertFileName: pemCert,
 					},
 				},
 				pod: corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
@@ -265,10 +263,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: append(
-							pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-							pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: testCa.Cert.Raw})...,
-						),
+						CertFileName: pemCert,
 					},
 				},
 				pod: testPod,
@@ -378,10 +373,7 @@ func TestReconcileNodeCertificateSecret(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: append(
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: testCa.Cert.Raw})...,
-					),
+					CertFileName: pemCert,
 				},
 			},
 			pod:               podWithTerminatedCertInitializer,
@@ -392,10 +384,7 @@ func TestReconcileNodeCertificateSecret(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: append(
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: testCa.Cert.Raw})...,
-					),
+					CertFileName: pemCert,
 				},
 			},
 			pod:               podWithRunningCertInitializer,
@@ -406,11 +395,8 @@ func TestReconcileNodeCertificateSecret(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: append(
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: certData}),
-						pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: testCa.Cert.Raw})...,
-					),
-					CSRFileName: testCSRBytes,
+					CertFileName: pemCert,
+					CSRFileName:  testCSRBytes,
 				},
 			},
 			pod:               podWithRunningCertInitializer,

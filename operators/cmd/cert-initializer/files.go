@@ -38,10 +38,7 @@ func createAndStorePrivateKey(path string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	pemKeyBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
-	})
+	pemKeyBytes := certutil.EncodePEMPrivateKey(*privateKey)
 	if err := ioutil.WriteFile(path, pemKeyBytes, 0644); err != nil {
 		return nil, err
 	}
