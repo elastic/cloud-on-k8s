@@ -13,7 +13,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/utils/test"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 
 	"github.com/stretchr/testify/require"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"

@@ -45,17 +45,6 @@
   revision = "6480d4af844c189cf5dd913db24ddd339d3a4f85"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b76c84974b5130a428d09d16ff47f8bd9c2c9a012cddfc8f0d57754c3d787842"
-  name = "github.com/elastic/k8s-operators"
-  packages = [
-    "local-volume/pkg/utils/retry",
-    "local-volume/pkg/utils/test",
-  ]
-  pruneopts = "T"
-  revision = "4fd607d46c73ed39ce4917ac0dfd7abe296235a1"
-
-[[projects]]
   digest = "1:0ffd93121f3971aea43f6a26b3eaaa64c8af20fb0ff0731087d8dab7164af5a8"
   name = "github.com/emicklei/go-restful"
   packages = [
@@ -1069,7 +1058,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/elastic/k8s-operators/local-volume/pkg/utils/test",
     "github.com/emicklei/go-restful",
     "github.com/fsnotify/fsnotify",
     "github.com/go-logr/logr",
