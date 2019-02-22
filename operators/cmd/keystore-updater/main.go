@@ -17,16 +17,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
-	"k8s.io/client-go/util/workqueue"
-
+	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/util/workqueue"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
