@@ -32,12 +32,11 @@ Intended to run as an init container in an Elasticsearch pod, it handles private
 
 ## Expected shared volumes
 
-* Private key: created and read by the cert-initializer, shared with the Elasticsearch container once started. Must persist across pod restarts through a volume (emptyDir should be fine).
+* Private key: created and read by the cert-initializer, shared with the Elasticsearch container once started.
 * CSR file: mounted in a secret volume by the operator, read by the cert-initializer.
 * Cert file: mounted in a secret volume by the operator, read by the cert-initializer and the Elasticsearch container.
 
 ## Reusing data
 
-Since the operator stores the CSR retrieved from the cert-initializer into a secret, it is able to issue a new certificate compatible with a previous CSR (and with an existing private key in the ES pod). This allows rotation of the CA cert.
-If the ES pod gets restarted, the private key may be preserved if mounted on a persistent volume. In such case, the existing certificate can be reused.
-For cases where the private key is not preserved, a new one will be generated, incompatible with the existing certificate. The operator will notice the cert-initializer init container is still in a "Running" state, hence request for the new CSR corresponding to the new private key, and update the certificate accordingly.
+Since the operator stores the CSR retrieved from the cert-initializer into a secret, it is able to issue a new certificate compatible with a previous CSR (and with an existing private key in the ES pod). This allows rotation of the CA cert. This works as long as the pod still holds the private key corresponding to the CSR.
+When the pod is started, it does not have any private key yet, but may have an existing certificate (restart case). In such case, a new private key will be generated, incompatible with the existing certificate. The operator will notice the cert-initializer init container is in a "Running" state, request a new CSR corresponding to the new private key, and update the certificate accordingly.
