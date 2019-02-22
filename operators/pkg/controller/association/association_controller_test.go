@@ -103,6 +103,8 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
+	// let's wait until the Kibana update triggers another reconcile iteration
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
 
