@@ -116,7 +116,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	kb := &kibanav1alpha1.Kibana{}
 	err := r.Get(request.NamespacedName, kb)
 
-	if common.IsPaused(kb.ObjectMeta, r.Client) {
+	if common.IsPaused(kb.ObjectMeta) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
@@ -151,6 +151,10 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 	state State,
 	kb *kibanav1alpha1.Kibana,
 ) (State, error) {
+	if !kb.Spec.Elasticsearch.IsConfigured() {
+		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
+		return state, nil
+	}
 	var auth kibanav1alpha1.ElasticsearchInlineAuth
 	if kb.Spec.Elasticsearch.Auth.Inline != nil {
 		auth = *kb.Spec.Elasticsearch.Auth.Inline

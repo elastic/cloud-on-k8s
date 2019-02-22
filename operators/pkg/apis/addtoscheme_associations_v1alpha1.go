@@ -5,7 +5,7 @@
 package apis
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 )
 
 func init() {

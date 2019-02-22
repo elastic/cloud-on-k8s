@@ -16,15 +16,12 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var cfg *rest.Config
 var c client.Client
 
 func TestMain(m *testing.M) {
-	logf.SetLogger(logf.ZapLogger(false))
-
 	t := &envtest.Environment{
 		CRDDirectoryPaths: []string{filepath.Join("..", "..", "..", "..", "config", "crds")},
 	}

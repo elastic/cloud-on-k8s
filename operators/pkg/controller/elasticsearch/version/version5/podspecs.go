@@ -30,7 +30,7 @@ func ExpectedPodSpecs(
 	// config/x-pack/ folder because of the Java Security Manager restrictions.
 	// in the future we might want to consider bind-mounting specific files instead to be less broad
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
-		secret.ElasticUsersSecretName(es.Name),
+		secret.ElasticUsersRolesSecretName(es.Name),
 		"users",
 		"/usr/share/elasticsearch/config/x-pack",
 	)

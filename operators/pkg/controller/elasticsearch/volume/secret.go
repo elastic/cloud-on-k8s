@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// SecretVolume captures a subset of data of the k8s secrete volume/mount type.
+// SecretVolume captures a subset of data of the k8s secret volume/mount type.
 type SecretVolume struct {
 	name       string
 	mountPath  string

@@ -51,6 +51,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		},
 	}
 
+	automountServiceAccountToken := false
 	return corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Resources: corev1.ResourceRequirements{
@@ -68,6 +69,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 			},
 			ReadinessProbe: probe,
 		}},
+		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
 
 }

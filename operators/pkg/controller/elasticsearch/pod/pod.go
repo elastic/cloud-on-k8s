@@ -76,6 +76,8 @@ type NewPodSpecParams struct {
 	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.User
+	// ReloadCredsUser is the user that should be used for reloading the credentials.
+	ReloadCredsUser client.User
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

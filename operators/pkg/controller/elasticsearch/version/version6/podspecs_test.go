@@ -20,7 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testProbeUser = client.User{Name: "username", Password: "supersecure"}
+var testProbeUser = client.User{Name: "username1", Password: "supersecure"}
+var testReloadCredsUser = client.User{Name: "username2", Password: "supersecure"}
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",
@@ -54,6 +55,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 					SetVMMaxMapCount: true,
 					Version:          "1.2.3",
 					ProbeUser:        testProbeUser,
+					ReloadCredsUser:  testReloadCredsUser,
 				},
 				nodeCertificatesVolume: volume.SecretVolume{},
 				extraFilesSecretVolume: volume.SecretVolume{},
@@ -73,7 +75,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "xpack.security.enabled", Value: "true"},
 				{Name: "xpack.license.self_generated.type", Value: "trial"},
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
-				{Name: "PROBE_USERNAME", Value: "username"},
+				{Name: "PROBE_USERNAME", Value: "username1"},
 			},
 		},
 	}
@@ -168,7 +170,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 2, len(esPodSpec.Containers))
 	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 12, len(esPodSpec.Volumes))
+	assert.Equal(t, 13, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -199,7 +201,7 @@ func Test_newSidecarContainers(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "error: no probe user volume",
+			name: "error: no reload creds user volume",
 			args: args{
 				imageName: "test-operator-image",
 				spec:      pod.NewPodSpecParams{},
@@ -215,8 +217,8 @@ func Test_newSidecarContainers(t *testing.T) {
 				imageName: "test-operator-image",
 				spec:      pod.NewPodSpecParams{},
 				volumes: map[string]volume.VolumeLike{
-					keystore.SecretVolumeName:  volume.SecretVolume{},
-					volume.ProbeUserVolumeName: volume.SecretVolume{},
+					keystore.SecretVolumeName:        volume.SecretVolume{},
+					volume.ReloadCredsUserVolumeName: volume.SecretVolume{},
 				},
 			},
 			wantErr: true,
@@ -225,10 +227,12 @@ func Test_newSidecarContainers(t *testing.T) {
 			name: "success: expected container present",
 			args: args{
 				imageName: "test-operator-image",
-				spec:      pod.NewPodSpecParams{},
+				spec: pod.NewPodSpecParams{
+					ReloadCredsUser: testReloadCredsUser,
+				},
 				volumes: map[string]volume.VolumeLike{
 					keystore.SecretVolumeName:               volume.NewSecretVolumeWithMountPath("keystore", "keystore", "/keystore"),
-					volume.ProbeUserVolumeName:              volume.NewSecretVolumeWithMountPath("user", "user", "/user"),
+					volume.ReloadCredsUserVolumeName:        volume.NewSecretVolumeWithMountPath("users", "users", "/mnt/elastic/reload-creds-user"),
 					volume.NodeCertificatesSecretVolumeName: volume.NewSecretVolumeWithMountPath("ca.pem", "certs", "/certs"),
 				},
 			},
@@ -241,8 +245,8 @@ func Test_newSidecarContainers(t *testing.T) {
 					Env: []corev1.EnvVar{
 						{Name: "SOURCE_DIR", Value: "/keystore"},
 						{Name: "RELOAD_CREDENTIALS", Value: "true"},
-						{Name: "USERNAME", Value: ""}, // because dummy probe user is used
-						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/probe-user"},
+						{Name: "USERNAME", Value: "username2"},
+						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/reload-creds-user/username2"},
 						{Name: "CERTIFICATES_PATH", Value: "/certs/ca.pem"},
 					},
 					VolumeMounts: []corev1.VolumeMount{
@@ -281,9 +285,9 @@ func Test_newSidecarContainers(t *testing.T) {
 							MountPath: "/keystore",
 						},
 						{
-							Name:      "user",
+							Name:      "users",
 							ReadOnly:  true,
-							MountPath: "/user",
+							MountPath: "/mnt/elastic/reload-creds-user",
 						},
 					},
 				},

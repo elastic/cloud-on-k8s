@@ -10,9 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
 
 	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -62,6 +64,22 @@ func TestReconcile(t *testing.T) {
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
+	// Deployment won't be created until we provide details for the ES backend
+	secret := mockCaSecret(t, c)
+	instance.Spec.Elasticsearch = kibanav1alpha1.BackendElasticsearch{
+		URL: "http://127.0.0.1:9200",
+		Auth: kibanav1alpha1.ElasticsearchAuth{
+			Inline: &kibanav1alpha1.ElasticsearchInlineAuth{
+				Username: "foo",
+				Password: "bar",
+			},
+		},
+		CaCertSecret: &secret.Name,
+	}
+
+	assert.NoError(t, c.Update(instance))
+	test.CheckReconcileCalled(t, requests, expectedRequest)
+
 	deploy := &appsv1.Deployment{}
 	test.RetryUntilSuccess(t, func() error {
 		return c.Get(depKey, deploy)
@@ -77,4 +95,24 @@ func TestReconcile(t *testing.T) {
 	// Manually delete Deployment since GC isn't enabled in the test control plane
 	test.DeleteIfExists(t, c, deploy)
 
+}
+
+func mockCaSecret(t *testing.T, c k8s.Client) *v1.Secret {
+	// The Kibana resource needs a CA secret created by the Elasticsearch controller
+	// but the Elasticsearch controller is not running.
+	// Here we are creating a dummy secret
+	// TODO: This would not be necessary if we would allow embedding the secret
+
+	caSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			nodecerts.CAFileName: []byte("fake-ca-cert"),
+		},
+	}
+	assert.NoError(t, c.Create(caSecret))
+
+	return caSecret
 }

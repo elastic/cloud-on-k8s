@@ -21,6 +21,7 @@ type KibanaSpec struct {
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
 	// Elasticsearch configures how Kibana connects to Elasticsearch
+	// +optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
@@ -45,6 +46,11 @@ type BackendElasticsearch struct {
 
 	// CaCertSecret names a secret that contains a CA file entry to use.
 	CaCertSecret *string `json:"caCertSecret,omitempty"`
+}
+
+// IsConfigured returns true if the backend configuration is populated with non-default values.
+func (b BackendElasticsearch) IsConfigured() bool {
+	return b.URL != "" && b.Auth.Inline != nil && b.CaCertSecret != nil
 }
 
 // ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster

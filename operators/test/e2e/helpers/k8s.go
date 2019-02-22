@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -52,7 +54,13 @@ func CreateClient() (k8s.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+	if err := estype.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := kbtype.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})

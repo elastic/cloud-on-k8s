@@ -14,8 +14,10 @@ import (
 
 // InternalUsers are Elasticsearch users intended for system use.
 type InternalUsers struct {
-	ControllerUser esclient.User
-	KibanaUser     esclient.User
+	ControllerUser  esclient.User
+	ProbeUser       esclient.User
+	ReloadCredsUser esclient.User
+	KibanaUser      esclient.User
 }
 
 func NewInternalUsersFrom(users []esclient.User) InternalUsers {
@@ -23,6 +25,12 @@ func NewInternalUsersFrom(users []esclient.User) InternalUsers {
 	for _, user := range users {
 		if user.Name == secret.InternalControllerUserName {
 			internalUsers.ControllerUser = user
+		}
+		if user.Name == secret.InternalProbeUserName {
+			internalUsers.ProbeUser = user
+		}
+		if user.Name == secret.InternalReloadCredsUserName {
+			internalUsers.ReloadCredsUser = user
 		}
 		if user.Name == secret.InternalKibanaServerUserName {
 			internalUsers.KibanaUser = user
@@ -47,30 +55,27 @@ func ReconcileUsers(
 ) (*InternalUsers, error) {
 
 	internalSecrets := secret.NewInternalUserCredentials(es)
-
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {
+		return nil, err
+	}
+
+	externalSecrets := secret.NewExternalUserCredentials(es)
+	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
 		return nil, err
 	}
 
 	users := internalSecrets.Users()
 	internalUsers := NewInternalUsersFrom(users)
-	externalSecrets := secret.NewExternalUserCredentials(es)
+	users = append(users, externalSecrets.Users()...)
+	roles := secret.PredefinedRoles
 
-	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
-		return nil, err
-	}
-
-	for _, u := range externalSecrets.Users() {
-		users = append(users, u)
-	}
-
-	elasticUsersSecret, err := secret.NewElasticUsersCredentials(es, users)
+	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users, roles)
 	if err != nil {
 		return nil, err
 	}
-
-	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersSecret); err != nil {
+	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, elasticUsersRolesSecret); err != nil {
 		return nil, err
 	}
+
 	return &internalUsers, err
 }

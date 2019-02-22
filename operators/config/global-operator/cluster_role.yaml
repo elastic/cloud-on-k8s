@@ -79,10 +79,10 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - deployments.k8s.elastic.co
+  - associations.k8s.elastic.co
   resources:
-  - stacks
-  - stacks/status
+  - kibanaelasticsearchassociations
+  - kibanaelasticsearchassociations/status
   verbs:
   - get
   - list

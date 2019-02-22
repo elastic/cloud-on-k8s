@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
@@ -23,8 +23,8 @@ var autoPortForward = flag.Bool(
 		"k8s resources on ephemeral ports to localhost)")
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
-func NewElasticsearchClient(stack v1alpha1.Stack, k *K8sHelper) (*client.Client, error) {
-	password, err := k.GetElasticPassword(stack.Name)
+func NewElasticsearchClient(es v1alpha1.ElasticsearchCluster, k *K8sHelper) (*client.Client, error) {
+	password, err := k.GetElasticPassword(es.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -32,11 +32,11 @@ func NewElasticsearchClient(stack v1alpha1.Stack, k *K8sHelper) (*client.Client,
 		Name:     "elastic",
 		Password: password,
 	}
-	caCert, err := k.GetCACert(stack.Name)
+	caCert, err := k.GetCACert(es.Name)
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", stack.Name, stack.Namespace)
+	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", es.Name, es.Namespace)
 	var dialer net.Dialer
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()

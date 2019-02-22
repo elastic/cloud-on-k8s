@@ -57,7 +57,7 @@ create_cluster() {
 }
 
 delete_cluster() {
-    gcloud beta --project ${GCLOUD_PROJECT} container clusters delete ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
+    gcloud beta --quiet --project ${GCLOUD_PROJECT} container clusters delete ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
 }
 
 setup_registry_credentials() {

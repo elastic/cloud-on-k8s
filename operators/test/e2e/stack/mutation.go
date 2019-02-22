@@ -10,9 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +29,7 @@ const (
 // we expect the stack to be already created and running.
 // If the stack to mutate to is the same as the original stack,
 // then all tests should still pass.
-func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.TestStep {
+func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 
 	var clusterIDBeforeMutation string
 
@@ -39,28 +41,34 @@ func MutationTestSteps(stack v1alpha1.Stack, k *helpers.K8sHelper) []helpers.Tes
 				Name: "Start querying ES cluster health while mutation is going on",
 				Test: func(t *testing.T) {
 					var err error
-					continuousHealthChecks, err = NewContinousHealthCheck(stack, k)
+					continuousHealthChecks, err = NewContinousHealthCheck(stack.Elasticsearch, k)
 					require.NoError(t, err)
 					continuousHealthChecks.Start()
 				},
 			},
-			RetrieveClusterUUIDStep(stack, k, &clusterIDBeforeMutation),
+			RetrieveClusterUUIDStep(stack.Elasticsearch, k, &clusterIDBeforeMutation),
 			helpers.TestStep{
 				Name: "Applying the mutation should succeed",
 				Test: func(t *testing.T) {
-					// get stack so we have a versioned k8s resource we can update
-					var stackRes v1alpha1.Stack
-					err := k.Client.Get(GetNamespacedName(stack), &stackRes)
-					require.NoError(t, err)
-					// update with new stack spec
-					stackRes.Spec = stack.Spec
-					err = k.Client.Update(&stackRes)
-					require.NoError(t, err)
+					var curEs estype.ElasticsearchCluster
+					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &curEs))
+					curEs.Spec = stack.Elasticsearch.Spec
+					require.NoError(t, k.Client.Update(&curEs))
+
+					var curKb v1alpha1.Kibana
+					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Kibana), &curKb))
+					curKb.Spec = stack.Kibana.Spec
+					require.NoError(t, k.Client.Update(&curKb))
+
+					var curAssoc assoctype.KibanaElasticsearchAssociation
+					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Association), &curAssoc))
+					curAssoc.Spec = stack.Association.Spec
+					require.NoError(t, k.Client.Update(&curAssoc))
 				},
 			}).
 		WithSteps(CheckStackSteps(stack, k)...).
 		WithSteps(
-			CompareClusterUUIDStep(stack, k, &clusterIDBeforeMutation),
+			CompareClusterUUIDStep(stack.Elasticsearch, k, &clusterIDBeforeMutation),
 			helpers.TestStep{
 				Name: "Cluster health should not have been red during mutation process",
 				Test: func(t *testing.T) {
@@ -91,8 +99,8 @@ type ContinousHealthCheck struct {
 }
 
 // NewContinousHealthCheck sets up a ContinousHealthCheck struct
-func NewContinousHealthCheck(stack v1alpha1.Stack, k *helpers.K8sHelper) (*ContinousHealthCheck, error) {
-	esClient, err := helpers.NewElasticsearchClient(stack, k)
+func NewContinousHealthCheck(es estype.ElasticsearchCluster, k *helpers.K8sHelper) (*ContinousHealthCheck, error) {
+	esClient, err := helpers.NewElasticsearchClient(es, k)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +136,7 @@ func (hc *ContinousHealthCheck) Start() {
 					continue
 				}
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {
-					hc.AppendErr(errors.New("Cluster health red"))
+					hc.AppendErr(errors.New("cluster health red"))
 					continue
 				}
 				hc.SuccessCount++

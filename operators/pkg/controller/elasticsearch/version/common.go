@@ -63,6 +63,7 @@ func NewExpectedPodSpecs(
 					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 					KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
 					ProbeUser:            paramsTmpl.ProbeUser,
+					ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
 				},
 				operatorImage,
 				newEnvironmentVarsFn,
@@ -107,6 +108,12 @@ func podSpec(
 	)
 	volumes[probeSecret.Name()] = probeSecret
 
+	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
+		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
+	)
+	volumes[reloadCredsSecret.Name()] = reloadCredsSecret
+
 	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
@@ -140,6 +147,7 @@ func podSpec(
 	}
 
 	// TODO: Security Context
+	automountServiceAccountToken := false
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 
@@ -187,9 +195,11 @@ func podSpec(
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
+			reloadCredsSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 			keystoreVolume.Volume(),
 		),
+		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
 
 	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)

@@ -4,18 +4,20 @@
 
 // +build integration
 
-package stack
+package association
 
 import (
+	"fmt"
 	"testing"
 
-	deploymentsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,23 +31,11 @@ import (
 
 var c k8s.Client
 
-var resourceKey = types.NamespacedName{Name: "foo", Namespace: "default"}
-var expectedRequest = reconcile.Request{NamespacedName: resourceKey}
+var associationKey = types.NamespacedName{Name: "baz", Namespace: "default"}
+var kibanaKey = types.NamespacedName{Name: "bar", Namespace: "default"}
+var expectedRequest = reconcile.Request{NamespacedName: associationKey}
 
 func TestReconcile(t *testing.T) {
-	instance := &deploymentsv1alpha1.Stack{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
-		Spec: deploymentsv1alpha1.StackSpec{
-			Elasticsearch: esv1alpha1.ElasticsearchSpec{
-				SetVMMaxMapCount: false,
-				Topologies: []esv1alpha1.ElasticsearchTopologySpec{
-					{
-						NodeCount: 3,
-					},
-				},
-			},
-		},
-	}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
@@ -56,7 +46,9 @@ func TestReconcile(t *testing.T) {
 	rec, err := newReconciler(mgr)
 	require.NoError(t, err)
 	recFn, requests := SetupTestReconcile(rec)
-	assert.NoError(t, add(mgr, recFn))
+	controller, err := add(mgr, recFn)
+	assert.NoError(t, err)
+	assert.NoError(t, addWatches(controller, rec))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
@@ -65,10 +57,41 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
+	// Assume an Elasticsearch cluster and a Kibana have been created
+	es := &esv1alpha1.ElasticsearchCluster{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "default",
+		},
+	}
+	assert.NoError(t, c.Create(es))
+	kb := kbv1alpha1.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kibanaKey.Name,
+			Namespace: kibanaKey.Namespace,
+		},
+	}
+	assert.NoError(t, c.Create(&kb))
 	// Pretend secrets created by the Elasticsearch controller are there
 	secrets := mockSecrets(t, c)
 
-	// Create the stack resource, that should be reconciled
+	// Create the association resource, that should be reconciled
+	instance := &v1alpha1.KibanaElasticsearchAssociation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      associationKey.Name,
+			Namespace: associationKey.Namespace,
+		},
+		Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
+			Elasticsearch: v1alpha1.ObjectSelector{
+				Name:      "foo",
+				Namespace: "default",
+			},
+			Kibana: v1alpha1.ObjectSelector{
+				Name:      kibanaKey.Name,
+				Namespace: kibanaKey.Namespace,
+			},
+		},
+	}
 	err = c.Create(instance)
 
 	// The instance object may not be a valid object because it might be missing some required fields.
@@ -80,27 +103,49 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
+	// let's wait until the Kibana update triggers another reconcile iteration
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 
-	// Elasticsearch cluster should be created
-	es := &esv1alpha1.ElasticsearchCluster{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(resourceKey, es) })
+	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
 
-	// Kibana should be created
+	// Kibana should be updated
 	kibana := &kbv1alpha1.Kibana{}
-	test.RetryUntilSuccess(t, func() error { return c.Get(resourceKey, kibana) })
-
-	// Delete resources and expect Reconcile to be called and eventually recreate them
-	// ES cluster
-	test.CheckResourceDeletionTriggersReconcile(t, c, requests, resourceKey, es, expectedRequest)
-	// Kibana
-	test.CheckResourceDeletionTriggersReconcile(t, c, requests, resourceKey, kibana, expectedRequest)
+	test.RetryUntilSuccess(t, func() error {
+		err := c.Get(kibanaKey, kibana)
+		if err != nil {
+			return err
+		}
+		switch e := kibana.Spec.Elasticsearch; {
+		case e.URL == "", e.CaCertSecret == nil, e.Auth.Inline.Username == "", e.Auth.Inline.Password == "":
+			return errors.New("Not reconciled yet")
+		default:
+			return nil
+		}
+	})
 
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
 	test.DeleteIfExists(t, c, es)
-	test.DeleteIfExists(t, c, kibana)
 	for _, s := range secrets {
 		test.DeleteIfExists(t, c, s)
 	}
+
+	// Ensure association goes back to pending if one of the vertices is deleted
+	test.CheckReconcileCalled(t, requests, expectedRequest)
+	test.RetryUntilSuccess(t, func() error {
+		fetched := v1alpha1.KibanaElasticsearchAssociation{}
+		err := c.Get(associationKey, &fetched)
+		if err != nil {
+			return err
+		}
+		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
+			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		}
+		return nil
+	})
+
+	// Delete Kibana as well
+	test.DeleteIfExists(t, c, kibana)
+
 }
 
 func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {

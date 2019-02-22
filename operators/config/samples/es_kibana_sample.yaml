@@ -1,0 +1,105 @@
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: KibanaElasticsearchAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanaelasticsearchassociation-sample
+spec:
+  elasticsearch:
+    name: "elasticsearch-sample"
+    namespace: "default"
+  kibana:
+    name: "kibana-sample"
+    namespace: "default"
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ElasticsearchCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+    k8s.elastic.co/expected-license: "trial"
+  name: elasticsearch-sample
+spec:
+  version: "6.4.2"
+  setVmMaxMapCount: true
+  updateStrategy:
+    groups:
+    # give each failure domain a chance to reconcile failures before regular changes:
+    - selector:
+        matchLabels:
+          failure-domain.beta.kubernetes.io/zone: europe-west3-a
+    - selector:
+        matchLabels:
+          failure-domain.beta.kubernetes.io/zone: europe-west3-b
+    - selector:
+        matchLabels:
+          failure-domain.beta.kubernetes.io/zone: europe-west3-c
+    changeBudget:
+      # this is the equivalent of the default change budget
+      maxSurge: 1
+      maxUnavailable: 0
+  topologies:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: 500m
+    nodeCount: 3
+    ## this shows how to add a custom label to all pods created for this topology element
+    #template:
+    #  metadata:
+    #    labels:
+    #      foo: bar
+    ## this shows how to request 2Gi of persistent data storage for pods in this topology element
+    #volumeClaimTemplates:
+    #- metadata:
+    #    name: data
+    #  spec:
+    #    accessModes:
+    #    - ReadWriteOnce
+    #    resources:
+    #      requests:
+    #        storage: 2Gi
+  # dedicated masters:
+  - nodeTypes:
+      master: true
+      data: false
+      ingest: false
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: 800m
+    nodeCount: 0
+  # dedicated data nodes
+  - nodeTypes:
+      master: false
+      data: true
+      ingest: false
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: 800m
+    nodeCount: 0
+  ## See the following as an example of how to configure a snapshot repository
+  #snapshotRepository:
+  #  type: "gcs"
+  #  settings:
+  #    bucketName: "stack-sample-snapshot-repo"
+  #    credentials:
+  #      namespace: "default"
+  #      name: "gcs-repo-account"
+  expose: LoadBalancer
+---
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibana-sample
+spec:
+  version: "6.4.2"
+  nodeCount: 1
+  expose: LoadBalancer

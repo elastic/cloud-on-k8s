@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -20,7 +20,7 @@ import (
 
 // K8sStackChecks returns all test steps to verify the given stack
 // in K8s is the expected one
-func K8sStackChecks(stack v1alpha1.Stack, k8sClient *helpers.K8sHelper) helpers.TestStepList {
+func K8sStackChecks(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{
 		CheckKibanaDeployment(stack, k8sClient),
 		CheckKibanaPodsCount(stack, k8sClient),
@@ -38,23 +38,23 @@ func K8sStackChecks(stack v1alpha1.Stack, k8sClient *helpers.K8sHelper) helpers.
 }
 
 // CheckKibanaDeployment checks that Kibana deployment exists
-func CheckKibanaDeployment(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckKibanaDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana deployment should be set",
 		Test: helpers.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: helpers.DefaultNamespace,
-				Name:      stack.Name + "-kibana",
+				Name:      stack.Kibana.Name + "-kibana",
 			}, &dep)
-			if stack.Spec.Kibana.NodeCount == 0 && apierrors.IsNotFound(err) {
+			if stack.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
 				return nil
 			}
 			if err != nil {
 				return err
 			}
-			if *dep.Spec.Replicas != stack.Spec.Kibana.NodeCount {
-				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", stack.Spec.Kibana.NodeCount, *dep.Spec.Replicas)
+			if *dep.Spec.Replicas != stack.Kibana.Spec.NodeCount {
+				return fmt.Errorf("invalid Kibana replicas count: expected %d, got %d", stack.Kibana.Spec.NodeCount, *dep.Spec.Replicas)
 			}
 			return nil
 		}),
@@ -62,21 +62,21 @@ func CheckKibanaDeployment(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.T
 }
 
 // CheckKibanaPodsCount checks that Kibana pods count matches the expected one
-func CheckKibanaPodsCount(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckKibanaPodsCount(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana pods count should match the expected one",
 		Test: helpers.Eventually(func() error {
-			return k.CheckPodCount(helpers.KibanaPodListOptions(stack.Name), int(stack.Spec.Kibana.NodeCount))
+			return k.CheckPodCount(helpers.KibanaPodListOptions(stack.Kibana.Name), int(stack.Kibana.Spec.NodeCount))
 		}),
 	}
 }
 
 // CheckESPodsRunning checks that all ES pods for the given stack are running
-func CheckESPodsRunning(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "ES pods should eventually be running",
 		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
@@ -91,11 +91,11 @@ func CheckESPodsRunning(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Test
 }
 
 // CheckKibanaPodsRunning checks that all ES pods for the given stack are running
-func CheckKibanaPodsRunning(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckKibanaPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana pods should eventually be running",
 		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.KibanaPodListOptions(stack.Name))
+			pods, err := k.GetPods(helpers.KibanaPodListOptions(stack.Kibana.Name))
 			if err != nil {
 				return err
 			}
@@ -111,23 +111,23 @@ func CheckKibanaPodsRunning(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.
 
 // CheckESVersion checks that the running ES version is the expected one
 // TODO: request ES endpoint instead, not the k8s implementation detail
-func CheckESVersion(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESVersion(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "ES version should be the expected one",
 		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
 			// check number of pods
-			if len(pods) != int(stack.Spec.Elasticsearch.NodeCount()) {
-				return fmt.Errorf("Expected %d pods, got %d", stack.Spec.Elasticsearch.NodeCount(), len(pods))
+			if len(pods) != int(stack.Elasticsearch.Spec.NodeCount()) {
+				return fmt.Errorf("Expected %d pods, got %d", stack.Elasticsearch.Spec.NodeCount(), len(pods))
 			}
 			// check ES version label
 			for _, p := range pods {
 				version := p.Labels["elasticsearch.stack.k8s.elastic.co/version"]
-				if version != stack.Spec.Version {
-					return fmt.Errorf("Version %s does not match expected version %s", stack.Spec.Version, version)
+				if version != stack.Elasticsearch.Spec.Version {
+					return fmt.Errorf("Version %s does not match expected version %s", stack.Elasticsearch.Spec.Version, version)
 				}
 			}
 			return nil
@@ -137,17 +137,17 @@ func CheckESVersion(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep
 
 // CheckESPodsReady retrieves ES pods from the given stack,
 // and check they are in status ready, until success
-func CheckESPodsReady(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESPodsReady(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Pods should eventually be ready",
 		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
 			// check number of pods
-			if len(pods) != int(stack.Spec.Elasticsearch.NodeCount()) {
-				return fmt.Errorf("Expected %d pods, got %d", stack.Spec.Elasticsearch.NodeCount(), len(pods))
+			if len(pods) != int(stack.Elasticsearch.Spec.NodeCount()) {
+				return fmt.Errorf("Expected %d pods, got %d", stack.Elasticsearch.Spec.NodeCount(), len(pods))
 			}
 			// check pod statuses
 		podsLoop:
@@ -174,17 +174,17 @@ func (m mytesting) Errorf(s string, args ...interface{}) {
 }
 
 // CheckClusterHealth checks that the given stack status reports a green ES health
-func CheckClusterHealth(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckClusterHealth(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Cluster health should eventually be green",
 		Test: helpers.Eventually(func() error {
-			var stackRes v1alpha1.Stack
-			err := k.Client.Get(GetNamespacedName(stack), &stackRes)
+			var es estype.ElasticsearchCluster
+			err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &es)
 			if err != nil {
 				return err
 			}
-			if stackRes.Status.Elasticsearch.Health != estype.ElasticsearchGreenHealth {
-				return fmt.Errorf("Health is %s", stackRes.Status.Elasticsearch.Health)
+			if es.Status.Health != estype.ElasticsearchGreenHealth {
+				return fmt.Errorf("Health is %s", es.Status.Health)
 			}
 			return nil
 		}),
@@ -193,16 +193,16 @@ func CheckClusterHealth(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Test
 
 // CheckESPodsResources checks that ES pods from the given stack have the expected resources
 // TODO: request Elasticsearch endpoint, to also validate what's seen from ES
-func CheckESPodsResources(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Pods should eventually have the expected resources",
 		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Name))
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
 			if err != nil {
 				return err
 			}
 			var expectedLimits []corev1.ResourceList
-			for _, topo := range stack.Spec.Elasticsearch.Topologies {
+			for _, topo := range stack.Elasticsearch.Spec.Topologies {
 				for i := 0; i < int(topo.NodeCount); i++ {
 					expectedLimits = append(expectedLimits, topo.Resources.Limits)
 				}
@@ -224,14 +224,14 @@ func CheckESPodsResources(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.Te
 }
 
 // CheckServices checks that all stack services are created
-func CheckServices(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
-				stack.Name + "-es-discovery",
-				stack.Name + "-es",
-				stack.Name + "-kibana",
+				stack.Elasticsearch.Name + "-es-discovery",
+				stack.Elasticsearch.Name + "-es",
+				stack.Kibana.Name + "-kibana",
 			} {
 				if _, err := k.GetService(s); err != nil {
 					return err
@@ -243,14 +243,14 @@ func CheckServices(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep 
 }
 
 // CheckServicesEndpoints checks that services have the expected number of endpoints
-func CheckServicesEndpoints(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				stack.Name + "-es-discovery": int(stack.Spec.Elasticsearch.NodeCount()),
-				stack.Name + "-kibana":       int(stack.Spec.Kibana.NodeCount),
-				stack.Name + "-es":           int(stack.Spec.Elasticsearch.NodeCount()),
+				stack.Elasticsearch.Name + "-es-discovery": int(stack.Elasticsearch.Spec.NodeCount()),
+				stack.Kibana.Name + "-kibana":              int(stack.Kibana.Spec.NodeCount),
+				stack.Elasticsearch.Name + "-es":           int(stack.Elasticsearch.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this stack
@@ -272,16 +272,16 @@ func CheckServicesEndpoints(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.
 }
 
 // CheckClusterUUID checks that the cluster ID is eventually set in the stack status
-func CheckClusterUUID(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckClusterUUID(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Cluster UUID should eventually appear in the stack status",
 		Test: helpers.Eventually(func() error {
-			var s v1alpha1.Stack
-			err := k.Client.Get(GetNamespacedName(stack), &s)
+			var es estype.ElasticsearchCluster
+			err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &es)
 			if err != nil {
 				return err
 			}
-			if s.Status.Elasticsearch.ClusterUUID == "" {
+			if es.Status.ClusterUUID == "" {
 				return fmt.Errorf("ClusterUUID not set")
 			}
 			return nil
@@ -290,11 +290,11 @@ func CheckClusterUUID(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestSt
 }
 
 // CheckESPassword checks that the user password to access ES is correctly set
-func CheckESPassword(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elastic password should be available",
 		Test: func(t *testing.T) {
-			password, err := k.GetElasticPassword(stack.Name)
+			password, err := k.GetElasticPassword(stack.Elasticsearch.Name)
 			require.NoError(t, err)
 			require.NotEqual(t, "", password)
 		},
