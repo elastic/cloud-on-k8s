@@ -25,7 +25,7 @@ func TestSecretVolumeItemProjection(t *testing.T) {
 		{
 			volume: testVolume,
 			expected: []corev1.KeyToPath{
-				corev1.KeyToPath{
+				{
 					Key:  "foo",
 					Path: "foo",
 				},

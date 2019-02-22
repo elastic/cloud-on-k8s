@@ -1,0 +1,13 @@
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: KibanaElasticsearchAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanaelasticsearchassociation-sample
+spec:
+  elasticsearch:
+    name: "foo"
+    namespace: "default"
+  kibana:
+    name: "bar"
+    namespace: "default"

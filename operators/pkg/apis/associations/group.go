@@ -2,5 +2,5 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// Package deployments contains deployments API versions
-package deployments
+// Package associations contains associations API versions
+package associations

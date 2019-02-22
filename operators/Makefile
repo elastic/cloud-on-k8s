@@ -41,7 +41,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration check-fmt elastic-operator keystore-updater check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator keystore-updater check-license-header
 
 ## -- build
 
@@ -111,11 +111,11 @@ logs-global-operator:
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
-	@ kubectl apply -f config/samples/deployments_v1alpha1_stack.yaml
+	@ kubectl apply -f config/samples/es_kibana_sample.yaml
 
 # Display elasticsearch credentials of the first stack
 show-credentials:
-	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
+	@ echo "elastic:$$(kubectl get secret elasticsearch-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
 
 
 ##########################################
@@ -154,11 +154,13 @@ set-context-gke:
 bootstrap-gke:
 	./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
+	# push "latest" operator image to be used for init containers when running the operator locally
+	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
 delete-gke:
 	./hack/gke-cluster.sh delete
 
-# -- registry in the cluster
+## -- registry in the cluster
 
 registry:
 	@ echo "-> Deploying registry..."
@@ -212,6 +214,10 @@ e2e:
 	docker push $(E2E_IMG)
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
+# Verify e2e tests compile with no errors, don't run them
+e2e-compile:
+	go test ./test/e2e -c -o /dev/null
+
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local:
@@ -227,7 +233,7 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt unit integration docker-build
+ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
@@ -243,3 +249,8 @@ check-requisites:
 
 check-license-header:
 	../build/check-license-header.sh
+
+# Check if some changes exist in the workspace (eg. `make generate` added some changes)
+check-local-changes:
+	@ [[ "$$(git status --porcelain)" == "" ]] \
+		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )

@@ -1,0 +1,25 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ElasticsearchCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: stack-local-volume-sample
+spec:
+  version: "6.4.2"
+  setVmMaxMapCount: true
+  topologies:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    nodeCount: 3
+    volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10M
+        storageClassName: elastic-local # or eg. gcePersistentDisk
