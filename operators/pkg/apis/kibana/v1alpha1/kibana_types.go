@@ -48,6 +48,11 @@ type BackendElasticsearch struct {
 	CaCertSecret *string `json:"caCertSecret,omitempty"`
 }
 
+// IsConfigured returns true if the backend configuration is populated with non-default values.
+func (b BackendElasticsearch) IsConfigured() bool {
+	return b.URL != "" && b.Auth.Inline != nil && b.CaCertSecret != nil
+}
+
 // ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster
 type ElasticsearchAuth struct {
 	// Inline is auth provided as plaintext inline credentials.

@@ -111,7 +111,7 @@ logs-global-operator:
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
-	@ kubectl apply -f config/samples/deployments_v1alpha1_stack.yaml
+	@ kubectl apply -f config/samples/es_kibana_sample.yaml
 
 # Display elasticsearch credentials of the first stack
 show-credentials:
