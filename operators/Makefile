@@ -248,6 +248,7 @@ check-requisites:
 check-license-header:
 	../build/check-license-header.sh
 
+# Check if some changes exist in the workspace (eg. `make generate` added some changes)
 check-local-changes:
 	@ [[ "$$(git status --porcelain)" == "" ]] \
 		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
