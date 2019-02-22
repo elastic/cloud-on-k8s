@@ -17,14 +17,13 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -159,7 +158,7 @@ func ReconcileNodeCertificateSecret(
 	ca *Ca,
 	additionalTrustedCAsPemEncoded [][]byte,
 ) (reconcile.Result, error) {
-	// a placeholder secret may have a nil entries, create the mif needed
+	// a placeholder secret may have nil entries, create them if needed
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}

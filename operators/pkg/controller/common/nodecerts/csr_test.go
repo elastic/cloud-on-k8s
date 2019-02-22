@@ -21,7 +21,6 @@ func TestCertInitializerCSRClient_RetrieveCSR(t *testing.T) {
 	// test HTTP server
 	fail := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// http.DefaultServeMux.HandleFunc(CertInitializerRoute, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != CertInitializerRoute || fail {
 			w.WriteHeader(500)
 			w.Write(nil)
