@@ -231,7 +231,7 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
@@ -247,3 +247,7 @@ check-requisites:
 
 check-license-header:
 	../build/check-license-header.sh
+
+check-local-changes:
+	@ [[ "$$(git status --porcelain)" == "" ]] \
+		|| ( echo -e "\nError: dirty local changes"; git status --porcelain; exit 1 )
