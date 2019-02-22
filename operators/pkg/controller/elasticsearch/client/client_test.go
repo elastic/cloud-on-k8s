@@ -145,9 +145,9 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 	}{
 		{
 			name: "Context with user information should be respected",
-			args: User{Name: "elastic", Password: "changeme"},
+			args: User{name: "elastic", password: "changeme"},
 			want: expected{
-				user:        User{Name: "elastic", Password: "changeme"},
+				user:        User{name: "elastic", password: "changeme"},
 				authPresent: true,
 			},
 		},
@@ -155,7 +155,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 			name: "Context w/o user information is ok too",
 			args: User{},
 			want: expected{
-				user:        User{Name: "", Password: ""},
+				user:        User{name: "", password: ""},
 				authPresent: false,
 			},
 		},
@@ -165,8 +165,8 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 			username, password, ok := req.BasicAuth()
 			assert.Equal(t, tt.want.authPresent, ok)
-			assert.Equal(t, tt.want.user.Name, username)
-			assert.Equal(t, tt.want.user.Password, password)
+			assert.Equal(t, tt.want.user.Id(), username)
+			assert.Equal(t, tt.want.user.Password(), password)
 		}))
 		testClient.User = tt.args
 
@@ -280,7 +280,7 @@ func TestGetInfo(t *testing.T) {
 
 func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
-	dummyUser := User{Name: "user", Password: "password"}
+	dummyUser := User{name: "user", password: "password"}
 	createCert := func() *x509.Certificate {
 		ca, err := nodecerts.NewSelfSignedCa("cn")
 		require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestClient_Equal(t *testing.T) {
 		{
 			name: "different user",
 			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, User{Name: "user", Password: "another-password"}, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, User{name: "user", password: "another-password"}, dummyCaCerts),
 			want: false,
 		},
 		{

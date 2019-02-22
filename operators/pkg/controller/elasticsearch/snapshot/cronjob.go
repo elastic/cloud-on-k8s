@@ -102,13 +102,13 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 								Env: []corev1.EnvVar{
 									{Name: CertificateLocationVar, Value: certPath},
 									{Name: EsURLVar, Value: params.EsURL},
-									{Name: UserNameVar, Value: params.User.Name},
+									{Name: UserNameVar, Value: params.User.Id()},
 									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: secret.ElasticInternalUsersSecretName(params.Parent.Name),
 											},
-											Key: params.User.Name,
+											Key: params.User.Id(),
 										},
 									}},
 								},

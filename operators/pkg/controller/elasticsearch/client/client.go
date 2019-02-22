@@ -17,9 +17,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
@@ -27,9 +29,40 @@ const DefaultVotingConfigExclusionsTimeout = "30s"
 
 // User captures Elasticsearch user credentials.
 type User struct {
-	Name     string
-	Password string
-	Role     string
+	name     string
+	password string
+	role     string
+}
+
+func NewUserWithPassword(name string, password string, role string) User {
+	return User{name: name, password: password, role: role}
+}
+
+// NewUser creates a new user.
+func NewUser(name string, role string) User {
+	return User{name: name, password: string(user.RandomPasswordBytes()), role: role}
+}
+
+var _ user.User = User{}
+
+func (u User) Id() string {
+	return u.name
+}
+
+func (u User) PasswordHash() ([]byte, error) {
+	return bcrypt.GenerateFromPassword([]byte(u.password), bcrypt.DefaultCost)
+}
+
+func (u User) PasswordMatches(hash []byte) bool {
+	return bcrypt.CompareHashAndPassword(hash, []byte(u.password)) == nil
+}
+
+func (u User) Password() string {
+	return string(u.password)
+}
+
+func (u User) Roles() []string {
+	return []string{u.role}
 }
 
 // Role represents an Elasticsearch role.
@@ -153,7 +186,7 @@ func (c *Client) doRequest(context context.Context, request *http.Request) (*htt
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	if c.User != (User{}) {
-		withContext.SetBasicAuth(c.User.Name, c.User.Password)
+		withContext.SetBasicAuth(c.User.Id(), c.User.Password())
 	}
 
 	response, err := c.HTTP.Do(withContext)

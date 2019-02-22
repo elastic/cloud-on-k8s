@@ -62,6 +62,8 @@ spec:
                       - username
                       - password
                       type: object
+                    secret:
+                      type: object
                   type: object
                 caCertSecret:
                   description: CaCertSecret names a secret that contains a ca.pem

@@ -115,8 +115,8 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		switch e := kibana.Spec.Elasticsearch; {
-		case e.URL == "", e.CaCertSecret == nil, e.Auth.Inline.Username == "", e.Auth.Inline.Password == "":
+		switch {
+		case !kibana.Spec.Elasticsearch.IsConfigured():
 			return errors.New("Not reconciled yet")
 		default:
 			return nil

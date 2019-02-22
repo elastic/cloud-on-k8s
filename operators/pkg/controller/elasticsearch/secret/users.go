@@ -13,8 +13,6 @@ const (
 	ExternalUserName = "elastic"
 	// InternalControllerUserName a user to be used from this controller when interacting with ES.
 	InternalControllerUserName = "elastic-internal"
-	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
-	InternalKibanaServerUserName = "elastic-internal-kibana"
 	// InternalProbeUserName is a user to be used from the liveness/readiness probes when interacting with ES.
 	InternalProbeUserName = "elastic-internal-probe"
 	// InternalReloadCredsUserName is a user to be used for reloading ES credentials.
@@ -34,13 +32,12 @@ const (
 // Note: The role of a user is not persisted in a k8s secret, that's why ResolveRole(username) exists.
 var (
 	externalUsers = []client.User{
-		{Name: ExternalUserName, Role: SuperUserBuiltinRole},
+		client.NewUser(ExternalUserName, SuperUserBuiltinRole),
 	}
 	internalUsers = []client.User{
-		{Name: InternalControllerUserName, Role: SuperUserBuiltinRole},
-		{Name: InternalKibanaServerUserName, Role: KibanaUserBuiltinRole},
-		{Name: InternalProbeUserName, Role: ProbeUserRole},
-		{Name: InternalReloadCredsUserName, Role: ReloadCredsUserRole},
+		client.NewUser(InternalControllerUserName, SuperUserBuiltinRole),
+		client.NewUser(InternalProbeUserName, ProbeUserRole),
+		client.NewUser(InternalReloadCredsUserName, ReloadCredsUserRole),
 	}
 	predefinedUsers = append(internalUsers, externalUsers...)
 

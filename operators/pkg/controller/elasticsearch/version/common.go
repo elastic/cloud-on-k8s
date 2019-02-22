@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -104,13 +105,13 @@ func podSpec(
 
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
-		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
+		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Id()},
 	)
 	volumes[probeSecret.Name()] = probeSecret
 
 	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
-		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
+		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Id()},
 	)
 	volumes[reloadCredsSecret.Name()] = reloadCredsSecret
 
@@ -224,7 +225,7 @@ func NewPod(
 	es v1alpha1.ElasticsearchCluster,
 	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
-	labels := label.NewLabels(es)
+	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	// add labels from the version
 	labels[ElasticsearchVersionLabelName] = version.String()
 

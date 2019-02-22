@@ -5,6 +5,9 @@
 package v1alpha1
 
 import (
+	"bytes"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -48,6 +51,24 @@ type User struct {
 	Spec   UserSpec   `json:"spec,omitempty"`
 	Status UserStatus `json:"status,omitempty"`
 }
+
+func (in *User) Id() string {
+	return in.Spec.Name
+}
+
+func (in *User) PasswordMatches(hash []byte) bool {
+	return bytes.Equal([]byte(in.Spec.PasswordHash), hash)
+}
+
+func (in *User) PasswordHash() ([]byte, error) {
+	return []byte(in.Spec.PasswordHash), nil
+}
+
+func (in *User) Roles() []string {
+	return in.Spec.UserRoles
+}
+
+var _ user.User = &User{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

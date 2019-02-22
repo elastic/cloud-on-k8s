@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -130,8 +129,8 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		return common.PauseRequeue, nil
 	}
 
-	handler := finalizer.NewHandler(r)
-	err = handler.Handle(&association, watchFinalizer(k8s.ExtractNamespacedName(&association), r.watches))
+	h := finalizer.NewHandler(r)
+	err = h.Handle(&association, watchFinalizer(k8s.ExtractNamespacedName(&association), r.watches))
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
@@ -221,25 +220,9 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 		return assoctype.AssociationFailed, err
 	}
 
-	// TODO reconcile external user CRD here
-
-	var expectedEsConfig kbtype.BackendElasticsearch
-
-	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
-	var internalUsersSecret corev1.Secret
-	internalUsersSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: internalUsersSecretName}
-	if err := r.Get(internalUsersSecretKey, &internalUsersSecret); err != nil {
-		if apierrors.IsNotFound(err) {
-			return assoctype.AssociationPending, err
-		}
-		return assoctype.AssociationFailed, err
-	}
-
-	// TODO: can deliver through a shared secret instead?
-	expectedEsConfig.Auth.Inline = &kbtype.ElasticsearchInlineAuth{
-		Username: secret.InternalKibanaServerUserName,
-		// TODO: error checking
-		Password: string(internalUsersSecret.Data[secret.InternalKibanaServerUserName]),
+	err = reconcileEsUser(r.Client, r.scheme, association)
+	if err != nil {
+		return assoctype.AssociationPending, err //TODO distinguish conflicts and non-recoverable errors here
 	}
 
 	var publicCACertSecret corev1.Secret
@@ -247,9 +230,12 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return assoctype.AssociationPending, err // maybe not created yet
 	}
+
+	var expectedEsConfig kbtype.BackendElasticsearch
 	// TODO this is currently limiting the association to the same namespace
 	expectedEsConfig.CaCertSecret = &publicCACertSecret.Name
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
+	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(association)
 
 	var currentKb kbtype.Kibana
 	err = r.Get(association.Spec.Kibana.NamespacedName(), &currentKb)

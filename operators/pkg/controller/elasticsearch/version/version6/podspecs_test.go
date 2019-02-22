@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testProbeUser = client.User{Name: "username1", Password: "supersecure"}
-var testReloadCredsUser = client.User{Name: "username2", Password: "supersecure"}
+var testProbeUser = client.NewUserWithPassword("username1", "supersecure", "") //TODO fix role mess
+var testReloadCredsUser = client.NewUserWithPassword("username2", "supersecure", "")
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",

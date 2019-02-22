@@ -96,8 +96,8 @@ func newEnvironmentVars(
 
 		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
-		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
-		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Id()},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Id())},
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},

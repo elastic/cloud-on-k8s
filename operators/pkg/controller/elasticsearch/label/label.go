@@ -47,7 +47,7 @@ func IsDataNode(pod corev1.Pod) bool {
 var TypeSelector = labels.Set(map[string]string{common.TypeLabelName: Type}).AsSelector()
 
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
-func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
+func NewLabels(es types.NamespacedName) map[string]string {
 	var labels = map[string]string{
 		ClusterNameLabelName: es.Name,
 		common.TypeLabelName: Type,

@@ -14,16 +14,35 @@ import (
 
 const (
 	// HTTPPort is the (default) port used by Kibana
-	HTTPPort = 5601
-
+	HTTPPort                             = 5601
+	elasticsearchUsername                = "ELASTICSEARCH_USERNAME"
+	elasticsearchPassword                = "ELASTICSEARCH_PASSWORD"
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
+
+func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) {
+	if auth.Inline != nil {
+		env = append(
+			env,
+			corev1.EnvVar{Name: elasticsearchUsername, Value: auth.Inline.Username},
+			corev1.EnvVar{Name: elasticsearchPassword, Value: auth.Inline.Password},
+		)
+	}
+	if auth.SecretKeyRef != nil {
+		env = append(
+			env,
+			corev1.EnvVar{Name: elasticsearchUsername, Value: auth.SecretKeyRef.Key},
+			corev1.EnvVar{Name: elasticsearchPassword, ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: auth.SecretKeyRef,
+			}})
+	}
+}
 
 type PodSpecParams struct {
 	Version          string
 	ElasticsearchUrl string
 	CustomImageName  string
-	User             v1alpha1.ElasticsearchInlineAuth
+	User             v1alpha1.ElasticsearchAuth
 }
 
 func imageWithVersion(image string, version string) string {
@@ -52,16 +71,16 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 	}
 
 	automountServiceAccountToken := false
+	env := []corev1.EnvVar{
+		{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
+	}
+	applyToEnv(p.User, env)
 	return corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
-			Env: []corev1.EnvVar{
-				{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
-				{Name: "ELASTICSEARCH_USERNAME", Value: p.User.Username},
-				{Name: "ELASTICSEARCH_PASSWORD", Value: p.User.Password},
-			},
+			Env:   env,
 			Image: imageName,
 			Name:  "kibana",
 			Ports: []corev1.ContainerPort{

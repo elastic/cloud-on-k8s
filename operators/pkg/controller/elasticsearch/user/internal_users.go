@@ -6,10 +6,13 @@ package user
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // InternalUsers are Elasticsearch users intended for system use.
@@ -17,23 +20,19 @@ type InternalUsers struct {
 	ControllerUser  esclient.User
 	ProbeUser       esclient.User
 	ReloadCredsUser esclient.User
-	KibanaUser      esclient.User
 }
 
 func NewInternalUsersFrom(users []esclient.User) InternalUsers {
 	internalUsers := InternalUsers{}
 	for _, user := range users {
-		if user.Name == secret.InternalControllerUserName {
+		if user.Id() == secret.InternalControllerUserName {
 			internalUsers.ControllerUser = user
 		}
-		if user.Name == secret.InternalProbeUserName {
+		if user.Id() == secret.InternalProbeUserName {
 			internalUsers.ProbeUser = user
 		}
-		if user.Name == secret.InternalReloadCredsUserName {
+		if user.Id() == secret.InternalReloadCredsUserName {
 			internalUsers.ReloadCredsUser = user
-		}
-		if user.Name == secret.InternalKibanaServerUserName {
-			internalUsers.KibanaUser = user
 		}
 	}
 	return internalUsers
@@ -54,12 +53,13 @@ func ReconcileUsers(
 	es v1alpha1.ElasticsearchCluster,
 ) (*InternalUsers, error) {
 
-	internalSecrets := secret.NewInternalUserCredentials(es)
+	nsn := k8s.ExtractNamespacedName(&es)
+	internalSecrets := secret.NewInternalUserCredentials(nsn)
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, internalSecrets); err != nil {
 		return nil, err
 	}
 
-	externalSecrets := secret.NewExternalUserCredentials(es)
+	externalSecrets := secret.NewExternalUserCredentials(nsn)
 	if err := secret.ReconcileUserCredentialsSecret(c, scheme, es, externalSecrets); err != nil {
 		return nil, err
 	}
@@ -69,7 +69,21 @@ func ReconcileUsers(
 	users = append(users, externalSecrets.Users()...)
 	roles := secret.PredefinedRoles
 
-	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(es, users, roles)
+	var commonUsers []user.User
+	var customUsers v1alpha1.UserList
+	if err := c.List(&client.ListOptions{
+		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+	}, &customUsers); err != nil {
+		return nil, err
+	}
+	for _, u := range customUsers.Items {
+		commonUsers = append(commonUsers, &u)
+	}
+
+	for _, u := range users {
+		commonUsers = append(commonUsers, user.User(u))
+	}
+	elasticUsersRolesSecret, err := secret.NewElasticUsersCredentialsAndRoles(nsn, commonUsers, roles)
 	if err != nil {
 		return nil, err
 	}

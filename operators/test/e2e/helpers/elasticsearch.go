@@ -28,10 +28,7 @@ func NewElasticsearchClient(es v1alpha1.ElasticsearchCluster, k *K8sHelper) (*cl
 	if err != nil {
 		return nil, err
 	}
-	esUser := client.User{
-		Name:     "elastic",
-		Password: password,
-	}
+	esUser := client.NewUserWithPassword("elastic", password, "")ß
 	caCert, err := k.GetCACert(es.Name)
 	if err != nil {
 		return nil, err

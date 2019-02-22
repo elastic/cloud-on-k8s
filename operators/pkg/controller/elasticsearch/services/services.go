@@ -31,14 +31,15 @@ func DiscoveryServiceName(esName string) string {
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
 func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
+	nsn := k8s.ExtractNamespacedName(&es)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      DiscoveryServiceName(es.Name),
-			Labels:    label.NewLabels(es),
+			Labels:    label.NewLabels(nsn),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(es),
+			Selector: label.NewLabels(nsn),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
@@ -70,14 +71,15 @@ func ExternalServiceURL(es v1alpha1.ElasticsearchCluster) string {
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
+	nsn := k8s.ExtractNamespacedName(&es)
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      ExternalServiceName(es.Name),
-			Labels:    label.NewLabels(es),
+			Labels:    label.NewLabels(nsn),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(es),
+			Selector: label.NewLabels(nsn),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Name:     "https",

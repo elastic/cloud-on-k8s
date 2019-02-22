@@ -60,8 +60,8 @@ type defaultDriver struct {
 		trustRelationships []v1alpha1.TrustRelationship,
 	) error
 
-	// internalUsersReconciler reconciles and returns the current internal users.
-	internalUsersReconciler func(
+	// usersReconciler reconciles external and internal users and returns the current internal users.
+	usersReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
@@ -152,7 +152,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	internalUsers, err := d.internalUsersReconciler(d.Client, d.Scheme, es)
+	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
 	}

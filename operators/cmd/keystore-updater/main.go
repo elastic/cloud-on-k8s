@@ -236,10 +236,7 @@ func validateConfig() Config {
 				"Invalid config",
 			)
 		}
-		config.User = client.User{
-			Name:     user,
-			Password: pass,
-		}
+		config.User = client.NewUserWithPassword(user, pass, "") //TODO role is a bit messyß here
 
 		caCerts := viper.GetString(certPathFlag)
 		_, err := loadCerts(caCerts)
