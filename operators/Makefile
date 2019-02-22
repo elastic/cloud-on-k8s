@@ -41,7 +41,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration check-fmt elastic-operator keystore-updater check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator keystore-updater check-license-header
 
 ## -- build
 
@@ -212,6 +212,10 @@ e2e:
 	docker push $(E2E_IMG)
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
+# Verify e2e tests compile with no errors, don't run them
+e2e-compile:
+	go test ./test/e2e -c -o /dev/null
+
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local:
@@ -227,7 +231,7 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt unit integration docker-build
+ci: dep-vendor-only check-fmt unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine

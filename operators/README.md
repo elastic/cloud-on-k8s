@@ -20,6 +20,11 @@ Run `make check-requisites` to check that all dependencies are installed.
 After installing the [requirements](#requirements), you can jump straight to development with `make bootstrap-gke` or `make bootstrap-minikube` to setup a development kubernetes cluster.    
 Then, use either `make run` to run the operator locally, or `make deploy` to deploy the operators on the cluster.
 
+### Running E2E tests   
+
+E2E tests will run in the `e2e` namespace. An operator needs to be running and managing resources in the `e2e` namespace.   
+To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e tests in a separate shell `make e2e-local`.
+
 ### Useful development targets
 
 * `make bootstrap-minikube`: Sets up a Minikube cluster with required resources.
