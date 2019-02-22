@@ -4,7 +4,7 @@
 
 // +build integration
 
-package stack
+package association
 
 import (
 	"path/filepath"

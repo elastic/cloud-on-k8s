@@ -12,7 +12,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/deployments/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
@@ -25,22 +24,22 @@ type esClusterChecks struct {
 
 // ESClusterChecks returns all test steps to verify the given stack's Elasticsearch
 // cluster is running as expected
-func ESClusterChecks(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStepList {
+func ESClusterChecks(es estype.ElasticsearchCluster, k *helpers.K8sHelper) helpers.TestStepList {
 	e := esClusterChecks{}
 	return helpers.TestStepList{
-		e.BuildESClient(stack, k),
+		e.BuildESClient(es, k),
 		e.CheckESReachable(),
-		e.CheckESVersion(stack),
+		e.CheckESVersion(es),
 		e.CheckESHealthGreen(),
-		e.CheckESNodesTopology(stack),
+		e.CheckESNodesTopology(es),
 	}
 }
 
-func (e *esClusterChecks) BuildESClient(stack v1alpha1.Stack, k *helpers.K8sHelper) helpers.TestStep {
+func (e *esClusterChecks) BuildESClient(es estype.ElasticsearchCluster, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Every secret should be set so that we can build an ES client",
 		Test: func(t *testing.T) {
-			esClient, err := helpers.NewElasticsearchClient(stack, k)
+			esClient, err := helpers.NewElasticsearchClient(es, k)
 			assert.NoError(t, err)
 			e.client = esClient
 		},
@@ -59,13 +58,13 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 	}
 }
 
-func (e *esClusterChecks) CheckESVersion(stack v1alpha1.Stack) helpers.TestStep {
+func (e *esClusterChecks) CheckESVersion(es estype.ElasticsearchCluster) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch version should be the expected one",
 		Test: func(t *testing.T) {
 			info, err := e.client.GetClusterInfo(context.TODO())
 			require.NoError(t, err)
-			require.Equal(t, stack.Spec.Version, info.Version.Number)
+			require.Equal(t, es.Spec.Version, info.Version.Number)
 		},
 	}
 }
@@ -87,17 +86,17 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 		}),
 	}
 }
-func (e *esClusterChecks) CheckESNodesTopology(stack v1alpha1.Stack) helpers.TestStep {
+func (e *esClusterChecks) CheckESNodesTopology(es estype.ElasticsearchCluster) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch nodes topology should be the expected ones",
 		Test: func(t *testing.T) {
 			nodes, err := e.client.GetNodes(context.TODO())
 			require.NoError(t, err)
-			require.Equal(t, int(stack.Spec.Elasticsearch.NodeCount()), len(nodes.Nodes))
+			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 
 			// flatten the topologies
 			expectedTopologies := []estype.ElasticsearchTopologySpec{}
-			for _, topo := range stack.Spec.Elasticsearch.Topologies {
+			for _, topo := range es.Spec.Topologies {
 				for i := 0; i < int(topo.NodeCount); i++ {
 					expectedTopologies = append(expectedTopologies, topo)
 				}

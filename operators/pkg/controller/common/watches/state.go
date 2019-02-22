@@ -12,18 +12,22 @@ import (
 // NewDynamicWatches creates an initialized DynamicWatches container.
 func NewDynamicWatches() DynamicWatches {
 	return DynamicWatches{
-		Secrets:        NewDynamicEnqueueRequest(),
-		Pods:           NewDynamicEnqueueRequest(),
-		ClusterLicense: NewDynamicEnqueueRequest(),
+		Secrets:               NewDynamicEnqueueRequest(),
+		Pods:                  NewDynamicEnqueueRequest(),
+		ElasticsearchClusters: NewDynamicEnqueueRequest(),
+		Kibanas:               NewDynamicEnqueueRequest(),
+		ClusterLicense:        NewDynamicEnqueueRequest(),
 	}
 }
 
 // DynamicWatches contains stateful dynamic watches. Intended as facility to pass around stateful dynamic watches and
 // give each of them an identity.
 type DynamicWatches struct {
-	Secrets        *DynamicEnqueueRequest
-	Pods           *DynamicEnqueueRequest
-	ClusterLicense *DynamicEnqueueRequest
+	Secrets               *DynamicEnqueueRequest
+	Pods                  *DynamicEnqueueRequest
+	ElasticsearchClusters *DynamicEnqueueRequest
+	Kibanas               *DynamicEnqueueRequest
+	ClusterLicense        *DynamicEnqueueRequest
 }
 
 // InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and

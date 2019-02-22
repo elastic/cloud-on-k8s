@@ -111,11 +111,11 @@ logs-global-operator:
 
 samples:
 	@ echo "-> Pushing samples to Kubernetes cluster..."
-	@ kubectl apply -f config/samples/deployments_v1alpha1_stack.yaml
+	@ kubectl apply -f config/samples/es_kibana_sample.yaml
 
 # Display elasticsearch credentials of the first stack
 show-credentials:
-	@ echo "elastic:$$(kubectl get secret stack-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
+	@ echo "elastic:$$(kubectl get secret elasticsearch-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
 
 
 ##########################################
@@ -160,7 +160,7 @@ bootstrap-gke:
 delete-gke:
 	./hack/gke-cluster.sh delete
 
-# -- registry in the cluster
+## -- registry in the cluster
 
 registry:
 	@ echo "-> Deploying registry..."
