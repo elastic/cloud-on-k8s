@@ -31,7 +31,6 @@ const (
 )
 
 // Predefined users and roles.
-// Note: The role of a user is not persisted in a k8s secret, that's why ResolveRole(username) exists.
 var (
 	externalUsers = []client.User{
 		{Name: ExternalUserName, Role: SuperUserBuiltinRole},
@@ -42,7 +41,6 @@ var (
 		{Name: InternalProbeUserName, Role: ProbeUserRole},
 		{Name: InternalReloadCredsUserName, Role: ReloadCredsUserRole},
 	}
-	predefinedUsers = append(internalUsers, externalUsers...)
 
 	PredefinedRoles = map[string]client.Role{
 		ProbeUserRole: {
