@@ -140,6 +140,7 @@ func podSpec(
 	}
 
 	// TODO: Security Context
+	automountServiceAccountToken := false
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 
@@ -188,6 +189,7 @@ func podSpec(
 			extraFilesSecretVolume.Volume(),
 			keystoreVolume.Volume(),
 		),
+		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
 
 	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)
