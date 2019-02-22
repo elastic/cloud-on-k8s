@@ -164,7 +164,7 @@ func kibanaWatchName(assocKey types.NamespacedName) string {
 	return assocKey.Namespace + "-" + assocKey.Name + "-kb-watch"
 }
 
-// watchFinalizer ensure that we remove watches for Kibanas and Elasticsearch clusters that we are not longer interested
+// watchFinalizer ensure that we remove watches for Kibanas and Elasticsearch clusters that we are no longer interested in
 // because the assocation has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
