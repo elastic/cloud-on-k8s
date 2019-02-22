@@ -125,7 +125,7 @@ func maybeRequestCSR(pod corev1.Pod, csrClient CSRClient, lastCSRUpdate string) 
 	// In such case, there is no need to request the same CSR again and again at each reconciliation.
 	lastUpdate, err := time.Parse(time.RFC3339, lastCSRUpdate)
 	if err != nil {
-		// lastUpdate was not set yet, ignore
+		log.V(1).Info("lastCSRUpdate time cannot be parsed, probably because not set yet. Ignoring.")
 	} else {
 		delay := time.Now().Sub(lastUpdate)
 		if delay > 0 && delay < CSRRequestDelay {
