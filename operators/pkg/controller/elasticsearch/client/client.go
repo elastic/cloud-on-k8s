@@ -29,6 +29,28 @@ const DefaultVotingConfigExclusionsTimeout = "30s"
 type User struct {
 	Name     string
 	Password string
+	Role     string
+}
+
+// Role represents an Elasticsearch role.
+type Role struct {
+	Cluster []string `json:"cluster,omitempty"`
+	/*Indices []struct {
+		Names      []string `json:"names,omitempty"`
+		Privileges []string `json:",omitempty"`
+	} `json:"indices,omitempty"`
+	Applications []struct {
+		Application string   `json:"application"`
+		Privileges  []string `json:"privileges"`
+		Resources   []string `json:"resources,omitempty"`
+	} `json:"applications,omitempty"`
+	RunAs    []string `json:"run_as,omitempty"`
+	Metadata *struct {
+		Reserved bool `json:"_reserved"`
+	} `json:"metadata,omitempty"`
+	TransientMetadata *struct {
+		Enabled bool `json:"enabled"`
+	} `json:"transient_metadata,omitempty"`*/
 }
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP

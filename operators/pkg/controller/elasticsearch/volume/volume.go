@@ -14,6 +14,8 @@ const (
 	DefaultSecretMountPath                = "/mnt/elastic/secrets"
 	ProbeUserSecretMountPath              = "/mnt/elastic/probe-user"
 	ProbeUserVolumeName                   = "probe-user"
+	ReloadCredsUserSecretMountPath        = "/mnt/elastic/reload-creds-user"
+	ReloadCredsUserVolumeName             = "reload-creds-user"
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
 )

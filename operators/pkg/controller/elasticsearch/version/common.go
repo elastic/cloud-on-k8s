@@ -63,6 +63,7 @@ func NewExpectedPodSpecs(
 					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 					KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
 					ProbeUser:            paramsTmpl.ProbeUser,
+					ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
 				},
 				operatorImage,
 				newEnvironmentVarsFn,
@@ -106,6 +107,12 @@ func podSpec(
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	volumes[probeSecret.Name()] = probeSecret
+
+	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		secret.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
+		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
+	)
+	volumes[reloadCredsSecret.Name()] = reloadCredsSecret
 
 	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
@@ -186,6 +193,7 @@ func podSpec(
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
+			reloadCredsSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 			keystoreVolume.Volume(),
 		),
