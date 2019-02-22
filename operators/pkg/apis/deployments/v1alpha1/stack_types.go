@@ -31,8 +31,6 @@ type StackSpec struct {
 
 // StackStatus defines the observed state of a Stack
 type StackStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	Elasticsearch elasticsearchv1alpha1.ElasticsearchStatus `json:"elasticsearch,omitempty"`
 	Kibana        kibanav1alpha1.KibanaStatus               `json:"kibana,omitempty"`
 }
