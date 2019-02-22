@@ -301,23 +301,30 @@ func TestDriver_Mount(t *testing.T) {
 	var lvTpAndlv = `{
 	"report": [{
 		"lv": [{
-			"lv_name": "tp",
-			"vg_name": "vg",
-			"lv_path": "cc",
-			"lv_size": "1234",
-			"lv_tags": "tt",
-			"lv_layout": "thin,pool",
-			"data_percent": "23"
+			"lv_name": "tp", "vg_name": "vg", "lv_path": "cc", "lv_size": "1234", "lv_tags": "tt", "lv_layout": "thin,pool", "data_percent": "23"
 		}, {
-			"lv_name": "path",
-			"lv_size": "1002438656",
-			"vg_name": "vg",
-			"lv_layout": "thin,sparse",
-			"data_percent": "0,00"
+			"lv_name": "path", "lv_size": "1002438656", "vg_name": "vg", "lv_layout": "thin,sparse", "data_percent": "0,00"
 		}]
 	}]
 }`
-	//var lvEmpty = `{"report": [{"lv": []}]}`
+	var lvNonTp = `  {
+      "report": [
+          {
+              "lv": [
+                  {"lv_name":"path", "lv_size":"1077936128", "vg_name":"vg", "lv_layout":"linear", "data_percent":""}
+              ]
+          }
+      ]
+  }`
+	var lvNonTpPath = ` {
+      "report": [
+          {
+              "lv": [
+                  {"lv_path":"cc"}
+              ]
+          }
+      ]
+  }`
 	var (
 		vgLookupFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{Err: errors.New("something bad happened")},
@@ -365,6 +372,12 @@ func TestDriver_Mount(t *testing.T) {
 			{StdOutput: []byte(lvTpAndlv)}, /* check if the logical volume already exists */
 			{StdOutput: []byte(lvTp)},      /* get path from logical volume */
 			{},                             /* just mount it */
+		}}
+		successNonThinLVAlreadyExists = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},    /* check if vg exists */
+			{StdOutput: []byte(lvNonTp)},     /* check if the (non thin) logical volume already exists */
+			{StdOutput: []byte(lvNonTpPath)}, /* yes, just get path from logical volume */
+			{},                               /* and just mount it */
 		}}
 	)
 	type fields struct {
@@ -548,6 +561,30 @@ func TestDriver_Mount(t *testing.T) {
 				params: protocol.MountRequest{
 					TargetDir: path.Join("some", "path"),
 					Options:   protocol.MountOptions{},
+				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
+				[]string{"mount", "cc", "some/path"}},
+			want: flex.Success("successfully created the volume"),
+		},
+		{
+			name: "succeeds with a non thin LV that already exists",
+			fields: fields{
+				fakeExec: successNonThinLVAlreadyExists,
+				options: Options{
+					ExecutableFactory: successNonThinLVAlreadyExists.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    false,
+				}},
+			args: args{
+				params: protocol.MountRequest{
+					TargetDir: path.Join("some", "path"),
+					Options: protocol.MountOptions{
+						SizeBytes: 512,
+					},
 				},
 			},
 			wantCommands: [][]string{
