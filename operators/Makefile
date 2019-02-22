@@ -102,7 +102,7 @@ run: install-crds
 deploy: install-crds docker-build docker-push e2e-setup
 	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
-		| sed -e 's|$$$MANAGED_NAMESPACE|$($MANAGED_NAMESPACE)|g' |kubectl apply -f -
+		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' | kubectl apply -f -
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
