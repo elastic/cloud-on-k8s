@@ -1,6 +1,6 @@
 # Cert initializer
 
-Intended to run as an init container in Elasticsearch pod, it handles private key and CSR generation in order for the operator to deliver a TLS certificate.
+Intended to run as an init container in an Elasticsearch pod, it handles private key and CSR generation in order for the operator to deliver a TLS certificate.
 
 ## Flow of operations
 
