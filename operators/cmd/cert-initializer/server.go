@@ -18,12 +18,16 @@ func serveCSR(port int, csr []byte, stopChan <-chan struct{}) error {
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", port)}
 	http.HandleFunc(nodecerts.CertInitializerRoute, func(w http.ResponseWriter, r *http.Request) {
 		log.Info("CSR request")
-		w.Write(csr)
+		if _, err := w.Write(csr); err != nil {
+			log.Error(err, "failed to write CSR to the HTTP response")
+		}
 	})
 	go func() {
 		// stop the server when requested
 		<-stopChan
-		srv.Shutdown(context.Background())
+		if err := srv.Shutdown(context.Background()); err != nil {
+			log.Error(err, "failed to shutdown the http server")
+		}
 	}()
 	// run until stopped
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
