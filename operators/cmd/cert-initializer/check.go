@@ -78,8 +78,8 @@ func privateMatchesPublicKey(publicKey interface{}, privateKey rsa.PrivateKey) b
 		log.Error(errors.New("Public key is not an RSA public key"), "")
 		return false
 	}
-	// check that public and private keys share the same modulus
-	if pubKey.N.Cmp(privateKey.N) != 0 {
+	// check that public and private keys share the same modulus and exponent
+	if pubKey.N.Cmp(privateKey.N) != 0 || pubKey.E != privateKey.E {
 		return false
 	}
 	return true
