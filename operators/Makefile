@@ -96,12 +96,13 @@ install-crds: generate
 run: install-crds
 	# Run the operator locally with role All, with sidecar image set to latest
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
-		go run ./cmd/main.go manager --development --operator-role=all --namespace $(MANAGED_NAMESPACE)
+		go run ./cmd/main.go manager --development --operator-role=all
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
 	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
-	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
+	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
+		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' | kubectl apply -f -
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -207,11 +208,18 @@ purge-gcr-images:
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= ""
 
+# Setup for running e2e tests
+e2e-setup:
+	kubectl apply -f config/e2e/rbac.yaml
+
 # Run e2e tests as a k8s batch job
 E2E_IMG ?= $(IMG)-e2e-tests:$(GIT_SHA1)
-e2e:
+e2e: e2e-setup
+	# push the e2e tests docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 	docker push $(E2E_IMG)
+	# deploy an operator to manage the e2e namespace
+	$(MAKE) MANAGED_NAMESPACE=e2e deploy
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
 # Verify e2e tests compile with no errors, don't run them
@@ -220,8 +228,7 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-e2e-local:
-	kubectl apply -f config/e2e/rbac.yaml
+e2e-local: e2e-setup
 	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Clean k8s cluster from e2e resources
