@@ -52,20 +52,24 @@ type User struct {
 	Status UserStatus `json:"status,omitempty"`
 }
 
+// Id is the user id (to avoid name clashes with Name attribute of k8s resources)
 func (in *User) Id() string {
 	return in.Spec.Name
 }
 
+// PasswordMatches compares the given hash with the password of this user.
 func (in *User) PasswordMatches(hash []byte) bool {
 	// this is tricky: we don't have password at hand so the hash has to match byte for byte. This might lead to false
 	// negatives where the hash matches the password but a different salt or work factor was used.
 	return bytes.Equal([]byte(in.Spec.PasswordHash), hash)
 }
 
+// PasswordHash computes a password hash and returns it or error.
 func (in *User) PasswordHash() ([]byte, error) {
 	return []byte(in.Spec.PasswordHash), nil
 }
 
+// Roles are any Elasticsearch roles associated with this user
 func (in *User) Roles() []string {
 	return in.Spec.UserRoles
 }
