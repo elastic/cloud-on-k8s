@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
