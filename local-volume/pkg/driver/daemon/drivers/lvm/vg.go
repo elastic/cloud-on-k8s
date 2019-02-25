@@ -116,6 +116,7 @@ func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.ExecutableFactory) ([]Lo
 		"--options=lv_name,lv_size,vg_name,lv_layout,data_percent",
 		vg.name,
 		"--reportformat=json",
+		"--units=b",
 		"--nosuffix",
 	)
 
