@@ -57,6 +57,8 @@ func (in *User) Id() string {
 }
 
 func (in *User) PasswordMatches(hash []byte) bool {
+	// this is tricky: we don't have password at hand so the hash has to match byte for byte. This might lead to false
+	// negatives where the hash matches the password but a different salt or work factor was used.
 	return bytes.Equal([]byte(in.Spec.PasswordHash), hash)
 }
 
