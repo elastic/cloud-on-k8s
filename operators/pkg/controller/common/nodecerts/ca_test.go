@@ -15,6 +15,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,9 +54,8 @@ var (
 	testRSAPrivateKey *rsa.PrivateKey
 )
 
-func init() {
+func initTestVars() {
 	var err error
-
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
 		panic("Failed to parse private key: " + err.Error())
@@ -64,7 +64,11 @@ func init() {
 	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
+}
+
+func init() {
 	logf.SetLogger(logf.ZapLogger(false))
+	initTestVars()
 }
 
 func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
@@ -113,7 +117,7 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 				Name:      nsn.Name,
 				Namespace: nsn.Namespace,
 			},
-			Data: map[string][]byte{"ca.pem": []byte("awronginitialsupersecret1")},
+			Data: map[string][]byte{CAFileName: []byte("awronginitialsupersecret1")},
 		}))
 
 	// Reconciliation must update it
@@ -124,6 +128,6 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 	updated := &corev1.Secret{}
 	c.Get(nsn, updated)
 
-	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: fooCa.Cert.Raw})
-	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data["ca.pem"]))
+	expectedCaKeyBytes := certutil.EncodePEMCert(fooCa.Cert.Raw)
+	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data[CAFileName]))
 }

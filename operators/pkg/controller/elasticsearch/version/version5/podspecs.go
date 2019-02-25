@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -43,11 +43,12 @@ func ExpectedPodSpecs(
 
 // newInitContainers returns a list of init containers
 func newInitContainers(
-	imageName string,
-	_ string,
+	elasticsearchImage string,
+	operatorImage string,
 	setVMMaxMapCount bool,
+	nodeCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(imageName, initcontainer.LinkedFilesArray{}, setVMMaxMapCount)
+	return initcontainer.NewInitContainers(elasticsearchImage, operatorImage, initcontainer.LinkedFilesArray{}, setVMMaxMapCount, nodeCertificatesVolume)
 }
 
 // newSidecarContainers returns a list of sidecar containers.
@@ -104,15 +105,15 @@ func newEnvironmentVars(
 		// x-pack general settings
 		{
 			Name:  settings.EnvXPackSslKey,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "node.key"}, "/"),
+			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		},
 		{
 			Name:  settings.EnvXPackSslCertificate,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "cert.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSslCertificateAuthorities,
-			Value: strings.Join([]string{nodeCertificatesVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
 		},
 		// client profiles
 		{Name: settings.EnvTransportProfilesClientXPackSecurityType, Value: "client"},

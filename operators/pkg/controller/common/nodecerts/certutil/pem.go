@@ -5,6 +5,7 @@
 package certutil
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 )
@@ -33,4 +34,21 @@ func ParsePEMCerts(pemData []byte) ([]*x509.Certificate, error) {
 		certs = append(certs, cert)
 	}
 	return certs, nil
+}
+
+// EncodePEMCert encodes the given certificate blocks as a PEM certificate
+func EncodePEMCert(certBlocks ...[]byte) []byte {
+	var result []byte
+	for _, block := range certBlocks {
+		result = append(result, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block})...)
+	}
+	return result
+}
+
+// EncodePEMPrivateKey encodes the given private key in the PEM format
+func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
+	return pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(&privateKey),
+	})
 }

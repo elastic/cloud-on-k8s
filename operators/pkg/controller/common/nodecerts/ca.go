@@ -10,12 +10,11 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/pem"
 	"math/big"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -118,8 +117,8 @@ func (c *Ca) CreateCertificate(
 	return certData, err
 }
 
-// ReconcilePublicCertsSecret ensures that a secret containing the Ca's certificate as `ca.pem` exists as the specified
-// objectKey
+// ReconcilePublicCertsSecret ensures that a secret containing
+// the CA certificate referenced with objectKey exists.
 func (c *Ca) ReconcilePublicCertsSecret(
 	cl k8s.Client,
 	objectKey types.NamespacedName,
@@ -127,12 +126,12 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := pem.EncodeToMemory(&pem.Block{Type: BlockTypeCertificate, Bytes: c.Cert.Raw})
+	expectedCaKeyBytes := certutil.EncodePEMCert(c.Cert.Raw)
 
 	clusterCASecret := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(objectKey),
 		Data: map[string][]byte{
-			SecretCAKey: expectedCaKeyBytes,
+			CAFileName: expectedCaKeyBytes,
 		},
 	}
 
@@ -148,12 +147,12 @@ func (c *Ca) ReconcilePublicCertsSecret(
 			if reconciled.Data == nil {
 				reconciled.Data = make(map[string][]byte)
 			}
-			caKey, ok := reconciled.Data[SecretCAKey]
+			caKey, ok := reconciled.Data[CAFileName]
 			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
 
 		},
 		UpdateReconciled: func() {
-			reconciled.Data[SecretCAKey] = expectedCaKeyBytes
+			reconciled.Data[CAFileName] = expectedCaKeyBytes
 		},
 	})
 

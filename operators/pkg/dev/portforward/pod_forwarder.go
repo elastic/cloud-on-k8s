@@ -9,10 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"regexp"
 	"strings"
 	"sync"
 
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // podForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
@@ -76,17 +81,58 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 	}, nil
 }
 
-// parsePodAddr parses the pod name and namespace from an address
+// podDNSRegex matches pods FQDN such as {name}.{namespace}.pod.cluster.local.
+var podDNSRegex = regexp.MustCompile(`^.+\..+\..*$`)
+
+// podIPRegex matches any ipv4 address.
+var podIPv4Regex = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
+
+// parsePodAddr parses the pod name and namespace from an address.
 func parsePodAddr(addr string) (*types.NamespacedName, error) {
-	// (our) pods generally look like this (as FQDN): {name}.{namespace}.pod.cluster.local
-	// TODO: subdomains in pod names would change this.
-	parts := strings.SplitN(addr, ".", 3)
-
-	if len(parts) <= 2 {
-		return nil, fmt.Errorf("unsupported pod address format: %s", addr)
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
 	}
+	if podIPv4Regex.MatchString(host) {
+		// we got an IP address
+		// try to map it to a pod name and namespace
+		return getPodWithIP(host)
+	}
+	if podDNSRegex.MatchString(host) {
+		// retrieve pod name and namespace from addr
+		// TODO: subdomains in pod names would change this.
+		parts := strings.SplitN(host, ".", 3)
+		if len(parts) <= 2 {
+			return nil, fmt.Errorf("unsupported pod address format: %s", host)
+		}
+		return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
+	}
+	return nil, fmt.Errorf("unsupported pod address format: %s", host)
+}
 
-	return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil
+// getPodWithIP requests the apiserver for pods with the given IP assigned.
+func getPodWithIP(ip string) (*types.NamespacedName, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	pods, err := clientSet.CoreV1().
+		Pods("").
+		List(metav1.ListOptions{
+			FieldSelector: fmt.Sprintf("status.podIP=%s", ip),
+		})
+	if err != nil {
+		return nil, err
+	}
+	if pods == nil || len(pods.Items) == 0 {
+		return nil, fmt.Errorf("pod with IP %s not found", ip)
+	}
+	nsn := k8s.ExtractNamespacedName(&(pods.Items[0].ObjectMeta))
+	return &nsn, nil
 }
 
 // defaultEphemeralPortFinder finds an ephemeral port by binding to :0 and checking what port was bound

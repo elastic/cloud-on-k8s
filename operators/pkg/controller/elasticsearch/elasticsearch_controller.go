@@ -68,6 +68,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		esCa:        esCa,
+		csrClient:   nodecerts.NewCertInitializerCSRClient(params.Dialer, nodecerts.CSRRequestTimeout),
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
@@ -174,7 +175,8 @@ type ReconcileElasticsearch struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	esCa *nodecerts.Ca
+	esCa      *nodecerts.Ca
+	csrClient nodecerts.CSRClient
 
 	esObservers *observer.Manager
 
@@ -253,6 +255,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		Version: *ver,
 
 		ClusterCa:        r.esCa,
+		CSRClient:        r.csrClient,
 		Observers:        r.esObservers,
 		DynamicWatches:   r.dynamicWatches,
 		PodsExpectations: r.podsExpectations,

@@ -45,7 +45,7 @@ type BackendElasticsearch struct {
 	// Auth configures authentication for Kibana to use.
 	Auth ElasticsearchAuth `json:"auth,omitempty"`
 
-	// CaCertSecret names a secret that contains a ca.pem file entry to use.
+	// CaCertSecret names a secret that contains a CA file entry to use.
 	CaCertSecret *string `json:"caCertSecret,omitempty"`
 }
 

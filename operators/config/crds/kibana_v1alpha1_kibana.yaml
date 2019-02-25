@@ -66,8 +66,8 @@ spec:
                       type: object
                   type: object
                 caCertSecret:
-                  description: CaCertSecret names a secret that contains a ca.pem
-                    file entry to use.
+                  description: CaCertSecret names a secret that contains a CA file
+                    entry to use.
                   type: string
                 url:
                   description: ElasticsearchURL is the URL to the target Elasticsearch

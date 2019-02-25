@@ -7,8 +7,8 @@ package kibana
 import (
 	"crypto/sha256"
 	"fmt"
+	"path"
 	"reflect"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -182,14 +182,14 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 
 		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
 		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
-		// updating the ca.pem file contents without restarting the process.
+		// updating the CA file contents without restarting the process.
 		caChecksum := ""
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return state, err
 		}
-		if capem, ok := esPublicCASecret.Data[nodecerts.SecretCAKey]; ok {
+		if capem, ok := esPublicCASecret.Data[nodecerts.CAFileName]; ok {
 			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
 		}
 		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
@@ -209,7 +209,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 				kibanaPodSpec.Containers[i].Env,
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: strings.Join([]string{esCertsVolume.VolumeMount().MountPath, "ca.pem"}, "/"),
+					Value: path.Join(esCertsVolume.VolumeMount().MountPath, nodecerts.CAFileName),
 				},
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
