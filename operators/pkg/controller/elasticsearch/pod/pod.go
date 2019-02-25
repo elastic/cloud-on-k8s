@@ -7,7 +7,7 @@ package pod
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,9 +75,9 @@ type NewPodSpecParams struct {
 	// KeystoreSecretRef is configuration for the Elasticsearch key store setup
 	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
-	ProbeUser user.User
+	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
-	ReloadCredsUser user.User
+	ReloadCredsUser client.UserAuth
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

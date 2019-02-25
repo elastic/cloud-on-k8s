@@ -105,13 +105,13 @@ func podSpec(
 
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
-		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Id()},
+		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	volumes[probeSecret.Name()] = probeSecret
 
 	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
-		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Id()},
+		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
 	)
 	volumes[reloadCredsSecret.Name()] = reloadCredsSecret
 

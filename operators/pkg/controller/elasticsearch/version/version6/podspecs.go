@@ -116,8 +116,8 @@ func newSidecarContainers(
 			Env: []corev1.EnvVar{
 				{Name: sidecar.EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
-				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Id()},
-				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Id())},
+				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
+				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.CAFileName)},
 			},
 			VolumeMounts: append(
@@ -177,8 +177,8 @@ func newEnvironmentVars(
 		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
 		{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"},
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
-		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Id()},
-		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Id())},
+		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
