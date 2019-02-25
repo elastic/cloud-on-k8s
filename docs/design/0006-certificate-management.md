@@ -21,6 +21,7 @@ How do we manage nodes certificates with our operator?
   * Human operator intervention in running the operator regarding certificate management should be restricted as a minimum (ideally, the human operator should not care at all).
 * Cluster impact
   * Certificate rotation should not provoke any downtime on the cluster.
+  * Certificate rotation should preferably be doable without well-written clients experiencing issues with certificate validation.
 
 ## Considered Options
 
@@ -38,8 +39,9 @@ At each reconciliation loop, the operator can decide to issue a signed certifica
 * existing certificate is expired
 * existing certificate is invalid or corrupted
 * existing certificate does not match the current CA
+* we wish to rotate the certificates
 
-The certificate is created as a secret in the apiserver, and mounted to the pod through a secret volume mount. On the pod, Elasticsearch is able to use the provided certificate file. If the secret is updated, Elasticsearch will use the updated file on disk automatically (which is a pretty great feature).
+The certificate is created as a secret in the apiserver, and mounted to the pod through a secret volume mount. On the pod, Elasticsearch is able to use the provided certificate file. If the secret is updated, Elasticsearch will use the updated file on disk automatically (which is a pretty great feature). Unfortunately Kibana does not work the same way: it is necessary to recreate/restart Kibana instances in case of certificate update.
 
 #### CA private key
 
@@ -48,15 +50,15 @@ The CA private key is the most important secret in the whole mechanism. It must 
 Some options:
 
 * *Option A*: the private key is generated when the operator starts, and kept in-memory for the lifecycle of the operator. If the operator restarts, it generates a new private key, and issues new certificates for all clusters. While existing TCP connections between nodes will not be impacted, this might provoke a downtime on the cluster while new certificates are propagated.
-* *Option B*: the private key is stored as a plaintext secret in the apiserver. Created by the operator itself if it does not exist yet. Persisted and reuse through operator restarts.
-* *Option C*: similar to B, but with the private key stored encrypted in the apiserver. Encryption key should be stored somewhere else.
+* *Option B*: the private key is stored as a secret in the apiserver. Created by the operator itself if it does not exist yet. Persisted and reuse through operator restarts.
+* *Option C*: similar to B, but with the private key [wrapped in another layer of encryption](https://tools.ietf.org/html/rfc3394) in the apiserver. Access to the KEK (key encryption-key) must be handled separately.
 * *Option D*: the private key is stored in an external service (eg. Vault) and requested or provided to the operator at startup.
 
-Option D sounds like the best solution, but harder to achieve (similar for option C). Option A is secure, but can lead to downtime and a herd effect: when the operator restarts, it needs to regenerate all certificates. Option B is not secure if we consider the apiserver storage as not secure enough.
+Options C and D are preferable, but need to setup an additional system. Option A is secure, but can lead to downtime and a herd effect: when the operator restarts, it needs to regenerate all certificates. Option B is not secure if we consider the apiserver storage as not secure enough.
 
 #### Pod private keys
 
-Each pod should have its own private key. Several options considered here:
+Each pod must have its own private key. Several options considered here:
 
 * *Option A*: the operator generates a private key for the pod, stores it in an apiserver secret, and mounts it to the pod through a secret volume. Major drawback: all pods private keys are stored in a single place (the apiserver). The operator can generate a CSR and issue a certificate from this private key.
 * *Option B*: pods are responsible to generate their own private key and CSR on startup, in an init container. The CSR is retrieved by the operator to issue a certificate. The private key never leaves the Elasticsearch pod. It is only shared between the init container and the Elasticsearch pod.
@@ -75,6 +77,15 @@ Several options considered involving an init container in the ES pod:
 * *Option C*: the init container runs an HTTP server to serve the generated CSR. The operator requests the CSR through this API. Advantage: the pod does not need to reach any other service. Disadvantage: some additional complexity in the design and the implementation.
 
 Option C is the chosen one here. For more details on the actual workflow, see the [cert-initializer README](https://github.com/elastic/k8s-operators/blob/master/operators/cmd/cert-initializer/README.md).
+
+#### Pods certificate rotation
+
+It is possible to reuse a previous CSR to issue a new certificate. In order to do so, there must be a way to retrieve pods CSRs.
+
+* *Option A*: when retrieved the first time, store the CSR in the apiserver (can be in the same secret as the certificate itself). They can then just be retrieved from the apiserver.
+* *Option B*: request the ES pod again for the CSR. Requires an endpoint to be available as a sidecar container, and not only as an init container.
+
+Chosen option: A, simpler to implement.
 
 #### Pods private key rotation
 
@@ -101,20 +112,11 @@ The operator should be able to rotate the CA certificate for multiple reasons:
 * CA private key has been compromised
 * on a regular basis for security reasons
 
-##### Issuing new certificates
-
 When rotating the CA cert, all nodes having certificates signed by the CA are impacted. New certificates need to be issued for those nodes. If the operator can access the nodes CSRs, it can reissue valid certificates using those CSR.
-
-Some options about reusing the CSRs:
-
-* *Option A*: when retrieved the first time, store the CSR in the apiserver (can be in the same secret as the certificate itself). They can then just be retrieved from the apiserver.
-* *Option B*: request the ES pod again for the CSR. Requires an endpoint to be available as a sidecar container, and not only as an init container.
-
-Chosen option: A, simpler to implement.
 
 ##### Avoiding downtime during rotation
 
-While the CA cert is rotated and all nodes certificates are reissued, there can be an impact on connections. Long-running ES nodes TLS connections will be maintained (past the TLS handshake). New connections will likely fail until things get stabilized, occuring potential downtime.
+While the CA cert is rotated and all nodes certificates are reissued, there can be an impact on connections. Long-running ES nodes TLS connections will be maintained (past the TLS handshake). New connections will likely fail until things get stabilized, ocurring potential downtime.
 
 Some options to handle that:
 
