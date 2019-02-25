@@ -116,7 +116,7 @@ When rotating the CA cert, all nodes having certificates signed by the CA are im
 
 ##### Avoiding downtime during rotation
 
-While the CA cert is rotated and all nodes certificates are reissued, there can be an impact on connections. Long-running ES nodes TLS connections will be maintained (past the TLS handshake). New connections will likely fail until things get stabilized, ocurring potential downtime.
+While the CA cert is rotated and all nodes certificates are reissued, there can be an impact on connections. Long-running ES nodes TLS connections will be maintained (past the TLS handshake). New connections will likely fail until things get stabilized, incurring potential downtime.
 
 Some options to handle that:
 
