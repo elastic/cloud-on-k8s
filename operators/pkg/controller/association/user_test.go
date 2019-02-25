@@ -9,6 +9,8 @@ import (
 
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -118,6 +120,34 @@ func Test_reconcileEsUser(t *testing.T) {
 				password, ok := s.Data[InternalKibanaServerUserName]
 				assert.True(t, ok)
 				assert.NotEmpty(t, password)
+			},
+		},
+		{
+			name: "Reconcile updates existing labels",
+			args: args{
+				initialObjects: []runtime.Object{&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: "default",
+						Labels: map[string]string{
+							AssociationLabelName: associationFixture.Name,
+						},
+					},
+				}},
+				assoc: associationFixture,
+			},
+			wantErr: false,
+			postCondition: func(c k8s.Client) {
+				var u estype.User
+				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
+				expectedLabels := map[string]string{
+					AssociationLabelName:       associationFixture.Name,
+					common.TypeLabelName:       label.Type,
+					label.ClusterNameLabelName: "es",
+				}
+				for k, v := range expectedLabels {
+					assert.Equal(t, v, u.Labels[k])
+				}
 			},
 		},
 		{

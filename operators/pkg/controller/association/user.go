@@ -61,10 +61,11 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 	// keep this name constant and bound to the association we cannot change it
 
 	pw := common.RandomPasswordBytes()
+	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
 	secretLabels := kibana.NewLabels(assoc.Spec.Kibana.Name)
 	secretLabels[AssociationLabelName] = assoc.Name
 	secKey := secretKey(assoc)
-	expectedCreds := corev1.Secret{
+	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
@@ -75,33 +76,35 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		},
 	}
 
-	reconciled := corev1.Secret{}
+	reconciledSecret := corev1.Secret{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
 		Owner:      &assoc,
-		Expected:   &expectedCreds,
-		Reconciled: &reconciled,
+		Expected:   &expectedSecret,
+		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
-			_, ok := reconciled.Data[InternalKibanaServerUserName]
-			//TODO compare labels
-			return !ok
+			_, ok := reconciledSecret.Data[InternalKibanaServerUserName]
+
+			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
 
 		},
 		UpdateReconciled: func() {
-			reconciled.Data = expectedCreds.Data
+			setExpectedLabels(&expectedSecret, &reconciledSecret)
+			reconciledSecret.Data = expectedSecret.Data
 		},
 	})
-	expectedCreds.Data = reconciled.Data // make sure we don't constantly update the password
+	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
 	if err != nil {
 		return err
 	}
 
-	bcryptHash, err := bcrypt.GenerateFromPassword(expectedCreds.Data[InternalKibanaServerUserName], bcrypt.DefaultCost)
+	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalKibanaServerUserName], bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
+	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
 	userLabels[AssociationLabelName] = assoc.Name
 	usrKey := userKey(assoc)
@@ -126,12 +129,35 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Expected:   expectedUser,
 		Reconciled: &reconciledUser,
 		NeedsUpdate: func() bool {
-			// TODO compare labels
-			return !reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
+			return !hasExpectedLabels(expectedUser, &reconciledSecret) ||
+				!reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
 		},
 		UpdateReconciled: func() {
+			setExpectedLabels(expectedUser, &reconciledUser)
 			reconciledUser.Spec = expectedUser.Spec
 		},
 	})
 
+}
+
+// hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual
+func hasExpectedLabels(expected, actual metav1.Object) bool {
+	actualLabels := actual.GetLabels()
+	for k, v := range expected.GetLabels() {
+		if actualLabels[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func setExpectedLabels(expected, actual metav1.Object) {
+	actualLabels := actual.GetLabels()
+	if actualLabels == nil {
+		actualLabels = make(map[string]string)
+	}
+	for k, v := range expected.GetLabels() {
+		actualLabels[k] = v
+	}
+	actual.SetLabels(actualLabels)
 }
