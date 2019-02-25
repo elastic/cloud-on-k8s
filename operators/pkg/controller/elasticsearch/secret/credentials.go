@@ -77,6 +77,10 @@ func keysEqual(v1, v2 map[string][]byte) bool {
 // Reset resets the source of truth for these credentials.
 func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 	c.secret = secret
+	// Keep the users' passwords up to date
+	for i, user := range c.users {
+		c.users[i].Password = string(secret.Data[user.Name])
+	}
 }
 
 // NeedsUpdate is true for clear text credentials if the secret contains the same keys as the reference secret.
@@ -182,10 +186,16 @@ func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCred
 	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), externalUsers)
 }
 
+// usersToClearTextCredentials transforms a slice of users in a ClearTextCredentials and takes care of generating the
+// users' passwords.
 func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName string, users []client.User) *ClearTextCredentials {
 	data := make(map[string][]byte, len(users))
-	for _, user := range users {
-		data[user.Name] = []byte(rand.String(24))
+	for i, user := range users {
+		password := rand.String(24)
+		/// Fill the secret
+		data[user.Name] = []byte(password)
+		// Keep the user password up to date
+		users[i].Password = password
 	}
 
 	return &ClearTextCredentials{
