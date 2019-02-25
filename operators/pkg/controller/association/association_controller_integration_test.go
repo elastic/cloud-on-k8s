@@ -19,7 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,11 +27,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c k8s.Client
-
-var associationKey = types.NamespacedName{Name: "baz", Namespace: "default"}
-var kibanaKey = types.NamespacedName{Name: "bar", Namespace: "default"}
-var expectedRequest = reconcile.Request{NamespacedName: associationKey}
+var (
+	c               k8s.Client
+	associationKey  = types.NamespacedName{Name: "baz", Namespace: "default"}
+	kibanaKey       = types.NamespacedName{Name: "bar", Namespace: "default"}
+	expectedRequest = reconcile.Request{NamespacedName: associationKey}
+)
 
 func TestReconcile(t *testing.T) {
 
@@ -144,11 +145,11 @@ func TestReconcile(t *testing.T) {
 
 }
 
-func mockCaSecret(t *testing.T, c k8s.Client) *v1.Secret {
+func mockCaSecret(t *testing.T, c k8s.Client) *corev1.Secret {
 	// The Kibana resource needs a CA cert  secrets to be created,
 	// but the Elasticsearch controller is not running.
 	// Here we are creating a dummy CA secret to pretend they exist.
-	caSecret := &v1.Secret{
+	caSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",

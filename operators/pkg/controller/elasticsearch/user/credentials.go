@@ -74,10 +74,8 @@ func keysEqual(v1, v2 map[string][]byte) bool {
 // Reset resets the source of truth for these credentials.
 func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 	c.secret = secret
-	for i := 0; i < len(c.users); i++ {
-		old := c.users[i]
-		pw := secret.Data[old.Id()]
-		c.users[i] = New(old.Id(), Password(string(pw)), Roles(old.Roles()...))
+	for i, u := range c.users {
+		c.users[i].password = string(secret.Data[u.name])
 	}
 }
 

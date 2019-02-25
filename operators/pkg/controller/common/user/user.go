@@ -16,7 +16,7 @@ type User interface {
 	// Id is the user id (to avoid name clashes with Name attribute of k8s resources)
 	Id() string
 	// PasswordMatches compares the given hash to the password of this user. Exists to abstract over user representations with clear text
-	// passwords and those with hashed in which case both hashes need to match byte for byte.
+	// passwords and those jus with a hash in which case both hashes need to match byte for byte.
 	PasswordMatches(hash []byte) bool
 	// PasswordHash computes a password hash and returns it or error.
 	PasswordHash() ([]byte, error)

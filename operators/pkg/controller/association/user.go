@@ -32,6 +32,7 @@ func kibanaUserObjectName(assocName string) string {
 	return assocName + "-" + InternalKibanaServerUserName
 }
 
+// userKey is the namespaced name to identify the customer user resource created by the controller.
 func userKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: assoc.Spec.Elasticsearch.Namespace,
@@ -39,6 +40,7 @@ func userKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName
 	}
 }
 
+// secretKey is the namespaced name to identify the secret containing the password for the Kibana user.
 func secretKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: assoc.Spec.Kibana.Namespace,
@@ -140,7 +142,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 
 }
 
-// hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual
+// hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual.
 func hasExpectedLabels(expected, actual metav1.Object) bool {
 	actualLabels := actual.GetLabels()
 	for k, v := range expected.GetLabels() {
@@ -151,6 +153,7 @@ func hasExpectedLabels(expected, actual metav1.Object) bool {
 	return true
 }
 
+// setExpectedLabels set the labels from expected into actual.
 func setExpectedLabels(expected, actual metav1.Object) {
 	actualLabels := actual.GetLabels()
 	if actualLabels == nil {
