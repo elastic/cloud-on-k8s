@@ -45,7 +45,7 @@ It requires:
 
 #### Node volume provisioner
 
-Instead of having a single cluster-wide provisioner, we have one provisioner per node, responsible for provisioning PersistentVolume coresponding to the node. Let's call it the "node volume provisioner" (name TBD). The global provisioner does not exist anymore.
+Instead of having a single cluster-wide provisioner, we have one provisioner per node, responsible for provisioning PersistentVolume corresponding to the node. Let's call it the "node volume provisioner" (name TBD). The global provisioner does not exist anymore.
 
 On startup, the node volume provisioner inspects the available disk space (eg. 10TB total). It creates a single PersistentVolume resource on the apiserver, with node affinity set to the node it's running on. This PersistentVolume covers the entire available disk space (10TB). This PersistentVolume is not bound to any PersistentVolumeClaim yet. So far, this is quite similar to what's done by the [static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner), except we probably want to consider a single PV with the entire LVM disk space (spanning over multiple disks) instead of creating one PV per disk.
 
@@ -64,7 +64,7 @@ To summarize:
 
 #### Deployment
 
-The node volume provisioner can be deployed as a DaemonSet on all desired nodes, and need RBCA permissions to:
+The node volume provisioner can be deployed as a DaemonSet on all desired nodes, and need RBAC permissions to:
 
 * get, list PersistentVolumeClaims
 * get, list, create, update, delete PersistentVolumes
