@@ -54,8 +54,8 @@ func CreateValidatedCertificateTemplate(
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 ) (*certificates.ValidatedCertificateTemplate, error) {
-	podIp := net.ParseIP(pod.Status.PodIP)
-	if podIp == nil {
+	podIP := net.ParseIP(pod.Status.PodIP)
+	if podIP == nil {
 		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
 	}
 
@@ -75,7 +75,7 @@ func CreateValidatedCertificateTemplate(
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		{DNSName: pod.Name},
-		{IPAddress: maybeIPTo4(podIp)},
+		{IPAddress: maybeIPTo4(podIP)},
 		{IPAddress: net.ParseIP("127.0.0.1").To4()},
 	}
 
