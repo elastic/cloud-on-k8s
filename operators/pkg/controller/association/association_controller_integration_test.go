@@ -14,7 +14,6 @@ import (
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/pkg/errors"
@@ -72,7 +71,7 @@ func TestReconcile(t *testing.T) {
 	}
 	assert.NoError(t, c.Create(&kb))
 	// Pretend secrets created by the Elasticsearch controller are there
-	secrets := mockSecrets(t, c)
+	caSecret := mockCaSecret(t, c)
 
 	// Create the association resource, that should be reconciled
 	instance := &v1alpha1.KibanaElasticsearchAssociation{
@@ -124,9 +123,7 @@ func TestReconcile(t *testing.T) {
 
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
 	test.DeleteIfExists(t, c, es)
-	for _, s := range secrets {
-		test.DeleteIfExists(t, c, s)
-	}
+	test.DeleteIfExists(t, c, caSecret)
 
 	// Ensure association goes back to pending if one of the vertices is deleted
 	test.CheckReconcileCalled(t, requests, expectedRequest)
@@ -147,23 +144,10 @@ func TestReconcile(t *testing.T) {
 
 }
 
-func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
-	// The Kibana resource needs some secrets to be created,
+func mockCaSecret(t *testing.T, c k8s.Client) *v1.Secret {
+	// The Kibana resource needs a CA cert  secrets to be created,
 	// but the Elasticsearch controller is not running.
-	// Here we are creating dummy secrets to pretend they exist.
-	// TODO: This would not be necessary if Kibana and Elasticsearch were less coupled.
-
-	userSecret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      user.ElasticInternalUsersSecretName("foo"),
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			InternalKibanaServerUserName: []byte("blub"),
-		},
-	}
-	assert.NoError(t, c.Create(userSecret))
-
+	// Here we are creating a dummy CA secret to pretend they exist.
 	caSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -174,6 +158,5 @@ func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
 		},
 	}
 	assert.NoError(t, c.Create(caSecret))
-
-	return []*v1.Secret{userSecret, caSecret}
+	return caSecret
 }
