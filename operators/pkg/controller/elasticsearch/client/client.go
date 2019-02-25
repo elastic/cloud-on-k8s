@@ -42,7 +42,7 @@ type Role struct {
 		Application string   `json:"application"`
 		Privileges  []string `json:"privileges"`
 		Resources   []string `json:"resources,omitempty"`
-	} `json:"applications,omitempty"ß`
+	} `json:"applications,omitempty"`
 	RunAs    []string `json:"run_as,omitempty"`
 	Metadata *struct {
 		Reserved bool `json:"_reserved"`

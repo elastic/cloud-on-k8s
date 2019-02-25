@@ -32,6 +32,7 @@ func kibanaUserObjectName(owner types.NamespacedName) string {
 	return owner.Name + "-" + InternalKibanaServerUserName
 }
 
+// creates a SecretKeySelector selecting the Kibana user secret for the given association
 func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
@@ -41,8 +42,8 @@ func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *
 	}
 }
 
+// reconcileEsUser creates a User resources and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElasticsearchAssociation) error {
-
 	// keep this name constant and bound to the association we cannot change it
 	name := kibanaUserObjectName(k8s.ExtractNamespacedName(&assoc))
 	pw := common.RandomPasswordBytes()

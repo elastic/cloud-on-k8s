@@ -20,6 +20,7 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
+// applyToEnv applies any auth information in auth to the variables in env.
 func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) {
 	if auth.Inline != nil {
 		env = append(

@@ -1,14 +1,10 @@
-/*
- * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
- * or more contributor license agreements. Licensed under the Elastic License;
- * you may not use this file except in compliance with the Elastic License.
- */
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
 
 package user
 
-import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-)
+import "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 
 const (
 	// ExternalUserName also known as the 'elastic'
@@ -52,3 +48,26 @@ var (
 		},
 	}
 )
+
+// InternalUsers are Elasticsearch users intended for system use.
+type InternalUsers struct {
+	ControllerUser  User
+	ProbeUser       User
+	ReloadCredsUser User
+}
+
+func NewInternalUsersFrom(users []User) InternalUsers {
+	internalUsers := InternalUsers{}
+	for _, user := range users {
+		if user.Id() == InternalControllerUserName {
+			internalUsers.ControllerUser = user
+		}
+		if user.Id() == InternalProbeUserName {
+			internalUsers.ProbeUser = user
+		}
+		if user.Id() == InternalReloadCredsUserName {
+			internalUsers.ReloadCredsUser = user
+		}
+	}
+	return internalUsers
+}
