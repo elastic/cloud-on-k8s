@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
@@ -20,8 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testProbeUser = client.NewUserWithPassword("username1", "supersecure", "") //TODO fix role mess
-var testReloadCredsUser = client.NewUserWithPassword("username2", "supersecure", "")
+var testProbeUser = user.New("username1", user.Password("supersecure"))
+var testReloadCredsUser = user.New("username2", user.Password("supersecure"))
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",

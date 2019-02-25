@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package secret
+package user
 
 import (
 	"sort"
@@ -23,7 +25,7 @@ var (
 		Name:      "my-es",
 		Namespace: "default",
 	}
-	testUser = []user.User{client.NewUserWithPassword("foo", "bar", "role1")}
+	testUser = []user.User{New("foo", Password("bar"), Roles("role1"))}
 	testRole = map[string]client.Role{
 		"role1": {Cluster: []string{"all"}},
 	}
@@ -89,7 +91,7 @@ func newTestCredentials(t *testing.T, users []user.User) UserCredentials {
 }
 
 func TestNeedsUpdate(t *testing.T) {
-	otherUser := client.NewUser("baz", "yolo")
+	otherUser := New("baz", Password("yolo"))
 
 	tests := []struct {
 		desc        string
@@ -118,13 +120,13 @@ func TestNeedsUpdate(t *testing.T) {
 		{
 			desc:        "hashed creds: changed password warrants an update of the secret",
 			subject1:    newTestCredentials(t, testUser),
-			subject2:    newTestCredentials(t, []user.User{client.NewUser("foo", "role1")}),
+			subject2:    newTestCredentials(t, []user.User{New("foo", Roles("role1"))}),
 			needsUpdate: true,
 		},
 		{
 			desc:        "hashed creds: changed role warrants an update of the secret",
 			subject1:    newTestCredentials(t, testUser),
-			subject2:    newTestCredentials(t, []user.User{client.NewUser("foo", "role2")}),
+			subject2:    newTestCredentials(t, []user.User{New("foo", Roles("role2"))}),
 			needsUpdate: true,
 		},
 		{

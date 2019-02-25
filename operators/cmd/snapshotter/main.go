@@ -68,7 +68,7 @@ func init() {
 func execute() {
 	userName := viper.GetString(userNameFlag)
 	userPassword := viper.GetString(userPasswordFlag)
-	user := esclient.NewUserWithPassword(userName, userPassword, "") // TODO fix role with custom constructor?ß
+	user := esclient.UserAuth{Name: userName, Password: userPassword}
 
 	certCfg := viper.GetString(certificateLocationFlag)
 	var certs []*x509.Certificate

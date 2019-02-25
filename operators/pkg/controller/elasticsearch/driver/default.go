@@ -187,7 +187,7 @@ func (d *defaultDriver) Reconcile(
 		d.Client,
 		d.Scheme,
 		es,
-		internalUsers.ControllerUser,
+		internalUsers.ControllerUser.Auth(),
 		d.OperatorImage,
 	); err != nil {
 		// it's ok to continue even if we cannot reconcile the cron job
@@ -430,11 +430,11 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User) *esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user, []*x509.Certificate{d.ClusterCa.Cert},
+		d.Dialer, url, user.Auth(), []*x509.Certificate{d.ClusterCa.Cert},
 	)
 	return esClient
 }

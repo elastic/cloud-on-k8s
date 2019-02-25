@@ -1,15 +1,17 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package secret
+package user
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 )
 
 const (
-	// ExternalUserName also known as the 'elastic' user.
+	// ExternalUserName also known as the 'elastic'
 	ExternalUserName = "elastic"
 	// InternalControllerUserName a user to be used from this controller when interacting with ES.
 	InternalControllerUserName = "elastic-internal"
@@ -31,13 +33,13 @@ const (
 // Predefined users and roles.
 // Note: The role of a user is not persisted in a k8s secret, that's why ResolveRole(username) exists.
 var (
-	externalUsers = []client.User{
-		client.NewUser(ExternalUserName, SuperUserBuiltinRole),
+	externalUsers = []User{
+		New(ExternalUserName, Roles(SuperUserBuiltinRole)),
 	}
-	internalUsers = []client.User{
-		client.NewUser(InternalControllerUserName, SuperUserBuiltinRole),
-		client.NewUser(InternalProbeUserName, ProbeUserRole),
-		client.NewUser(InternalReloadCredsUserName, ReloadCredsUserRole),
+	internalUsers = []User{
+		New(InternalControllerUserName, Roles(SuperUserBuiltinRole)),
+		New(InternalProbeUserName, Roles(ProbeUserRole)),
+		New(InternalReloadCredsUserName, Roles(ReloadCredsUserRole)),
 	}
 	predefinedUsers = append(internalUsers, externalUsers...)
 

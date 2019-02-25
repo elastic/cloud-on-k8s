@@ -7,15 +7,15 @@ package snapshot
 import (
 	"path"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
@@ -49,7 +49,7 @@ type CronJobParams struct {
 	// TODO refactor to just use namespaced Name
 	Elasticsearch    v1alpha1.ElasticsearchCluster
 	SnapshotterImage string
-	User             client.User
+	User             client.UserAuth
 	EsURL            string
 }
 
@@ -102,13 +102,13 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 								Env: []corev1.EnvVar{
 									{Name: CertificateLocationVar, Value: certPath},
 									{Name: EsURLVar, Value: params.EsURL},
-									{Name: UserNameVar, Value: params.User.Id()},
+									{Name: UserNameVar, Value: params.User.Name},
 									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: secret.ElasticInternalUsersSecretName(params.Parent.Name),
+												Name: user.ElasticInternalUsersSecretName(params.Parent.Name),
 											},
-											Key: params.User.Id(),
+											Key: params.User.Name,
 										},
 									}},
 								},

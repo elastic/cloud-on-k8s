@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package secret
+package user
 
 import (
 	"bytes"
@@ -54,7 +56,7 @@ type UserCredentials interface {
 
 // ClearTextCredentials store a secret with clear text passwords.
 type ClearTextCredentials struct {
-	users  []client.User
+	users  []User
 	secret corev1.Secret
 }
 
@@ -77,7 +79,7 @@ func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 	for i := 0; i < len(c.users); i++ {
 		old := c.users[i]
 		pw := secret.Data[old.Id()]
-		c.users[i] = client.NewUserWithPassword(old.Id(), string(pw), old.Roles()[0]) //TODO this is a mess, also roles cardinality
+		c.users[i] = New(old.Id(), Password(string(pw)), Roles(old.Roles()...))
 	}
 }
 
@@ -93,7 +95,7 @@ func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 }
 
 // Users returns the users slice stored in the struct.
-func (c *ClearTextCredentials) Users() []client.User {
+func (c *ClearTextCredentials) Users() []User {
 	return c.users
 }
 
@@ -179,7 +181,7 @@ func NewExternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
 	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), externalUsers)
 }
 
-func usersToClearTextCredentials(es types.NamespacedName, secretName string, users []client.User) *ClearTextCredentials {
+func usersToClearTextCredentials(es types.NamespacedName, secretName string, users []User) *ClearTextCredentials {
 	data := make(map[string][]byte, len(users))
 	for _, user := range users {
 		data[user.Id()] = []byte(user.Password())

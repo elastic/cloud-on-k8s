@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -50,7 +49,7 @@ func cluster(name string) types.NamespacedName {
 func TestManager_Observe(t *testing.T) {
 	fakeClient := fakeEsClient200()
 	fakeClientWithDifferentUser := fakeEsClient200()
-	fakeClientWithDifferentUser.User = client.NewUser("name", secret.SuperUserBuiltinRole)
+	fakeClientWithDifferentUser.User = client.UserAuth{Name: "name", Password: "another-one"}
 	tests := []struct {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer

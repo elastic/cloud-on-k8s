@@ -12,7 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
@@ -93,7 +93,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Spec: estype.UserSpec{
 			Name:         InternalKibanaServerUserName,
 			PasswordHash: string(bcryptHash),
-			UserRoles:    []string{secret.KibanaUserBuiltinRole},
+			UserRoles:    []string{user.KibanaUserBuiltinRole},
 		},
 	}
 

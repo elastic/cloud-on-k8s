@@ -17,52 +17,18 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
 const DefaultVotingConfigExclusionsTimeout = "30s"
 
-// User captures Elasticsearch user credentials.
-type User struct {
-	name     string
-	password string
-	role     string
-}
-
-func NewUserWithPassword(name string, password string, role string) User {
-	return User{name: name, password: password, role: role}
-}
-
-// NewUser creates a new user.
-func NewUser(name string, role string) User {
-	return User{name: name, password: string(user.RandomPasswordBytes()), role: role}
-}
-
-var _ user.User = User{}
-
-func (u User) Id() string {
-	return u.name
-}
-
-func (u User) PasswordHash() ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(u.password), bcrypt.DefaultCost)
-}
-
-func (u User) PasswordMatches(hash []byte) bool {
-	return bcrypt.CompareHashAndPassword(hash, []byte(u.password)) == nil
-}
-
-func (u User) Password() string {
-	return string(u.password)
-}
-
-func (u User) Roles() []string {
-	return []string{u.role}
+// UserAuth is authentication information for the Elasticsearch client.
+type UserAuth struct {
+	Name     string
+	Password string
 }
 
 // Role represents an Elasticsearch role.
@@ -76,7 +42,7 @@ type Role struct {
 		Application string   `json:"application"`
 		Privileges  []string `json:"privileges"`
 		Resources   []string `json:"resources,omitempty"`
-	} `json:"applications,omitempty"`
+	} `json:"applications,omitempty"ß`
 	RunAs    []string `json:"run_as,omitempty"`
 	Metadata *struct {
 		Reserved bool `json:"_reserved"`
@@ -88,7 +54,7 @@ type Role struct {
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client struct {
-	User     User
+	User     UserAuth
 	HTTP     *http.Client
 	Endpoint string
 	caCerts  []*x509.Certificate
@@ -97,7 +63,7 @@ type Client struct {
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caCerts []*x509.Certificate) *Client {
+func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, caCerts []*x509.Certificate) *Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
 		certPool.AddCert(c)
@@ -185,8 +151,8 @@ func (c *Client) doRequest(context context.Context, request *http.Request) (*htt
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	if c.User != (User{}) {
-		withContext.SetBasicAuth(c.User.Id(), c.User.Password())
+	if c.User != (UserAuth{}) {
+		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 
 	response, err := c.HTTP.Do(withContext)

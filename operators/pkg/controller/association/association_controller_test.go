@@ -14,7 +14,7 @@ import (
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/pkg/errors"
@@ -156,11 +156,11 @@ func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
 
 	userSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secret.ElasticInternalUsersSecretName("foo"),
+			Name:      user.ElasticInternalUsersSecretName("foo"),
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			secret.InternalKibanaServerUserName: []byte("blub"),
+			InternalKibanaServerUserName: []byte("blub"),
 		},
 	}
 	assert.NoError(t, c.Create(userSecret))

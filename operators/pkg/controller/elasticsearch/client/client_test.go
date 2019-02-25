@@ -134,28 +134,28 @@ func TestClientUsesJsonContentType(t *testing.T) {
 func TestClientSupportsBasicAuth(t *testing.T) {
 
 	type expected struct {
-		user        User
+		user        UserAuth
 		authPresent bool
 	}
 
 	tests := []struct {
 		name string
-		args User
+		args UserAuth
 		want expected
 	}{
 		{
 			name: "Context with user information should be respected",
-			args: User{name: "elastic", password: "changeme"},
+			args: UserAuth{Name: "elastic", Password: "changeme"},
 			want: expected{
-				user:        User{name: "elastic", password: "changeme"},
+				user:        UserAuth{Name: "elastic", Password: "changeme"},
 				authPresent: true,
 			},
 		},
 		{
 			name: "Context w/o user information is ok too",
-			args: User{},
+			args: UserAuth{},
 			want: expected{
-				user:        User{name: "", password: ""},
+				user:        UserAuth{Name: "", Password: ""},
 				authPresent: false,
 			},
 		},
@@ -165,8 +165,8 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		testClient := NewMockClient(requestAssertion(func(req *http.Request) {
 			username, password, ok := req.BasicAuth()
 			assert.Equal(t, tt.want.authPresent, ok)
-			assert.Equal(t, tt.want.user.Id(), username)
-			assert.Equal(t, tt.want.user.Password(), password)
+			assert.Equal(t, tt.want.user.Name, username)
+			assert.Equal(t, tt.want.user.Password, password)
 		}))
 		testClient.User = tt.args
 
@@ -280,7 +280,7 @@ func TestGetInfo(t *testing.T) {
 
 func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
-	dummyUser := User{name: "user", password: "password"}
+	dummyUser := UserAuth{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
 		ca, err := nodecerts.NewSelfSignedCa("cn")
 		require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestClient_Equal(t *testing.T) {
 		{
 			name: "different user",
 			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, User{name: "user", password: "another-password"}, dummyCaCerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCaCerts),
 			want: false,
 		},
 		{

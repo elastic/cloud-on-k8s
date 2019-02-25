@@ -60,7 +60,7 @@ type Config struct {
 	// ReloadCredentials indicates whether the updater should attempt to reload secure settings in Elasticsearch.
 	ReloadCredentials bool
 	// User is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
-	User client.User
+	User client.UserAuth
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
 	Endpoint string
 	// CACertsPath points to the CA certificate chain to call the Elasticsearch API.
@@ -236,7 +236,7 @@ func validateConfig() Config {
 				"Invalid config",
 			)
 		}
-		config.User = client.NewUserWithPassword(user, pass, "") //TODO role is a bit messyß here
+		config.User = client.UserAuth{Name: user, Password: pass}
 
 		caCerts := viper.GetString(certPathFlag)
 		_, err := loadCerts(caCerts)
