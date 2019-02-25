@@ -28,15 +28,29 @@ const (
 )
 
 // name to identify the Kibana user object (secret/user CRD)
-func kibanaUserObjectName(owner types.NamespacedName) string {
-	return owner.Name + "-" + InternalKibanaServerUserName
+func kibanaUserObjectName(assocName string) string {
+	return assocName + "-" + InternalKibanaServerUserName
+}
+
+func userKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: assoc.Spec.Elasticsearch.Namespace,
+		Name:      kibanaUserObjectName(assoc.Name),
+	}
+}
+
+func secretKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+	return types.NamespacedName{
+		Namespace: assoc.Spec.Kibana.Namespace,
+		Name:      kibanaUserObjectName(assoc.Name),
+	}
 }
 
 // creates a SecretKeySelector selecting the Kibana user secret for the given association
 func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: kibanaUserObjectName(k8s.ExtractNamespacedName(&assoc)),
+			Name: kibanaUserObjectName(assoc.Name),
 		},
 		Key: InternalKibanaServerUserName,
 	}
@@ -45,13 +59,16 @@ func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *
 // reconcileEsUser creates a User resources and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElasticsearchAssociation) error {
 	// keep this name constant and bound to the association we cannot change it
-	name := kibanaUserObjectName(k8s.ExtractNamespacedName(&assoc))
+
 	pw := common.RandomPasswordBytes()
+	secretLabels := kibana.NewLabels(assoc.Spec.Kibana.Name)
+	secretLabels[AssociationLabelName] = assoc.Name
+	secKey := secretKey(assoc)
 	expectedCreds := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: assoc.Spec.Kibana.Namespace,
-			Labels:    kibana.NewLabels(assoc.Spec.Kibana.Name),
+			Name:      secKey.Name,
+			Namespace: secKey.Namespace,
+			Labels:    secretLabels,
 		},
 		Data: map[string][]byte{
 			InternalKibanaServerUserName: pw,
@@ -67,7 +84,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
 			_, ok := reconciled.Data[InternalKibanaServerUserName]
-			//TODO compare labels and namespace and delete if necessary!
+			//TODO compare labels
 			return !ok
 
 		},
@@ -85,11 +102,14 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		return err
 	}
 
+	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
+	userLabels[AssociationLabelName] = assoc.Name
+	usrKey := userKey(assoc)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: assoc.Spec.Elasticsearch.Namespace,
-			Labels:    label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName()), //TODO add label for association
+			Name:      usrKey.Name,
+			Namespace: usrKey.Namespace,
+			Labels:    userLabels,
 		},
 		Spec: estype.UserSpec{
 			Name:         InternalKibanaServerUserName,
@@ -106,7 +126,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Expected:   expectedUser,
 		Reconciled: &reconciledUser,
 		NeedsUpdate: func() bool {
-			// TODO compare namespace or at least GC dangling users?
+			// TODO compare labels
 			return !reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
 		},
 		UpdateReconciled: func() {

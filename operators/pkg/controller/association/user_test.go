@@ -20,7 +20,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_reconcileEsUser(t *testing.T) {
+const resourceNameFixture = "foo-elastic-internal-kibana"
+
+// associationFixture is  a shared test fixture
+var associationFixture = assoctype.KibanaElasticsearchAssociation{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "foo",
+		Namespace: "default",
+	},
+	Spec: assoctype.KibanaElasticsearchAssociationSpec{
+		Elasticsearch: assoctype.ObjectSelector{
+			Name:      "es",
+			Namespace: "default",
+		},
+		Kibana: assoctype.ObjectSelector{
+			Name:      "kibana",
+			Namespace: "default",
+		},
+	},
+}
+
+func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add assoc types")
@@ -28,24 +48,11 @@ func Test_reconcileEsUser(t *testing.T) {
 	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "faild to add Es types")
 	}
+	return sc
+}
 
-	const expectedKey = "foo-elastic-internal-kibana"
-	testAssociation := assoctype.KibanaElasticsearchAssociation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		},
-		Spec: assoctype.KibanaElasticsearchAssociationSpec{
-			Elasticsearch: assoctype.ObjectSelector{
-				Name:      "es",
-				Namespace: "default",
-			},
-			Kibana: assoctype.ObjectSelector{
-				Name:      "kibana",
-				Namespace: "default",
-			},
-		},
-	}
+func Test_reconcileEsUser(t *testing.T) {
+	sc := setupScheme(t)
 
 	type args struct {
 		initialObjects []runtime.Object
@@ -61,11 +68,11 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Happy path: should create a secret and a user CRD",
 			args: args{
 				initialObjects: nil,
-				assoc:          testAssociation,
+				assoc:          associationFixture,
 			},
 			postCondition: func(c k8s.Client) {
 				key := types.NamespacedName{
-					Name:      expectedKey,
+					Name:      resourceNameFixture,
 					Namespace: "default",
 				}
 				assert.NoError(t, c.Get(key, &estype.User{}))
@@ -78,10 +85,10 @@ func Test_reconcileEsUser(t *testing.T) {
 			args: args{
 				initialObjects: []runtime.Object{&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      expectedKey,
+						Name:      resourceNameFixture,
 						Namespace: "other",
 					}}},
-				assoc: testAssociation,
+				assoc: associationFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
@@ -89,7 +96,7 @@ func Test_reconcileEsUser(t *testing.T) {
 				assert.NoError(t, c.List(&client.ListOptions{}, &list))
 				assert.Equal(t, 2, len(list.Items))
 				for _, s := range list.Items {
-					assert.Equal(t, expectedKey, s.Name)
+					assert.Equal(t, resourceNameFixture, s.Name)
 				}
 			},
 		},
@@ -98,16 +105,16 @@ func Test_reconcileEsUser(t *testing.T) {
 			args: args{
 				initialObjects: []runtime.Object{&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      expectedKey,
+						Name:      resourceNameFixture,
 						Namespace: "default",
 					},
 				}},
-				assoc: testAssociation,
+				assoc: associationFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var s corev1.Secret
-				assert.NoError(t, c.Get(types.NamespacedName{Name: expectedKey, Namespace: "default"}, &s))
+				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &s))
 				password, ok := s.Data[InternalKibanaServerUserName]
 				assert.True(t, ok)
 				assert.NotEmpty(t, password)
@@ -138,12 +145,12 @@ func Test_reconcileEsUser(t *testing.T) {
 				// user CR should be in ES namespace
 				assert.NoError(t, c.Get(types.NamespacedName{
 					Namespace: "ns-1",
-					Name:      expectedKey,
+					Name:      resourceNameFixture,
 				}, &estype.User{}))
 				// secret should be in Kibana namespace
 				assert.NoError(t, c.Get(types.NamespacedName{
 					Namespace: "ns-2",
-					Name:      expectedKey,
+					Name:      resourceNameFixture,
 				}, &corev1.Secret{}))
 			},
 		},
