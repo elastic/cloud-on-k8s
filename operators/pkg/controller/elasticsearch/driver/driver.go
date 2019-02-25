@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
@@ -51,9 +51,9 @@ type Options struct {
 	Scheme *runtime.Scheme
 
 	// ClusterCa is the CA that is used to issue certificates for nodes in the cluster
-	ClusterCa *nodecerts.Ca
+	ClusterCa *certificates.Ca
 	// CSRClient is used to retrieve certificate signing requests from nodes in the cluster
-	CSRClient nodecerts.CSRClient
+	CSRClient certificates.CSRClient
 
 	// Observers that observe es clusters state
 	Observers *observer.Manager

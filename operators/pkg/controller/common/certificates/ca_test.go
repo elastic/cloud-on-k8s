@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package nodecerts
+package certificates
 
 import (
 	"crypto/rsa"
@@ -15,7 +15,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

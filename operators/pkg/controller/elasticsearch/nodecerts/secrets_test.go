@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -29,11 +29,11 @@ import (
 
 // fixtures
 var (
-	testCa                       *nodecerts.Ca
+	testCa                       *certificates.Ca
 	testRSAPrivateKey            *rsa.PrivateKey
 	testCSRBytes                 []byte
 	testCSR                      *x509.CertificateRequest
-	validatedCertificateTemplate *nodecerts.ValidatedCertificateTemplate
+	validatedCertificateTemplate *certificates.ValidatedCertificateTemplate
 	certData                     []byte
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
@@ -116,7 +116,7 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = nodecerts.NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+	if testCa, err = certificates.NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
@@ -174,7 +174,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
-func roundTripSerialize(cert *nodecerts.ValidatedCertificateTemplate) (*x509.Certificate, error) {
+func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
 	certData, err := testCa.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
@@ -448,7 +448,7 @@ func TestReconcileNodeCertificateSecret(t *testing.T) {
 			require.Equal(t, tt.wantSecretUpdated, isUpdated)
 			if tt.wantSecretUpdated {
 				assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-				assert.NotEmpty(t, updatedSecret.Data[nodecerts.CAFileName])
+				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
 			}

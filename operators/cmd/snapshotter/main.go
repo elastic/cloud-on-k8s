@@ -7,20 +7,17 @@ package snapshotter
 import (
 	"crypto/x509"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
-
-	"io/ioutil"
-	"os"
-
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

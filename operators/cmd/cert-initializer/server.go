@@ -9,14 +9,14 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 )
 
 // serveCSR serves the given csr via an HTTP server listening on the given port.
 // It stops when stopChan provides a value or gets closed.
 func serveCSR(port int, csr []byte, stopChan <-chan struct{}) error {
 	srv := &http.Server{Addr: fmt.Sprintf(":%d", port)}
-	http.HandleFunc(nodecerts.CertInitializerRoute, func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(certificates.CertInitializerRoute, func(w http.ResponseWriter, r *http.Request) {
 		log.Info("CSR request")
 		if _, err := w.Write(csr); err != nil {
 			log.Error(err, "failed to write CSR to the HTTP response")

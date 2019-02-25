@@ -9,7 +9,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
-	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pvc"
@@ -92,12 +92,12 @@ func createElasticsearchPod(
 	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
 	// originating from the pod after it has started and produced a CSR
 	log.Info("Ensuring that node certificate secret exists for pod", "pod", pod.Name)
-	nodeCertificatesSecret, err := esnodecerts.EnsureNodeCertificateSecretExists(
+	nodeCertificatesSecret, err := nodecerts.EnsureNodeCertificateSecretExists(
 		c,
 		scheme,
 		&es,
 		pod,
-		esnodecerts.LabelNodeCertificateTypeElasticsearchAll,
+		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
 		// add the cluster name label so we select all the node certificates secrets associated with a cluster easily
 		map[string]string{label.ClusterNameLabelName: es.Name},
 	)

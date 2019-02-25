@@ -14,7 +14,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

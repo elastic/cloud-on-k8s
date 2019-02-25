@@ -12,7 +12,7 @@ import (
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -154,9 +154,9 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
-	caCert, exists := secret.Data[nodecerts.CAFileName]
+	caCert, exists := secret.Data[certificates.CAFileName]
 	if !exists {
-		return nil, fmt.Errorf("No value found for secret %s", nodecerts.CAFileName)
+		return nil, fmt.Errorf("No value found for secret %s", certificates.CAFileName)
 	}
 	return certutil.ParsePEMCerts(caCert)
 }

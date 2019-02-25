@@ -11,10 +11,10 @@ import (
 	"strconv"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -118,7 +118,7 @@ func newSidecarContainers(
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
 				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
 				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
-				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, nodecerts.CAFileName)},
+				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, certificates.CAFileName)},
 			},
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
@@ -162,7 +162,7 @@ func newEnvironmentVars(
 			Value: fmt.Sprintf(
 				"%s/%s",
 				extraFilesSecretVolume.VolumeMount().MountPath,
-				esnodecerts.TrustRestrictionsFilename,
+				nodecerts.TrustRestrictionsFilename,
 			),
 		},
 
@@ -198,11 +198,11 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, esnodecerts.CertFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificateAuthorities,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
 		},
 		// x-pack security transport settings
 		{Name: settings.EnvXPackSecurityTransportSslEnabled, Value: "true"},
@@ -212,11 +212,11 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, esnodecerts.CertFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificateAuthorities,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
 		},
 	}
 }
