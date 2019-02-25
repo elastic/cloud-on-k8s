@@ -5,8 +5,6 @@
 package nodecerts
 
 import (
-	"time"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -36,9 +34,6 @@ const (
 
 	// LastCSRUpdateAnnotation is an annotation key to indicate the last time this secret's CSR was updated
 	LastCSRUpdateAnnotation = "nodecerts.elasticsearch.k8s.elastic.co/last-csr-update"
-
-	// CSRRequestDelay limits the number of CSR requests we do in consecutive reconciliations
-	CSRRequestDelay = 1 * time.Minute
 )
 
 const (

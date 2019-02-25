@@ -18,6 +18,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// CSRRequestDelay limits the number of CSR requests we do in consecutive reconciliations
+const CSRRequestDelay = 1 * time.Minute
+
 // maybeRequestCSR requests the pod for a new CSR if required, or returns nil.
 func maybeRequestCSR(pod corev1.Pod, csrClient certificates.CSRClient, lastCSRUpdate string) ([]byte, error) {
 	// If the CSR secret was updated very recently, chances are we already issued a new certificate
