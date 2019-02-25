@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -129,7 +128,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := certutil.EncodePEMCert(c.Cert.Raw)
+	expectedCaKeyBytes := EncodePEMCert(c.Cert.Raw)
 
 	clusterCASecret := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(objectKey),

@@ -67,7 +67,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	asPem := certutil.EncodePEMCert(certData)
+	asPem := certificates.EncodePEMCert(certData)
 	return ioutil.WriteFile(path, asPem, 644)
 }
 

@@ -15,7 +15,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -124,6 +123,6 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 	updated := &corev1.Secret{}
 	c.Get(nsn, updated)
 
-	expectedCaKeyBytes := certutil.EncodePEMCert(fooCa.Cert.Raw)
+	expectedCaKeyBytes := EncodePEMCert(fooCa.Cert.Raw)
 	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data[CAFileName]))
 }

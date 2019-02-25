@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -133,7 +132,7 @@ func init() {
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
-	pemCert = certutil.EncodePEMCert(certData, testCa.Cert.Raw)
+	pemCert = certificates.EncodePEMCert(certData, testCa.Cert.Raw)
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
@@ -156,20 +155,20 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	assert.Contains(t, certRT.DNSNames, getServiceFullyQualifiedHostname(testSvc))
 
 	// es specific othernames is a bit more difficult to get to, but should be present:
-	otherNames, err := certutil.ParseSANGeneralNamesOtherNamesOnly(certRT)
+	otherNames, err := certificates.ParseSANGeneralNamesOtherNamesOnly(certRT)
 	require.NoError(t, err)
 
 	// we expect this name to be used for both the common name as well as the es othername
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.cluster.local"
 
-	otherName, err := (&certutil.UTF8StringValuedOtherName{
-		OID:   certutil.CommonNameObjectIdentifier,
+	otherName, err := (&certificates.UTF8StringValuedOtherName{
+		OID:   certificates.CommonNameObjectIdentifier,
 		Value: cn,
 	}).ToOtherName()
 	require.NoError(t, err)
 
 	assert.Equal(t, certRT.Subject.CommonName, cn)
-	assert.Contains(t, otherNames, certutil.GeneralName{OtherName: *otherName})
+	assert.Contains(t, otherNames, certificates.GeneralName{OtherName: *otherName})
 }
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions

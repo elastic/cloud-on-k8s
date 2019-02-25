@@ -18,7 +18,6 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
@@ -119,7 +118,7 @@ func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return certutil.ParsePEMCerts(bytes)
+	return certificates.ParsePEMCerts(bytes)
 }
 
 // reloadCredentials tries to make an API call to the reload_secure_credentials API

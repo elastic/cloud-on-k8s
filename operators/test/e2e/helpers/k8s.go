@@ -13,7 +13,6 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -158,7 +157,7 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	if !exists {
 		return nil, fmt.Errorf("No value found for secret %s", certificates.CAFileName)
 	}
-	return certutil.ParsePEMCerts(caCert)
+	return certificates.ParsePEMCerts(caCert)
 }
 
 func ESPodListOptions(stackName string) client.ListOptions {

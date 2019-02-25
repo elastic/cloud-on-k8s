@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -212,12 +211,12 @@ func ReconcileNodeCertificateSecret(
 	}
 
 	// store CA cert, CSR and signed certificate in a secret mounted into the pod
-	secret.Data[certificates.CAFileName] = certutil.EncodePEMCert(ca.Cert.Raw)
+	secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
 	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
 		secret.Data[certificates.CAFileName] = append(secret.Data[certificates.CAFileName], caPemBytes...)
 	}
 	secret.Data[CSRFileName] = csr
-	secret.Data[CertFileName] = certutil.EncodePEMCert(certData, ca.Cert.Raw)
+	secret.Data[CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	// store last CSR update in the pod annotations
 	secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 
@@ -288,8 +287,8 @@ func CreateValidatedCertificateTemplate(
 	}
 
 	commonName := buildCertificateCommonName(pod, clusterName, namespace)
-	commonNameUTF8OtherName := &certutil.UTF8StringValuedOtherName{
-		OID:   certutil.CommonNameObjectIdentifier,
+	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
+		OID:   certificates.CommonNameObjectIdentifier,
 		Value: commonName,
 	}
 	commonNameOtherName, err := commonNameUTF8OtherName.ToOtherName()
@@ -299,7 +298,7 @@ func CreateValidatedCertificateTemplate(
 
 	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
 	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
-	generalNames := []certutil.GeneralName{
+	generalNames := []certificates.GeneralName{
 		{OtherName: *commonNameOtherName},
 		{DNSName: commonName},
 		{DNSName: pod.Name},
@@ -311,18 +310,18 @@ func CreateValidatedCertificateTemplate(
 		for _, svc := range svcs {
 			if ip := net.ParseIP(svc.Spec.ClusterIP); ip != nil {
 				generalNames = append(generalNames,
-					certutil.GeneralName{IPAddress: maybeIPTo4(ip)},
+					certificates.GeneralName{IPAddress: maybeIPTo4(ip)},
 				)
 			}
 
 			generalNames = append(generalNames,
-				certutil.GeneralName{DNSName: svc.Name},
-				certutil.GeneralName{DNSName: getServiceFullyQualifiedHostname(svc)},
+				certificates.GeneralName{DNSName: svc.Name},
+				certificates.GeneralName{DNSName: getServiceFullyQualifiedHostname(svc)},
 			)
 		}
 	}
 
-	generalNamesBytes, err := certutil.MarshalToSubjectAlternativeNamesData(generalNames)
+	generalNamesBytes, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +336,7 @@ func CreateValidatedCertificateTemplate(
 		},
 
 		ExtraExtensions: []pkix.Extension{
-			{Id: certutil.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
+			{Id: certificates.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
 		},
 		NotBefore: time.Now().Add(-10 * time.Minute),
 		NotAfter:  time.Now().Add(365 * 24 * time.Hour),
