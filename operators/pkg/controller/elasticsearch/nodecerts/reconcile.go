@@ -24,6 +24,8 @@ import (
 
 var log = logf.KBLog.WithName("nodecerts")
 
+// ReconcileNodeCertificateSecrets reconciles certificate secrets for nodes
+// of the given es cluster.
 func ReconcileNodeCertificateSecrets(
 	c k8s.Client,
 	ca *certificates.Ca,
@@ -43,14 +45,18 @@ func ReconcileNodeCertificateSecrets(
 		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
 	}
 
+	// get all existing secrets for this cluster
 	nodeCertificateSecrets, err := findNodeCertificateSecrets(c, es)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
 	for _, secret := range nodeCertificateSecrets {
-		// todo: error checking if label does not exist
-		podName := secret.Labels[LabelAssociatedPod]
+		// retrieve pod associated to this secret
+		podName, ok := secret.Labels[LabelAssociatedPod]
+		if !ok {
+			return reconcile.Result{}, fmt.Errorf("Cannot find pod name in labels of secret %s", secret.Name)
+		}
 
 		var pod corev1.Pod
 		if err := c.Get(types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
@@ -58,7 +64,8 @@ func ReconcileNodeCertificateSecrets(
 				return reconcile.Result{}, err
 			}
 
-			// give some leniency in pods showing up only after a while.
+			// pod does not exist anymore, garbage-collect the secret
+			// give some leniency in pods showing up only after a while
 			if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
 				// if the secret has existed for too long without an associated pod, it's time to GC it
 				log.Info("Unable to find pod associated with secret, GCing", "secret", secret.Name)
@@ -100,8 +107,7 @@ func ReconcileNodeCertificateSecrets(
 	return reconcile.Result{}, nil
 }
 
-// doReconcile ensures that the node certificate secret has the available and correct Data keys
-// provided.
+// doReconcile ensures that the node certificate secret has the correct content.
 func doReconcile(
 	c k8s.Client,
 	secret corev1.Secret,
