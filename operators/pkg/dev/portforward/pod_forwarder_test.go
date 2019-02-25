@@ -139,13 +139,13 @@ func Test_parsePodAddr(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "without subdomain",
-			args: args{addr: "foo.bar.pod.cluster.local"},
+			name: "pod DNS without subdomain",
+			args: args{addr: "foo.bar.pod.cluster.local:1234"},
 			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
 			name:    "invalid",
-			args:    args{addr: "example.com"},
+			args:    args{addr: "example.com:1234"},
 			wantErr: errors.New("unsupported pod address format: example.com"),
 		},
 	}
@@ -157,9 +157,42 @@ func Test_parsePodAddr(t *testing.T) {
 				assert.Equal(t, tt.wantErr, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, *got)
+		})
+	}
+}
 
-			assert.Equal(t, tt.want, *got)
+func Test_podIPv4Regex(t *testing.T) {
+	tests := []struct {
+		name string
+		addr string
+		want bool
+	}{
+		{
+			name: "valid ipv4",
+			addr: "10.0.0.2",
+			want: true,
+		},
+		{
+			name: "invalid ipv4 still correctly parsed",
+			addr: "666.666.666.666",
+			want: true,
+		},
+		{
+			name: "empty string",
+			addr: "",
+			want: false,
+		},
+		{
+			name: "dns",
+			addr: "name.namespace.pod.cluster.local",
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, podIPv4Regex.MatchString(tt.addr))
 		})
 	}
 }

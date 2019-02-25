@@ -27,8 +27,7 @@ func NewOSSettingsInitContainer(imageName string) (corev1.Container, error) {
 			Privileged: &privileged,
 			RunAsUser:  &initContainerRunAsUser,
 		},
-		Command:      []string{"sysctl", "-w", fmt.Sprintf("vm.max_map_count=%d", VMMaxMapCount)},
-		VolumeMounts: SharedVolumes.InitContainerVolumeMounts(),
+		Command: []string{"sysctl", "-w", fmt.Sprintf("vm.max_map_count=%d", VMMaxMapCount)},
 	}
 	return container, nil
 }

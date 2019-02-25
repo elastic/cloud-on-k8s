@@ -7,14 +7,17 @@ package initcontainer
 import (
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewInitContainers(t *testing.T) {
 	type args struct {
-		imageName        string
-		linkedFiles      LinkedFilesArray
-		SetVMMaxMapCount bool
+		elasticsearchImage string
+		operatorImage      string
+		linkedFiles        LinkedFilesArray
+		SetVMMaxMapCount   bool
+		nodeCertsVolume    volume.SecretVolume
 	}
 	tests := []struct {
 		name                       string
@@ -24,25 +27,29 @@ func TestNewInitContainers(t *testing.T) {
 		{
 			name: "with SetVMMaxMapCount enabled",
 			args: args{
-				imageName:        "image",
-				linkedFiles:      LinkedFilesArray{},
-				SetVMMaxMapCount: true,
+				elasticsearchImage: "es-image",
+				operatorImage:      "op-image",
+				linkedFiles:        LinkedFilesArray{},
+				SetVMMaxMapCount:   true,
+				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 2,
+			expectedNumberOfContainers: 3,
 		},
 		{
 			name: "with SetVMMaxMapCount disabled",
 			args: args{
-				imageName:        "image",
-				linkedFiles:      LinkedFilesArray{},
-				SetVMMaxMapCount: false,
+				elasticsearchImage: "es-image",
+				operatorImage:      "op-image",
+				linkedFiles:        LinkedFilesArray{},
+				SetVMMaxMapCount:   false,
+				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 1,
+			expectedNumberOfContainers: 2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers, err := NewInitContainers(tt.args.imageName, tt.args.linkedFiles, tt.args.SetVMMaxMapCount)
+			containers, err := NewInitContainers(tt.args.elasticsearchImage, tt.args.operatorImage, tt.args.linkedFiles, tt.args.SetVMMaxMapCount, tt.args.nodeCertsVolume)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
 		})

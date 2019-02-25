@@ -52,6 +52,8 @@ type Options struct {
 
 	// ClusterCa is the CA that is used to issue certificates for nodes in the cluster
 	ClusterCa *nodecerts.Ca
+	// CSRClient is used to retrieve certificate signing requests from nodes in the cluster
+	CSRClient nodecerts.CSRClient
 
 	// Observers that observe es clusters state
 	Observers *observer.Manager

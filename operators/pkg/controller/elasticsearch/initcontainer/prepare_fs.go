@@ -8,6 +8,46 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// Volumes that are shared between the prepare-fs init container and the ES container
+var (
+	DataSharedVolume = SharedVolume{
+		Name:                   "data",
+		InitContainerMountPath: "/volume/data",
+		EsContainerMountPath:   "/usr/share/elasticsearch/data",
+	}
+
+	LogsSharedVolume = SharedVolume{
+		Name:                   "logs",
+		InitContainerMountPath: "/volume/logs",
+		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
+	}
+
+	PrepareFsSharedVolumes = SharedVolumeArray{
+		Array: []SharedVolume{
+			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
+			SharedVolume{
+				Name:                   "config-volume",
+				InitContainerMountPath: "/volume/config",
+				EsContainerMountPath:   "/usr/share/elasticsearch/config",
+			},
+			// Contains plugins data
+			SharedVolume{
+				Name:                   "plugins-volume",
+				InitContainerMountPath: "/volume/plugins",
+				EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
+			},
+			// Plugins may have binaries installed in /bin
+			SharedVolume{
+				Name:                   "bin-volume",
+				InitContainerMountPath: "/volume/bin",
+				EsContainerMountPath:   "/usr/share/elasticsearch/bin",
+			},
+			DataSharedVolume,
+			LogsSharedVolume,
+		},
+	}
+)
+
 // NewPrepareFSInitContainer creates an init container to handle things such as:
 // - plugins installation
 // - configuration changes
@@ -18,7 +58,7 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray) (
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	script, err := RenderScriptTemplate(TemplateParams{
 		Plugins:       defaultInstalledPlugins,
-		SharedVolumes: SharedVolumes,
+		SharedVolumes: PrepareFsSharedVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
 			DataSharedVolume.InitContainerMountPath,
@@ -37,7 +77,7 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray) (
 			RunAsUser:  &initContainerRunAsUser,
 		},
 		Command:      []string{"bash", "-c", script},
-		VolumeMounts: SharedVolumes.InitContainerVolumeMounts(),
+		VolumeMounts: PrepareFsSharedVolumes.InitContainerVolumeMounts(),
 	}
 	return container, nil
 }

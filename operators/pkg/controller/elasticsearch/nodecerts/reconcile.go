@@ -27,6 +27,7 @@ var log = logf.KBLog.WithName("nodecerts")
 func ReconcileNodeCertificateSecrets(
 	c k8s.Client,
 	ca *nodecerts.Ca,
+	csrClient nodecerts.CSRClient,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
@@ -84,7 +85,7 @@ func ReconcileNodeCertificateSecrets(
 		switch certificateType {
 		case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
 			if res, err := nodecerts.ReconcileNodeCertificateSecret(
-				c, secret, pod, es.Name, es.Namespace, services, ca, additionalCAs,
+				c, secret, pod, csrClient, es.Name, es.Namespace, services, ca, additionalCAs,
 			); err != nil {
 				return res, err
 			}
