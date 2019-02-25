@@ -219,7 +219,6 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 	}
 	type args struct {
 		newCmd cmdutil.ExecutableFactory
-		name   string
 	}
 	tests := []struct {
 		name   string
@@ -238,7 +237,6 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 				newCmd: cmdutil.NewFakeCmdBuilder(&cmdutil.FakeExecutable{
 					StdOutput: []byte(randomStdOutput),
 				}),
-				name: "lv",
 			},
 			want: success,
 		},
@@ -253,7 +251,6 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 					StdOutput: []byte("something bad happened here"),
 					Err:       errors.New("an error"),
 				}),
-				name: "lv",
 			},
 			want: lvsOutput{},
 			err:  errors.New("something bad happened here"),
@@ -265,7 +262,7 @@ func TestVolumeGroup_lookupLV(t *testing.T) {
 				name:      tt.fields.name,
 				bytesFree: tt.fields.bytesFree,
 			}
-			got, err := vg.lookupLV(tt.args.newCmd, tt.args.name)
+			got, err := vg.lookupLV(tt.args.newCmd)
 			assert.Equal(t, tt.err, err)
 			assert.Equal(t, tt.want, got)
 		})

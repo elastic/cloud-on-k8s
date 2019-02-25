@@ -110,17 +110,9 @@ func (vg VolumeGroup) CreateThinPool(newCmd cmdutil.ExecutableFactory, name stri
 
 // ListLogicalVolumes the logical volumes
 func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.ExecutableFactory) ([]LogicalVolume, error) {
-	var result lvsOutput
-	cmd := newCmd(
-		"lvs",
-		"--options=lv_name,lv_size,vg_name,lv_layout,data_percent",
-		vg.name,
-		"--reportformat=json",
-		"--units=b",
-		"--nosuffix",
-	)
+	result, err := vg.lookupLV(newCmd)
 
-	if err := RunLVMCmd(cmd, &result); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -133,7 +125,7 @@ func (vg VolumeGroup) ListLogicalVolumes(newCmd cmdutil.ExecutableFactory) ([]Lo
 	return lvs, nil
 }
 
-func (vg VolumeGroup) lookupLV(newCmd cmdutil.ExecutableFactory, name string) (lvsOutput, error) {
+func (vg VolumeGroup) lookupLV(newCmd cmdutil.ExecutableFactory) (lvsOutput, error) {
 	var result lvsOutput
 	cmd := newCmd(
 		"lvs",
@@ -149,7 +141,7 @@ func (vg VolumeGroup) lookupLV(newCmd cmdutil.ExecutableFactory, name string) (l
 // LookupLogicalVolume looks up the logical volume with the given name
 // in the current volume group
 func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.ExecutableFactory, name string) (LogicalVolume, error) {
-	result, err := vg.lookupLV(newCmd, name)
+	result, err := vg.lookupLV(newCmd)
 	if err != nil {
 		return LogicalVolume{}, err
 	}
@@ -169,7 +161,7 @@ func (vg VolumeGroup) LookupLogicalVolume(newCmd cmdutil.ExecutableFactory, name
 
 // LookupThinPool returns the thinpool with the given name
 func (vg VolumeGroup) LookupThinPool(newCmd cmdutil.ExecutableFactory, name string) (ThinPool, error) {
-	result, err := vg.lookupLV(newCmd, name)
+	result, err := vg.lookupLV(newCmd)
 	if err != nil {
 		return ThinPool{}, err
 	}
