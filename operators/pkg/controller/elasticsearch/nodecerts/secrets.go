@@ -22,20 +22,20 @@ import (
 
 const (
 	// LabelAssociatedPod is a label key that indicates the resource is supposed to have a named associated pod
-	LabelAssociatedPod = "nodecerts.stack.k8s.elastic.co/associated-pod"
+	LabelAssociatedPod = "nodecerts.elasticsearch.k8s.elastic.co/associated-pod"
 
 	// LabelSecretUsage is a label key that specifies what the secret is used for
-	LabelSecretUsage = "nodecerts.stack.k8s.elastic.co/secret-usage"
+	LabelSecretUsage = "nodecerts.elasticsearch.k8s.elastic.co/secret-usage"
 	// LabelSecretUsageNodeCertificates is the LabelSecretUsage value used for node certificates
 	LabelSecretUsageNodeCertificates = "node-certificates"
 
 	// LabelNodeCertificateType is a label key indicating what the node-certificates secret is used for
-	LabelNodeCertificateType = "nodecerts.stack.k8s.elastic.co/node-certificate-type"
+	LabelNodeCertificateType = "nodecerts.elasticsearch.k8s.elastic.co/node-certificate-type"
 	// LabelNodeCertificateTypeElasticsearchAll is the LabelNodeCertificateType value used for Elasticsearch
 	LabelNodeCertificateTypeElasticsearchAll = "elasticsearch.all"
 
 	// LastCSRUpdateAnnotation is an annotation key to indicate the last time this secret's CSR was updated
-	LastCSRUpdateAnnotation = "nodecerts.stack.k8s.elastic.co/last-csr-update"
+	LastCSRUpdateAnnotation = "nodecerts.elasticsearch.k8s.elastic.co/last-csr-update"
 
 	// CSRRequestDelay limits the number of CSR requests we do in consecutive reconciliations
 	CSRRequestDelay = 1 * time.Minute
