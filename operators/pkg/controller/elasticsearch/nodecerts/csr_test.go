@@ -5,6 +5,7 @@
 package nodecerts
 
 import (
+	"crypto/x509"
 	"net"
 	"reflect"
 	"testing"
@@ -16,6 +17,28 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type FakeCSRClient struct {
+	csr []byte
+}
+
+func (f FakeCSRClient) RetrieveCSR(pod corev1.Pod) ([]byte, error) {
+	return f.csr, nil
+}
+
+// roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
+// are parsed and considered part of the certificate
+func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
+	certData, err := testCa.CreateCertificate(*cert)
+	if err != nil {
+		return nil, err
+	}
+	certRT, err := x509.ParseCertificate(certData)
+	if err != nil {
+		return nil, err
+	}
+
+	return certRT, nil
+}
 func Test_maybeRequestCSR(t *testing.T) {
 	tests := []struct {
 		name          string
