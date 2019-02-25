@@ -6,12 +6,15 @@ package nodecerts
 
 import (
 	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
+	"encoding/pem"
 	"net"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -26,9 +29,11 @@ import (
 
 // fixtures
 var (
+	testCa                       *nodecerts.Ca
+	testRSAPrivateKey            *rsa.PrivateKey
 	testCSRBytes                 []byte
 	testCSR                      *x509.CertificateRequest
-	validatedCertificateTemplate *ValidatedCertificateTemplate
+	validatedCertificateTemplate *nodecerts.ValidatedCertificateTemplate
 	certData                     []byte
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
@@ -78,6 +83,24 @@ var (
 	fakeCSRClient FakeCSRClient
 )
 
+const testPemPrivateKey = `
+-----BEGIN RSA PRIVATE KEY-----
+MIICXAIBAAKBgQCxoeCUW5KJxNPxMp+KmCxKLc1Zv9Ny+4CFqcUXVUYH69L3mQ7v
+IWrJ9GBfcaA7BPQqUlWxWM+OCEQZH1EZNIuqRMNQVuIGCbz5UQ8w6tS0gcgdeGX7
+J7jgCQ4RK3F/PuCM38QBLaHx988qG8NMc6VKErBjctCXFHQt14lerd5KpQIDAQAB
+AoGAYrf6Hbk+mT5AI33k2Jt1kcweodBP7UkExkPxeuQzRVe0KVJw0EkcFhywKpr1
+V5eLMrILWcJnpyHE5slWwtFHBG6a5fLaNtsBBtcAIfqTQ0Vfj5c6SzVaJv0Z5rOd
+7gQF6isy3t3w9IF3We9wXQKzT6q5ypPGdm6fciKQ8RnzREkCQQDZwppKATqQ41/R
+vhSj90fFifrGE6aVKC1hgSpxGQa4oIdsYYHwMzyhBmWW9Xv/R+fPyr8ZwPxp2c12
+33QwOLPLAkEA0NNUb+z4ebVVHyvSwF5jhfJxigim+s49KuzJ1+A2RaSApGyBZiwS
+rWvWkB471POAKUYt5ykIWVZ83zcceQiNTwJBAMJUFQZX5GDqWFc/zwGoKkeR49Yi
+MTXIvf7Wmv6E++eFcnT461FlGAUHRV+bQQXGsItR/opIG7mGogIkVXa3E1MCQARX
+AAA7eoZ9AEHflUeuLn9QJI/r0hyQQLEtrpwv6rDT1GCWaLII5HJ6NUFVf4TTcqxo
+6vdM4QGKTJoO+SaCyP0CQFdpcxSAuzpFcKv0IlJ8XzS/cy+mweCMwyJ1PFEc4FX6
+wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
+-----END RSA PRIVATE KEY-----
+`
+
 type FakeCSRClient struct {
 	csr []byte
 }
@@ -87,8 +110,15 @@ func (f FakeCSRClient) RetrieveCSR(pod corev1.Pod) ([]byte, error) {
 }
 
 func init() {
-	initTestVars()
 	var err error
+	block, _ := pem.Decode([]byte(testPemPrivateKey))
+	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
+		panic("Failed to parse private key: " + err.Error())
+	}
+
+	if testCa, err = nodecerts.NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+		panic("Failed to create new self signed CA: " + err.Error())
+	}
 	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
@@ -144,7 +174,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
-func roundTripSerialize(cert *ValidatedCertificateTemplate) (*x509.Certificate, error) {
+func roundTripSerialize(cert *nodecerts.ValidatedCertificateTemplate) (*x509.Certificate, error) {
 	certData, err := testCa.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
@@ -418,7 +448,7 @@ func TestReconcileNodeCertificateSecret(t *testing.T) {
 			require.Equal(t, tt.wantSecretUpdated, isUpdated)
 			if tt.wantSecretUpdated {
 				assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-				assert.NotEmpty(t, updatedSecret.Data[CAFileName])
+				assert.NotEmpty(t, updatedSecret.Data[nodecerts.CAFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
 			}

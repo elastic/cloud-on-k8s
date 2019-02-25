@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -109,7 +110,7 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, esnodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSslCertificateAuthorities,

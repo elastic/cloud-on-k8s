@@ -50,7 +50,7 @@ func ReconcileNodeCertificateSecrets(
 
 	for _, secret := range nodeCertificateSecrets {
 		// todo: error checking if label does not exist
-		podName := secret.Labels[nodecerts.LabelAssociatedPod]
+		podName := secret.Labels[LabelAssociatedPod]
 
 		var pod corev1.Pod
 		if err := c.Get(types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
@@ -76,15 +76,15 @@ func ReconcileNodeCertificateSecrets(
 			continue
 		}
 
-		certificateType, ok := secret.Labels[nodecerts.LabelNodeCertificateType]
+		certificateType, ok := secret.Labels[LabelNodeCertificateType]
 		if !ok {
 			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
 			continue
 		}
 
 		switch certificateType {
-		case nodecerts.LabelNodeCertificateTypeElasticsearchAll:
-			if res, err := nodecerts.ReconcileNodeCertificateSecret(
+		case LabelNodeCertificateTypeElasticsearchAll:
+			if res, err := ReconcileNodeCertificateSecret(
 				c, secret, pod, csrClient, es.Name, es.Namespace, services, ca, additionalCAs,
 			); err != nil {
 				return res, err
@@ -109,7 +109,7 @@ func findNodeCertificateSecrets(
 		Namespace: es.Namespace,
 		LabelSelector: labels.Set(map[string]string{
 			label.ClusterNameLabelName: es.Name,
-			nodecerts.LabelSecretUsage: nodecerts.LabelSecretUsageNodeCertificates,
+			LabelSecretUsage:           LabelSecretUsageNodeCertificates,
 		}).AsSelector(),
 	}
 

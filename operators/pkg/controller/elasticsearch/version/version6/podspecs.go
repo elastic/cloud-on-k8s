@@ -198,7 +198,7 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, esnodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityHttpSslCertificateAuthorities,
@@ -212,7 +212,7 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, esnodecerts.CertFileName),
 		},
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificateAuthorities,

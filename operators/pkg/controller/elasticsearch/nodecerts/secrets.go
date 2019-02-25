@@ -14,6 +14,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -25,11 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-)
-
-var (
-	log = logf.Log.WithName("nodecerts")
 )
 
 const (
@@ -54,8 +50,6 @@ const (
 )
 
 const (
-	// CAFileName is used for the CA Certificates inside a secret
-	CAFileName = "ca.pem"
 	// CertFileName is used for the Certificates inside a secret
 	CertFileName = "cert.pem"
 	// CSRFileName is used for the CSR inside a secret
@@ -118,7 +112,7 @@ func EnsureNodeCertificateSecretExists(
 }
 
 // maybeRequestCSR requests the pod for a new CSR if required, or returns nil.
-func maybeRequestCSR(pod corev1.Pod, csrClient CSRClient, lastCSRUpdate string) ([]byte, error) {
+func maybeRequestCSR(pod corev1.Pod, csrClient nodecerts.CSRClient, lastCSRUpdate string) ([]byte, error) {
 	// If the CSR secret was updated very recently, chances are we already issued a new certificate
 	// which has not yet been propagated to the pod (it can take more than 1 minute).
 	// In such case, there is no need to request the same CSR again and again at each reconciliation.
@@ -152,10 +146,10 @@ func ReconcileNodeCertificateSecret(
 	c k8s.Client,
 	secret corev1.Secret,
 	pod corev1.Pod,
-	csrClient CSRClient,
+	csrClient nodecerts.CSRClient,
 	clusterName, namespace string,
 	svcs []corev1.Service,
-	ca *Ca,
+	ca *nodecerts.Ca,
 	additionalTrustedCAsPemEncoded [][]byte,
 ) (reconcile.Result, error) {
 	// a placeholder secret may have nil entries, create them if needed
@@ -218,9 +212,9 @@ func ReconcileNodeCertificateSecret(
 	}
 
 	// store CA cert, CSR and signed certificate in a secret mounted into the pod
-	secret.Data[CAFileName] = certutil.EncodePEMCert(ca.Cert.Raw)
+	secret.Data[nodecerts.CAFileName] = certutil.EncodePEMCert(ca.Cert.Raw)
 	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
-		secret.Data[CAFileName] = append(secret.Data[CAFileName], caPemBytes...)
+		secret.Data[nodecerts.CAFileName] = append(secret.Data[nodecerts.CAFileName], caPemBytes...)
 	}
 	secret.Data[CSRFileName] = csr
 	secret.Data[CertFileName] = certutil.EncodePEMCert(certData, ca.Cert.Raw)
@@ -241,7 +235,7 @@ func ReconcileNodeCertificateSecret(
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate SAN and IP does not match pod SAN and IP
-func shouldIssueNewCertificate(secret corev1.Secret, ca *Ca, pod corev1.Pod) bool {
+func shouldIssueNewCertificate(secret corev1.Secret, ca *nodecerts.Ca, pod corev1.Pod) bool {
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		// certificate is missing
@@ -287,7 +281,7 @@ func CreateValidatedCertificateTemplate(
 	clusterName, namespace string,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
-) (*ValidatedCertificateTemplate, error) {
+) (*nodecerts.ValidatedCertificateTemplate, error) {
 	podIp := net.ParseIP(pod.Status.PodIP)
 	if podIp == nil {
 		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
@@ -336,7 +330,7 @@ func CreateValidatedCertificateTemplate(
 	// TODO: csr signature is not checked, common name not verified
 	// TODO: add services dns entries / ip addresses to cert?
 
-	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
+	certificateTemplate := nodecerts.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         commonName,
 			OrganizationalUnit: []string{clusterName},

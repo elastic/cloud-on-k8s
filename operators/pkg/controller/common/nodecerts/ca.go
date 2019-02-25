@@ -24,6 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
+// CAFileName is used for the CA Certificates inside a secret
+const CAFileName = "ca.pem"
+
 var (
 	// SerialNumberLimit is the maximum number used as a certificate serial number
 	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
