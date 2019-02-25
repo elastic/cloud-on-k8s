@@ -7,12 +7,16 @@ package nodecerts
 import (
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -43,6 +47,26 @@ const (
 	// CSRFileName is used for the CSR inside a secret
 	CSRFileName = "csr.pem"
 )
+
+func findNodeCertificateSecrets(
+	c k8s.Client,
+	es v1alpha1.ElasticsearchCluster,
+) ([]corev1.Secret, error) {
+	var nodeCertificateSecrets corev1.SecretList
+
+	listOptions := client.ListOptions{
+		Namespace: es.Namespace,
+		LabelSelector: labels.Set(map[string]string{
+			label.ClusterNameLabelName: es.Name,
+			LabelSecretUsage:           LabelSecretUsageNodeCertificates,
+		}).AsSelector(),
+	}
+	if err := c.List(&listOptions, &nodeCertificateSecrets); err != nil {
+		return nil, err
+	}
+
+	return nodeCertificateSecrets.Items, nil
+}
 
 // NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
 // a given pod.

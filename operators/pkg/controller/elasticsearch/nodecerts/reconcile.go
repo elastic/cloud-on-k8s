@@ -14,13 +14,10 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -101,26 +98,6 @@ func ReconcileNodeCertificateSecrets(
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func findNodeCertificateSecrets(
-	c k8s.Client,
-	es v1alpha1.ElasticsearchCluster,
-) ([]corev1.Secret, error) {
-	var nodeCertificateSecrets corev1.SecretList
-	listOptions := client.ListOptions{
-		Namespace: es.Namespace,
-		LabelSelector: labels.Set(map[string]string{
-			label.ClusterNameLabelName: es.Name,
-			LabelSecretUsage:           LabelSecretUsageNodeCertificates,
-		}).AsSelector(),
-	}
-
-	if err := c.List(&listOptions, &nodeCertificateSecrets); err != nil {
-		return nil, err
-	}
-
-	return nodeCertificateSecrets.Items, nil
 }
 
 // doReconcile ensures that the node certificate secret has the available and correct Data keys
