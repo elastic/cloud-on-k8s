@@ -6,11 +6,19 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: users.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    name: status
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
+    categories:
+    - elastic
     kind: User
     plural: users
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:

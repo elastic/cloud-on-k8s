@@ -53,6 +53,7 @@ rules:
   - elasticsearchclusters/status
   - clusterlicenses
   - trustrelationships
+  - users/status
   verbs:
   - get
   - list

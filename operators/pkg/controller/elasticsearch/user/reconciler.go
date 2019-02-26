@@ -9,6 +9,8 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/pkg/errors"
+	k8serrors "k8s.io/apimachinery/pkg/util/errors"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -81,21 +83,31 @@ func ReconcileUsers(
 	users = append(users, externalSecrets.Users()...)
 	roles := PredefinedRoles
 
-	var commonUsers []user.User
+	var allUsers []user.User
 	var customUsers v1alpha1.UserList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+		Namespace:     es.Namespace,
 	}, &customUsers); err != nil {
 		return nil, err
 	}
+
+	var statusUpdates []func() error
 	for _, u := range customUsers.Items {
-		commonUsers = append(commonUsers, &u)
+		// do minimal sanity checking on externally created users
+		if u.IsEmpty() {
+			log.Info("Ignoring invalid", "user", u)
+			statusUpdates = append(statusUpdates, phaseUpdate(c, u, v1alpha1.UserInvalid))
+			continue
+		}
+		statusUpdates = append(statusUpdates, phaseUpdate(c, u, v1alpha1.UserPropagated))
+		allUsers = append(allUsers, &u)
 	}
 
 	for _, u := range users {
-		commonUsers = append(commonUsers, user.User(u))
+		allUsers = append(allUsers, user.User(u))
 	}
-	elasticUsersRolesSecret, err := NewElasticUsersCredentialsAndRoles(nsn, commonUsers, roles)
+	elasticUsersRolesSecret, err := NewElasticUsersCredentialsAndRoles(nsn, allUsers, roles)
 	if err != nil {
 		return nil, err
 	}
@@ -103,5 +115,28 @@ func ReconcileUsers(
 		return nil, err
 	}
 
-	return &internalUsers, err
+	// We are delaying  user status updates to happen only after the reconciliation went through.
+	// This has the slight disadvantage that user status updates don't happen on early returns but the reduced complexity
+	// of avoiding defers and named returns makes it worthwhile given the user status is of limited use anyway.
+	return &internalUsers, applyDelayedUpdates(statusUpdates)
+}
+
+func phaseUpdate(c k8s.Client, user v1alpha1.User, phase v1alpha1.UserPhase) func() error {
+	user.Status.Phase = phase
+	return func() error {
+		if err := c.Status().Update(&user); err != nil {
+			return errors.Wrapf(err, "Failed to update status for user %v", k8s.ExtractNamespacedName(&user))
+		}
+		return nil
+	}
+}
+
+func applyDelayedUpdates(updates []func() error) error {
+	var errs []error
+	for _, f := range updates {
+		if err := f(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return k8serrors.NewAggregate(errs)
 }

@@ -121,6 +121,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 			PasswordHash: string(bcryptHash),
 			UserRoles:    []string{user.KibanaUserBuiltinRole},
 		},
+		Status: estype.UserStatus{
+			Phase: estype.UserPending,
+		},
 	}
 
 	reconciledUser := estype.User{}

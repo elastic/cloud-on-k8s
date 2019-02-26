@@ -57,6 +57,8 @@ rules:
   - clusterlicenses
   - enterpriselicenses
   - trustrelationships
+  - users
+  - users/status
   verbs:
   - get
   - list
