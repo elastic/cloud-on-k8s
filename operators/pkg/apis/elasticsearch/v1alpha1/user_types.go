@@ -33,7 +33,7 @@ type UserPhase string
 const (
 	// UserPending means user resource has not been created in Elasticsearch yet.
 	UserPending UserPhase = "Pending"
-	// UserCreated means user has been propagated to Elasticsearch. It does not make any statement whether it has been
+	// UserPropagated means user has been propagated to Elasticsearch. It does not make any statement whether it has been
 	// created successfully in Elasticsearch.
 	UserPropagated UserPhase = "Propagated"
 	// UserInvalid means this user resource was invalid and could not be created in Elasticsearch.
