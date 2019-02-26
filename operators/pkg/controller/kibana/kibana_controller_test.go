@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -108,7 +109,7 @@ func mockCaSecret(t *testing.T, c k8s.Client) *v1.Secret {
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
-			nodecerts.CAFileName: []byte("fake-ca-cert"),
+			certificates.CAFileName: []byte("fake-ca-cert"),
 		},
 	}
 	assert.NoError(t, c.Create(caSecret))
