@@ -34,21 +34,37 @@ func (d *Driver) Mount(params protocol.MountRequest) flex.Response {
 	// build logical volume name based on PVC name
 	lvName := pathutil.ExtractPVCID(params.TargetDir)
 
-	// check if lv already exists, and reuse
-	// TODO: call LookupLogicalVolume()
-
-	lv, err := d.CreateLV(vg, lvName, requestedSize)
-	if err != nil {
-		return flex.Failure(err.Error())
+	// TODO: only the volume name is used, not the specifications of the logical volumes
+	existingLV, err := vg.LookupLogicalVolume(d.options.ExecutableFactory, lvName)
+	if err != nil && err != ErrLogicalVolumeNotFound {
+		return flex.Failure(fmt.Sprintf("error while looking for logical volume: %s", err.Error()))
 	}
 
-	lvPath, err := lv.Path(d.options.ExecutableFactory)
-	if err != nil {
-		return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
-	}
+	var logicalVolume LogicalVolume
+	var lvPath string
 
-	if err := diskutil.FormatDevice(d.options.ExecutableFactory, lvPath, fsType); err != nil {
-		return flex.Failure(fmt.Sprintf("cannot format logical volume %s as %s: %s", lv.name, fsType, err.Error()))
+	if err == ErrLogicalVolumeNotFound {
+		// Create a new logical volume
+		logicalVolume, err = d.CreateLV(vg, lvName, requestedSize)
+		if err != nil {
+			return flex.Failure(err.Error())
+		}
+
+		lvPath, err = logicalVolume.Path(d.options.ExecutableFactory)
+		if err != nil {
+			return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
+		}
+
+		if err := diskutil.FormatDevice(d.options.ExecutableFactory, lvPath, fsType); err != nil {
+			return flex.Failure(fmt.Sprintf("cannot format logical volume %s as %s: %s", logicalVolume.name, fsType, err.Error()))
+		}
+	} else {
+		// ReUse the logical volume
+		logicalVolume = existingLV
+		lvPath, err = logicalVolume.Path(d.options.ExecutableFactory)
+		if err != nil {
+			return flex.Failure(fmt.Sprintf("cannot retrieve logical volume device path: %s", err.Error()))
+		}
 	}
 
 	// mount device to the pods dir

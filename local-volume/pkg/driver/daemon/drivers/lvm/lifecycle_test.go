@@ -62,7 +62,7 @@ func TestDriver_ListVolumes(t *testing.T) {
 			},
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", ""},
-				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "vg", "--reportformat=json", "--nosuffix"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 			},
 			err: errors.New("something bad"),
 		},
@@ -76,7 +76,7 @@ func TestDriver_ListVolumes(t *testing.T) {
 			},
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", ""},
-				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "vg", "--reportformat=json", "--nosuffix"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 			},
 			want: []string{"tp"},
 		},
