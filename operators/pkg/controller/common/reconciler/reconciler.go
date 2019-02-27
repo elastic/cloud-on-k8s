@@ -77,8 +77,10 @@ func ReconcileResource(params Params) error {
 	name := metaObj.GetName()
 	kind := params.Expected.GetObjectKind().GroupVersionKind().Kind
 
-	if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
-		return err
+	if params.Owner != nil {
+		if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
+			return err
+		}
 	}
 
 	// Check if already exists
