@@ -5,7 +5,6 @@
 package certificates
 
 import (
-	"bytes"
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -13,13 +12,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
@@ -117,45 +110,4 @@ func (c *Ca) CreateCertificate(
 	)
 
 	return certData, err
-}
-
-// ReconcilePublicCertsSecret ensures that a secret containing
-// the CA certificate referenced with objectKey exists.
-func (c *Ca) ReconcilePublicCertsSecret(
-	cl k8s.Client,
-	objectKey types.NamespacedName,
-	owner metav1.Object,
-	scheme *runtime.Scheme,
-) error {
-	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := EncodePEMCert(c.Cert.Raw)
-
-	clusterCASecret := corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(objectKey),
-		Data: map[string][]byte{
-			CAFileName: expectedCaKeyBytes,
-		},
-	}
-
-	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     cl,
-		Scheme:     scheme,
-		Owner:      owner,
-		Expected:   &clusterCASecret,
-		Reconciled: reconciled,
-		NeedsUpdate: func() bool {
-			// if Data is nil, create it in case we're starting with a poorly initialized secret
-			if reconciled.Data == nil {
-				reconciled.Data = make(map[string][]byte)
-			}
-			caKey, ok := reconciled.Data[CAFileName]
-			return !ok || !bytes.Equal(caKey, expectedCaKeyBytes)
-
-		},
-		UpdateReconciled: func() {
-			reconciled.Data[CAFileName] = expectedCaKeyBytes
-		},
-	})
-
 }
