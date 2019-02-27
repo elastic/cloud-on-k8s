@@ -7,29 +7,10 @@ package kibana
 import (
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 )
-
-func TestNewPodSpecDefaults(t *testing.T) {
-	actual := NewPodSpec(PodSpecParams{})
-	expected := imageWithVersion(defaultImageRepositoryAndName, "")
-	for _, c := range actual.Containers {
-		if c.Image != expected {
-			t.Errorf("NewPodSpec with defaults: expected %s, actual %s ", expected, c.Image)
-		}
-	}
-}
-
-func TestNewPodSpecOverrides(t *testing.T) {
-	params := PodSpecParams{CustomImageName: "my-custom-image:1.0.0", Version: "7.0.0"}
-	actual := NewPodSpec(params)
-	expected := params.CustomImageName
-	for _, c := range actual.Containers {
-		if c.Image != expected {
-			t.Errorf("NewPodSpec with custom image: expected %s, actual %s", expected, c.Image)
-		}
-	}
-}
 
 func Test_imageWithVersion(t *testing.T) {
 	type args struct {
@@ -56,4 +37,81 @@ func Test_imageWithVersion(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestNewPodSpec(t *testing.T) {
+	testSelector := &corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: "secret-name",
+		},
+		Key: "u",
+	}
+	tests := []struct {
+		name       string
+		args       PodSpecParams
+		assertions func(params corev1.PodSpec)
+	}{
+		{
+			name: "defaults",
+			args: PodSpecParams{},
+			assertions: func(got corev1.PodSpec) {
+				expected := imageWithVersion(defaultImageRepositoryAndName, "")
+				assert.Equal(t, expected, got.Containers[0].Image)
+			},
+		},
+		{
+			name: "overrides",
+			args: PodSpecParams{CustomImageName: "my-custom-image:1.0.0", Version: "7.0.0"},
+			assertions: func(got corev1.PodSpec) {
+				assert.Equal(t, "my-custom-image:1.0.0", got.Containers[0].Image)
+			},
+		},
+		{
+			name: "auth settings inline",
+			args: PodSpecParams{
+				User: v1alpha1.ElasticsearchAuth{
+					Inline: &v1alpha1.ElasticsearchInlineAuth{
+						Username: "u",
+						Password: "p",
+					},
+				},
+			},
+			assertions: func(got corev1.PodSpec) {
+				userName := envWithName(t, elasticsearchUsername, got.Containers[0])
+				assert.Equal(t, "u", userName.Value)
+				password := envWithName(t, elasticsearchPassword, got.Containers[0])
+				assert.Equal(t, "p", password.Value)
+			},
+		},
+		{
+			name: "auth settings via secret",
+			args: PodSpecParams{
+				User: v1alpha1.ElasticsearchAuth{
+					SecretKeyRef: testSelector,
+				},
+			},
+			assertions: func(got corev1.PodSpec) {
+				userName := envWithName(t, elasticsearchUsername, got.Containers[0])
+				assert.Equal(t, "u", userName.Value)
+				password := envWithName(t, elasticsearchPassword, got.Containers[0])
+				assert.Equal(t, testSelector, password.ValueFrom.SecretKeyRef)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewPodSpec(tt.args)
+			tt.assertions(got)
+		})
+	}
+}
+
+func envWithName(t *testing.T, name string, container corev1.Container) corev1.EnvVar {
+	for _, v := range container.Env {
+		if v.Name == name {
+			return v
+		}
+	}
+	t.Errorf("expected env var %s does not exist ", name)
+	return corev1.EnvVar{}
 }

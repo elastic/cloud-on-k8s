@@ -21,7 +21,7 @@ const (
 )
 
 // applyToEnv applies any auth information in auth to the variables in env.
-func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) {
+func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.EnvVar {
 	if auth.Inline != nil {
 		env = append(
 			env,
@@ -37,6 +37,7 @@ func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) {
 				SecretKeyRef: auth.SecretKeyRef,
 			}})
 	}
+	return env
 }
 
 type PodSpecParams struct {
@@ -75,7 +76,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 	env := []corev1.EnvVar{
 		{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
 	}
-	applyToEnv(p.User, env)
+	env = applyToEnv(p.User, env)
 	return corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Resources: corev1.ResourceRequirements{

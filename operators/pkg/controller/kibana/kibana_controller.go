@@ -161,8 +161,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		Version:          kb.Spec.Version,
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
-		// TODO: handle different ways to provide auth credentials
-		User: auth,
+		User:             auth,
 	}
 
 	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)
