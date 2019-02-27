@@ -37,9 +37,9 @@ Storage classes do not all provide the same capabilities when it comes to reuse 
 
 At this stage it is worth mentioning that even if the K8S scheduler uses some predicates to reschedule a pod on a node where the volume can be reused or attached, it does not preserve the capacity needed to reschedule the pod. For instance if a pod was using a local volume and if the node runs out of capacity while the pod is being recreated then it becomes merely impossible to reuse the volume until some capacity is freed.
 
-## Scenarios
-
 When a disruption occurs either a volume is considered to be **recoverable** or it is considered **unrecoverable**. It does not depend on the storage class, it might take a longer time to recover for a local storage *(maybe you have to repair the server)*, while for shared storage we *just* need to find a server that can attach the volume. In the same way a volume might be considered unrecoverable for any storage class even it is unlikely to occur for a shared storage.
+
+## Scenarios
 
 ### UC1 : The K8S cluster is suffering a external involuntary disruption and the volumes cannot be recovered
 
