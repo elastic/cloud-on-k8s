@@ -56,7 +56,7 @@ This is a simple scenario, the Elastic operator will create a new pod and accord
 
 In this scenario the administrator want to definitively evacuate a node and it is known that the data will be lost (e.g. : a server with a local storage is definitively removed from the cluster)
 
-It is usually achieved in two steps :
+It is usually done in two steps :
 
 1. Cordon the node
 1. Evict or delete the pods
