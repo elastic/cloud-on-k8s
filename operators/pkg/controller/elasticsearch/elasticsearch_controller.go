@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
@@ -57,7 +58,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
-	esCa, err := certificates.NewSelfSignedCa("elasticsearch-controller")
+	esCa, err := nodecerts.GetOrCreateControllerCA(mgr.GetConfig(), params.CACertValidity)
 	if err != nil {
 		return nil, err
 	}

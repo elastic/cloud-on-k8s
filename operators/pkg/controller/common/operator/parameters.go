@@ -4,7 +4,11 @@
 
 package operator
 
-import "github.com/elastic/k8s-operators/operators/pkg/utils/net"
+import (
+	"time"
+
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+)
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
@@ -12,4 +16,6 @@ type Parameters struct {
 	OperatorImage string
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
+	// CACertValidity is the validity duration of a newly created CA cert
+	CACertValidity time.Duration
 }
