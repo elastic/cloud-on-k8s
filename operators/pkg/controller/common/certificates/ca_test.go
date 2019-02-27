@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package nodecerts
+package certificates
 
 import (
 	"crypto/rsa"
@@ -15,7 +15,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +53,8 @@ var (
 	testRSAPrivateKey *rsa.PrivateKey
 )
 
-func initTestVars() {
+func init() {
+	logf.SetLogger(logf.ZapLogger(false))
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -64,11 +64,6 @@ func initTestVars() {
 	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
-}
-
-func init() {
-	logf.SetLogger(logf.ZapLogger(false))
-	initTestVars()
 }
 
 func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
@@ -128,6 +123,6 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 	updated := &corev1.Secret{}
 	c.Get(nsn, updated)
 
-	expectedCaKeyBytes := certutil.EncodePEMCert(fooCa.Cert.Raw)
+	expectedCaKeyBytes := EncodePEMCert(fooCa.Cert.Raw)
 	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data[CAFileName]))
 }
