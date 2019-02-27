@@ -12,7 +12,7 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 )
 
 // readPrivateKey reads the private key stored at the given path.
@@ -38,7 +38,7 @@ func createAndStorePrivateKey(path string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	pemKeyBytes := certutil.EncodePEMPrivateKey(*privateKey)
+	pemKeyBytes := certificates.EncodePEMPrivateKey(*privateKey)
 	if err := ioutil.WriteFile(path, pemKeyBytes, 0644); err != nil {
 		return nil, err
 	}
@@ -65,5 +65,5 @@ func readCert(path string) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return certutil.ParsePEMCerts(bytes)
+	return certificates.ParsePEMCerts(bytes)
 }

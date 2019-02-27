@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package nodecerts
+package certificates
 
 import (
 	"bytes"
@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -23,6 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
+
+// CAFileName is used for the CA Certificates inside a secret
+const CAFileName = "ca.pem"
 
 var (
 	// SerialNumberLimit is the maximum number used as a certificate serial number
@@ -126,7 +128,7 @@ func (c *Ca) ReconcilePublicCertsSecret(
 	scheme *runtime.Scheme,
 ) error {
 	// TODO: how to do rotation of certs here? cross signing possible, likely not.
-	expectedCaKeyBytes := certutil.EncodePEMCert(c.Cert.Raw)
+	expectedCaKeyBytes := EncodePEMCert(c.Cert.Raw)
 
 	clusterCASecret := corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(objectKey),

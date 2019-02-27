@@ -298,42 +298,86 @@ func TestDriver_CreateLV(t *testing.T) {
 func TestDriver_Mount(t *testing.T) {
 	var vgLookup = `{"report":[{"vg":[{"vg_name":"vg","vg_uuid":"1231512521512","vg_size":"1234","vg_free":"1234","vg_extent_size":"1234","vg_extent_count":"1234","vg_free_count,string":"","vg_tags":"tag"}]}]}`
 	var lvTp = `{"report":[{"lv":[{"lv_name":"tp","vg_name":"vg","lv_path":"cc","lv_size":"1234","lv_tags":"tt","lv_layout":"thin,pool","data_percent":"23"}]}]}`
+	var lvTpAndlv = `{
+	"report": [{
+		"lv": [{
+			"lv_name": "tp", "vg_name": "vg", "lv_path": "cc", "lv_size": "1234", "lv_tags": "tt", "lv_layout": "thin,pool", "data_percent": "23"
+		}, {
+			"lv_name": "path", "lv_size": "1002438656", "vg_name": "vg", "lv_layout": "thin,sparse", "data_percent": "0,00"
+		}]
+	}]
+}`
+	var lvNonTp = `  {
+      "report": [
+          {
+              "lv": [
+                  {"lv_name":"path", "lv_size":"1077936128", "vg_name":"vg", "lv_layout":"linear", "data_percent":""}
+              ]
+          }
+      ]
+  }`
+	var lvNonTpPath = ` {
+      "report": [
+          {
+              "lv": [
+                  {"lv_path":"cc"}
+              ]
+          }
+      ]
+  }`
 	var (
 		vgLookupFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{Err: errors.New("something bad happened")},
 		}}
 		lvCreateFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{StdOutput: []byte(vgLookup)},
+			{StdOutput: []byte(lvTp)},
 			{Err: errors.New("an error"), StdOutput: []byte("some out")},
 		}}
 		lvGetPathFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{StdOutput: []byte(vgLookup)},
-			{StdOutput: []byte(lvTp)},
+			{StdOutput: []byte(lvTp)}, /* check if the logical volume already exists */
+			{StdOutput: []byte(lvTp)}, /* check if the thin pool already exists */
 			{},
 			{Err: errors.New("an error"), StdOutput: []byte("some out")},
 		}}
 		lvFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{StdOutput: []byte(vgLookup)},
-			{StdOutput: []byte(lvTp)},
+			{StdOutput: []byte(lvTp)}, /* check if the logical volume already exists */
+			{StdOutput: []byte(lvTp)}, /* check if the thin pool already exists */
 			{},
 			{StdOutput: []byte(lvTp)},
 			{Err: errors.New("an error"), StdOutput: []byte("some out")},
 		}}
 		mountFailure = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
 			{StdOutput: []byte(vgLookup)},
-			{StdOutput: []byte(lvTp)},
+			{StdOutput: []byte(lvTp)}, /* check if the logical volume already exists */
+			{StdOutput: []byte(lvTp)}, /* check if the thin pool already exists */
 			{},
 			{StdOutput: []byte(lvTp)},
 			{},
 			{Err: errors.New("an error"), StdOutput: []byte("some out")},
 		}}
 		success = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
-			{StdOutput: []byte(vgLookup)},
-			{StdOutput: []byte(lvTp)},
-			{},
-			{StdOutput: []byte(lvTp)},
-			{},
-			{},
+			{StdOutput: []byte(vgLookup)}, /* check if vg exists */
+			{StdOutput: []byte(lvTp)},     /* check if the logical volume already exists */
+			{StdOutput: []byte(lvTp)},     /* check if the thin pool already exists */
+			{},                            /* create logical volume in thin pool */
+			{StdOutput: []byte(lvTp)},     /* get path from logical volume */
+			{},                            /* mkfs */
+			{},                            /* mount */
+		}}
+		successLVAlreadyExists = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},  /* check if vg exists */
+			{StdOutput: []byte(lvTpAndlv)}, /* check if the logical volume already exists */
+			{StdOutput: []byte(lvTp)},      /* get path from logical volume */
+			{},                             /* just mount it */
+		}}
+		successNonThinLVAlreadyExists = &cmdutil.FakeExecutables{Stubs: []*cmdutil.FakeExecutable{
+			{StdOutput: []byte(vgLookup)},    /* check if vg exists */
+			{StdOutput: []byte(lvNonTp)},     /* check if the (non thin) logical volume already exists */
+			{StdOutput: []byte(lvNonTpPath)}, /* yes, just get path from logical volume */
+			{},                               /* and just mount it */
 		}}
 	)
 	type fields struct {
@@ -392,6 +436,7 @@ func TestDriver_Mount(t *testing.T) {
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 			},
 			want: flex.Failure("cannot get or create thin pool tp: some out"),
 		},
@@ -414,6 +459,7 @@ func TestDriver_Mount(t *testing.T) {
 			},
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
 				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
@@ -439,6 +485,7 @@ func TestDriver_Mount(t *testing.T) {
 			},
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
 				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
@@ -466,6 +513,7 @@ func TestDriver_Mount(t *testing.T) {
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
 				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
 				[]string{"mkfs", "-t", "ext4", "cc"},
@@ -492,9 +540,57 @@ func TestDriver_Mount(t *testing.T) {
 			wantCommands: [][]string{
 				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
 				[]string{"lvcreate", "--virtualsize", "1000000512b", "--name", "path", "--thin", "--thinpool", "tp", "vg"},
 				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
 				[]string{"mkfs", "-t", "ext4", "cc"},
+				[]string{"mount", "cc", "some/path"}},
+			want: flex.Success("successfully created the volume"),
+		},
+		{
+			name: "succeeds with a LV that already exists",
+			fields: fields{
+				fakeExec: successLVAlreadyExists,
+				options: Options{
+					ExecutableFactory: successLVAlreadyExists.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    true,
+					ThinPoolName:      "tp",
+				}},
+			args: args{
+				params: protocol.MountRequest{
+					TargetDir: path.Join("some", "path"),
+					Options:   protocol.MountOptions{},
+				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
+				[]string{"mount", "cc", "some/path"}},
+			want: flex.Success("successfully created the volume"),
+		},
+		{
+			name: "succeeds with a non thin LV that already exists",
+			fields: fields{
+				fakeExec: successNonThinLVAlreadyExists,
+				options: Options{
+					ExecutableFactory: successNonThinLVAlreadyExists.ExecutableFactory(),
+					VolumeGroupName:   "vg",
+					UseThinVolumes:    false,
+				}},
+			args: args{
+				params: protocol.MountRequest{
+					TargetDir: path.Join("some", "path"),
+					Options: protocol.MountOptions{
+						SizeBytes: 512,
+					},
+				},
+			},
+			wantCommands: [][]string{
+				[]string{"vgs", "--options=vg_name,vg_free", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_name,lv_size,vg_name,lv_layout,data_percent", "--reportformat=json", "--units=b", "--nosuffix", "vg"},
+				[]string{"lvs", "--options=lv_path", "--reportformat=json", "--units=b", "--nosuffix", "vg/path"},
 				[]string{"mount", "cc", "some/path"}},
 			want: flex.Success("successfully created the volume"),
 		},

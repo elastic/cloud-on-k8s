@@ -11,8 +11,8 @@ import (
 
 	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	commonversion "github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
@@ -56,7 +56,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
-	esCa, err := nodecerts.NewSelfSignedCa("elasticsearch-controller")
+	esCa, err := certificates.NewSelfSignedCa("elasticsearch-controller")
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		esCa:        esCa,
-		csrClient:   nodecerts.NewCertInitializerCSRClient(params.Dialer, nodecerts.CSRRequestTimeout),
+		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
@@ -170,8 +170,8 @@ type ReconcileElasticsearch struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	esCa      *nodecerts.Ca
-	csrClient nodecerts.CSRClient
+	esCa      *certificates.Ca
+	csrClient certificates.CSRClient
 
 	esObservers *observer.Manager
 

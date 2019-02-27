@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/stretchr/testify/assert"
@@ -282,7 +282,7 @@ func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := UserAuth{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
-		ca, err := nodecerts.NewSelfSignedCa("cn")
+		ca, err := certificates.NewSelfSignedCa("cn")
 		require.NoError(t, err)
 		return ca.Cert
 	}

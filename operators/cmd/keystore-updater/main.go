@@ -17,8 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
@@ -82,7 +81,7 @@ func init() {
 	cmd.Flags().StringP(usernameFlag, "u", "", "Elasticsearch username to reload credentials")
 	cmd.Flags().StringP(passwordFlag, "p", "", "Elasticsearch password to reload credentials")
 	cmd.Flags().StringP(endpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
-	cmd.Flags().StringP(certPathFlag, "c", path.Join("/volume/node-certs", nodecerts.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
+	cmd.Flags().StringP(certPathFlag, "c", path.Join("/volume/node-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
 
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		fatal(err, "Unexpected error while binding flags")
@@ -119,7 +118,7 @@ func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return certutil.ParsePEMCerts(bytes)
+	return certificates.ParsePEMCerts(bytes)
 }
 
 // reloadCredentials tries to make an API call to the reload_secure_credentials API

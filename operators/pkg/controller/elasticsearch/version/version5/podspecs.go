@@ -10,8 +10,9 @@ import (
 	"strconv"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
@@ -113,7 +114,7 @@ func newEnvironmentVars(
 		},
 		{
 			Name:  settings.EnvXPackSslCertificateAuthorities,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CAFileName),
+			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
 		},
 		// client profiles
 		{Name: settings.EnvTransportProfilesClientXPackSecurityType, Value: "client"},

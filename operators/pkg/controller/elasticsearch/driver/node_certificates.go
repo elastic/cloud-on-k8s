@@ -6,8 +6,8 @@ package driver
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +17,8 @@ import (
 func reconcileNodeCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	ca *nodecerts.Ca,
-	csrClient nodecerts.CSRClient,
+	ca *certificates.Ca,
+	csrClient certificates.CSRClient,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
@@ -30,7 +30,7 @@ func reconcileNodeCertificates(
 	}
 
 	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
-	if _, err := esnodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships); err != nil {
+	if _, err := nodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships); err != nil {
 		return err
 	}
 

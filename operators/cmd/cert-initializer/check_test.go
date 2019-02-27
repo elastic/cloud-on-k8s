@@ -14,8 +14,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts/certutil"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +47,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	ca, err := nodecerts.NewSelfSignedCa("common-name")
+	ca, err := certificates.NewSelfSignedCa("common-name")
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	asPem := certutil.EncodePEMCert(certData)
+	asPem := certificates.EncodePEMCert(certData)
 	return ioutil.WriteFile(path, asPem, 644)
 }
 

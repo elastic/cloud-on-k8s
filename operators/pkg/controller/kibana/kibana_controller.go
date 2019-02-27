@@ -14,8 +14,8 @@ import (
 
 	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -188,7 +188,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return state, err
 		}
-		if capem, ok := esPublicCASecret.Data[nodecerts.CAFileName]; ok {
+		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
 			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
 		}
 		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
@@ -208,7 +208,7 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 				kibanaPodSpec.Containers[i].Env,
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: path.Join(esCertsVolume.VolumeMount().MountPath, nodecerts.CAFileName),
+					Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
 				},
 				corev1.EnvVar{
 					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",

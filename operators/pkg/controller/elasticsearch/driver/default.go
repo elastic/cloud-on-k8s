@@ -10,14 +10,14 @@ import (
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
-	esnodecerts "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -54,8 +54,8 @@ type defaultDriver struct {
 	nodeCertificatesReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		ca *nodecerts.Ca,
-		csrClient nodecerts.CSRClient,
+		ca *certificates.Ca,
+		csrClient certificates.CSRClient,
 		es v1alpha1.ElasticsearchCluster,
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
@@ -137,7 +137,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	trustRelationships, err := esnodecerts.LoadTrustRelationships(d.Client, es.Name, es.Namespace)
+	trustRelationships, err := nodecerts.LoadTrustRelationships(d.Client, es.Name, es.Namespace)
 	if err != nil {
 		return results.WithError(err)
 	}
