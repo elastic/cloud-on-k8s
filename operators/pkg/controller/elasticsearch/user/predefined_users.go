@@ -18,8 +18,8 @@ const (
 
 	// SuperUserBuiltinRole is the name of the built-in superuser role
 	SuperUserBuiltinRole = "superuser"
-	// KibanaUserBuiltinRole is the name of the built-in kibana_user role
-	KibanaUserBuiltinRole = "kibana_user"
+	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user
+	KibanaSystemUserBuiltinRole = "kibana_system"
 	// ProbeUserRole is the name of the custom probe_user role
 	ProbeUserRole = "probe_user"
 	// ReloadCredsUserRole is the name of the custom reload_creds_user role

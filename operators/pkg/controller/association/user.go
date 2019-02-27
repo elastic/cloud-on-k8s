@@ -119,7 +119,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Spec: estype.UserSpec{
 			Name:         InternalKibanaServerUserName,
 			PasswordHash: string(bcryptHash),
-			UserRoles:    []string{user.KibanaUserBuiltinRole},
+			UserRoles:    []string{user.KibanaSystemUserBuiltinRole},
 		},
 		Status: estype.UserStatus{
 			Phase: estype.UserPending,
