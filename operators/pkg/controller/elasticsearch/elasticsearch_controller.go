@@ -27,7 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -121,18 +120,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 
 	// watch trust relationships and queue reconciliation for their associated cluster on changes
 	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.TrustRelationship{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			labels := obj.Meta.GetLabels()
-			if clusterName, ok := labels[label.ClusterNameLabelName]; ok {
-				// we don't need to special case the handling of this label to support in-place changes to its value
-				// as controller-runtime will ask this func to map both the old and the new resources on updates.
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{Namespace: obj.Meta.GetNamespace(), Name: clusterName}},
-				}
-			}
-
-			return nil
-		}),
+		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
 	}); err != nil {
 		return err
 	}
@@ -160,6 +148,13 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 
 	// ClusterLicense
 	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
+		return err
+	}
+
+	// Users
+	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.User{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
+	}); err != nil {
 		return err
 	}
 
