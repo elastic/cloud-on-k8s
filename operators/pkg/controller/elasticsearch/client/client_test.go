@@ -282,7 +282,7 @@ func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := User{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
-		ca, err := certificates.NewSelfSignedCa("cn")
+		ca, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
 		require.NoError(t, err)
 		return ca.Cert
 	}

@@ -14,7 +14,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -52,7 +51,10 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+	if testCa, err = NewSelfSignedCa(CABuilderOptions{
+		CommonName: "test",
+		PrivateKey: testRSAPrivateKey,
+	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 }
@@ -86,4 +88,24 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 		Roots:   pool,
 	})
 	assert.NoError(t, err)
+}
+
+func TestNewSelfSignedCa(t *testing.T) {
+	// with no options, should not fail
+	ca, err := NewSelfSignedCa(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	// with options, should use them
+	expireIn := 1 * time.Hour
+	ca, err = NewSelfSignedCa(CABuilderOptions{
+		CommonName: "common-name",
+		PrivateKey: testRSAPrivateKey,
+		ExpireIn:   &expireIn,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+	require.Equal(t, ca.Cert.Subject.CommonName, "common-name")
+	require.Equal(t, testRSAPrivateKey, ca.privateKey)
+	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }

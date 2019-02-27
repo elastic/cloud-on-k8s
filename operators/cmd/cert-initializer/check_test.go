@@ -47,7 +47,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	ca, err := certificates.NewSelfSignedCa("common-name")
+	ca, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
 	if err != nil {
 		return err
 	}

@@ -57,7 +57,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
-	esCa, err := certificates.NewSelfSignedCa("elasticsearch-controller")
+	esCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{CommonName: "elasticsearch-controller"})
 	if err != nil {
 		return nil, err
 	}

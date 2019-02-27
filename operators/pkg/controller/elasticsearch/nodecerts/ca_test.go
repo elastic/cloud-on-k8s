@@ -31,7 +31,7 @@ func TestReconcileCASecretForCluster(t *testing.T) {
 	// register es cluster type
 	v1alpha1.AddToScheme(scheme.Scheme)
 
-	ca, _ := certificates.NewSelfSignedCa("foo")
+	ca, _ := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
 	cluster := v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
