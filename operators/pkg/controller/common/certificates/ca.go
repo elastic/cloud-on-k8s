@@ -23,8 +23,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// CAFileName is used for the CA Certificates inside a secret
-const CAFileName = "ca.pem"
+const (
+	// CAFileName is used for the CA Certificates inside a secret
+	CAFileName = "ca.pem"
+	// DefaultCAValidity makes new CA default to a 1 year expiration
+	DefaultCAValidity = 365 * 24 * time.Hour
+)
 
 var (
 	// SerialNumberLimit is the maximum number used as a certificate serial number
@@ -43,34 +47,50 @@ type Ca struct {
 // should be considered trusted.
 type ValidatedCertificateTemplate x509.Certificate
 
-// NewSelfSignedCa creates a new Ca that uses a self-signed certificate.
-func NewSelfSignedCa(cn string) (*Ca, error) {
-	// TODO: constructor that takes the key?
-	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate the private key")
+// NewCa returns a ca with the given private key and cert
+func NewCa(privateKey *rsa.PrivateKey, cert *x509.Certificate) *Ca {
+	return &Ca{
+		privateKey: privateKey,
+		Cert:       cert,
 	}
-	return NewSelfSignedCaUsingKey(cn, key)
 }
 
-// NewSelfSignedCaUsingKey creates a new Ca that uses a self-signed certificate using the provided private key
-func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
-	// create a self-signed certificate for ourselves:
+// CABuilderOptions are options to build a self-signed CA
+type CABuilderOptions struct {
+	CommonName string
+	PrivateKey *rsa.PrivateKey
+	ExpireIn   *time.Duration
+}
 
+// NewSelfSignedCa creates a self-signed CA according to the given options
+func NewSelfSignedCa(options CABuilderOptions) (*Ca, error) {
 	// generate a serial number
 	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
 	if err != nil {
 		return nil, err
 	}
 
+	privateKey := options.PrivateKey
+	if privateKey == nil {
+		privateKey, err = rsa.GenerateKey(cryptorand.Reader, 2048)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to generate the private key")
+		}
+	}
+
+	notAfter := time.Now().Add(DefaultCAValidity)
+	if options.ExpireIn != nil {
+		notAfter = time.Now().Add(*options.ExpireIn)
+	}
+
 	certificateTemplate := x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName:         cn,
+			CommonName:         options.CommonName,
 			OrganizationalUnit: []string{rand.String(16)},
 		},
 		NotBefore:             time.Now().Add(-1 * time.Minute),
-		NotAfter:              time.Now().Add(24 * 365 * time.Hour),
+		NotAfter:              notAfter,
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		IsCA:                  true,
 		BasicConstraintsValid: true,
@@ -78,7 +98,7 @@ func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 
-	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, key.Public(), key)
+	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, privateKey.Public(), privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -89,9 +109,10 @@ func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 	}
 
 	return &Ca{
-		privateKey: key,
+		privateKey: privateKey,
 		Cert:       cert,
 	}, nil
+
 }
 
 // CreateCertificate signs and creates a new certificate for a validated template.

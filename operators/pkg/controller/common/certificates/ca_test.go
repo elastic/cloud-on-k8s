@@ -13,17 +13,14 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	corev1 "k8s.io/api/core/v1"
 	apiV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -61,7 +58,10 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+	if testCa, err = NewSelfSignedCa(CABuilderOptions{
+		CommonName: "test",
+		PrivateKey: testRSAPrivateKey,
+	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 }
@@ -98,7 +98,7 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 }
 
 func TestReconcilePublicCertsSecret(t *testing.T) {
-	fooCa, _ := NewSelfSignedCa("foo")
+	fooCa, _ := NewSelfSignedCa(CABuilderOptions{})
 	nsn := types.NamespacedName{
 		Namespace: "ns1",
 		Name:      "a-secret-to-update",
@@ -125,4 +125,24 @@ func TestReconcilePublicCertsSecret(t *testing.T) {
 
 	expectedCaKeyBytes := EncodePEMCert(fooCa.Cert.Raw)
 	assert.True(t, reflect.DeepEqual(expectedCaKeyBytes, updated.Data[CAFileName]))
+}
+
+func TestNewSelfSignedCa(t *testing.T) {
+	// with no options, should not fail
+	ca, err := NewSelfSignedCa(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	// with options, should use them
+	expireIn := 1 * time.Hour
+	ca, err = NewSelfSignedCa(CABuilderOptions{
+		CommonName: "common-name",
+		PrivateKey: testRSAPrivateKey,
+		ExpireIn:   &expireIn,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+	require.Equal(t, ca.Cert.Subject.CommonName, "common-name")
+	require.Equal(t, testRSAPrivateKey, ca.privateKey)
+	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }

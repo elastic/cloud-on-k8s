@@ -103,7 +103,10 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = certificates.NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+	if testCa, err = certificates.NewSelfSignedCa(certificates.CABuilderOptions{
+		CommonName: "test",
+		PrivateKey: testRSAPrivateKey,
+	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
