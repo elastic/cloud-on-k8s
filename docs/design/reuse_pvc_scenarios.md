@@ -81,3 +81,44 @@ Maybe that for some cases we can do a kind of "sanity check" before the pod is d
 ### UC5 : As an admin I want to apply a change to an Elasticsearch cluster that is not compatible with an “inline” strategy or even if it is compatible with a “inline” upgrade I would rather choose a “grow-and-shrink” strategy
 
 IIRC this is what is already implemented, the pvc should be deleted as soon as the pod is deleted, so may be that this scenario is not a use case.
+
+## Considered Options for UC1 and UC3
+
+In UC1 and UC3 a volume can't be reuse or the cluster admin want to drain a node.
+
+### Option 1 : handle PVC deletion with an annotation
+
+A tombstone is set on the PVC as an annotation. The annotation `elasticsearch.k8s.elastic.co/delete` can have two values :
+
+* graceful :  migrate the data, delete the node and the PVC.
+* force : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
+
+Pros :
+
+* Could be a first easy way to get rid of a volume or safely migrate some data
+
+Cons :
+
+* Admin must remember the annotations
+
+### Option 2 : Add a kubectl plugin to add some domain specific commands
+
+`kubectl`  can be extended with new sub-commands : https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/
+
+e.g. :
+```bash
+$ kubectl elastic migrate elasticsearch-sample-es-qlvprlqnnk -n default
+```
+
+Pros :
+
+* Provide a meaningful interface
+
+Cons :
+
+* Stable ? : Even if plugins were introduced as an alpha feature in the v1.8.0 release it has been reworked in v1.12.0
+* Admins stil have to evict nodes manually when the node is drained
+
+### Option 3 : handle pod eviction and PVC deletion with a webhook
+
+TODO : is it possible to use mutating webhooks to safely migrate some data when an eviction occurs ?
