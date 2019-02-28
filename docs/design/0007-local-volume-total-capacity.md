@@ -95,7 +95,7 @@ The provisioner pod on each node must have read/write/update/delete access to Pe
 
 #### Risks
 
-* If Kubernetes team decides to forbid updates on PersistentVolumes, the current design will not work as expected, since we rely on updating PVs with the proper reduced disk capacity after they are bound. The possibility this could happen seems rather low.
+* If Kubernetes team decides to forbid updates on PersistentVolumes, the current design will not work as expected, since we rely on updating PVs with the proper reduced disk capacity after they are bound. The possibility this could happen seems rather low, considering the recent PVC/PV expansion feature that also requires updating both PVC and PV.
 
 ## Decision Outcome
 
