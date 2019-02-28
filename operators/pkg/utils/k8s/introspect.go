@@ -16,10 +16,10 @@ const (
 	InClusterNamespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
 )
 
-// CurrentPodName tries to guess the name of the pod this program is running in
+// CurrentNamespace tries to guess the name of the pod this program is running in
 // - first by looking at $POD_NAMESPACE
 // - then by looking at InClusterNamespaceFile
-func CurrentPodName() (string, error) {
+func CurrentNamespace() (string, error) {
 	if fromEnv := os.Getenv("POD_NAMESPACE"); fromEnv != "" {
 		return fromEnv, nil
 	}
@@ -27,10 +27,10 @@ func CurrentPodName() (string, error) {
 	return string(fromFS), err
 }
 
-// CurrentNamespace tries to guess the namespace this program is running in
+// CurrentPodName tries to guess the namespace this program is running in
 // - first by looking at $POD_NAME
 // - then by looking at /etc/hostname
-func CurrentNamespace() (string, error) {
+func CurrentPodName() (string, error) {
 	if fromEnv := os.Getenv("POD_NAME"); fromEnv != "" {
 		return fromEnv, nil
 	}
