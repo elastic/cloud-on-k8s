@@ -18,8 +18,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const (
+	testNamespace = "ns1"
+	testName      = "mycluster"
+)
+
 func TestCASecretNameForCluster(t *testing.T) {
-	require.Equal(t, "mycluster-ca", CASecretNameForCluster("mycluster"))
+	require.Equal(t, "mycluster-ca", CASecretNameForCluster(testName))
 }
 
 func TestReconcileCASecretForCluster(t *testing.T) {
@@ -29,8 +34,8 @@ func TestReconcileCASecretForCluster(t *testing.T) {
 	ca, _ := certificates.NewSelfSignedCa("foo")
 	cluster := v1alpha1.ElasticsearchCluster{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      "mycluster",
+			Namespace: testNamespace,
+			Name:      testName,
 		},
 	}
 
@@ -38,8 +43,8 @@ func TestReconcileCASecretForCluster(t *testing.T) {
 	c := k8s.WrapClient(fake.NewFakeClient(
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: "ns1",
-				Name:      "mycluster-ca",
+				Namespace: testNamespace,
+				Name:      CASecretNameForCluster(testName),
 			},
 			Data: map[string][]byte{certificates.CAFileName: []byte("awronginitialsupersecret1")},
 		}))
@@ -51,7 +56,7 @@ func TestReconcileCASecretForCluster(t *testing.T) {
 	// Check if the secret has been updated
 	updated := &corev1.Secret{}
 	c.Get(types.NamespacedName{
-		Namespace: "ns1",
+		Namespace: testNamespace,
 		Name:      "mycluster-ca",
 	}, updated)
 
