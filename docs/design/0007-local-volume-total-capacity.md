@@ -89,6 +89,10 @@ One way to mitigate this could be to maintain more than one PV waiting to be bou
 
 This approach does not affect failure domain in any way. Failure domains can be expressed through labels on the pod. By relying on the `WaitForFirstConsumer` volume binding mode in the storage class (Kubernetes 1.12), the pod will be scheduled on a node before its PVC gets bound to a PV. Priority is therefore given to the pod failure domain criteria before a PVC/PV mapping is picked.
 
+#### Security considerations
+
+The provisioner pod on each node must have read/write/update/delete access to PersistentVolume resources. This is already the case for the current local-volume driver. Mean it can technically interfeer with other PersistentVolumes in the cluster, from other storage classes.
+
 ## Decision Outcome
 
 TODO. Option 2 seems way better IMHO.
