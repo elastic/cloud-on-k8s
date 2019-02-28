@@ -129,7 +129,7 @@ Some options to handle that:
   * When rotating the CA, create a new intermediate CA, and cross-sign it with the old CA (needs the old CA private key to be available).
   * Same steps as option A.
 
-TODO: check if ES can handle multiple CA certs combined (option A). Seems simpler to implement than option B, and does not require us to keep the old CA private key around.
+Biggest advantage of Option B compared to Option A is that it is safe for a new pod to be created with a certificate issued from the new CA, where other pods in the cluster might still be using the old CA and don't have the new CA yet. It is a bit more complex to implement though.
 
 ### Option 2 - rely on a service mesh TLS implementation
 
