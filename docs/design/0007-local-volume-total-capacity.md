@@ -93,6 +93,10 @@ This approach does not affect failure domain in any way. Failure domains can be 
 
 The provisioner pod on each node must have read/write/update/delete access to PersistentVolume resources. This is already the case for the current local-volume driver. Mean it can technically interfeer with other PersistentVolumes in the cluster, from other storage classes.
 
+#### Risks
+
+* If Kubernetes team decides to forbid updates on PersistentVolumes, the current design will not work as expected, since we rely on updating PVs with the proper reduced disk capacity after they are bound. The possibility this could happen seems rather low.
+
 ## Decision Outcome
 
 TODO. Option 2 seems way better IMHO.
