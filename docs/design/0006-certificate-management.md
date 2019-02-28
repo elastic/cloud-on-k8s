@@ -29,7 +29,7 @@ How do we manage nodes certificates with our operator?
 
 #### CA
 
-The operator on the cluster *is* the certificate authority (CA). It is able to issue certificates based on certificate signing requests (CSR) that pods provide. It is responsible for issuing certificates for all clusters it manages (could cover multiple namespaces).
+The operator on the cluster *is* the certificate authority (CA) for all the clusters it manages. It is able to issue certificates based on certificate signing requests (CSR) that pods provide. It manages one CA certificate (and associated private key) per cluster (eg. if the operator manages 3 clusters in 3 different namespaces, it uses 3 different CAs).
 
 #### Issuing certificates
 
@@ -45,11 +45,11 @@ The certificate is created as a secret in the apiserver, and mounted to the pod 
 
 #### CA private key
 
-The CA private key is the most important secret in the whole mechanism. It must be well hidden.
+The CA private key for each cluster is the most important secret in the whole mechanism. It must be well hidden, and should be accessible from the operator only (whereas the CA certificate is not sensitive).
 
 Some options:
 
-* *Option A*: the private key is generated when the operator starts, and kept in-memory for the lifecycle of the operator. If the operator restarts, it generates a new private key, and issues new certificates for all clusters. While existing TCP connections between nodes will not be impacted, this might provoke a downtime on the cluster while new certificates are propagated.
+* *Option A*: the private key is generated when the operator starts on first cluster reconciliation, and kept in-memory for the lifecycle of the operator. If the operator restarts, it needs to generate a new private key, and issues new certificates for all clusters. While existing TCP connections between nodes will not be impacted, this might provoke a downtime on the cluster while new certificates are propagated.
 * *Option B*: the private key is stored as a secret in the apiserver. Created by the operator itself if it does not exist yet. Persisted and reuse through operator restarts.
 * *Option C*: similar to B, but with the private key [wrapped in another layer of encryption](https://tools.ietf.org/html/rfc3394) in the apiserver. Access to the KEK (key encryption-key) must be handled separately.
 * *Option D*: the private key is stored in an external service (eg. Vault) and requested or provided to the operator at startup.
@@ -106,7 +106,7 @@ Chosen option: option B. Simpler to implement, and we do need a way to safely re
 
 #### CA cert rotation
 
-The operator should be able to rotate the CA certificate for multiple reasons:
+The operator should be able to rotate the CA certificate of a cluster for multiple reasons:
 
 * it will expire soon
 * CA private key has been compromised
@@ -137,7 +137,7 @@ Some service meshes handle TLS authentication automatically through sidecar cont
 
 ### Option 3 - let users provide their own private keys and certificates
 
-Instead of having the operator manage the CA and issue certificates signed by the CA, we could simply propagate existing CA and signed certificates from the user. The operator would mount secrets containing them to ES pods.
+Instead of having the operator manage CAs and issue certificates signed by the CA, we could simply propagate existing CA and signed certificates from the user. The operator would mount secrets containing them to ES pods.
 
 The user would store certificates and private keys as secrets in kubernetes, and reference those secrets in the Elasticsearch cluster spec.
 
