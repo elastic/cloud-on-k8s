@@ -90,8 +90,8 @@ In UC1 and UC3 a volume can't be reuse or the cluster admin want to drain a node
 
 A tombstone is set on the PVC as an annotation. The annotation `elasticsearch.k8s.elastic.co/delete` can have two values :
 
-* graceful :  migrate the data, delete the node and the PVC.
-* force : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
+* `graceful` :  migrate the data, delete the node and the PVC.
+* `force` : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
 
 Pros :
 
@@ -112,7 +112,7 @@ $ kubectl elastic migrate elasticsearch-sample-es-qlvprlqnnk -n default
 
 Pros :
 
-* Provide a meaningful interface
+* Provides a meaningful interface
 
 Cons :
 
