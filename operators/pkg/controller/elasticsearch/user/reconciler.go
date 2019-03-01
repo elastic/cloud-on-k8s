@@ -83,7 +83,6 @@ func ReconcileUsers(
 	users = append(users, externalSecrets.Users()...)
 	roles := PredefinedRoles
 
-	var allUsers []user.User
 	var customUsers v1alpha1.UserList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
@@ -92,16 +91,18 @@ func ReconcileUsers(
 		return nil, err
 	}
 
+	var allUsers []user.User
 	var statusUpdates []func() error
 	for _, u := range customUsers.Items {
+		usr := u
 		// do minimal sanity checking on externally created users
 		if u.IsEmpty() {
-			log.Info("Ignoring invalid", "user", u)
-			statusUpdates = append(statusUpdates, phaseUpdate(c, u, v1alpha1.UserInvalid))
+			log.Info("Ignoring invalid", "user", usr)
+			statusUpdates = append(statusUpdates, phaseUpdate(c, usr, v1alpha1.UserInvalid))
 			continue
 		}
-		statusUpdates = append(statusUpdates, phaseUpdate(c, u, v1alpha1.UserPropagated))
-		allUsers = append(allUsers, &u)
+		statusUpdates = append(statusUpdates, phaseUpdate(c, usr, v1alpha1.UserPropagated))
+		allUsers = append(allUsers, &usr)
 	}
 
 	for _, u := range users {

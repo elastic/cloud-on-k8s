@@ -3,11 +3,10 @@ kind: User
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
+    elasticsearch.k8s.elastic.co/cluster-name: elasticsearch-sample
   name: user-sample
 spec:
   name: foo
-  passwordRef:
-    key: foo
-    name: some-secret
+  passwordHash: $2y$10$IyNPE/osoZJpWvvyFsgdSOPv8Ygi1YcAztu7Dm4YLSSmBnFcWH74y
   userRoles:
-    - kibana-system
+    - kibana-user
