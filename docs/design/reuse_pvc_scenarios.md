@@ -1,31 +1,24 @@
-# PVC reuse behavior spec
+# Volume Management
 
 The aim of this document is to capture some scenarios where a pvc get orphaned and define how the “reuse pvc” mechanism must behave.
-As a preambule before we dive into the different use-cases and scenarios here are some considerations about what can lead to a disruption and a reminder about some constraints raised by storage classes.
+As a preamble before we dive into the different use-cases and scenarios here are some considerations about what can lead to a disruption and a reminder about some constraints raised by storage classes.
 
 ## About disruptions
 
-A Pod does not disappear until a person or a controller delete it or there is an unavoidable hardware or system software error.
-The reason why a PVCs can be abandoned by a Pod can be classified into 3 main categories :
+A Pod does not disappear until a person or the controller delete it or there is an unavoidable hardware or system software error.
+The reasons why a Pod can be deleted can be classified into 3 main categories :
 
 * There is an **external involuntary** disruption :
   * Hardware failure
   * VM instance is deleted
   * Kernel panic
-  * Eviction of a pod due to the node being out-of-resources
+  * Any runtime panic (e.g. containerd crash)
+  * Eviction is not supposed to happen because we use QoS
 * There is an **external voluntary** disruption
-  * The node hosting the Pod is drained because :
+  * The node hosting the Pod is drained because, some _(non exhaustive)_ examples are :
     * The K8S node is about to be upgraded or repaired
     * The K8S cluster is scaling down
   * The pod is manually deleted by someone (not only as an error but also because sometime a reboot can fix a problem)
-* There is a **voluntary disruption driven by the Elastic operator**, the pod is deleted by the reconciliation loop.
-  * The volume can’t be reused if :
-    * The user want a major topology change (e.g. moving a ES node from a availability zone to another one)
-    * The pod deletion is part of a “grow-and-shrink” process.
-    * User requires more capacity (e.g. CPUs) than the node can offer
-  * The volume can be reused if the spec of the cluster has been changed with something that is “compatible” with an “inline” upgrade and if resources are available on a node where the volume can be attached. It can be seen as something that could be done by a human operator on a bare metal infrastructure, for instance :
-    * Capacity changes (e.g. add some memory)
-    * Elasticsearch update, minor and major
 
 ## Storage class constraints
 
@@ -37,7 +30,28 @@ Storage classes do not all provide the same capabilities when it comes to reuse 
 
 At this stage it is worth mentioning that even if the K8S scheduler uses some predicates to reschedule a pod on a node where the volume can be reused or attached, it does not preserve the capacity needed to reschedule the pod. For instance if a pod was using a local volume and if the node runs out of capacity while the pod is being recreated then it becomes merely impossible to reuse the volume until some capacity is freed.
 
-When a disruption occurs either a volume is considered to be **recoverable** or it is considered **unrecoverable**. It does not depend on the storage class, it might take a longer time to recover for a local storage *(maybe you have to repair the server)*, while for shared storage we *just* need to find a server that can attach the volume. In the same way a volume might be considered unrecoverable for any storage class even it is unlikely to occur for a shared storage.
+When a disruption occurs either a volume is considered to be **recoverable** or it is considered **unrecoverable**. `Unrecoverable`  is a terminal state. On the opposite `recoverable` is a state that can be split into 2 subcategories :
+
+### Recoverable optional
+
+It is a state where the data are available on some others nodes. For instance if a KS8 node with a local volume is down and if data can be replicated from other nodes then it is not mandatory for the Elastic operator to wait forever.
+
+It is a best effort scenario, we have to choose between :
+
+* Wait for the node to be back online
+
+VS
+
+* Paying the cost of a replication from other nodes
+
+It means that in such a scenario we have to find a way to determine the time the operator will wait before it is decided that a new pod must be created.
+It may be hard to find this exact timeout, it must be user configurable but a sane default value should be set, based on some criteria like, for example, the shard size.
+
+TODO: check if the controller has access to PVC but not to PV or nodes, we can't watch nodes or PV, we can't only watch the claims
+
+### Recoverable required
+
+The Elastic operator must not delete a PVC that may hold the only copy of some data. The volume **must** be recovered to get the missing data back online.
 
 ## Scenarios
 
@@ -49,6 +63,8 @@ In this scenario we must consider the data as permanently lost _(e.g. vm with lo
 * It must create a new pod.
 
 ### UC2 : The K8S cluster is suffering a external involuntary or voluntary disruption but the volumes can be eventually recovered
+
+TODO : document what happen if there is a partition or a abrupt shutdown ?
 
 This is a simple scenario, the Elastic operator will create a new pod and according to the PV affinity the scheduler will eventually find a new node where the data are available.
 
@@ -63,35 +79,22 @@ It is usually done in two steps :
 
 We have several options to tackle this situation :
 
-__Option 1__ : The node is drained, the volume is lost and the user must use the same solution that for UC1
+__Option 1__ : The node is marked as unschedulable with `kubectl uncordon my-node`, the admin is expected to delete all the PVC before the node is drained.
 
-__Option 2__ : We want to offer a clean way to remove the node from the Elasticsearch cluster
+__Option 2__ : The node is drained, the volume is lost and the user must use the same solution that for UC1
 
-### UC4 : As an admin I want to apply a change to an Elasticsearch cluster that is compatible with a “inline” upgrade
+__Option 3__ : We want to offer a clean way to remove the node from the Elasticsearch cluster <<-- better !!!
 
-The spec of the pods have changed but we can use the same volume, also we can tolerate an undersized cluster and H.A. is not impacted. This compatiblity should be detected by the operator.
+### Option 1 : Add a finalizer to the PVC
 
-The operator could act that way :
+A PVC that is used by a pod will not be deleted immediately because of a finalizer set by the scheduler.
+We can add our own finalizer to create a new pod, migrate the data and delete the pod.
+Once the pod has been deleted the PVC can be deleted by K8S.
 
-1. The pod is deleted but the PVC is preserved.
-2. A new pod is scheduled and it reuses the PVC
+### Option 2 : handle PVC deletion with an annotation
 
-Maybe that for some cases we can do a kind of "sanity check" before the pod is deleted (e.g. local-storage + capacity changes : does the node has enough capacity ?)
+A tombstone is set on the PVC as an annotation. The annotation `elasticsearch.k8s.elastic.co/delete` can be set.
 
-### UC5 : As an admin I want to apply a change to an Elasticsearch cluster that is not compatible with an “inline” strategy or even if it is compatible with a “inline” upgrade I would rather choose a “grow-and-shrink” strategy
-
-IIRC this is what is already implemented, the pvc should be deleted as soon as the pod is deleted, so may be that this scenario is not a use case.
-
-## Considered Options for UC1 and UC3
-
-In UC1 and UC3 a volume can't be reuse or the cluster admin want to drain a node.
-
-### Option 1 : handle PVC deletion with an annotation
-
-A tombstone is set on the PVC as an annotation. The annotation `elasticsearch.k8s.elastic.co/delete` can have two values :
-
-* `graceful` :  migrate the data, delete the node and the PVC.
-* `force` : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
 
 Pros :
 
@@ -103,7 +106,7 @@ Cons :
 
 ### Option 2 : Add a kubectl plugin to add some domain specific commands
 
-`kubectl`  can be extended with new sub-commands : https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/
+`kubectl` can be extended with new sub-commands : https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/
 
 e.g. :
 ```bash
@@ -117,8 +120,16 @@ Pros :
 Cons :
 
 * Stable ? : Even if plugins were introduced as an alpha feature in the v1.8.0 release it has been reworked in v1.12.0
-* Admins stil have to evict nodes manually when the node is drained
+* Admins still have to evict nodes manually when the node is drained
 
-### Option 3 : handle pod eviction and PVC deletion with a webhook
+### Option 4 : handle pod eviction and PVC deletion with a webhook
 
-TODO : is it possible to use mutating webhooks to safely migrate some data when an eviction occurs ?
+Pros :
+
+* Integrate smoothly in the `cordon` + `drain` scenario.
+
+Cons:
+
+* It doesn't seem possible to handle a node eviction.
+* Setting a webhook requires some privileges at the cluster level.
+* Is it even possible to use a webhooks to safely migrate some data when an eviction occurs ?
