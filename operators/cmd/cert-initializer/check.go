@@ -7,9 +7,9 @@ package main
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"errors"
 	"path"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
 )
 
@@ -55,7 +55,7 @@ func privateKeyMatchesCerts(privateKey rsa.PrivateKey, certs []*x509.Certificate
 		return false
 	}
 	for _, c := range certs {
-		if privateMatchesPublicKey(c.PublicKey, privateKey) {
+		if certificates.PrivateMatchesPublicKey(c.PublicKey, privateKey) {
 			return true
 		}
 	}
@@ -68,21 +68,7 @@ func privateKeyMatchesCSR(privateKey rsa.PrivateKey, csr x509.CertificateRequest
 		log.Error(err, "Invalid CSR signature")
 		return false
 	}
-	return privateMatchesPublicKey(csr.PublicKey, privateKey)
-}
-
-// privateKeyMatchesCerts returns true if the public and private keys correspond to each other.
-func privateMatchesPublicKey(publicKey interface{}, privateKey rsa.PrivateKey) bool {
-	pubKey, ok := publicKey.(*rsa.PublicKey)
-	if !ok {
-		log.Error(errors.New("Public key is not an RSA public key"), "")
-		return false
-	}
-	// check that public and private keys share the same modulus and exponent
-	if pubKey.N.Cmp(privateKey.N) != 0 || pubKey.E != privateKey.E {
-		return false
-	}
-	return true
+	return certificates.PrivateMatchesPublicKey(csr.PublicKey, privateKey)
 }
 
 // watchForCertUpdate watches for changes on the cert file until it becomes valid.
