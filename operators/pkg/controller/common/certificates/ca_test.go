@@ -106,6 +106,6 @@ func TestNewSelfSignedCa(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, ca)
 	require.Equal(t, ca.Cert.Subject.CommonName, "common-name")
-	require.Equal(t, testRSAPrivateKey, ca.privateKey)
+	require.Equal(t, testRSAPrivateKey, ca.PrivateKey)
 	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }

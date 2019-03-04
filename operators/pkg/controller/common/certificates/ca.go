@@ -30,8 +30,8 @@ var (
 
 // Ca is a simple certificate authority
 type Ca struct {
-	// privateKey is the CA private key
-	privateKey *rsa.PrivateKey
+	// PrivateKey is the CA private key
+	PrivateKey *rsa.PrivateKey
 	// Cert is the certificate used to issue new certificates
 	Cert *x509.Certificate
 }
@@ -43,7 +43,7 @@ type ValidatedCertificateTemplate x509.Certificate
 // NewCa returns a ca with the given private key and cert
 func NewCa(privateKey *rsa.PrivateKey, cert *x509.Certificate) *Ca {
 	return &Ca{
-		privateKey: privateKey,
+		PrivateKey: privateKey,
 		Cert:       cert,
 	}
 }
@@ -102,7 +102,7 @@ func NewSelfSignedCa(options CABuilderOptions) (*Ca, error) {
 	}
 
 	return &Ca{
-		privateKey: privateKey,
+		PrivateKey: privateKey,
 		Cert:       cert,
 	}, nil
 
@@ -127,7 +127,7 @@ func (c *Ca) CreateCertificate(
 		&certTemplate,
 		c.Cert,
 		validatedCertificateTemplate.PublicKey,
-		c.privateKey,
+		c.PrivateKey,
 	)
 
 	return certData, err
