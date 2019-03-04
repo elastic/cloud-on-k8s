@@ -24,6 +24,13 @@ import (
 
 var log = logf.KBLog.WithName("nodecerts")
 
+// Node certificates
+//
+// For each elasticsearch pod, we sign one certificate with the cluster CA (see `ca.go`).
+// The certificate is passed to the pod through a secret volume mount.
+// The corresponding private key stays in the ES pod: we request a CSR from the pod,
+// and never access the private key directly.
+
 // ReconcileNodeCertificateSecrets reconciles certificate secrets for nodes
 // of the given es cluster.
 func ReconcileNodeCertificateSecrets(
