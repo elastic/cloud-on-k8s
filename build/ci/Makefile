@@ -15,12 +15,13 @@ check-license-header:
 
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
-	VAULT_TOKEN=$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-		vault read \
-			-address=$(VAULT_ADDR) \
-			-field=service-account \
-			$(VAULT_GKE_CREDS_SECRET) \
-			> $(GKE_CREDS_FILE)
+	$(eval VAULT_TOKEN:=$(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)))
+	export VAULT_TOKEN=$(VAULT_TOKEN)
+	vault read \
+    	-address=$(VAULT_ADDR) \
+    	-field=service-account \
+    	$(VAULT_GKE_CREDS_SECRET) \
+    	> $(GKE_CREDS_FILE)
 
 ## -- Job executed on all PRs
 
