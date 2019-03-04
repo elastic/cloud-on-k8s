@@ -54,9 +54,10 @@ type InternalUsers struct {
 	ReloadCredsUser User
 }
 
-func NewInternalUsersFrom(users []User) InternalUsers {
+// NewInternalUsersFrom constructs a new struct with internal users from the given credentials of those users.
+func NewInternalUsersFrom(users ClearTextCredentials) *InternalUsers {
 	internalUsers := InternalUsers{}
-	for _, user := range users {
+	for _, user := range users.Users() {
 		if user.Id() == InternalControllerUserName {
 			internalUsers.ControllerUser = user
 		}
@@ -67,5 +68,5 @@ func NewInternalUsersFrom(users []User) InternalUsers {
 			internalUsers.ReloadCredsUser = user
 		}
 	}
-	return internalUsers
+	return &internalUsers
 }

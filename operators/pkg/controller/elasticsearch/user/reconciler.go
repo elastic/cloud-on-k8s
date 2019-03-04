@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("secret")
+	log = logf.Log.WithName("user")
 )
 
 // ReconcileSecret creates or updates the given credentials.
@@ -52,6 +52,30 @@ func ReconcileUserCredentialsSecret(
 	return err
 }
 
+func aggregateAllUsers(customUsers v1alpha1.UserList, defaultUsers ...ClearTextCredentials) ([]user.User, []func(k8s.Client) error) {
+	var allUsers []user.User
+	for _, clearText := range defaultUsers {
+		for _, u := range clearText.Users() {
+			usr := u
+			allUsers = append(allUsers, usr)
+		}
+	}
+
+	var statusUpdates []func(c k8s.Client) error
+	for _, u := range customUsers.Items {
+		usr := u
+		// do minimal sanity checking on externally created users
+		if u.IsValid() {
+			log.Info("Ignoring invalid", "user", usr)
+			statusUpdates = append(statusUpdates, phaseUpdate(usr, v1alpha1.UserInvalid))
+			continue
+		}
+		statusUpdates = append(statusUpdates, phaseUpdate(usr, v1alpha1.UserPropagated))
+		allUsers = append(allUsers, &usr)
+	}
+	return allUsers, statusUpdates
+}
+
 // ReconcileUsers aggregates two clear-text secrets into an ES readable secret.
 // The 'internal-users' secret contains credentials for use by other stack components like
 // Kibana and for use by the controller or liveliness probes.
@@ -78,11 +102,6 @@ func ReconcileUsers(
 		return nil, err
 	}
 
-	users := internalSecrets.Users()
-	internalUsers := NewInternalUsersFrom(users)
-	users = append(users, externalSecrets.Users()...)
-	roles := PredefinedRoles
-
 	var customUsers v1alpha1.UserList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
@@ -91,24 +110,8 @@ func ReconcileUsers(
 		return nil, err
 	}
 
-	var allUsers []user.User
-	var statusUpdates []func() error
-	for _, u := range customUsers.Items {
-		usr := u
-		// do minimal sanity checking on externally created users
-		if u.IsEmpty() {
-			log.Info("Ignoring invalid", "user", usr)
-			statusUpdates = append(statusUpdates, phaseUpdate(c, usr, v1alpha1.UserInvalid))
-			continue
-		}
-		statusUpdates = append(statusUpdates, phaseUpdate(c, usr, v1alpha1.UserPropagated))
-		allUsers = append(allUsers, &usr)
-	}
-
-	for _, u := range users {
-		allUsers = append(allUsers, user.User(u))
-	}
-	elasticUsersRolesSecret, err := NewElasticUsersCredentialsAndRoles(nsn, allUsers, roles)
+	allUsers, statusUpdates := aggregateAllUsers(customUsers, *internalSecrets, *externalSecrets)
+	elasticUsersRolesSecret, err := NewElasticUsersCredentialsAndRoles(nsn, allUsers, PredefinedRoles)
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +122,12 @@ func ReconcileUsers(
 	// We are delaying  user status updates to happen only after the reconciliation went through.
 	// This has the slight disadvantage that user status updates don't happen on early returns but the reduced complexity
 	// of avoiding defers and named returns makes it worthwhile given the user status is of limited use anyway.
-	return &internalUsers, applyDelayedUpdates(statusUpdates)
+	return NewInternalUsersFrom(*internalSecrets), applyDelayedUpdates(c, statusUpdates)
 }
 
-func phaseUpdate(c k8s.Client, user v1alpha1.User, phase v1alpha1.UserPhase) func() error {
+func phaseUpdate(user v1alpha1.User, phase v1alpha1.UserPhase) func(k8s.Client) error {
 	user.Status.Phase = phase
-	return func() error {
+	return func(c k8s.Client) error {
 		if err := c.Status().Update(&user); err != nil {
 			return errors.Wrapf(err, "Failed to update status for user %v", k8s.ExtractNamespacedName(&user))
 		}
@@ -132,10 +135,10 @@ func phaseUpdate(c k8s.Client, user v1alpha1.User, phase v1alpha1.UserPhase) fun
 	}
 }
 
-func applyDelayedUpdates(updates []func() error) error {
+func applyDelayedUpdates(c k8s.Client, updates []func(k8s.Client) error) error {
 	var errs []error
 	for _, f := range updates {
-		if err := f(); err != nil {
+		if err := f(c); err != nil {
 			errs = append(errs, err)
 		}
 	}
