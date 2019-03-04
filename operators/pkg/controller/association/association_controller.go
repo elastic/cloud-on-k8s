@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
@@ -243,7 +245,7 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	}
 
 	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
+	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return assoctype.AssociationPending, err // maybe not created yet
 	}

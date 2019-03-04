@@ -167,7 +167,7 @@ func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
 
 	caSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
+			Name:      "foo-ca",
 			Namespace: "default",
 		},
 		Data: map[string][]byte{
