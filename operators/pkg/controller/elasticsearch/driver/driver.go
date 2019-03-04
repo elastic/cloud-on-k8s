@@ -50,8 +50,6 @@ type Options struct {
 	Client k8s.Client
 	Scheme *runtime.Scheme
 
-	// ClusterCa is the CA that is used to issue certificates for nodes in the cluster
-	ClusterCa *certificates.Ca
 	// CSRClient is used to retrieve certificate signing requests from nodes in the cluster
 	CSRClient certificates.CSRClient
 

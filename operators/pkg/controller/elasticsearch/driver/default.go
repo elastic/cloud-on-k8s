@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -54,12 +55,12 @@ type defaultDriver struct {
 	nodeCertificatesReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		ca *certificates.Ca,
 		csrClient certificates.CSRClient,
 		es v1alpha1.ElasticsearchCluster,
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
-	) error
+		caCertValidity time.Duration,
+	) (*x509.Certificate, error)
 
 	// internalUsersReconciler reconciles and returns the current internal users.
 	internalUsersReconciler func(
@@ -142,15 +143,16 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err := d.nodeCertificatesReconciler(
+	ca, err := d.nodeCertificatesReconciler(
 		d.Client,
 		d.Scheme,
-		d.ClusterCa,
 		d.CSRClient,
 		es,
 		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
 		trustRelationships,
-	); err != nil {
+		d.Parameters.CACertValidity,
+	)
+	if err != nil {
 		return results.WithError(err)
 	}
 
@@ -158,7 +160,7 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser)
+	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser, ca)
 
 	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
@@ -432,11 +434,11 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User, caCert *x509.Certificate) *esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user, []*x509.Certificate{d.ClusterCa.Cert},
+		d.Dialer, url, user, []*x509.Certificate{caCert},
 	)
 	return esClient
 }
