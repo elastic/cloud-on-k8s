@@ -91,7 +91,7 @@ This approach does not affect failure domain in any way. Failure domains can be 
 
 #### Security considerations
 
-The provisioner pod on each node must have read/write/update/delete access to PersistentVolume resources. This is already the case for the current local-volume driver. Mean it can technically interfeer with other PersistentVolumes in the cluster, from other storage classes.
+The provisioner pod on each node must have read/write/update/delete access to PersistentVolume resources. This is already the case for the current local-volume driver. This means the driver has the required API access to interfere with other PersistentVolumes in the cluster, from other storage classes. A local container-escaping exploit could technically be used to get access to perform CRUD operations against all PVs in the cluster, and possibly get access to PVs that are non-local.
 
 #### Risks
 
