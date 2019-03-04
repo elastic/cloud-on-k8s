@@ -5,61 +5,151 @@
 package nodecerts
 
 import (
-	"bytes"
+	"crypto/x509"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// CASecretNameForCluster returns the name of the CA secret for the given cluster
-func CASecretNameForCluster(clusterName string) string {
-	return clusterName + "-ca"
-}
+// Certificate authority
+//
+// For each Elasticsearch cluster, we manage one CA (certificate + private key),
+// which is then used to issue certificates for the cluster nodes.
+// CA is persisted across operator restarts in the apiserver:
+// - one secret for the CA certificate: `<cluster-name>-ca`
+// - one secret for the CA private key: `<cluster-name>-ca-private-key`
+//
+// The CA certificate secret is safe to be shared, and can be reused by any HTTP client
+// that needs to reach the Elasticsearch cluster. It can also be mounted as a volume
+// in any client pod.
+// The CA private key secret is reserved to the elasticsearch controller only.
+// TODO: store the private key in a more "secure" place (or wrapped in an encryption layer)
+//
+// CA cert and private key are rotated if they become invalid (or soon to expire).
 
-// ReconcileCASecretForCluster ensures that a secret containing
-// the CA certificate for the given cluster exists
-func ReconcileCASecretForCluster(
+const (
+	// CertExpirationSafetyMargin specifies how long before its expiration the CA cert should be rotated
+	CertExpirationSafetyMargin = 1 * time.Hour
+)
+
+// ReconcileCAForCluster ensures that a CA exists for the given cluster, and returns it.
+func ReconcileCAForCluster(
 	cl k8s.Client,
-	ca *certificates.Ca,
 	cluster v1alpha1.ElasticsearchCluster,
 	scheme *runtime.Scheme,
-) error {
-	expectedCABytes := certificates.EncodePEMCert(ca.Cert.Raw)
-	clusterCASecret := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: cluster.Namespace,
-			Name:      CASecretNameForCluster(cluster.Name),
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName: expectedCABytes,
-		},
+	caCertValidity time.Duration,
+) (*certificates.Ca, error) {
+	// retrieve current CA cert
+	caCert := corev1.Secret{}
+	err := cl.Get(types.NamespacedName{
+		Namespace: cluster.Namespace,
+		Name:      CACertSecretName(cluster.Name),
+	}, &caCert)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if apierrors.IsNotFound(err) {
+		log.Info("No CA certificate found, creating a new one", "cluster", cluster.Name)
+		return renewCA(cl, cluster, caCertValidity, scheme)
 	}
 
-	reconciled := &corev1.Secret{}
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     cl,
-		Scheme:     scheme,
-		Owner:      &cluster,
-		Expected:   &clusterCASecret,
-		Reconciled: reconciled,
-		NeedsUpdate: func() bool {
-			if reconciled.Data == nil {
-				return true
-			}
-			actualCABytes, exists := reconciled.Data[certificates.CAFileName]
-			return !exists || !bytes.Equal(actualCABytes, expectedCABytes)
+	// retrieve current CA private key
+	caPrivateKey := corev1.Secret{}
+	err = cl.Get(types.NamespacedName{
+		Namespace: cluster.Namespace,
+		Name:      caPrivateKeySecretName(cluster.Name),
+	}, &caPrivateKey)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if apierrors.IsNotFound(err) {
+		log.Info("No CA private key found, creating a new one", "cluster", cluster.Name)
+		return renewCA(cl, cluster, caCertValidity, scheme)
+	}
 
-		},
-		UpdateReconciled: func() {
-			if reconciled.Data == nil {
-				reconciled.Data = make(map[string][]byte)
-			}
-			reconciled.Data[certificates.CAFileName] = expectedCABytes
-		},
+	// build CA from both secrets
+	ca, ok := caFromSecrets(caCert, caPrivateKey)
+	if !ok {
+		log.Info("Cannot build CA from secrets, creating a new one", "cluster", cluster.Name)
+		return renewCA(cl, cluster, caCertValidity, scheme)
+	}
+
+	// renew if cannot reuse
+	if !canReuseCa(*ca) {
+		log.Info("Cannot reuse existing CA, creating a new one", "cluster", cluster.Name)
+		return renewCA(cl, cluster, caCertValidity, scheme)
+	}
+
+	// reuse existing CA
+	log.V(1).Info("Reusing existing CA", "cluster", cluster.Name)
+	return ca, nil
+}
+
+// renewCA creates and store a new CA to replace one that might exist
+func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn time.Duration, scheme *runtime.Scheme) (*certificates.Ca, error) {
+	ca, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{
+		CommonName: cluster.Name,
+		ExpireIn:   &expireIn,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	privateKeySecret, certSecret := secretsForCa(*ca, k8s.ExtractNamespacedName(&cluster))
+
+	// create or update private key secret
+	reconciledPrivateKey := corev1.Secret{}
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:           client,
+		Expected:         &privateKeySecret,
+		NeedsUpdate:      func() bool { return true },
+		Owner:            &cluster,
+		Reconciled:       &reconciledPrivateKey,
+		Scheme:           scheme,
+		UpdateReconciled: func() { reconciledPrivateKey.Data = privateKeySecret.Data },
+	}); err != nil {
+		return nil, err
+	}
+	// create or update cert secret
+	reconciledCert := corev1.Secret{}
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:           client,
+		Expected:         &certSecret,
+		NeedsUpdate:      func() bool { return true },
+		Owner:            &cluster,
+		Reconciled:       &reconciledCert,
+		Scheme:           scheme,
+		UpdateReconciled: func() { reconciledCert.Data = certSecret.Data },
+	}); err != nil {
+		return nil, err
+	}
+
+	return ca, nil
+}
+
+// canReuseCa returns true if the given Ca is valid for reuse
+func canReuseCa(ca certificates.Ca) bool {
+	return certificates.PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && certIsValid(*ca.Cert)
+}
+
+// certIsValid returns true if the given cert is valid,
+// according to a safety time margin.
+func certIsValid(cert x509.Certificate) bool {
+	now := time.Now()
+	if now.Before(cert.NotBefore) {
+		log.Info("CA is not valid yet, will create a new one")
+		return false
+	}
+	if now.After(cert.NotAfter.Add(-CertExpirationSafetyMargin)) {
+		log.Info("CA expired or soon to expire, will create a new one", "expiration", cert.NotAfter)
+		return false
+	}
+	return true
 }
