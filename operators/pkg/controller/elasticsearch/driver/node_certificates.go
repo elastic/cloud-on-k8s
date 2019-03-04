@@ -25,9 +25,10 @@ func reconcileNodeCertificates(
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
 	caCertValidity time.Duration,
+	certExpirationSafetyMargin time.Duration,
 ) (*x509.Certificate, error) {
 	// reconcile CA
-	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity)
+	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity, certExpirationSafetyMargin)
 	if err != nil {
 		return nil, err
 	}

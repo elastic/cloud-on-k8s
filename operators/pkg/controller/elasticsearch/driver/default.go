@@ -60,6 +60,7 @@ type defaultDriver struct {
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
 		caCertValidity time.Duration,
+		certExpirationSafetyMargin time.Duration,
 	) (*x509.Certificate, error)
 
 	// internalUsersReconciler reconciles and returns the current internal users.
@@ -151,6 +152,7 @@ func (d *defaultDriver) Reconcile(
 		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
 		trustRelationships,
 		d.Parameters.CACertValidity,
+		d.Parameters.CertExpirationSafetyMargin,
 	)
 	if err != nil {
 		return results.WithError(err)

@@ -31,9 +31,10 @@ const (
 
 func Test_certIsValid(t *testing.T) {
 	tests := []struct {
-		name string
-		cert x509.Certificate
-		want bool
+		name         string
+		cert         x509.Certificate
+		safetyMargin time.Duration
+		want         bool
 	}{
 		{
 			name: "valid cert",
@@ -41,7 +42,8 @@ func Test_certIsValid(t *testing.T) {
 				NotBefore: time.Now().Add(-1 * time.Minute),
 				NotAfter:  time.Now().Add(24 * time.Hour),
 			},
-			want: true,
+			safetyMargin: 1 * time.Hour,
+			want:         true,
 		},
 		{
 			name: "already expired",
@@ -49,15 +51,17 @@ func Test_certIsValid(t *testing.T) {
 				NotBefore: time.Now().Add(-1 * time.Minute),
 				NotAfter:  time.Now().Add(-2 * time.Hour),
 			},
-			want: false,
+			safetyMargin: 1 * time.Hour,
+			want:         false,
 		},
 		{
 			name: "expires soon",
 			cert: x509.Certificate{
 				NotBefore: time.Now().Add(-1 * time.Minute),
-				NotAfter:  time.Now().Add(2 * time.Minute),
+				NotAfter:  time.Now().Add(30 * time.Minute),
 			},
-			want: false,
+			safetyMargin: 1 * time.Hour,
+			want:         false,
 		},
 		{
 			name: "not yet valid",
@@ -65,12 +69,13 @@ func Test_certIsValid(t *testing.T) {
 				NotBefore: time.Now().Add(10 * time.Minute),
 				NotAfter:  time.Now().Add(24 * time.Hour),
 			},
-			want: false,
+			safetyMargin: 1 * time.Hour,
+			want:         false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := certIsValid(tt.cert); got != tt.want {
+			if got := certIsValid(tt.cert, tt.safetyMargin); got != tt.want {
 				t.Errorf("certIsValid() = %v, want %v", got, tt.want)
 			}
 		})
@@ -117,7 +122,7 @@ func Test_canReuseCa(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := canReuseCa(tt.ca()); got != tt.want {
+			if got := canReuseCa(tt.ca(), DefaultExpirationSafetyMargin); got != tt.want {
 				t.Errorf("canReuseCa() = %v, want %v", got, tt.want)
 			}
 		})
@@ -134,7 +139,7 @@ func checkCASecrets(
 	expectedExpiration time.Duration,
 ) {
 	// ca cert should be valid
-	require.True(t, certIsValid(*ca.Cert))
+	require.True(t, certIsValid(*ca.Cert, DefaultExpirationSafetyMargin))
 
 	// expiration date should be correctly set
 	require.True(t, ca.Cert.NotBefore.After(time.Now().Add(-1*time.Hour)))
@@ -281,7 +286,7 @@ func TestReconcileCAForCluster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := ReconcileCAForCluster(tt.cl, cluster, scheme.Scheme, tt.caCertValidity)
+			ca, err := ReconcileCAForCluster(tt.cl, cluster, scheme.Scheme, tt.caCertValidity, DefaultExpirationSafetyMargin)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			checkCASecrets(t, tt.cl, cluster, *ca, tt.shouldReuseCa, tt.shouldNotReuseCa, tt.caCertValidity)

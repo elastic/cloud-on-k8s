@@ -18,4 +18,6 @@ type Parameters struct {
 	Dialer net.Dialer
 	// CACertValidity is the validity duration of a newly created CA cert
 	CACertValidity time.Duration
+	// CertExpirationSafetyMargin defines how long before expiration certificates should be rotated
+	CertExpirationSafetyMargin time.Duration
 }

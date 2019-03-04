@@ -35,8 +35,9 @@ import (
 // CA cert and private key are rotated if they become invalid (or soon to expire).
 
 const (
-	// CertExpirationSafetyMargin specifies how long before its expiration the CA cert should be rotated
-	CertExpirationSafetyMargin = 1 * time.Hour
+	// DefaultExpirationSafetyMargin defines how long before expiration a certificate
+	// should be re-issued
+	DefaultExpirationSafetyMargin = 24 * time.Hour
 )
 
 // ReconcileCAForCluster ensures that a CA exists for the given cluster, and returns it.
@@ -45,6 +46,7 @@ func ReconcileCAForCluster(
 	cluster v1alpha1.ElasticsearchCluster,
 	scheme *runtime.Scheme,
 	caCertValidity time.Duration,
+	expirationSafetyMargin time.Duration,
 ) (*certificates.Ca, error) {
 	// retrieve current CA cert
 	caCert := corev1.Secret{}
@@ -82,7 +84,7 @@ func ReconcileCAForCluster(
 	}
 
 	// renew if cannot reuse
-	if !canReuseCa(*ca) {
+	if !canReuseCa(*ca, expirationSafetyMargin) {
 		log.Info("Cannot reuse existing CA, creating a new one", "cluster", cluster.Name)
 		return renewCA(cl, cluster, caCertValidity, scheme)
 	}
@@ -135,19 +137,19 @@ func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn 
 }
 
 // canReuseCa returns true if the given Ca is valid for reuse
-func canReuseCa(ca certificates.Ca) bool {
-	return certificates.PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && certIsValid(*ca.Cert)
+func canReuseCa(ca certificates.Ca, expirationSafetyMargin time.Duration) bool {
+	return certificates.PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && certIsValid(*ca.Cert, expirationSafetyMargin)
 }
 
 // certIsValid returns true if the given cert is valid,
 // according to a safety time margin.
-func certIsValid(cert x509.Certificate) bool {
+func certIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	now := time.Now()
 	if now.Before(cert.NotBefore) {
 		log.Info("CA is not valid yet, will create a new one")
 		return false
 	}
-	if now.After(cert.NotAfter.Add(-CertExpirationSafetyMargin)) {
+	if now.After(cert.NotAfter.Add(-expirationSafetyMargin)) {
 		log.Info("CA expired or soon to expire, will create a new one", "expiration", cert.NotAfter)
 		return false
 	}

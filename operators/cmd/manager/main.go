@@ -13,6 +13,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/controller"
@@ -34,7 +35,8 @@ const (
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
 
-	CACertValidityFlag = "ca-cert-validity"
+	CACertValidityFlag             = "ca-cert-validity"
+	CertExpirationSafetyMarginFlag = "cert-expiration-safety-margin"
 )
 
 var (
@@ -84,6 +86,11 @@ func init() {
 		CACertValidityFlag,
 		certificates.DefaultCAValidity,
 		"Duration representing how long before a newly created CA cert expires",
+	)
+	Cmd.Flags().Duration(
+		CertExpirationSafetyMarginFlag,
+		nodecerts.DefaultExpirationSafetyMargin,
+		"Duration representing how long before expiration certificates should be reissued",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
@@ -155,9 +162,10 @@ func execute() {
 	// Setup all Controllers
 	log.Info("Setting up controller")
 	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
-		Dialer:         dialer,
-		OperatorImage:  operatorImage,
-		CACertValidity: viper.GetDuration(CACertValidityFlag),
+		Dialer:                     dialer,
+		OperatorImage:              operatorImage,
+		CACertValidity:             viper.GetDuration(CACertValidityFlag),
+		CertExpirationSafetyMargin: viper.GetDuration(CertExpirationSafetyMarginFlag),
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
