@@ -7,6 +7,9 @@ metadata:
   name: users.elasticsearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:
+  - JSONPath: .spec.name
+    name: username
+    type: string
   - JSONPath: .status.phase
     name: status
     type: string

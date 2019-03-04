@@ -47,6 +47,7 @@ const (
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:categories=elastic
+// +kubebuilder:printcolumn:name="username",type="string",JSONPath=".spec.name"
 // +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.phase"
 type User struct {
 	metav1.TypeMeta   `json:",inline"`
