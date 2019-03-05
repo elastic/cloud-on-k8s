@@ -23,7 +23,7 @@ var (
 	log = logf.Log.WithName("user")
 )
 
-// ReconcileSecret creates or updates the given credentials.
+// ReconcileUserCredentialsSecret creates or updates the given credentials.
 func ReconcileUserCredentialsSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
@@ -65,7 +65,7 @@ func aggregateAllUsers(customUsers v1alpha1.UserList, defaultUsers ...ClearTextC
 	for _, u := range customUsers.Items {
 		usr := u
 		// do minimal sanity checking on externally created users
-		if u.IsValid() {
+		if u.IsInvalid() {
 			log.Info("Ignoring invalid", "user", usr)
 			statusUpdates = append(statusUpdates, phaseUpdate(usr, v1alpha1.UserInvalid))
 			continue
@@ -119,7 +119,7 @@ func ReconcileUsers(
 		return nil, err
 	}
 
-	// We are delaying  user status updates to happen only after the reconciliation went through.
+	// We are delaying user status updates to happen only after the reconciliation went through.
 	// This has the slight disadvantage that user status updates don't happen on early returns but the reduced complexity
 	// of avoiding defers and named returns makes it worthwhile given the user status is of limited use anyway.
 	return NewInternalUsersFrom(*internalSecrets), applyDelayedUpdates(c, statusUpdates)

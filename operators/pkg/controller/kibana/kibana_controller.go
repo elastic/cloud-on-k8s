@@ -155,13 +155,12 @@ func (r *ReconcileKibana) reconcileKibanaDeployment(
 		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
 		return state, nil
 	}
-	auth := kb.Spec.Elasticsearch.Auth
 
 	kibanaPodSpecParams := PodSpecParams{
 		Version:          kb.Spec.Version,
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
-		User:             auth,
+		User:             kb.Spec.Elasticsearch.Auth,
 	}
 
 	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)

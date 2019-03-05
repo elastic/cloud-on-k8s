@@ -58,7 +58,7 @@ func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *
 	}
 }
 
-// reconcileEsUser creates a User resources and a corresponding secret or updates those as appropriate.
+// reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElasticsearchAssociation) error {
 	// keep this name constant and bound to the association we cannot change it
 
@@ -87,19 +87,17 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
 			_, ok := reconciledSecret.Data[InternalKibanaServerUserName]
-
 			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
-
 		},
 		UpdateReconciled: func() {
 			setExpectedLabels(&expectedSecret, &reconciledSecret)
 			reconciledSecret.Data = expectedSecret.Data
 		},
 	})
-	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
 	if err != nil {
 		return err
 	}
+	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
 
 	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalKibanaServerUserName], bcrypt.DefaultCost)
 	if err != nil {

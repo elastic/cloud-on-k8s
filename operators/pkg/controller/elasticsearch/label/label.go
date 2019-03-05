@@ -45,9 +45,6 @@ func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
 }
 
-// TypeSelector is a selector on the Elasticsearch type present in a Pod's labels
-var TypeSelector = labels.Set(map[string]string{common.TypeLabelName: Type}).AsSelector()
-
 // NewLabels constructs a new set of labels from an Elasticsearch definition.
 func NewLabels(es types.NamespacedName) map[string]string {
 	var labels = map[string]string{

@@ -152,9 +152,9 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 
 	// Check for user passwords update
 	for _, u := range hc.users {
-		otherPasswordBytes, ok := otherUsers[u.Id()]
+		otherHash, ok := otherUsers[u.Id()]
 		// this could turn out to be too expensive
-		if !ok || !u.PasswordMatches(otherPasswordBytes) {
+		if !ok || !u.PasswordMatches(otherHash) {
 			return true
 		}
 	}

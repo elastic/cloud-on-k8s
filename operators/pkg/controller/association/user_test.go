@@ -24,7 +24,7 @@ import (
 
 const resourceNameFixture = "foo-elastic-internal-kibana"
 
-// associationFixture is  a shared test fixture
+// associationFixture is a shared test fixture
 var associationFixture = assoctype.KibanaElasticsearchAssociation{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "foo",
@@ -48,7 +48,7 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 		assert.Fail(t, "failed to add assoc types")
 	}
 	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
-		assert.Fail(t, "faild to add Es types")
+		assert.Fail(t, "failed to add Es types")
 	}
 	return sc
 }

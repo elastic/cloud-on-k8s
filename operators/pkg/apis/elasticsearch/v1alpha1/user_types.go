@@ -79,8 +79,8 @@ func (u *User) Roles() []string {
 	return u.Spec.UserRoles
 }
 
-// IsValid is a minimal validity check ensuring that at least user name and password hash are non default values.
-func (u *User) IsValid() bool {
+// IsInvalid is a minimal validity check ensuring that at least user name and password hash are non default values.
+func (u *User) IsInvalid() bool {
 	return u.Spec.Name == "" || u.Spec.PasswordHash == ""
 }
 

@@ -147,7 +147,7 @@ func containsAllNames(t *testing.T, names []string, users []user.User) {
 	for _, n := range names {
 		_, ok := dict[n]
 		if !ok {
-			t.Errorf("Epected %s but was not contained in %v", n, dict)
+			t.Errorf("Expected %s but was not contained in %v", n, dict)
 		}
 	}
 }
