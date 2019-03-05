@@ -342,36 +342,17 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(errors.Wrap(err, "error during migrate data"))
 	}
 
-	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
-	copy(newState, resourcesState.CurrentPods)
-
 	// Shrink clusters by deleting deprecated pods
-	for _, pod := range performableChanges.ToDelete {
-		newState = removePodFromList(newState, pod)
-		preDelete := func() error {
-			if d.zen1SettingsUpdater != nil {
-				if err := d.zen1SettingsUpdater(esClient, newState); err != nil {
-					return err
-				}
-			}
-			return nil
-		}
-		d.PodsExpectations.ExpectDeletion(namespacedName)
-		result, err := deleteElasticsearchPod(
-			d.Client,
-			reconcileState,
-			*resourcesState,
-			observedState,
-			pod,
-			performableChanges.ToDelete,
-			preDelete,
-		)
-		if err != nil {
-			// pod was not deleted, cancel our expectation by marking it observed
-			d.PodsExpectations.DeletionObserved(namespacedName)
-			return results.WithError(err)
-		}
-		results.WithResult(result)
+	if err = d.deletePods(
+		performableChanges.ToDelete,
+		reconcileState,
+		resourcesState,
+		observedState,
+		results,
+		esClient,
+		namespacedName,
+	); err != nil {
+		return results.WithError(err)
 	}
 	// past this point, any pods resource listing should check expectations first
 
@@ -383,6 +364,55 @@ func (d *defaultDriver) Reconcile(
 	reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 
 	return results
+}
+
+func (d *defaultDriver) deletePods(
+	ToDelete []corev1.Pod,
+	reconcileState *reconcile.State,
+	resourcesState *reconcile.ResourcesState,
+	observedState observer.State,
+	results *reconcile.Results,
+	esClient *esclient.Client,
+	namespacedName types.NamespacedName,
+) error {
+	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
+	copy(newState, resourcesState.CurrentPods)
+	for _, pod := range ToDelete {
+		newState = removePodFromList(newState, pod)
+		preDelete := func() error {
+			if d.zen1SettingsUpdater != nil {
+				if err := d.zen1SettingsUpdater(esClient, newState); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		// do not delete a pod or expect a deletion if a data migration is in progress
+		isMigratingData := migration.IsMigratingData(observedState, pod, ToDelete)
+		if isMigratingData {
+			log.Info("Skipping deletes because of migrating data", "pod", pod.Name)
+			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
+			results.WithResult(defaultRequeue)
+			continue
+		}
+
+		d.PodsExpectations.ExpectDeletion(namespacedName)
+		result, err := deleteElasticsearchPod(
+			d.Client,
+			reconcileState,
+			*resourcesState,
+			pod,
+			preDelete,
+		)
+		if err != nil {
+			// pod was not deleted, cancel our expectation by marking it observed
+			d.PodsExpectations.DeletionObserved(namespacedName)
+			return err
+		}
+		results.WithResult(result)
+	}
+	return nil
 }
 
 // removePodFromList removes a single pod from the list, matching by pod name.
