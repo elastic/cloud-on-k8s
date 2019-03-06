@@ -8,22 +8,14 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -230,18 +222,7 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 	}
 
 	type fields struct {
-		Options                           Options
-		supportedVersions                 esversion.LowestHighestSupportedVersions
-		genericResourcesReconciler        func(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.ElasticsearchCluster) (*GenericResources, error)
-		nodeCertificatesReconciler        func(c k8s.Client, scheme *runtime.Scheme, ca *certificates.Ca, csrClient certificates.CSRClient, es v1alpha1.ElasticsearchCluster, services []corev1.Service, trustRelationships []v1alpha1.TrustRelationship) error
-		internalUsersReconciler           func(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.ElasticsearchCluster) (*user.InternalUsers, error)
-		versionWideResourcesReconciler    func(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.ElasticsearchCluster, trustRelationships []v1alpha1.TrustRelationship, w watches.DynamicWatches) (*VersionWideResources, error)
-		expectedPodsAndResourcesResolver  func(es v1alpha1.ElasticsearchCluster, paramsTmpl pod.NewPodSpecParams, operatorImage string) ([]pod.PodSpecContext, error)
-		observedStateResolver             func(clusterName types.NamespacedName, esClient *esclient.Client) observer.State
-		resourcesStateResolver            func(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*reconcile.ResourcesState, error)
-		clusterInitialMasterNodesEnforcer func(performableChanges mutation.PerformableChanges, resourcesState reconcile.ResourcesState) (*mutation.PerformableChanges, error)
-		zen1SettingsUpdater               func(esClient *esclient.Client, allPods []corev1.Pod) error
-		zen2SettingsUpdater               func(esClient *esclient.Client, changes mutation.Changes, performableChanges mutation.PerformableChanges) error
+		Options Options
 	}
 	type args struct {
 		ToDelete       []corev1.Pod
@@ -320,18 +301,7 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := &defaultDriver{
-				Options:                           tt.fields.Options,
-				supportedVersions:                 tt.fields.supportedVersions,
-				genericResourcesReconciler:        tt.fields.genericResourcesReconciler,
-				nodeCertificatesReconciler:        tt.fields.nodeCertificatesReconciler,
-				internalUsersReconciler:           tt.fields.internalUsersReconciler,
-				versionWideResourcesReconciler:    tt.fields.versionWideResourcesReconciler,
-				expectedPodsAndResourcesResolver:  tt.fields.expectedPodsAndResourcesResolver,
-				observedStateResolver:             tt.fields.observedStateResolver,
-				resourcesStateResolver:            tt.fields.resourcesStateResolver,
-				clusterInitialMasterNodesEnforcer: tt.fields.clusterInitialMasterNodesEnforcer,
-				zen1SettingsUpdater:               tt.fields.zen1SettingsUpdater,
-				zen2SettingsUpdater:               tt.fields.zen2SettingsUpdater,
+				Options: tt.fields.Options,
 			}
 			if err := d.deletePods(
 				tt.args.ToDelete, tt.args.reconcileState, tt.args.resourcesState,
