@@ -61,8 +61,8 @@ type defaultDriver struct {
 		trustRelationships []v1alpha1.TrustRelationship,
 	) error
 
-	// internalUsersReconciler reconciles and returns the current internal users.
-	internalUsersReconciler func(
+	// usersReconciler reconciles external and internal users and returns the current internal users.
+	usersReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.ElasticsearchCluster,
@@ -154,7 +154,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	internalUsers, err := d.internalUsersReconciler(d.Client, d.Scheme, es)
+	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -189,7 +189,7 @@ func (d *defaultDriver) Reconcile(
 		d.Client,
 		d.Scheme,
 		es,
-		internalUsers.ControllerUser,
+		internalUsers.ControllerUser.Auth(),
 		d.OperatorImage,
 	); err != nil {
 		// it's ok to continue even if we cannot reconcile the cron job
@@ -408,8 +408,8 @@ func (d *defaultDriver) calculateChanges(
 		pod.NewPodSpecParams{
 			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
 			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
-			ProbeUser:         internalUsers.ProbeUser,
-			ReloadCredsUser:   internalUsers.ReloadCredsUser,
+			ProbeUser:         internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser:   internalUsers.ReloadCredsUser.Auth(),
 			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,
@@ -432,11 +432,11 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user esclient.User) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User) *esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user, []*x509.Certificate{d.ClusterCa.Cert},
+		d.Dialer, url, user.Auth(), []*x509.Certificate{d.ClusterCa.Cert},
 	)
 	return esClient
 }

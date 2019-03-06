@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +54,7 @@ func TestNewLabelSelectorForElasticsearch(t *testing.T) {
 			name: "should match labels from NewLabels",
 			args: args{es: v1alpha1.ElasticsearchCluster{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
 			assertions: func(t *testing.T, a args, sel labels.Selector) {
-				esLabels := NewLabels(a.es)
+				esLabels := NewLabels(k8s.ExtractNamespacedName(&a.es))
 				assert.True(t, sel.Matches(labels.Set(esLabels)))
 			},
 		},

@@ -3,7 +3,7 @@ kind: KibanaElasticsearchAssociation
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: kibanaelasticsearchassociation-sample
+  name: kibana-es-sample
 spec:
   elasticsearch:
     name: "elasticsearch-sample"

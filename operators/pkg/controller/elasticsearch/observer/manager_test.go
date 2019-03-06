@@ -49,7 +49,7 @@ func cluster(name string) types.NamespacedName {
 func TestManager_Observe(t *testing.T) {
 	fakeClient := fakeEsClient200()
 	fakeClientWithDifferentUser := fakeEsClient200()
-	fakeClientWithDifferentUser.User = client.User{Name: "name", Password: "another-one"}
+	fakeClientWithDifferentUser.User = client.UserAuth{Name: "name", Password: "another-one"}
 	tests := []struct {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer

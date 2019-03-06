@@ -2,179 +2,137 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build integration
-
 package association
 
 import (
-	"fmt"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
-	"github.com/pkg/errors"
-
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var c k8s.Client
-
-var associationKey = types.NamespacedName{Name: "baz", Namespace: "default"}
-var kibanaKey = types.NamespacedName{Name: "bar", Namespace: "default"}
-var expectedRequest = reconcile.Request{NamespacedName: associationKey}
-
-func TestReconcile(t *testing.T) {
-
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(test.Config, manager.Options{})
-	assert.NoError(t, err)
-	c = k8s.WrapClient(mgr.GetClient())
-
-	rec, err := newReconciler(mgr)
-	require.NoError(t, err)
-	recFn, requests := SetupTestReconcile(rec)
-	controller, err := add(mgr, recFn)
-	assert.NoError(t, err)
-	assert.NoError(t, addWatches(controller, rec))
-
-	stopMgr, mgrStopped := StartTestManager(mgr, t)
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
-
-	// Assume an Elasticsearch cluster and a Kibana have been created
-	es := &esv1alpha1.ElasticsearchCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
+func Test_deleteOrphanedResources(t *testing.T) {
+	s := setupScheme(t)
+	tests := []struct {
+		name           string
+		args           assoctype.KibanaElasticsearchAssociation
+		initialObjects []runtime.Object
+		postCondition  func(c k8s.Client)
+		wantErr        bool
+	}{
+		{
+			name:    "nothing to delete",
+			args:    assoctype.KibanaElasticsearchAssociation{},
+			wantErr: false,
 		},
-	}
-	assert.NoError(t, c.Create(es))
-	kb := kbv1alpha1.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kibanaKey.Name,
-			Namespace: kibanaKey.Namespace,
-		},
-	}
-	assert.NoError(t, c.Create(&kb))
-	// Pretend secrets created by the Elasticsearch controller are there
-	secrets := mockSecrets(t, c)
-
-	// Create the association resource, that should be reconciled
-	instance := &v1alpha1.KibanaElasticsearchAssociation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      associationKey.Name,
-			Namespace: associationKey.Namespace,
-		},
-		Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
-			Elasticsearch: v1alpha1.ObjectSelector{
-				Name:      "foo",
-				Namespace: "default",
+		{
+			name: "only valid objects",
+			args: associationFixture,
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+					},
+				},
 			},
-			Kibana: v1alpha1.ObjectSelector{
-				Name:      kibanaKey.Name,
-				Namespace: kibanaKey.Namespace,
+			postCondition: func(c k8s.Client) {
+				assertExpectObjectsExist(t, c)
 			},
+			wantErr: false,
+		},
+		{
+			name: "Orpaned objects exist",
+			args: associationFixture,
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+						Labels: map[string]string{
+							AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+						Labels: map[string]string{
+							AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: "other-ns",
+						Labels: map[string]string{
+							AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: "other-ns",
+						Labels: map[string]string{
+							AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				assertExpectObjectsExist(t, c)
+				// This works even without labels because mock client currently ignores labels
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "other-ns",
+					Name:      resourceNameFixture,
+				}, &estype.User{}))
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "other-ns",
+					Name:      resourceNameFixture,
+				}, &corev1.Secret{}))
+
+			},
+			wantErr: false,
 		},
 	}
-	err = c.Create(instance)
-
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
+			if err := deleteOrphanedResources(c, tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.postCondition != nil {
+				tt.postCondition(c)
+			}
+		})
 	}
-	assert.NoError(t, err)
-	defer c.Delete(instance)
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// let's wait until the Kibana update triggers another reconcile iteration
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-
-	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
-
-	// Kibana should be updated
-	kibana := &kbv1alpha1.Kibana{}
-	test.RetryUntilSuccess(t, func() error {
-		err := c.Get(kibanaKey, kibana)
-		if err != nil {
-			return err
-		}
-		switch e := kibana.Spec.Elasticsearch; {
-		case e.URL == "", e.CaCertSecret == nil, e.Auth.Inline.Username == "", e.Auth.Inline.Password == "":
-			return errors.New("Not reconciled yet")
-		default:
-			return nil
-		}
-	})
-
-	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
-	test.DeleteIfExists(t, c, es)
-	for _, s := range secrets {
-		test.DeleteIfExists(t, c, s)
-	}
-
-	// Ensure association goes back to pending if one of the vertices is deleted
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	test.RetryUntilSuccess(t, func() error {
-		fetched := v1alpha1.KibanaElasticsearchAssociation{}
-		err := c.Get(associationKey, &fetched)
-		if err != nil {
-			return err
-		}
-		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
-		}
-		return nil
-	})
-
-	// Delete Kibana as well
-	test.DeleteIfExists(t, c, kibana)
-
 }
 
-func mockSecrets(t *testing.T, c k8s.Client) []*v1.Secret {
-	// The Kibana resource needs some secrets to be created,
-	// but the Elasticsearch controller is not running.
-	// Here we are creating dummy secrets to pretend they exist.
-	// TODO: This would not be necessary if Kibana and Elasticsearch were less coupled.
-
-	userSecret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secret.ElasticInternalUsersSecretName("foo"),
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			secret.InternalKibanaServerUserName: []byte("blub"),
-		},
-	}
-	assert.NoError(t, c.Create(userSecret))
-
-	caSecret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		},
-		Data: map[string][]byte{
-			certificates.CAFileName: []byte("fake-ca-cert"),
-		},
-	}
-	assert.NoError(t, c.Create(caSecret))
-
-	return []*v1.Secret{userSecret, caSecret}
+func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
+	// user CR should be in ES namespace
+	assert.NoError(t, c.Get(types.NamespacedName{
+		Namespace: associationFixture.Namespace,
+		Name:      resourceNameFixture,
+	}, &estype.User{}))
+	// secret should be in Kibana namespace
+	assert.NoError(t, c.Get(types.NamespacedName{
+		Namespace: associationFixture.Namespace,
+		Name:      resourceNameFixture,
+	}, &corev1.Secret{}))
 }

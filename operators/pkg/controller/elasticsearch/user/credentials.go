@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package secret
+package user
 
 import (
 	"bytes"
@@ -10,15 +10,13 @@ import (
 	"sort"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/rand"
-
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/ghodss/yaml"
-	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,7 +47,6 @@ func ElasticExternalUsersSecretName(ownerName string) string {
 
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.
 type UserCredentials interface {
-	Users() []client.User
 	Secret() corev1.Secret
 	Reset(secret corev1.Secret)
 	NeedsUpdate(other corev1.Secret) bool
@@ -57,7 +54,7 @@ type UserCredentials interface {
 
 // ClearTextCredentials store a secret with clear text passwords.
 type ClearTextCredentials struct {
-	users  []client.User
+	users  []User
 	secret corev1.Secret
 }
 
@@ -77,9 +74,8 @@ func keysEqual(v1, v2 map[string][]byte) bool {
 // Reset resets the source of truth for these credentials.
 func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 	c.secret = secret
-	// Keep the users' passwords up to date
-	for i, user := range c.users {
-		c.users[i].Password = string(secret.Data[user.Name])
+	for i, u := range c.users {
+		c.users[i].password = string(secret.Data[u.name])
 	}
 }
 
@@ -87,7 +83,7 @@ func (c *ClearTextCredentials) Reset(secret corev1.Secret) {
 func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 	// for generated secrets as long as the key exists we can work with it. Rotate secrets by deleting them (?)
 	for _, user := range c.users {
-		if _, ok := other.Data[user.Name]; !ok {
+		if _, ok := other.Data[user.Id()]; !ok {
 			return true
 		}
 	}
@@ -95,7 +91,7 @@ func (c *ClearTextCredentials) NeedsUpdate(other corev1.Secret) bool {
 }
 
 // Users returns the users slice stored in the struct.
-func (c *ClearTextCredentials) Users() []client.User {
+func (c *ClearTextCredentials) Users() []User {
 	return c.users
 }
 
@@ -106,7 +102,7 @@ func (c *ClearTextCredentials) Secret() corev1.Secret {
 
 // HashedCredentials store Elasticsearch user names and password hashes.
 type HashedCredentials struct {
-	users  []client.User
+	users  []common.User
 	secret corev1.Secret
 }
 
@@ -156,9 +152,9 @@ func (hc *HashedCredentials) NeedsUpdate(other corev1.Secret) bool {
 
 	// Check for user passwords update
 	for _, u := range hc.users {
-		otherPasswordBytes, ok := otherUsers[u.Name]
+		otherHash, ok := otherUsers[u.Id()]
 		// this could turn out to be too expensive
-		if !ok || bcrypt.CompareHashAndPassword(otherPasswordBytes, []byte(u.Password)) != nil {
+		if !ok || !u.PasswordMatches(otherHash) {
 			return true
 		}
 	}
@@ -171,31 +167,20 @@ func (hc *HashedCredentials) Secret() corev1.Secret {
 	return hc.secret
 }
 
-// Users returns the users slice stored in the struct.
-func (hc *HashedCredentials) Users() []client.User {
-	return hc.users
-}
-
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
-func NewInternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
+func NewInternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
 	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), internalUsers)
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
-func NewExternalUserCredentials(es v1alpha1.ElasticsearchCluster) *ClearTextCredentials {
+func NewExternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
 	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), externalUsers)
 }
 
-// usersToClearTextCredentials transforms a slice of users in a ClearTextCredentials and takes care of generating the
-// users' passwords.
-func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName string, users []client.User) *ClearTextCredentials {
+func usersToClearTextCredentials(es types.NamespacedName, secretName string, users []User) *ClearTextCredentials {
 	data := make(map[string][]byte, len(users))
-	for i, user := range users {
-		password := rand.String(24)
-		/// Fill the secret
-		data[user.Name] = []byte(password)
-		// Keep the user password up to date
-		users[i].Password = password
+	for _, user := range users {
+		data[user.Id()] = []byte(user.Password())
 	}
 
 	return &ClearTextCredentials{
@@ -214,14 +199,14 @@ func usersToClearTextCredentials(es v1alpha1.ElasticsearchCluster, secretName st
 // NewElasticUsersCredentialsAndRoles creates a k8s secret with user credentials and roles readable by ES
 // for the given users.
 func NewElasticUsersCredentialsAndRoles(
-	es v1alpha1.ElasticsearchCluster,
-	users []client.User,
+	es types.NamespacedName,
+	users []common.User,
 	roles map[string]client.Role,
 ) (*HashedCredentials, error) {
 
 	// sort to avoid unnecessary diffs and API resource updates
 	sort.SliceStable(users, func(i, j int) bool {
-		return users[i].Name < users[j].Name
+		return users[i].Id() < users[j].Id()
 	})
 
 	usersFileBytes, err := getUsersFileBytes(users)
@@ -256,33 +241,34 @@ func NewElasticUsersCredentialsAndRoles(
 	}, nil
 }
 
-func getUsersFileBytes(users []client.User) ([]byte, error) {
+func getUsersFileBytes(users []common.User) ([]byte, error) {
 	lines := make([]string, len(users))
 	for i, user := range users {
-		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+		hash, err := user.PasswordHash()
 		if err != nil {
 			return nil, err
 		}
 
-		lines[i] = user.Name + ":" + string(hash)
+		lines[i] = user.Id() + ":" + string(hash)
 	}
 
 	return []byte(strings.Join(lines, "\n")), nil
 }
 
-func getUsersRolesFileBytes(users []client.User) ([]byte, error) {
+func getUsersRolesFileBytes(users []common.User) ([]byte, error) {
 	rolesUsers := map[string][]string{}
 	for _, user := range users {
-		role := user.Role
-		if role == "" {
-			return nil, fmt.Errorf("role not defined for user `%s`", user.Name)
-		}
+		for _, role := range user.Roles() {
+			if role == "" {
+				return nil, fmt.Errorf("role not defined for user `%s`", user.Id())
+			}
 
-		roleUsers := rolesUsers[role]
-		if roleUsers == nil {
-			roleUsers = []string{}
+			roleUsers := rolesUsers[role]
+			if roleUsers == nil {
+				roleUsers = []string{}
+			}
+			rolesUsers[role] = append(roleUsers, user.Id())
 		}
-		rolesUsers[role] = append(roleUsers, user.Name)
 	}
 	var lines []string
 	for role, users := range rolesUsers {

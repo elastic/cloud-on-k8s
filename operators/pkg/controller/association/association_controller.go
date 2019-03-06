@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -24,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -130,8 +130,8 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		return common.PauseRequeue, nil
 	}
 
-	handler := finalizer.NewHandler(r)
-	err = handler.Handle(&association, watchFinalizer(k8s.ExtractNamespacedName(&association), r.watches))
+	h := finalizer.NewHandler(r)
+	err = h.Handle(&association, watchFinalizer(k8s.ExtractNamespacedName(&association), r.watches))
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
@@ -221,25 +221,9 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 		return assoctype.AssociationFailed, err
 	}
 
-	// TODO reconcile external user CRD here
-
-	var expectedEsConfig kbtype.BackendElasticsearch
-
-	internalUsersSecretName := secret.ElasticInternalUsersSecretName(es.Name)
-	var internalUsersSecret corev1.Secret
-	internalUsersSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: internalUsersSecretName}
-	if err := r.Get(internalUsersSecretKey, &internalUsersSecret); err != nil {
-		if apierrors.IsNotFound(err) {
-			return assoctype.AssociationPending, err
-		}
-		return assoctype.AssociationFailed, err
-	}
-
-	// TODO: can deliver through a shared secret instead?
-	expectedEsConfig.Auth.Inline = &kbtype.ElasticsearchInlineAuth{
-		Username: secret.InternalKibanaServerUserName,
-		// TODO: error checking
-		Password: string(internalUsersSecret.Data[secret.InternalKibanaServerUserName]),
+	err = reconcileEsUser(r.Client, r.scheme, association)
+	if err != nil {
+		return assoctype.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
 	}
 
 	var publicCACertSecret corev1.Secret
@@ -247,9 +231,12 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return assoctype.AssociationPending, err // maybe not created yet
 	}
+
+	var expectedEsConfig kbtype.BackendElasticsearch
 	// TODO this is currently limiting the association to the same namespace
 	expectedEsConfig.CaCertSecret = &publicCACertSecret.Name
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
+	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(association)
 
 	var currentKb kbtype.Kibana
 	err = r.Get(association.Spec.Kibana.NamespacedName(), &currentKb)
@@ -268,5 +255,45 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 			return assoctype.AssociationPending, err
 		}
 	}
+
+	if err := deleteOrphanedResources(r, association); err != nil {
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
 	return assoctype.AssociationEstablished, nil
+}
+
+// deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
+// attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
+// now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
+// combinations and deletes them.
+func deleteOrphanedResources(c k8s.Client, assoc assoctype.KibanaElasticsearchAssociation) error {
+	var secrets corev1.SecretList
+	selector := NewResourceSelector(assoc.Name)
+	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+		return err
+	}
+	expectedSecretKey := secretKey(assoc)
+	for _, s := range secrets.Items {
+		if k8s.ExtractNamespacedName(&s) != expectedSecretKey {
+			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+			if err := c.Delete(&s); err != nil {
+				return err
+			}
+		}
+	}
+
+	var users estype.UserList
+	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
+		return err
+	}
+	expectedUserKey := userKey(assoc)
+	for _, u := range users.Items {
+		if k8s.ExtractNamespacedName(&u) != expectedUserKey {
+			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
+			if err := c.Delete(&u); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

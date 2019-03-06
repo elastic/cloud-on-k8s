@@ -1060,6 +1060,7 @@
   input-imports = [
     "github.com/emicklei/go-restful",
     "github.com/fsnotify/fsnotify",
+    "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",

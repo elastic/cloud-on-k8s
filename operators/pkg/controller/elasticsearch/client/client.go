@@ -25,11 +25,10 @@ import (
 // DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
 const DefaultVotingConfigExclusionsTimeout = "30s"
 
-// User captures Elasticsearch user credentials.
-type User struct {
+// UserAuth is authentication information for the Elasticsearch client.
+type UserAuth struct {
 	Name     string
 	Password string
-	Role     string
 }
 
 // Role represents an Elasticsearch role.
@@ -55,7 +54,7 @@ type Role struct {
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client struct {
-	User     User
+	User     UserAuth
 	HTTP     *http.Client
 	Endpoint string
 	caCerts  []*x509.Certificate
@@ -64,7 +63,7 @@ type Client struct {
 // NewElasticsearchClient creates a new client for the target cluster.
 //
 // If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser User, caCerts []*x509.Certificate) *Client {
+func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, caCerts []*x509.Certificate) *Client {
 	certPool := x509.NewCertPool()
 	for _, c := range caCerts {
 		certPool.AddCert(c)
@@ -152,7 +151,7 @@ func (c *Client) doRequest(context context.Context, request *http.Request) (*htt
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
-	if c.User != (User{}) {
+	if c.User != (UserAuth{}) {
 		withContext.SetBasicAuth(c.User.Name, c.User.Password)
 	}
 

@@ -74,9 +74,9 @@ func NewDriver(opts Options) (Driver, error) {
 
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
-		observedStateResolver:   opts.Observers.ObservedStateResolver,
-		resourcesStateResolver:  esreconcile.NewResourcesStateFromAPI,
-		internalUsersReconciler: user.ReconcileUsers,
+		observedStateResolver:  opts.Observers.ObservedStateResolver,
+		resourcesStateResolver: esreconcile.NewResourcesStateFromAPI,
+		usersReconciler:        user.ReconcileUsers,
 	}
 
 	switch opts.Version.Major {

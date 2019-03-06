@@ -8,10 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
@@ -20,8 +19,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var testProbeUser = client.User{Name: "username1", Password: "supersecure"}
-var testReloadCredsUser = client.User{Name: "username2", Password: "supersecure"}
+var testProbeUser = client.UserAuth{Name: "username1", Password: "supersecure"}
+var testReloadCredsUser = client.UserAuth{Name: "username2", Password: "supersecure"}
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",

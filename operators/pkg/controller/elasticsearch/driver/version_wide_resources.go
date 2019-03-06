@@ -45,7 +45,7 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	expectedConfigMap := configmap.NewConfigMapWithData(es, settings.DefaultConfigMapData)
+	expectedConfigMap := configmap.NewConfigMapWithData(k8s.ExtractNamespacedName(&es), settings.DefaultConfigMapData)
 	err = configmap.ReconcileConfigMap(c, scheme, es, expectedConfigMap)
 	if err != nil {
 		return nil, err
