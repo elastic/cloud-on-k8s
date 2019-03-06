@@ -16,7 +16,7 @@ How do we manage nodes certificates with our operator?
   * Each node should have its own private key, signed by a CA.
   * Private keys for both nodes and CA should be stored in such a way they very hard to obtain and/or decipher.
   * Certificate rotation should be easily doable by design.
-  * ES pods should not access the kubernetes API directly.
+  * ES pods should not access the Kubernetes API directly.
 * Ease of use
   * Human operator intervention in running the operator regarding certificate management should be restricted as a minimum (ideally, the human operator should not care at all).
 * Cluster impact
@@ -72,7 +72,7 @@ CSR is not a secret information and can go public, as long as the private key st
 
 Several options considered involving an init container in the ES pod:
 
-* *Option A*: the init container stores the CSR in the apiserver for the operator to pick up. Similar to how it's done [to bootstrap kubernetes nodes](https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/). There is already a built-in `CertificateSigningRequest` resource available. Advantage: it uses built-in mechanisms, the operator just has to watch CSR resources in order to issue new certificates. Drawback: the pod must be able to reach the apiserver, with a service account having the appropriate permissions. So far, this was not required. Considering any custom plugin could run in the Elasticsearch process, allowing requests to the apiserver might represent a security issue.
+* *Option A*: the init container stores the CSR in the apiserver for the operator to pick up. Similar to how it's done [to bootstrap Kubernetes nodes](https://Kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster/). There is already a built-in `CertificateSigningRequest` resource available. Advantage: it uses built-in mechanisms, the operator just has to watch CSR resources in order to issue new certificates. Drawback: the pod must be able to reach the apiserver, with a service account having the appropriate permissions. So far, this was not required. Considering any custom plugin could run in the Elasticsearch process, allowing requests to the apiserver might represent a security issue.
 * *Option B*: the init container requests the operator through an API in the operator to send the CSR. Disadvantage: similar to Option A, we implicitly authorize the ES pod to reach the operator. Even though this can be restricted to a single endpoint, it's an additional possible flow that could lead to security issues.
 * *Option C*: the init container runs an HTTP server to serve the generated CSR. The operator requests the CSR through this API. Advantage: the pod does not need to reach any other service. Disadvantage: some additional complexity in the design and the implementation.
 
@@ -139,7 +139,7 @@ Some service meshes handle TLS authentication automatically through sidecar cont
 
 Instead of having the operator manage CAs and issue certificates signed by the CA, we could simply propagate existing CA and signed certificates from the user. The operator would mount secrets containing them to ES pods.
 
-The user would store certificates and private keys as secrets in kubernetes, and reference those secrets in the Elasticsearch cluster spec.
+The user would store certificates and private keys as secrets in Kubernetes, and reference those secrets in the Elasticsearch cluster spec.
 
 Benefits:
 
