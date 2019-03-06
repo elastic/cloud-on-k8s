@@ -30,7 +30,10 @@ func waitForServer(t *testing.T, port int) {
 			t.Fatal("server not reachable after 30sec.")
 		case <-retryEvery:
 			// check if TCP port listens to connections
-			_, err := net.DialTimeout("tcp", net.JoinHostPort("", fmt.Sprintf("%d", port)), reqTimeout)
+			conn, err := net.DialTimeout("tcp", net.JoinHostPort("", fmt.Sprintf("%d", port)), reqTimeout)
+			if conn != nil {
+				conn.Close()
+			}
 			if err == nil {
 				return
 			}
