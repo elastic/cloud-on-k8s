@@ -41,7 +41,7 @@ At each reconciliation loop, the operator can decide to issue a signed certifica
 * existing certificate does not match the current CA
 * we wish to rotate the certificates
 
-The certificate is created as a secret in the apiserver, and mounted to the pod through a secret volume mount. On the pod, Elasticsearch is able to use the provided certificate file. If the secret is updated, Elasticsearch will use the updated file on disk automatically (which is a pretty great feature). Unfortunately Kibana does not work the same way: it is necessary to recreate/restart Kibana instances in case of certificate update.
+The certificate is created as a secret in the apiserver, and mounted to the pod through a secret volume mount. On the pod, Elasticsearch is able to use the provided certificate file. If the secret is updated, Elasticsearch will use the updated file on disk automatically (which is a pretty great feature). Unfortunately most software don't work the same way, and require a restart to pick up new certificates. Kibana for example does require a restart.
 
 #### CA private key
 
