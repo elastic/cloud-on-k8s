@@ -14,9 +14,29 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
+
+func waitForServer(t *testing.T, port int) {
+	// wait for server to be started
+	totalTimeout := time.After(30 * time.Second)
+	retryEvery := time.Tick(100 * time.Millisecond)
+	reqTimeout := 10 * time.Second
+	for {
+		select {
+		case <-totalTimeout:
+			t.Fatal("server not reachable after 30sec.")
+		case <-retryEvery:
+			// check if TCP port listens to connections
+			_, err := net.DialTimeout("tcp", net.JoinHostPort("", fmt.Sprintf("%d", port)), reqTimeout)
+			if err == nil {
+				return
+			}
+		}
+	}
+}
 
 func Test_serveCSR(t *testing.T) {
 	// try to find an open tcp port for using in the test,
@@ -40,6 +60,8 @@ func Test_serveCSR(t *testing.T) {
 		require.NoError(t, err)
 		close(isStopped)
 	}()
+
+	waitForServer(t, port)
 
 	// request the csr
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/csr", port))
