@@ -366,6 +366,7 @@ func (d *defaultDriver) Reconcile(
 	return results
 }
 
+// deletePods deletes a list of pods after checking there is no migrating data for each of them
 func (d *defaultDriver) deletePods(
 	ToDelete []corev1.Pod,
 	reconcileState *reconcile.State,

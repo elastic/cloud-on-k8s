@@ -178,7 +178,8 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	return pvc
 }
 
-// deleteElasticsearchPod deletes the given elasticsearch pod,
+// deleteElasticsearchPod deletes the given elasticsearch pod. Tests to check if the pod can be deleted safely must
+// be done before the call to this function.
 func deleteElasticsearchPod(
 	c k8s.Client,
 	reconcileState *esreconcile.State,
