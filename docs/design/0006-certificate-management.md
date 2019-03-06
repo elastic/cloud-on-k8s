@@ -114,6 +114,15 @@ The operator should be able to rotate the CA certificate of a cluster for multip
 
 When rotating the CA cert, all nodes having certificates signed by the CA are impacted. New certificates need to be issued for those nodes. If the operator can access the nodes CSRs, it can reissue valid certificates using those CSR.
 
+#### CA private key rotation
+
+The operator should be able to rotate the CA private key of a cluster for multiple reasons:
+
+* CA private key has been compromised
+* on a regular basis for security reasons
+
+Siilar to the CA cert rotation section before, new certificates need to be issued for all nodes. In most cases, it makes sense to rotate both the CA certificate and the CA private key.
+
 ##### Avoiding downtime during rotation
 
 While the CA cert is rotated and all nodes certificates are reissued, there can be an impact on connections. Long-running ES nodes TLS connections will be maintained (past the TLS handshake). New connections will likely fail until things get stabilized, incurring potential downtime.
