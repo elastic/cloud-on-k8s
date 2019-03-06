@@ -121,7 +121,7 @@ The operator should be able to rotate the CA private key of a cluster for multip
 * CA private key has been compromised
 * on a regular basis for security reasons
 
-Siilar to the CA cert rotation section before, new certificates need to be issued for all nodes. In most cases, it makes sense to rotate both the CA certificate and the CA private key.
+Similar to the CA cert rotation section before, new certificates need to be issued for all nodes. In most cases, it makes sense to rotate both the CA certificate and the CA private key.
 
 ##### Avoiding downtime during rotation
 
