@@ -224,6 +224,7 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 	type fields struct {
 		Options Options
 	}
+
 	type args struct {
 		ToDelete       []corev1.Pod
 		reconcileState *reconcile.State
@@ -249,7 +250,7 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 		{
 			name: "Do not delete a pod with migrating data",
 			args: args{
-				namespacedName: types.NamespacedName{Namespace: "default", Name: "elasticsearch-sample"},
+				namespacedName: nn,
 				ToDelete:       []corev1.Pod{pod1, pod2},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: []corev1.Pod{pod1, pod2, pod3},
@@ -274,7 +275,7 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 		{
 			name: "Delete a pod with no data",
 			args: args{
-				namespacedName: types.NamespacedName{Namespace: "default", Name: "elasticsearch-sample"},
+				namespacedName: nn,
 				ToDelete:       []corev1.Pod{pod4},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: []corev1.Pod{pod1, pod2, pod3, pod4},
