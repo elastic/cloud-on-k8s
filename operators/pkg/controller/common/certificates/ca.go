@@ -28,8 +28,8 @@ var (
 	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 )
 
-// Ca is a simple certificate authority
-type Ca struct {
+// CA is a simple certificate authority
+type CA struct {
 	// PrivateKey is the CA private key
 	PrivateKey *rsa.PrivateKey
 	// Cert is the certificate used to issue new certificates
@@ -40,9 +40,9 @@ type Ca struct {
 // should be considered trusted.
 type ValidatedCertificateTemplate x509.Certificate
 
-// NewCa returns a ca with the given private key and cert
-func NewCa(privateKey *rsa.PrivateKey, cert *x509.Certificate) *Ca {
-	return &Ca{
+// NewCA returns a ca with the given private key and cert
+func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
+	return &CA{
 		PrivateKey: privateKey,
 		Cert:       cert,
 	}
@@ -55,8 +55,8 @@ type CABuilderOptions struct {
 	ExpireIn   *time.Duration
 }
 
-// NewSelfSignedCa creates a self-signed CA according to the given options
-func NewSelfSignedCa(options CABuilderOptions) (*Ca, error) {
+// NewSelfSignedCA creates a self-signed CA according to the given options
+func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 	// generate a serial number
 	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
 	if err != nil {
@@ -101,7 +101,7 @@ func NewSelfSignedCa(options CABuilderOptions) (*Ca, error) {
 		return nil, err
 	}
 
-	return &Ca{
+	return &CA{
 		PrivateKey: privateKey,
 		Cert:       cert,
 	}, nil
@@ -109,7 +109,7 @@ func NewSelfSignedCa(options CABuilderOptions) (*Ca, error) {
 }
 
 // CreateCertificate signs and creates a new certificate for a validated template.
-func (c *Ca) CreateCertificate(
+func (c *CA) CreateCertificate(
 	validatedCertificateTemplate ValidatedCertificateTemplate,
 ) ([]byte, error) {
 	// generate a serial number

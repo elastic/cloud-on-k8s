@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	// CaPrivateKeyFileName is the name of the private key section in the CA secret
-	CaPrivateKeyFileName = "private.key"
+	// CAPrivateKeyFileName is the name of the private key section in the CA secret
+	CAPrivateKeyFileName = "private.key"
 )
 
 // CACertSecretName returns the name of the CA cert secret for the given cluster.
@@ -28,9 +28,9 @@ func caPrivateKeySecretName(clusterName string) string {
 	return clusterName + "-ca-private-key"
 }
 
-// caFromSecrets parses the given secrets into a Ca.
-// It returns false if the secrets could not be parsed into a Ca.
-func caFromSecrets(certSecret corev1.Secret, privateKeySecret corev1.Secret) (*certificates.Ca, bool) {
+// caFromSecrets parses the given secrets into a CA.
+// It returns false if the secrets could not be parsed into a CA.
+func caFromSecrets(certSecret corev1.Secret, privateKeySecret corev1.Secret) (*certificates.CA, bool) {
 	if certSecret.Data == nil {
 		return nil, false
 	}
@@ -54,27 +54,27 @@ func caFromSecrets(certSecret corev1.Secret, privateKeySecret corev1.Secret) (*c
 	if privateKeySecret.Data == nil {
 		return nil, false
 	}
-	privateKeyBytes, exists := privateKeySecret.Data[CaPrivateKeyFileName]
+	privateKeyBytes, exists := privateKeySecret.Data[CAPrivateKeyFileName]
 	if !exists || len(privateKeyBytes) == 0 {
 		return nil, false
 	}
 	privateKey, err := certificates.ParsePEMPrivateKey(privateKeyBytes)
 	if err != nil {
-		log.Info("Cannot parse PEM private key from CA secret, will create a new ones", "err", err)
+		log.Info("Cannot parse PEM private key from CA secret, will create a new one", "err", err)
 		return nil, false
 	}
-	return certificates.NewCa(privateKey, cert), true
+	return certificates.NewCA(privateKey, cert), true
 }
 
-// secretsForCa returns a private key secret and a cert secret for the given Ca.
-func secretsForCa(ca certificates.Ca, cluster types.NamespacedName) (privateKey corev1.Secret, cert corev1.Secret) {
+// secretsForCA returns a private key secret and a cert secret for the given CA.
+func secretsForCA(ca certificates.CA, cluster types.NamespacedName) (privateKey corev1.Secret, cert corev1.Secret) {
 	privateKey = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: cluster.Namespace,
 			Name:      caPrivateKeySecretName(cluster.Name),
 		},
 		Data: map[string][]byte{
-			CaPrivateKeyFileName: certificates.EncodePEMPrivateKey(*ca.PrivateKey),
+			CAPrivateKeyFileName: certificates.EncodePEMPrivateKey(*ca.PrivateKey),
 		},
 	}
 	cert = corev1.Secret{

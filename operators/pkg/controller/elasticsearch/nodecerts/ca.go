@@ -47,7 +47,7 @@ func ReconcileCAForCluster(
 	scheme *runtime.Scheme,
 	caCertValidity time.Duration,
 	expirationSafetyMargin time.Duration,
-) (*certificates.Ca, error) {
+) (*certificates.CA, error) {
 	// retrieve current CA cert
 	caCert := corev1.Secret{}
 	err := cl.Get(types.NamespacedName{
@@ -84,7 +84,7 @@ func ReconcileCAForCluster(
 	}
 
 	// renew if cannot reuse
-	if !canReuseCa(*ca, expirationSafetyMargin) {
+	if !canReuseCA(*ca, expirationSafetyMargin) {
 		log.Info("Cannot reuse existing CA, creating a new one", "cluster", cluster.Name)
 		return renewCA(cl, cluster, caCertValidity, scheme)
 	}
@@ -95,8 +95,8 @@ func ReconcileCAForCluster(
 }
 
 // renewCA creates and store a new CA to replace one that might exist
-func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn time.Duration, scheme *runtime.Scheme) (*certificates.Ca, error) {
-	ca, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{
+func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn time.Duration, scheme *runtime.Scheme) (*certificates.CA, error) {
+	ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		CommonName: cluster.Name,
 		ExpireIn:   &expireIn,
 	})
@@ -104,7 +104,7 @@ func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn 
 		return nil, err
 	}
 
-	privateKeySecret, certSecret := secretsForCa(*ca, k8s.ExtractNamespacedName(&cluster))
+	privateKeySecret, certSecret := secretsForCA(*ca, k8s.ExtractNamespacedName(&cluster))
 
 	// create or update private key secret
 	reconciledPrivateKey := corev1.Secret{}
@@ -136,8 +136,8 @@ func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn 
 	return ca, nil
 }
 
-// canReuseCa returns true if the given Ca is valid for reuse
-func canReuseCa(ca certificates.Ca, expirationSafetyMargin time.Duration) bool {
+// canReuseCA returns true if the given CA is valid for reuse
+func canReuseCA(ca certificates.CA, expirationSafetyMargin time.Duration) bool {
 	return certificates.PrivateMatchesPublicKey(ca.Cert.PublicKey, *ca.PrivateKey) && certIsValid(*ca.Cert, expirationSafetyMargin)
 }
 

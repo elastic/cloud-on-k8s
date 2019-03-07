@@ -24,15 +24,15 @@ func Test_CAPrivateKeySecretName(t *testing.T) {
 	require.Equal(t, "mycluster-ca-private-key", caPrivateKeySecretName(testName))
 }
 
-func Test_secretsForCa(t *testing.T) {
+func Test_secretsForCA(t *testing.T) {
 	cluster := types.NamespacedName{
 		Namespace: testNamespace,
 		Name:      testName,
 	}
-	testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+	testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	require.NoError(t, err)
 
-	privateKeySecret, certSecret := secretsForCa(*testCa, cluster)
+	privateKeySecret, certSecret := secretsForCA(*testCa, cluster)
 
 	require.Equal(t, testNamespace, privateKeySecret.Namespace)
 	require.Equal(t, testName+"-ca", certSecret.Name)
@@ -44,7 +44,7 @@ func Test_secretsForCa(t *testing.T) {
 	require.Equal(t, testName+"-ca-private-key", privateKeySecret.Name)
 	require.NotEmpty(t, privateKeySecret.Data)
 	require.Len(t, privateKeySecret.Data, 1)
-	require.NotEmpty(t, privateKeySecret.Data[CaPrivateKeyFileName])
+	require.NotEmpty(t, privateKeySecret.Data[CAPrivateKeyFileName])
 
 }
 func Test_caFromSecrets(t *testing.T) {
@@ -52,15 +52,15 @@ func Test_caFromSecrets(t *testing.T) {
 		Namespace: testNamespace,
 		Name:      testName,
 	}
-	testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+	testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	require.NoError(t, err)
-	privateKeySecret, certSecret := secretsForCa(*testCa, cluster)
+	privateKeySecret, certSecret := secretsForCA(*testCa, cluster)
 
 	tests := []struct {
 		name             string
 		certSecret       corev1.Secret
 		privateKeySecret corev1.Secret
-		wantCa           *certificates.Ca
+		wantCa           *certificates.CA 
 		wantOK           bool
 	}{
 		{
@@ -100,7 +100,7 @@ func Test_caFromSecrets(t *testing.T) {
 			certSecret: certSecret,
 			privateKeySecret: corev1.Secret{
 				Data: map[string][]byte{
-					CaPrivateKeyFileName: []byte("invalid"),
+					CAPrivateKeyFileName: []byte("invalid"),
 				},
 			},
 			wantCa: nil,

@@ -82,16 +82,16 @@ func Test_certIsValid(t *testing.T) {
 	}
 }
 
-func Test_canReuseCa(t *testing.T) {
+func Test_canReuseCA(t *testing.T) {
 	tests := []struct {
 		name string
-		ca   func() certificates.Ca
+		ca   func() certificates.CA
 		want bool
 	}{
 		{
 			name: "valid ca",
-			ca: func() certificates.Ca {
-				testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+			ca: func() certificates.CA {
+				testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 				require.NoError(t, err)
 				return *testCa
 			},
@@ -99,8 +99,8 @@ func Test_canReuseCa(t *testing.T) {
 		},
 		{
 			name: "expired ca",
-			ca: func() certificates.Ca {
-				testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+			ca: func() certificates.CA {
+				testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 				require.NoError(t, err)
 				testCa.Cert.NotAfter = time.Now().Add(-1 * time.Hour)
 				return *testCa
@@ -109,8 +109,8 @@ func Test_canReuseCa(t *testing.T) {
 		},
 		{
 			name: "cert public key & private key misatch",
-			ca: func() certificates.Ca {
-				testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+			ca: func() certificates.CA {
+				testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 				require.NoError(t, err)
 				privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 				require.NoError(t, err)
@@ -122,8 +122,8 @@ func Test_canReuseCa(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := canReuseCa(tt.ca(), DefaultExpirationSafetyMargin); got != tt.want {
-				t.Errorf("canReuseCa() = %v, want %v", got, tt.want)
+			if got := canReuseCA(tt.ca(), DefaultExpirationSafetyMargin); got != tt.want {
+				t.Errorf("canReuseCA() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -133,9 +133,9 @@ func checkCASecrets(
 	t *testing.T,
 	client k8s.Client,
 	cluster v1alpha1.ElasticsearchCluster,
-	ca certificates.Ca,
-	expectedCa *certificates.Ca,
-	notExpectedCa *certificates.Ca,
+	ca certificates.CA,
+	expectedCa *certificates.CA,
+	notExpectedCa *certificates.CA,
 	expectedExpiration time.Duration,
 ) {
 	// ca cert should be valid
@@ -172,7 +172,7 @@ func checkCASecrets(
 		Name:      caPrivateKeySecretName(cluster.Name),
 	}, &privateKeySecret)
 	require.NoError(t, err)
-	require.NotEmpty(t, privateKeySecret.Data[CaPrivateKeyFileName])
+	require.NotEmpty(t, privateKeySecret.Data[CAPrivateKeyFileName])
 
 	// both secrets should be ok to parse as a CA
 	parsedCa, ok := caFromSecrets(certSecret, privateKeySecret)
@@ -190,9 +190,9 @@ func Test_renewCA(t *testing.T) {
 			Name:      testName,
 		},
 	}
-	testCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+	testCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	require.NoError(t, err)
-	privateKeySecret, certSecret := secretsForCa(*testCa, k8s.ExtractNamespacedName(&cluster))
+	privateKeySecret, certSecret := secretsForCA(*testCa, k8s.ExtractNamespacedName(&cluster))
 
 	err = v1alpha1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func Test_renewCA(t *testing.T) {
 		name        string
 		client      k8s.Client
 		expireIn    time.Duration
-		notExpected *certificates.Ca
+		notExpected *certificates.CA
 	}{
 		{
 			name:     "create new CA",
@@ -234,23 +234,23 @@ func TestReconcileCAForCluster(t *testing.T) {
 			Name:      testName,
 		},
 	}
-	validCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{})
+	validCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	require.NoError(t, err)
-	privateKeySecret, certSecret := secretsForCa(*validCa, k8s.ExtractNamespacedName(&cluster))
+	privateKeySecret, certSecret := secretsForCA(*validCa, k8s.ExtractNamespacedName(&cluster))
 
 	soonToExpire := 1 * time.Minute
-	soonToExpireCa, err := certificates.NewSelfSignedCa(certificates.CABuilderOptions{
+	soonToExpireCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		ExpireIn: &soonToExpire,
 	})
 	require.NoError(t, err)
-	soonToExpirePrivateKeySecret, soonToExpireCertSecret := secretsForCa(*soonToExpireCa, k8s.ExtractNamespacedName(&cluster))
+	soonToExpirePrivateKeySecret, soonToExpireCertSecret := secretsForCA(*soonToExpireCa, k8s.ExtractNamespacedName(&cluster))
 
 	tests := []struct {
 		name             string
 		cl               k8s.Client
 		caCertValidity   time.Duration
-		shouldReuseCa    *certificates.Ca // ca that should be reused
-		shouldNotReuseCa *certificates.Ca // ca that should not be reused
+		shouldReuseCa    *certificates.CA // ca that should be reused
+		shouldNotReuseCa *certificates.CA // ca that should not be reused
 	}{
 		{
 			name:           "no existing CA cert nor private key",

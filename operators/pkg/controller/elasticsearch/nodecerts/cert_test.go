@@ -26,7 +26,7 @@ import (
 
 // fixtures
 var (
-	testCa                       *certificates.Ca
+	testCA                       *certificates.CA
 	testRSAPrivateKey            *rsa.PrivateKey
 	testCSRBytes                 []byte
 	testCSR                      *x509.CertificateRequest
@@ -105,7 +105,7 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = certificates.NewSelfSignedCa(certificates.CABuilderOptions{
+	if testCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		CommonName: "test",
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
@@ -121,11 +121,11 @@ func init() {
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
-	certData, err = testCa.CreateCertificate(*validatedCertificateTemplate)
+	certData, err = testCA.CreateCertificate(*validatedCertificateTemplate)
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
-	pemCert = certificates.EncodePEMCert(certData, testCa.Cert.Raw)
+	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
@@ -185,7 +185,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewCertificate(tt.args.secret, testCa, tt.args.pod); got != tt.want {
+			if got := shouldIssueNewCertificate(tt.args.secret, testCA, tt.args.pod); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
@@ -260,7 +260,7 @@ func Test_doReconcile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := k8s.WrapClient(fake.NewFakeClient(&tt.secret))
 
-			_, err := doReconcile(fakeClient, tt.secret, tt.pod, fakeCSRClient, "cluster", "namespace", []corev1.Service{testSvc}, testCa, nil)
+			_, err := doReconcile(fakeClient, tt.secret, tt.pod, fakeCSRClient, "cluster", "namespace", []corev1.Service{testSvc}, testCA, nil)
 			require.NoError(t, err)
 
 			var updatedSecret corev1.Secret

@@ -39,8 +39,8 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 `
 
 var (
-	// testCa is a self-signed CA intended for testing
-	testCa *Ca
+	// testCA is a self-signed CA intended for testing
+	testCA *CA
 	// testRSAPrivateKey is a preconfigured RSA private key intended for testing.
 	testRSAPrivateKey *rsa.PrivateKey
 )
@@ -53,7 +53,7 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = NewSelfSignedCa(CABuilderOptions{
+	if testCA, err = NewSelfSignedCA(CABuilderOptions{
 		CommonName: "test",
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
@@ -61,7 +61,7 @@ func init() {
 	}
 }
 
-func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
+func TestCA_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 	// create a certificate template for the csr
 	cn := "test-cn"
 	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
@@ -74,7 +74,7 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 		PublicKey:          &testRSAPrivateKey.PublicKey,
 	})
 
-	bytes, err := testCa.CreateCertificate(certificateTemplate)
+	bytes, err := testCA.CreateCertificate(certificateTemplate)
 	require.NoError(t, err)
 
 	cert, err := x509.ParseCertificate(bytes)
@@ -84,7 +84,7 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 
 	// the issued certificate should pass verification
 	pool := x509.NewCertPool()
-	pool.AddCert(testCa.Cert)
+	pool.AddCert(testCA.Cert)
 	_, err = cert.Verify(x509.VerifyOptions{
 		DNSName: cn,
 		Roots:   pool,
@@ -92,15 +92,15 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestNewSelfSignedCa(t *testing.T) {
+func TestNewSelfSignedCA(t *testing.T) {
 	// with no options, should not fail
-	ca, err := NewSelfSignedCa(CABuilderOptions{})
+	ca, err := NewSelfSignedCA(CABuilderOptions{})
 	require.NoError(t, err)
 	require.NotNil(t, ca)
 
 	// with options, should use them
 	expireIn := 1 * time.Hour
-	ca, err = NewSelfSignedCa(CABuilderOptions{
+	ca, err = NewSelfSignedCA(CABuilderOptions{
 		CommonName: "common-name",
 		PrivateKey: testRSAPrivateKey,
 		ExpireIn:   &expireIn,
