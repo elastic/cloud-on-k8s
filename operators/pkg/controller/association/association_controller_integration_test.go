@@ -14,6 +14,7 @@ import (
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/pkg/errors"
@@ -72,7 +73,7 @@ func TestReconcile(t *testing.T) {
 	}
 	assert.NoError(t, c.Create(&kb))
 	// Pretend secrets created by the Elasticsearch controller are there
-	caSecret := mockCaSecret(t, c)
+	caSecret := mockCaSecret(t, c, *es)
 
 	// Create the association resource, that should be reconciled
 	instance := &v1alpha1.KibanaElasticsearchAssociation{
@@ -145,14 +146,14 @@ func TestReconcile(t *testing.T) {
 
 }
 
-func mockCaSecret(t *testing.T, c k8s.Client) *corev1.Secret {
+func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.ElasticsearchCluster) *corev1.Secret {
 	// The Kibana resource needs a CA cert  secrets to be created,
 	// but the Elasticsearch controller is not running.
 	// Here we are creating a dummy CA secret to pretend they exist.
 	caSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
+			Name:      nodecerts.CASecretNameForCluster(es.Name),
+			Namespace: es.Namespace,
 		},
 		Data: map[string][]byte{
 			certificates.CAFileName: []byte("fake-ca-cert"),
