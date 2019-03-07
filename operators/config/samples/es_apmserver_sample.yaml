@@ -1,0 +1,68 @@
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: ApmServerElasticsearchAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmelasticsearchassociation-sample
+spec:
+  elasticsearch:
+    name: "elasticsearch-sample"
+    namespace: "default"
+  apmServer:
+    name: "apm-server-sample"
+    namespace: "default"
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: ElasticsearchCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+    k8s.elastic.co/expected-license: "trial"
+  name: elasticsearch-sample
+spec:
+  version: "6.6.1"
+  setVmMaxMapCount: true
+  topologies:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    resources:
+      limits:
+        memory: 1Gi
+        cpu: 500m
+    nodeCount: 1
+---
+apiVersion: apm.k8s.elastic.co/v1alpha1
+kind: ApmServer
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apm-server-sample
+spec:
+  version: "6.6.1"
+  nodeCount: 1
+---
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: KibanaElasticsearchAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanaelasticsearchassociation-sample
+spec:
+  elasticsearch:
+    name: "elasticsearch-sample"
+    namespace: "default"
+  kibana:
+    name: "kibana-sample"
+    namespace: "default"
+---
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibana-sample
+spec:
+  version: "6.6.1"
+  nodeCount: 1

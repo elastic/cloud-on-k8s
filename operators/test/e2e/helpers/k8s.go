@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
@@ -61,6 +62,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
@@ -175,6 +179,15 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			"kibana.k8s.elastic.co/name": stackName,
+		}))}
+}
+
+func ApmServerPodListOptions(stackName string) client.ListOptions {
+	return client.ListOptions{
+		Namespace: DefaultNamespace,
+		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
+			"common.k8s.elastic.co/type":                "apm-server",
+			"apm.k8s.elastic.co/name": stackName,
 		}))}
 }
 

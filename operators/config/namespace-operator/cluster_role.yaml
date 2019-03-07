@@ -79,6 +79,8 @@ rules:
 - apiGroups:
   - associations.k8s.elastic.co
   resources:
+  - apmserverelasticsearchassociations
+  - apmserverelasticsearchassociations/status
   - kibanaelasticsearchassociations
   - kibanaelasticsearchassociations/status
   verbs:

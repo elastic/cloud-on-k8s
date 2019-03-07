@@ -81,8 +81,23 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  - apmservers/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - associations.k8s.elastic.co
   resources:
+  - apmserverelasticsearchassociations
+  - apmserverelasticsearchassociations/status
   - kibanaelasticsearchassociations
   - kibanaelasticsearchassociations/status
   verbs:

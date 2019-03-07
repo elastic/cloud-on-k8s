@@ -1,0 +1,14 @@
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: ApmServerElasticsearchAssociation
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmserverelasticsearchassociation-sample
+spec:
+  elasticsearch:
+    name: "elasticsearch-sample"
+    namespace: "default"
+  apmServer:
+    name: "apm-server-sample"
+    namespace: "default"
+
