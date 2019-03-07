@@ -77,7 +77,7 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 
 // ElasticsearchTopologySpec defines a common topology for a set of Elasticsearch nodes
 type ElasticsearchTopologySpec struct {
-	// NodeTypes represents the node type
+	// NodeTypes represents the node types
 	NodeTypes NodeTypesSpec `json:"nodeTypes,omitempty"`
 
 	// Resources to be allocated for this topology
@@ -119,7 +119,7 @@ type ElasticsearchPodSpec struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
 }
 
-// NodeTypesSpec define the
+// NodeTypesSpec defines the types associated to the node
 type NodeTypesSpec struct {
 	// Master represents a master node
 	Master bool `json:"master,omitempty"`

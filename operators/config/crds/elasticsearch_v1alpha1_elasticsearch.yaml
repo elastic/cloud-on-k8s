@@ -103,7 +103,7 @@ spec:
                     format: int32
                     type: integer
                   nodeTypes:
-                    description: NodeTypes represents the node type
+                    description: NodeTypes represents the node types
                     properties:
                       data:
                         description: Data represents a data node
