@@ -50,8 +50,9 @@ One of the benefits would be that the controller can only interface with the sid
 
 ## Considered Options
 
-* 1. The Kubernetes-way with a liveness probe + expose an HTTP health endpoint
-* 2. Logging-based error reporting
+* 1: The Kubernetes-way with a liveness probe + expose an HTTP health endpoint
+* 2: The Kubernetes-way with a readiness probe + expose an HTTP health endpoint
+* 3: Logging-based error reporting
 
 ## Decision Outcome
 
@@ -83,7 +84,17 @@ This solution implies that the probe through the sidecar will poll Elasticsearch
 * Bad, because Kubernetes will restart the sidecar container if the liveness probe fails. And if that happens indefinitely, the
 sidecar container will reach the CrashLoopBackOff status, then it won't be ready and the ES service will be impacted.
 
-### Option 2: Logging-based error reporting
+### Option 2: The Kubernetes-way with a readiness probe
+
+Same as option 1 but the endpoint is consumed by a readiness probe. The goal is to ensure that the keystore-updater was able
+to call the ES API at least once to prevent errors coming from a bad configuration.
+
+* Good, because it's well integrated with Kubernetes.
+* Good, because exposing the health over HTTP allows easily the collect by other systems
+* Good, because it's easy to expose the cluster state in another HTTP endpoint
+* Bad, because Kubernetes will stop to send traffic to ES if the readiness probe fails.
+
+### Option 3: Logging-based error reporting
 
 This solution consists of limiting the reporting of errors in the logs of the sidecar.
 Then retrieve and ship container logs using an agent to an ES cluster dedicated to monitoring (could be Filebeat or Fluent Bit).
