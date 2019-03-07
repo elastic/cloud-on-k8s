@@ -44,6 +44,7 @@ One of the benefits would be that the controller can only interface with the sid
 ## Decision Drivers
 
 * Error distinction: a sidecar failure should be easily identified from an Elasticsearch failure
+* Error side effect: a sidecar failure should not increase the unvailability of Elasticsearch compared to the current situation
 * Promote reliability and simplicity because health-checking is a critical part of the system
 * Allow the collection of the cluster state
 
@@ -71,12 +72,16 @@ on external components.
 ### Option 1: The Kubernetes-way with a liveness probe
 
 The keystore-updater sidecar exposes an HTTP endpoint `/live` consumed by a liveness probe.
-This endpoint returns OK as long as ES is not ready. Then when ES is ready, if the call to the ES API succeeds,
-it returns OK, else it returns an error.
+This endpoint returns a success as long as ES is not ready. Then when ES is ready, it returns a response reflecting the state of
+the call to the ES API. ES is considered ready when `/` is reachable.
+This solution implies that the probe through the sidecar will poll Elasticsearch.
 
-* Good, because it's well integrated with Kubernetes and Kubernetes will restart the sidecar container if the liveness probe fails
+* Good, because it's well integrated with Kubernetes. Kubernetes will restart the sidecar container if the probe fails. It could
+ probably resolve some issues related to the state of the system (e.g. out of memory, too many connections).
 * Good, because exposing the health over HTTP allows easily the collect by other systems
 * Good, because it's easy to expose the cluster state in another HTTP endpoint
+* Bad, because Kubernetes will restart the sidecar container if the liveness probe fails. And if that happens indefinitely, the
+sidecar container will reach the CrashLoopBackOff status, then it won't be ready and the ES service will be impacted.
 
 ### Option 2: Logging-based error reporting
 
