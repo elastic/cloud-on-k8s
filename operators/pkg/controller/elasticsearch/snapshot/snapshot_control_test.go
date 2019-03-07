@@ -57,7 +57,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	}
 	type args struct {
 		es             v1alpha1.ElasticsearchCluster
-		user           esClient.User
+		user           esClient.UserAuth
 		initialObjects []runtime.Object
 	}
 
@@ -69,7 +69,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	}{
 		{
 			name:    "no snapshot config no creation",
-			args:    args{esSample, esClient.User{}, []runtime.Object{}},
+			args:    args{esSample, esClient.UserAuth{}, []runtime.Object{}},
 			wantErr: false,
 			clientAssertion: func(c k8s.Client) {
 				assert.True(t, errors.IsNotFound(c.Get(cronName, &batchv1beta1.CronJob{})))
@@ -80,7 +80,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 			name: "no snapshot config but cronjob exists delete job",
 			args: args{
 				esSample,
-				esClient.User{},
+				esClient.UserAuth{},
 				[]runtime.Object{&batchv1beta1.CronJob{ObjectMeta: k8s.ToObjectMeta(cronName)}},
 			},
 			wantErr: false,
@@ -99,7 +99,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 						},
 					},
 				},
-				esClient.User{},
+				esClient.UserAuth{},
 				[]runtime.Object{},
 			},
 			wantErr: false,

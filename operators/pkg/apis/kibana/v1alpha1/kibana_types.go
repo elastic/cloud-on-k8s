@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -50,13 +51,19 @@ type BackendElasticsearch struct {
 
 // IsConfigured returns true if the backend configuration is populated with non-default values.
 func (b BackendElasticsearch) IsConfigured() bool {
-	return b.URL != "" && b.Auth.Inline != nil && b.CaCertSecret != nil
+	return b.URL != "" && b.Auth.IsConfigured() && b.CaCertSecret != nil
 }
 
 // ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster
 type ElasticsearchAuth struct {
 	// Inline is auth provided as plaintext inline credentials.
-	Inline *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	Inline       *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	SecretKeyRef *v1.SecretKeySelector    `json:"secret,omitempty"`
+}
+
+// IsConfigured returns true if one of the possible auth mechanisms is configured.
+func (ea ElasticsearchAuth) IsConfigured() bool {
+	return ea.Inline != nil || ea.SecretKeyRef != nil
 }
 
 // ElasticsearchInlineAuth is a basic username/password combination.

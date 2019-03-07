@@ -134,28 +134,28 @@ func TestClientUsesJsonContentType(t *testing.T) {
 func TestClientSupportsBasicAuth(t *testing.T) {
 
 	type expected struct {
-		user        User
+		user        UserAuth
 		authPresent bool
 	}
 
 	tests := []struct {
 		name string
-		args User
+		args UserAuth
 		want expected
 	}{
 		{
 			name: "Context with user information should be respected",
-			args: User{Name: "elastic", Password: "changeme"},
+			args: UserAuth{Name: "elastic", Password: "changeme"},
 			want: expected{
-				user:        User{Name: "elastic", Password: "changeme"},
+				user:        UserAuth{Name: "elastic", Password: "changeme"},
 				authPresent: true,
 			},
 		},
 		{
 			name: "Context w/o user information is ok too",
-			args: User{},
+			args: UserAuth{},
 			want: expected{
-				user:        User{Name: "", Password: ""},
+				user:        UserAuth{Name: "", Password: ""},
 				authPresent: false,
 			},
 		},
@@ -280,7 +280,7 @@ func TestGetInfo(t *testing.T) {
 
 func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
-	dummyUser := User{Name: "user", Password: "password"}
+	dummyUser := UserAuth{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
 		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 		require.NoError(t, err)
@@ -315,7 +315,7 @@ func TestClient_Equal(t *testing.T) {
 		{
 			name: "different user",
 			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, User{Name: "user", Password: "another-password"}, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCACerts),
 			want: false,
 		},
 		{

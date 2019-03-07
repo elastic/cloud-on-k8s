@@ -1,0 +1,68 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: users.elasticsearch.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.name
+    name: username
+    type: string
+  - JSONPath: .status.phase
+    name: status
+    type: string
+  group: elasticsearch.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: User
+    plural: users
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            name:
+              type: string
+            passwordHash:
+              type: string
+            userRoles:
+              items:
+                type: string
+              type: array
+          required:
+          - name
+          - passwordHash
+          - userRoles
+          type: object
+        status:
+          properties:
+            phase:
+              type: string
+            reason:
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

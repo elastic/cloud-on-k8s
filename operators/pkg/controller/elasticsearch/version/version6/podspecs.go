@@ -16,9 +16,9 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
@@ -30,16 +30,16 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersFile),
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticUsersFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticUsersFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticRolesFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticRolesFile),
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticRolesFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticRolesFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", secret.ElasticUsersRolesFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", secret.ElasticUsersRolesFile),
+				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticUsersRolesFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticUsersRolesFile),
 			},
 		},
 	}
@@ -56,7 +56,7 @@ func ExpectedPodSpecs(
 	// creation below.
 	// TODO: make this association clearer.
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolume(
-		secret.ElasticUsersRolesSecretName(es.Name),
+		user.ElasticUsersRolesSecretName(es.Name),
 		"users",
 	)
 

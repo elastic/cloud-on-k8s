@@ -2,29 +2,28 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package secret
+package user
 
 import (
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
+	"k8s.io/apimachinery/pkg/types"
 
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
-	testES = v1alpha1.ElasticsearchCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "my-es",
-			Namespace: "default",
-		}}
-	testUser = []client.User{{Name: "foo", Password: "bar", Role: "role1"}}
+	testES = types.NamespacedName{
+		Name:      "my-es",
+		Namespace: "default",
+	}
+	testUser = []user.User{New("foo", Password("bar"), Roles("role1"))}
 	testRole = map[string]client.Role{
 		"role1": {Cluster: []string{"all"}},
 	}
@@ -42,7 +41,7 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-es-internal-users",
-			expectedKeys: []string{InternalControllerUserName, InternalKibanaServerUserName, InternalProbeUserName, InternalReloadCredsUserName},
+			expectedKeys: []string{InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
@@ -83,14 +82,14 @@ func TestNewElasticUsersSecret(t *testing.T) {
 	assert.Equal(t, "role1:\n  cluster:\n  - all\n", string(creds.Secret().Data[ElasticRolesFile]))
 }
 
-func newTestCredentials(t *testing.T, users []client.User) UserCredentials {
+func newTestCredentials(t *testing.T, users []user.User) UserCredentials {
 	creds, err := NewElasticUsersCredentialsAndRoles(testES, users, testRole)
 	assert.NoError(t, err)
 	return creds
 }
 
 func TestNeedsUpdate(t *testing.T) {
-	otherUser := client.User{Name: "baz", Password: "secret", Role: "yolo"}
+	otherUser := New("baz", Password("yolo"))
 
 	tests := []struct {
 		desc        string
@@ -119,13 +118,13 @@ func TestNeedsUpdate(t *testing.T) {
 		{
 			desc:        "hashed creds: changed password warrants an update of the secret",
 			subject1:    newTestCredentials(t, testUser),
-			subject2:    newTestCredentials(t, []client.User{{Name: "foo", Password: "changed!", Role: "role1"}}),
+			subject2:    newTestCredentials(t, []user.User{New("foo", Roles("role1"))}),
 			needsUpdate: true,
 		},
 		{
 			desc:        "hashed creds: changed role warrants an update of the secret",
 			subject1:    newTestCredentials(t, testUser),
-			subject2:    newTestCredentials(t, []client.User{{Name: "foo", Password: "bar", Role: "role2"}}),
+			subject2:    newTestCredentials(t, []user.User{New("foo", Roles("role2"))}),
 			needsUpdate: true,
 		},
 		{
@@ -136,8 +135,8 @@ func TestNeedsUpdate(t *testing.T) {
 		},
 		{
 			desc:        "hashed creds: order of user credentials should not matter",
-			subject1:    newTestCredentials(t, []client.User{testUser[0], otherUser}),
-			subject2:    newTestCredentials(t, []client.User{otherUser, testUser[0]}),
+			subject1:    newTestCredentials(t, []user.User{testUser[0], otherUser}),
+			subject2:    newTestCredentials(t, []user.User{otherUser, testUser[0]}),
 			needsUpdate: false,
 		},
 	}

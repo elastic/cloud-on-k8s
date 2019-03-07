@@ -75,9 +75,9 @@ type NewPodSpecParams struct {
 	// KeystoreSecretRef is configuration for the Elasticsearch key store setup
 	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
-	ProbeUser client.User
+	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
-	ReloadCredsUser client.User
+	ReloadCredsUser client.UserAuth
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

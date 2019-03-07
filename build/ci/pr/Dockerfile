@@ -1,7 +1,7 @@
 # Docker image aimed to run compilation and tests in CI
 FROM golang:1.11
 
-ENV KUBEBUILDER_VERSION=1.0.6
+ENV KUBEBUILDER_VERSION=1.0.8
 ENV DOCKER_VERSION=18.03.1-ce
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)

@@ -14,8 +14,8 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/secret"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -31,7 +31,7 @@ func ExpectedPodSpecs(
 	// config/x-pack/ folder because of the Java Security Manager restrictions.
 	// in the future we might want to consider bind-mounting specific files instead to be less broad
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
-		secret.ElasticUsersRolesSecretName(es.Name),
+		user.ElasticUsersRolesSecretName(es.Name),
 		"users",
 		"/usr/share/elasticsearch/config/x-pack",
 	)

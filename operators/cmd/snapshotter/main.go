@@ -65,7 +65,7 @@ func init() {
 func execute() {
 	userName := viper.GetString(userNameFlag)
 	userPassword := viper.GetString(userPasswordFlag)
-	user := esclient.User{Name: userName, Password: userPassword}
+	user := esclient.UserAuth{Name: userName, Password: userPassword}
 
 	certCfg := viper.GetString(certificateLocationFlag)
 	var certs []*x509.Certificate
