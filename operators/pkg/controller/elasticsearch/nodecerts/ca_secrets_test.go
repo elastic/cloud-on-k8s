@@ -79,8 +79,8 @@ func Test_caFromSecrets(t *testing.T) {
 		},
 		{
 			name:             "empty private key secret",
-			certSecret:       corev1.Secret{},
-			privateKeySecret: privateKeySecret,
+			certSecret:       certSecret,
+			privateKeySecret: corev1.Secret{},
 			wantCa:           nil,
 			wantOK:           false,
 		},
