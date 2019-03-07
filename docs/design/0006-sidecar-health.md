@@ -12,7 +12,7 @@ As for now an Elasticsearch pod is composed of 2 containers:
 - a main container for Elasticsearch
 - a sidecar container for running the keystore-updater
 
-What is doing the keystore-updater in the sidecar?
+What is the keystore-updater in the sidecar doing?
 It calls the Elasticsearch endpoint `/_nodes/reload_secure_settings` to decrypt and re-read the entire keystore used by the snapshotter job. 
 To connect to ES it depends on:
 - an environment variable for the username
@@ -23,7 +23,7 @@ Currently there is no health check based on the state of the sidecar. The sideca
 So there is a need to check that everything is correctly setup in the sidecar container and the call to the ES API succeeds. 
 
 If the sidecar container is not ready, the Elasticsearch container is impacted because the pod is considered not ready and 
-Kubernetes stop to send traffic to the pod. We must accept that the two containers are intimately linked. A sidecar failure 
+Kubernetes stops to send traffic to the pod. We must accept that the two containers are intimately linked. A sidecar failure
 can impact the Elasticsearch availability by design.
 
 However Go binaries that do simple things are very fast to start and very reliable. 
@@ -55,7 +55,7 @@ One of the benefits would be that the controller can only interface with the sid
 ## Decision Outcome
 
 Chosen option: option 1, because it gives us more flexibility, it's pretty simple to implement and it does not depend
-to external components.
+on external components.
 
 ### Positive Consequences
 
