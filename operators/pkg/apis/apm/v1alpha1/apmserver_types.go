@@ -75,7 +75,9 @@ const (
 type ApmServerStatus struct {
 	commonv1alpha1.ReconcilerStatus
 	Health                ApmServerHealth `json:"health,omitempty"`
+	// ExternalService is the name of the service the agents should connect to.
 	ExternalService       string          `json:"service,omitempty"`
+	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string          `json:"secretTokenSecret,omitempty"`
 }
 
@@ -90,9 +92,11 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 }
 
 // ElasticsearchAuth contains auth config for APM Server to use with an Elasticsearch cluster
+// TODO: this is a good candidate for sharing/reuse between this and Kibana due to association reuse potential.
 type ElasticsearchAuth struct {
 	// Inline is auth provided as plaintext inline credentials.
 	Inline       *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	// SecretKeyRef is a secret that contains the credentials to use.
 	SecretKeyRef *v1.SecretKeySelector    `json:"secret,omitempty"`
 }
 

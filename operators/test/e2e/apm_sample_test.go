@@ -49,4 +49,7 @@ func TestEsApmServerSample(t *testing.T) {
 		WithSteps(stack.DeletionTestSteps(namespacedSampleStack, k)...).
 		WithSteps(apm.DeletionTestSteps(namespacedSampleApm, k)...).
 		RunSequential(t)
+
+	// TODO: push apm agent events and verify they show up in Elasticsearch?
+	// TODO: is it possible to verify that it would also show up properly in Kibana?
 }

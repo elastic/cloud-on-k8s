@@ -10,6 +10,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -123,6 +124,11 @@ func (in *ElasticsearchAuth) DeepCopyInto(out *ElasticsearchAuth) {
 		in, out := &in.Inline, &out.Inline
 		*out = new(ElasticsearchInlineAuth)
 		**out = **in
+	}
+	if in.SecretKeyRef != nil {
+		in, out := &in.SecretKeyRef, &out.SecretKeyRef
+		*out = new(v1.SecretKeySelector)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

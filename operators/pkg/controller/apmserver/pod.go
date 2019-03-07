@@ -65,14 +65,12 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 	fsPreparationScript := `
 ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-server/config/apm-server.yml
 `
-	privileged := true
 	initContainerRunAsUser := int64(0)
 
 	fsPreparationInitContainer := corev1.Container{
 		Image: imageName,
 		Name:  "fs-preparation",
 		SecurityContext: &corev1.SecurityContext{
-			Privileged: &privileged,
 			RunAsUser:  &initContainerRunAsUser,
 		},
 		Command:      []string{"bash", "-c", fsPreparationScript},

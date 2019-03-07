@@ -151,7 +151,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	as *apmv1alpha1.ApmServer,
 ) (State, error) {
 	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch backend is configured")
+		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured")
 		return state, nil
 	}
 
@@ -212,7 +212,11 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	cfg := config.FromResourceSpec(*as)
+	cfg, err := config.FromResourceSpec(r.Client, *as)
+	if err != nil {
+		return state, err
+	}
+
 	cfgBytes, err := yaml.Marshal(cfg)
 	if err != nil {
 		return state, err

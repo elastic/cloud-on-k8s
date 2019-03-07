@@ -39,6 +39,7 @@ spec:
         spec:
           properties:
             apmServer:
+              description: ApmServer refers to the ApmServer resource.
               properties:
                 name:
                   type: string
@@ -49,6 +50,7 @@ spec:
               - namespace
               type: object
             elasticsearch:
+              description: Elasticsearch refers to the Elasticsearch resource
               properties:
                 name:
                   type: string
@@ -65,6 +67,7 @@ spec:
         status:
           properties:
             associationStatus:
+              description: AssociationStatus indicates the current state of the association.
               type: string
           required:
           - associationStatus

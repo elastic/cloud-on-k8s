@@ -83,6 +83,10 @@ spec:
                               description: User is the username to use.
                               type: string
                           type: object
+                        secret:
+                          description: SecretKeyRef is a secret that contains the
+                            credentials to use.
+                          type: object
                       type: object
                     hosts:
                       description: ElasticsearchURL is the URL to the target Elasticsearch
@@ -116,8 +120,12 @@ spec:
             health:
               type: string
             secretTokenSecret:
+              description: SecretTokenSecretName is the name of the Secret that contains
+                the secret token
               type: string
             service:
+              description: ExternalService is the name of the service the agents should
+                connect to.
               type: string
           type: object
   version: v1alpha1

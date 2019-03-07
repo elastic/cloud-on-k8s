@@ -3,13 +3,36 @@ package config
 import (
 	"encoding/json"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-// TODO: godoc
-
-func FromResourceSpec(as v1alpha1.ApmServer) *Config {
+// FromResourceSpec resolves the ApmServer configuration to use based on the provided spec.
+func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 	// TODO: consider scaling the default values provided based on the apm server resources
 	// these defaults are taken (without scaling) from a defaulted ECE install
+	var username, password string
+	auth := as.Spec.Output.Elasticsearch.Auth
+
+	if auth.Inline != nil {
+		username = auth.Inline.Username
+		password = auth.Inline.Password
+	}
+
+	// if auth is provided via a secret, we must resolve it at this point in order to have it as part of the config.
+	if auth.SecretKeyRef != nil {
+		secretObjKey := types.NamespacedName{Namespace: as.Namespace, Name: auth.SecretKeyRef.Name}
+		var secret v1.Secret
+
+		if err := c.Get(secretObjKey, &secret); err != nil {
+			return nil, err
+		}
+
+		username = auth.SecretKeyRef.Key
+		password = secret.StringData[username]
+	}
+
 	return &Config{
 		Name: "${POD_NAME}",
 		ApmServer: ApmServerConfig{
@@ -51,8 +74,8 @@ func FromResourceSpec(as v1alpha1.ApmServer) *Config {
 				MaxBulkSize:      267,
 				CompressionLevel: 5,
 				Hosts:            as.Spec.Output.Elasticsearch.Hosts,
-				Username:         as.Spec.Output.Elasticsearch.Auth.Inline.Username,
-				Password:         as.Spec.Output.Elasticsearch.Auth.Inline.Password,
+				Username:         username,
+				Password:         password,
 				// TODO: optional TLS
 				SSL: TLSConfig{
 					Enabled: true,
@@ -62,7 +85,7 @@ func FromResourceSpec(as v1alpha1.ApmServer) *Config {
 				// TODO: include indices? or will they be defaulted fine?
 			},
 		},
-	}
+	}, nil
 }
 
 type Config struct {

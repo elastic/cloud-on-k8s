@@ -10,12 +10,15 @@ import (
 
 // ApmServerElasticsearchAssociationSpec defines the desired state of ApmServerElasticsearchAssociation
 type ApmServerElasticsearchAssociationSpec struct {
+	// Elasticsearch refers to the Elasticsearch resource
 	Elasticsearch ObjectSelector `json:"elasticsearch"`
+	// ApmServer refers to the ApmServer resource.
 	ApmServer     ObjectSelector `json:"apmServer"`
 }
 
 // ApmServerElasticsearchAssociationStatus defines the observed state of ApmServerElasticsearchAssociation
 type ApmServerElasticsearchAssociationStatus struct {
+	// AssociationStatus indicates the current state of the association.
 	AssociationStatus AssociationStatus `json:"associationStatus"`
 }
 
