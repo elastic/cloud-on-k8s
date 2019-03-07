@@ -35,7 +35,7 @@ var log = logf.KBLog.WithName("nodecerts")
 // of the given es cluster.
 func ReconcileNodeCertificateSecrets(
 	c k8s.Client,
-	ca *certificates.CA ,
+	ca *certificates.CA,
 	csrClient certificates.CSRClient,
 	es v1alpha1.ElasticsearchCluster,
 	services []corev1.Service,
@@ -122,7 +122,7 @@ func doReconcile(
 	csrClient certificates.CSRClient,
 	clusterName, namespace string,
 	svcs []corev1.Service,
-	ca *certificates.CA ,
+	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
 ) (reconcile.Result, error) {
 	// a placeholder secret may have nil entries, create them if needed
@@ -208,7 +208,7 @@ func doReconcile(
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate SAN and IP does not match pod SAN and IP
-func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.CA , pod corev1.Pod) bool {
+func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.CA, pod corev1.Pod) bool {
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		// certificate is missing

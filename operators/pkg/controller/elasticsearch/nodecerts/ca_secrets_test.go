@@ -60,7 +60,7 @@ func Test_caFromSecrets(t *testing.T) {
 		name             string
 		certSecret       corev1.Secret
 		privateKeySecret corev1.Secret
-		wantCa           *certificates.CA 
+		wantCa           *certificates.CA
 		wantOK           bool
 	}{
 		{
