@@ -77,20 +77,20 @@ It may be hard to find this exact timeout, it must be user configurable but a sa
 TODO: check if the controller has access to PVC but not to PV or nodes, we can't watch nodes or PV, we can't only watch the claims
 
 ## Decision Drivers
-
 The solution must be able to handle the following use cases :
 
 ### UC1 : The K8S cluster is suffering a external involuntary disruption and the volumes cannot be recovered
 
 In this scenario we must consider the data as permanently lost _(e.g. vm with local storage has been destroyed)_.
-We need to give a way to the user to instruct the Elastic operator that :
 
-* It should not attempt to reuse the PVC, even if the only replica on a shard lives here.
-* Current Pod creation can be cancelled, a new pod must be created.
+We need to give a way to the user to instruct the Elastic operator that :
+* It should immediately move the volume into a `Recovering` strategy.
+* If the volume is in the `Recoverable required` state the user should be able to forcibly not reuse the PVC, even if there is no other replica available.
 
 ### UC2 : The K8S cluster is suffering a external involuntary or voluntary disruption but the volumes can be eventually recovered
 
 The Elastic operator will create a new pod and according to the PV affinity the scheduler will hopefully find a new node where the data are available.
+If it takes to much time to schedule the pod then the volume is moved into one of the two `Recoverable` state.
 
 ### UC3 : As an admin I want to plan a voluntary disruption and the volumes cannot be recovered
 
@@ -102,12 +102,14 @@ It is usually done in two steps :
 1. Cordon the node
 1. Evict or delete the pods
 
-### Considered options
+## Considered options
 
 ### Option 1 : Add a finalizer to the PVC
 
 A PVC that is used by a pod will not be deleted immediately because of a finalizer set by the scheduler.
-We can add our own finalizer to create a new pod, migrate the data and delete the pod.
+We can add our own finalizer to : 
+1. Create a new pod
+1. Migrate the data and delete the pod.
 Once the pod has been deleted the PVC can be deleted by K8S.
 
 ### Option 2 : handle PVC deletion with an annotation
@@ -115,8 +117,8 @@ Once the pod has been deleted the PVC can be deleted by K8S.
 A tombstone is set on the PVC as an annotation.
 The annotation `elasticsearch.k8s.elastic.co/delete` can be set on a PVC with the following values :
 
-* graceful :  migrate the data, delete the node and the PVC.
-* force : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
+* `graceful` :  migrate the data, delete the node and the PVC.
+* `force` : discard the data, the operator does not try to reuse the PVC, the PVC is deleted by the Elastic operator.
 
 
 ### Option 3 : Add a kubectl plugin to add some domain specific commands
@@ -151,7 +153,7 @@ Pros :
 it can't be recovered.
 
 Cons :
-* Admin have to `uncordon` the node and annotate the `PVC` if he wants to drain it.
+* Admin have to `uncordon` the node and annotate the `PVC` manually _(still error prone)_ if he wants to drain it.
 * Admin must remember the annotations
 
 ### Option 3
