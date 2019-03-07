@@ -43,7 +43,7 @@ func TestClusterFromResourceLabels(t *testing.T) {
 
 func TestNewLabelSelectorForElasticsearch(t *testing.T) {
 	type args struct {
-		es v1alpha1.ElasticsearchCluster
+		es v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name       string
@@ -52,7 +52,7 @@ func TestNewLabelSelectorForElasticsearch(t *testing.T) {
 	}{
 		{
 			name: "should match labels from NewLabels",
-			args: args{es: v1alpha1.ElasticsearchCluster{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
+			args: args{es: v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "foo"}}},
 			assertions: func(t *testing.T, a args, sel labels.Selector) {
 				esLabels := NewLabels(k8s.ExtractNamespacedName(&a.es))
 				assert.True(t, sel.Matches(labels.Set(esLabels)))

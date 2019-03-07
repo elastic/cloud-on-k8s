@@ -44,7 +44,7 @@ func getESPods(t *testing.T) []corev1.Pod {
 }
 
 func TestReconcile(t *testing.T) {
-	instance := &elasticsearchv1alpha1.ElasticsearchCluster{
+	instance := &elasticsearchv1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: elasticsearchv1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",

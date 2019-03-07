@@ -28,7 +28,7 @@ func TestStackSample(t *testing.T) {
 	var sampleStack stack.Builder
 	yamlFile, err := os.Open(sampleStackFile)
 	helpers.ExitOnErr(err)
-	var es estype.ElasticsearchCluster
+	var es estype.Elasticsearch
 	var kb kbtype.Kibana
 	var assoc assoctype.KibanaElasticsearchAssociation
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))

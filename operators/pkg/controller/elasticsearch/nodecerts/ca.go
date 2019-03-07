@@ -26,7 +26,7 @@ func CASecretNameForCluster(clusterName string) string {
 func ReconcileCASecretForCluster(
 	cl k8s.Client,
 	ca *certificates.Ca,
-	cluster v1alpha1.ElasticsearchCluster,
+	cluster v1alpha1.Elasticsearch,
 	scheme *runtime.Scheme,
 ) error {
 	expectedCABytes := certificates.EncodePEMCert(ca.Cert.Raw)

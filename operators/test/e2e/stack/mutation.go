@@ -50,7 +50,7 @@ func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			helpers.TestStep{
 				Name: "Applying the mutation should succeed",
 				Test: func(t *testing.T) {
-					var curEs estype.ElasticsearchCluster
+					var curEs estype.Elasticsearch
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &curEs))
 					curEs.Spec = stack.Elasticsearch.Spec
 					require.NoError(t, k.Client.Update(&curEs))
@@ -99,7 +99,7 @@ type ContinousHealthCheck struct {
 }
 
 // NewContinousHealthCheck sets up a ContinousHealthCheck struct
-func NewContinousHealthCheck(es estype.ElasticsearchCluster, k *helpers.K8sHelper) (*ContinousHealthCheck, error) {
+func NewContinousHealthCheck(es estype.Elasticsearch, k *helpers.K8sHelper) (*ContinousHealthCheck, error) {
 	esClient, err := helpers.NewElasticsearchClient(es, k)
 	if err != nil {
 		return nil, err

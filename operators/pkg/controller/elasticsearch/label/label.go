@@ -56,7 +56,7 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels
-func NewLabelSelectorForElasticsearch(es v1alpha1.ElasticsearchCluster) labels.Selector {
+func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) labels.Selector {
 	return NewLabelSelectorForElasticsearchClusterName(es.Name)
 }
 
@@ -66,7 +66,7 @@ func NewLabelSelectorForElasticsearchClusterName(clusterName string) labels.Sele
 	return labels.SelectorFromSet(map[string]string{ClusterNameLabelName: clusterName})
 }
 
-// ClusterFromResourceLabels returns the NamespacedName of the ElasticsearchCluster associated
+// ClusterFromResourceLabels returns the NamespacedName of the Elasticsearch associated
 // to the given resource, by retrieving its name from the resource labels.
 // It does implicitly consider the cluster and the resource to be in the same namespace.
 func ClusterFromResourceLabels(metaObject metav1.Object) (types.NamespacedName, bool) {

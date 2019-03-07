@@ -52,11 +52,11 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 	testName := types.NamespacedName{Namespace: "test-namespace", Name: "test-es-name"}
 	cronName := types.NamespacedName{Namespace: testName.Namespace, Name: CronJobName(testName)}
-	esSample := v1alpha1.ElasticsearchCluster{
+	esSample := v1alpha1.Elasticsearch{
 		ObjectMeta: k8s.ToObjectMeta(testName),
 	}
 	type args struct {
-		es             v1alpha1.ElasticsearchCluster
+		es             v1alpha1.Elasticsearch
 		user           esClient.UserAuth
 		initialObjects []runtime.Object
 	}
@@ -91,7 +91,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 		{
 			name: "snapshot config exists create job",
 			args: args{
-				v1alpha1.ElasticsearchCluster{
+				v1alpha1.Elasticsearch{
 					ObjectMeta: k8s.ToObjectMeta(testName),
 					Spec: v1alpha1.ElasticsearchSpec{
 						SnapshotRepository: &v1alpha1.SnapshotRepository{
@@ -122,7 +122,7 @@ func TestReconcileStack_ReconcileSnapshotterCronJob(t *testing.T) {
 }
 
 func TestReconcileElasticsearch_ReconcileSnapshotCredentials(t *testing.T) {
-	owner := v1alpha1.ElasticsearchCluster{ObjectMeta: metav1.ObjectMeta{
+	owner := v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{
 		Name:      "my-cluster",
 		Namespace: "baz",
 	}}

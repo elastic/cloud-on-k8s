@@ -15,7 +15,7 @@ import (
 
 func TestExternalServiceURL(t *testing.T) {
 	type args struct {
-		es v1alpha1.ElasticsearchCluster
+		es v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name string
@@ -24,7 +24,7 @@ func TestExternalServiceURL(t *testing.T) {
 	}{
 		{
 			name: "A service URL",
-			args: args{es: v1alpha1.ElasticsearchCluster{
+			args: args{es: v1alpha1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "an-es-name",
 					Namespace: "default",
@@ -34,7 +34,7 @@ func TestExternalServiceURL(t *testing.T) {
 		},
 		{
 			name: "Another Service URL",
-			args: args{es: v1alpha1.ElasticsearchCluster{
+			args: args{es: v1alpha1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another-es-name",
 					Namespace: "default",

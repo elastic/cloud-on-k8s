@@ -20,7 +20,7 @@ func TestStorageElasticsearch(t *testing.T) {
 		Name:      "foo",
 		Namespace: "default",
 	}
-	created := &ElasticsearchCluster{
+	created := &Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
@@ -30,7 +30,7 @@ func TestStorageElasticsearch(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 
 	// Test Create
-	fetched := &ElasticsearchCluster{}
+	fetched := &Elasticsearch{}
 	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())

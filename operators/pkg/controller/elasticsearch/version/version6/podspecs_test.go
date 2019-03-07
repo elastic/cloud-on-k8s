@@ -93,12 +93,12 @@ func TestNewEnvironmentVars(t *testing.T) {
 func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 	tests := []struct {
 		name             string
-		es               v1alpha1.ElasticsearchCluster
+		es               v1alpha1.Elasticsearch
 		expectedPodCount int
 	}{
 		{
 			name: "2 nodes es",
-			es: v1alpha1.ElasticsearchCluster{
+			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
 					Topologies: []v1alpha1.ElasticsearchTopologySpec{
@@ -112,7 +112,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 		},
 		{
 			name: "1 master 2 data",
-			es: v1alpha1.ElasticsearchCluster{
+			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
 					Topologies: []v1alpha1.ElasticsearchTopologySpec{
@@ -144,7 +144,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 }
 
 func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
-	es := v1alpha1.ElasticsearchCluster{
+	es := v1alpha1.Elasticsearch{
 		ObjectMeta: testObjectMeta,
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "1.2.3",

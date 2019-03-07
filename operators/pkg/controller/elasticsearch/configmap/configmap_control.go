@@ -24,7 +24,7 @@ var (
 func ReconcileConfigMap(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	expected corev1.ConfigMap,
 ) error {
 	reconciled := &corev1.ConfigMap{}

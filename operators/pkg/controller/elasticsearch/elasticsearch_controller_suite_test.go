@@ -7,7 +7,9 @@
 package elasticsearch
 
 import (
+	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -21,6 +23,11 @@ import (
 
 func TestMain(m *testing.M) {
 	apis.AddToScheme(scheme.Scheme) // here to avoid import cycle
+	for k := range scheme.Scheme.AllKnownTypes() {
+		if strings.HasPrefix(k.Group, "elasticsearch") {
+			println(fmt.Sprintf("%v", k))
+		}
+	}
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 
