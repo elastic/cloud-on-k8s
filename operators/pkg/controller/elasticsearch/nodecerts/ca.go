@@ -29,7 +29,7 @@ import (
 // The CA certificate secret is safe to be shared, and can be reused by any HTTP client
 // that needs to reach the Elasticsearch cluster. It can also be mounted as a volume
 // in any client pod.
-// The CA private key secret is reserved to the elasticsearch controller only.
+// The CA private key secret is reserved to the Elasticsearch controller only.
 // TODO: store the private key in a more "secure" place (or wrapped in an encryption layer)
 //
 // CA cert and private key are rotated if they become invalid (or soon to expire).
@@ -146,11 +146,11 @@ func canReuseCa(ca certificates.Ca, expirationSafetyMargin time.Duration) bool {
 func certIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	now := time.Now()
 	if now.Before(cert.NotBefore) {
-		log.Info("CA is not valid yet, will create a new one")
+		log.Info("CA cert is not valid yet, will create a new one")
 		return false
 	}
 	if now.After(cert.NotAfter.Add(-expirationSafetyMargin)) {
-		log.Info("CA expired or soon to expire, will create a new one", "expiration", cert.NotAfter)
+		log.Info("CA cert expired or soon to expire, will create a new one", "expiration", cert.NotAfter)
 		return false
 	}
 	return true

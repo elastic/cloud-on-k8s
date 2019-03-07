@@ -144,7 +144,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	ca, err := d.nodeCertificatesReconciler(
+	caCert, err := d.nodeCertificatesReconciler(
 		d.Client,
 		d.Scheme,
 		d.CSRClient,
@@ -162,7 +162,7 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser, ca)
+	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser, caCert)
 
 	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
