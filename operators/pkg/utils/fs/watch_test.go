@@ -7,159 +7,203 @@
 package fs
 
 import (
-	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
-	"sync/atomic"
+	"path/filepath"
 	"testing"
-
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"time"
 
 	"github.com/stretchr/testify/require"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func Test_WatchPath(t *testing.T) {
-	logger := logf.Log.WithName("test")
+func Test_FileWatcher(t *testing.T) {
+	// Test that the file watcher behaves as expected in the common case.
+	// Mostly checking everything is correctly plugged together.
+	// Specific corner cases and detailed behaviours are tested
+	// in filesCache and periodicExec unit tests.
 
-	// setup a tmp file to watch
-	tmpFile, err := ioutil.TempFile("", "tmpfile")
+	// work in a tmp directory
+	directory, err := ioutil.TempDir("", "tmpdir")
 	require.NoError(t, err)
-	path := tmpFile.Name()
-	defer os.Remove(path)
+	defer os.RemoveAll(directory)
 
-	// count events of each category
-	stopEvents := NewEventsCounter()
-	stopEvents.Start()
-	defer stopEvents.Stop()
-	continueEvents := NewEventsCounter()
-	continueEvents.Start()
-	defer continueEvents.Stop()
-	errorEvents := NewEventsCounter()
-	errorEvents.Start()
-	defer errorEvents.Stop()
+	fileToWatch := filepath.Join(directory, "file1")
 
-	// on each event, read the file
-	// according to its content, return in different ways
-	f := func() (bool, error) {
-		content, err := ioutil.ReadFile(path)
-		require.NoError(t, err)
-		switch string(content) {
-		case "stop":
-			stopEvents.Events <- "stop"
-			return true, nil
-		case "error":
-			errorEvents.Events <- "error"
-			return false, errors.New("error")
-		default:
-			continueEvents.Events <- "continue"
-			return false, nil
-		}
+	events := make(chan FilesContent)
+
+	onFilesChanged := func(files FilesContent) (done bool, err error) {
+		// just forward files we got to the events channel
+		events <- files
+		return false, nil
 	}
+
+	watcher, err := NewFileWatcher(fileToWatch, onFilesChanged)
+	require.NoError(t, err)
+	watcher.SetPeriodicity(1 * time.Microsecond)
 
 	done := make(chan error)
 	go func() {
-		done <- WatchPath(path, f, logger)
+		done <- watcher.Run()
 	}()
 
-	// should trigger an event before actually watching
-	assertEventObserved(t, continueEvents)
+	// write a file
+	with1File := FilesContent{
+		"file1": []byte("content1"),
+	}
+	err = ioutil.WriteFile(filepath.Join(directory, "file1"), with1File["file1"], 0644)
+	require.NoError(t, err)
 
-	// trigger a change that should continue
-	continueEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	assertEventObserved(t, continueEvents)
-	// again
-	continueEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	assertEventObserved(t, continueEvents)
-
-	// trigger a change that should stop
-	stopEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("stop"), 644))
-	assertEventObserved(t, stopEvents)
-	// WatchPath should return
-	require.NoError(t, <-done)
-
-	// run it again
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	done = make(chan error)
-	go func() {
-		done <- WatchPath(path, f, logger)
-	}()
-
-	// should trigger an event before actually watching
-	assertEventObserved(t, continueEvents)
-
-	// trigger a change that should return an error
-	errorEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("error"), 644))
-	assertEventObserved(t, errorEvents)
-
-	// WatchPath should return with an error
-	require.Error(t, <-done, "error")
-}
-
-// assertEventObserved verifies that an event is eventually observed
-// by the provided eventsCounter
-func assertEventObserved(t *testing.T, eventsCounter *EventsCounter) {
-	test.RetryUntilSuccess(t, func() error {
-		if !eventsCounter.CountIncreased() {
-			return errors.New("No event observed")
+	// event should happen
+	// since WriteFile() is not atomic, what might actually happen is:
+	// 1. file gets created (no content yet)
+	// 2. cache is updated with the file that has no content
+	// 3. file gets content written into
+	// 4. cache is updated with the file content
+	// here we want to capture step 4, but need to be resilient to step 2.
+	for {
+		evt := <-events
+		if evt.Equals(FilesContent{"file1": []byte{}}) {
+			continue // step 2
+		} else {
+			require.True(t, evt.Equals(with1File)) // step 4
+			break
 		}
-		return nil
-	})
-}
+	}
 
-// EventsCounter counts events provided to the Events channel
-type EventsCounter struct {
-	Events            chan string
-	stop              chan struct{}
-	count             int32
-	lastObservedCount int32
-}
+	// write another file the watcher should not care about
+	err = ioutil.WriteFile(filepath.Join(directory, "file2"), []byte("content"), 0644)
+	require.NoError(t, err)
 
-// NewEventsCounter returns an initialized EventsCounter
-func NewEventsCounter() *EventsCounter {
-	var count, lastObservedCount int32
-	atomic.StoreInt32(&count, 0)
-	atomic.StoreInt32(&lastObservedCount, 0)
-	return &EventsCounter{
-		Events:            make(chan string),
-		stop:              make(chan struct{}),
-		count:             count,
-		lastObservedCount: lastObservedCount,
+	// change first file content
+	updated := FilesContent{
+		"file1": []byte("content1updated"),
+	}
+	err = ioutil.WriteFile(filepath.Join(directory, "file1"), updated["file1"], 0644)
+	require.NoError(t, err)
+
+	// event should happen for file1
+	// since WriteFile() is not atomic, what might actually happen is:
+	// 1. file gets truncated
+	// 2. cache is updated with the file that has no content
+	// 3. file gets content written into
+	// 4. cache is updated with the file content
+	// here we want to capture step 4, but need to be resilient to step 2.
+	for {
+		evt := <-events
+		if evt.Equals(FilesContent{"file1": []byte{}}) {
+			continue // step 2
+		} else {
+			require.True(t, evt.Equals(updated)) // step 4
+			break
+		}
 	}
 }
 
-// Start counts events until stopped
-func (e *EventsCounter) Start() {
+func Test_DirectoryWatcher(t *testing.T) {
+	// Test that the directory watcher behaves as expected in the common case.
+	// Mostly checking everything is correctly plugged together.
+	// Specific corner cases and detailed behaviours are tested
+	// in filesCache and periodicExec unit tests.
+
+	// work in a tmp directory
+	directory, err := ioutil.TempDir("", "tmpdir")
+	require.NoError(t, err)
+	defer os.RemoveAll(directory)
+
+	events := make(chan FilesContent)
+
+	onFilesChanged := func(files FilesContent) (done bool, err error) {
+		// just forward files we got to the events channel
+		events <- files
+		return false, nil
+	}
+
+	watcher, err := NewDirectoryWatcher(directory, onFilesChanged)
+	require.NoError(t, err)
+	watcher.SetPeriodicity(1 * time.Microsecond)
+
+	done := make(chan error)
 	go func() {
-		for {
-			select {
-			case <-e.stop:
-				return
-			case <-e.Events:
-				atomic.AddInt32(&e.count, 1)
-			}
-		}
+		done <- watcher.Run()
 	}()
-}
 
-// Stop counting
-func (e *EventsCounter) Stop() {
-	close(e.stop)
-}
+	// write a file
+	with1File := FilesContent{
+		"file1": []byte("content1"),
+	}
+	err = ioutil.WriteFile(filepath.Join(directory, "file1"), with1File["file1"], 0644)
+	require.NoError(t, err)
 
-// SetLastObserved keep tracks of the current count
-func (e *EventsCounter) SetLastObserved() {
-	atomic.StoreInt32(&e.lastObservedCount, atomic.LoadInt32(&e.count))
-}
+	// event should happen
+	// since WriteFile() is not atomic, what might actually happen is:
+	// 1. file gets created (no content yet)
+	// 2. cache is updated with the file that has no content
+	// 3. file gets content written into
+	// 4. cache is updated with the file content
+	// here we want to capture step 4, but need to be resilient to step 2.
+	for {
+		evt := <-events
+		if evt.Equals(FilesContent{"file1": []byte{}}) {
+			continue // step 2
+		} else {
+			fmt.Println(evt)
+			require.True(t, evt.Equals(with1File)) // step 4
+			break
+		}
+	}
 
-// CountIncreased returns true if the current count is higher
-// than the last observed one
-func (e *EventsCounter) CountIncreased() bool {
-	count := atomic.LoadInt32(&e.count)
-	lastObserved := atomic.LoadInt32(&e.lastObservedCount)
-	return count > lastObserved
+	// write another file
+	with2Files := FilesContent{
+		"file1": []byte("content1"),
+		"file2": []byte("content2"),
+	}
+	err = ioutil.WriteFile(filepath.Join(directory, "file2"), with2Files["file2"], 0644)
+	require.NoError(t, err)
+
+	// event should happen
+	// since WriteFile() is not atomic, what might actually happen is:
+	// 1. file gets created (no content yet)
+	// 2. cache is updated with the file that has no content
+	// 3. file gets content written into
+	// 4. cache is updated with the file content
+	// here we want to capture step 4, but need to be resilient to step 2.
+	for {
+		evt := <-events
+		if evt.Equals(FilesContent{"file1": []byte("content1"), "file2": []byte("")}) {
+			continue // step 2
+		} else {
+			require.True(t, evt.Equals(with2Files)) // step 4
+			break
+		}
+	}
+
+	// change file content
+	updated := FilesContent{
+		"file1": []byte("content1updated"),
+		"file2": []byte("content2"),
+	}
+	err = ioutil.WriteFile(filepath.Join(directory, "file1"), updated["file1"], 0644)
+	require.NoError(t, err)
+
+	// event should happen
+	// since WriteFile() is not atomic, what might actually happen is:
+	// 1. file gets truncated
+	// 2. cache is updated with the file that has no content
+	// 3. file gets content written into
+	// 4. cache is updated with the file content
+	// here we want to capture step 4, but need to be resilient to step 2.
+	for {
+		evt := <-events
+		if evt.Equals(FilesContent{"file1": []byte(""), "file2": []byte("content2")}) {
+			continue // step 2
+		} else {
+			require.True(t, evt.Equals(updated)) // step 4
+			break
+		}
+	}
+
+	// stop watcher, should return with no error
+	watcher.Stop()
+	require.NoError(t, <-done)
 }
