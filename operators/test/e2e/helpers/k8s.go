@@ -13,6 +13,7 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -144,7 +145,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 }
 
 func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
-	secretName := stackName
+	secretName := nodecerts.CASecretNameForCluster(stackName)
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: DefaultNamespace,

@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -227,7 +228,7 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	}
 
 	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: es.Name}
+	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CASecretNameForCluster(es.Name)}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return assoctype.AssociationPending, err // maybe not created yet
 	}
