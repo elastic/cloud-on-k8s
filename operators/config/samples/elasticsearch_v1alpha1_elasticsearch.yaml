@@ -1,5 +1,5 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: ElasticsearchCluster
+kind: Elasticsearch
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
