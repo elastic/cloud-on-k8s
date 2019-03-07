@@ -8,9 +8,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -180,23 +178,15 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	return pvc
 }
 
-// deleteElasticsearchPod deletes the given elasticsearch pod,
-// unless a data migration is in progress
+// deleteElasticsearchPod deletes the given elasticsearch pod. Tests to check if the pod can be safely deleted must
+// be done before the call to this function.
 func deleteElasticsearchPod(
 	c k8s.Client,
 	reconcileState *esreconcile.State,
 	resourcesState esreconcile.ResourcesState,
-	observedState observer.State,
 	pod corev1.Pod,
-	allDeletions []corev1.Pod,
 	preDelete func() error,
 ) (reconcile.Result, error) {
-	isMigratingData := migration.IsMigratingData(observedState, pod, allDeletions)
-	if isMigratingData {
-		log.Info(stringsutil.Concat("Migrating data, skipping deletes because of ", pod.Name))
-		reconcileState.UpdateElasticsearchMigrating(resourcesState, observedState)
-		return defaultRequeue, nil
-	}
 
 	// delete all PVCs associated with this pod
 	// TODO: perhaps this is better to reconcile after the fact?
