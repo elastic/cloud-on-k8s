@@ -11,7 +11,7 @@ import (
 // ApmServerElasticsearchAssociationSpec defines the desired state of ApmServerElasticsearchAssociation
 type ApmServerElasticsearchAssociationSpec struct {
 	Elasticsearch ObjectSelector `json:"elasticsearch"`
-	ApmServer        ObjectSelector `json:"apmServer"`
+	ApmServer     ObjectSelector `json:"apmServer"`
 }
 
 // ApmServerElasticsearchAssociationStatus defines the observed state of ApmServerElasticsearchAssociation

@@ -12,19 +12,20 @@ import (
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	associationsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -222,25 +223,12 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 	}
 
 	// TODO reconcile external user CRD here
+	err = reconcileEsUser(r.Client, r.scheme, association)
+	if err != nil {
+		return associationsv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
+	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
-
-	internalUsersSecretName := user.ElasticInternalUsersSecretName(es.Name)
-	var internalUsersSecret corev1.Secret
-	internalUsersSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: internalUsersSecretName}
-	if err := r.Get(internalUsersSecretKey, &internalUsersSecret); err != nil {
-		if apierrors.IsNotFound(err) {
-			return associationsv1alpha1.AssociationPending, err
-		}
-		return associationsv1alpha1.AssociationFailed, err
-	}
-
-	// TODO: can deliver through a shared secret instead?
-	expectedEsConfig.Auth.Inline = &apmtype.ElasticsearchInlineAuth{
-		Username: user.InternalControllerUserName,
-		// TODO: error checking
-		Password: string(internalUsersSecret.Data[user.InternalControllerUserName]),
-	}
 
 	// TODO: look up CA name from the ES cluster resource
 	var publicCACertSecret corev1.Secret
@@ -251,6 +239,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 	// TODO this is currently limiting the association to the same namespace
 	expectedEsConfig.SSL.CertificateAuthoritiesSecret = &publicCACertSecret.Name
 	expectedEsConfig.Hosts = []string{services.ExternalServiceURL(es)}
+	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(association)
 
 	var currentApmServer apmtype.ApmServer
 	if err := r.Get(association.Spec.ApmServer.NamespacedName(), &currentApmServer); err != nil {
@@ -268,5 +257,46 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 			return associationsv1alpha1.AssociationPending, err
 		}
 	}
+
+	if err := deleteOrphanedResources(r, association); err != nil {
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
+	}
+
 	return associationsv1alpha1.AssociationEstablished, nil
+}
+
+// deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
+// attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
+// now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
+// combinations and deletes them.
+func deleteOrphanedResources(c k8s.Client, assoc associationsv1alpha1.ApmServerElasticsearchAssociation) error {
+	var secrets corev1.SecretList
+	selector := association.NewResourceSelector(assoc.Name)
+	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+		return err
+	}
+	expectedSecretKey := secretKey(assoc)
+	for _, s := range secrets.Items {
+		if k8s.ExtractNamespacedName(&s) != expectedSecretKey {
+			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+			if err := c.Delete(&s); err != nil {
+				return err
+			}
+		}
+	}
+
+	var users estype.UserList
+	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
+		return err
+	}
+	expectedUserKey := userKey(assoc)
+	for _, u := range users.Items {
+		if k8s.ExtractNamespacedName(&u) != expectedUserKey {
+			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
+			if err := c.Delete(&u); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

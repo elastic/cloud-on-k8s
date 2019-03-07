@@ -2,77 +2,138 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build integration
-
 package apmserverelasticsearchassociation
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"testing"
-	"time"
 
-	associationsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	"github.com/onsi/gomega"
-	"golang.org/x/net/context"
-	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var c client.Client
+func Test_deleteOrphanedResources(t *testing.T) {
+	s := setupScheme(t)
+	tests := []struct {
+		name           string
+		args           assoctype.ApmServerElasticsearchAssociation
+		initialObjects []runtime.Object
+		postCondition  func(c k8s.Client)
+		wantErr        bool
+	}{
+		{
+			name:    "nothing to delete",
+			args:    assoctype.ApmServerElasticsearchAssociation{},
+			wantErr: false,
+		},
+		{
+			name: "only valid objects",
+			args: associationFixture,
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				assertExpectObjectsExist(t, c)
+			},
+			wantErr: false,
+		},
+		{
+			name: "Orpaned objects exist",
+			args: associationFixture,
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+						Labels: map[string]string{
+							association.AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: associationFixture.Namespace,
+						Labels: map[string]string{
+							association.AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: "other-ns",
+						Labels: map[string]string{
+							association.AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+				&estype.User{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      resourceNameFixture,
+						Namespace: "other-ns",
+						Labels: map[string]string{
+							association.AssociationLabelName: associationFixture.Name,
+						},
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				assertExpectObjectsExist(t, c)
+				// This works even without labels because mock client currently ignores labels
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "other-ns",
+					Name:      resourceNameFixture,
+				}, &estype.User{}))
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: "other-ns",
+					Name:      resourceNameFixture,
+				}, &corev1.Secret{}))
 
-var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-var depKey = types.NamespacedName{Name: "foo-deployment", Namespace: "default"}
-
-const timeout = time.Second * 5
-
-func TestReconcile(t *testing.T) {
-	g := gomega.NewGomegaWithT(t)
-	instance := &associationsv1alpha1.ApmServerElasticsearchAssociation{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
-
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(cfg, manager.Options{})
-	g.Expect(err).NotTo(gomega.HaveOccurred())
-	c = mgr.GetClient()
-
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	g.Expect(add(mgr, recFn)).NotTo(gomega.HaveOccurred())
-
-	stopMgr, mgrStopped := StartTestManager(mgr, g)
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
-
-	// Create the ApmServerElasticsearchAssociation object and expect the Reconcile and Deployment to be created
-	err = c.Create(context.TODO(), instance)
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
+			},
+			wantErr: false,
+		},
 	}
-	g.Expect(err).NotTo(gomega.HaveOccurred())
-	defer c.Delete(context.TODO(), instance)
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.initialObjects...))
+			if err := deleteOrphanedResources(c, tt.args); (err != nil) != tt.wantErr {
+				t.Errorf("deleteOrphanedResources() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.postCondition != nil {
+				tt.postCondition(c)
+			}
+		})
+	}
+}
 
-	deploy := &appsv1.Deployment{}
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
-		Should(gomega.Succeed())
-
-	// Delete the Deployment and expect Reconcile to be called for Deployment deletion
-	g.Expect(c.Delete(context.TODO(), deploy)).NotTo(gomega.HaveOccurred())
-	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
-	g.Eventually(func() error { return c.Get(context.TODO(), depKey, deploy) }, timeout).
-		Should(gomega.Succeed())
-
-	// Manually delete Deployment since GC isn't enabled in the test control plane
-	g.Eventually(func() error { return c.Delete(context.TODO(), deploy) }, timeout).
-		Should(gomega.MatchError("deployments.apps \"foo-deployment\" not found"))
-
+func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
+	// user CR should be in ES namespace
+	assert.NoError(t, c.Get(types.NamespacedName{
+		Namespace: associationFixture.Namespace,
+		Name:      resourceNameFixture,
+	}, &estype.User{}))
+	// secret should be in Kibana namespace
+	assert.NoError(t, c.Get(types.NamespacedName{
+		Namespace: associationFixture.Namespace,
+		Name:      resourceNameFixture,
+	}, &corev1.Secret{}))
 }

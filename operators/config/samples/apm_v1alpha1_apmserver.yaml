@@ -5,5 +5,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: apmserver-sample
 spec:
-  # Add fields here
-  foo: bar
+  version: "6.6.1"
+  nodeCount: 1
+    expose: LoadBalancer

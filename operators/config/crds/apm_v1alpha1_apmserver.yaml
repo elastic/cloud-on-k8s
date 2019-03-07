@@ -97,8 +97,6 @@ spec:
                             that contains a CA file entry to use.
                           type: string
                       type: object
-                  required:
-                  - hosts
                   type: object
               type: object
             resources:

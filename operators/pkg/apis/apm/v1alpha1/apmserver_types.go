@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,7 +46,7 @@ type Output struct {
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
 	// ElasticsearchURL is the URL to the target Elasticsearch
-	Hosts []string `json:"hosts"`
+	Hosts []string `json:"hosts,omitempty"`
 
 	// Auth configures authentication for APM Server to use.
 	Auth ElasticsearchAuth `json:"auth,omitempty"`
@@ -91,7 +92,8 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 // ElasticsearchAuth contains auth config for APM Server to use with an Elasticsearch cluster
 type ElasticsearchAuth struct {
 	// Inline is auth provided as plaintext inline credentials.
-	Inline *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	Inline       *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	SecretKeyRef *v1.SecretKeySelector    `json:"secret,omitempty"`
 }
 
 // ElasticsearchInlineAuth is a basic username/password combination.
