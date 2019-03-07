@@ -198,7 +198,7 @@ func newPod(name, namespace string) corev1.Pod {
 	return pod
 }
 
-func Test_defaultDriver_deletePods(t *testing.T) {
+func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	var clusterState esclient.ClusterState
 	b := []byte(ClusterStateSample)
 	err := json.Unmarshal(b, &clusterState)
@@ -304,10 +304,10 @@ func Test_defaultDriver_deletePods(t *testing.T) {
 			d := &defaultDriver{
 				Options: tt.fields.Options,
 			}
-			if err := d.deletePods(
+			if err := d.attemptPodsDeletion(
 				tt.args.ToDelete, tt.args.reconcileState, tt.args.resourcesState,
 				tt.args.observedState, tt.args.results, tt.args.esClient, tt.args.namespacedName); (err != nil) != tt.wantErr {
-				t.Errorf("defaultDriver.deletePods() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("defaultDriver.attemptPodsDeletion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.EqualValues(t, tt.want.results, tt.args.results)
 			assert.EqualValues(t, tt.want.fulfilledExpectation, tt.fields.Options.PodsExpectations.Fulfilled(nn))

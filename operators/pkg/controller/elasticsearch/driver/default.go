@@ -343,7 +343,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Shrink clusters by deleting deprecated pods
-	if err = d.deletePods(
+	if err = d.attemptPodsDeletion(
 		performableChanges.ToDelete,
 		reconcileState,
 		resourcesState,
@@ -366,8 +366,8 @@ func (d *defaultDriver) Reconcile(
 	return results
 }
 
-// deletePods deletes a list of pods after checking there is no migrating data for each of them
-func (d *defaultDriver) deletePods(
+// attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
+func (d *defaultDriver) attemptPodsDeletion(
 	ToDelete []corev1.Pod,
 	reconcileState *reconcile.State,
 	resourcesState *reconcile.ResourcesState,
@@ -392,7 +392,7 @@ func (d *defaultDriver) deletePods(
 		// do not delete a pod or expect a deletion if a data migration is in progress
 		isMigratingData := migration.IsMigratingData(observedState, pod, ToDelete)
 		if isMigratingData {
-			log.Info("Skipping deletes because of migrating data", "pod", pod.Name)
+			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
 			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
 			results.WithResult(defaultRequeue)
 			continue
