@@ -81,10 +81,10 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-// -- ES Topologies
+// -- ES Topology
 
-func (b Builder) WithNoESTopologies() Builder {
-	b.Elasticsearch.Spec.Topologies = []estype.ElasticsearchTopologySpec{}
+func (b Builder) WithNoESTopology() Builder {
+	b.Elasticsearch.Spec.Topology = []estype.ElasticsearchTopologySpec{}
 	return b
 }
 
@@ -113,7 +113,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec
 }
 
 func (b Builder) WithESTopology(topology estype.ElasticsearchTopologySpec) Builder {
-	b.Elasticsearch.Spec.Topologies = append(b.Elasticsearch.Spec.Topologies, topology)
+	b.Elasticsearch.Spec.Topology = append(b.Elasticsearch.Spec.Topology, topology)
 	return b
 }
 

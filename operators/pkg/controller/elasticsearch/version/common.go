@@ -44,7 +44,7 @@ func NewExpectedPodSpecs(
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
-	for _, topology := range es.Spec.Topologies {
+	for _, topology := range es.Spec.Topology {
 		for i := int32(0); i < topology.NodeCount; i++ {
 			podSpec, err := podSpec(
 				pod.NewPodSpecParams{
@@ -52,7 +52,7 @@ func NewExpectedPodSpecs(
 					CustomImageName: es.Spec.Image,
 					ClusterName:     es.Name,
 					DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-						es.Spec.Topologies,
+						es.Spec.Topology,
 					),
 					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
 					NodeTypes:            topology.NodeTypes,

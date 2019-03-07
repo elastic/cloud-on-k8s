@@ -127,7 +127,7 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
 			SetVMMaxMapCount: false,
-			Topologies: []v1alpha1.ElasticsearchTopologySpec{
+			Topology: []v1alpha1.ElasticsearchTopologySpec{
 				{
 					NodeCount: 3,
 				},

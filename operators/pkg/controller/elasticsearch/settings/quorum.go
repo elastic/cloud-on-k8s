@@ -18,9 +18,9 @@ func quorum(nMasters int) int {
 
 // ComputeMinimumMasterNodes returns the minimum number of master nodes
 // that should be set in a cluster with the given topology
-func ComputeMinimumMasterNodes(topologies []v1alpha1.ElasticsearchTopologySpec) int {
+func ComputeMinimumMasterNodes(topology []v1alpha1.ElasticsearchTopologySpec) int {
 	nMasters := 0
-	for _, t := range topologies {
+	for _, t := range topology {
 		if t.NodeTypes.Master {
 			nMasters += int(t.NodeCount)
 		}
