@@ -7,11 +7,12 @@
 package apmserver
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
-	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"k8s.io/client-go/kubernetes/scheme"

@@ -26,7 +26,7 @@ type PodSpecParams struct {
 	CustomImageName string
 
 	ApmServerSecret corev1.Secret
-	ConfigSecret corev1.Secret
+	ConfigSecret    corev1.Secret
 }
 
 func imageWithVersion(image string, version string) string {
@@ -71,9 +71,9 @@ ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-
 		Image: imageName,
 		Name:  "fs-preparation",
 		SecurityContext: &corev1.SecurityContext{
-			RunAsUser:  &initContainerRunAsUser,
+			RunAsUser: &initContainerRunAsUser,
 		},
-		Command:      []string{"bash", "-c", fsPreparationScript},
+		Command: []string{"bash", "-c", fsPreparationScript},
 
 		VolumeMounts: []corev1.VolumeMount{
 			configVolume.VolumeMount(),
@@ -94,7 +94,7 @@ ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-
 				{Name: "SECRET_TOKEN", ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{Name: p.ApmServerSecret.Name},
-						Key: SecretTokenKey,
+						Key:                  SecretTokenKey,
 					},
 				}},
 			},

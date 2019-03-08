@@ -7,6 +7,11 @@ package apmserver
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
+	"sync/atomic"
+	"time"
+
+	apmv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -15,26 +20,21 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/client-go/tools/record"
-	"reflect"
-	"sigs.k8s.io/yaml"
-	"sync/atomic"
-	"time"
-
-	apmv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sigs.k8s.io/yaml"
 )
 
 var log = logf.Log.WithName("apmserver-controller")

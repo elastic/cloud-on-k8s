@@ -6,7 +6,7 @@ package apmserver
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )

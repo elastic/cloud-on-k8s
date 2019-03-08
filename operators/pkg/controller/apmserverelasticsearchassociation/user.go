@@ -5,12 +5,12 @@
 package apmserverelasticsearchassociation
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"reflect"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
@@ -118,7 +118,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 			Name:         InternalApmServerUserName,
 			PasswordHash: string(bcryptHash),
 			// TODO: lower privileges, but requires specifying a custom role
-			UserRoles:    []string{"superuser"},
+			UserRoles: []string{"superuser"},
 		},
 		Status: estype.UserStatus{
 			Phase: estype.UserPending,

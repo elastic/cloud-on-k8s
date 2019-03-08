@@ -13,7 +13,7 @@ type ApmServerElasticsearchAssociationSpec struct {
 	// Elasticsearch refers to the Elasticsearch resource
 	Elasticsearch ObjectSelector `json:"elasticsearch"`
 	// ApmServer refers to the ApmServer resource.
-	ApmServer     ObjectSelector `json:"apmServer"`
+	ApmServer ObjectSelector `json:"apmServer"`
 }
 
 // ApmServerElasticsearchAssociationStatus defines the observed state of ApmServerElasticsearchAssociation

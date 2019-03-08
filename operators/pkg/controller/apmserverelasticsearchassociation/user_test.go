@@ -5,11 +5,11 @@
 package apmserverelasticsearchassociation
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"testing"
 
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -142,9 +142,9 @@ func Test_reconcileEsUser(t *testing.T) {
 				var u estype.User
 				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
 				expectedLabels := map[string]string{
-					association.AssociationLabelName:       associationFixture.Name,
-					common.TypeLabelName:       label.Type,
-					label.ClusterNameLabelName: "es",
+					association.AssociationLabelName: associationFixture.Name,
+					common.TypeLabelName:             label.Type,
+					label.ClusterNameLabelName:       "es",
 				}
 				for k, v := range expectedLabels {
 					assert.Equal(t, v, u.Labels[k])

@@ -6,9 +6,10 @@ package config
 
 import (
 	"encoding/json"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 

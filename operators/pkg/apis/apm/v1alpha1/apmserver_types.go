@@ -6,7 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -74,11 +74,11 @@ const (
 // ApmServerStatus defines the observed state of ApmServer
 type ApmServerStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health                ApmServerHealth `json:"health,omitempty"`
+	Health ApmServerHealth `json:"health,omitempty"`
 	// ExternalService is the name of the service the agents should connect to.
-	ExternalService       string          `json:"service,omitempty"`
+	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
-	SecretTokenSecretName string          `json:"secretTokenSecret,omitempty"`
+	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -95,9 +95,9 @@ func (e ElasticsearchOutput) IsConfigured() bool {
 // TODO: this is a good candidate for sharing/reuse between this and Kibana due to association reuse potential.
 type ElasticsearchAuth struct {
 	// Inline is auth provided as plaintext inline credentials.
-	Inline       *ElasticsearchInlineAuth `json:"inline,omitempty"`
+	Inline *ElasticsearchInlineAuth `json:"inline,omitempty"`
 	// SecretKeyRef is a secret that contains the credentials to use.
-	SecretKeyRef *v1.SecretKeySelector    `json:"secret,omitempty"`
+	SecretKeyRef *v1.SecretKeySelector `json:"secret,omitempty"`
 }
 
 // ElasticsearchInlineAuth is a basic username/password combination.
