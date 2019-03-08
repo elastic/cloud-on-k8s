@@ -58,7 +58,7 @@ func TestReconcile(t *testing.T) {
 	}()
 
 	// Assume an Elasticsearch cluster and a Apm Server have been created
-	es := &esv1alpha1.ElasticsearchCluster{
+	es := &esv1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
@@ -145,7 +145,7 @@ func TestReconcile(t *testing.T) {
 	test.DeleteIfExists(t, c, apmServer)
 }
 
-func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.ElasticsearchCluster) *corev1.Secret {
+func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.Elasticsearch) *corev1.Secret {
 	// The ApmServer resource needs a CA cert  secrets to be created,
 	// but the Elasticsearch controller is not running.
 	// Here we are creating a dummy CA secret to pretend they exist.

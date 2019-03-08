@@ -81,7 +81,7 @@ func addWatches(c controller.Controller, r *ReconcileApmServerElasticsearchAssoc
 	}
 
 	// Watch Elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &estype.ElasticsearchCluster{}}, r.watches.ElasticsearchClusters); err != nil {
+	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
 		return err
 	}
 
@@ -212,7 +212,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 		return associationsv1alpha1.AssociationFailed, err
 	}
 
-	var es estype.ElasticsearchCluster
+	var es estype.Elasticsearch
 	err = r.Get(association.Spec.Elasticsearch.NamespacedName(), &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
