@@ -95,17 +95,17 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 
 			// flatten the topology
-			var expectedTopology []estype.ElasticsearchTopologySpec
-			for _, topology := range es.Spec.Topology {
-				for i := 0; i < int(topology.NodeCount); i++ {
-					expectedTopology = append(expectedTopology, topology)
+			var expectedTopology []estype.TopologyElementSpec
+			for _, topoElem := range es.Spec.Topology {
+				for i := 0; i < int(topoElem.NodeCount); i++ {
+					expectedTopology = append(expectedTopology, topoElem)
 				}
 			}
 			// match each actual node to an expected node
 			for _, node := range nodes.Nodes {
 				nodeTypes := rolesToNodeTypes(node.Roles)
-				for i, topology := range expectedTopology {
-					if topology.NodeTypes == nodeTypes && compareMemoryLimit(topology, node.JVM.Mem.HeapMaxInBytes) {
+				for i, topoElem := range expectedTopology {
+					if topoElem.NodeTypes == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// it's a match! #tinder
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
@@ -136,15 +136,15 @@ func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
 	return nt
 }
 
-func compareMemoryLimit(topology estype.ElasticsearchTopologySpec, heapMaxBytes int) bool {
-	if topology.Resources.Limits.Memory() == nil {
+func compareMemoryLimit(topologyElement estype.TopologyElementSpec, heapMaxBytes int) bool {
+	if topologyElement.Resources.Limits.Memory() == nil {
 		// no expected memory, consider it's ok
 		return true
 	}
 
 	const epsilon = 0.05 // allow a 5% diff due to bytes approximation
 
-	expectedBytes := topology.Resources.Limits.Memory().Value()
+	expectedBytes := topologyElement.Resources.Limits.Memory().Value()
 	actualBytes := int64(heapMaxBytes * 2) // we set heap to half the available memory
 
 	diffRatio := math.Abs(float64(actualBytes-expectedBytes)) / math.Abs(float64(expectedBytes))

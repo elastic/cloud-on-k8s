@@ -28,8 +28,8 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
-	// Topology represents a list of node topologies to be part of the cluster
-	Topology []ElasticsearchTopologySpec `json:"topology,omitempty"`
+	// Topology represents a list of topology elements to be part of the cluster
+	Topology []TopologyElementSpec `json:"topology,omitempty"`
 
 	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
 	SnapshotRepository *SnapshotRepository `json:"snapshotRepository,omitempty"`
@@ -69,14 +69,14 @@ type SnapshotRepository struct {
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
-	for _, t := range es.Topology {
-		count += t.NodeCount
+	for _, topoElem := range es.Topology {
+		count += topoElem.NodeCount
 	}
 	return count
 }
 
-// ElasticsearchTopologySpec defines a common topology for a set of Elasticsearch nodes
-type ElasticsearchTopologySpec struct {
+// TopologyElementSpec defines a common topology for a set of Elasticsearch nodes
+type TopologyElementSpec struct {
 	// NodeTypes represents the node types
 	NodeTypes NodeTypesSpec `json:"nodeTypes,omitempty"`
 

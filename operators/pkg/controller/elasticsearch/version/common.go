@@ -44,8 +44,8 @@ func NewExpectedPodSpecs(
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
-	for _, topology := range es.Spec.Topology {
-		for i := int32(0); i < topology.NodeCount; i++ {
+	for _, topoElem := range es.Spec.Topology {
+		for i := int32(0); i < topoElem.NodeCount; i++ {
 			podSpec, err := podSpec(
 				pod.NewPodSpecParams{
 					Version:         es.Spec.Version,
@@ -55,10 +55,10 @@ func NewExpectedPodSpecs(
 						es.Spec.Topology,
 					),
 					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-					NodeTypes:            topology.NodeTypes,
-					Affinity:             topology.PodTemplate.Spec.Affinity,
+					NodeTypes:            topoElem.NodeTypes,
+					Affinity:             topoElem.PodTemplate.Spec.Affinity,
 					SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-					Resources:            topology.Resources,
+					Resources:            topoElem.Resources,
 					UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 					ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
@@ -76,7 +76,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologySpec: topology})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologyElement: topoElem})
 		}
 	}
 
@@ -232,14 +232,14 @@ func NewPod(
 	labels[ElasticsearchVersionLabelName] = version.String()
 
 	// add labels for node types
-	label.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
-	label.NodeTypesDataLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Data, labels)
-	label.NodeTypesIngestLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Ingest, labels)
-	label.NodeTypesMLLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.ML, labels)
+	label.NodeTypesMasterLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Master, labels)
+	label.NodeTypesDataLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Data, labels)
+	label.NodeTypesIngestLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.ML, labels)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior
-	for k, v := range podSpecCtx.TopologySpec.PodTemplate.Labels {
+	for k, v := range podSpecCtx.TopologyElement.PodTemplate.Labels {
 		if _, ok := labels[k]; !ok {
 			labels[k] = v
 		}
@@ -250,7 +250,7 @@ func NewPod(
 			Name:        pod.NewNodeName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
-			Annotations: podSpecCtx.TopologySpec.PodTemplate.Annotations,
+			Annotations: podSpecCtx.TopologyElement.PodTemplate.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
 	}

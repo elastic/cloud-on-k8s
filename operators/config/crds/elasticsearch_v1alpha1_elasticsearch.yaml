@@ -94,7 +94,7 @@ spec:
               - settings
               type: object
             topology:
-              description: Topology represents a list of node topologies to be part
+              description: Topology represents a list of topology elements to be part
                 of the cluster
               items:
                 properties:

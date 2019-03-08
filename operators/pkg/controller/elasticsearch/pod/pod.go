@@ -82,8 +82,8 @@ type NewPodSpecParams struct {
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
 type PodSpecContext struct {
-	PodSpec      corev1.PodSpec
-	TopologySpec v1alpha1.ElasticsearchTopologySpec
+	PodSpec         corev1.PodSpec
+	TopologyElement v1alpha1.TopologyElementSpec
 }
 
 // PodListToNames returns a list of pod names from the list of pods.
