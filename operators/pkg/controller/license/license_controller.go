@@ -112,7 +112,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to ElasticsearchClusters
+	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
 		&source.Kind{Type: &v1alpha1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
