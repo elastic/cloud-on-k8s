@@ -5,6 +5,7 @@
 package version
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
@@ -21,7 +22,7 @@ func Test_lowestHighestSupportedVersions_VerifySupportsExistingPods(t *testing.T
 		return corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
-					ElasticsearchVersionLabelName: v.String(),
+					label.VersionLabelName: v.String(),
 				},
 			},
 		}

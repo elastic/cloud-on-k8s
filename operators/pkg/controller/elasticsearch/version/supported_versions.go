@@ -6,6 +6,7 @@ package version
 
 import (
 	"fmt"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/pkg/errors"
@@ -21,9 +22,9 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 	pods []corev1.Pod,
 ) error {
 	for _, pod := range pods {
-		labelValue, ok := pod.Labels[ElasticsearchVersionLabelName]
+		labelValue, ok := pod.Labels[label.VersionLabelName]
 		if !ok {
-			return fmt.Errorf("pod %s is missing the version label %s", pod.Name, ElasticsearchVersionLabelName)
+			return fmt.Errorf("pod %s is missing the version label %s", pod.Name, label.VersionLabelName)
 		}
 		v, err := version.Parse(labelValue)
 		if err != nil {
