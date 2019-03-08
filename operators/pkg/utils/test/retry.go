@@ -9,18 +9,17 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/retry"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// Default values to be used for testing purpose
+// Default values to be used for testing purpose.
 const (
 	Timeout       = time.Second * 5
 	RetryInterval = time.Millisecond * 100
 )
 
-// RetryUntilSuccess calls retry.UntilSuccess with
-// default timeout and retry interval,
-// and asserts that no error is returned
+// RetryUntilSuccess calls retry.UntilSuccess with default timeout and retry interval,
+// and requires that no error is returned.
 func RetryUntilSuccess(t *testing.T, f func() error) {
-	assert.NoError(t, retry.UntilSuccess(f, Timeout, RetryInterval))
+	require.NoError(t, retry.UntilSuccess(f, Timeout, RetryInterval))
 }
