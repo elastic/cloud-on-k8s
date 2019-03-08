@@ -80,7 +80,7 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 	}
 
 	// Watch Elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &estype.ElasticsearchCluster{}}, r.watches.ElasticsearchClusters); err != nil {
+	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
 		return err
 	}
 
@@ -212,7 +212,7 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 		return assoctype.AssociationFailed, err
 	}
 
-	var es estype.ElasticsearchCluster
+	var es estype.Elasticsearch
 	err = r.Get(association.Spec.Elasticsearch.NamespacedName(), &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {

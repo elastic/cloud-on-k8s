@@ -27,13 +27,13 @@ type Event struct {
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type State struct {
-	cluster v1alpha1.ElasticsearchCluster
+	cluster v1alpha1.Elasticsearch
 	status  v1alpha1.ElasticsearchStatus
 	events  []Event
 }
 
 // NewState creates a new reconcile state based on the given cluster
-func NewState(c v1alpha1.ElasticsearchCluster) *State {
+func NewState(c v1alpha1.Elasticsearch) *State {
 	return &State{cluster: c, status: *c.Status.DeepCopy()}
 }
 
@@ -126,7 +126,7 @@ func (s *State) AddEvent(eventType, reason, message string) *State {
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the Elasticsearch cluster resource with
 // the current status applied to its status sub-resource.
-func (s *State) Apply() ([]Event, *v1alpha1.ElasticsearchCluster) {
+func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
 	previous := s.cluster.Status
 	current := s.status
 	if reflect.DeepEqual(previous, current) {

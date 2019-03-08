@@ -36,7 +36,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			Name: "Stack CRDs should exist",
 			Test: func(t *testing.T) {
 				crds := []runtime.Object{
-					&estype.ElasticsearchClusterList{},
+					&estype.ElasticsearchList{},
 					&kbtype.KibanaList{},
 					&assoctype.KibanaElasticsearchAssociationList{},
 				}

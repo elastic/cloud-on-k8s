@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     controller-tools.k8s.io: "1.0"
-  name: elasticsearchclusters.elasticsearch.k8s.elastic.co
+  name: elasticsearches.elasticsearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.health
@@ -24,8 +24,8 @@ spec:
   names:
     categories:
     - elastic
-    kind: ElasticsearchCluster
-    plural: elasticsearchclusters
+    kind: Elasticsearch
+    plural: elasticsearches
   scope: Namespaced
   subresources:
     status: {}

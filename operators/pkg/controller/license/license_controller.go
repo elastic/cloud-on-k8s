@@ -112,9 +112,9 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to ElasticsearchClusters
+	// Watch for changes to Elasticsearch clusters.
 	if err := c.Watch(
-		&source.Kind{Type: &v1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &v1alpha1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -150,7 +150,7 @@ type ReconcileLicenses struct {
 func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
 	var noLicense v1alpha1.ClusterLicenseSpec
 	var noParent metav1.ObjectMeta
-	var cluster v1alpha1.ElasticsearchCluster
+	var cluster v1alpha1.Elasticsearch
 	err := c.Get(clusterName, &cluster)
 	if err != nil {
 		return noLicense, noParent, err
@@ -170,7 +170,7 @@ func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.Cl
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(
 	c k8s.Client,
-	cluster v1alpha1.ElasticsearchCluster,
+	cluster v1alpha1.Elasticsearch,
 	ref corev1.SecretKeySelector,
 	ns string,
 ) (corev1.SecretKeySelector, error) {
@@ -219,7 +219,7 @@ func reconcileSecret(
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 func (r *ReconcileLicenses) reconcileClusterLicense(
-	cluster v1alpha1.ElasticsearchCluster,
+	cluster v1alpha1.Elasticsearch,
 	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
@@ -265,7 +265,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster to ensure it still exists
-	owner := v1alpha1.ElasticsearchCluster{}
+	owner := v1alpha1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &owner)
 	if err != nil {
 		if errors.IsNotFound(err) {

@@ -31,7 +31,7 @@ func CreationTestSteps(stack Builder, k *helpers.K8sHelper) helpers.TestStepList
 			helpers.TestStep{
 				Name: "Stack should be created",
 				Test: func(t *testing.T) {
-					var createdEs estype.ElasticsearchCluster
+					var createdEs estype.Elasticsearch
 					err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &createdEs)
 					require.NoError(t, err)
 					require.Equal(t, stack.Elasticsearch.Spec.Version, createdEs.Spec.Version)

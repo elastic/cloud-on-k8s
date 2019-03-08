@@ -43,7 +43,7 @@ const (
 // ReconcileCAForCluster ensures that a CA exists for the given cluster, and returns it.
 func ReconcileCAForCluster(
 	cl k8s.Client,
-	cluster v1alpha1.ElasticsearchCluster,
+	cluster v1alpha1.Elasticsearch,
 	scheme *runtime.Scheme,
 	caCertValidity time.Duration,
 	expirationSafetyMargin time.Duration,
@@ -95,7 +95,7 @@ func ReconcileCAForCluster(
 }
 
 // renewCA creates and store a new CA to replace one that might exist
-func renewCA(client k8s.Client, cluster v1alpha1.ElasticsearchCluster, expireIn time.Duration, scheme *runtime.Scheme) (*certificates.CA, error) {
+func renewCA(client k8s.Client, cluster v1alpha1.Elasticsearch, expireIn time.Duration, scheme *runtime.Scheme) (*certificates.CA, error) {
 	ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{
 		CommonName: cluster.Name,
 		ExpireIn:   &expireIn,

@@ -25,7 +25,7 @@ type GenericResources struct {
 func reconcileGenericResources(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 ) (*GenericResources, error) {
 	// TODO: these reconciles do not necessarily use the services as in-out params.
 	// TODO: consider removing the "res" bits of the ReconcileService signature?

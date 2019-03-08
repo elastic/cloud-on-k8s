@@ -48,7 +48,7 @@ type defaultDriver struct {
 	genericResourcesReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 	) (*GenericResources, error)
 
 	// nodeCertificatesReconciler reconciles node certificates
@@ -56,7 +56,7 @@ type defaultDriver struct {
 		c k8s.Client,
 		scheme *runtime.Scheme,
 		csrClient certificates.CSRClient,
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
 		caCertValidity time.Duration,
@@ -67,14 +67,14 @@ type defaultDriver struct {
 	usersReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 	) (*user.InternalUsers, error)
 
 	// versionWideResourcesReconciler reconciles resources that may be specific to a version
 	versionWideResourcesReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 		trustRelationships []v1alpha1.TrustRelationship,
 		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
@@ -84,7 +84,7 @@ type defaultDriver struct {
 	//
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
 	expectedPodsAndResourcesResolver func(
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 		paramsTmpl pod.NewPodSpecParams,
 		operatorImage string,
 	) ([]pod.PodSpecContext, error)
@@ -95,7 +95,7 @@ type defaultDriver struct {
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
 		c k8s.Client,
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 	) (*reconcile.ResourcesState, error)
 
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
@@ -121,7 +121,7 @@ type defaultDriver struct {
 	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
 	// apiObjectsGarbageCollector func(
 	// 	c k8s.Client,
-	// 	es v1alpha1.ElasticsearchCluster,
+	// 	es v1alpha1.Elasticsearch,
 	// 	version version.Version,
 	// 	state mutation.PodsState,
 	// ) (reconcile.Result, error) // could get away with one impl
@@ -129,7 +129,7 @@ type defaultDriver struct {
 
 // Reconcile fulfills the Driver interface and reconciles the cluster resources.
 func (d *defaultDriver) Reconcile(
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	reconcileState *reconcile.State,
 ) *reconcile.Results {
 	results := &reconcile.Results{}
@@ -435,7 +435,7 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 func (d *defaultDriver) calculateChanges(
 	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(

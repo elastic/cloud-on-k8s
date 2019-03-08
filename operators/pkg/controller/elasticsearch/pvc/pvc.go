@@ -29,7 +29,7 @@ type OrphanedPersistentVolumeClaims struct {
 // FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
 func FindOrphanedVolumeClaims(
 	c k8s.Client,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 ) (*OrphanedPersistentVolumeClaims, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	// List PVC

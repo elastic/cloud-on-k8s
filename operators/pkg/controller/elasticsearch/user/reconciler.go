@@ -27,7 +27,7 @@ var (
 func ReconcileUserCredentialsSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	creds UserCredentials,
 ) error {
 	expected := creds.Secret()
@@ -88,7 +88,7 @@ func aggregateAllUsers(customUsers v1alpha1.UserList, defaultUsers ...ClearTextC
 func ReconcileUsers(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 ) (*InternalUsers, error) {
 
 	nsn := k8s.ExtractNamespacedName(&es)

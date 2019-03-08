@@ -27,7 +27,7 @@ var DefaultResources = common.ResourcesSpec{
 // -- Stack
 
 type Builder struct {
-	Elasticsearch estype.ElasticsearchCluster
+	Elasticsearch estype.Elasticsearch
 	Kibana        kbtype.Kibana
 	Association   v1alpha1.KibanaElasticsearchAssociation
 }
@@ -43,7 +43,7 @@ func NewStackBuilder(name string) Builder {
 	}
 
 	return Builder{
-		Elasticsearch: estype.ElasticsearchCluster{
+		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
 				SetVMMaxMapCount: true,

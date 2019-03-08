@@ -20,7 +20,7 @@ const (
 func Reconcile(
 	c k8s.Client,
 	w watches.DynamicWatches,
-	esCluster v1alpha1.ElasticsearchCluster,
+	esCluster v1alpha1.Elasticsearch,
 	clusterClient *esclient.Client,
 	current *esclient.License,
 ) error {

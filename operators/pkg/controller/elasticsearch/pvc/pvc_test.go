@@ -89,7 +89,7 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 	pvc3 := newPVC("elasticsearch-sample-es-6qg4hmd9dj", "elasticsearch-sample-es-6qg4hmd9dj-data", sampleLabels2, "1Gi", nil)
 	type args struct {
 		initialObjects []runtime.Object
-		es             v1alpha1.ElasticsearchCluster
+		es             v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name    string
@@ -109,7 +109,7 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 					pvc2,
 					pvc3,
 				},
-				es: v1alpha1.ElasticsearchCluster{
+				es: v1alpha1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{
 						Name: "elasticsearch-sample",
 					},
@@ -130,7 +130,7 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 					pvc2,
 					deletePVC(pvc3.DeepCopy()),
 				},
-				es: v1alpha1.ElasticsearchCluster{
+				es: v1alpha1.Elasticsearch{
 					ObjectMeta: v1.ObjectMeta{
 						Name: "elasticsearch-sample",
 					},

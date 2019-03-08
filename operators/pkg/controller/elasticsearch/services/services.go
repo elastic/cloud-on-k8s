@@ -30,7 +30,7 @@ func DiscoveryServiceName(esName string) string {
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
 // It is used by nodes to talk to each other.
-func NewDiscoveryService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
+func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -64,13 +64,13 @@ func ExternalServiceName(esName string) string {
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch external endpoint
-func ExternalServiceURL(es v1alpha1.ElasticsearchCluster) string {
+func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
 	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
-func NewExternalService(es v1alpha1.ElasticsearchCluster) *corev1.Service {
+func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,7 +119,7 @@ func IsServiceReady(c k8s.Client, service corev1.Service) (bool, error) {
 }
 
 // GetExternalService returns the external service associated to the given Elasticsearch cluster.
-func GetExternalService(c k8s.Client, es v1alpha1.ElasticsearchCluster) (corev1.Service, error) {
+func GetExternalService(c k8s.Client, es v1alpha1.Elasticsearch) (corev1.Service, error) {
 	var svc corev1.Service
 
 	namespacedName := types.NamespacedName{

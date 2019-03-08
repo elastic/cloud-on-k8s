@@ -34,7 +34,7 @@ const (
 
 func reconcileUserCreatedSecret(
 	c k8s.Client,
-	owner v1alpha1.ElasticsearchCluster,
+	owner v1alpha1.Elasticsearch,
 	repoConfig *v1alpha1.SnapshotRepository,
 	watches watches.DynamicWatches,
 ) (corev1.Secret, error) {
@@ -82,7 +82,7 @@ func reconcileUserCreatedSecret(
 func ReconcileSnapshotCredentials(
 	c k8s.Client,
 	s *runtime.Scheme,
-	owner v1alpha1.ElasticsearchCluster,
+	owner v1alpha1.Elasticsearch,
 	repoConfig *v1alpha1.SnapshotRepository,
 	watched watches.DynamicWatches,
 ) (corev1.Secret, error) {
@@ -144,7 +144,7 @@ func manageDynamicWatch(watched watches.DynamicWatches, repoConfig *v1alpha1.Sna
 func ReconcileSnapshotterCronJob(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	user client.UserAuth,
 	operatorImage string,
 ) error {

@@ -133,20 +133,20 @@ func TestNodesAvailable(t *testing.T) {
 func TestState_Apply(t *testing.T) {
 	tests := []struct {
 		name       string
-		cluster    v1alpha1.ElasticsearchCluster
+		cluster    v1alpha1.Elasticsearch
 		effects    func(s *State)
 		wantEvents []Event
 		wantStatus *v1alpha1.ElasticsearchStatus
 	}{
 		{
 			name:       "defaults",
-			cluster:    v1alpha1.ElasticsearchCluster{},
+			cluster:    v1alpha1.Elasticsearch{},
 			wantEvents: nil,
 			wantStatus: nil,
 		},
 		{
 			name:    "health degraded",
-			cluster: v1alpha1.ElasticsearchCluster{},
+			cluster: v1alpha1.Elasticsearch{},
 			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
@@ -161,7 +161,7 @@ func TestState_Apply(t *testing.T) {
 		},
 		{
 			name: "cluster state lost",
-			cluster: v1alpha1.ElasticsearchCluster{
+			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:      v1alpha1.ElasticsearchRedHealth,
 					ClusterUUID: "old",
@@ -189,7 +189,7 @@ func TestState_Apply(t *testing.T) {
 		},
 		{
 			name: "Ignore temporary cluster downtime",
-			cluster: v1alpha1.ElasticsearchCluster{
+			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:      v1alpha1.ElasticsearchRedHealth,
 					ClusterUUID: "old",
@@ -217,7 +217,7 @@ func TestState_Apply(t *testing.T) {
 		},
 		{
 			name: "master node changed",
-			cluster: v1alpha1.ElasticsearchCluster{
+			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
@@ -249,7 +249,7 @@ func TestState_Apply(t *testing.T) {
 		},
 		{
 			name: "ignore temporary master loss for status",
-			cluster: v1alpha1.ElasticsearchCluster{
+			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Health:     v1alpha1.ElasticsearchRedHealth,
 					MasterNode: "old",
@@ -306,13 +306,13 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1alpha1.ElasticsearchCluster
+		cluster         v1alpha1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name: "phase is not changed by default",
-			cluster: v1alpha1.ElasticsearchCluster{
+			cluster: v1alpha1.Elasticsearch{
 				Status: v1alpha1.ElasticsearchStatus{
 					Phase: v1alpha1.ElasticsearchPendingPhase,
 				},
@@ -323,14 +323,14 @@ func TestState_UpdateElasticsearchState(t *testing.T) {
 		},
 		{
 			name:    "health is unknown by default",
-			cluster: v1alpha1.ElasticsearchCluster{},
+			cluster: v1alpha1.Elasticsearch{},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, "unknown", s.status.Health)
 			},
 		},
 		{
 			name:    "health is set if returned by Elasticsearch",
-			cluster: v1alpha1.ElasticsearchCluster{},
+			cluster: v1alpha1.Elasticsearch{},
 			args: args{
 				observedState: observer.State{
 					ClusterHealth: &client.Health{Status: "green"},
@@ -361,13 +361,13 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 	}
 	tests := []struct {
 		name            string
-		cluster         v1alpha1.ElasticsearchCluster
+		cluster         v1alpha1.Elasticsearch
 		args            args
 		stateAssertions func(s *State)
 	}{
 		{
 			name:    "base case",
-			cluster: v1alpha1.ElasticsearchCluster{},
+			cluster: v1alpha1.Elasticsearch{},
 			args: args{
 				result: reconcile.Result{RequeueAfter: 10 * time.Minute},
 			},

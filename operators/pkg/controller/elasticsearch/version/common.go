@@ -34,7 +34,7 @@ var (
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
@@ -224,7 +224,7 @@ func podSpec(
 // NewPod constructs a pod from the given parameters.
 func NewPod(
 	version version.Version,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))

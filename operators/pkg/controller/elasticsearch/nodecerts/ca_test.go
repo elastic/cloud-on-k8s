@@ -132,7 +132,7 @@ func Test_canReuseCA(t *testing.T) {
 func checkCASecrets(
 	t *testing.T,
 	client k8s.Client,
-	cluster v1alpha1.ElasticsearchCluster,
+	cluster v1alpha1.Elasticsearch,
 	ca certificates.CA,
 	expectedCa *certificates.CA,
 	notExpectedCa *certificates.CA,
@@ -184,7 +184,7 @@ func checkCASecrets(
 }
 
 func Test_renewCA(t *testing.T) {
-	cluster := v1alpha1.ElasticsearchCluster{
+	cluster := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
 			Name:      testName,
@@ -228,7 +228,7 @@ func Test_renewCA(t *testing.T) {
 func TestReconcileCAForCluster(t *testing.T) {
 	err := v1alpha1.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
-	cluster := v1alpha1.ElasticsearchCluster{
+	cluster := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: testNamespace,
 			Name:      testName,

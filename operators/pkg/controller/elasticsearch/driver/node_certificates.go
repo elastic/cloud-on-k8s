@@ -21,7 +21,7 @@ func reconcileNodeCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	csrClient certificates.CSRClient,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
 	caCertValidity time.Duration,
