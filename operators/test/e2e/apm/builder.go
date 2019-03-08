@@ -31,6 +31,8 @@ type Builder struct {
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
 	b.Association.ObjectMeta.Namespace = namespace
+	b.Association.Spec.Elasticsearch.Namespace = namespace
+	b.Association.Spec.ApmServer.Namespace = namespace
 	return b
 }
 
