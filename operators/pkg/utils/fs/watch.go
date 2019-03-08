@@ -22,7 +22,7 @@ type Watcher struct {
 
 // OnFilesChanged is a function invoked when something changed in the FilesContent.
 // If it returns an error, the Watcher will stop watching and return the error.
-// If it retuns true, the Watcher will stop watching with no error.
+// If it returns true, the Watcher will stop watching with no error.
 type OnFilesChanged func(files FilesContent) (done bool, err error)
 
 // NewDirectoryWatcher periodically reads files in directory, and calls onFilesChanged

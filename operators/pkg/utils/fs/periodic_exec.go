@@ -13,7 +13,7 @@ const defaultPeriodicity = 1 * time.Second
 
 // execFunction is a function to be executed periodically.
 // If it returns an error, periodicExec will stop watching and return the error.
-// If it retuns true, periodicExec will stop watching with no error.
+// If it returns true, periodicExec will stop watching with no error.
 type execFunction func() (done bool, err error)
 
 // periodicExec periodically executes a function.
@@ -33,7 +33,7 @@ func newPeriodicExec(exec execFunction) *periodicExec {
 }
 
 // SetPeriodicity overrides the execution periodicity.
-// It does not apply to a running periodicExec.
+// It has no effect on a running periodicExec.
 func (p *periodicExec) SetPeriodicity(periodicity time.Duration) {
 	p.periodicity = periodicity
 }
