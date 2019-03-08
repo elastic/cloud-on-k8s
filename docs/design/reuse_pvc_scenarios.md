@@ -1,9 +1,13 @@
-# X. Volume Management in case of disruption
+# 8. Volume Management in case of disruption
+
+* Status: proposed
+* Deciders: k8s-operators team
+* Date: 2019-03-08
 
 ## Context and Problem Statement
 
-The aim of this document is to capture some scenarios where a pvc get orphaned and define how the “reuse pvc” mechanism must behave.
-This document does not deal with the reuse of PVC after the spec of the cluster has been updated _(i.e. "inline" VS "grow-and-shrink" updates)_.
+The aim of this document is to capture some scenarios where a pvc gets orphaned and define how the “reuse pvc” mechanism must behave.
+This document does not deal with the reuse of a PVC after the spec of the cluster has been updated _(i.e. "inline" VS "grow-and-shrink" updates)_.
 It is a complex scenario which deserves its own ADR.
 
 
@@ -11,10 +15,10 @@ As a preamble before we dive into the different use-cases and scenarios here are
 to a disruption and a reminder about some constraints raised by storage classes.
 
 ### Disruptions
-A Pod does not disappear until a person or the controller delete it or there is an unavoidable hardware or system software error.
-The reasons can be classified into 2 main categories :
+A Pod does not disappear until a person or the controller deletes it or there is an unavoidable hardware or system software error.
+The reasons can be classified into 2 main categories:
 
-* There is an **external involuntary** disruption :
+* There is an **external involuntary** disruption:
   * Hardware failure
   * VM instance is deleted
   * Kernel panic
@@ -24,10 +28,10 @@ The reasons can be classified into 2 main categories :
   * The node hosting the Pod is drained because, some _(non exhaustive)_ examples are :
     * The K8S node is about to be upgraded or repaired
     * The K8S cluster is scaling down
-  * The pod is manually deleted by someone (not only as an error but also because sometime a reboot can fix a problem)
+  * The pod is manually deleted by someone (not only as in error but also because sometimes a reboot can fix a problem)
 
 ### Storage class constraints
-Storage classes do not all provide the same capabilities when it comes to reuse a volume, for instance :
+Storage classes do not all provide the same capabilities when it comes to reusing a volume, for instance:
 
 * Google persistent disks can be attached from a single availability zone
 * Regional persistent disks replicate the data between 2 zones in the same region
@@ -36,7 +40,7 @@ Storage classes do not all provide the same capabilities when it comes to reuse 
 At this stage it is worth mentioning that even if the K8S scheduler uses some predicates to reschedule a pod on a node
 where the volume can be reused or attached, it does not preserve the capacity needed to reschedule the pod.
 For instance if a pod was using a local volume and if the node runs out of capacity while the pod is being recreated
-then it becomes merely impossible to reuse the volume until some capacity is freed.
+then it becomes impossible to reuse the volume until some capacity is freed.
 
 When a disruption occurs either a volume is considered to be **recoverable** or it is considered **unrecoverable**.
 
@@ -58,7 +62,7 @@ The Elastic operator **must not delete** a PVC that may hold the only copy of so
 
 ##### Recoverable optional
 
-`Recoverable optional` is a state where the missing data are available on some others nodes. For instance if a KS8 node with a local volume is down
+`Recoverable optional` is a state where the missing data is available on some others nodes. For instance if a KS8 node with a local volume is down
 and if data can be replicated from other nodes then it is not mandatory for the Elastic operator to wait forever.
 
 It is a best effort scenario, we have to choose between :
@@ -89,8 +93,8 @@ We need to give a way to the user to instruct the Elastic operator that :
 
 ### UC2 : The K8S cluster is suffering a external involuntary or voluntary disruption but the volumes can be eventually recovered
 
-The Elastic operator will create a new pod and according to the PV affinity the scheduler will hopefully find a new node where the data are available.
-If it takes to much time to schedule the pod then the volume is moved into one of the two `Recoverable` state.
+The Elastic operator will create a new pod and according to the PV affinity the scheduler will hopefully find a new node where the data is available.
+If it takes to much time to schedule the pod then the volume is moved into one of the two `Recoverable` states.
 
 ### UC3 : As an admin I want to plan a voluntary disruption and the volumes cannot be recovered
 
@@ -143,9 +147,8 @@ Pros :
 * Looks like a simple approach, just do a `kubectl delete pvc/XXXXX` to migrate the data and delete the pod.
 
 Cons :
-* If the volume can't be recovered the user will have to remove the `Finalizer` ?
-**TODO : Is it possible ?**
-* Administrator have to `uncordon` the node and delete manually _(a.k.a. error prone)_ the `PVC` if he wants to drain it.
+* If the volume can't be recovered the user will have to remove the `Finalizer`
+* Administrator has to `uncordon` the node and delete manually _(a.k.a. error prone)_ the `PVC` if he wants to drain it.
 
 ### Option 2
 Pros :
@@ -153,7 +156,7 @@ Pros :
 it can't be recovered.
 
 Cons :
-* Admin have to `uncordon` the node and annotate the `PVC` manually _(still error prone)_ if he wants to drain it.
+* Admin has to `uncordon` the node and annotate the `PVC` manually _(still error prone)_ if he wants to drain it.
 * Admin must remember the annotations
 
 ### Option 3
@@ -161,7 +164,7 @@ Pros :
 * Provides a meaningful interface
 
 Cons :
-* Stable ? : Even if plugins were introduced as an alpha feature in the v1.8.0 release it has been reworked in v1.12.0
+* Stable? : Even if plugins were introduced as an alpha feature in the v1.8.0 release it has been reworked in v1.12.0
 * End user must install the plugin
 * Admins still have to evict nodes manually when the node is drained
 
@@ -172,7 +175,7 @@ Pros :
 Cons:
 * It doesn't seem possible to handle a node eviction _(needs to be confirmed)_.
 * Setting a webhook requires some privileges at the cluster level.
-* Is it even possible to use a webhooks to safely migrate some data when an eviction occurs ?
+* Is it even possible to use a webhooks to safely migrate some data when an eviction occurs?
 
 ## Links
 
