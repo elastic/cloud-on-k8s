@@ -45,7 +45,7 @@ const (
 
 func findNodeCertificateSecrets(
 	c k8s.Client,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 ) ([]corev1.Secret, error) {
 	var nodeCertificateSecrets corev1.SecretList
 

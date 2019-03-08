@@ -36,7 +36,7 @@ type ResourcesState struct {
 }
 
 // NewResourcesStateFromAPI reflects the current ResourcesState from the API
-func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.ElasticsearchCluster) (*ResourcesState, error) {
+func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*ResourcesState, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 
 	allPods, err := getPods(c, es, labelSelector, nil)
@@ -99,7 +99,7 @@ func (state ResourcesState) FindPVCByName(name string) (corev1.PersistentVolumeC
 // getPods returns list of pods in the current namespace with a specific set of selectors.
 func getPods(
 	c k8s.Client,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
 ) ([]corev1.Pod, error) {
@@ -121,7 +121,7 @@ func getPods(
 // getPersistentVolumeClaims returns a list of PVCs in the current namespace with a specific set of selectors.
 func getPersistentVolumeClaims(
 	c k8s.Client,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	labelSelectors labels.Selector,
 	fieldSelectors fields.Selector,
 ) ([]corev1.PersistentVolumeClaim, error) {

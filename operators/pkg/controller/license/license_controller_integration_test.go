@@ -48,7 +48,7 @@ func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {
 
 	ownerName := owners[0].Name
 	ownerKind := owners[0].Kind
-	expectedKind := "ElasticsearchCluster"
+	expectedKind := "Elasticsearch"
 	if ownerName != cluster.Name || ownerKind != expectedKind {
 		return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
 	}
@@ -122,7 +122,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Create(controllerSecret))
 	defer c.Delete(controllerSecret)
 
-	cluster := &v1alpha1.ElasticsearchCluster{
+	cluster := &v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",

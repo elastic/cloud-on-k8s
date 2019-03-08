@@ -19,7 +19,7 @@ func reconcileNodeCertificates(
 	scheme *runtime.Scheme,
 	ca *certificates.Ca,
 	csrClient certificates.CSRClient,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
 ) error {

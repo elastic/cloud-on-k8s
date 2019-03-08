@@ -26,7 +26,7 @@ import (
 func createElasticsearchPod(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 	pod corev1.Pod,
 	podSpecCtx pod.PodSpecContext,
@@ -130,7 +130,7 @@ func getOrCreatePVC(pod *corev1.Pod,
 	orphanedPVCs *pvcutils.OrphanedPersistentVolumeClaims,
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 ) (*corev1.PersistentVolumeClaim, error) {
 	// Generate the desired PVC from the template
 	pvc := newPVCFromTemplate(claimTemplate, pod)

@@ -23,7 +23,7 @@ import (
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
 func ExpectedPodSpecs(
-	es v1alpha1.ElasticsearchCluster,
+	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {

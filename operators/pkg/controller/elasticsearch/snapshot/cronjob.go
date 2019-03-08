@@ -46,7 +46,7 @@ var cronSchedule = "*/10 * * * *"
 type CronJobParams struct {
 	Parent types.NamespacedName
 	// TODO refactor to just use namespaced Name
-	Elasticsearch    v1alpha1.ElasticsearchCluster
+	Elasticsearch    v1alpha1.Elasticsearch
 	SnapshotterImage string
 	User             client.UserAuth
 	EsURL            string
@@ -58,7 +58,7 @@ func CronJobName(parent types.NamespacedName) string {
 }
 
 // NewLabels constructs a new set of labels from a Elasticsearch definition.
-func NewLabels(es v1alpha1.ElasticsearchCluster) map[string]string {
+func NewLabels(es v1alpha1.Elasticsearch) map[string]string {
 	var labels = map[string]string{
 		label.ClusterNameLabelName: es.Name,
 		common.TypeLabelName:       Type,

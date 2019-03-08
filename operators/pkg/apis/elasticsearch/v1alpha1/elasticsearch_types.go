@@ -256,7 +256,7 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ElasticsearchCluster is the Schema for the elasticsearches API
+// Elasticsearch is the Schema for the elasticsearches API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:categories=elastic
@@ -264,7 +264,7 @@ func (es ElasticsearchStatus) IsDegraded(prev ElasticsearchStatus) bool {
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
 // +kubebuilder:printcolumn:name="phase",type="string",JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
-type ElasticsearchCluster struct {
+type Elasticsearch struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -272,8 +272,8 @@ type ElasticsearchCluster struct {
 	Status ElasticsearchStatus `json:"status,omitempty"`
 }
 
-// IsMarkedForDeletion returns true if the ElasticsearchCluster is going to be deleted
-func (e ElasticsearchCluster) IsMarkedForDeletion() bool {
+// IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
+func (e Elasticsearch) IsMarkedForDeletion() bool {
 	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
 		return false
 	}
@@ -282,11 +282,11 @@ func (e ElasticsearchCluster) IsMarkedForDeletion() bool {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ElasticsearchClusterList contains a list of Elasticsearch clusters
-type ElasticsearchClusterList struct {
+// ElasticsearchList contains a list of Elasticsearch clusters
+type ElasticsearchList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ElasticsearchCluster `json:"items"`
+	Items           []Elasticsearch `json:"items"`
 }
 
 // TrustRelationShipSpec contains configuration for trust restrictions.
@@ -330,7 +330,7 @@ type TrustRelationshipList struct {
 
 func init() {
 	SchemeBuilder.Register(
-		&ElasticsearchCluster{}, &ElasticsearchClusterList{},
+		&Elasticsearch{}, &ElasticsearchList{},
 		&TrustRelationship{}, &TrustRelationshipList{},
 	)
 }

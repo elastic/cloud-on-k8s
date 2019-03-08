@@ -99,7 +99,7 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := ElasticsearchCluster{
+			e := Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					DeletionTimestamp: tt.deletionTimestamp,
 				},

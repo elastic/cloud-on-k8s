@@ -15,11 +15,11 @@ import (
 )
 
 // RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID
-func RetrieveClusterUUIDStep(es v1alpha1.ElasticsearchCluster, k *helpers.K8sHelper, futureClusterUUID *string) helpers.TestStep {
+func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *helpers.K8sHelper, futureClusterUUID *string) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Retrieve cluster UUID for comparison purpose",
 		Test: helpers.Eventually(func() error {
-			var e v1alpha1.ElasticsearchCluster
+			var e v1alpha1.Elasticsearch
 			err := k.Client.Get(k8s.ExtractNamespacedName(&es), &e)
 			if err != nil {
 				return err
@@ -36,11 +36,11 @@ func RetrieveClusterUUIDStep(es v1alpha1.ElasticsearchCluster, k *helpers.K8sHel
 
 // CompareClusterUUIDStep compares the current clusterUUID with previousClusterUUID,
 // and fails if they don't match
-func CompareClusterUUIDStep(es v1alpha1.ElasticsearchCluster, k *helpers.K8sHelper, previousClusterUUID *string) helpers.TestStep {
+func CompareClusterUUIDStep(es v1alpha1.Elasticsearch, k *helpers.K8sHelper, previousClusterUUID *string) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Cluster UUID should have been preserved",
 		Test: func(t *testing.T) {
-			var e v1alpha1.ElasticsearchCluster
+			var e v1alpha1.Elasticsearch
 			err := k.Client.Get(k8s.ExtractNamespacedName(&es), &e)
 			require.NoError(t, err)
 			newClusterUUID := e.Status.ClusterUUID

@@ -1,7 +1,7 @@
 # This sample shows two clusters "trust-one" and "trust-two" having established a mutual trust relationship which is
 # the basis of configuring remote clusters (a prerequisite for CCS/CCR).
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: ElasticsearchCluster
+kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
@@ -20,7 +20,7 @@ spec:
   expose: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: ElasticsearchCluster
+kind: Elasticsearch
 metadata:
   name: trust-two
 spec:

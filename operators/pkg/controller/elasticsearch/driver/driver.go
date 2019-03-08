@@ -33,10 +33,10 @@ var (
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
-// Driver is something that can reconcile an ElasticsearchCluster resource
+// Driver is something that can reconcile an Elasticsearch resource
 type Driver interface {
 	Reconcile(
-		es v1alpha1.ElasticsearchCluster,
+		es v1alpha1.Elasticsearch,
 		reconcileState *esreconcile.State,
 	) *esreconcile.Results
 }

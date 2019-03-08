@@ -24,7 +24,7 @@ type esClusterChecks struct {
 
 // ESClusterChecks returns all test steps to verify the given stack's Elasticsearch
 // cluster is running as expected
-func ESClusterChecks(es estype.ElasticsearchCluster, k *helpers.K8sHelper) helpers.TestStepList {
+func ESClusterChecks(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStepList {
 	e := esClusterChecks{}
 	return helpers.TestStepList{
 		e.BuildESClient(es, k),
@@ -35,7 +35,7 @@ func ESClusterChecks(es estype.ElasticsearchCluster, k *helpers.K8sHelper) helpe
 	}
 }
 
-func (e *esClusterChecks) BuildESClient(es estype.ElasticsearchCluster, k *helpers.K8sHelper) helpers.TestStep {
+func (e *esClusterChecks) BuildESClient(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Every secret should be set so that we can build an ES client",
 		Test: func(t *testing.T) {
@@ -58,7 +58,7 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 	}
 }
 
-func (e *esClusterChecks) CheckESVersion(es estype.ElasticsearchCluster) helpers.TestStep {
+func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch version should be the expected one",
 		Test: func(t *testing.T) {
@@ -86,7 +86,7 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 		}),
 	}
 }
-func (e *esClusterChecks) CheckESNodesTopology(es estype.ElasticsearchCluster) helpers.TestStep {
+func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch nodes topology should be the expected ones",
 		Test: func(t *testing.T) {

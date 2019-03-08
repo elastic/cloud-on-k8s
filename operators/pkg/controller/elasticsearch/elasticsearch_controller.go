@@ -87,7 +87,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch for changes to Elasticsearch
 	if err := c.Watch(
-		&source.Kind{Type: &elasticsearchv1alpha1.ElasticsearchCluster{}}, &handler.EnqueueRequestForObject{},
+		&source.Kind{Type: &elasticsearchv1alpha1.Elasticsearch{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		&watches.OwnerWatch{
 			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 				IsController: true,
-				OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+				OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
 			},
 		},
 		// Reconcile pods expectations.
@@ -128,7 +128,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+		OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
 	}); err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
 		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &elasticsearchv1alpha1.ElasticsearchCluster{},
+			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
 		},
 	}); err != nil {
 		return err
@@ -199,7 +199,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}()
 
 	// Fetch the Elasticsearch instance
-	es := elasticsearchv1alpha1.ElasticsearchCluster{}
+	es := elasticsearchv1alpha1.Elasticsearch{}
 	err := r.Get(request.NamespacedName, &es)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -223,7 +223,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 }
 
 func (r *ReconcileElasticsearch) internalReconcile(
-	es elasticsearchv1alpha1.ElasticsearchCluster,
+	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) *esreconcile.Results {
 	results := &esreconcile.Results{}
@@ -264,7 +264,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 }
 
 func (r *ReconcileElasticsearch) updateStatus(
-	es elasticsearchv1alpha1.ElasticsearchCluster,
+	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
@@ -281,7 +281,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 
 // finalizersFor returns the list of finalizers applying to a given es cluster
 func (r *ReconcileElasticsearch) finalizersFor(
-	es elasticsearchv1alpha1.ElasticsearchCluster,
+	es elasticsearchv1alpha1.Elasticsearch,
 	watched watches.DynamicWatches,
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
