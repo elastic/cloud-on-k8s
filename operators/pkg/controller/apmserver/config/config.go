@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package config
 
 import (
@@ -9,6 +13,7 @@ import (
 )
 
 // FromResourceSpec resolves the ApmServer configuration to use based on the provided spec.
+// TODO: missing test
 func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 	// TODO: consider scaling the default values provided based on the apm server resources
 	// these defaults are taken (without scaling) from a defaulted ECE install
