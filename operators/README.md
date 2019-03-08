@@ -37,7 +37,6 @@ To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e test
 
 * Restrictions:
     * Currently only gcs is supported
-    * We currently update the keystore only on pod initialisation, so adding or removing of repositories requires pod deletion/recreation at the moment until we have a sidecar to do this
 * Either create a new bucket/service account or reuse our dev bucket (see Keybase)
 * Create a secret with your [service account bucket credentials](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html#repository-gcs-using-service-account)
 
