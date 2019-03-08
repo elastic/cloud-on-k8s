@@ -53,20 +53,23 @@ One of the benefits would be that the controller can only interface with the sid
 * 1: The Kubernetes-way with a liveness probe + expose an HTTP health endpoint
 * 2: The Kubernetes-way with a readiness probe + expose an HTTP health endpoint
 * 3: Logging-based error reporting
+* 4: Operator polling + events sending + expose an HTTP health endpoint
 
 ## Decision Outcome
 
-Chosen option: option 1, because it gives us more flexibility, it's pretty simple to implement and it does not depend
-on external components.
+Chosen option: option 4, because it gives us more flexibility to take decisions in case of failure, it does not depend on Kubernetes probes/kubelet and it does not depend on external components.
 
 ### Positive Consequences
 
-* Much more flexibility to interact with the pod through the HTTP server in the sidecar
+* Collecting the sidecar health from the operator side gives us more options to react to failures
+* Having an HTTP server in the sidecar brings more flexibility to interact with the pod
+* Does not depend on the Kubernetes probes or the Kubelet
 * Minimize external dependencies
 
 ### Negative Consequences
 
 * Increase a little the failure domain of the sidecar with the presence of the HTTP server
+* Add complexity and responsability to the operator
 
 ## Pros and Cons of the Options
 
@@ -104,6 +107,19 @@ The cluster state can also be logged to be collected and then aggregated in Elas
 * Good, because it's completely isolated from Elasticsearch
 * Bad, because it makes the failure detection dependent on a log collection pipeline
 * Bad, because it's not the most trivial way to expose the cluster state
+
+### Option 4: Polling from the operator and sending events
+
+Same as option 1 and 2 in terms of:
+- exposing an HTTP endpoint with the health of the sidecar
+- considering the sidecar healthy when ES is not ready during its startup
+Then, the operator polls this endpoint and reports any change in the health status as an event.
+
+* Good, because it does not use readiness/liveness probes that can provoke a container restart or a service inavailability
+* Good, because it gives more options to react to failures
+* Good, because it can give us an aggregated view of all the sidecar healths
+* Bad, because it increases the responsabilities of the operator
+* Bad, because it adds more complexity to the operator
 
 ## Links
 
