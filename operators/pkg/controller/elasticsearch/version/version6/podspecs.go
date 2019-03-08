@@ -10,6 +10,8 @@ import (
 	"path"
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
@@ -44,6 +46,9 @@ var (
 		},
 	}
 	sideCarSharedVolume = volume.NewEmptyDirVolume("sidecar-bin", "/opt/sidecar/bin")
+
+	defaultSidecarMemoryLimits = resource.MustParse("100Mi")
+	defaultSidecarCPULimits    = resource.MustParse("10m")
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
@@ -127,6 +132,13 @@ func newSidecarContainers(
 				keystoreVolume.VolumeMount(),
 				reloadCredsUser.VolumeMount(),
 			),
+			Resources: corev1.ResourceRequirements{
+				// Requests is not specified to get assigned a qosClass of Guaranteed, like for the Elasticsearch container
+				Limits: corev1.ResourceList{
+					corev1.ResourceMemory: defaultSidecarMemoryLimits,
+					corev1.ResourceCPU:    defaultSidecarCPULimits,
+				},
+			},
 		},
 	}, nil
 }

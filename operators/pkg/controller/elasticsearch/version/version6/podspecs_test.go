@@ -289,6 +289,12 @@ func Test_newSidecarContainers(t *testing.T) {
 							MountPath: "/mnt/elastic/reload-creds-user",
 						},
 					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: defaultSidecarMemoryLimits,
+							corev1.ResourceCPU:    defaultSidecarCPULimits,
+						},
+					},
 				},
 			},
 			wantErr: false,
