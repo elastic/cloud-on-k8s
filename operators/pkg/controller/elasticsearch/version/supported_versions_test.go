@@ -5,8 +5,9 @@
 package version
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"testing"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"

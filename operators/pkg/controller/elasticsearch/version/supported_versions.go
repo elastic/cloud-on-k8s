@@ -6,6 +6,7 @@ package version
 
 import (
 	"fmt"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
