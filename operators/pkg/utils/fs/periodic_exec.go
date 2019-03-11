@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// defaultExecPeriodicity is the default periodicity at which execFunction is executed.
-const defaultPeriodicity = 1 * time.Second
-
 // execFunction is a function to be executed periodically.
 // If it returns an error, periodicExec will stop watching and return the error.
 // If it returns true, periodicExec will stop watching with no error.
@@ -24,18 +21,12 @@ type periodicExec struct {
 }
 
 // newPeriodicExec creates a periodicExec with the default periodicity.
-func newPeriodicExec(exec execFunction) *periodicExec {
+func newPeriodicExec(exec execFunction, periodicity time.Duration) *periodicExec {
 	return &periodicExec{
-		periodicity: defaultPeriodicity,
+		periodicity: periodicity,
 		stop:        make(chan struct{}),
 		exec:        exec,
 	}
-}
-
-// SetPeriodicity overrides the execution periodicity.
-// It has no effect on a running periodicExec.
-func (p *periodicExec) SetPeriodicity(periodicity time.Duration) {
-	p.periodicity = periodicity
 }
 
 // Run the function periodically, until stopped, error or done.

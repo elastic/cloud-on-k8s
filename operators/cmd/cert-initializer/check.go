@@ -8,6 +8,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
 )
@@ -94,7 +95,7 @@ func watchForCertUpdate(config Config) error {
 		}
 		return false, nil
 	}
-	watcher, err := fs.NewFileWatcher(config.CertPath, onEvent)
+	watcher, err := fs.NewFileWatcher(config.CertPath, onEvent, 1*time.Second)
 	if err != nil {
 		return err
 	}

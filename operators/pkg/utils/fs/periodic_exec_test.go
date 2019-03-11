@@ -18,8 +18,7 @@ func Test_periodicExecForever(t *testing.T) {
 		<-events
 		return false, nil
 	}
-	pe := newPeriodicExec(exec)
-	pe.SetPeriodicity(1 * time.Microsecond)
+	pe := newPeriodicExec(exec, 1*time.Millisecond)
 	// run until stopped
 	done := make(chan error)
 	go func() {
@@ -42,8 +41,7 @@ func Test_periodicExecReturnErr(t *testing.T) {
 	exec := func() (done bool, err error) {
 		return false, errors.New("err returned")
 	}
-	pe := newPeriodicExec(exec)
-	pe.SetPeriodicity(1 * time.Microsecond)
+	pe := newPeriodicExec(exec, 1*time.Millisecond)
 	err := pe.Run()
 	require.EqualError(t, err, "err returned")
 }
@@ -51,8 +49,7 @@ func Test_periodicExecOnce(t *testing.T) {
 	exec := func() (done bool, err error) {
 		return true, nil
 	}
-	pe := newPeriodicExec(exec)
-	pe.SetPeriodicity(1 * time.Microsecond)
+	pe := newPeriodicExec(exec, 1*time.Millisecond)
 	err := pe.Run()
 	require.NoError(t, err)
 }

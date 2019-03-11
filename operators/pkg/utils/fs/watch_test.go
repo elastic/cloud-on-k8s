@@ -38,9 +38,8 @@ func Test_FileWatcher(t *testing.T) {
 		return false, nil
 	}
 
-	watcher, err := NewFileWatcher(fileToWatch, onFilesChanged)
+	watcher, err := NewFileWatcher(fileToWatch, onFilesChanged, 1*time.Millisecond)
 	require.NoError(t, err)
-	watcher.SetPeriodicity(1 * time.Microsecond)
 
 	done := make(chan error)
 	go func() {
@@ -119,9 +118,8 @@ func Test_DirectoryWatcher(t *testing.T) {
 		return false, nil
 	}
 
-	watcher, err := NewDirectoryWatcher(directory, onFilesChanged)
+	watcher, err := NewDirectoryWatcher(directory, onFilesChanged, 1*time.Millisecond)
 	require.NoError(t, err)
-	watcher.SetPeriodicity(1 * time.Microsecond)
 
 	done := make(chan error)
 	go func() {
