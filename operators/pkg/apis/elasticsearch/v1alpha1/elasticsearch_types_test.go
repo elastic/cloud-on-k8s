@@ -108,3 +108,48 @@ func TestElasticsearchCluster_IsMarkedForDeletion(t *testing.T) {
 		})
 	}
 }
+
+func TestElasticsearch_GetExpectedLicense(t *testing.T) {
+	tests := []struct {
+		name    string
+		labels  map[string]string
+		want    LicenseType
+		wantErr bool
+	}{
+		{
+			name:    "license label given: return corresponding type",
+			labels:  map[string]string{ExpectedLicenseLabelName: "platinum"},
+			want:    LicenseTypePlatinum,
+			wantErr: false,
+		},
+		{
+			name:    "no license label: default to basic",
+			labels:  map[string]string{},
+			want:    LicenseTypeBasic,
+			wantErr: false,
+		},
+		{
+			name:    "non-sense value in the label: return an error",
+			labels:  map[string]string{ExpectedLicenseLabelName: "non-sense"},
+			want:    LicenseType(""),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: tt.labels,
+				},
+			}
+			got, err := e.GetExpectedLicense()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Elasticsearch.GetExpectedLicense() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Elasticsearch.GetExpectedLicense() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

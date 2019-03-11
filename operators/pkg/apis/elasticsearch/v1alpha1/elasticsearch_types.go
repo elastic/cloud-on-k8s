@@ -10,6 +10,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// ExpectedLicenseLabelName is the license type expected to be attached to the cluster.
+	ExpectedLicenseLabelName = "k8s.elastic.co/expected-license"
+)
+
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
 	// Version represents the version of the stack
@@ -278,6 +283,11 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 		return false
 	}
 	return true
+}
+
+// GetExpectedLicense returns the expected license for this cluster.
+func (e Elasticsearch) GetExpectedLicense() (LicenseType, error) {
+	return LicenseTypeFromString(e.Labels[ExpectedLicenseLabelName])
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
