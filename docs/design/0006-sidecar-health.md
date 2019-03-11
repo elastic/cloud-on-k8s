@@ -1,4 +1,4 @@
-# 6. Elasticsearch sidecar health and cluster data collection
+# 6. Elasticsearch sidecar health
 
 * Status: proposed
 * Deciders: k8s-operators team
@@ -28,7 +28,7 @@ can impact the Elasticsearch availability by design.
 
 However Go binaries that do simple things are very fast to start and very reliable. 
 From that we could admit that the probability to have a failure in the sidecar that runs a simple go binary is very low 
-comparing to have an Elasticsearch failure.
+compared to have an Elasticsearch failure.
 
 Another challenge is to take into account that some sidecar errors are to be expected when ES is not ready yet.
 
@@ -36,17 +36,11 @@ This can be mitigated by considering a start-up delay during which it is accepte
 do not report errors during this period. Then how to detect that ES has never started?
 The ES readiness probe will fail if ES never becomes ready.
 
-To take decisions and schedule actions to repair broken clusters, we want also to collect the cluster states. 
-The sidecar seems to be a good place to do that.
-Could the sidecar be used to poll the Elasticsearch health and the cluster state?
-One of the benefits would be that the controller can only interface with the sidecar.
-
 ## Decision Drivers
 
 * Error distinction: a sidecar failure should be easily identified from an Elasticsearch failure
 * Error side effect: a sidecar failure should not increase the unvailability of Elasticsearch compared to the current situation
 * Promote reliability and simplicity because health-checking is a critical part of the system
-* Allow the collection of the cluster state
 
 ## Considered Options
 
@@ -69,7 +63,7 @@ Chosen option: option 4, because it gives us more flexibility to take decisions 
 ### Negative Consequences
 
 * Increase a little the failure domain of the sidecar with the presence of the HTTP server
-* Add complexity and responsability to the operator
+* Add complexity and responsibility to the operator
 
 ## Pros and Cons of the Options
 
@@ -106,7 +100,6 @@ The cluster state can also be logged to be collected and then aggregated in Elas
 * Good, because it's pretty simple implement
 * Good, because it's completely isolated from Elasticsearch
 * Bad, because it makes the failure detection dependent on a log collection pipeline
-* Bad, because it's not the most trivial way to expose the cluster state
 
 ### Option 4: Polling from the operator and sending events
 
@@ -118,7 +111,7 @@ Then, the operator polls this endpoint and reports any change in the health stat
 * Good, because it does not use readiness/liveness probes that can provoke a container restart or a service inavailability
 * Good, because it gives more options to react to failures
 * Good, because it can give us an aggregated view of all the sidecar healths
-* Bad, because it increases the responsabilities of the operator
+* Bad, because it increases the responsibilities of the operator
 * Bad, because it adds more complexity to the operator
 
 ## Links
