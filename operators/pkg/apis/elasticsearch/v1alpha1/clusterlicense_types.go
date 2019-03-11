@@ -20,9 +20,10 @@ type License interface {
 // LicenseType the type of a license.
 type LicenseType string
 
+// Supported LicenseTypes
 const (
+	LicenseTypeBasic    LicenseType = "basic"
 	LicenseTypeTrial    LicenseType = "trial"
-	LicenseTypeStandard LicenseType = "standard"
 	LicenseTypeGold     LicenseType = "gold"
 	LicenseTypePlatinum LicenseType = "platinum"
 )
@@ -30,8 +31,8 @@ const (
 // LicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var LicenseTypeOrder = map[LicenseType]int{
 	// default value 0 for invalid types
-	LicenseTypeTrial:    1,
-	LicenseTypeStandard: 2,
+	LicenseTypeBasic:    1,
+	LicenseTypeTrial:    2,
 	LicenseTypeGold:     3,
 	LicenseTypePlatinum: 4,
 }
