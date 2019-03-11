@@ -108,9 +108,15 @@ Same as option 1 and 2 in terms of:
 - considering the sidecar healthy when ES is not ready during its startup
 Then, the operator polls this endpoint and reports any change in the health status as an event.
 
+Sending the status as an event has the added benefit of giving us richer behaviour on top of the polling.
+It makes the state of the sidecar process observable. We could for example return a revision of the secrets the sidecar process has
+seen in the response to the health/status check and implement coordinated behaviour on top of that: e.g. do x only if all sidecars have
+seen secret revison y.
+
 * Good, because it does not use readiness/liveness probes that can provoke a container restart or a service inavailability
-* Good, because it gives more options to react to failures
 * Good, because it can give us an aggregated view of all the sidecar healths
+* Good, because it makes the state of the sidecar process observable
+* Good, because it gives more options to react to failures
 * Bad, because it increases the responsibilities of the operator
 * Bad, because it adds more complexity to the operator
 
