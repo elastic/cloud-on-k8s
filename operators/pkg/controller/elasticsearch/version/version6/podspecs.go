@@ -47,7 +47,7 @@ var (
 	}
 	sideCarSharedVolume = volume.NewEmptyDirVolume("sidecar-bin", "/opt/sidecar/bin")
 
-	defaultSidecarMemoryLimits = resource.MustParse("100Mi")
+	defaultSidecarMemoryLimits = resource.MustParse("64Mi")
 	defaultSidecarCPULimits    = resource.MustParse("10m")
 )
 
