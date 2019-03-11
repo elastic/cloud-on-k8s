@@ -289,7 +289,7 @@ type ElasticsearchList struct {
 	Items           []Elasticsearch `json:"items"`
 }
 
-// TrustRelationShipSpec contains configuration for trust restrictions.
+// TrustRelationshipSpec contains configuration for trust restrictions.
 type TrustRelationshipSpec struct {
 	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
 	CaCert string `json:"caCert,omitempty"`
