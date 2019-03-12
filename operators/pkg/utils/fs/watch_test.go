@@ -10,6 +10,7 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 	"time"
@@ -17,19 +18,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func expectEvents(t *testing.T, events chan struct{}, min int, max int, during time.Duration) {
-	timeout := time.After(during)
-	got := 0
-	for {
-		select {
-		case <-events:
-			got++
-		case <-timeout:
-			if got < min || got > max {
-				t.Errorf("got %d out instead of  [%d - %d] events after timeout", got, min, max)
-			}
-			return
-		}
+// atomicFileWrite attempts to create file atomically,
+// by first creating a tmp hidden file, then renaming it to the real file
+// (this is atomic from the watcher point of view, not the filesystem)
+func atomicFileWrite(file string, content []byte) error {
+	dir := path.Dir(file)
+	filename := path.Base(file)
+	hiddenFilePath := filepath.Join(dir, "."+filename)
+	filePath := filepath.Join(dir, filename)
+
+	if err := ioutil.WriteFile(hiddenFilePath, content, 0644); err != nil {
+		return err
+	}
+	return os.Rename(hiddenFilePath, filePath)
+}
+
+// expectNoEvent verifies that no event comes into the event channel for the given duration
+func expectNoEvent(t *testing.T, events chan struct{}, duration time.Duration) {
+	select {
+	case <-events:
+		t.Errorf("Got an event, but should not")
+	case <-time.After(duration):
+		return
 	}
 }
 
@@ -60,30 +70,25 @@ func Test_FileWatcher(t *testing.T) {
 	}()
 
 	// write a file
-	err = ioutil.WriteFile(filepath.Join(directory, "file1"), []byte("content"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
-
-	// event should happen
-	// since WriteFile() is not atomic, what might actually happen is:
-	// 1. file gets created (no content yet)
-	// 2. cache is updated with the file that has no content
-	// 3. file gets content written into
-	// 4. cache is updated with the file content
-	// here we want to capture step 4, but need to be resilient to step 2.
-	// expect 1 or 2 events in the next 500ms
-	expectEvents(t, events, 1, 2, 500*time.Millisecond)
+	// expect an event to occur
+	<-events
 
 	// write another file the watcher should not care about
-	err = ioutil.WriteFile(filepath.Join(directory, "file2"), []byte("content"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
 	require.NoError(t, err)
-	// expect 0 events in the next 200ms
-	expectEvents(t, events, 0, 0, 200*time.Millisecond)
+	// expect no events
+	expectNoEvent(t, events, 200*time.Millisecond)
 
 	// change first file content
-	err = ioutil.WriteFile(filepath.Join(directory, "file1"), []byte("content updated"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
-	// expect 1 or 2 events in the next 500ms
-	expectEvents(t, events, 1, 2, 500*time.Millisecond)
+	// expect an event
+	<-events
+
+	// expect no more events
+	expectNoEvent(t, events, 200*time.Millisecond)
 
 	// stop watching, should return with no error
 	cancel()
@@ -115,30 +120,25 @@ func Test_DirectoryWatcher(t *testing.T) {
 	}()
 
 	// write a file
-	err = ioutil.WriteFile(filepath.Join(directory, "file1"), []byte("content"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
-
-	// event should happen
-	// since WriteFile() is not atomic, what might actually happen is:
-	// 1. file gets created (no content yet)
-	// 2. cache is updated with the file that has no content
-	// 3. file gets content written into
-	// 4. cache is updated with the file content
-	// here we want to capture step 4, but need to be resilient to step 2.
-	// expect 1 or 2 events in the next 500ms
-	expectEvents(t, events, 1, 2, 500*time.Millisecond)
+	// expect an event to occur
+	<-events
 
 	// write another file
-	err = ioutil.WriteFile(filepath.Join(directory, "file2"), []byte("content"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
 	require.NoError(t, err)
-	// expect 1 or 2 events in the next 500ms
-	expectEvents(t, events, 1, 2, 500*time.Millisecond)
+	// expect an event to occur
+	<-events
 
 	// change file content
-	err = ioutil.WriteFile(filepath.Join(directory, "file1"), []byte("content updated"), 0644)
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
-	// expect 1 or 2 events in the next 500ms
-	expectEvents(t, events, 1, 2, 500*time.Millisecond)
+	// expect an event to occur
+	<-events
+
+	// expect no more events
+	expectNoEvent(t, events, 200*time.Millisecond)
 
 	// stop watching, should return with no error
 	cancel()
