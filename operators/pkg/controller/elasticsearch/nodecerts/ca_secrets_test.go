@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,17 +35,15 @@ func Test_secretsForCA(t *testing.T) {
 
 	privateKeySecret, certSecret := secretsForCA(*testCa, cluster)
 
-	require.Equal(t, testNamespace, privateKeySecret.Namespace)
-	require.Equal(t, testName+"-ca", certSecret.Name)
-	require.NotEmpty(t, certSecret.Data)
-	require.Len(t, certSecret.Data, 1)
-	require.NotEmpty(t, certSecret.Data[certificates.CAFileName])
+	assert.Equal(t, testNamespace, privateKeySecret.Namespace)
+	assert.Equal(t, testName+"-ca", certSecret.Name)
+	assert.Len(t, certSecret.Data, 1)
+	assert.NotEmpty(t, certSecret.Data[certificates.CAFileName])
 
-	require.Equal(t, cluster.Namespace, privateKeySecret.Namespace)
-	require.Equal(t, testName+"-ca-private-key", privateKeySecret.Name)
-	require.NotEmpty(t, privateKeySecret.Data)
-	require.Len(t, privateKeySecret.Data, 1)
-	require.NotEmpty(t, privateKeySecret.Data[CAPrivateKeyFileName])
+	assert.Equal(t, cluster.Namespace, privateKeySecret.Namespace)
+	assert.Equal(t, testName+"-ca-private-key", privateKeySecret.Name)
+	assert.Len(t, privateKeySecret.Data, 1)
+	assert.NotEmpty(t, privateKeySecret.Data[CAPrivateKeyFileName])
 
 }
 func Test_caFromSecrets(t *testing.T) {
