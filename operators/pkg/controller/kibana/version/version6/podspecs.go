@@ -13,7 +13,6 @@ const ElasticsearchURL = "ELASTICSEARCH_URL"
 
 // NewEnv returns environment variables for a 6.x Kibana.
 func NewEnv(p pod.SpecParams) []corev1.EnvVar {
-
 	env := []corev1.EnvVar{
 		{Name: ElasticsearchURL, Value: p.ElasticsearchUrl},
 	}

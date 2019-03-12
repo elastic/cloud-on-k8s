@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package kibana
 
 import (
@@ -98,7 +102,7 @@ func (d *driver) Reconcile(
 		}
 	}
 
-	deploy := NewDeployment(DeploymentParams{
+	expectedDp := NewDeployment(DeploymentParams{
 		// TODO: revisit naming?
 		Name:      PseudoNamespacedResourceName(*kb),
 		Namespace: kb.Namespace,
@@ -108,11 +112,11 @@ func (d *driver) Reconcile(
 		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
 	})
-	result, err := ReconcileDeployment(d.client, d.scheme, deploy, kb)
+	reconciledDp, err := ReconcileDeployment(d.client, d.scheme, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
-	state.UpdateKibanaState(result)
+	state.UpdateKibanaState(reconciledDp)
 	res, err := common.ReconcileService(d.client, d.scheme, NewService(*kb), kb)
 	if err != nil {
 		// TODO: consider updating some status here?
@@ -121,7 +125,7 @@ func (d *driver) Reconcile(
 	return results.WithResult(res)
 }
 
-func newDriver(client k8s.Client, scheme *runtime.Scheme, version version.Version) *driver {
+func newDriver(client k8s.Client, scheme *runtime.Scheme, version version.Version) (*driver, error) {
 	d := driver{
 		client: client,
 		scheme: scheme,
@@ -131,7 +135,9 @@ func newDriver(client k8s.Client, scheme *runtime.Scheme, version version.Versio
 		d.newPodSpec = version6.NewPodSpec
 	case 7:
 		d.newPodSpec = version7.NewPodSpec
+	default:
+		return nil, fmt.Errorf("unsupported version: %s", version)
 	}
-	return &d
+	return &d, nil
 
 }

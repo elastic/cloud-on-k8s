@@ -130,13 +130,15 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	state := NewState(request, kb)
-	driver := newDriver(r, r.scheme, *ver)
+	driver, err := newDriver(r, r.scheme, *ver)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	// version specific reconcile
 	results := driver.Reconcile(&state, kb)
 	// update status
-	results.WithError(r.updateStatus(state))
-
-	return results.Aggregate()
+	err = r.updateStatus(state)
+	return results.WithError(err).Aggregate()
 }
 
 func (r *ReconcileKibana) updateStatus(state State) error {
