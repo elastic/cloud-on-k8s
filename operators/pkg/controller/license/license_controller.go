@@ -251,17 +251,15 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	expectedLicense, err := cluster.GetExpectedLicense()
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if !expectedLicense.IsGoldOrPlatinum() {
-		log.Info("No license reconciliation required", "type", expectedLicense)
+	licenseType := cluster.Spec.GetLicenseType()
+
+	if !licenseType.IsGoldOrPlatinum() {
+		log.Info("No license reconciliation required", "type", licenseType)
 		return reconcile.Result{}, nil
 	}
 
 	safetyMargin := defaultSafetyMargin
-	newExpiry, err := r.reconcileClusterLicense(cluster, expectedLicense, safetyMargin)
+	newExpiry, err := r.reconcileClusterLicense(cluster, licenseType, safetyMargin)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}

@@ -19,11 +19,7 @@ func Reconcile(
 	clusterClient *esclient.Client,
 	current *esclient.License,
 ) error {
-	expectedLicense, err := esCluster.GetExpectedLicense()
-	if err != nil {
-		return err
-	}
-	if !expectedLicense.IsGoldOrPlatinum() {
+	if !esCluster.Spec.GetLicenseType().IsGoldOrPlatinum() {
 		// nothing to do
 		return nil
 	}

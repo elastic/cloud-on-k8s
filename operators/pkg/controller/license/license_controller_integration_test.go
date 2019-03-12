@@ -126,12 +126,10 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
-			Labels: map[string]string{
-				v1alpha1.ExpectedLicenseLabelName: "platinum",
-			},
 		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
+			LicenseType:      "platinum",
 			SetVMMaxMapCount: false,
 			Topologies: []v1alpha1.ElasticsearchTopologySpec{
 				{

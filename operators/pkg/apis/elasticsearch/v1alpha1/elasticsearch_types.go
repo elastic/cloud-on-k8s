@@ -10,11 +10,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	// ExpectedLicenseLabelName is the license type expected to be attached to the cluster.
-	ExpectedLicenseLabelName = "k8s.elastic.co/expected-license"
-)
-
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
 	// Version represents the version of the stack
@@ -22,6 +17,11 @@ type ElasticsearchSpec struct {
 
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
+
+	// LicenseType represents the expected license type for this cluster.
+	// Will default to "basic" if not set.
+	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
+	LicenseType string `json:"licenseType,omitempty"`
 
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
@@ -78,6 +78,16 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += t.NodeCount
 	}
 	return count
+}
+
+// GetLicenseType returns the type of license expected for this cluster.
+// If not provided, default to "basic".
+func (es ElasticsearchSpec) GetLicenseType() LicenseType {
+	licenseType, err := LicenseTypeFromString(es.LicenseType)
+	if err != nil {
+		return LicenseTypeBasic
+	}
+	return licenseType
 }
 
 // ElasticsearchTopologySpec defines a common topology for a set of Elasticsearch nodes
@@ -283,11 +293,6 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 		return false
 	}
 	return true
-}
-
-// GetExpectedLicense returns the expected license for this cluster.
-func (e Elasticsearch) GetExpectedLicense() (LicenseType, error) {
-	return LicenseTypeFromString(e.Labels[ExpectedLicenseLabelName])
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

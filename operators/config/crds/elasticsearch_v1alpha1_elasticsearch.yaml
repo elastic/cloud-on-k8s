@@ -61,6 +61,15 @@ spec:
             image:
               description: Image represents the docker image that will be used.
               type: string
+            licenseType:
+              description: LicenseType represents the expected license type for this
+                cluster. Will default to "basic" if not set.
+              enum:
+              - basic
+              - trial
+              - gold
+              - platinum
+              type: string
             setVmMaxMapCount:
               description: SetVMMaxMapCount indicates whether a init container should
                 be used to ensure that the `vm.max_map_count` is set according to
