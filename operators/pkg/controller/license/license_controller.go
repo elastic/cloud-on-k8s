@@ -128,7 +128,7 @@ type ReconcileLicenses struct {
 	iteration int64
 }
 
-// findLicenseFor tries to find a license of the given type.
+// findLicense tries to find a license of the given type.
 func findLicense(c k8s.Client, licenseType v1alpha1.LicenseType) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
 	licenseList := v1alpha1.EnterpriseLicenseList{}
 	if err := c.List(&client.ListOptions{}, &licenseList); err != nil {
