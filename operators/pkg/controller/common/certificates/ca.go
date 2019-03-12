@@ -50,9 +50,12 @@ func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
 
 // CABuilderOptions are options to build a self-signed CA
 type CABuilderOptions struct {
+	// CommonName of the CA to build.
 	CommonName string
+	// PrivateKey to be used for signing certificates (auto-generated if not provided).
 	PrivateKey *rsa.PrivateKey
-	ExpireIn   *time.Duration
+	// ExpireIn defines in how much time will the CA expire (defaults to DefaultCAValidity if not provided).
+	ExpireIn *time.Duration
 }
 
 // NewSelfSignedCA creates a self-signed CA according to the given options
