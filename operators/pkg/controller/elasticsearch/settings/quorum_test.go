@@ -11,26 +11,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createTopology(count int, nodeTypes v1alpha1.NodeTypesSpec) v1alpha1.ElasticsearchTopologySpec {
-	return v1alpha1.ElasticsearchTopologySpec{
+func createTopologyElement(count int, nodeTypes v1alpha1.NodeTypesSpec) v1alpha1.TopologyElementSpec {
+	return v1alpha1.TopologyElementSpec{
 		NodeCount: int32(count),
 		NodeTypes: nodeTypes,
 	}
 }
 
-func TopologiesWith(nMasters, nData, nMasterData int) []v1alpha1.ElasticsearchTopologySpec {
-	topologies := []v1alpha1.ElasticsearchTopologySpec{}
-	topologies = append(topologies, createTopology(nMasters, v1alpha1.NodeTypesSpec{
+func TopologyWith(nMasters, nData, nMasterData int) []v1alpha1.TopologyElementSpec {
+	var topology []v1alpha1.TopologyElementSpec
+	topology = append(topology, createTopologyElement(nMasters, v1alpha1.NodeTypesSpec{
 		Master: true,
 	}))
-	topologies = append(topologies, createTopology(nData, v1alpha1.NodeTypesSpec{
+	topology = append(topology, createTopologyElement(nData, v1alpha1.NodeTypesSpec{
 		Data: true,
 	}))
-	topologies = append(topologies, createTopology(nMasterData, v1alpha1.NodeTypesSpec{
+	topology = append(topology, createTopologyElement(nMasterData, v1alpha1.NodeTypesSpec{
 		Master: true,
 		Data:   true,
 	}))
-	return topologies
+	return topology
 }
 
 func TestComputeMinimumMasterNodes(t *testing.T) {
@@ -55,8 +55,8 @@ func TestComputeMinimumMasterNodes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			topologies := TopologiesWith(tt.args.nMasters, tt.args.nData, tt.args.nMasterData)
-			mmn := ComputeMinimumMasterNodes(topologies)
+			topology := TopologyWith(tt.args.nMasters, tt.args.nData, tt.args.nMasterData)
+			mmn := ComputeMinimumMasterNodes(topology)
 			assert.Equal(t, tt.want, mmn, "Unmatching minimum master nodes")
 		})
 	}
