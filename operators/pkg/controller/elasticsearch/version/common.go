@@ -229,7 +229,7 @@ func NewPod(
 ) (corev1.Pod, error) {
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	// add labels from the version
-	labels[ElasticsearchVersionLabelName] = version.String()
+	labels[label.VersionLabelName] = version.String()
 
 	// add labels for node types
 	label.NodeTypesMasterLabelName.Set(podSpecCtx.TopologySpec.NodeTypes.Master, labels)
