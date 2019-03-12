@@ -262,7 +262,12 @@ func execute() {
 		return false, nil // run forever
 	}
 
-	if err := fs.WatchDirectory(context.Background(), config.SourceDir, onEvent, 1*time.Second); err != nil {
+	watcher, err := fs.DirectoryWatcher(context.Background(), config.SourceDir, onEvent, 1*time.Second)
+	if err != nil {
+		log.Error(err, "Cannot watch filesystem", "path", config.SourceDir)
+		return
+	}
+	if err := watcher.Run(); err != nil {
 		log.Error(err, "Cannot watch filesystem", "path", config.SourceDir)
 	}
 }

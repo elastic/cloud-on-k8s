@@ -96,5 +96,10 @@ func watchForCertUpdate(config Config) error {
 		}
 		return false, nil
 	}
-	return fs.WatchFile(context.Background(), config.CertPath, onEvent, 1*time.Second)
+	watcher, err := fs.FileWatcher(context.Background(), config.CertPath, onEvent, 1*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return watcher.Run()
 }

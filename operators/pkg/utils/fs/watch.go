@@ -16,37 +16,54 @@ var (
 	log = logf.Log.WithName("file-watcher")
 )
 
-// OnFilesChanged is a function invoked when something changed in the F.
+// Watcher reacts on changes on the filesystem
+type Watcher interface {
+	Run() error
+}
+
+// OnFilesChanged is a function invoked when something changed in the files.
 // If it returns an error, the Watcher will stop watching and return the error.
 // If it returns true, the Watcher will stop watching with no error.
 type OnFilesChanged func(files FilesModTime) (done bool, err error)
 
-// WatchDirectory periodically reads files in directory, and calls onFilesChanged
+// DirectoryWatcher periodically reads files in directory, and calls onFilesChanged
 // on any changes in the directory's files.
 // By default, it ignores hidden files and sub-directories.
-func WatchDirectory(ctx context.Context, directory string, onFilesChanged OnFilesChanged, period time.Duration) error {
+func DirectoryWatcher(ctx context.Context, directory string, onFilesChanged OnFilesChanged, period time.Duration) (Watcher, error) {
 	// cache all non-hidden files in the directory
 	cache, err := newFilesCache(directory, true, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return periodicWatch(ctx, cache, onFilesChanged, period)
+	return buildWatcher(ctx, cache, onFilesChanged, period), nil
 }
 
-// WatchFile periodically reads the given file, and calls onFileChanged
+// FileWatcher periodically reads the given file, and calls onFileChanged
 // on any changes in the file.
-func WatchFile(ctx context.Context, filepath string, onFilesChanged OnFilesChanged, period time.Duration) error {
+func FileWatcher(ctx context.Context, filepath string, onFilesChanged OnFilesChanged, period time.Duration) (Watcher, error) {
 	// cache a single file
 	cache, err := newFilesCache(path.Dir(filepath), false, []string{path.Base(filepath)})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return periodicWatch(ctx, cache, onFilesChanged, period)
+	return buildWatcher(ctx, cache, onFilesChanged, period), nil
 }
 
-// periodicWatch sets up a periodic execution to execute onFilesChange
+// watcher implements Watcher
+type watcher struct {
+	ctx    context.Context
+	onExec execFunction
+	period time.Duration
+}
+
+// Run reacts on changes from the filesystem
+func (w *watcher) Run() error {
+	return CallPeriodically(w.ctx, w.onExec, w.period)
+}
+
+// buildWatcher sets up a periodic execution to execute onFilesChanged
 // when the given cache is updated.
-func periodicWatch(ctx context.Context, cache *filesCache, onFilesChanged OnFilesChanged, period time.Duration) error {
+func buildWatcher(ctx context.Context, cache *filesCache, onFilesChanged OnFilesChanged, period time.Duration) Watcher {
 	// on each periodic execution, update the cache,
 	// but call onFilesChanged only if the cache was updated
 	var onExec = func() (done bool, err error) {
@@ -60,5 +77,9 @@ func periodicWatch(ctx context.Context, cache *filesCache, onFilesChanged OnFile
 		// no change, continue watching
 		return false, nil
 	}
-	return CallPeriodically(ctx, onExec, period)
+	return &watcher{
+		ctx:    ctx,
+		onExec: onExec,
+		period: period,
+	}
 }

@@ -64,9 +64,11 @@ func Test_FileWatcher(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	watcher, err := FileWatcher(ctx, fileToWatch, onFilesChanged, 1*time.Millisecond)
+	require.NoError(t, err)
 	done := make(chan error)
 	go func() {
-		done <- WatchFile(ctx, fileToWatch, onFilesChanged, 1*time.Millisecond)
+		done <- watcher.Run()
 	}()
 
 	// write a file
@@ -114,9 +116,11 @@ func Test_DirectoryWatcher(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+	watcher, err := DirectoryWatcher(ctx, directory, onFilesChanged, 1*time.Millisecond)
+	require.NoError(t, err)
 	done := make(chan error)
 	go func() {
-		done <- WatchDirectory(ctx, directory, onFilesChanged, 1*time.Millisecond)
+		done <- watcher.Run()
 	}()
 
 	// write a file
