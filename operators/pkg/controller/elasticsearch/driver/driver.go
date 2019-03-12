@@ -38,7 +38,7 @@ type Driver interface {
 	Reconcile(
 		es v1alpha1.Elasticsearch,
 		reconcileState *esreconcile.State,
-	) *esreconcile.Results
+	) *reconciler.Results
 }
 
 // Options are used to create a driver. See NewDriver

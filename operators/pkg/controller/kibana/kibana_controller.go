@@ -131,29 +131,22 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 	state := NewState(request, kb)
 	driver := newDriver(r, r.scheme, *ver)
+	// version specific reconcile
+	results := driver.Reconcile(&state, kb)
+	// update status
+	results.WithError(r.updateStatus(state))
 
-	state, err = driver.Reconcile(state, kb)
-	if err != nil {
-		return state.Result, err
-	}
-
-	res, err := common.ReconcileService(r.Client, r.scheme, NewService(*kb), kb)
-	if err != nil {
-		// TODO: consider updating some status here?
-		return res, err
-	}
-
-	return r.updateStatus(state)
+	return results.Aggregate()
 }
 
-func (r *ReconcileKibana) updateStatus(state State) (reconcile.Result, error) {
+func (r *ReconcileKibana) updateStatus(state State) error {
 	current := state.originalKibana
 	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
-		return state.Result, nil
+		return nil
 	}
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(state.Kibana)
+	return r.Status().Update(state.Kibana)
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
@@ -129,8 +130,8 @@ type defaultDriver struct {
 func (d *defaultDriver) Reconcile(
 	es v1alpha1.Elasticsearch,
 	reconcileState *reconcile.State,
-) *reconcile.Results {
-	results := &reconcile.Results{}
+) *reconciler.Results {
+	results := &reconciler.Results{}
 
 	genericResources, err := d.genericResourcesReconciler(d.Client, d.Scheme, es)
 	if err != nil {
@@ -372,7 +373,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 	reconcileState *reconcile.State,
 	resourcesState *reconcile.ResourcesState,
 	observedState observer.State,
-	results *reconcile.Results,
+	results *reconciler.Results,
 	esClient *esclient.Client,
 	namespacedName types.NamespacedName,
 ) error {
