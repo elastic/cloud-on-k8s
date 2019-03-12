@@ -29,7 +29,7 @@ func applyLinkedLicense(
 	err := c.Get(esCluster, &license)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			// no license linked to this cluster. Expected for clusters running on trial
+			// no license linked to this cluster. Expected for clusters running on basic or trial.
 			return nil
 		}
 		return err

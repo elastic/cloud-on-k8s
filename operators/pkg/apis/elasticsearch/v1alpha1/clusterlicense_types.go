@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -20,29 +21,45 @@ type License interface {
 // LicenseType the type of a license.
 type LicenseType string
 
+// Supported LicenseTypes
 const (
+	LicenseTypeBasic    LicenseType = "basic"
 	LicenseTypeTrial    LicenseType = "trial"
-	LicenseTypeStandard LicenseType = "standard"
 	LicenseTypeGold     LicenseType = "gold"
 	LicenseTypePlatinum LicenseType = "platinum"
 )
 
 // LicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
 var LicenseTypeOrder = map[LicenseType]int{
-	// default value 0 for invalid types
-	LicenseTypeTrial:    1,
-	LicenseTypeStandard: 2,
+	LicenseTypeBasic:    1,
+	LicenseTypeTrial:    2,
 	LicenseTypeGold:     3,
 	LicenseTypePlatinum: 4,
 }
 
 // LicenseTypeFromString converts a given string to a license type if possible.
-func LicenseTypeFromString(s string) LicenseType {
-	var res LicenseType
-	if LicenseTypeOrder[LicenseType(s)] > 0 {
-		res = LicenseType(s)
+// If the string is empty, default to a basic license.
+func LicenseTypeFromString(s string) (LicenseType, error) {
+	if s == "" {
+		return LicenseTypeBasic, nil
 	}
-	return res
+	licenseType := LicenseType(s)
+	_, exists := LicenseTypeOrder[licenseType]
+	if !exists {
+		return "", fmt.Errorf("invalid license type: %s", s)
+	}
+	return licenseType, nil
+}
+
+// IsGoldOrPlatinum returns true if the license is gold or platinum,
+// hence probably requires some special treatment.
+func (l LicenseType) IsGoldOrPlatinum() bool {
+	switch l {
+	case LicenseTypeGold, LicenseTypePlatinum:
+		return true
+	default:
+		return false
+	}
 }
 
 // LicenseMeta contains license (meta) information shared between enterprise and cluster licenses.

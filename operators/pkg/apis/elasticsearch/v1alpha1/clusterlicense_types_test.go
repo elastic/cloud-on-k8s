@@ -11,6 +11,7 @@ import (
 	"time"
 
 	. "github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/stretchr/testify/require"
 )
 
 func TestClusterLicense_IsValidAt(t *testing.T) {
@@ -94,35 +95,96 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 
 func TestLicenseTypeFromString(t *testing.T) {
 	tests := []struct {
-		name string
-		args string
-		want LicenseType
+		name    string
+		args    string
+		want    LicenseType
+		wantErr string
 	}{
 		{
-			name: "empty type: enterprise is not a cluster license type",
-			args: "enterprise",
-			want: "",
+			name:    "invalid type",
+			args:    "enterprise",
+			want:    LicenseType(""),
+			wantErr: "invalid license type: enterprise",
 		},
 		{
-			name: "empty type: garbage in empty out",
-			args: "foo",
-			want: "",
+			name:    "empty type: default to basic",
+			args:    "",
+			want:    LicenseTypeBasic,
+			wantErr: "",
 		},
 		{
-			name: "success: valid type",
-			args: "platinum",
-			want: LicenseTypePlatinum,
+			name:    "success: platinum",
+			args:    "platinum",
+			want:    LicenseTypePlatinum,
+			wantErr: "",
 		},
 		{
-			name: "success: trial is valid cluster license type",
-			args: "trial",
-			want: LicenseTypeTrial,
+			name:    "success: gold",
+			args:    "gold",
+			want:    LicenseTypeGold,
+			wantErr: "",
+		},
+		{
+			name:    "success: trial",
+			args:    "trial",
+			want:    LicenseTypeTrial,
+			wantErr: "",
+		},
+		{
+			name:    "success: basic",
+			args:    "basic",
+			want:    LicenseTypeBasic,
+			wantErr: "",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := LicenseTypeFromString(tt.args); got != tt.want {
-				t.Errorf("LicenseTypeFromString() = %v, want %v", got, tt.want)
+			licenseType, err := LicenseTypeFromString(tt.args)
+			if tt.wantErr != "" {
+				require.EqualError(t, err, tt.wantErr)
+			} else {
+				require.True(t, tt.want == licenseType)
+			}
+		})
+	}
+}
+
+func TestLicenseType_IsGoldOrPlatinum(t *testing.T) {
+	tests := []struct {
+		name string
+		l    LicenseType
+		want bool
+	}{
+		{
+			name: "gold",
+			l:    LicenseTypeGold,
+			want: true,
+		},
+		{
+			name: "platinum",
+			l:    LicenseTypePlatinum,
+			want: true,
+		},
+		{
+			name: "basic",
+			l:    LicenseTypeBasic,
+			want: false,
+		},
+		{
+			name: "trial",
+			l:    LicenseTypeTrial,
+			want: false,
+		},
+		{
+			name: "invalid",
+			l:    LicenseType("jghk"),
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.l.IsGoldOrPlatinum(); got != tt.want {
+				t.Errorf("LicenseType.IsGoldOrPlatinum() = %v, want %v", got, tt.want)
 			}
 		})
 	}

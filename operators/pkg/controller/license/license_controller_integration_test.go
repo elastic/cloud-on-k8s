@@ -123,9 +123,13 @@ func TestReconcile(t *testing.T) {
 	defer c.Delete(controllerSecret)
 
 	cluster := &v1alpha1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "default",
+		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
+			LicenseType:      "platinum",
 			SetVMMaxMapCount: false,
 			Topology: []v1alpha1.TopologyElementSpec{
 				{

@@ -5,7 +5,6 @@
 package license
 
 import (
-	"fmt"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -14,7 +13,6 @@ import (
 	match "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -38,22 +36,6 @@ const defaultSafetyMargin = 30 * 24 * time.Hour
 var (
 	log = logf.Log.WithName("license-controller")
 )
-
-// clusterOnTrialError represents an error condition where reconciliation is aborted because a cluster is running
-// on trial by explicit user request.
-type clusterOnTrialError struct {
-	nsn types.NamespacedName
-}
-
-func newClusterOnTrialError(name types.NamespacedName) *clusterOnTrialError {
-	return &clusterOnTrialError{nsn: name}
-}
-
-func (c clusterOnTrialError) Error() string {
-	return fmt.Sprintf("cluster %v is explicitly on trial, no reconciliation needed", c.nsn)
-}
-
-var _ error = clusterOnTrialError{}
 
 // Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
 // If there is none it assigns a new one.
@@ -146,25 +128,13 @@ type ReconcileLicenses struct {
 	iteration int64
 }
 
-// findLicenseFor tries to find a matching license for the given cluster identified by its namespaced name.
-func findLicenseFor(c k8s.Client, clusterName types.NamespacedName) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
-	var noLicense v1alpha1.ClusterLicenseSpec
-	var noParent metav1.ObjectMeta
-	var cluster v1alpha1.Elasticsearch
-	err := c.Get(clusterName, &cluster)
-	if err != nil {
-		return noLicense, noParent, err
-	}
-	desiredType := v1alpha1.LicenseTypeFromString(cluster.Labels[license.Expectation])
-	if desiredType == v1alpha1.LicenseTypeTrial {
-		return noLicense, noParent, newClusterOnTrialError(clusterName)
-	}
+// findLicense tries to find a license of the given type.
+func findLicense(c k8s.Client, licenseType v1alpha1.LicenseType) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
 	licenseList := v1alpha1.EnterpriseLicenseList{}
-	err = c.List(&client.ListOptions{}, &licenseList)
-	if err != nil {
-		return noLicense, noParent, err
+	if err := c.List(&client.ListOptions{}, &licenseList); err != nil {
+		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, err
 	}
-	return match.BestMatch(licenseList.Items, desiredType)
+	return match.BestMatch(licenseList.Items, licenseType)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -220,11 +190,12 @@ func reconcileSecret(
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 func (r *ReconcileLicenses) reconcileClusterLicense(
 	cluster v1alpha1.Elasticsearch,
+	licenseType v1alpha1.LicenseType,
 	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(&cluster)
-	matchingSpec, parent, err := findLicenseFor(r, clusterName)
+	matchingSpec, parent, err := findLicense(r, licenseType)
 	if err != nil {
 		return noResult, err
 	}
@@ -265,8 +236,8 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the cluster to ensure it still exists
-	owner := v1alpha1.Elasticsearch{}
-	err := r.Get(request.NamespacedName, &owner)
+	cluster := v1alpha1.Elasticsearch{}
+	err := r.Get(request.NamespacedName, &cluster)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// nothing to do no cluster
@@ -275,20 +246,22 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 		return reconcile.Result{}, err
 	}
 
-	if !owner.DeletionTimestamp.IsZero() {
+	if !cluster.DeletionTimestamp.IsZero() {
 		// cluster is being deleted nothing to do
 		return reconcile.Result{}, nil
 	}
+
+	licenseType := cluster.Spec.GetLicenseType()
+
+	if !licenseType.IsGoldOrPlatinum() {
+		log.Info("No license reconciliation required", "type", licenseType)
+		return reconcile.Result{}, nil
+	}
+
 	safetyMargin := defaultSafetyMargin
-	newExpiry, err := r.reconcileClusterLicense(owner, safetyMargin)
+	newExpiry, err := r.reconcileClusterLicense(cluster, licenseType, safetyMargin)
 	if err != nil {
-		switch err.(type) {
-		case *clusterOnTrialError:
-			log.Info(err.Error()) // not treated as an error here, no license management for trials required
-			return reconcile.Result{}, nil
-		default:
-			return reconcile.Result{Requeue: true}, err
-		}
+		return reconcile.Result{Requeue: true}, err
 	}
 	return nextReconcile(newExpiry, safetyMargin), nil
 }
