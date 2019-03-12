@@ -94,8 +94,6 @@ func TestReconcile(t *testing.T) {
 	}
 	err = c.Create(instance)
 
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {
 		t.Logf("failed to create object, got an invalid object error: %v", err)
 		return

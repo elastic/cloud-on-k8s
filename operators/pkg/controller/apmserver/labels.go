@@ -7,7 +7,7 @@ package apmserver
 import "github.com/elastic/k8s-operators/operators/pkg/controller/common"
 
 const (
-	// ApmServerNameLabelName used to represent a Kibana in k8s resources
+	// ApmServerNameLabelName used to represent an ApmServer in k8s resources
 	ApmServerNameLabelName = "apm.k8s.elastic.co/name"
 	// Type represents the apm server type
 	Type = "apm-server"

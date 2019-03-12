@@ -27,9 +27,7 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			// For now, expose the service as node port to ease development
-			// TODO: proper ingress forwarding
-			Type: common.GetServiceType(as.Spec.Expose),
+			Type:            common.GetServiceType(as.Spec.Expose),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {

@@ -86,6 +86,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &kibanav1alpha1.Kibana{},
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -40,7 +40,8 @@ import (
 var log = logf.Log.WithName("apmserver-controller")
 
 const (
-	caChecksumLabelName = "apm.k8s.elastic.co/ca-file-checksum"
+	caChecksumLabelName     = "apm.k8s.elastic.co/ca-file-checksum"
+	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
 )
 
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -72,13 +73,27 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create
 	// Uncomment watch a Deployment created by ApmServer - change this for objects you create
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
+	if err := c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &apmv1alpha1.ApmServer{},
-	})
-	if err != nil {
+	}); err != nil {
+		return err
+	}
+
+	// Watch services
+	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &apmv1alpha1.ApmServer{},
+	}); err != nil {
+		return err
+	}
+
+	// Watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &apmv1alpha1.ApmServer{},
+	}); err != nil {
 		return err
 	}
 
@@ -87,7 +102,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}
 
-// ReconcileApmServer reconciles a ApmServer object
+// ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
 	scheme   *runtime.Scheme
@@ -108,7 +123,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	// Fetch the ApmServer instance
+	// Fetch the ApmServer resource
 	as := &apmv1alpha1.ApmServer{}
 	err := r.Get(request.NamespacedName, as)
 
@@ -179,27 +194,19 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 			Reconciled: reconciledApmServerSecret,
 
 			NeedsUpdate: func() bool {
-				if reconciledApmServerSecret.Data == nil {
+				if !reflect.DeepEqual(reconciledApmServerSecret.Labels, expectedApmServerSecret.Labels) {
 					return true
 				}
-				_, hasSecretToken := reconciledApmServerSecret.Data[SecretTokenKey]
-				if !hasSecretToken {
+
+				if !reflect.DeepEqual(reconciledApmServerSecret.Data, expectedApmServerSecret.Data) {
 					return true
 				}
+
 				return false
 			},
 			UpdateReconciled: func() {
 				reconciledApmServerSecret.Labels = expectedApmServerSecret.Labels
-
-				if reconciledApmServerSecret.Data == nil {
-					reconciledApmServerSecret.Data = expectedApmServerSecret.Data
-				} else {
-					for k, v := range expectedApmServerSecret.Data {
-						if _, ok := reconciledApmServerSecret.Data[k]; !ok {
-							reconciledApmServerSecret.Data[k] = v
-						}
-					}
-				}
+				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
 			OnCreate: func() {
 				log.Info("Creating apm server secret", "name", expectedApmServerSecret.Name)
@@ -272,6 +279,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	apmServerPodSpec := NewPodSpec(apmServerPodSpecParams)
 	labels := NewLabels(as.Name)
 	podLabels := NewLabels(as.Name)
+
+	// add the config file checksum to the pod labels so a change triggers a rolling update
+	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", sha256.Sum224(cfgBytes))
 
 	certificateAuthoritiesSecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthoritiesSecret
 	if certificateAuthoritiesSecretName != nil {

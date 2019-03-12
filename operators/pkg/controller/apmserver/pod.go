@@ -62,25 +62,6 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 		"/usr/share/apm-server/config/config-secret",
 	)
 
-	fsPreparationScript := `
-ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-server/config/apm-server.yml
-`
-	initContainerRunAsUser := int64(0)
-
-	fsPreparationInitContainer := corev1.Container{
-		Image: imageName,
-		Name:  "fs-preparation",
-		SecurityContext: &corev1.SecurityContext{
-			RunAsUser: &initContainerRunAsUser,
-		},
-		Command: []string{"bash", "-c", fsPreparationScript},
-
-		VolumeMounts: []corev1.VolumeMount{
-			configVolume.VolumeMount(),
-			configSecretVolume.VolumeMount(),
-		},
-	}
-
 	automountServiceAccountToken := false
 	return corev1.PodSpec{
 		Containers: []corev1.Container{{
@@ -104,7 +85,7 @@ ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-
 				"apm-server",
 				"run",
 				"-e", // log to stderr
-				"-c", "config/apm-server.yml",
+				"-c", "config/config-secret/apm-server.yml",
 			},
 			Ports: []corev1.ContainerPort{
 				{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
@@ -115,9 +96,6 @@ ln -sf /usr/share/apm-server/config/config-secret/apm-server.yml /usr/share/apm-
 				configSecretVolume.VolumeMount(),
 			},
 		}},
-		InitContainers: []corev1.Container{
-			fsPreparationInitContainer,
-		},
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 		Volumes: []corev1.Volume{
 			configVolume.Volume(),

@@ -32,7 +32,7 @@ type ApmServerSpec struct {
 	// Resources to be allocated for each Apm Server node
 	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
 
-	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
+	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
@@ -82,8 +82,8 @@ type ApmServerStatus struct {
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
-func (ks ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
-	return prev.Health == ApmServerGreen && ks.Health != ApmServerGreen
+func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
+	return prev.Health == ApmServerGreen && as.Health != ApmServerGreen
 }
 
 // IsConfigured returns true if the output configuration is populated with non-default values.
