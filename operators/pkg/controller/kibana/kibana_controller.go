@@ -5,25 +5,20 @@
 package kibana
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"path"
 	"reflect"
 	"sync/atomic"
 	"time"
 
 	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -130,10 +125,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	state := NewState(request, kb)
+	driver := newDriver(r, r.scheme, *ver)
 
-	state, err = r.reconcileKibanaDeployment(state, kb)
+	state, err = driver.Reconcile(state, kb)
 	if err != nil {
 		return state.Result, err
 	}
@@ -145,94 +144,6 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	return r.updateStatus(state)
-}
-
-func (r *ReconcileKibana) reconcileKibanaDeployment(
-	state State,
-	kb *kibanav1alpha1.Kibana,
-) (State, error) {
-	if !kb.Spec.Elasticsearch.IsConfigured() {
-		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
-		return state, nil
-	}
-
-	kibanaPodSpecParams := PodSpecParams{
-		Version:          kb.Spec.Version,
-		CustomImageName:  kb.Spec.Image,
-		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
-		User:             kb.Spec.Elasticsearch.Auth,
-	}
-
-	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)
-	labels := NewLabels(kb.Name)
-	podLabels := NewLabels(kb.Name)
-
-	if kb.Spec.Elasticsearch.CaCertSecret != nil {
-		// TODO: use kibanaCa to generate cert for deployment
-		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
-
-		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCertsVolume := volume.NewSecretVolumeWithMountPath(
-			*kb.Spec.Elasticsearch.CaCertSecret,
-			"elasticsearch-certs",
-			"/usr/share/kibana/config/elasticsearch-certs",
-		)
-
-		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
-		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
-		// updating the CA file contents without restarting the process.
-		caChecksum := ""
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
-		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return state, err
-		}
-		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
-		}
-		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-		// changes, which will trigger a rolling update)
-		podLabels[caChecksumLabelName] = caChecksum
-
-		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
-
-		for i, container := range kibanaPodSpec.InitContainers {
-			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-		}
-
-		for i, container := range kibanaPodSpec.Containers {
-			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-
-			kibanaPodSpec.Containers[i].Env = append(
-				kibanaPodSpec.Containers[i].Env,
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
-				},
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-					Value: "certificate",
-				},
-			)
-		}
-	}
-
-	deploy := NewDeployment(DeploymentParams{
-		// TODO: revisit naming?
-		Name:      PseudoNamespacedResourceName(*kb),
-		Namespace: kb.Namespace,
-		Replicas:  kb.Spec.NodeCount,
-		Selector:  labels,
-		Labels:    labels,
-		PodLabels: podLabels,
-		PodSpec:   kibanaPodSpec,
-	})
-	result, err := r.ReconcileDeployment(deploy, kb)
-	if err != nil {
-		return state, err
-	}
-	state.UpdateKibanaState(result)
-	return state, nil
 }
 
 func (r *ReconcileKibana) updateStatus(state State) (reconcile.Result, error) {

@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package kibana
+package pod
 
 import (
 	"testing"
@@ -48,12 +50,12 @@ func TestNewPodSpec(t *testing.T) {
 	}
 	tests := []struct {
 		name       string
-		args       PodSpecParams
+		args       SpecParams
 		assertions func(params corev1.PodSpec)
 	}{
 		{
 			name: "defaults",
-			args: PodSpecParams{},
+			args: SpecParams{},
 			assertions: func(got corev1.PodSpec) {
 				expected := imageWithVersion(defaultImageRepositoryAndName, "")
 				assert.Equal(t, expected, got.Containers[0].Image)
@@ -61,14 +63,14 @@ func TestNewPodSpec(t *testing.T) {
 		},
 		{
 			name: "overrides",
-			args: PodSpecParams{CustomImageName: "my-custom-image:1.0.0", Version: "7.0.0"},
+			args: SpecParams{CustomImageName: "my-custom-image:1.0.0", Version: "7.0.0"},
 			assertions: func(got corev1.PodSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", got.Containers[0].Image)
 			},
 		},
 		{
 			name: "auth settings inline",
-			args: PodSpecParams{
+			args: SpecParams{
 				User: v1alpha1.ElasticsearchAuth{
 					Inline: &v1alpha1.ElasticsearchInlineAuth{
 						Username: "u",
@@ -85,7 +87,7 @@ func TestNewPodSpec(t *testing.T) {
 		},
 		{
 			name: "auth settings via secret",
-			args: PodSpecParams{
+			args: SpecParams{
 				User: v1alpha1.ElasticsearchAuth{
 					SecretKeyRef: testSelector,
 				},
@@ -100,7 +102,10 @@ func TestNewPodSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodSpec(tt.args)
+			got := NewSpec(tt.args, EnvFactory(func(p SpecParams) []corev1.EnvVar {
+				var env []corev1.EnvVar
+				return ApplyToEnv(tt.args.User, env) // common across versions for now
+			}))
 			tt.assertions(got)
 		})
 	}

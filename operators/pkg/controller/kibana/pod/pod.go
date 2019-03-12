@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package kibana
+package pod
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
@@ -20,8 +22,8 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
-// applyToEnv applies any auth information in auth to the variables in env.
-func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.EnvVar {
+// ApplyToEnv applies any auth information in auth to the variables in env.
+func ApplyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.EnvVar {
 	if auth.Inline != nil {
 		env = append(
 			env,
@@ -40,7 +42,7 @@ func applyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.E
 	return env
 }
 
-type PodSpecParams struct {
+type SpecParams struct {
 	Version          string
 	ElasticsearchUrl string
 	CustomImageName  string
@@ -51,7 +53,9 @@ func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func NewPodSpec(p PodSpecParams) corev1.PodSpec {
+type EnvFactory func(p SpecParams) []corev1.EnvVar
+
+func NewSpec(p SpecParams, env EnvFactory) corev1.PodSpec {
 	imageName := p.CustomImageName
 	if p.CustomImageName == "" {
 		imageName = imageWithVersion(defaultImageRepositoryAndName, p.Version)
@@ -73,16 +77,13 @@ func NewPodSpec(p PodSpecParams) corev1.PodSpec {
 	}
 
 	automountServiceAccountToken := false
-	env := []corev1.EnvVar{
-		{Name: "ELASTICSEARCH_URL", Value: p.ElasticsearchUrl},
-	}
-	env = applyToEnv(p.User, env)
+
 	return corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Resources: corev1.ResourceRequirements{
 				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 			},
-			Env:   env,
+			Env:   env(p),
 			Image: imageName,
 			Name:  "kibana",
 			Ports: []corev1.ContainerPort{

@@ -8,7 +8,6 @@ package kibana
 
 import (
 	"testing"
-	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -16,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 
-	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
+	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,11 +29,14 @@ var c k8s.Client
 var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
 var depKey = types.NamespacedName{Name: "foo-kibana", Namespace: "default"}
 
-const timeout = time.Second * 5
-
 func TestReconcile(t *testing.T) {
 
-	instance := &kibanav1alpha1.Kibana{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	instance := &kbtype.Kibana{
+		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
+		Spec: kbtype.KibanaSpec{
+			Version: "6.6.1",
+		},
+	}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
@@ -66,10 +68,10 @@ func TestReconcile(t *testing.T) {
 
 	// Deployment won't be created until we provide details for the ES backend
 	secret := mockCaSecret(t, c)
-	instance.Spec.Elasticsearch = kibanav1alpha1.BackendElasticsearch{
+	instance.Spec.Elasticsearch = kbtype.BackendElasticsearch{
 		URL: "http://127.0.0.1:9200",
-		Auth: kibanav1alpha1.ElasticsearchAuth{
-			Inline: &kibanav1alpha1.ElasticsearchInlineAuth{
+		Auth: kbtype.ElasticsearchAuth{
+			Inline: &kbtype.ElasticsearchInlineAuth{
 				Username: "foo",
 				Password: "bar",
 			},
