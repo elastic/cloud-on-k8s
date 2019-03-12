@@ -7,6 +7,8 @@ package snapshot
 import (
 	"path"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -71,8 +73,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	parallelism := int32(1)
 	completions := int32(1)
 	backoffLimit := int32(0) // don't retry on failure
-	// TODO brittle, by convention currently called like the stack
-	caCertSecret := volume.NewSecretVolume(params.Parent.Name, "ca")
+	caCertSecret := volume.NewSecretVolume(nodecerts.CASecretNameForCluster(params.Elasticsearch.Name), "ca")
 	certPath := path.Join(volume.DefaultSecretMountPath, certificates.CAFileName)
 
 	meta := metav1.ObjectMeta{

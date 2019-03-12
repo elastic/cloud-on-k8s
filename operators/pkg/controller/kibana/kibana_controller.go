@@ -38,10 +38,6 @@ var (
 	log            = logf.Log.WithName("kibana-controller")
 )
 
-const (
-	caChecksumLabelName = "kibana.k8s.elastic.co/ca-file-checksum"
-)
-
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {

@@ -196,7 +196,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: ESPod(defaultImage, defaultCPULimit),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -217,7 +217,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -245,7 +245,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -278,7 +278,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -311,7 +311,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -338,7 +338,7 @@ func Test_podMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologySpec: v1alpha1.ElasticsearchTopologySpec{
+					TopologyElement: v1alpha1.TopologyElementSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{

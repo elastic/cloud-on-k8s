@@ -88,33 +88,33 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 }
 func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch nodes topology should be the expected ones",
+		Name: "Elasticsearch nodes topology should be the expected one",
 		Test: func(t *testing.T) {
 			nodes, err := e.client.GetNodes(context.TODO())
 			require.NoError(t, err)
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 
-			// flatten the topologies
-			expectedTopologies := []estype.ElasticsearchTopologySpec{}
-			for _, topo := range es.Spec.Topologies {
-				for i := 0; i < int(topo.NodeCount); i++ {
-					expectedTopologies = append(expectedTopologies, topo)
+			// flatten the topology
+			var expectedTopology []estype.TopologyElementSpec
+			for _, topoElem := range es.Spec.Topology {
+				for i := 0; i < int(topoElem.NodeCount); i++ {
+					expectedTopology = append(expectedTopology, topoElem)
 				}
 			}
 			// match each actual node to an expected node
 			for _, node := range nodes.Nodes {
 				nodeTypes := rolesToNodeTypes(node.Roles)
-				for i, topo := range expectedTopologies {
-					if topo.NodeTypes == nodeTypes && compareMemoryLimit(topo, node.JVM.Mem.HeapMaxInBytes) {
+				for i, topoElem := range expectedTopology {
+					if topoElem.NodeTypes == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// it's a match! #tinder
 						// no need to match this topology anymore
-						expectedTopologies = append(expectedTopologies[:i], expectedTopologies[i+1:]...)
+						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
 					}
 				}
 			}
-			// all expected topologies should have matched a node
-			require.Empty(t, expectedTopologies)
+			// expected topology should have matched all nodes
+			require.Empty(t, expectedTopology)
 		},
 	}
 }
@@ -136,15 +136,15 @@ func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
 	return nt
 }
 
-func compareMemoryLimit(topo estype.ElasticsearchTopologySpec, heapMaxBytes int) bool {
-	if topo.Resources.Limits.Memory() == nil {
+func compareMemoryLimit(topologyElement estype.TopologyElementSpec, heapMaxBytes int) bool {
+	if topologyElement.Resources.Limits.Memory() == nil {
 		// no expected memory, consider it's ok
 		return true
 	}
 
 	const epsilon = 0.05 // allow a 5% diff due to bytes approximation
 
-	expectedBytes := topo.Resources.Limits.Memory().Value()
+	expectedBytes := topologyElement.Resources.Limits.Memory().Value()
 	actualBytes := int64(heapMaxBytes * 2) // we set heap to half the available memory
 
 	diffRatio := math.Abs(float64(actualBytes-expectedBytes)) / math.Abs(float64(expectedBytes))

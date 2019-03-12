@@ -202,9 +202,9 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				return err
 			}
 			var expectedLimits []corev1.ResourceList
-			for _, topo := range stack.Elasticsearch.Spec.Topologies {
-				for i := 0; i < int(topo.NodeCount); i++ {
-					expectedLimits = append(expectedLimits, topo.Resources.Limits)
+			for _, topoElem := range stack.Elasticsearch.Spec.Topology {
+				for i := 0; i < int(topoElem.NodeCount); i++ {
+					expectedLimits = append(expectedLimits, topoElem.Resources.Limits)
 				}
 			}
 			var limits []corev1.ResourceList
@@ -214,6 +214,10 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				}
 				esContainer := p.Spec.Containers[0]
 				limits = append(limits, esContainer.Resources.Limits)
+
+				if p.Status.QOSClass != corev1.PodQOSGuaranteed {
+					return fmt.Errorf("Pod QoS class should be Guaranteed")
+				}
 			}
 			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
 				return err
