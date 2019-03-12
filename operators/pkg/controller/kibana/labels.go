@@ -9,8 +9,11 @@ import "github.com/elastic/k8s-operators/operators/pkg/controller/common"
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
-	// Type represents the elasticsearch type
-	Type = "elasticsearch"
+	// caChecksumLabelName used to store the CA file checksum
+	caChecksumLabelName = "kibana.k8s.elastic.co/ca-file-checksum"
+
+	// Type represents the Kibana type
+	Type = "kibana"
 )
 
 // NewLabels constructs a new set of labels for a Kibana pod

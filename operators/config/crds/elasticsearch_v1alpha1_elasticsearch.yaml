@@ -102,8 +102,8 @@ spec:
               - type
               - settings
               type: object
-            topologies:
-              description: Topologies represent a list of node topologies to be part
+            topology:
+              description: Topology represents a list of topology elements to be part
                 of the cluster
               items:
                 properties:
@@ -112,7 +112,7 @@ spec:
                     format: int32
                     type: integer
                   nodeTypes:
-                    description: NodeTypes represents the node type
+                    description: NodeTypes represents the node types
                     properties:
                       data:
                         description: Data represents a data node

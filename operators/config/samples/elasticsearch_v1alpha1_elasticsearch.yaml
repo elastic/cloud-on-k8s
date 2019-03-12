@@ -8,7 +8,7 @@ spec:
   version: "6.4.2"
   licenseType: trial
   setVmMaxMapCount: true
-  topologies:
+  topology:
   - nodeTypes:
       master: true
       data: true

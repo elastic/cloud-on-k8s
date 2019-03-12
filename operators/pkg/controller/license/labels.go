@@ -10,9 +10,11 @@ import (
 )
 
 // EnterpriseLicenseLabelName is a label pointing to the name of the source enterprise license.
-const EnterpriseLicenseLabelName = "k8s.elastic.co/enterprise-license-name"
+const EnterpriseLicenseLabelName = "license.k8s.elastic.co/name"
 
 // NewLicenseSelector is a list selector to filter by a label containing the license name.
 func NewLicenseSelector(license types.NamespacedName) labels.Selector {
-	return labels.Set(map[string]string{EnterpriseLicenseLabelName: license.Name}).AsSelector()
+	return labels.Set(map[string]string{
+		EnterpriseLicenseLabelName: license.Name,
+	}).AsSelector()
 }
