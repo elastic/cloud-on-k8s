@@ -13,6 +13,7 @@ import (
 	"encoding/pem"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
@@ -259,13 +260,18 @@ func Test_doReconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := k8s.WrapClient(fake.NewFakeClient(&tt.secret))
+			err := fakeClient.Create(&tt.pod)
+			require.NoError(t, err)
 
-			_, err := doReconcile(fakeClient, tt.secret, tt.pod, fakeCSRClient, "cluster", "namespace", []corev1.Service{testSvc}, testCA, nil)
+			_, err = doReconcile(fakeClient, tt.secret, tt.pod, fakeCSRClient, "cluster", "namespace", []corev1.Service{testSvc}, testCA, nil)
 			require.NoError(t, err)
 
 			var updatedSecret corev1.Secret
 			err = fakeClient.Get(k8s.ExtractNamespacedName(&objMeta), &updatedSecret)
 			require.NoError(t, err)
+
+			var updatedPod corev1.Pod
+			err = fakeClient.Get(k8s.ExtractNamespacedName(&tt.pod), &updatedPod)
 
 			isUpdated := !reflect.DeepEqual(tt.secret, updatedSecret)
 			require.Equal(t, tt.wantSecretUpdated, isUpdated)
@@ -274,6 +280,9 @@ func Test_doReconcile(t *testing.T) {
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
+				lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[lastCertUpdateAnnotation])
+				require.NoError(t, err)
+				assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
 			}
 		})
 	}

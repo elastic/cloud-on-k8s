@@ -18,6 +18,11 @@ type ElasticsearchSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
+	// LicenseType represents the expected license type for this cluster.
+	// Will default to "basic" if not set.
+	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
+	LicenseType string `json:"licenseType,omitempty"`
+
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
@@ -73,6 +78,16 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 		count += topoElem.NodeCount
 	}
 	return count
+}
+
+// GetLicenseType returns the type of license expected for this cluster.
+// If not provided, default to "basic".
+func (es ElasticsearchSpec) GetLicenseType() LicenseType {
+	licenseType, err := LicenseTypeFromString(es.LicenseType)
+	if err != nil {
+		return LicenseTypeBasic
+	}
+	return licenseType
 }
 
 // TopologyElementSpec defines a common topology for a set of Elasticsearch nodes
@@ -289,7 +304,7 @@ type ElasticsearchList struct {
 	Items           []Elasticsearch `json:"items"`
 }
 
-// TrustRelationShipSpec contains configuration for trust restrictions.
+// TrustRelationshipSpec contains configuration for trust restrictions.
 type TrustRelationshipSpec struct {
 	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
 	CaCert string `json:"caCert,omitempty"`

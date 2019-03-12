@@ -17,10 +17,10 @@ kind: Elasticsearch
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-    k8s.elastic.co/expected-license: "trial"
   name: elasticsearch-sample
 spec:
   version: "6.4.2"
+  licenseType: trial
   setVmMaxMapCount: true
   updateStrategy:
     groups:
