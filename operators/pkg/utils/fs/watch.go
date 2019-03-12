@@ -21,10 +21,10 @@ type Watcher struct {
 	*filesCache
 }
 
-// OnFilesChanged is a function invoked when something changed in the FilesContent.
+// OnFilesChanged is a function invoked when something changed in the F.
 // If it returns an error, the Watcher will stop watching and return the error.
 // If it returns true, the Watcher will stop watching with no error.
-type OnFilesChanged func(files FilesContent) (done bool, err error)
+type OnFilesChanged func(files FilesModTime) (done bool, err error)
 
 // NewDirectoryWatcher periodically reads files in directory, and calls onFilesChanged
 // on any changes in the directory's files.

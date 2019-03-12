@@ -5,18 +5,17 @@
 package fs
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strings"
+	"time"
 )
 
-// filesCache caches a directory's files in memory.
+// filesCache caches a directory's files last modification time in memory.
 type filesCache struct {
 	directory         string              // directory to read files in
 	ignoreHiddenFiles bool                // if set to true, don't cache hidden files
-	cache             FilesContent        // files content in memory
+	cache             FilesModTime        // files last modification time in memory
 	filter            map[string]struct{} // filter on these files only (if empty, cache all files)
 }
 
@@ -40,7 +39,7 @@ func newFilesCache(directory string, ignoreHiddenFiles bool, filter []string) (*
 
 // update reads the directory's files to update the cache.
 // Sub-directories are ignored.
-func (c *filesCache) update() (files FilesContent, hasChanged bool, err error) {
+func (c *filesCache) update() (files FilesModTime, hasChanged bool, err error) {
 	filesInDir, err := ioutil.ReadDir(c.directory)
 	if err != nil && os.IsNotExist(err) {
 		// handle non-existing directory
@@ -55,21 +54,13 @@ func (c *filesCache) update() (files FilesContent, hasChanged bool, err error) {
 		return nil, false, err
 	}
 
-	// read all files content
-	newCache := make(map[string][]byte)
+	// read all files last modification time
+	newCache := make(map[string]time.Time)
 	for _, f := range filesInDir {
 		if c.shouldIgnore(f) {
 			continue
 		}
-		path := filepath.Join(c.directory, f.Name())
-		content, err := ioutil.ReadFile(path)
-		if err != nil {
-			log.Error(err, "cannot read file", "file", path)
-			// could be a permission error on a file we don't care about,
-			// or the file was just deleted
-			continue
-		}
-		newCache[f.Name()] = content
+		newCache[f.Name()] = f.ModTime()
 	}
 
 	hasChanged = !c.cache.Equals(newCache)
@@ -96,11 +87,11 @@ func (c *filesCache) shouldIgnore(f os.FileInfo) bool {
 	return false
 }
 
-// FilesContent defines a map of file name -> file content.
-type FilesContent map[string][]byte
+// FilesModTime defines a map of file name -> last modification time.
+type FilesModTime map[string]time.Time
 
-// Equals returns true if both f and f2 have the same content.
-func (f FilesContent) Equals(f2 FilesContent) bool {
+// Equals returns true if both f and f2 are considered equal.
+func (f FilesModTime) Equals(f2 FilesModTime) bool {
 	// differenciate nil (no directory) from zero value (empty directory)
 	if (f == nil && f2 != nil) || (f != nil && f2 == nil) {
 		return false
@@ -108,12 +99,12 @@ func (f FilesContent) Equals(f2 FilesContent) bool {
 	if len(f) != len(f2) {
 		return false
 	}
-	for filename, contentInA := range f {
-		contentInB, exists := f2[filename]
+	for filename, lastModA := range f {
+		lastModB, exists := f2[filename]
 		if !exists {
 			return false
 		}
-		if !bytes.Equal(contentInA, contentInB) {
+		if !lastModA.Equal(lastModB) {
 			return false
 		}
 	}
