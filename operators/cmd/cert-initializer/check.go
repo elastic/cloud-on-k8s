@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
@@ -95,9 +96,5 @@ func watchForCertUpdate(config Config) error {
 		}
 		return false, nil
 	}
-	watcher, err := fs.NewFileWatcher(config.CertPath, onEvent, 1*time.Second)
-	if err != nil {
-		return err
-	}
-	return watcher.Run()
+	return fs.WatchFile(context.Background(), config.CertPath, onEvent, 1*time.Second)
 }

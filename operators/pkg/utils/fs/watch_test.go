@@ -7,6 +7,7 @@
 package fs
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ func expectEvents(t *testing.T, events chan struct{}, min int, max int, during t
 	got := 0
 	for {
 		select {
-		case <- events:
+		case <-events:
 			got++
 		case <-timeout:
 			if got < min || got > max {
@@ -52,12 +53,10 @@ func Test_FileWatcher(t *testing.T) {
 		return false, nil
 	}
 
-	watcher, err := NewFileWatcher(fileToWatch, onFilesChanged, 1*time.Millisecond)
-	require.NoError(t, err)
-
+	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error)
 	go func() {
-		done <- watcher.Run()
+		done <- WatchFile(ctx, fileToWatch, onFilesChanged, 1*time.Millisecond)
 	}()
 
 	// write a file
@@ -86,8 +85,8 @@ func Test_FileWatcher(t *testing.T) {
 	// expect 1 or 2 events in the next 500ms
 	expectEvents(t, events, 1, 2, 500*time.Millisecond)
 
-	// stop watcher, should return with no error
-	watcher.Stop()
+	// stop watching, should return with no error
+	cancel()
 	require.NoError(t, <-done)
 }
 
@@ -109,12 +108,10 @@ func Test_DirectoryWatcher(t *testing.T) {
 		return false, nil
 	}
 
-	watcher, err := NewDirectoryWatcher(directory, onFilesChanged, 1*time.Millisecond)
-	require.NoError(t, err)
-
+	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error)
 	go func() {
-		done <- watcher.Run()
+		done <- WatchDirectory(ctx, directory, onFilesChanged, 1*time.Millisecond)
 	}()
 
 	// write a file
@@ -143,7 +140,7 @@ func Test_DirectoryWatcher(t *testing.T) {
 	// expect 1 or 2 events in the next 500ms
 	expectEvents(t, events, 1, 2, 500*time.Millisecond)
 
-	// stop watcher, should return with no error
-	watcher.Stop()
+	// stop watching, should return with no error
+	cancel()
 	require.NoError(t, <-done)
 }

@@ -5,6 +5,7 @@
 package fs
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -12,44 +13,43 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_periodicExecForever(t *testing.T) {
+func Test_CallPeriodically(t *testing.T) {
 	events := make(chan struct{}, 1)
 	exec := func() (done bool, err error) {
 		<-events
 		return false, nil
 	}
-	pe := newPeriodicExec(exec, 1*time.Millisecond)
+
 	// run until stopped
+	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error)
 	go func() {
-		done <- pe.Run()
+		done <- CallPeriodically(ctx, exec, 1*time.Millisecond)
 	}()
+
 	// should be executed at least 3 times
 	events <- struct{}{}
 	events <- struct{}{}
 	events <- struct{}{}
-	// close the channel so the exec func does nothing anymore
-	close(events)
-	// stop
-	pe.Stop()
-	// should be stopped, no error
+
+	// cancel the context
+	cancel()
 	err := <-done
 	require.NoError(t, err)
 }
 
-func Test_periodicExecReturnErr(t *testing.T) {
+func Test_CallPeriodicallyReturnErr(t *testing.T) {
 	exec := func() (done bool, err error) {
 		return false, errors.New("err returned")
 	}
-	pe := newPeriodicExec(exec, 1*time.Millisecond)
-	err := pe.Run()
+	err := CallPeriodically(context.Background(), exec, 1*time.Millisecond)
 	require.EqualError(t, err, "err returned")
 }
-func Test_periodicExecOnce(t *testing.T) {
+
+func Test_CallPeriodicallyExecOnce(t *testing.T) {
 	exec := func() (done bool, err error) {
 		return true, nil
 	}
-	pe := newPeriodicExec(exec, 1*time.Millisecond)
-	err := pe.Run()
+	err := CallPeriodically(context.Background(), exec, 1*time.Millisecond)
 	require.NoError(t, err)
 }
