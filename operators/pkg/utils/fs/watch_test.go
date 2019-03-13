@@ -65,6 +65,7 @@ func Test_FileWatcher(t *testing.T) {
 	directory, err := ioutil.TempDir("", "tmpdir")
 	require.NoError(t, err)
 	defer os.RemoveAll(directory)
+	fmt.Println("directory for FileWatcher", directory)
 
 	fileToWatch := filepath.Join(directory, "file1")
 
@@ -119,6 +120,8 @@ func Test_DirectoryWatcher(t *testing.T) {
 	directory, err := ioutil.TempDir("", "tmpdir")
 	require.NoError(t, err)
 	defer os.RemoveAll(directory)
+
+	fmt.Println("directory for DirectoryWatcher", directory)
 
 	events := make(chan FilesModTime)
 	onFilesChanged := func(files FilesModTime) (done bool, err error) {
