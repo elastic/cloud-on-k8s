@@ -5,10 +5,11 @@
 package main
 
 import (
+	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"errors"
-	"path"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
 )
@@ -75,7 +76,7 @@ func privateKeyMatchesCSR(privateKey rsa.PrivateKey, csr x509.CertificateRequest
 func privateMatchesPublicKey(publicKey interface{}, privateKey rsa.PrivateKey) bool {
 	pubKey, ok := publicKey.(*rsa.PublicKey)
 	if !ok {
-		log.Error(errors.New("Public key is not an RSA public key"), "")
+		log.Error(errors.New("public key is not an RSA public key"), "")
 		return false
 	}
 	// check that public and private keys share the same modulus and exponent
@@ -87,15 +88,18 @@ func privateMatchesPublicKey(publicKey interface{}, privateKey rsa.PrivateKey) b
 
 // watchForCertUpdate watches for changes on the cert file until it becomes valid.
 func watchForCertUpdate(config Config) error {
-	// we cannot watch a non-existing (yet) file, let's watch the directory instead
-	dir := path.Dir(config.CertPath)
-	// on each filesystem event, check cert, csr and private key
-	onEvent := func() (stop bool, err error) {
+	// on each change to the cert, check cert, csr and private key
+	onEvent := func(files fs.FilesCRC) (stop bool, err error) {
 		if checkExistingOnDisk(config) {
 			// we're good to go!
 			return true, nil
 		}
 		return false, nil
 	}
-	return fs.WatchPath(dir, onEvent, log)
+	watcher, err := fs.FileWatcher(context.Background(), config.CertPath, onEvent, 1*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return watcher.Run()
 }
