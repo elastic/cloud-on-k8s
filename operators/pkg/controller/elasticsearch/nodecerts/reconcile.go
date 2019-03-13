@@ -24,6 +24,10 @@ import (
 
 var log = logf.KBLog.WithName("nodecerts")
 
+const (
+	lastCertUpdateAnnotation = "elasticsearch.k8s.elastic.co/last-cert-update"
+)
+
 // ReconcileNodeCertificateSecrets reconciles certificate secrets for nodes
 // of the given es cluster.
 func ReconcileNodeCertificateSecrets(
@@ -189,6 +193,18 @@ func doReconcile(
 
 	log.Info("Updating node certificate secret", "secret", secret.Name)
 	if err := c.Update(&secret); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// To speedup secret propagation into the pod, also update the pod itself
+	// with a "dummy" annotation. Otherwise, it may take 1+ minute.
+	// This could be fixed in kubelet at some point,
+	// see https://github.com/kubernetes/kubernetes/issues/30189
+	if pod.Annotations == nil {
+		pod.Annotations = map[string]string{}
+	}
+	pod.Annotations[lastCertUpdateAnnotation] = time.Now().Format(time.RFC3339)
+	if err := c.Update(&pod); err != nil {
 		return reconcile.Result{}, err
 	}
 

@@ -18,6 +18,11 @@ type ElasticsearchSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
+	// LicenseType represents the expected license type for this cluster.
+	// Will default to "basic" if not set.
+	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
+	LicenseType string `json:"licenseType,omitempty"`
+
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
@@ -28,8 +33,8 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
-	// Topologies represent a list of node topologies to be part of the cluster
-	Topologies []ElasticsearchTopologySpec `json:"topologies,omitempty"`
+	// Topology represents a list of topology elements to be part of the cluster
+	Topology []TopologyElementSpec `json:"topology,omitempty"`
 
 	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
 	SnapshotRepository *SnapshotRepository `json:"snapshotRepository,omitempty"`
@@ -69,15 +74,25 @@ type SnapshotRepository struct {
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
-	for _, t := range es.Topologies {
-		count += t.NodeCount
+	for _, topoElem := range es.Topology {
+		count += topoElem.NodeCount
 	}
 	return count
 }
 
-// ElasticsearchTopologySpec defines a common topology for a set of Elasticsearch nodes
-type ElasticsearchTopologySpec struct {
-	// NodeTypes represents the node type
+// GetLicenseType returns the type of license expected for this cluster.
+// If not provided, default to "basic".
+func (es ElasticsearchSpec) GetLicenseType() LicenseType {
+	licenseType, err := LicenseTypeFromString(es.LicenseType)
+	if err != nil {
+		return LicenseTypeBasic
+	}
+	return licenseType
+}
+
+// TopologyElementSpec defines a common topology for a set of Elasticsearch nodes
+type TopologyElementSpec struct {
+	// NodeTypes represents the node types
 	NodeTypes NodeTypesSpec `json:"nodeTypes,omitempty"`
 
 	// Resources to be allocated for this topology
@@ -119,7 +134,7 @@ type ElasticsearchPodSpec struct {
 	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
 }
 
-// NodeTypesSpec define the
+// NodeTypesSpec defines the types associated to the node
 type NodeTypesSpec struct {
 	// Master represents a master node
 	Master bool `json:"master,omitempty"`
@@ -289,7 +304,7 @@ type ElasticsearchList struct {
 	Items           []Elasticsearch `json:"items"`
 }
 
-// TrustRelationShipSpec contains configuration for trust restrictions.
+// TrustRelationshipSpec contains configuration for trust restrictions.
 type TrustRelationshipSpec struct {
 	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
 	CaCert string `json:"caCert,omitempty"`

@@ -101,7 +101,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					Topologies: []v1alpha1.ElasticsearchTopologySpec{
+					Topology: []v1alpha1.TopologyElementSpec{
 						{
 							NodeCount: 2,
 						},
@@ -115,7 +115,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					Topologies: []v1alpha1.ElasticsearchTopologySpec{
+					Topology: []v1alpha1.TopologyElementSpec{
 						{
 							NodeCount: 1,
 							NodeTypes: v1alpha1.NodeTypesSpec{Master: true},
@@ -150,7 +150,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			Version:          "1.2.3",
 			Image:            "custom-image",
 			SetVMMaxMapCount: true,
-			Topologies: []v1alpha1.ElasticsearchTopologySpec{
+			Topology: []v1alpha1.TopologyElementSpec{
 				{
 					NodeCount: 1,
 					NodeTypes: v1alpha1.NodeTypesSpec{Master: true},
@@ -287,6 +287,12 @@ func Test_newSidecarContainers(t *testing.T) {
 							Name:      "users",
 							ReadOnly:  true,
 							MountPath: "/mnt/elastic/reload-creds-user",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceMemory: defaultSidecarMemoryLimits,
+							corev1.ResourceCPU:    defaultSidecarCPULimits,
 						},
 					},
 				},

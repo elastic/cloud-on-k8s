@@ -257,11 +257,17 @@ func execute() {
 	}
 
 	// on each filesystem event for config.SourceDir, update the keystore
-	onEvent := func() (stop bool, err error) {
+	onEvent := func(files fs.FilesCRC) (stop bool, err error) {
 		updateKeystore(config)
 		return false, nil // run forever
 	}
-	if err := fs.WatchPath(config.SourceDir, onEvent, log); err != nil {
+
+	watcher, err := fs.DirectoryWatcher(context.Background(), config.SourceDir, onEvent, 1*time.Second)
+	if err != nil {
+		log.Error(err, "Cannot watch filesystem", "path", config.SourceDir)
+		return
+	}
+	if err := watcher.Run(); err != nil {
 		log.Error(err, "Cannot watch filesystem", "path", config.SourceDir)
 	}
 }

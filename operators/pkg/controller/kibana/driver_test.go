@@ -61,10 +61,10 @@ func Test_driver_deploymentParams(t *testing.T) {
 	expectedParams := DeploymentParams{
 		Name:      "kb-kibana",
 		Namespace: "default",
-		Selector:  map[string]string{"common.k8s.elastic.co/type": "elasticsearch", "kibana.k8s.elastic.co/name": "kb"},
-		Labels:    map[string]string{"common.k8s.elastic.co/type": "elasticsearch", "kibana.k8s.elastic.co/name": "kb"},
+		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
+		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
 		PodLabels: map[string]string{
-			"common.k8s.elastic.co/type":            "elasticsearch",
+			"common.k8s.elastic.co/type":            "kibana",
 			"kibana.k8s.elastic.co/name":            "kb",
 			"kibana.k8s.elastic.co/config-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
 		},
@@ -215,7 +215,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			want: func() *DeploymentParams {
 				p := expectedParams
 				p.PodLabels = map[string]string{
-					"common.k8s.elastic.co/type":            "elasticsearch",
+					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "kb",
 					"kibana.k8s.elastic.co/config-checksum": "5d26adcdb6e5e6be930802dc6639233ece8c2a3bc2cf8b8dffa69602",
 				}

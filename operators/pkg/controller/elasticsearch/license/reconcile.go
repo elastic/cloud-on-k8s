@@ -11,11 +11,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
-const (
-	// Expectation the license type expected to be attached to the cluster.
-	Expectation = "k8s.elastic.co/expected-license"
-)
-
 // Reconcile reconciles the current Elasticsearch license with the desired one.
 func Reconcile(
 	c k8s.Client,
@@ -24,8 +19,8 @@ func Reconcile(
 	clusterClient *esclient.Client,
 	current *esclient.License,
 ) error {
-	// This is mostly for dev mode, no license management when trial is requested
-	if v1alpha1.LicenseTypeFromString(esCluster.Labels[Expectation]) == v1alpha1.LicenseTypeTrial {
+	if !esCluster.Spec.GetLicenseType().IsGoldOrPlatinum() {
+		// nothing to do
 		return nil
 	}
 

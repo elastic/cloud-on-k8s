@@ -22,7 +22,7 @@ func TestMutationMdiToDedicated(t *testing.T) {
 
 	// mutate to 1 m node + 1 d node
 	mutatedStack := initStack.
-		WithNoESTopologies().
+		WithNoESTopology().
 		WithESDataNodes(1, stack.DefaultResources).
 		WithESMasterNodes(1, stack.DefaultResources)
 
@@ -37,7 +37,7 @@ func TestMutationMoreNodes(t *testing.T) {
 		WithESMasterDataNodes(1, stack.DefaultResources)
 	// mutate it to 2 nodes
 	mutatedStack := initStack.
-		WithNoESTopologies().
+		WithNoESTopology().
 		WithESMasterDataNodes(2, stack.DefaultResources)
 
 	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
@@ -51,7 +51,7 @@ func TestMutationLessNodes(t *testing.T) {
 		WithESMasterDataNodes(3, stack.DefaultResources)
 	// mutate it to 1 node
 	mutatedStack := initStack.
-		WithNoESTopologies().
+		WithNoESTopology().
 		WithESMasterDataNodes(1, stack.DefaultResources)
 
 	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
@@ -71,7 +71,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 	// mutate it to 1 node with 2G memory
 	memory2G := resource.MustParse("2G")
 	mutatedStack := initStack.
-		WithNoESTopologies().
+		WithNoESTopology().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				"memory": memory2G,
@@ -95,22 +95,12 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 	// mutate it to 1 node with 1G memory
 	memory1G := resource.MustParse("1G")
 	mutatedStack := initStack.
-		WithNoESTopologies().
+		WithNoESTopology().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				"memory": memory1G,
 			},
 		})
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
-}
-
-func TestMutationVersion540To642(t *testing.T) {
-	// create a stack with 1 node in version 5.4.0
-	initStack := stack.NewStackBuilder("test-mutation-less-nodes").
-		WithESMasterDataNodes(3, stack.DefaultResources).
-		WithVersion("5.4.0")
-	// mutate it to 1 node in version 6.4.2
-	mutatedStack := initStack.WithVersion("6.4.2")
 	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
 }
