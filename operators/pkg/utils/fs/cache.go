@@ -55,7 +55,7 @@ func (c *filesCache) update() (files FilesCRC, hasChanged bool, err error) {
 		return nil, false, err
 	}
 
-	// read all files last modification time
+	// compute all files CRC
 	newCache := make(map[string]uint32)
 	for _, f := range filesInDir {
 		if c.shouldIgnore(f) {

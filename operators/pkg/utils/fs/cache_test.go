@@ -18,9 +18,6 @@ import (
 )
 
 func Test_filesCache(t *testing.T) {
-	// round time to the minute since the time we set up here
-	// would otherwise be more precise than the one we retrieve from the OS
-	// and could not be easily compared
 	data1 := []byte("data1")
 	data2 := []byte("data2")
 	crc1 := crc32.ChecksumIEEE(data1)
