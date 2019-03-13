@@ -34,10 +34,11 @@ func atomicFileWrite(file string, content []byte) error {
 }
 
 // expectNoEvent verifies that no event comes into the event channel for the given duration
-func expectNoEvent(t *testing.T, events chan struct{}, duration time.Duration) {
+func expectNoEvent(t *testing.T, events chan FilesModTime, duration time.Duration) {
 	select {
 	case <-events:
 		t.Errorf("Got an event, but should not")
+		return
 	case <-time.After(duration):
 		return
 	}
@@ -56,10 +57,10 @@ func Test_FileWatcher(t *testing.T) {
 
 	fileToWatch := filepath.Join(directory, "file1")
 
-	events := make(chan struct{})
+	events := make(chan FilesModTime)
 	onFilesChanged := func(files FilesModTime) (done bool, err error) {
 		// just forward an event to the events channel
-		events <- struct{}{}
+		events <- files
 		return false, nil
 	}
 
@@ -75,7 +76,7 @@ func Test_FileWatcher(t *testing.T) {
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	<-events
+	require.Equal(t, 1, len(<-events))
 
 	// write another file the watcher should not care about
 	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
@@ -87,7 +88,7 @@ func Test_FileWatcher(t *testing.T) {
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
 	// expect an event
-	<-events
+	require.Equal(t, 1, len(<-events))
 
 	// expect no more events
 	expectNoEvent(t, events, 200*time.Millisecond)
@@ -108,10 +109,10 @@ func Test_DirectoryWatcher(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(directory)
 
-	events := make(chan struct{})
+	events := make(chan FilesModTime)
 	onFilesChanged := func(files FilesModTime) (done bool, err error) {
 		// just forward an event to the events channel
-		events <- struct{}{}
+		events <- files
 		return false, nil
 	}
 
@@ -127,19 +128,19 @@ func Test_DirectoryWatcher(t *testing.T) {
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	<-events
+	require.Equal(t, 1, len(<-events))
 
 	// write another file
 	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	<-events
+	require.Equal(t, 2, len(<-events))
 
 	// change file content
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
 	// expect an event to occur
-	<-events
+	require.Equal(t, 2, len(<-events))
 
 	// expect no more events
 	expectNoEvent(t, events, 200*time.Millisecond)
