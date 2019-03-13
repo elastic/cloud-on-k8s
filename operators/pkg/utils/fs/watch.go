@@ -6,7 +6,6 @@ package fs
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"time"
 
@@ -25,7 +24,7 @@ type Watcher interface {
 // OnFilesChanged is a function invoked when something changed in the files.
 // If it returns an error, the Watcher will stop watching and return the error.
 // If it returns true, the Watcher will stop watching with no error.
-type OnFilesChanged func(files FilesModTime) (done bool, err error)
+type OnFilesChanged func(files FilesCRC) (done bool, err error)
 
 // DirectoryWatcher periodically reads files in directory, and calls onFilesChanged
 // on any changes in the directory's files.
@@ -70,9 +69,11 @@ func buildWatcher(ctx context.Context, cache *filesCache, onFilesChanged OnFiles
 	var onExec = func() (done bool, err error) {
 		newFiles, hasChanged, err := cache.update()
 		if err != nil {
-			return false, err
+			// could not update the cache (fs unavailable?)
+			log.Error(err, "cannot update cache")
+			// continue watching
+			return false, nil
 		}
-		fmt.Println("debug", newFiles)
 		if hasChanged {
 			return onFilesChanged(newFiles)
 		}

@@ -5,17 +5,18 @@
 package fs
 
 import (
+	"hash/crc32"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
-	"time"
 )
 
 // filesCache caches a directory's files last modification time in memory.
 type filesCache struct {
 	directory         string              // directory to read files in
 	ignoreHiddenFiles bool                // if set to true, don't cache hidden files
-	cache             FilesModTime        // files last modification time in memory
+	cache             FilesCRC            // files CRC in memory
 	filter            map[string]struct{} // filter on these files only (if empty, cache all files)
 }
 
@@ -39,7 +40,7 @@ func newFilesCache(directory string, ignoreHiddenFiles bool, filter []string) (*
 
 // update reads the directory's files to update the cache.
 // Sub-directories are ignored.
-func (c *filesCache) update() (files FilesModTime, hasChanged bool, err error) {
+func (c *filesCache) update() (files FilesCRC, hasChanged bool, err error) {
 	filesInDir, err := ioutil.ReadDir(c.directory)
 	if err != nil && os.IsNotExist(err) {
 		// handle non-existing directory
@@ -55,12 +56,16 @@ func (c *filesCache) update() (files FilesModTime, hasChanged bool, err error) {
 	}
 
 	// read all files last modification time
-	newCache := make(map[string]time.Time)
+	newCache := make(map[string]uint32)
 	for _, f := range filesInDir {
 		if c.shouldIgnore(f) {
 			continue
 		}
-		newCache[f.Name()] = f.ModTime()
+		data, err := ioutil.ReadFile(filepath.Join(c.directory, f.Name()))
+		if err != nil {
+			return nil, false, err
+		}
+		newCache[f.Name()] = crc32.ChecksumIEEE(data)
 	}
 
 	hasChanged = !c.cache.Equals(newCache)
@@ -87,24 +92,24 @@ func (c *filesCache) shouldIgnore(f os.FileInfo) bool {
 	return false
 }
 
-// FilesModTime defines a map of file name -> last modification time.
-type FilesModTime map[string]time.Time
+// FilesCRC defines a map of file name -> file content CRC.
+type FilesCRC map[string]uint32
 
 // Equals returns true if both f and f2 are considered equal.
-func (f FilesModTime) Equals(f2 FilesModTime) bool {
-	// differenciate nil (no directory) from zero value (empty directory)
+func (f FilesCRC) Equals(f2 FilesCRC) bool {
+	// differentiate nil (no directory) from zero value (empty directory)
 	if (f == nil && f2 != nil) || (f != nil && f2 == nil) {
 		return false
 	}
 	if len(f) != len(f2) {
 		return false
 	}
-	for filename, lastModA := range f {
-		lastModB, exists := f2[filename]
+	for filename, crc1 := range f {
+		crc2, exists := f2[filename]
 		if !exists {
 			return false
 		}
-		if !lastModA.Equal(lastModB) {
+		if crc1 != crc2 {
 			return false
 		}
 	}

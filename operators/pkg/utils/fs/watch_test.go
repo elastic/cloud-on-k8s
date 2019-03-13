@@ -8,7 +8,6 @@ package fs
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -35,11 +34,10 @@ func atomicFileWrite(file string, content []byte) error {
 }
 
 // expectEvent expects an event to happen from the events chan,
-// and compares the length of the FilesModTime to the expected one.
-func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout time.Duration) {
+// and compares the length of the FilesCRC to the expected one.
+func expectEvent(t *testing.T, events chan FilesCRC, length int, timeout time.Duration) {
 	select {
 	case e := <-events:
-		fmt.Println("got event", e)
 		require.Equal(t, length, len(e))
 	case <-time.After(timeout):
 		require.Fail(t, "no event received")
@@ -47,7 +45,7 @@ func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout tim
 }
 
 // expectNoEvent verifies that no event comes into the event channel for the given duration
-func expectNoEvent(t *testing.T, events chan FilesModTime, duration time.Duration) {
+func expectNoEvent(t *testing.T, events chan FilesCRC, duration time.Duration) {
 	select {
 	case <-events:
 		require.Fail(t, "Got an event, but should not")
@@ -65,12 +63,11 @@ func Test_FileWatcher(t *testing.T) {
 	directory, err := ioutil.TempDir("", "tmpdir")
 	require.NoError(t, err)
 	defer os.RemoveAll(directory)
-	fmt.Println("directory for FileWatcher", directory)
 
 	fileToWatch := filepath.Join(directory, "file1")
 
-	events := make(chan FilesModTime)
-	onFilesChanged := func(files FilesModTime) (done bool, err error) {
+	events := make(chan FilesCRC)
+	onFilesChanged := func(files FilesCRC) (done bool, err error) {
 		// just forward an event to the events channel
 		events <- files
 		return false, nil
@@ -121,10 +118,8 @@ func Test_DirectoryWatcher(t *testing.T) {
 	require.NoError(t, err)
 	defer os.RemoveAll(directory)
 
-	fmt.Println("directory for DirectoryWatcher", directory)
-
-	events := make(chan FilesModTime)
-	onFilesChanged := func(files FilesModTime) (done bool, err error) {
+	events := make(chan FilesCRC)
+	onFilesChanged := func(files FilesCRC) (done bool, err error) {
 		// just forward an event to the events channel
 		events <- files
 		return false, nil
@@ -151,7 +146,6 @@ func Test_DirectoryWatcher(t *testing.T) {
 	expectEvent(t, events, 2, 3*time.Second)
 
 	// change file content
-	fmt.Println("changing file content")
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
 	// expect an event to occur

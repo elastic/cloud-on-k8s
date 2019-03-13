@@ -75,7 +75,7 @@ unit:
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
 integration: generate
-	go test -v -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
+	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)

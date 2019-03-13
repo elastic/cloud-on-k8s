@@ -7,12 +7,12 @@
 package fs
 
 import (
+	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -21,15 +21,17 @@ func Test_filesCache(t *testing.T) {
 	// round time to the minute since the time we set up here
 	// would otherwise be more precise than the one we retrieve from the OS
 	// and could not be easily compared
-	modificationTime := time.Now().Add(-1 * time.Hour).Round(time.Minute)
-	modificationTimeLater := time.Now().Round(time.Minute)
+	data1 := []byte("data1")
+	data2 := []byte("data2")
+	crc1 := crc32.ChecksumIEEE(data1)
+	crc2 := crc32.ChecksumIEEE(data2)
 	tests := []struct {
 		name              string
 		ignoreHiddenFiles bool
 		filter            []string
-		currentCache      FilesModTime
-		setupFiles        FilesModTime
-		wantCache         FilesModTime
+		currentCache      FilesCRC
+		setupFiles        map[string][]byte
+		wantCache         FilesCRC
 		wantHasChanged    bool
 	}{
 		{
@@ -41,7 +43,7 @@ func Test_filesCache(t *testing.T) {
 		},
 		{
 			name:           "non-existing directory, did exist before",
-			currentCache:   map[string]time.Time{"file1": time.Now()},
+			currentCache:   FilesCRC{"file1": crc1},
 			setupFiles:     nil,
 			wantCache:      nil,
 			wantHasChanged: true,
@@ -49,170 +51,170 @@ func Test_filesCache(t *testing.T) {
 		{
 			name:           "empty directory, didn't exist before",
 			currentCache:   nil,
-			setupFiles:     map[string]time.Time{},
-			wantCache:      map[string]time.Time{},
+			setupFiles:     map[string][]byte{},
+			wantCache:      FilesCRC{},
 			wantHasChanged: true,
 		},
 		{
 			name:           "empty directory, did exist before",
-			currentCache:   map[string]time.Time{},
-			setupFiles:     map[string]time.Time{},
-			wantCache:      map[string]time.Time{},
+			currentCache:   FilesCRC{},
+			setupFiles:     map[string][]byte{},
+			wantCache:      FilesCRC{},
 			wantHasChanged: false,
 		},
 		{
 			name:         "some files written in an empty directory",
-			currentCache: map[string]time.Time{},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{},
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name:         "some files written in a directory that did not exist before",
 			currentCache: nil,
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name:         "some files written when a filter is set",
-			currentCache: map[string]time.Time{},
+			currentCache: FilesCRC{},
 			filter:       []string{"file2"},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file2": modificationTime,
+			wantCache: FilesCRC{
+				"file2": crc1,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name: "no change on existing files",
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
 			wantHasChanged: false,
 		},
 		{
 			name: "new file added",
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
-				"file3": modificationTimeLater,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
+				"file3": data2,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
-				"file3": modificationTimeLater,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
+				"file3": crc2,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name: "files have changed",
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTimeLater,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data2,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTimeLater,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc2,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name: "file removed",
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name:              "hidden files should not appear in the cache",
 			ignoreHiddenFiles: true,
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1":  modificationTime,
-				".file2": modificationTime,
-				".file3": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1":  data1,
+				".file2": data1,
+				".file3": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name:              "hidden files should appear in the cache if not ignored",
 			ignoreHiddenFiles: false,
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1":  modificationTime,
-				".file2": modificationTimeLater,
-				".file3": modificationTimeLater,
+			setupFiles: map[string][]byte{
+				"file1":  data1,
+				".file2": data2,
+				".file3": data2,
 			},
-			wantCache: map[string]time.Time{
-				"file1":  modificationTime,
-				".file2": modificationTimeLater,
-				".file3": modificationTimeLater,
+			wantCache: FilesCRC{
+				"file1":  crc1,
+				".file2": crc2,
+				".file3": crc2,
 			},
 			wantHasChanged: true,
 		},
 		{
 			name: "sub-directories should be ignored",
-			currentCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			currentCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			},
-			setupFiles: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
-				"dir_1": modificationTime,
+			setupFiles: map[string][]byte{
+				"file1": data1,
+				"file2": data1,
+				"dir_1": data1,
 			},
-			wantCache: map[string]time.Time{
-				"file1": modificationTime,
-				"file2": modificationTime,
+			wantCache: FilesCRC{
+				"file1": crc1,
+				"file2": crc1,
 			}, // same without the subdir
 			wantHasChanged: false,
 		},
@@ -236,17 +238,14 @@ func Test_filesCache(t *testing.T) {
 				require.NoError(t, err)
 			} else {
 				// create files in the directory
-				for filename, modTime := range tt.setupFiles {
+				for filename, content := range tt.setupFiles {
 					if strings.HasPrefix(filename, "dir") {
 						// create a directory
 						err := os.Mkdir(filepath.Join(directory, filename), 06444)
 						require.NoError(t, err)
 					} else {
 						// create a file
-						err := ioutil.WriteFile(filepath.Join(directory, filename), []byte("content"), 0644)
-						require.NoError(t, err)
-						// override last modification time
-						err = os.Chtimes(filepath.Join(directory, filename), modTime, modTime)
+						err := ioutil.WriteFile(filepath.Join(directory, filename), content, 0644)
 						require.NoError(t, err)
 					}
 				}
@@ -263,13 +262,13 @@ func Test_filesCache(t *testing.T) {
 	}
 }
 
-func TestFilesModTime_Equals(t *testing.T) {
-	modificationTime := time.Now().Add(-1 * time.Minute)
-	modificationTimeLater := time.Now().Add(time.Minute)
+func TestFilesCRC_Equals(t *testing.T) {
+	crc1 := crc32.ChecksumIEEE([]byte("data1"))
+	crc2 := crc32.ChecksumIEEE([]byte("data2"))
 	tests := []struct {
 		name string
-		f    FilesModTime
-		f2   FilesModTime
+		f    FilesCRC
+		f2   FilesCRC
 		want bool
 	}{
 		{
@@ -281,50 +280,50 @@ func TestFilesModTime_Equals(t *testing.T) {
 		{
 			name: "f nil",
 			f:    nil,
-			f2:   FilesModTime{},
+			f2:   FilesCRC{},
 			want: false,
 		},
 		{
 			name: "f2 nil",
-			f:    FilesModTime{},
+			f:    FilesCRC{},
 			f2:   nil,
 			want: false,
 		},
 		{
 			name: "both empty",
-			f:    FilesModTime{},
-			f2:   FilesModTime{},
+			f:    FilesCRC{},
+			f2:   FilesCRC{},
 			want: true,
 		},
 		{
 			name: "equal",
-			f:    FilesModTime{"a": modificationTime, "b": modificationTimeLater},
-			f2:   FilesModTime{"a": modificationTime, "b": modificationTimeLater},
+			f:    FilesCRC{"a": crc1, "b": crc2},
+			f2:   FilesCRC{"a": crc1, "b": crc2},
 			want: true,
 		},
 		{
-			name: "different modification times",
-			f:    FilesModTime{"a": modificationTime, "b": modificationTime},
-			f2:   FilesModTime{"a": modificationTime, "b": modificationTimeLater},
+			name: "different crc",
+			f:    FilesCRC{"a": crc1, "b": crc1},
+			f2:   FilesCRC{"a": crc1, "b": crc2},
 			want: false,
 		},
 		{
 			name: "more files in f",
-			f:    FilesModTime{"a": modificationTime, "b": modificationTime},
-			f2:   FilesModTime{"a": modificationTime},
+			f:    FilesCRC{"a": crc1, "b": crc1},
+			f2:   FilesCRC{"a": crc1},
 			want: false,
 		},
 		{
 			name: "more files in f2",
-			f:    FilesModTime{"a": modificationTime},
-			f2:   FilesModTime{"a": modificationTime, "b": modificationTime},
+			f:    FilesCRC{"a": crc1},
+			f2:   FilesCRC{"a": crc1, "b": crc1},
 			want: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.f.Equals(tt.f2); got != tt.want {
-				t.Errorf("FilesModTime.Equals() = %v, want %v", got, tt.want)
+				t.Errorf("FilesCRC.Equals() = %v, want %v", got, tt.want)
 			}
 		})
 	}

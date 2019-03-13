@@ -257,7 +257,7 @@ func execute() {
 	}
 
 	// on each filesystem event for config.SourceDir, update the keystore
-	onEvent := func(files fs.FilesModTime) (stop bool, err error) {
+	onEvent := func(files fs.FilesCRC) (stop bool, err error) {
 		updateKeystore(config)
 		return false, nil // run forever
 	}
