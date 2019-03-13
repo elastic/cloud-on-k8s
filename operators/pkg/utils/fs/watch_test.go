@@ -39,6 +39,7 @@ func atomicFileWrite(file string, content []byte) error {
 func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout time.Duration) {
 	select {
 	case e := <-events:
+		fmt.Println("got event", e)
 		require.Equal(t, length, len(e))
 	case <-time.After(timeout):
 		require.Fail(t, "no event received")
@@ -49,10 +50,8 @@ func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout tim
 func expectNoEvent(t *testing.T, events chan FilesModTime, duration time.Duration) {
 	select {
 	case <-events:
-		t.Errorf("Got an event, but should not")
-		return
+		require.Fail(t, "Got an event, but should not")
 	case <-time.After(duration):
-		return
 	}
 }
 
