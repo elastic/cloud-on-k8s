@@ -62,7 +62,7 @@ The Elastic operator **must not delete** a PVC that may hold the only copy of so
 
 ##### Recoverable optional
 
-`Recoverable optional` is a state where the missing data is available on some others nodes. For instance if a KS8 node with a local volume is down
+`Recoverable optional` is a state where the missing data is available on some others nodes. For instance if a K8S node with a local volume is down
 and if data can be replicated from other nodes then it is not mandatory for the Elastic operator to wait forever.
 
 It is a best effort scenario, we have to choose between:
@@ -181,4 +181,4 @@ Cons:
 
 * Strimzi: [Deleting Kafka nodes manually](https://strimzi.io/docs/master/#proc-manual-delete-pod-pvc-kafka-deployment-configuration-kafka)
 * Kubernetes [isBeingUsed](https://github.com/kubernetes/kubernetes/blob/a3ccea9d8743f2ff82e41b6c2af6dc2c41dc7b10/pkg/controller/volume/pvcprotection/pvc_protection_controller.go#L210)
-function: A PVC can be deleted *only* if it is not used by a scheduled pod _(incl. the `Unknown` state)_
+function: A PVC can be deleted *only* if it is not used by a scheduled pod _(including the `Unknown` state)_
