@@ -125,9 +125,9 @@ func CheckESVersion(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			}
 			// check ES version label
 			for _, p := range pods {
-				version := p.Labels["elasticsearch.stack.k8s.elastic.co/version"]
+				version := p.Labels["elasticsearch.k8s.elastic.co/version"]
 				if version != stack.Elasticsearch.Spec.Version {
-					return fmt.Errorf("Version %s does not match expected version %s", stack.Elasticsearch.Spec.Version, version)
+					return fmt.Errorf("Version %s does not match expected version %s", version, stack.Elasticsearch.Spec.Version)
 				}
 			}
 			return nil
