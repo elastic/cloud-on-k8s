@@ -38,7 +38,7 @@ spec:
       # this is the equivalent of the default change budget
       maxSurge: 1
       maxUnavailable: 0
-  topologies:
+  topology:
   - nodeTypes:
       master: true
       data: true
