@@ -8,6 +8,7 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -31,6 +32,18 @@ func atomicFileWrite(file string, content []byte) error {
 		return err
 	}
 	return os.Rename(hiddenFilePath, filePath)
+}
+
+// expectEvent expects an event to happen from the events chan,
+// and compares the length of the FilesModTime to the expected one.
+func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout time.Duration) {
+	select {
+	case e := <-events:
+		require.Equal(t, length, len(e))
+		return
+	case <-time.After(timeout):
+		return
+	}
 }
 
 // expectNoEvent verifies that no event comes into the event channel for the given duration
@@ -76,7 +89,7 @@ func Test_FileWatcher(t *testing.T) {
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	require.Equal(t, 1, len(<-events))
+	expectEvent(t, events, 1, 3*time.Second)
 
 	// write another file the watcher should not care about
 	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
@@ -87,8 +100,8 @@ func Test_FileWatcher(t *testing.T) {
 	// change first file content
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
-	// expect an event
-	require.Equal(t, 1, len(<-events))
+	// expect an event to occur
+	expectEvent(t, events, 1, 3*time.Second)
 
 	// expect no more events
 	expectNoEvent(t, events, 200*time.Millisecond)
@@ -128,19 +141,20 @@ func Test_DirectoryWatcher(t *testing.T) {
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	require.Equal(t, 1, len(<-events))
+	expectEvent(t, events, 1, 3*time.Second)
 
 	// write another file
 	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
 	require.NoError(t, err)
 	// expect an event to occur
-	require.Equal(t, 2, len(<-events))
+	expectEvent(t, events, 2, 3*time.Second)
 
 	// change file content
+	fmt.Println("changing file content")
 	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
 	require.NoError(t, err)
 	// expect an event to occur
-	require.Equal(t, 2, len(<-events))
+	expectEvent(t, events, 2, 3*time.Second)
 
 	// expect no more events
 	expectNoEvent(t, events, 200*time.Millisecond)

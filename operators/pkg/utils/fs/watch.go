@@ -6,6 +6,7 @@ package fs
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"time"
 
@@ -71,6 +72,7 @@ func buildWatcher(ctx context.Context, cache *filesCache, onFilesChanged OnFiles
 		if err != nil {
 			return false, err
 		}
+		fmt.Println("debug", newFiles)
 		if hasChanged {
 			return onFilesChanged(newFiles)
 		}
