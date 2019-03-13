@@ -12,8 +12,10 @@ import (
 	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -40,26 +42,33 @@ const (
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {
-	return add(mgr, newReconciler(mgr))
+	reconciler := newReconciler(mgr)
+	c, err := add(mgr, reconciler)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) *ReconcileKibana {
+	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
-		Client:   k8s.WrapClient(mgr.GetClient()),
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("kibana-controller"),
+		Client:         client,
+		scheme:         mgr.GetScheme(),
+		recorder:       mgr.GetRecorder("kibana-controller"),
+		dynamicWatches: watches.NewDynamicWatches(),
+		finalizers:     finalizer.NewHandler(client),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("kibana-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
+	return controller.New("kibana-controller", mgr, controller.Options{Reconciler: r})
+}
 
+func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
 	if err := c.Watch(&source.Kind{Type: &kibanav1alpha1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -81,6 +90,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Dynamically watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -91,6 +105,9 @@ type ReconcileKibana struct {
 	k8s.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
+
+	finalizers     finalizer.Handler
+	dynamicWatches watches.DynamicWatches
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -110,12 +127,6 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
 	err := r.Get(request.NamespacedName, kb)
-
-	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
-		return common.PauseRequeue, nil
-	}
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -125,12 +136,27 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	if common.IsPaused(kb.ObjectMeta) {
+		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		return common.PauseRequeue, nil
+	}
+
+	if err := r.finalizers.Handle(kb, secretWatchFinalizer(*kb, r.dynamicWatches)); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if kb.IsMarkedForDeletion() {
+		// Kibana will be deleted nothing to do other than run finalizers
+		return reconcile.Result{}, nil
+	}
+
 	ver, err := version.Parse(kb.Spec.Version)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	state := NewState(request, kb)
-	driver, err := newDriver(r, r.scheme, *ver)
+	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

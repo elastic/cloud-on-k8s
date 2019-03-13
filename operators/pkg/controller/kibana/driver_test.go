@@ -9,6 +9,7 @@ import (
 
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -227,9 +228,10 @@ func Test_driver_deploymentParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
+			w := watches.NewDynamicWatches()
 			version, err := version.Parse(tt.args.kb.Spec.Version)
 			assert.NoError(t, err)
-			d, err := newDriver(client, s, *version)
+			d, err := newDriver(client, s, *version, w)
 			assert.NoError(t, err)
 			got, err := d.deploymentParams(tt.args.kb)
 			if (err != nil) != tt.wantErr {

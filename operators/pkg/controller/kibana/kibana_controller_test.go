@@ -17,7 +17,6 @@ import (
 
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -44,8 +43,11 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	c = k8s.WrapClient(mgr.GetClient())
 
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	assert.NoError(t, add(mgr, recFn))
+	reconciler := newReconciler(mgr)
+	recFn, requests := SetupTestReconcile(reconciler)
+	controller, err := add(mgr, recFn)
+	assert.NoError(t, err)
+	assert.NoError(t, addWatches(controller, reconciler))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
@@ -56,15 +58,12 @@ func TestReconcile(t *testing.T) {
 
 	// Create the Kibana object and expect the Reconcile and Deployment to be created
 	err = c.Create(instance)
-	// The instance object may not be a valid object because it might be missing some required fields.
-	// Please modify the instance object by adding required fields and then remove the following if statement.
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
-	}
 	assert.NoError(t, err)
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
+
+	// refetch Kibana as finalizers have been installed
+	assert.NoError(t, c.Get(k8s.ExtractNamespacedName(instance), instance))
 
 	// Deployment won't be created until we provide details for the ES backend
 	secret := mockCaSecret(t, c)

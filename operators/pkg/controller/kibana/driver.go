@@ -11,8 +11,10 @@ import (
 
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/version/version7"
@@ -26,9 +28,24 @@ import (
 )
 
 type driver struct {
-	client     k8s.Client
-	scheme     *runtime.Scheme
-	newPodSpec func(params pod.SpecParams) corev1.PodSpec
+	client         k8s.Client
+	scheme         *runtime.Scheme
+	newPodSpec     func(params pod.SpecParams) corev1.PodSpec
+	dynamicWatches watches.DynamicWatches
+}
+
+func secretWatchKey(kibana kbtype.Kibana) string {
+	return fmt.Sprintf("%s-%s-es-auth-secret", kibana.Namespace, kibana.Name)
+}
+
+func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
+	return finalizer.Finalizer{
+		Name: "es-auth-secret.kibana.k8s.elastic.co",
+		Execute: func() error {
+			watches.Secrets.RemoveHandlerForKey(secretWatchKey(kibana))
+			return nil
+		},
+	}
 }
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
@@ -50,11 +67,19 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
 		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
+		esAuthSecret := types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}
+		d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
+			Name:    secretWatchKey(*kb),
+			Watched: esAuthSecret,
+			Watcher: k8s.ExtractNamespacedName(kb),
+		})
 		sec := corev1.Secret{}
-		if err := d.client.Get(types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}, &sec); err != nil {
+		if err := d.client.Get(esAuthSecret, &sec); err != nil {
 			return nil, err
 		}
 		configChecksum.Write(sec.Data[ref.Key])
+	} else {
+		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
 
 	if kb.Spec.Elasticsearch.CaCertSecret != nil {
@@ -143,10 +168,16 @@ func (d *driver) Reconcile(
 	return results.WithResult(res)
 }
 
-func newDriver(client k8s.Client, scheme *runtime.Scheme, version version.Version) (*driver, error) {
+func newDriver(
+	client k8s.Client,
+	scheme *runtime.Scheme,
+	version version.Version,
+	watches watches.DynamicWatches,
+) (*driver, error) {
 	d := driver{
-		client: client,
-		scheme: scheme,
+		client:         client,
+		scheme:         scheme,
+		dynamicWatches: watches,
 	}
 	switch version.Major {
 	case 6:
