@@ -104,13 +104,3 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 
 	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
 }
-
-func TestMutationVersion540To642(t *testing.T) {
-	// create a stack with 1 node in version 5.4.0
-	initStack := stack.NewStackBuilder("test-mutation-less-nodes").
-		WithESMasterDataNodes(3, stack.DefaultResources).
-		WithVersion("5.4.0")
-	// mutate it to 1 node in version 6.4.2
-	mutatedStack := initStack.WithVersion("6.4.2")
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
-}
