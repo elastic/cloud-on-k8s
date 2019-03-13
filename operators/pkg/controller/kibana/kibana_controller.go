@@ -34,7 +34,7 @@ var (
 )
 
 const (
-	caChecksumLabelName = "kibana.k8s.elastic.co/ca-file-checksum"
+	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller

@@ -31,16 +31,7 @@ type driver struct {
 	newPodSpec func(params pod.SpecParams) corev1.PodSpec
 }
 
-func (d *driver) Reconcile(
-	state *State,
-	kb *kbtype.Kibana,
-) *reconciler.Results {
-	results := reconciler.Results{}
-	if !kb.Spec.Elasticsearch.IsConfigured() {
-		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
-		return &results
-	}
-
+func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
 	kibanaPodSpecParams := pod.SpecParams{
 		Version:          kb.Spec.Version,
 		CustomImageName:  kb.Spec.Image,
@@ -51,6 +42,20 @@ func (d *driver) Reconcile(
 	kibanaPodSpec := d.newPodSpec(kibanaPodSpecParams)
 	labels := NewLabels(kb.Name)
 	podLabels := NewLabels(kb.Name)
+
+	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
+	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support
+	// updating the CA file contents or credentials without restarting the process.
+	configChecksum := sha256.New224()
+	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
+	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
+		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
+		sec := corev1.Secret{}
+		if err := d.client.Get(types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}, &sec); err != nil {
+			return nil, err
+		}
+		configChecksum.Write(sec.Data[ref.Key])
+	}
 
 	if kb.Spec.Elasticsearch.CaCertSecret != nil {
 		// TODO: use kibanaCa to generate cert for deployment
@@ -63,21 +68,14 @@ func (d *driver) Reconcile(
 			"/usr/share/kibana/config/elasticsearch-certs",
 		)
 
-		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
-		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
-		// updating the CA file contents without restarting the process.
-		caChecksum := ""
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
-			return results.WithError(err)
+			return nil, err
 		}
 		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
+			configChecksum.Write(capem)
 		}
-		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-		// changes, which will trigger a rolling update)
-		podLabels[caChecksumLabelName] = caChecksum
 
 		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
 
@@ -101,8 +99,11 @@ func (d *driver) Reconcile(
 			)
 		}
 	}
+	// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+	// changes, which will trigger a rolling update)
+	podLabels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
-	expectedDp := NewDeployment(DeploymentParams{
+	return &DeploymentParams{
 		// TODO: revisit naming?
 		Name:      PseudoNamespacedResourceName(*kb),
 		Namespace: kb.Namespace,
@@ -111,7 +112,24 @@ func (d *driver) Reconcile(
 		Labels:    labels,
 		PodLabels: podLabels,
 		PodSpec:   kibanaPodSpec,
-	})
+	}, nil
+}
+
+func (d *driver) Reconcile(
+	state *State,
+	kb *kbtype.Kibana,
+) *reconciler.Results {
+	results := reconciler.Results{}
+	if !kb.Spec.Elasticsearch.IsConfigured() {
+		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
+		return &results
+	}
+
+	params, err := d.deploymentParams(kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+	expectedDp := NewDeployment(*params)
 	reconciledDp, err := ReconcileDeployment(d.client, d.scheme, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
