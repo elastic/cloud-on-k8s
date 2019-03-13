@@ -40,9 +40,8 @@ func expectEvent(t *testing.T, events chan FilesModTime, length int, timeout tim
 	select {
 	case e := <-events:
 		require.Equal(t, length, len(e))
-		return
 	case <-time.After(timeout):
-		return
+		require.Fail(t, "no event received")
 	}
 }
 
