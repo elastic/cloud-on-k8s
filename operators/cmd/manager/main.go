@@ -159,13 +159,20 @@ func execute() {
 		os.Exit(1)
 	}
 
+	// Verify cert validity options
+	caCertValidity := viper.GetDuration(CACertValidityFlag)
+	certExpirationSafetyMargin := viper.GetDuration(CertExpirationSafetyMarginFlag)
+	if certExpirationSafetyMargin > caCertValidity {
+		log.Error(fmt.Errorf("%s must be larger than %s", CACertValidityFlag, CertExpirationSafetyMarginFlag), "")
+		os.Exit(1)
+	}
 	// Setup all Controllers
 	log.Info("Setting up controller")
 	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
 		Dialer:                     dialer,
 		OperatorImage:              operatorImage,
-		CACertValidity:             viper.GetDuration(CACertValidityFlag),
-		CertExpirationSafetyMargin: viper.GetDuration(CertExpirationSafetyMarginFlag),
+		CACertValidity:             caCertValidity,
+		CertExpirationSafetyMargin: certExpirationSafetyMargin,
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
