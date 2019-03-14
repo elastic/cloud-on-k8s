@@ -5,25 +5,22 @@
 package kibana
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"path"
 	"reflect"
 	"sync/atomic"
 	"time"
 
 	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -39,32 +36,39 @@ var (
 )
 
 const (
-	caChecksumLabelName = "kibana.k8s.elastic.co/ca-file-checksum"
+	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
 )
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {
-	return add(mgr, newReconciler(mgr))
+	reconciler := newReconciler(mgr)
+	c, err := add(mgr, reconciler)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) *ReconcileKibana {
+	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
-		Client:   k8s.WrapClient(mgr.GetClient()),
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("kibana-controller"),
+		Client:         client,
+		scheme:         mgr.GetScheme(),
+		recorder:       mgr.GetRecorder("kibana-controller"),
+		dynamicWatches: watches.NewDynamicWatches(),
+		finalizers:     finalizer.NewHandler(client),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
+func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("kibana-controller", mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
+	return controller.New("kibana-controller", mgr, controller.Options{Reconciler: r})
+}
 
+func addWatches(c controller.Controller, r *ReconcileKibana) error {
 	// Watch for changes to Kibana
 	if err := c.Watch(&source.Kind{Type: &kibanav1alpha1.Kibana{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -105,6 +109,9 @@ type ReconcileKibana struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
+	finalizers     finalizer.Handler
+	dynamicWatches watches.DynamicWatches
+
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -123,12 +130,6 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
 	err := r.Get(request.NamespacedName, kb)
-
-	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
-		return common.PauseRequeue, nil
-	}
-
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -139,118 +140,44 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 
+	if common.IsPaused(kb.ObjectMeta) {
+		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		return common.PauseRequeue, nil
+	}
+
+	if err := r.finalizers.Handle(kb, secretWatchFinalizer(*kb, r.dynamicWatches)); err != nil {
+		return reconcile.Result{}, err
+	}
+
+	if kb.IsMarkedForDeletion() {
+		// Kibana will be deleted nothing to do other than run finalizers
+		return reconcile.Result{}, nil
+	}
+
+	ver, err := version.Parse(kb.Spec.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 	state := NewState(request, kb)
-
-	state, err = r.reconcileKibanaDeployment(state, kb)
+	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches)
 	if err != nil {
-		return state.Result, err
+		return reconcile.Result{}, err
 	}
-
-	res, err := common.ReconcileService(r.Client, r.scheme, NewService(*kb), kb)
-	if err != nil {
-		// TODO: consider updating some status here?
-		return res, err
-	}
-
-	return r.updateStatus(state)
+	// version specific reconcile
+	results := driver.Reconcile(&state, kb)
+	// update status
+	err = r.updateStatus(state)
+	return results.WithError(err).Aggregate()
 }
 
-func (r *ReconcileKibana) reconcileKibanaDeployment(
-	state State,
-	kb *kibanav1alpha1.Kibana,
-) (State, error) {
-	if !kb.Spec.Elasticsearch.IsConfigured() {
-		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
-		return state, nil
-	}
-
-	kibanaPodSpecParams := PodSpecParams{
-		Version:          kb.Spec.Version,
-		CustomImageName:  kb.Spec.Image,
-		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
-		User:             kb.Spec.Elasticsearch.Auth,
-	}
-
-	kibanaPodSpec := NewPodSpec(kibanaPodSpecParams)
-	labels := NewLabels(kb.Name)
-	podLabels := NewLabels(kb.Name)
-
-	if kb.Spec.Elasticsearch.CaCertSecret != nil {
-		// TODO: use kibanaCa to generate cert for deployment
-		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
-
-		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCertsVolume := volume.NewSecretVolumeWithMountPath(
-			*kb.Spec.Elasticsearch.CaCertSecret,
-			"elasticsearch-certs",
-			"/usr/share/kibana/config/elasticsearch-certs",
-		)
-
-		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Kibana
-		// instances in the deployment when the ca file contents change. this is done because Kibana do not support
-		// updating the CA file contents without restarting the process.
-		caChecksum := ""
-		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
-		if err := r.Get(key, &esPublicCASecret); err != nil {
-			return state, err
-		}
-		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
-		}
-		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
-		// changes, which will trigger a rolling update)
-		podLabels[caChecksumLabelName] = caChecksum
-
-		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
-
-		for i, container := range kibanaPodSpec.InitContainers {
-			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-		}
-
-		for i, container := range kibanaPodSpec.Containers {
-			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-
-			kibanaPodSpec.Containers[i].Env = append(
-				kibanaPodSpec.Containers[i].Env,
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
-				},
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-					Value: "certificate",
-				},
-			)
-		}
-	}
-
-	deploy := NewDeployment(DeploymentParams{
-		// TODO: revisit naming?
-		Name:      PseudoNamespacedResourceName(*kb),
-		Namespace: kb.Namespace,
-		Replicas:  kb.Spec.NodeCount,
-		Selector:  labels,
-		Labels:    labels,
-		PodLabels: podLabels,
-		PodSpec:   kibanaPodSpec,
-	})
-	result, err := r.ReconcileDeployment(deploy, kb)
-	if err != nil {
-		return state, err
-	}
-	state.UpdateKibanaState(result)
-	return state, nil
-}
-
-func (r *ReconcileKibana) updateStatus(state State) (reconcile.Result, error) {
+func (r *ReconcileKibana) updateStatus(state State) error {
 	current := state.originalKibana
 	if reflect.DeepEqual(current.Status, state.Kibana.Status) {
-		return state.Result, nil
+		return nil
 	}
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(state.Kibana)
+	return r.Status().Update(state.Kibana)
 }

@@ -26,6 +26,8 @@ spec:
     - elastic
     kind: Elasticsearch
     plural: elasticsearches
+    shortNames:
+    - es
   scope: Namespaced
   subresources:
     status: {}
@@ -61,6 +63,15 @@ spec:
             image:
               description: Image represents the docker image that will be used.
               type: string
+            licenseType:
+              description: LicenseType represents the expected license type for this
+                cluster. Will default to "basic" if not set.
+              enum:
+              - basic
+              - trial
+              - gold
+              - platinum
+              type: string
             setVmMaxMapCount:
               description: SetVMMaxMapCount indicates whether a init container should
                 be used to ensure that the `vm.max_map_count` is set according to
@@ -93,8 +104,8 @@ spec:
               - type
               - settings
               type: object
-            topologies:
-              description: Topologies represent a list of node topologies to be part
+            topology:
+              description: Topology represents a list of topology elements to be part
                 of the cluster
               items:
                 properties:
@@ -103,7 +114,7 @@ spec:
                     format: int32
                     type: integer
                   nodeTypes:
-                    description: NodeTypes represents the node type
+                    description: NodeTypes represents the node types
                     properties:
                       data:
                         description: Data represents a data node

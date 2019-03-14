@@ -23,6 +23,8 @@ spec:
     - elastic
     kind: Kibana
     plural: kibanas
+    shortNames:
+    - kb
   scope: Namespaced
   subresources:
     status: {}

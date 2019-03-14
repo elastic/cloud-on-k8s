@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
@@ -125,9 +126,9 @@ func CheckESVersion(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			}
 			// check ES version label
 			for _, p := range pods {
-				version := p.Labels["elasticsearch.stack.k8s.elastic.co/version"]
+				version := p.Labels[label.VersionLabelName]
 				if version != stack.Elasticsearch.Spec.Version {
-					return fmt.Errorf("Version %s does not match expected version %s", stack.Elasticsearch.Spec.Version, version)
+					return fmt.Errorf("Version %s does not match expected version %s", version, stack.Elasticsearch.Spec.Version)
 				}
 			}
 			return nil
@@ -202,9 +203,9 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				return err
 			}
 			var expectedLimits []corev1.ResourceList
-			for _, topo := range stack.Elasticsearch.Spec.Topologies {
-				for i := 0; i < int(topo.NodeCount); i++ {
-					expectedLimits = append(expectedLimits, topo.Resources.Limits)
+			for _, topoElem := range stack.Elasticsearch.Spec.Topology {
+				for i := 0; i < int(topoElem.NodeCount); i++ {
+					expectedLimits = append(expectedLimits, topoElem.Resources.Limits)
 				}
 			}
 			var limits []corev1.ResourceList
@@ -214,6 +215,10 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				}
 				esContainer := p.Spec.Containers[0]
 				limits = append(limits, esContainer.Resources.Limits)
+
+				if p.Status.QOSClass != corev1.PodQOSGuaranteed {
+					return fmt.Errorf("Pod QoS class should be Guaranteed")
+				}
 			}
 			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
 				return err

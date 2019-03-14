@@ -43,8 +43,8 @@ rules:
 - apiGroups:
   - elasticsearch.k8s.elastic.co
   resources:
-  - elasticsearchclusters
-  - elasticsearchclusters/status
+  - elasticsearches
+  - elasticsearches/status
   verbs:
   - get
   - list

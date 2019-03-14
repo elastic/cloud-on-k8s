@@ -81,15 +81,15 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-// -- ES Topologies
+// -- ES Topology
 
-func (b Builder) WithNoESTopologies() Builder {
-	b.Elasticsearch.Spec.Topologies = []estype.ElasticsearchTopologySpec{}
+func (b Builder) WithNoESTopology() Builder {
+	b.Elasticsearch.Spec.Topology = []estype.TopologyElementSpec{}
 	return b
 }
 
 func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.WithESTopology(estype.ElasticsearchTopologySpec{
+	return b.withESTopologyElement(estype.TopologyElementSpec{
 		NodeCount: int32(count),
 		NodeTypes: estype.NodeTypesSpec{Master: true},
 		Resources: resources,
@@ -97,7 +97,7 @@ func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Bu
 }
 
 func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.WithESTopology(estype.ElasticsearchTopologySpec{
+	return b.withESTopologyElement(estype.TopologyElementSpec{
 		NodeCount: int32(count),
 		NodeTypes: estype.NodeTypesSpec{Data: true},
 		Resources: resources,
@@ -105,15 +105,15 @@ func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Buil
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.WithESTopology(estype.ElasticsearchTopologySpec{
+	return b.withESTopologyElement(estype.TopologyElementSpec{
 		NodeCount: int32(count),
 		NodeTypes: estype.NodeTypesSpec{Master: true, Data: true},
 		Resources: resources,
 	})
 }
 
-func (b Builder) WithESTopology(topology estype.ElasticsearchTopologySpec) Builder {
-	b.Elasticsearch.Spec.Topologies = append(b.Elasticsearch.Spec.Topologies, topology)
+func (b Builder) withESTopologyElement(topologyElement estype.TopologyElementSpec) Builder {
+	b.Elasticsearch.Spec.Topology = append(b.Elasticsearch.Spec.Topology, topologyElement)
 	return b
 }
 

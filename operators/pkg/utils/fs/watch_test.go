@@ -7,159 +7,154 @@
 package fs
 
 import (
-	"errors"
+	"context"
 	"io/ioutil"
 	"os"
-	"sync/atomic"
+	"path"
+	"path/filepath"
 	"testing"
-
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"time"
 
 	"github.com/stretchr/testify/require"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-func Test_WatchPath(t *testing.T) {
-	logger := logf.Log.WithName("test")
+// atomicFileWrite attempts to create file atomically,
+// by first creating a tmp hidden file, then renaming it to the real file
+// (this is atomic from the watcher point of view, not the filesystem)
+func atomicFileWrite(file string, content []byte) error {
+	dir := path.Dir(file)
+	filename := path.Base(file)
+	hiddenFilePath := filepath.Join(dir, "."+filename)
+	filePath := filepath.Join(dir, filename)
 
-	// setup a tmp file to watch
-	tmpFile, err := ioutil.TempFile("", "tmpfile")
+	if err := ioutil.WriteFile(hiddenFilePath, content, 0644); err != nil {
+		return err
+	}
+	return os.Rename(hiddenFilePath, filePath)
+}
+
+// expectEvent expects an event to happen from the events chan,
+// and compares the length of the FilesCRC to the expected one.
+func expectEvent(t *testing.T, events chan FilesCRC, length int, timeout time.Duration) {
+	select {
+	case e := <-events:
+		require.Equal(t, length, len(e))
+	case <-time.After(timeout):
+		require.Fail(t, "no event received")
+	}
+}
+
+// expectNoEvent verifies that no event comes into the event channel for the given duration
+func expectNoEvent(t *testing.T, events chan FilesCRC, duration time.Duration) {
+	select {
+	case <-events:
+		require.Fail(t, "Got an event, but should not")
+	case <-time.After(duration):
+	}
+}
+
+func Test_FileWatcher(t *testing.T) {
+	// Test that the file watcher behaves as expected in the common case.
+	// Mostly checking everything is correctly plugged together.
+	// Specific corner cases and detailed behaviours are tested
+	// in filesCache and periodicExec unit tests.
+
+	// work in a tmp directory
+	directory, err := ioutil.TempDir("", "tmpdir")
 	require.NoError(t, err)
-	path := tmpFile.Name()
-	defer os.Remove(path)
+	defer os.RemoveAll(directory)
 
-	// count events of each category
-	stopEvents := NewEventsCounter()
-	stopEvents.Start()
-	defer stopEvents.Stop()
-	continueEvents := NewEventsCounter()
-	continueEvents.Start()
-	defer continueEvents.Stop()
-	errorEvents := NewEventsCounter()
-	errorEvents.Start()
-	defer errorEvents.Stop()
+	fileToWatch := filepath.Join(directory, "file1")
 
-	// on each event, read the file
-	// according to its content, return in different ways
-	f := func() (bool, error) {
-		content, err := ioutil.ReadFile(path)
-		require.NoError(t, err)
-		switch string(content) {
-		case "stop":
-			stopEvents.Events <- "stop"
-			return true, nil
-		case "error":
-			errorEvents.Events <- "error"
-			return false, errors.New("error")
-		default:
-			continueEvents.Events <- "continue"
-			return false, nil
-		}
+	events := make(chan FilesCRC)
+	onFilesChanged := func(files FilesCRC) (done bool, err error) {
+		// just forward an event to the events channel
+		events <- files
+		return false, nil
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	watcher, err := FileWatcher(ctx, fileToWatch, onFilesChanged, 1*time.Millisecond)
+	require.NoError(t, err)
 	done := make(chan error)
 	go func() {
-		done <- WatchPath(path, f, logger)
+		done <- watcher.Run()
 	}()
 
-	// should trigger an event before actually watching
-	assertEventObserved(t, continueEvents)
+	// write a file
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
+	require.NoError(t, err)
+	// expect an event to occur
+	expectEvent(t, events, 1, 3*time.Second)
 
-	// trigger a change that should continue
-	continueEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	assertEventObserved(t, continueEvents)
-	// again
-	continueEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	assertEventObserved(t, continueEvents)
+	// write another file the watcher should not care about
+	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
+	require.NoError(t, err)
+	// expect no events
+	expectNoEvent(t, events, 200*time.Millisecond)
 
-	// trigger a change that should stop
-	stopEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("stop"), 644))
-	assertEventObserved(t, stopEvents)
-	// WatchPath should return
+	// change first file content
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
+	require.NoError(t, err)
+	// expect an event to occur
+	expectEvent(t, events, 1, 3*time.Second)
+
+	// expect no more events
+	expectNoEvent(t, events, 200*time.Millisecond)
+
+	// stop watching, should return with no error
+	cancel()
 	require.NoError(t, <-done)
-
-	// run it again
-	require.NoError(t, ioutil.WriteFile(path, []byte("continue"), 644))
-	done = make(chan error)
-	go func() {
-		done <- WatchPath(path, f, logger)
-	}()
-
-	// should trigger an event before actually watching
-	assertEventObserved(t, continueEvents)
-
-	// trigger a change that should return an error
-	errorEvents.SetLastObserved()
-	require.NoError(t, ioutil.WriteFile(path, []byte("error"), 644))
-	assertEventObserved(t, errorEvents)
-
-	// WatchPath should return with an error
-	require.Error(t, <-done, "error")
 }
 
-// assertEventObserved verifies that an event is eventually observed
-// by the provided eventsCounter
-func assertEventObserved(t *testing.T, eventsCounter *EventsCounter) {
-	test.RetryUntilSuccess(t, func() error {
-		if !eventsCounter.CountIncreased() {
-			return errors.New("No event observed")
-		}
-		return nil
-	})
-}
+func Test_DirectoryWatcher(t *testing.T) {
+	// Test that the directory watcher behaves as expected in the common case.
+	// Mostly checking everything is correctly plugged together.
+	// Specific corner cases and detailed behaviours are tested
+	// in filesCache and periodicExec unit tests.
 
-// EventsCounter counts events provided to the Events channel
-type EventsCounter struct {
-	Events            chan string
-	stop              chan struct{}
-	count             int32
-	lastObservedCount int32
-}
+	// work in a tmp directory
+	directory, err := ioutil.TempDir("", "tmpdir")
+	require.NoError(t, err)
+	defer os.RemoveAll(directory)
 
-// NewEventsCounter returns an initialized EventsCounter
-func NewEventsCounter() *EventsCounter {
-	var count, lastObservedCount int32
-	atomic.StoreInt32(&count, 0)
-	atomic.StoreInt32(&lastObservedCount, 0)
-	return &EventsCounter{
-		Events:            make(chan string),
-		stop:              make(chan struct{}),
-		count:             count,
-		lastObservedCount: lastObservedCount,
+	events := make(chan FilesCRC)
+	onFilesChanged := func(files FilesCRC) (done bool, err error) {
+		// just forward an event to the events channel
+		events <- files
+		return false, nil
 	}
-}
 
-// Start counts events until stopped
-func (e *EventsCounter) Start() {
+	ctx, cancel := context.WithCancel(context.Background())
+	watcher, err := DirectoryWatcher(ctx, directory, onFilesChanged, 1*time.Millisecond)
+	require.NoError(t, err)
+	done := make(chan error)
 	go func() {
-		for {
-			select {
-			case <-e.stop:
-				return
-			case <-e.Events:
-				atomic.AddInt32(&e.count, 1)
-			}
-		}
+		done <- watcher.Run()
 	}()
-}
 
-// Stop counting
-func (e *EventsCounter) Stop() {
-	close(e.stop)
-}
+	// write a file
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content"))
+	require.NoError(t, err)
+	// expect an event to occur
+	expectEvent(t, events, 1, 3*time.Second)
 
-// SetLastObserved keep tracks of the current count
-func (e *EventsCounter) SetLastObserved() {
-	atomic.StoreInt32(&e.lastObservedCount, atomic.LoadInt32(&e.count))
-}
+	// write another file
+	err = atomicFileWrite(filepath.Join(directory, "file2"), []byte("content"))
+	require.NoError(t, err)
+	// expect an event to occur
+	expectEvent(t, events, 2, 3*time.Second)
 
-// CountIncreased returns true if the current count is higher
-// than the last observed one
-func (e *EventsCounter) CountIncreased() bool {
-	count := atomic.LoadInt32(&e.count)
-	lastObserved := atomic.LoadInt32(&e.lastObservedCount)
-	return count > lastObserved
+	// change file content
+	err = atomicFileWrite(filepath.Join(directory, "file1"), []byte("content updated"))
+	require.NoError(t, err)
+	// expect an event to occur
+	expectEvent(t, events, 2, 3*time.Second)
+
+	// expect no more events
+	expectNoEvent(t, events, 200*time.Millisecond)
+
+	// stop watching, should return with no error
+	cancel()
+	require.NoError(t, <-done)
 }
