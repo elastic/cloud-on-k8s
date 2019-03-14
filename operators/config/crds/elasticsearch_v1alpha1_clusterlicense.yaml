@@ -10,6 +10,8 @@ spec:
   names:
     kind: ClusterLicense
     plural: clusterlicenses
+    shortNames:
+    - cl
   scope: Namespaced
   validation:
     openAPIV3Schema:

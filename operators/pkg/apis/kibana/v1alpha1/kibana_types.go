@@ -101,6 +101,7 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 // Kibana is the Schema for the kibanas API
 // +k8s:openapi-gen=true
 // +kubebuilder:categories=elastic
+// +kubebuilder:resource:shortName=kb
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
