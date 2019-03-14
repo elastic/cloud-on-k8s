@@ -9,9 +9,11 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
@@ -53,11 +55,11 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 }
 
 // ReconcileDeployment upserts the given deployment for the specified owner.
-func (r *ReconcileKibana) ReconcileDeployment(expected appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
+func ReconcileDeployment(c k8s.Client, s *runtime.Scheme, expected appsv1.Deployment, owner metav1.Object) (appsv1.Deployment, error) {
 	reconciled := &appsv1.Deployment{}
 	err := reconciler.ReconcileResource(reconciler.Params{
-		Client:     r.Client,
-		Scheme:     r.scheme,
+		Client:     c,
+		Scheme:     s,
 		Owner:      owner,
 		Expected:   &expected,
 		Reconciled: reconciled,

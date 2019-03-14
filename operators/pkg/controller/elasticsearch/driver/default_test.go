@@ -210,10 +210,10 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	pod3 := newPod("elasticsearch-sample-es-jfpqbt2s4q", "default")
 	pod4 := newPod("elasticsearch-sample-es-nope", "default")
 
-	expectedResult1 := reconcile.Results{}
+	expectedResult1 := reconciler.Results{}
 	expectedResult1.WithResult(defaultRequeue).WithResult(defaultRequeue)
 
-	expectedEmptyResult := reconcile.Results{}
+	expectedEmptyResult := reconciler.Results{}
 	expectedEmptyResult.WithResult(k8sreconcile.Result{})
 
 	nn := types.NamespacedName{
@@ -230,13 +230,13 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 		reconcileState *reconcile.State
 		resourcesState *reconcile.ResourcesState
 		observedState  observer.State
-		results        *reconcile.Results
+		results        *reconciler.Results
 		esClient       *esclient.Client
 		namespacedName types.NamespacedName
 	}
 
 	type want struct {
-		results              *reconcile.Results
+		results              *reconciler.Results
 		fulfilledExpectation bool
 	}
 
@@ -259,7 +259,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 					ClusterState: &clusterState,
 				},
 				reconcileState: &reconcile.State{},
-				results:        &reconcile.Results{},
+				results:        &reconciler.Results{},
 			},
 			fields: fields{
 				Options: Options{
@@ -284,7 +284,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 					ClusterState: &clusterState,
 				},
 				reconcileState: &reconcile.State{},
-				results:        &reconcile.Results{},
+				results:        &reconciler.Results{},
 			},
 			fields: fields{
 				Options: Options{

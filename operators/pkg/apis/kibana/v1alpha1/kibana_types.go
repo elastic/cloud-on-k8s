@@ -95,6 +95,14 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 	return prev.Health == KibanaGreen && ks.Health != KibanaGreen
 }
 
+// IsMarkedForDeletion returns true if the Kibana is going to be deleted
+func (e Kibana) IsMarkedForDeletion() bool {
+	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
+		return false
+	}
+	return true
+}
+
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
