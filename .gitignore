@@ -24,3 +24,7 @@ bin
 
 # ignore vendor/
 vendor/
+
+# dev environment indicator
+operators/.devenv
+
