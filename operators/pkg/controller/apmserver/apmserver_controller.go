@@ -198,6 +198,16 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 					return true
 				}
 
+				if reconciledApmServerSecret.Data == nil {
+					return true
+				}
+
+				// re-use the secret token key if it exists
+				existingSecretTokenKey, hasExistingSecretTokenKey := reconciledApmServerSecret.Data[SecretTokenKey]
+				if hasExistingSecretTokenKey {
+					expectedApmServerSecret.Data[SecretTokenKey] = existingSecretTokenKey
+				}
+
 				if !reflect.DeepEqual(reconciledApmServerSecret.Data, expectedApmServerSecret.Data) {
 					return true
 				}
