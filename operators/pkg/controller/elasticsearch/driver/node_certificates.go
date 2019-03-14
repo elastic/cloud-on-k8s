@@ -17,6 +17,7 @@ import (
 )
 
 // reconcileNodeCertificates ensures that a CA exists for this cluster and node certificates are issued.
+// It returns the CA certificate and its expiration date.
 func reconcileNodeCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
@@ -26,15 +27,29 @@ func reconcileNodeCertificates(
 	trustRelationships []v1alpha1.TrustRelationship,
 	caCertValidity time.Duration,
 	certExpirationSafetyMargin time.Duration,
-) (*x509.Certificate, error) {
+) (*x509.Certificate, time.Time, error) {
 	// reconcile CA
 	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity, certExpirationSafetyMargin)
 	if err != nil {
-		return nil, err
+		return nil, time.Time{}, err
 	}
 	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
 	if _, err := nodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships); err != nil {
-		return ca.Cert, err
+		return ca.Cert, time.Time{}, err
 	}
-	return ca.Cert, nil
+	return ca.Cert, ca.Cert.NotAfter, nil
+}
+
+// shouldRequeueIn computes the duration after which a reconciliation should be requeued
+// in order for the CA cert to be rotated before it expires.
+func shouldRequeueIn(now time.Time, certExpiration time.Time, certExpirationSafetyMargin time.Duration) time.Duration {
+	// make sure we are past the safety margin when requeueing, by making it a little bit shorter
+	safetyMargin := certExpirationSafetyMargin - 1*time.Second
+	requeueTime := certExpiration.Add(-safetyMargin)
+	requeueIn := requeueTime.Sub(now)
+	if requeueIn < 0 {
+		// requeue asap
+		requeueIn = 0
+	}
+	return requeueIn
 }
