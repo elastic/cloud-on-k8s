@@ -81,7 +81,8 @@ var (
 	fakeCSRClient FakeCSRClient
 )
 
-const testPemPrivateKey = `
+const (
+	testPemPrivateKey = `
 -----BEGIN RSA PRIVATE KEY-----
 MIICXAIBAAKBgQCxoeCUW5KJxNPxMp+KmCxKLc1Zv9Ny+4CFqcUXVUYH69L3mQ7v
 IWrJ9GBfcaA7BPQqUlWxWM+OCEQZH1EZNIuqRMNQVuIGCbz5UQ8w6tS0gcgdeGX7
@@ -98,6 +99,7 @@ AAA7eoZ9AEHflUeuLn9QJI/r0hyQQLEtrpwv6rDT1GCWaLII5HJ6NUFVf4TTcqxo
 wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 -----END RSA PRIVATE KEY-----
 `
+)
 
 func init() {
 	var err error
@@ -118,7 +120,7 @@ func init() {
 	}
 	fakeCSRClient = FakeCSRClient{csr: testCSRBytes}
 	testCSR, err = x509.ParseCertificateRequest(testCSRBytes)
-	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR)
+	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
@@ -131,8 +133,9 @@ func init() {
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
 	type args struct {
-		secret corev1.Secret
-		pod    corev1.Pod
+		secret       corev1.Secret
+		pod          corev1.Pod
+		rotateBefore time.Duration
 	}
 	tests := []struct {
 		name string
@@ -142,8 +145,9 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		{
 			name: "missing cert in secret",
 			args: args{
-				secret: corev1.Secret{},
-				pod:    testPod,
+				secret:       corev1.Secret{},
+				pod:          testPod,
+				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -155,7 +159,8 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						CertFileName: []byte("invalid"),
 					},
 				},
-				pod: testPod,
+				pod:          testPod,
+				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -167,7 +172,8 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						CertFileName: pemCert,
 					},
 				},
-				pod: corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
+				pod:          corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
+				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -179,14 +185,28 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 						CertFileName: pemCert,
 					},
 				},
-				pod: testPod,
+				pod:          testPod,
+				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: false,
+		},
+		{
+			name: "should be rotated soon",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						CertFileName: pemCert,
+					},
+				},
+				pod:          testPod,
+				rotateBefore: certificates.DefaultCertValidity, // rotate before the same duration as total validity
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewCertificate(tt.args.secret, testCA, tt.args.pod); got != tt.want {
+			if got := shouldIssueNewCertificate(tt.args.secret, testCA, tt.args.pod, tt.args.rotateBefore); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
@@ -263,7 +283,18 @@ func Test_doReconcile(t *testing.T) {
 			err := fakeClient.Create(&tt.pod)
 			require.NoError(t, err)
 
-			_, err = doReconcile(fakeClient, tt.secret, tt.pod, fakeCSRClient, "cluster", "namespace", []corev1.Service{testSvc}, testCA, nil)
+			_, err = doReconcile(
+				fakeClient,
+				tt.secret,
+				tt.pod,
+				fakeCSRClient,
+				"cluster",
+				"namespace",
+				[]corev1.Service{testSvc},
+				testCA, nil,
+				certificates.DefaultCertValidity,
+				certificates.DefaultRotateBefore,
+			)
 			require.NoError(t, err)
 
 			var updatedSecret corev1.Secret

@@ -101,7 +101,7 @@ func Test_maybeRequestCSR(t *testing.T) {
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
-	validatedCert, err := CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR)
+	validatedCert, err := CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
 	require.NoError(t, err)
 
 	// roundtrip the certificate

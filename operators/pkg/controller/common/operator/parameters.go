@@ -18,6 +18,10 @@ type Parameters struct {
 	Dialer net.Dialer
 	// CACertValidity is the validity duration of a newly created CA cert
 	CACertValidity time.Duration
-	// CACertRotateBefore defines how long before expiration certificates should be rotated
+	// CACertRotateBefore defines how long before expiration CA certificates should be rotated
 	CACertRotateBefore time.Duration
+	// NodeCertValidity is the validity duration of a newly created node cert
+	NodeCertValidity time.Duration
+	// NodeCertRotateBefore defines how long before expiration nodes certificates should be rotated
+	NodeCertRotateBefore time.Duration
 }

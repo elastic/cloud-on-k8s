@@ -27,6 +27,8 @@ func reconcileNodeCertificates(
 	trustRelationships []v1alpha1.TrustRelationship,
 	caCertValidity time.Duration,
 	caCertRotateBefore time.Duration,
+	nodeCertValidity time.Duration,
+	nodeCertRotateBefore time.Duration,
 ) (*x509.Certificate, time.Time, error) {
 	// reconcile CA
 	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity, caCertRotateBefore)
@@ -34,7 +36,7 @@ func reconcileNodeCertificates(
 		return nil, time.Time{}, err
 	}
 	// reconcile node certificates since we might have new pods (or existing pods that needs a refresh)
-	if _, err := nodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships); err != nil {
+	if _, err := nodecerts.ReconcileNodeCertificateSecrets(c, ca, csrClient, es, services, trustRelationships, nodeCertValidity, nodeCertRotateBefore); err != nil {
 		return ca.Cert, time.Time{}, err
 	}
 	return ca.Cert, ca.Cert.NotAfter, nil

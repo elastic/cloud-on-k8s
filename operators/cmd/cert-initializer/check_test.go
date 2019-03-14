@@ -59,7 +59,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	clusterName := "clustername"
 	namespace := "namespace"
 	svcs := []corev1.Service{}
-	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, csr)
+	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, csr, certificates.DefaultCertValidity)
 	if err != nil {
 		return err
 	}
