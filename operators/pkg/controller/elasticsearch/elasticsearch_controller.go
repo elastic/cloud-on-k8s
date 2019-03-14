@@ -219,8 +219,8 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 func (r *ReconcileElasticsearch) internalReconcile(
 	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
-) *esreconcile.Results {
-	results := &esreconcile.Results{}
+) *reconciler.Results {
+	results := &reconciler.Results{}
 
 	if err := r.finalizers.Handle(&es, r.finalizersFor(es, r.dynamicWatches)...); err != nil {
 		return results.WithError(err)

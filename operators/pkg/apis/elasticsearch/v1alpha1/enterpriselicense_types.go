@@ -26,6 +26,7 @@ type EnterpriseLicenseSpec struct {
 
 // EnterpriseLicense is the Schema for the enterpriselicenses API
 // +k8s:openapi-gen=true
+// +kubebuilder:resource:shortName=el
 type EnterpriseLicense struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

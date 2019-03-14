@@ -18,7 +18,6 @@ import (
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version/version5"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version/version6"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version/version7"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -38,7 +37,7 @@ type Driver interface {
 	Reconcile(
 		es v1alpha1.Elasticsearch,
 		reconcileState *esreconcile.State,
-	) *esreconcile.Results
+	) *reconciler.Results
 }
 
 // Options are used to create a driver. See NewDriver
@@ -105,18 +104,6 @@ func NewDriver(opts Options) (Driver, error) {
 			LowestSupportedVersion: version.MustParse("5.6.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("6.6.99"),
-		}
-	case 5:
-		driver.expectedPodsAndResourcesResolver = version5.ExpectedPodSpecs
-		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
-		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
-			// TODO: verify that we actually support down to 5.0.0
-			// TODO: this follows ES version compat, which is wrong, because we would have to be able to support
-			//       an elasticsearch cluster full of 2.x (2.4.6 at least) instances which we would probably only want
-			// 		 to do upgrade checks on, snapshot, then terminate + snapshot restore (or re-use volumes).
-			LowestSupportedVersion: version.MustParse("5.0.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("5.6.99"),
 		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)

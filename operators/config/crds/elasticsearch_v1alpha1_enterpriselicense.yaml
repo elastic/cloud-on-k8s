@@ -10,6 +10,8 @@ spec:
   names:
     kind: EnterpriseLicense
     plural: enterpriselicenses
+    shortNames:
+    - el
   scope: Namespaced
   validation:
     openAPIV3Schema:

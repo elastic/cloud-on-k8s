@@ -5,45 +5,84 @@
 package fs
 
 import (
-	gopath "path"
-	"strings"
+	"context"
+	"path"
+	"time"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/go-logr/logr"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-// WatchPath watches changes on the given path, and calls onEvent when something happens.
-// It returns when onEvent returns true or an error. Otherwise, it runs forever.
-// Changes on file names starting with a dot are ignored.
-func WatchPath(path string, onEvent func() (stop bool, err error), logger logr.Logger) error {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer watcher.Close()
-	if err := watcher.Add(path); err != nil {
-		return err
-	}
-	// an update might have occured just before the watcher setup
-	if stop, err := onEvent(); err != nil || stop {
-		return err
-	}
-	for {
-		select {
-		case event := <-watcher.Events:
-			if event.Op&fsnotify.Chmod == fsnotify.Chmod || strings.HasPrefix(gopath.Base(event.Name), ".") {
-				// avoid noisy chmod events when k8s maps changes into the file system
-				// also k8s seems to use a couple of dot files to manage mapped secrets which create
-				// additional noise and should be safe to ignore
-				continue
-			}
-			logger.Info("Event observed", "event", event)
-			if stop, err := onEvent(); err != nil || stop {
-				return err
-			}
+var (
+	log = logf.Log.WithName("file-watcher")
+)
 
-		case err := <-watcher.Errors:
-			logger.Error(err, "watcher error")
+// Watcher reacts on changes on the filesystem
+type Watcher interface {
+	Run() error
+}
+
+// OnFilesChanged is a function invoked when something changed in the files.
+// If it returns an error, the Watcher will stop watching and return the error.
+// If it returns true, the Watcher will stop watching with no error.
+type OnFilesChanged func(files FilesCRC) (done bool, err error)
+
+// DirectoryWatcher periodically reads files in directory, and calls onFilesChanged
+// on any changes in the directory's files.
+// By default, it ignores hidden files and sub-directories.
+func DirectoryWatcher(ctx context.Context, directory string, onFilesChanged OnFilesChanged, period time.Duration) (Watcher, error) {
+	// cache all non-hidden files in the directory
+	cache, err := newFilesCache(directory, true, nil)
+	if err != nil {
+		return nil, err
+	}
+	return buildWatcher(ctx, cache, onFilesChanged, period), nil
+}
+
+// FileWatcher periodically reads the given file, and calls onFileChanged
+// on any changes in the file.
+func FileWatcher(ctx context.Context, filepath string, onFilesChanged OnFilesChanged, period time.Duration) (Watcher, error) {
+	// cache a single file
+	cache, err := newFilesCache(path.Dir(filepath), false, []string{path.Base(filepath)})
+	if err != nil {
+		return nil, err
+	}
+	return buildWatcher(ctx, cache, onFilesChanged, period), nil
+}
+
+// watcher implements Watcher
+type watcher struct {
+	ctx    context.Context
+	onExec execFunction
+	period time.Duration
+}
+
+// Run reacts on changes from the filesystem
+func (w *watcher) Run() error {
+	return CallPeriodically(w.ctx, w.onExec, w.period)
+}
+
+// buildWatcher sets up a periodic execution to execute onFilesChanged
+// when the given cache is updated.
+func buildWatcher(ctx context.Context, cache *filesCache, onFilesChanged OnFilesChanged, period time.Duration) Watcher {
+	// on each periodic execution, update the cache,
+	// but call onFilesChanged only if the cache was updated
+	var onExec = func() (done bool, err error) {
+		newFiles, hasChanged, err := cache.update()
+		if err != nil {
+			// could not update the cache (fs unavailable?)
+			log.Error(err, "cannot update cache")
+			// continue watching
+			return false, nil
 		}
+		if hasChanged {
+			return onFilesChanged(newFiles)
+		}
+		// no change, continue watching
+		return false, nil
+	}
+	return &watcher{
+		ctx:    ctx,
+		onExec: onExec,
+		period: period,
 	}
 }

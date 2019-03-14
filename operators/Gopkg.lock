@@ -96,6 +96,14 @@
   version = "v0.1.0"
 
 [[projects]]
+  digest = "1:7f89e0c888fb99c61055c646f5678aae645b0b0a1443d9b2dcd9964d850827ce"
+  name = "github.com/go-test/deep"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
+  version = "v1.0.1"
+
+[[projects]]
   digest = "1:3e34b0a53d651b06655475eb488745c912596e08557a33b83d336aab41cb6fe9"
   name = "github.com/gobuffalo/envy"
   packages = ["."]
@@ -262,7 +270,10 @@
 [[projects]]
   digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
   name = "github.com/magiconair/properties"
-  packages = ["."]
+  packages = [
+    ".",
+    "assert",
+  ]
   pruneopts = "T"
   revision = "c2353362d570a7bfa228149c62842019201cfb71"
   version = "v1.8.0"
@@ -1062,6 +1073,8 @@
     "github.com/fsnotify/fsnotify",
     "github.com/ghodss/yaml",
     "github.com/go-logr/logr",
+    "github.com/go-test/deep",
+    "github.com/magiconair/properties/assert",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",

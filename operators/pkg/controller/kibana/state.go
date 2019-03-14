@@ -15,7 +15,6 @@ import (
 // resource for status updates.
 type State struct {
 	Kibana  *v1alpha1.Kibana
-	Result  reconcile.Result
 	Request reconcile.Request
 
 	originalKibana *v1alpha1.Kibana
