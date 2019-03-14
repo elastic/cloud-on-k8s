@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
@@ -125,7 +126,7 @@ func CheckESVersion(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			}
 			// check ES version label
 			for _, p := range pods {
-				version := p.Labels["elasticsearch.k8s.elastic.co/version"]
+				version := p.Labels[label.VersionLabelName]
 				if version != stack.Elasticsearch.Spec.Version {
 					return fmt.Errorf("Version %s does not match expected version %s", version, stack.Elasticsearch.Spec.Version)
 				}
