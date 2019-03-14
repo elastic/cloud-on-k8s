@@ -106,6 +106,7 @@ func (cls ClusterLicenseSpec) IsEmpty() bool {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ClusterLicense is the Schema for the clusterlicenses API
+// +kubebuilder:resource:shortName=cl
 // +k8s:openapi-gen=true
 type ClusterLicense struct {
 	metav1.TypeMeta   `json:",inline"`

@@ -26,6 +26,8 @@ spec:
     - elastic
     kind: Elasticsearch
     plural: elasticsearches
+    shortNames:
+    - es
   scope: Namespaced
   subresources:
     status: {}
