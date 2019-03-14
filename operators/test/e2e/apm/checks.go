@@ -5,13 +5,13 @@
 package apm
 
 import (
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 )
 
 // CheckStackSteps returns all test steps to verify the status of the given stack
-func CheckStackSteps(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestStepList {
+func CheckStackSteps(stack Builder, es estype.Elasticsearch, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
-		WithSteps(K8sStackChecks(stack, k8sClient)...)
-	//.
-	//	WithSteps(ESClusterChecks(stack.Elasticsearch, k8sClient)...)
+		WithSteps(K8sStackChecks(stack, k8sClient)...).
+		WithSteps(ApmServerChecks(stack.ApmServer, es, k8sClient)...)
 }

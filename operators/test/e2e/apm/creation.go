@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
@@ -16,7 +17,7 @@ import (
 
 // CreationTestSteps tests the creation of the given stack.
 // The stack is not deleted at the end.
-func CreationTestSteps(stack Builder, k *helpers.K8sHelper) helpers.TestStepList {
+func CreationTestSteps(stack Builder, es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
 		WithSteps(
 			helpers.TestStep{
@@ -39,5 +40,5 @@ func CreationTestSteps(stack Builder, k *helpers.K8sHelper) helpers.TestStepList
 				},
 			},
 		).
-		WithSteps(CheckStackSteps(stack, k)...)
+		WithSteps(CheckStackSteps(stack, es, k)...)
 }

@@ -52,8 +52,8 @@ spec:
               - NodePort
               type: string
             featureFlags:
-              description: FeatureFlags are instance-specific flags that enable or
-                disable specific experimental features
+              description: FeatureFlags are apm-specific flags that enable or disable
+                specific experimental features
               type: object
             image:
               description: Image represents the docker image that will be used.

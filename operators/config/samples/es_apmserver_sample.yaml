@@ -31,7 +31,7 @@ spec:
       limits:
         memory: 1Gi
         cpu: 500m
-    nodeCount: 1
+    nodeCount: 3
 ---
 apiVersion: apm.k8s.elastic.co/v1alpha1
 kind: ApmServer
