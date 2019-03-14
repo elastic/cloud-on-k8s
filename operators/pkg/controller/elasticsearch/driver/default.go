@@ -61,7 +61,7 @@ type defaultDriver struct {
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
 		caCertValidity time.Duration,
-		certExpirationSafetyMargin time.Duration,
+		caCertRotateBefore time.Duration,
 	) (*x509.Certificate, time.Time, error)
 
 	// usersReconciler reconciles external and internal users and returns the current internal users.
@@ -153,14 +153,14 @@ func (d *defaultDriver) Reconcile(
 		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
 		trustRelationships,
 		d.Parameters.CACertValidity,
-		d.Parameters.CertExpirationSafetyMargin,
+		d.Parameters.CACertRotateBefore,
 	)
 	if err != nil {
 		return results.WithError(err)
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(controller.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CertExpirationSafetyMargin),
+		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
 	})
 
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)

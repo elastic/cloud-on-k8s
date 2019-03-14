@@ -13,7 +13,6 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/controller"
@@ -35,8 +34,8 @@ const (
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
 
-	CACertValidityFlag             = "ca-cert-validity"
-	CertExpirationSafetyMarginFlag = "cert-expiration-safety-margin"
+	CACertValidityFlag     = "ca-cert-validity"
+	CACertRotateBeforeFlag = "ca-cert-rotate-before"
 )
 
 var (
@@ -84,12 +83,12 @@ func init() {
 	)
 	Cmd.Flags().Duration(
 		CACertValidityFlag,
-		certificates.DefaultCAValidity,
+		certificates.DefaultCertValidity,
 		"Duration representing how long before a newly created CA cert expires",
 	)
 	Cmd.Flags().Duration(
-		CertExpirationSafetyMarginFlag,
-		nodecerts.DefaultExpirationSafetyMargin,
+		CACertRotateBeforeFlag,
+		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration certificates should be reissued",
 	)
 
@@ -161,18 +160,18 @@ func execute() {
 
 	// Verify cert validity options
 	caCertValidity := viper.GetDuration(CACertValidityFlag)
-	certExpirationSafetyMargin := viper.GetDuration(CertExpirationSafetyMarginFlag)
-	if certExpirationSafetyMargin > caCertValidity {
-		log.Error(fmt.Errorf("%s must be larger than %s", CACertValidityFlag, CertExpirationSafetyMarginFlag), "")
+	caCertRotateBefore := viper.GetDuration(CACertRotateBeforeFlag)
+	if caCertRotateBefore > caCertValidity {
+		log.Error(fmt.Errorf("%s must be larger than %s", CACertValidityFlag, CACertRotateBeforeFlag), "")
 		os.Exit(1)
 	}
 	// Setup all Controllers
 	log.Info("Setting up controller")
 	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
-		Dialer:                     dialer,
-		OperatorImage:              operatorImage,
-		CACertValidity:             caCertValidity,
-		CertExpirationSafetyMargin: certExpirationSafetyMargin,
+		Dialer:             dialer,
+		OperatorImage:      operatorImage,
+		CACertValidity:     caCertValidity,
+		CACertRotateBefore: caCertRotateBefore,
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)

@@ -122,7 +122,7 @@ func Test_canReuseCA(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := canReuseCA(tt.ca(), DefaultExpirationSafetyMargin); got != tt.want {
+			if got := canReuseCA(tt.ca(), certificates.DefaultRotateBefore); got != tt.want {
 				t.Errorf("canReuseCA() = %v, want %v", got, tt.want)
 			}
 		})
@@ -139,7 +139,7 @@ func checkCASecrets(
 	expectedExpiration time.Duration,
 ) {
 	// ca cert should be valid
-	require.True(t, certIsValid(*ca.Cert, DefaultExpirationSafetyMargin))
+	require.True(t, certIsValid(*ca.Cert, certificates.DefaultRotateBefore))
 
 	// expiration date should be correctly set
 	require.True(t, ca.Cert.NotBefore.After(time.Now().Add(-1*time.Hour)))
@@ -206,12 +206,12 @@ func Test_renewCA(t *testing.T) {
 		{
 			name:     "create new CA",
 			client:   k8s.WrapClient(fake.NewFakeClient()),
-			expireIn: certificates.DefaultCAValidity,
+			expireIn: certificates.DefaultCertValidity,
 		},
 		{
 			name:        "replace existing CA",
 			client:      k8s.WrapClient(fake.NewFakeClient(&privateKeySecret, &certSecret)),
-			expireIn:    certificates.DefaultCAValidity,
+			expireIn:    certificates.DefaultCertValidity,
 			notExpected: testCa, // existing CA should be replaced
 		},
 	}
@@ -255,38 +255,38 @@ func TestReconcileCAForCluster(t *testing.T) {
 		{
 			name:           "no existing CA cert nor private key",
 			cl:             k8s.WrapClient(fake.NewFakeClient()),
-			caCertValidity: certificates.DefaultCAValidity,
+			caCertValidity: certificates.DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing CA cert but no private key",
 			cl:             k8s.WrapClient(fake.NewFakeClient(&certSecret)),
-			caCertValidity: certificates.DefaultCAValidity,
+			caCertValidity: certificates.DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing private key cert but no cert",
 			cl:             k8s.WrapClient(fake.NewFakeClient(&privateKeySecret)),
-			caCertValidity: certificates.DefaultCAValidity,
+			caCertValidity: certificates.DefaultCertValidity,
 			shouldReuseCa:  nil, // should create a new one
 		},
 		{
 			name:           "existing cert and private key",
 			cl:             k8s.WrapClient(fake.NewFakeClient(&privateKeySecret, &certSecret)),
-			caCertValidity: certificates.DefaultCAValidity,
+			caCertValidity: certificates.DefaultCertValidity,
 			shouldReuseCa:  validCa, // should reuse existing one
 		},
 		{
 			name:             "existing cert is soon to expire",
 			cl:               k8s.WrapClient(fake.NewFakeClient(&soonToExpirePrivateKeySecret, &soonToExpireCertSecret)),
-			caCertValidity:   certificates.DefaultCAValidity,
+			caCertValidity:   certificates.DefaultCertValidity,
 			shouldReuseCa:    nil,            // should create a new one
 			shouldNotReuseCa: soonToExpireCa, // and not reuse existing one
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ca, err := ReconcileCAForCluster(tt.cl, cluster, scheme.Scheme, tt.caCertValidity, DefaultExpirationSafetyMargin)
+			ca, err := ReconcileCAForCluster(tt.cl, cluster, scheme.Scheme, tt.caCertValidity, certificates.DefaultRotateBefore)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			checkCASecrets(t, tt.cl, cluster, *ca, tt.shouldReuseCa, tt.shouldNotReuseCa, tt.caCertValidity)

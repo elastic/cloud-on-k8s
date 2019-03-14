@@ -34,11 +34,7 @@ import (
 //
 // CA cert and private key are rotated if they become invalid (or soon to expire).
 
-const (
-	// DefaultExpirationSafetyMargin defines how long before expiration a certificate
-	// should be re-issued
-	DefaultExpirationSafetyMargin = 24 * time.Hour
-)
+const ()
 
 // ReconcileCAForCluster ensures that a CA exists for the given cluster, and returns it.
 func ReconcileCAForCluster(

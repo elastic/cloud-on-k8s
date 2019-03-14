@@ -19,8 +19,6 @@ import (
 const (
 	// CAFileName is used for the CA Certificates inside a secret
 	CAFileName = "ca.pem"
-	// DefaultCAValidity makes new CA default to a 1 year expiration
-	DefaultCAValidity = 365 * 24 * time.Hour
 )
 
 var (
@@ -54,7 +52,7 @@ type CABuilderOptions struct {
 	CommonName string
 	// PrivateKey to be used for signing certificates (auto-generated if not provided).
 	PrivateKey *rsa.PrivateKey
-	// ExpireIn defines in how much time will the CA expire (defaults to DefaultCAValidity if not provided).
+	// ExpireIn defines in how much time will the CA expire (defaults to DefaultCertValidity if not provided).
 	ExpireIn *time.Duration
 }
 
@@ -74,7 +72,7 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 		}
 	}
 
-	notAfter := time.Now().Add(DefaultCAValidity)
+	notAfter := time.Now().Add(DefaultCertValidity)
 	if options.ExpireIn != nil {
 		notAfter = time.Now().Add(*options.ExpireIn)
 	}

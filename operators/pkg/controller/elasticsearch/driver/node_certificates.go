@@ -26,10 +26,10 @@ func reconcileNodeCertificates(
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
 	caCertValidity time.Duration,
-	certExpirationSafetyMargin time.Duration,
+	caCertRotateBefore time.Duration,
 ) (*x509.Certificate, time.Time, error) {
 	// reconcile CA
-	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity, certExpirationSafetyMargin)
+	ca, err := nodecerts.ReconcileCAForCluster(c, es, scheme, caCertValidity, caCertRotateBefore)
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -42,9 +42,9 @@ func reconcileNodeCertificates(
 
 // shouldRequeueIn computes the duration after which a reconciliation should be requeued
 // in order for the CA cert to be rotated before it expires.
-func shouldRequeueIn(now time.Time, certExpiration time.Time, certExpirationSafetyMargin time.Duration) time.Duration {
+func shouldRequeueIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
 	// make sure we are past the safety margin when requeueing, by making it a little bit shorter
-	safetyMargin := certExpirationSafetyMargin - 1*time.Second
+	safetyMargin := caCertRotateBefore - 1*time.Second
 	requeueTime := certExpiration.Add(-safetyMargin)
 	requeueIn := requeueTime.Sub(now)
 	if requeueIn < 0 {
