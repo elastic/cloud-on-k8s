@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
@@ -14,7 +15,7 @@ import (
 
 const (
 	// HTTPPort is the (default) port used by ApmServer
-	HTTPPort = 8200
+	HTTPPort = config.DefaultHTTPPort
 
 	defaultImageRepositoryAndName string = "docker.elastic.co/apm/apm-server"
 

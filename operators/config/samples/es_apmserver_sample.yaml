@@ -22,7 +22,7 @@ metadata:
 spec:
   version: "6.6.1"
   setVmMaxMapCount: true
-  topologies:
+  topology:
   - nodeTypes:
       master: true
       data: true

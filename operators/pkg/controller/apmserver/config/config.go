@@ -6,12 +6,16 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+// DefaultHTTPPort is the (default) port used by ApmServer
+const DefaultHTTPPort = 8200
 
 // FromResourceSpec resolves the ApmServer configuration to use based on the provided spec.
 // TODO: missing test
@@ -42,7 +46,7 @@ func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 	return &Config{
 		Name: "${POD_NAME}",
 		ApmServer: ApmServerConfig{
-			Host:               ":8200",
+			Host:               fmt.Sprintf(":%d", DefaultHTTPPort),
 			SecretToken:        "${SECRET_TOKEN}",
 			ReadTimeout:        3600,
 			ShutdownTimeout:    "30s",

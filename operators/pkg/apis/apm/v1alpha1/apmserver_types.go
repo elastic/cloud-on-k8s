@@ -6,7 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,7 +18,7 @@ type ApmServerSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// NodeCount defines how many nodes the Kibana deployment must have.
+	// NodeCount defines how many nodes the Apm Server deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
@@ -45,7 +45,7 @@ type Output struct {
 
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
-	// ElasticsearchURL is the URL to the target Elasticsearch
+	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
 
 	// Auth configures authentication for APM Server to use.

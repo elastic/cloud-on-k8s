@@ -11,6 +11,7 @@ import (
 	"fmt"
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
@@ -34,7 +35,9 @@ func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) 
 		return nil, err
 	}
 
-	inClusterURL := fmt.Sprintf("http://%s.%s.svc.cluster.local:8200", as.Status.ExternalService, as.Namespace)
+	inClusterURL := fmt.Sprintf(
+		"http://%s.%s.svc.cluster.local:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
+	)
 	var dialer net.Dialer
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()
