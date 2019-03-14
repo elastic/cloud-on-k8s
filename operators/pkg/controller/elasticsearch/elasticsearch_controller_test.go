@@ -43,6 +43,16 @@ func getESPods(t *testing.T) []corev1.Pod {
 	return esPods.Items
 }
 
+func checkNumberOfPods(t *testing.T, expected int) {
+	test.RetryUntilSuccess(t, func() error {
+		nPods := len(getESPods(t))
+		if nPods != expected {
+			return fmt.Errorf("got %d pods, expected %d", nPods, expected)
+		}
+		return nil
+	})
+}
+
 func TestReconcile(t *testing.T) {
 	instance := &elasticsearchv1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
@@ -96,8 +106,7 @@ func TestReconcile(t *testing.T) {
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Elasticsearch pods should be created
-	esPods := getESPods(t)
-	assert.Equal(t, 3, len(esPods))
+	checkNumberOfPods(t, 3)
 
 	// Services should be created
 	discoveryService := &corev1.Service{}
@@ -107,15 +116,9 @@ func TestReconcile(t *testing.T) {
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES pod
-	assert.NoError(t, c.Delete(&esPods[0]))
+	assert.NoError(t, c.Delete(&getESPods(t)[0]))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
-	test.RetryUntilSuccess(t, func() error {
-		nPods := len(getESPods(t))
-		if nPods != 3 {
-			return fmt.Errorf("Got %d pods out of 3", nPods)
-		}
-		return nil
-	})
+	checkNumberOfPods(t, 3)
 
 	// Services
 	test.CheckResourceDeletionTriggersReconcile(t, c, requests, externalServiceKey, externalService, expectedRequest)
