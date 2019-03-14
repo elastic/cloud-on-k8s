@@ -60,8 +60,7 @@ func clearTextSecretKeySelector(assoc v1alpha1.ApmServerElasticsearchAssociation
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerElasticsearchAssociation) error {
-	// keep this name constant and bound to the association we cannot change it
-
+	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(assoc.Spec.ApmServer.Name)
