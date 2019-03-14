@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// Results collects intermediate results of a reconciliation run and any errors that occured.
+// Results collects intermediate results of a reconciliation run and any errors that occurred.
 type Results struct {
 	results []reconcile.Result
 	errors  []error
@@ -26,7 +26,7 @@ func (r *Results) WithError(err error) *Results {
 	return r
 }
 
-// WithResult adds an result to the results.
+// WithResult adds a result to the results.
 func (r *Results) WithResult(res reconcile.Result) *Results {
 	r.results = append(r.results, res)
 	return r
