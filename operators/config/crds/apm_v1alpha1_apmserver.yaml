@@ -59,7 +59,7 @@ spec:
               description: Image represents the docker image that will be used.
               type: string
             nodeCount:
-              description: NodeCount defines how many nodes the Kibana deployment
+              description: NodeCount defines how many nodes the Apm Server deployment
                 must have.
               format: int32
               type: integer
@@ -89,7 +89,8 @@ spec:
                           type: object
                       type: object
                     hosts:
-                      description: ElasticsearchURL is the URL to the target Elasticsearch
+                      description: Hosts are the URLs of the output Elasticsearch
+                        nodes.
                       items:
                         type: string
                       type: array
