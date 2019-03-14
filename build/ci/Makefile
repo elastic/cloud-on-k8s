@@ -53,4 +53,4 @@ ci-e2e: vault-gke-creds
 		-e "GKE_CLUSTER_NAME=e2e-qa-$(shell date +'%Y%m%d-%H%M%S')" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		k8s-operators-ci-e2e \
-		bash build/ci/e2e/run_tests.sh
+		bash -c "make -C operators ci-e2e"
