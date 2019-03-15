@@ -183,17 +183,12 @@ func newEnvironmentVars(
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(network.TransportClientPort)},
 	}
 
-	if p.LicenseType == v1alpha1.LicenseTypeTrial {
-		// auto-generate a trial license
-		vars = append(vars, corev1.EnvVar{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"})
-	}
-
-	vars = append(vars, xpackSecurityEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
+	vars = append(vars, xpackEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
 
 	return vars
 }
 
-func xpackSecurityEnvVars(
+func xpackEnvVars(
 	nodeCertificatesVolume volume.SecretVolume,
 	extraFilesSecretVolume volume.SecretVolume,
 	licenseType v1alpha1.LicenseType,
@@ -207,7 +202,7 @@ func xpackSecurityEnvVars(
 	}
 
 	// enable x-pack security, including TLS
-	return []corev1.EnvVar{
+	vars := []corev1.EnvVar{
 		// x-pack security general settings
 		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
 		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
@@ -258,4 +253,11 @@ func xpackSecurityEnvVars(
 			),
 		},
 	}
+
+	if licenseType == v1alpha1.LicenseTypeTrial {
+		// auto-generate a trial license
+		vars = append(vars, corev1.EnvVar{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"})
+	}
+
+	return vars
 }
