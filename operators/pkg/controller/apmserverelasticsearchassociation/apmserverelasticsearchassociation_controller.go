@@ -232,7 +232,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 
 	// TODO: look up CA name from the ES cluster resource
 	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CASecretNameForCluster(es.Name)}
+	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return associationsv1alpha1.AssociationPending, err // maybe not created yet
 	}
