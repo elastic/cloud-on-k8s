@@ -8,19 +8,13 @@ import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	// HTTPPort used by Elasticsearch for the REST API
-	HTTPPort = 9200
-	// TransportPort used by Elasticsearch for the Transport protocol
-	TransportPort = 9300
-	// TransportClientPort used by Elasticsearch for the Transport protocol for client-only connections
-	TransportClientPort = 9400
-
 	// DefaultImageRepository is the default image name without a tag
 	DefaultImageRepository string = "docker.elastic.co/elasticsearch/elasticsearch"
 
@@ -34,9 +28,9 @@ const (
 var (
 	// DefaultContainerPorts are the default Elasticsearch port mappings
 	DefaultContainerPorts = []corev1.ContainerPort{
-		{Name: "http", ContainerPort: HTTPPort, Protocol: corev1.ProtocolTCP},
-		{Name: "transport", ContainerPort: TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "client", ContainerPort: TransportClientPort, Protocol: corev1.ProtocolTCP},
+		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 

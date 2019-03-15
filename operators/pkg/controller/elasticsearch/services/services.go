@@ -7,10 +7,11 @@ package services
 import (
 	"strconv"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
@@ -43,7 +44,7 @@ func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
 					Protocol: corev1.ProtocolTCP,
-					Port:     pod.TransportPort,
+					Port:     network.TransportPort,
 				},
 			},
 			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
@@ -82,14 +83,14 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 			Selector: label.NewLabels(nsn),
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
-					Name:     "https",
+					Name:     network.ProtocolForCluster(es),
 					Protocol: corev1.ProtocolTCP,
-					Port:     pod.HTTPPort,
+					Port:     network.HTTPPort,
 				},
 				corev1.ServicePort{
 					Name:     "transport",
 					Protocol: corev1.ProtocolTCP,
-					Port:     pod.TransportClientPort,
+					Port:     network.TransportClientPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
