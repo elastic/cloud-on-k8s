@@ -101,7 +101,7 @@ run: install-crds
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run ./cmd/main.go manager \
 			--development --operator-role=all \
-			--ca-cert-validity=10h --cert-expiration-safety-margin=1h
+			--ca-cert-validity=10h --ca-cert-rotate-before=1h
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
