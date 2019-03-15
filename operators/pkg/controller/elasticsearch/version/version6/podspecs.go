@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -112,6 +113,7 @@ func newSidecarContainers(
 	if !ok {
 		return nil, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
 	}
+	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", network.ProtocolForLicense(spec.LicenseType), network.HTTPPort)
 	return []corev1.Container{
 		{
 			Name:            "keystore-updater",
@@ -124,6 +126,7 @@ func newSidecarContainers(
 				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
 				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, certificates.CAFileName)},
+				{Name: sidecar.EnvEndpoint, Value: esEndpoint},
 			},
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),

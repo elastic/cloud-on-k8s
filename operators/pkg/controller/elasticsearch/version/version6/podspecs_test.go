@@ -340,6 +340,7 @@ func Test_newSidecarContainers(t *testing.T) {
 						{Name: "USERNAME", Value: "username2"},
 						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/reload-creds-user/username2"},
 						{Name: "CERTIFICATES_PATH", Value: "/certs/ca.pem"},
+						{Name: "ENDPOINT", Value: "https://127.0.0.1:9200"},
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
