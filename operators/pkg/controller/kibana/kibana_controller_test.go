@@ -66,7 +66,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Get(k8s.ExtractNamespacedName(instance), instance))
 
 	// Deployment won't be created until we provide details for the ES backend
-	secret := mockCaSecret(t, c)
+	secret := mockCASecret(t, c)
 	instance.Spec.Elasticsearch = kbtype.BackendElasticsearch{
 		URL: "http://127.0.0.1:9200",
 		Auth: kbtype.ElasticsearchAuth{
@@ -98,7 +98,7 @@ func TestReconcile(t *testing.T) {
 
 }
 
-func mockCaSecret(t *testing.T, c k8s.Client) *v1.Secret {
+func mockCASecret(t *testing.T, c k8s.Client) *v1.Secret {
 	// The Kibana resource needs a CA secret created by the Elasticsearch controller
 	// but the Elasticsearch controller is not running.
 	// Here we are creating a dummy secret

@@ -149,7 +149,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 }
 
 func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
-	secretName := nodecerts.CASecretNameForCluster(stackName)
+	secretName := nodecerts.CACertSecretName(stackName)
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: DefaultNamespace,

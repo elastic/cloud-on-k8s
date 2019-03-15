@@ -23,6 +23,22 @@ func TestElasticsearchHealth_Less(t *testing.T) {
 	}{
 		{
 			inputs: []ElasticsearchHealth{
+				"",
+				ElasticsearchYellowHealth,
+				"",
+			},
+			sorted: true,
+		},
+		{
+			inputs: []ElasticsearchHealth{
+				"unknown",
+				ElasticsearchYellowHealth,
+				"unknown",
+			},
+			sorted: true,
+		},
+		{
+			inputs: []ElasticsearchHealth{
 				ElasticsearchRedHealth,
 				ElasticsearchYellowHealth,
 			},

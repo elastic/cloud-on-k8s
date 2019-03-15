@@ -73,7 +73,7 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 	parallelism := int32(1)
 	completions := int32(1)
 	backoffLimit := int32(0) // don't retry on failure
-	caCertSecret := volume.NewSecretVolume(nodecerts.CASecretNameForCluster(params.Elasticsearch.Name), "ca")
+	caCertSecret := volume.NewSecretVolume(nodecerts.CACertSecretName(params.Elasticsearch.Name), "ca")
 	certPath := path.Join(volume.DefaultSecretMountPath, certificates.CAFileName)
 
 	meta := metav1.ObjectMeta{

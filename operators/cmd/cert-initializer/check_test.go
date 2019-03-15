@@ -47,7 +47,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	if err != nil {
 		return err
 	}
-	ca, err := certificates.NewSelfSignedCa("common-name")
+	ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 	clusterName := "clustername"
 	namespace := "namespace"
 	svcs := []corev1.Service{}
-	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, csr)
+	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, csr, certificates.DefaultCertValidity)
 	if err != nil {
 		return err
 	}
@@ -226,37 +226,4 @@ func Test_watchForCertUpdate(t *testing.T) {
 	require.NoError(t, err)
 	// we should be done before unit tests timeout
 	<-done
-}
-
-func Test_privateMatchesPublicKey(t *testing.T) {
-	privateKey1, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-	require.NoError(t, err)
-	privateKey2, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-	require.NoError(t, err)
-	tests := []struct {
-		name       string
-		publicKey  interface{}
-		privateKey rsa.PrivateKey
-		want       bool
-	}{
-		{
-			name:       "with matching public and private keys",
-			publicKey:  privateKey1.Public(),
-			privateKey: *privateKey1,
-			want:       true,
-		},
-		{
-			name:       "with non-matching public and private keys",
-			publicKey:  privateKey1.Public(),
-			privateKey: *privateKey2,
-			want:       false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := privateMatchesPublicKey(tt.publicKey, tt.privateKey); got != tt.want {
-				t.Errorf("privateMatchesPublicKey() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }

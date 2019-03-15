@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build integration
+
 package certificates
 
 import (
@@ -14,7 +16,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -38,8 +39,8 @@ wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 `
 
 var (
-	// testCa is a self-signed CA intended for testing
-	testCa *Ca
+	// testCA is a self-signed CA intended for testing
+	testCA *CA
 	// testRSAPrivateKey is a preconfigured RSA private key intended for testing.
 	testRSAPrivateKey *rsa.PrivateKey
 )
@@ -52,12 +53,15 @@ func init() {
 		panic("Failed to parse private key: " + err.Error())
 	}
 
-	if testCa, err = NewSelfSignedCaUsingKey("test", testRSAPrivateKey); err != nil {
+	if testCA, err = NewSelfSignedCA(CABuilderOptions{
+		CommonName: "test",
+		PrivateKey: testRSAPrivateKey,
+	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 }
 
-func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
+func TestCA_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 	// create a certificate template for the csr
 	cn := "test-cn"
 	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
@@ -70,7 +74,7 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 		PublicKey:          &testRSAPrivateKey.PublicKey,
 	})
 
-	bytes, err := testCa.CreateCertificate(certificateTemplate)
+	bytes, err := testCA.CreateCertificate(certificateTemplate)
 	require.NoError(t, err)
 
 	cert, err := x509.ParseCertificate(bytes)
@@ -80,10 +84,30 @@ func TestCa_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
 
 	// the issued certificate should pass verification
 	pool := x509.NewCertPool()
-	pool.AddCert(testCa.Cert)
+	pool.AddCert(testCA.Cert)
 	_, err = cert.Verify(x509.VerifyOptions{
 		DNSName: cn,
 		Roots:   pool,
 	})
 	assert.NoError(t, err)
+}
+
+func TestNewSelfSignedCA(t *testing.T) {
+	// with no options, should not fail
+	ca, err := NewSelfSignedCA(CABuilderOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+
+	// with options, should use them
+	expireIn := 1 * time.Hour
+	ca, err = NewSelfSignedCA(CABuilderOptions{
+		CommonName: "common-name",
+		PrivateKey: testRSAPrivateKey,
+		ExpireIn:   &expireIn,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ca)
+	require.Equal(t, ca.Cert.Subject.CommonName, "common-name")
+	require.Equal(t, testRSAPrivateKey, ca.PrivateKey)
+	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }

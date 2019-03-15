@@ -139,7 +139,7 @@ func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
 		current.ClusterUUID = oldUUID
 		newUUID = oldUUID
 	}
-	if newUUID != oldUUID {
+	if newUUID != oldUUID && oldUUID != "" { // don't record the initial UUID assignment on cluster formation as an event
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected,
 			fmt.Sprintf("Cluster UUID changed (was: %s, is: %s)", oldUUID, newUUID),
 		)
