@@ -13,8 +13,12 @@ import (
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -169,8 +173,8 @@ func ESPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"common.k8s.elastic.co/type":                "elasticsearch",
-			"elasticsearch.k8s.elastic.co/cluster-name": stackName,
+			common.TypeLabelName:       label.Type,
+			label.ClusterNameLabelName: stackName,
 		}))}
 }
 
@@ -178,7 +182,7 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"kibana.k8s.elastic.co/name": stackName,
+			kibana.KibanaNameLabelName: stackName,
 		}))}
 }
 
@@ -186,8 +190,8 @@ func ApmServerPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"common.k8s.elastic.co/type":                "apm-server",
-			"apm.k8s.elastic.co/name": stackName,
+			common.TypeLabelName:             apmserver.Type,
+			apmserver.ApmServerNameLabelName: stackName,
 		}))}
 }
 
