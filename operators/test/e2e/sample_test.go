@@ -22,8 +22,7 @@ import (
 // Path is relative to the e2e directory.
 const sampleStackFile = "../../config/samples/es_kibana_sample.yaml"
 
-// TestStackSample runs a test suite using the sample stack
-func TestStackSample(t *testing.T) {
+func readSampleStack() stack.Builder {
 	// build stack from yaml sample
 	var sampleStack stack.Builder
 	yamlFile, err := os.Open(sampleStackFile)
@@ -39,9 +38,24 @@ func TestStackSample(t *testing.T) {
 	sampleStack.Elasticsearch = es
 	sampleStack.Kibana = kb
 	sampleStack.Association = assoc
+
 	// set namespace
 	namespaced := sampleStack.WithNamespace(helpers.DefaultNamespace)
 
+	return namespaced
+}
+
+// TestStackSample runs a test suite using the sample stack
+func TestStackSample(t *testing.T) {
+	s := readSampleStack()
 	// run, with mutation to the same stack (should work and do nothing)
-	stack.RunCreationMutationDeletionTests(t, namespaced, namespaced)
+	stack.RunCreationMutationDeletionTests(t, s, s)
+}
+
+// TestStackSample_BasicLicense runs a test suite using the sample stack,
+// overridden to use a Basic license
+func TestStackSample_BasicLicense(t *testing.T) {
+	s := readSampleStack()
+	s.Elasticsearch.Spec.LicenseType = "basic"
+	stack.RunCreationMutationDeletionTests(t, s, s)
 }

@@ -62,6 +62,11 @@ func (l LicenseType) IsGoldOrPlatinum() bool {
 	}
 }
 
+// String returns the string representation of the license type
+func (l LicenseType) String() string {
+	return string(l)
+}
+
 // LicenseMeta contains license (meta) information shared between enterprise and cluster licenses.
 type LicenseMeta struct {
 	// UID is the license UID not the k8s API UID (!)
