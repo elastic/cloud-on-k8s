@@ -12,5 +12,6 @@ import (
 func CheckStackSteps(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
 		WithSteps(K8sStackChecks(stack, k8sClient)...).
-		WithSteps(ESClusterChecks(stack.Elasticsearch, k8sClient)...)
+		WithSteps(ESClusterChecks(stack.Elasticsearch, k8sClient)...).
+		WithSteps(KibanaChecks(stack.Kibana, k8sClient)...)
 }
