@@ -4,15 +4,15 @@
 
 // +build integration
 
-package association
+package apmserverelasticsearchassociation
 
 import (
 	"fmt"
 	"testing"
 
+	apmv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -31,7 +31,7 @@ import (
 var (
 	c               k8s.Client
 	associationKey  = types.NamespacedName{Name: "baz", Namespace: "default"}
-	kibanaKey       = types.NamespacedName{Name: "bar", Namespace: "default"}
+	apmKey          = types.NamespacedName{Name: "bar", Namespace: "default"}
 	expectedRequest = reconcile.Request{NamespacedName: associationKey}
 )
 
@@ -57,7 +57,7 @@ func TestReconcile(t *testing.T) {
 		mgrStopped.Wait()
 	}()
 
-	// Assume an Elasticsearch cluster and a Kibana have been created
+	// Assume an Elasticsearch cluster and a Apm Server have been created
 	es := &esv1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -65,30 +65,30 @@ func TestReconcile(t *testing.T) {
 		},
 	}
 	assert.NoError(t, c.Create(es))
-	kb := kbv1alpha1.Kibana{
+	as := apmv1alpha1.ApmServer{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kibanaKey.Name,
-			Namespace: kibanaKey.Namespace,
+			Name:      apmKey.Name,
+			Namespace: apmKey.Namespace,
 		},
 	}
-	assert.NoError(t, c.Create(&kb))
+	assert.NoError(t, c.Create(&as))
 	// Pretend secrets created by the Elasticsearch controller are there
 	caSecret := mockCaSecret(t, c, *es)
 
 	// Create the association resource, that should be reconciled
-	instance := &v1alpha1.KibanaElasticsearchAssociation{
+	instance := &v1alpha1.ApmServerElasticsearchAssociation{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      associationKey.Name,
 			Namespace: associationKey.Namespace,
 		},
-		Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
+		Spec: v1alpha1.ApmServerElasticsearchAssociationSpec{
 			Elasticsearch: v1alpha1.ObjectSelector{
 				Name:      "foo",
 				Namespace: "default",
 			},
-			Kibana: v1alpha1.ObjectSelector{
-				Name:      kibanaKey.Name,
-				Namespace: kibanaKey.Namespace,
+			ApmServer: v1alpha1.ObjectSelector{
+				Name:      apmKey.Name,
+				Namespace: apmKey.Namespace,
 			},
 		},
 	}
@@ -101,20 +101,20 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, err)
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// let's wait until the Kibana update triggers another reconcile iteration
+	// let's wait until the Apm Server update triggers another reconcile iteration
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
 	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
 
-	// Kibana should be updated
-	kibana := &kbv1alpha1.Kibana{}
+	// ApmServer should be updated
+	apmServer := &apmv1alpha1.ApmServer{}
 	test.RetryUntilSuccess(t, func() error {
-		err := c.Get(kibanaKey, kibana)
+		err := c.Get(apmKey, apmServer)
 		if err != nil {
 			return err
 		}
 		switch {
-		case !kibana.Spec.Elasticsearch.IsConfigured():
+		case !apmServer.Spec.Output.Elasticsearch.IsConfigured():
 			return errors.New("Not reconciled yet")
 		default:
 			return nil
@@ -128,7 +128,7 @@ func TestReconcile(t *testing.T) {
 	// Ensure association goes back to pending if one of the vertices is deleted
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
-		fetched := v1alpha1.KibanaElasticsearchAssociation{}
+		fetched := v1alpha1.ApmServerElasticsearchAssociation{}
 		err := c.Get(associationKey, &fetched)
 		if err != nil {
 			return err
@@ -139,13 +139,12 @@ func TestReconcile(t *testing.T) {
 		return nil
 	})
 
-	// Delete Kibana as well
-	test.DeleteIfExists(t, c, kibana)
-
+	// Delete ApmServer as well
+	test.DeleteIfExists(t, c, apmServer)
 }
 
 func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.Elasticsearch) *corev1.Secret {
-	// The Kibana resource needs a CA cert  secrets to be created,
+	// The ApmServer resource needs a CA cert  secrets to be created,
 	// but the Elasticsearch controller is not running.
 	// Here we are creating a dummy CA secret to pretend they exist.
 	caSecret := &corev1.Secret{

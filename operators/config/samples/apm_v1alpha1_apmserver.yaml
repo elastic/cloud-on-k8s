@@ -1,0 +1,10 @@
+apiVersion: apm.k8s.elastic.co/v1alpha1
+kind: ApmServer
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmserver-sample
+spec:
+  version: "6.6.1"
+  nodeCount: 1
+    expose: LoadBalancer

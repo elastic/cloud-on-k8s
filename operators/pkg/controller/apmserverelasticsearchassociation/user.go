@@ -2,18 +2,18 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package association
+package apmserverelasticsearchassociation
 
 import (
 	"reflect"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -23,48 +23,48 @@ import (
 )
 
 const (
-	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
-	InternalKibanaServerUserName = "elastic-internal-kibana"
+	// InternalPamServerUserName is a user to be used by the Apm server when interacting with ES.
+	InternalApmServerUserName = "elastic-internal-apm"
 )
 
-// name to identify the Kibana user object (secret/user CRD)
-func kibanaUserObjectName(assocName string) string {
-	return assocName + "-" + InternalKibanaServerUserName
+// name to identify the Apm user object (secret/user CRD)
+func apmUserObjectName(assocName string) string {
+	return assocName + "-" + InternalApmServerUserName
 }
 
 // userKey is the namespaced name to identify the customer user resource created by the controller.
-func userKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+func userKey(assoc v1alpha1.ApmServerElasticsearchAssociation) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: assoc.Spec.Elasticsearch.Namespace,
-		Name:      kibanaUserObjectName(assoc.Name),
+		Name:      apmUserObjectName(assoc.Name),
 	}
 }
 
-// secretKey is the namespaced name to identify the secret containing the password for the Kibana user.
-func secretKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+// secretKey is the namespaced name to identify the secret containing the password for the Apm user.
+func secretKey(assoc v1alpha1.ApmServerElasticsearchAssociation) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: assoc.Spec.Kibana.Namespace,
-		Name:      kibanaUserObjectName(assoc.Name),
+		Namespace: assoc.Spec.ApmServer.Namespace,
+		Name:      apmUserObjectName(assoc.Name),
 	}
 }
 
-// creates a SecretKeySelector selecting the Kibana user secret for the given association
-func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *corev1.SecretKeySelector {
+// creates a SecretKeySelector selecting the Apm user secret for the given association
+func clearTextSecretKeySelector(assoc v1alpha1.ApmServerElasticsearchAssociation) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: kibanaUserObjectName(assoc.Name),
+			Name: apmUserObjectName(assoc.Name),
 		},
-		Key: InternalKibanaServerUserName,
+		Key: InternalApmServerUserName,
 	}
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElasticsearchAssociation) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerElasticsearchAssociation) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
-	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
-	secretLabels := kibana.NewLabels(assoc.Spec.Kibana.Name)
-	secretLabels[AssociationLabelName] = assoc.Name
+	// the secret will be on the Apm side of the association so we are applying the Apm labels here
+	secretLabels := apmserver.NewLabels(assoc.Spec.ApmServer.Name)
+	secretLabels[association.AssociationLabelName] = assoc.Name
 	secKey := secretKey(assoc)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -73,7 +73,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 			Labels:    secretLabels,
 		},
 		Data: map[string][]byte{
-			InternalKibanaServerUserName: pw,
+			InternalApmServerUserName: pw,
 		},
 	}
 
@@ -85,7 +85,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
-			_, ok := reconciledSecret.Data[InternalKibanaServerUserName]
+			_, ok := reconciledSecret.Data[InternalApmServerUserName]
 			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
 		},
 		UpdateReconciled: func() {
@@ -98,14 +98,14 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 	}
 	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
 
-	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalKibanaServerUserName], bcrypt.DefaultCost)
+	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalApmServerUserName], bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
-	userLabels[AssociationLabelName] = assoc.Name
+	userLabels[association.AssociationLabelName] = assoc.Name
 	usrKey := userKey(assoc)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,9 +114,10 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 			Labels:    userLabels,
 		},
 		Spec: estype.UserSpec{
-			Name:         InternalKibanaServerUserName,
+			Name:         InternalApmServerUserName,
 			PasswordHash: string(bcryptHash),
-			UserRoles:    []string{user.KibanaSystemUserBuiltinRole},
+			// TODO: lower privileges, but requires specifying a custom role
+			UserRoles: []string{"superuser"},
 		},
 		Status: estype.UserStatus{
 			Phase: estype.UserPending,
