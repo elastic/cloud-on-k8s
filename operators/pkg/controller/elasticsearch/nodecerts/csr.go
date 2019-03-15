@@ -56,6 +56,7 @@ func CreateValidatedCertificateTemplate(
 	clusterName, namespace string,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
+	nodeCertValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	if podIP == nil {
@@ -115,7 +116,7 @@ func CreateValidatedCertificateTemplate(
 			{Id: certificates.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
 		},
 		NotBefore: time.Now().Add(-10 * time.Minute),
-		NotAfter:  time.Now().Add(365 * 24 * time.Hour),
+		NotAfter:  time.Now().Add(nodeCertValidity),
 
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,

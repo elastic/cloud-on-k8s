@@ -56,17 +56,12 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
-	esCa, err := certificates.NewSelfSignedCa("elasticsearch-controller")
-	if err != nil {
-		return nil, err
-	}
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
-		esCa:        esCa,
 		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
 		esObservers: observer.NewManager(observer.DefaultSettings),
 
@@ -170,7 +165,6 @@ type ReconcileElasticsearch struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	esCa      *certificates.Ca
 	csrClient certificates.CSRClient
 
 	esObservers *observer.Manager
@@ -249,7 +243,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		ClusterCa:        r.esCa,
 		CSRClient:        r.csrClient,
 		Observers:        r.esObservers,
 		DynamicWatches:   r.dynamicWatches,

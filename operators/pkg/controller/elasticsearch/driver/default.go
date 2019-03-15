@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -55,12 +56,15 @@ type defaultDriver struct {
 	nodeCertificatesReconciler func(
 		c k8s.Client,
 		scheme *runtime.Scheme,
-		ca *certificates.Ca,
 		csrClient certificates.CSRClient,
 		es v1alpha1.Elasticsearch,
 		services []corev1.Service,
 		trustRelationships []v1alpha1.TrustRelationship,
-	) error
+		caCertValidity time.Duration,
+		caCertRotateBefore time.Duration,
+		nodeCertValidity time.Duration,
+		nodeCertRotateBefore time.Duration,
+	) (*x509.Certificate, time.Time, error)
 
 	// usersReconciler reconciles external and internal users and returns the current internal users.
 	usersReconciler func(
@@ -143,23 +147,31 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err := d.nodeCertificatesReconciler(
+	caCert, caExpiration, err := d.nodeCertificatesReconciler(
 		d.Client,
 		d.Scheme,
-		d.ClusterCa,
 		d.CSRClient,
 		es,
 		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
 		trustRelationships,
-	); err != nil {
+		d.Parameters.CACertValidity,
+		d.Parameters.CACertRotateBefore,
+		d.Parameters.NodeCertValidity,
+		d.Parameters.NodeCertRotateBefore,
+	)
+	if err != nil {
 		return results.WithError(err)
 	}
+	// make sure to requeue before the CA cert expires
+	results.WithResult(controller.Result{
+		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
+	})
 
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
 	}
-	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser)
+	esClient := d.newElasticsearchClient(genericResources.ExternalService, internalUsers.ControllerUser, caCert)
 
 	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
@@ -464,11 +476,11 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, caCert *x509.Certificate) *esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, pod.HTTPPort)
 
 	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user.Auth(), []*x509.Certificate{d.ClusterCa.Cert},
+		d.Dialer, url, user.Auth(), []*x509.Certificate{caCert},
 	)
 	return esClient
 }

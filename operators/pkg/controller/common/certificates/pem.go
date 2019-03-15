@@ -8,6 +8,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+
+	"github.com/pkg/errors"
 )
 
 // ParsePEMCerts returns a list of certificates from the given PEM certs data
@@ -51,4 +53,16 @@ func EncodePEMPrivateKey(privateKey rsa.PrivateKey) []byte {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(&privateKey),
 	})
+}
+
+// ParsePEMPrivateKey parses the given private key in the PEM format
+func ParsePEMPrivateKey(pemData []byte) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, errors.New("can't decode pem block")
+	}
+	if block.Type != "RSA PRIVATE KEY" || len(block.Headers) != 0 {
+		return nil, errors.New("pem block is not an RSA private key")
+	}
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }

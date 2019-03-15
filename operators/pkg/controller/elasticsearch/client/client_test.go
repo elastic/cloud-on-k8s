@@ -282,11 +282,11 @@ func TestClient_Equal(t *testing.T) {
 	dummyEndpoint := "es-url"
 	dummyUser := UserAuth{Name: "user", Password: "password"}
 	createCert := func() *x509.Certificate {
-		ca, err := certificates.NewSelfSignedCa("cn")
+		ca, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
 		require.NoError(t, err)
 		return ca.Cert
 	}
-	dummyCaCerts := []*x509.Certificate{createCert()}
+	dummyCACerts := []*x509.Certificate{createCert()}
 	x509.NewCertPool()
 	tests := []struct {
 		name string
@@ -296,44 +296,44 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCACerts),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCACerts),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
 			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert()}),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
 			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert(), createCert()}),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCaCerts),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCaCerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCACerts),
 			want: true,
 		},
 	}

@@ -24,6 +24,13 @@ import (
 
 var log = logf.KBLog.WithName("nodecerts")
 
+// Node certificates
+//
+// For each elasticsearch pod, we sign one certificate with the cluster CA (see `ca.go`).
+// The certificate is passed to the pod through a secret volume mount.
+// The corresponding private key stays in the ES pod: we request a CSR from the pod,
+// and never access the private key directly.
+
 const (
 	lastCertUpdateAnnotation = "elasticsearch.k8s.elastic.co/last-cert-update"
 )
@@ -32,11 +39,13 @@ const (
 // of the given es cluster.
 func ReconcileNodeCertificateSecrets(
 	c k8s.Client,
-	ca *certificates.Ca,
+	ca *certificates.CA,
 	csrClient certificates.CSRClient,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
+	nodeCertValidity time.Duration,
+	nodeCertRotateBefore time.Duration,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
 
@@ -96,7 +105,7 @@ func ReconcileNodeCertificateSecrets(
 		switch certificateType {
 		case LabelNodeCertificateTypeElasticsearchAll:
 			if res, err := doReconcile(
-				c, secret, pod, csrClient, es.Name, es.Namespace, services, ca, additionalCAs,
+				c, secret, pod, csrClient, es.Name, es.Namespace, services, ca, additionalCAs, nodeCertValidity, nodeCertRotateBefore,
 			); err != nil {
 				return res, err
 			}
@@ -119,8 +128,10 @@ func doReconcile(
 	csrClient certificates.CSRClient,
 	clusterName, namespace string,
 	svcs []corev1.Service,
-	ca *certificates.Ca,
+	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
+	nodeCertValidity time.Duration,
+	nodeCertReconcileBefore time.Duration,
 ) (reconcile.Result, error) {
 	// a placeholder secret may have nil entries, create them if needed
 	if secret.Data == nil {
@@ -134,7 +145,7 @@ func doReconcile(
 	lastCSRUpdate := secret.Annotations[LastCSRUpdateAnnotation] // may be empty
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(secret, ca, pod)
+	issueNewCertificate := shouldIssueNewCertificate(secret, ca, pod, nodeCertReconcileBefore)
 
 	// if needed, replace the CSR by a fresh one
 	newCSR, err := maybeRequestCSR(pod, csrClient, lastCSRUpdate)
@@ -171,7 +182,7 @@ func doReconcile(
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, parsedCSR)
+	validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, parsedCSR, nodeCertValidity)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -217,7 +228,7 @@ func doReconcile(
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate SAN and IP does not match pod SAN and IP
-func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.Ca, pod corev1.Pod) bool {
+func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.CA, pod corev1.Pod, nodeCertReconcileBefore time.Duration) bool {
 	certData, ok := secret.Data[CertFileName]
 	if !ok {
 		// certificate is missing
@@ -249,6 +260,11 @@ func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.Ca, pod co
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
 		)
+		return true
+	}
+
+	if time.Now().After(cert.NotAfter.Add(-nodeCertReconcileBefore)) {
+		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
 		return true
 	}
 

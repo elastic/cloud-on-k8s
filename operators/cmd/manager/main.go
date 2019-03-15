@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/dev"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
@@ -32,6 +34,11 @@ const (
 
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
+
+	CACertValidityFlag       = "ca-cert-validity"
+	CACertRotateBeforeFlag   = "ca-cert-rotate-before"
+	NodeCertValidityFlag     = "node-cert-validity"
+	NodeCertRotateBeforeFlag = "node-cert-rotate-before"
 )
 
 var (
@@ -76,6 +83,26 @@ func init() {
 		operator.RoleFlag,
 		operator.All,
 		"Role this operator should assume (either namespace, global or all)",
+	)
+	Cmd.Flags().Duration(
+		CACertValidityFlag,
+		certificates.DefaultCertValidity,
+		"Duration representing how long before a newly created CA cert expires",
+	)
+	Cmd.Flags().Duration(
+		CACertRotateBeforeFlag,
+		certificates.DefaultRotateBefore,
+		"Duration representing how long before expiration CA certificates should be reissued",
+	)
+	Cmd.Flags().Duration(
+		NodeCertValidityFlag,
+		certificates.DefaultCertValidity,
+		"Duration representing how long before a newly created node cert expires",
+	)
+	Cmd.Flags().Duration(
+		NodeCertRotateBeforeFlag,
+		certificates.DefaultRotateBefore,
+		"Duration representing how long before expiration nodes certificates should be reissued",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
@@ -144,11 +171,18 @@ func execute() {
 		os.Exit(1)
 	}
 
+	// Verify cert validity options
+	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
+	nodeCertValidity, nodeCertRotateBefore := ValidateCertExpirationFlags(NodeCertValidityFlag, NodeCertRotateBeforeFlag)
 	// Setup all Controllers
 	log.Info("Setting up controller")
 	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
-		Dialer:        dialer,
-		OperatorImage: operatorImage,
+		Dialer:               dialer,
+		OperatorImage:        operatorImage,
+		CACertValidity:       caCertValidity,
+		CACertRotateBefore:   caCertRotateBefore,
+		NodeCertValidity:     nodeCertValidity,
+		NodeCertRotateBefore: nodeCertRotateBefore,
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)
@@ -166,4 +200,14 @@ func execute() {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
+}
+
+func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {
+	certValidity := viper.GetDuration(validityFlag)
+	certRotateBefore := viper.GetDuration(rotateBeforeFlag)
+	if certRotateBefore > certValidity {
+		log.Error(fmt.Errorf("%s must be larger than %s", validityFlag, rotateBeforeFlag), "")
+		os.Exit(1)
+	}
+	return certValidity, certRotateBefore
 }

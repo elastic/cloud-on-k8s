@@ -1,0 +1,138 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmservers.apm.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: apm.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: ApmServer
+    plural: apmservers
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            expose:
+              description: 'Expose determines which service type to use for this workload.
+                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            featureFlags:
+              description: FeatureFlags are apm-specific flags that enable or disable
+                specific experimental features
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodeCount:
+              description: NodeCount defines how many nodes the Apm Server deployment
+                must have.
+              format: int32
+              type: integer
+            output:
+              properties:
+                elasticsearch:
+                  description: Elasticsearch configures the Elasticsearch output
+                  properties:
+                    auth:
+                      description: Auth configures authentication for APM Server to
+                        use.
+                      properties:
+                        inline:
+                          description: Inline is auth provided as plaintext inline
+                            credentials.
+                          properties:
+                            password:
+                              description: Password is the password to use.
+                              type: string
+                            username:
+                              description: User is the username to use.
+                              type: string
+                          type: object
+                        secret:
+                          description: SecretKeyRef is a secret that contains the
+                            credentials to use.
+                          type: object
+                      type: object
+                    hosts:
+                      description: Hosts are the URLs of the output Elasticsearch
+                        nodes.
+                      items:
+                        type: string
+                      type: array
+                    ssl:
+                      description: SSL configures TLS-related configuration for Elasticsearch
+                      properties:
+                        certificateAuthoritiesSecret:
+                          description: CertificateAuthoritiesSecret names a secret
+                            that contains a CA file entry to use.
+                          type: string
+                      type: object
+                  type: object
+              type: object
+            resources:
+              description: Resources to be allocated for each Apm Server node
+              properties:
+                limits:
+                  description: Limits represents the limits to considerate for these
+                    resources
+                  type: object
+              type: object
+            version:
+              description: Version represents the version of the APM Server
+              type: string
+          type: object
+        status:
+          properties:
+            health:
+              type: string
+            secretTokenSecret:
+              description: SecretTokenSecretName is the name of the Secret that contains
+                the secret token
+              type: string
+            service:
+              description: ExternalService is the name of the service the agents should
+                connect to.
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

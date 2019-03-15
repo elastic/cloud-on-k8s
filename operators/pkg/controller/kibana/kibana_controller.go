@@ -90,8 +90,11 @@ func addWatches(c controller.Controller, r *ReconcileKibana) error {
 		return err
 	}
 
-	// Dynamically watch secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
+	// Watch secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &kibanav1alpha1.Kibana{},
+	}); err != nil {
 		return err
 	}
 

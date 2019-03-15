@@ -28,7 +28,6 @@ func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			// For now, expose the service as node port to ease development
 			// TODO: proper ingress forwarding
 			Type: common.GetServiceType(kb.Spec.Expose),
 		},

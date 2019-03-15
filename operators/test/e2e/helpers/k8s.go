@@ -9,11 +9,16 @@ import (
 	"fmt"
 	"os"
 
+	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -61,6 +66,9 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	if err := assoctype.AddToScheme(scheme.Scheme); err != nil {
+		return nil, err
+	}
+	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
 	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
@@ -145,7 +153,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 }
 
 func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
-	secretName := nodecerts.CASecretNameForCluster(stackName)
+	secretName := nodecerts.CACertSecretName(stackName)
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: DefaultNamespace,
@@ -165,8 +173,8 @@ func ESPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"common.k8s.elastic.co/type":                "elasticsearch",
-			"elasticsearch.k8s.elastic.co/cluster-name": stackName,
+			common.TypeLabelName:       label.Type,
+			label.ClusterNameLabelName: stackName,
 		}))}
 }
 
@@ -174,7 +182,16 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: DefaultNamespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			"kibana.k8s.elastic.co/name": stackName,
+			kibana.KibanaNameLabelName: stackName,
+		}))}
+}
+
+func ApmServerPodListOptions(stackName string) client.ListOptions {
+	return client.ListOptions{
+		Namespace: DefaultNamespace,
+		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
+			common.TypeLabelName:             apmserver.Type,
+			apmserver.ApmServerNameLabelName: stackName,
 		}))}
 }
 
