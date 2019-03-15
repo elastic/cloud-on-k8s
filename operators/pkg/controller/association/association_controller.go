@@ -228,7 +228,7 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	}
 
 	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CASecretNameForCluster(es.Name)}
+	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
 		return assoctype.AssociationPending, err // maybe not created yet
 	}

@@ -16,18 +16,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 
-// CAFileName is used for the CA Certificates inside a secret
-const CAFileName = "ca.pem"
+const (
+	// CAFileName is used for the CA Certificates inside a secret
+	CAFileName = "ca.pem"
+)
 
 var (
 	// SerialNumberLimit is the maximum number used as a certificate serial number
 	SerialNumberLimit = new(big.Int).Lsh(big.NewInt(1), 128)
 )
 
-// Ca is a simple certificate authority
-type Ca struct {
-	// privateKey is the CA private key
-	privateKey *rsa.PrivateKey
+// CA is a simple certificate authority
+type CA struct {
+	// PrivateKey is the CA private key
+	PrivateKey *rsa.PrivateKey
 	// Cert is the certificate used to issue new certificates
 	Cert *x509.Certificate
 }
@@ -36,34 +38,53 @@ type Ca struct {
 // should be considered trusted.
 type ValidatedCertificateTemplate x509.Certificate
 
-// NewSelfSignedCa creates a new Ca that uses a self-signed certificate.
-func NewSelfSignedCa(cn string) (*Ca, error) {
-	// TODO: constructor that takes the key?
-	key, err := rsa.GenerateKey(cryptorand.Reader, 2048)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to generate the private key")
+// NewCA returns a ca with the given private key and cert
+func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
+	return &CA{
+		PrivateKey: privateKey,
+		Cert:       cert,
 	}
-	return NewSelfSignedCaUsingKey(cn, key)
 }
 
-// NewSelfSignedCaUsingKey creates a new Ca that uses a self-signed certificate using the provided private key
-func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
-	// create a self-signed certificate for ourselves:
+// CABuilderOptions are options to build a self-signed CA
+type CABuilderOptions struct {
+	// CommonName of the CA to build.
+	CommonName string
+	// PrivateKey to be used for signing certificates (auto-generated if not provided).
+	PrivateKey *rsa.PrivateKey
+	// ExpireIn defines in how much time will the CA expire (defaults to DefaultCertValidity if not provided).
+	ExpireIn *time.Duration
+}
 
+// NewSelfSignedCA creates a self-signed CA according to the given options
+func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 	// generate a serial number
 	serial, err := cryptorand.Int(cryptorand.Reader, SerialNumberLimit)
 	if err != nil {
 		return nil, err
 	}
 
+	privateKey := options.PrivateKey
+	if privateKey == nil {
+		privateKey, err = rsa.GenerateKey(cryptorand.Reader, 2048)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to generate the private key")
+		}
+	}
+
+	notAfter := time.Now().Add(DefaultCertValidity)
+	if options.ExpireIn != nil {
+		notAfter = time.Now().Add(*options.ExpireIn)
+	}
+
 	certificateTemplate := x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			CommonName:         cn,
+			CommonName:         options.CommonName,
 			OrganizationalUnit: []string{rand.String(16)},
 		},
 		NotBefore:             time.Now().Add(-1 * time.Minute),
-		NotAfter:              time.Now().Add(24 * 365 * time.Hour),
+		NotAfter:              notAfter,
 		SignatureAlgorithm:    x509.SHA256WithRSA,
 		IsCA:                  true,
 		BasicConstraintsValid: true,
@@ -71,7 +92,7 @@ func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
 
-	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, key.Public(), key)
+	certData, err := x509.CreateCertificate(cryptorand.Reader, &certificateTemplate, &certificateTemplate, privateKey.Public(), privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -81,14 +102,15 @@ func NewSelfSignedCaUsingKey(cn string, key *rsa.PrivateKey) (*Ca, error) {
 		return nil, err
 	}
 
-	return &Ca{
-		privateKey: key,
+	return &CA{
+		PrivateKey: privateKey,
 		Cert:       cert,
 	}, nil
+
 }
 
 // CreateCertificate signs and creates a new certificate for a validated template.
-func (c *Ca) CreateCertificate(
+func (c *CA) CreateCertificate(
 	validatedCertificateTemplate ValidatedCertificateTemplate,
 ) ([]byte, error) {
 	// generate a serial number
@@ -106,7 +128,7 @@ func (c *Ca) CreateCertificate(
 		&certTemplate,
 		c.Cert,
 		validatedCertificateTemplate.PublicKey,
-		c.privateKey,
+		c.PrivateKey,
 	)
 
 	return certData, err

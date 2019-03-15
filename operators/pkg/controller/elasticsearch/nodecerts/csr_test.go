@@ -2,6 +2,8 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
+// +build integration
+
 package nodecerts
 
 import (
@@ -28,7 +30,7 @@ func (f FakeCSRClient) RetrieveCSR(pod corev1.Pod) ([]byte, error) {
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
 func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.Certificate, error) {
-	certData, err := testCa.CreateCertificate(*cert)
+	certData, err := testCA.CreateCertificate(*cert)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +101,7 @@ func Test_maybeRequestCSR(t *testing.T) {
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
-	validatedCert, err := CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR)
+	validatedCert, err := CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
 	require.NoError(t, err)
 
 	// roundtrip the certificate

@@ -152,7 +152,7 @@ func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.Elasticsearch) *core
 	// Here we are creating a dummy CA secret to pretend they exist.
 	caSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      nodecerts.CASecretNameForCluster(es.Name),
+			Name:      nodecerts.CACertSecretName(es.Name),
 			Namespace: es.Namespace,
 		},
 		Data: map[string][]byte{
