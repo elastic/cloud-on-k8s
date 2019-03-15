@@ -262,7 +262,9 @@ func NewPod(
 func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
 	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
 	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
-	return esClient.SetMinimumMasterNodes(context.TODO(), minimumMasterNodes)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	return esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
 }
 
 // MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
