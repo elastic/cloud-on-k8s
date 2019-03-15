@@ -189,6 +189,11 @@ func podSpec(
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
 			),
+			Command: []string{
+				"/usr/share/elasticsearch/bin/process-manager",
+				"--name", "es",
+				"--cmd", "/usr/local/bin/docker-entrypoint.sh",
+			},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(

@@ -22,6 +22,12 @@ var (
 		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
 	}
 
+	EsBinSharedVolume = SharedVolume{
+		Name:                   "bin-volume",
+		InitContainerMountPath: "/volume/bin",
+		EsContainerMountPath:   "/usr/share/elasticsearch/bin",
+	}
+
 	PrepareFsSharedVolumes = SharedVolumeArray{
 		Array: []SharedVolume{
 			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
@@ -37,11 +43,7 @@ var (
 				EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
 			},
 			// Plugins may have binaries installed in /bin
-			SharedVolume{
-				Name:                   "bin-volume",
-				InitContainerMountPath: "/volume/bin",
-				EsContainerMountPath:   "/usr/share/elasticsearch/bin",
-			},
+			EsBinSharedVolume,
 			DataSharedVolume,
 			LogsSharedVolume,
 		},
