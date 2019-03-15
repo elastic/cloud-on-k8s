@@ -30,6 +30,7 @@ func ESClusterChecks(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.Test
 		e.BuildESClient(es, k),
 		e.CheckESReachable(),
 		e.CheckESVersion(es),
+		e.CheckESLicense(es),
 		e.CheckESHealthGreen(),
 		e.CheckESNodesTopology(es),
 	}
@@ -65,6 +66,18 @@ func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) helpers.TestSt
 			info, err := e.client.GetClusterInfo(context.TODO())
 			require.NoError(t, err)
 			require.Equal(t, es.Spec.Version, info.Version.Number)
+		},
+	}
+}
+
+func (e *esClusterChecks) CheckESLicense(es estype.Elasticsearch) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Elasticsearch license type should be the expected one",
+		Test: func(t *testing.T) {
+			license, err := e.client.GetLicense(context.TODO())
+			require.NoError(t, err)
+			assert.Equal(t, es.Spec.GetLicenseType().String(), license.Type)
+			assert.Equal(t, "active", license.Status)
 		},
 	}
 }

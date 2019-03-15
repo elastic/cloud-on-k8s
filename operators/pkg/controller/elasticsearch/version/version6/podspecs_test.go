@@ -34,11 +34,13 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		args          args
-		wantEnvSubset []corev1.EnvVar
+		name              string
+		args              args
+		wantEnvSubset     []corev1.EnvVar
+		dontWantEnvSubset []corev1.EnvVar
 	}{
-		{name: "2 nodes",
+		{
+			name: "2 nodes",
 			args: args{
 				p: pod.NewPodSpecParams{
 					ClusterName:                    "cluster",
@@ -72,9 +74,97 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "node.ingest", Value: "false"},
 				{Name: "node.ml", Value: "true"},
 				{Name: "xpack.security.enabled", Value: "true"},
-				{Name: "xpack.license.self_generated.type", Value: "trial"},
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: "username1"},
+				{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+			},
+		},
+		{
+			name: "trial license",
+			args: args{
+				p: pod.NewPodSpecParams{
+					ClusterName:                    "cluster",
+					CustomImageName:                "myImage",
+					DiscoveryServiceName:           "discovery-service",
+					DiscoveryZenMinimumMasterNodes: 3,
+					LicenseType:                    v1alpha1.LicenseTypeTrial,
+					NodeTypes: v1alpha1.NodeTypesSpec{
+						Master: true,
+						Data:   true,
+						Ingest: false,
+						ML:     true,
+					},
+					SetVMMaxMapCount: true,
+					Version:          "1.2.3",
+					ProbeUser:        testProbeUser,
+					ReloadCredsUser:  testReloadCredsUser,
+				},
+				nodeCertificatesVolume: volume.SecretVolume{},
+				extraFilesSecretVolume: volume.SecretVolume{},
+			},
+			wantEnvSubset: []corev1.EnvVar{
+				{Name: "xpack.license.self_generated.type", Value: "trial"},
+				{Name: "xpack.security.enabled", Value: "true"},
+				{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+			},
+		},
+		{
+			name: "basic license",
+			args: args{
+				p: pod.NewPodSpecParams{
+					ClusterName:                    "cluster",
+					CustomImageName:                "myImage",
+					DiscoveryServiceName:           "discovery-service",
+					DiscoveryZenMinimumMasterNodes: 3,
+					LicenseType:                    v1alpha1.LicenseTypeBasic,
+					NodeTypes: v1alpha1.NodeTypesSpec{
+						Master: true,
+						Data:   true,
+						Ingest: false,
+						ML:     true,
+					},
+					SetVMMaxMapCount: true,
+					Version:          "1.2.3",
+					ProbeUser:        testProbeUser,
+					ReloadCredsUser:  testReloadCredsUser,
+				},
+				nodeCertificatesVolume: volume.SecretVolume{},
+				extraFilesSecretVolume: volume.SecretVolume{},
+			},
+			wantEnvSubset: []corev1.EnvVar{
+				{Name: "READINESS_PROBE_PROTOCOL", Value: "http"},
+				{Name: "xpack.security.enabled", Value: "false"},
+			},
+			dontWantEnvSubset: []corev1.EnvVar{
+				{Name: "xpack.license.self_generated.type", Value: "trial"},
+			},
+		},
+		{
+			name: "gold license",
+			args: args{
+				p: pod.NewPodSpecParams{
+					ClusterName:                    "cluster",
+					CustomImageName:                "myImage",
+					DiscoveryServiceName:           "discovery-service",
+					DiscoveryZenMinimumMasterNodes: 3,
+					LicenseType:                    v1alpha1.LicenseTypeGold,
+					NodeTypes: v1alpha1.NodeTypesSpec{
+						Master: true,
+						Data:   true,
+						Ingest: false,
+						ML:     true,
+					},
+					SetVMMaxMapCount: true,
+					Version:          "1.2.3",
+					ProbeUser:        testProbeUser,
+					ReloadCredsUser:  testReloadCredsUser,
+				},
+				nodeCertificatesVolume: volume.SecretVolume{},
+				extraFilesSecretVolume: volume.SecretVolume{},
+			},
+			wantEnvSubset: []corev1.EnvVar{
+				{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+				{Name: "xpack.security.enabled", Value: "true"},
 			},
 		},
 	}
@@ -85,6 +175,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 			)
 			for _, v := range tt.wantEnvSubset {
 				assert.Contains(t, got, v)
+			}
+			for _, v := range tt.dontWantEnvSubset {
+				assert.NotContains(t, got, v)
 			}
 		})
 	}
@@ -247,6 +340,7 @@ func Test_newSidecarContainers(t *testing.T) {
 						{Name: "USERNAME", Value: "username2"},
 						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/reload-creds-user/username2"},
 						{Name: "CERTIFICATES_PATH", Value: "/certs/ca.pem"},
+						{Name: "ENDPOINT", Value: "https://127.0.0.1:9200"},
 					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
