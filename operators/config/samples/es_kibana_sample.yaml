@@ -20,7 +20,7 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: "6.4.2"
-  licenseType: trial
+  licenseType: trial # can be "basic", "trial", "gold", "platinum"
   setVmMaxMapCount: true
   updateStrategy:
     groups:
