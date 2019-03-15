@@ -9,23 +9,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"time"
+
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
-	"io"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"net/http"
 )
+
+const DefaultReqTimeout = 1 * time.Minute
 
 // ApmClient is a simple client to use with an Apm Server.
 type ApmClient struct {
 	client                   *http.Client
 	endpoint                 string
 	authorizationHeaderValue string
+	timeout                  time.Duration
 }
 
 func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) {
