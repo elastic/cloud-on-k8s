@@ -145,8 +145,49 @@ func TestState_Apply(t *testing.T) {
 			wantStatus: nil,
 		},
 		{
-			name:    "health degraded",
+			name:    "no degraded health event on cluster formation",
 			cluster: v1alpha1.Elasticsearch{},
+			effects: func(s *State) {
+				s.UpdateElasticsearchPending([]corev1.Pod{})
+			},
+			wantEvents: nil,
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health: v1alpha1.ElasticsearchRedHealth,
+				Phase:  v1alpha1.ElasticsearchPendingPhase,
+			},
+		},
+		{
+			name: "no degraded health event when cluster state is unknown",
+			cluster: v1alpha1.Elasticsearch{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health: v1alpha1.ElasticsearchGreenHealth,
+				},
+			},
+			effects: func(s *State) {
+				s.UpdateElasticsearchState(ResourcesState{}, observer.State{
+					ClusterHealth: nil,
+					ClusterState:  nil,
+				})
+			},
+			wantEvents: nil,
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health: "unknown",
+				Phase:  "",
+			},
+		},
+		{
+			name: "health degraded",
+			cluster: v1alpha1.Elasticsearch{
+				Status: v1alpha1.ElasticsearchStatus{
+					Health: v1alpha1.ElasticsearchGreenHealth,
+				},
+			},
 			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
@@ -178,6 +219,33 @@ func TestState_Apply(t *testing.T) {
 				})
 			},
 			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
+			wantStatus: &v1alpha1.ElasticsearchStatus{
+				ReconcilerStatus: v1alpha12.ReconcilerStatus{
+					AvailableNodes: 0,
+				},
+				Health:      v1alpha1.ElasticsearchRedHealth,
+				Phase:       v1alpha1.ElasticsearchOperationalPhase,
+				ClusterUUID: "new",
+			},
+		},
+		{
+			name: "no UUID change event on cluster formation",
+			cluster: v1alpha1.Elasticsearch{
+				Status: v1alpha1.ElasticsearchStatus{
+					ClusterUUID: "",
+				},
+			},
+			effects: func(s *State) {
+				s.UpdateElasticsearchOperational(ResourcesState{}, observer.State{
+					ClusterHealth: &client.Health{
+						Status: "red",
+					},
+					ClusterState: &client.ClusterState{
+						ClusterUUID: "new",
+					},
+				})
+			},
+			wantEvents: nil,
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,

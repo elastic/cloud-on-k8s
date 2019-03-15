@@ -227,18 +227,18 @@ const (
 	ElasticsearchGreenHealth  ElasticsearchHealth = "green"
 )
 
+var elasticsearchHealthOrder = map[ElasticsearchHealth]int{
+	ElasticsearchRedHealth:    1,
+	ElasticsearchYellowHealth: 2,
+	ElasticsearchGreenHealth:  3,
+}
+
 // Less for ElasticsearchHealth means green > yellow > red
 func (h ElasticsearchHealth) Less(other ElasticsearchHealth) bool {
-	switch {
-	case h == other:
-		return false
-	case h == ElasticsearchGreenHealth:
-		return false
-	case h == ElasticsearchYellowHealth && other == ElasticsearchRedHealth:
-		return false
-	default:
-		return true
-	}
+	l := elasticsearchHealthOrder[h]
+	r := elasticsearchHealthOrder[other]
+	// 0 is not found/unknown and less is not defined for that
+	return l != 0 && r != 0 && l < r
 }
 
 // ElasticsearchOrchestrationPhase is the phase Elasticsearch is in from the controller point of view.
