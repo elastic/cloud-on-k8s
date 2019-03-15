@@ -66,7 +66,7 @@ func ExternalServiceName(esName string) string {
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch external endpoint
 func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
-	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(pod.HTTPPort))
+	return stringsutil.Concat(network.ProtocolForCluster(es), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster

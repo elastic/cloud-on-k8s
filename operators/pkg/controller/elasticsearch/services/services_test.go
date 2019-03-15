@@ -23,24 +23,50 @@ func TestExternalServiceURL(t *testing.T) {
 		want string
 	}{
 		{
-			name: "A service URL",
+			name: "A service URL (basic license)",
 			args: args{es: v1alpha1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "an-es-name",
 					Namespace: "default",
 				},
 			}},
-			want: "https://an-es-name-es.default.svc.cluster.local:9200",
+			want: "http://an-es-name-es.default.svc.cluster.local:9200",
 		},
 		{
-			name: "Another Service URL",
+			name: "Another Service URL (basic license)",
 			args: args{es: v1alpha1.Elasticsearch{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "another-es-name",
 					Namespace: "default",
 				},
 			}},
-			want: "https://another-es-name-es.default.svc.cluster.local:9200",
+			want: "http://another-es-name-es.default.svc.cluster.local:9200",
+		},
+		{
+			name: "A service URL with trial license",
+			args: args{es: v1alpha1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "an-es-name",
+					Namespace: "default",
+				},
+				Spec: v1alpha1.ElasticsearchSpec{
+					LicenseType: "trial",
+				},
+			}},
+			want: "https://an-es-name-es.default.svc.cluster.local:9200",
+		},
+		{
+			name: "A service URL with gold license",
+			args: args{es: v1alpha1.Elasticsearch{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "an-es-name",
+					Namespace: "default",
+				},
+				Spec: v1alpha1.ElasticsearchSpec{
+					LicenseType: "gold",
+				},
+			}},
+			want: "https://an-es-name-es.default.svc.cluster.local:9200",
 		},
 	}
 	for _, tt := range tests {
