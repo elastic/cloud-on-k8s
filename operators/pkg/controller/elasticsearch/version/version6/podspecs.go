@@ -151,7 +151,7 @@ func newEnvironmentVars(
 ) []corev1.EnvVar {
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
-	return []corev1.EnvVar{
+	vars := []corev1.EnvVar{
 		{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
@@ -166,18 +166,6 @@ func newEnvironmentVars(
 		{Name: settings.EnvPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
 		{Name: settings.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
-		// TODO: it would be great if we could move this out of "generic extra files" and into a more scoped secret
-		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
-		//       reusable component somehow.
-		{
-			Name: settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
-			Value: fmt.Sprintf(
-				"%s/%s",
-				extraFilesSecretVolume.VolumeMount().MountPath,
-				nodecerts.TrustRestrictionsFilename,
-			),
-		},
-
 		// TODO: the JVM options are hardcoded, but should be configurable
 		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
@@ -186,16 +174,40 @@ func newEnvironmentVars(
 		{Name: settings.EnvNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},
 		{Name: settings.EnvNodeML, Value: fmt.Sprintf("%t", p.NodeTypes.ML)},
 
-		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
-		{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"},
-		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
+		{Name: settings.EnvReadinessProbeProtocol, Value: network.ProtocolForLicense(p.LicenseType)},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(pod.TransportClientPort)},
+		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(network.TransportClientPort)},
+	}
 
-		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
+	if p.LicenseType == v1alpha1.LicenseTypeTrial {
+		// auto-generate a trial license
+		vars = append(vars, corev1.EnvVar{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"})
+	}
 
+	vars = append(vars, xpackSecurityEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
+
+	return vars
+}
+
+func xpackSecurityEnvVars(
+	nodeCertificatesVolume volume.SecretVolume,
+	extraFilesSecretVolume volume.SecretVolume,
+	licenseType v1alpha1.LicenseType,
+) []corev1.EnvVar {
+
+	if licenseType == v1alpha1.LicenseTypeBasic {
+		// disable x-pack security
+		return []corev1.EnvVar{
+			{Name: settings.EnvXPackSecurityEnabled, Value: "false"},
+		}
+	}
+
+	// enable x-pack security, including TLS
+	return []corev1.EnvVar{
 		// x-pack security general settings
+		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
+		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
 		{Name: settings.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
 
 		// client profiles
@@ -229,6 +241,18 @@ func newEnvironmentVars(
 		{
 			Name:  settings.EnvXPackSecurityTransportSslCertificateAuthorities,
 			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
+		},
+
+		// TODO: it would be great if we could move this out of "generic extra files" and into a more scoped secret
+		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
+		//       reusable component somehow.
+		{
+			Name: settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
+			Value: fmt.Sprintf(
+				"%s/%s",
+				extraFilesSecretVolume.VolumeMount().MountPath,
+				nodecerts.TrustRestrictionsFilename,
+			),
 		},
 	}
 }

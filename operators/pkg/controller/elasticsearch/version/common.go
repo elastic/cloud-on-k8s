@@ -49,6 +49,7 @@ func NewExpectedPodSpecs(
 			podSpec, err := podSpec(
 				pod.NewPodSpecParams{
 					Version:         es.Spec.Version,
+					LicenseType:     es.Spec.GetLicenseType(),
 					CustomImageName: es.Spec.Image,
 					ClusterName:     es.Name,
 					DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(

@@ -38,6 +38,8 @@ var (
 type NewPodSpecParams struct {
 	// Version is the Elasticsearch version
 	Version string
+	// LicenseType is the type of license attached to the cluster
+	LicenseType v1alpha1.LicenseType
 	// CustomImageName is the custom image used, leave empty for the default
 	CustomImageName string
 	// ClusterName is the name of the Elasticsearch cluster
