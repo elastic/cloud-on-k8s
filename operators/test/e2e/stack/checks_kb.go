@@ -30,7 +30,7 @@ func KibanaChecks(kb kbtype.Kibana, k *helpers.K8sHelper) helpers.TestStepList {
 	}
 }
 
-// CheckKbLoginHealthy checks that Kibana is able to connect to Elasticsearch by inspecting it's login page.
+// CheckKbLoginHealthy checks that Kibana is able to connect to Elasticsearch by inspecting its login page.
 func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana should be able to connect to Elasticsearch",
