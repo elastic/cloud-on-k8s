@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	ver "github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/stretchr/testify/assert"
@@ -97,7 +98,7 @@ func requestAssertion(test func(req *http.Request)) RoundTripFunc {
 func TestClientErrorHandling(t *testing.T) {
 	// 303 would lead to a redirect to another error response if we would also set the Location header
 	codes := []int{100, 303, 400, 404, 500}
-	testClient := NewMockClient(errorResponses(codes))
+	testClient := NewMockClient(ver.MustParse("6.7.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
 			_, err := testClient.GetClusterState(context.TODO())
@@ -121,7 +122,7 @@ func TestClientErrorHandling(t *testing.T) {
 }
 
 func TestClientUsesJsonContentType(t *testing.T) {
-	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
 
@@ -162,7 +163,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+		testClient := NewMockClient(ver.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
 			username, password, ok := req.BasicAuth()
 			assert.Equal(t, tt.want.authPresent, ok)
 			assert.Equal(t, tt.want.user.Name, username)
@@ -182,7 +183,7 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 func TestClient_request(t *testing.T) {
 	testPath := "/_i_am_an/elasticsearch/endpoint"
 
-	testClient := NewMockClient(requestAssertion(func(req *http.Request) {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
 		assert.Equal(t, testPath, req.URL.Path)
 	}))
 	requests := []func() (string, error){
@@ -243,7 +244,7 @@ func TestAPIError_Error(t *testing.T) {
 
 func TestClientGetNodes(t *testing.T) {
 	expectedPath := "/_nodes/_all/jvm,settings"
-	testClient := NewMockClient(func(req *http.Request) *http.Response {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -262,7 +263,7 @@ func TestClientGetNodes(t *testing.T) {
 
 func TestGetInfo(t *testing.T) {
 	expectedPath := "/"
-	testClient := NewMockClient(func(req *http.Request) *http.Response {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -296,45 +297,51 @@ func TestClient_Equal(t *testing.T) {
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCACerts, ver.MustParse("7.0.0")),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert()}),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert()}, ver.MustParse("7.0.0")),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert(), createCert()}),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert(), createCert()}, ver.MustParse("7.0.0")),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
 			want: true,
+		},
+		{
+			name: "different versions",
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("7.0.0")),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts, ver.MustParse("6.7.0")),
+			want: false,
 		},
 	}
 	for _, tt := range tests {
@@ -346,7 +353,7 @@ func TestClient_Equal(t *testing.T) {
 
 func TestClient_UpdateLicense(t *testing.T) {
 	expectedPath := "/_xpack/license"
-	testClient := NewMockClient(func(req *http.Request) *http.Response {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,
@@ -378,7 +385,7 @@ func TestClient_UpdateLicense(t *testing.T) {
 
 func TestClient_GetLicense(t *testing.T) {
 	expectedPath := "/_xpack/license"
-	testClient := NewMockClient(func(req *http.Request) *http.Response {
+	testClient := NewMockClient(ver.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		require.Equal(t, expectedPath, req.URL.Path)
 		return &http.Response{
 			StatusCode: 200,

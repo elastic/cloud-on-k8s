@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
@@ -20,7 +21,7 @@ import (
 )
 
 func fakeEsClient200() client.Client {
-	return client.NewMockClient(func(req *http.Request) *http.Response {
+	return client.NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		return &http.Response{
 			StatusCode: 200,
 			Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ClusterStateSample)),
