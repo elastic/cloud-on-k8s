@@ -273,14 +273,12 @@ func (c *Client) versioned() (dispatcher, error) {
 }
 
 func dispatcherFor(ver version.Version) dispatcher {
-	var v dispatcher
 	switch ver.Major {
 	case 6:
-		v = version6()
+		return version6()
 	default:
-		v = version7()
+		return version7()
 	}
-	return v
 }
 
 // Equal returns true if c2 can be considered the same as c
