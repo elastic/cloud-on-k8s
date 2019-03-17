@@ -353,6 +353,22 @@ func TestClient_Equal(t *testing.T) {
 			}(),
 			want: false,
 		},
+		{
+			name: "same versions",
+			c1: func() *Client {
+				version := version.MustParse("7.0.0")
+				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
+				c.version = &version
+				return c
+			}(),
+			c2: func() *Client {
+				version := version.MustParse("7.0.0")
+				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
+				c.version = &version
+				return c
+			}(),
+			want: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -362,59 +378,187 @@ func TestClient_Equal(t *testing.T) {
 }
 
 func TestClient_UpdateLicense(t *testing.T) {
-	expectedPath := "/_xpack/license"
-	testClient := NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
-		require.Equal(t, expectedPath, req.URL.Path)
-		return &http.Response{
-			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseUpdateResponseSample)),
-			Header:     make(http.Header),
-			Request:    req,
-		}
-	})
-	in := LicenseUpdateRequest{
-		Licenses: []License{
-			{
-				UID:                "893361dc-9749-4997-93cb-802e3d7fa4xx",
-				Type:               "basic",
-				IssueDateInMillis:  0,
-				ExpiryDateInMillis: 0,
-				MaxNodes:           1,
-				IssuedTo:           "unit-test",
-				Issuer:             "test-issuer",
-				Signature:          "xx",
-			},
+	tests := []struct {
+		expectedPath string
+		version      version.Version
+	}{
+		{
+			expectedPath: "/_xpack/license",
+			version:      version.MustParse("6.7.0"),
+		},
+		{
+			expectedPath: "/_license",
+			version:      version.MustParse("7.0.0"),
 		},
 	}
+	for _, tt := range tests {
+		testClient := NewMockClient(tt.version, func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseUpdateResponseSample)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+		in := LicenseUpdateRequest{
+			Licenses: []License{
+				{
+					UID:                "893361dc-9749-4997-93cb-802e3d7fa4xx",
+					Type:               "basic",
+					IssueDateInMillis:  0,
+					ExpiryDateInMillis: 0,
+					MaxNodes:           1,
+					IssuedTo:           "unit-test",
+					Issuer:             "test-issuer",
+					Signature:          "xx",
+				},
+			},
+		}
+		got, err := testClient.UpdateLicense(context.TODO(), in)
+		assert.NoError(t, err)
+		assert.Equal(t, true, got.Acknowledged)
+		assert.Equal(t, "valid", got.LicenseStatus)
+	}
 
-	got, err := testClient.UpdateLicense(context.TODO(), in)
-	assert.NoError(t, err)
-	assert.Equal(t, true, got.Acknowledged)
-	assert.Equal(t, "valid", got.LicenseStatus)
 }
 
 func TestClient_GetLicense(t *testing.T) {
-	expectedPath := "/_xpack/license"
-	testClient := NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
-		require.Equal(t, expectedPath, req.URL.Path)
-		return &http.Response{
-			StatusCode: 200,
-			Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseGetSample)),
-			Header:     make(http.Header),
-			Request:    req,
+	tests := []struct {
+		expectedPath string
+		version      version.Version
+	}{
+		{
+			expectedPath: "/_xpack/license",
+			version:      version.MustParse("6.7.0"),
+		},
+		{
+			expectedPath: "/_license",
+			version:      version.MustParse("7.0.0"),
+		},
+	}
+
+	for _, tt := range tests {
+		testClient := NewMockClient(tt.version, func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader(fixtures.LicenseGetSample)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+		got, err := testClient.GetLicense(context.TODO())
+		assert.NoError(t, err)
+		assert.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", got.UID)
+		assert.Equal(t, "platinum", got.Type)
+		assert.EqualValues(t, time.Unix(0, 1548115200000*int64(time.Millisecond)).UTC(), *got.IssueDate)
+		assert.Equal(t, int64(1548115200000), got.IssueDateInMillis)
+		assert.EqualValues(t, time.Unix(0, 1561247999999*int64(time.Millisecond)).UTC(), *got.ExpiryDate)
+		assert.Equal(t, int64(1561247999999), got.ExpiryDateInMillis)
+		assert.Equal(t, 100, got.MaxNodes)
+		assert.Equal(t, "issuer", got.Issuer)
+		assert.Equal(t, int64(1548115200000), got.StartDateInMillis)
+	}
+}
+
+func TestClient_AddVotingConfigExclusions(t *testing.T) {
+	tests := []struct {
+		expectedPath string
+		version      version.Version
+		wantErr      bool
+	}{
+		{
+			expectedPath: "",
+			version:      version.MustParse("6.7.0"),
+			wantErr:      true,
+		},
+		{
+			expectedPath: "/_cluster/voting_config_exclusions/a,b",
+			version:      version.MustParse("7.0.0"),
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		client := NewMockClient(tt.version, func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader("")),
+			}
+		})
+		err := client.AddVotingConfigExclusions(context.TODO(), []string{"a", "b"}, "")
+		if (err != nil) != tt.wantErr {
+			t.Errorf("Client.AddVotingConfigExlusions() error = %v, wantErr %v", err, tt.wantErr)
 		}
-	})
-	got, err := testClient.GetLicense(context.TODO())
-	assert.NoError(t, err)
-	assert.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", got.UID)
-	assert.Equal(t, "platinum", got.Type)
-	assert.EqualValues(t, time.Unix(0, 1548115200000*int64(time.Millisecond)).UTC(), *got.IssueDate)
-	assert.Equal(t, int64(1548115200000), got.IssueDateInMillis)
-	assert.EqualValues(t, time.Unix(0, 1561247999999*int64(time.Millisecond)).UTC(), *got.ExpiryDate)
-	assert.Equal(t, int64(1561247999999), got.ExpiryDateInMillis)
-	assert.Equal(t, 100, got.MaxNodes)
-	assert.Equal(t, "issuer", got.Issuer)
-	assert.Equal(t, int64(1548115200000), got.StartDateInMillis)
+	}
+}
+
+func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
+	tests := []struct {
+		expectedPath string
+		version      version.Version
+		wantErr      bool
+	}{
+		{
+			expectedPath: "",
+			version:      version.MustParse("6.7.0"),
+			wantErr:      true,
+		},
+		{
+			expectedPath: "/_cluster/voting_config_exclusions",
+			version:      version.MustParse("7.0.0"),
+			wantErr:      false,
+		},
+	}
+
+	for _, tt := range tests {
+		client := NewMockClient(tt.version, func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader("")),
+			}
+		})
+		err := client.DeleteVotingConfigExclusions(context.TODO(), false)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("Client.DeleteVotingConfigExclusions() error = %v, wantErr %v", err, tt.wantErr)
+		}
+	}
+}
+
+func TestClient_SetMinimumMasterNodes(t *testing.T) {
+	tests := []struct {
+		expectedPath string
+		version      version.Version
+		wantErr      bool
+	}{
+		{
+			expectedPath: "/_cluster/settings",
+			version:      version.MustParse("6.7.0"),
+			wantErr:      false,
+		},
+		{
+			expectedPath: "",
+			version:      version.MustParse("7.0.0"),
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		client := NewMockClient(tt.version, func(req *http.Request) *http.Response {
+			require.Equal(t, tt.expectedPath, req.URL.Path)
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(strings.NewReader("")),
+			}
+		})
+		err := client.SetMinimumMasterNodes(context.TODO(), 1)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
+		}
+	}
 }
 
 func TestClient_versioned(t *testing.T) {

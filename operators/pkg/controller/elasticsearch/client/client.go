@@ -16,12 +16,17 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/sync"
 	"github.com/pkg/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	log = logf.Log.WithName("client")
 )
 
 // DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
@@ -62,9 +67,10 @@ type Client struct {
 	caCerts    []*x509.Certificate
 	dispatcher dispatcher
 	version    *version.Version
-	init       sync.Once
+	init       sync.SuccessOnce
 }
 
+// dispatcher is a version specific dispatch table to the correct API call for each version.
 type dispatcher struct {
 	getClusterState              func(c *Client, ctx context.Context) (ClusterState, error)
 	excludeFromShardAllocation   func(c *Client, ctx context.Context, nodes string) error
@@ -236,6 +242,7 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, ca
 	return c
 }
 
+// sniffVersion attempts to the detect the version Elasticsearch by retrieving the cluster info.
 func (c *Client) sniffVersion() (*version.Version, error) {
 	info, err := c.GetClusterInfo(context.Background())
 	if err != nil {
@@ -248,16 +255,19 @@ func (c *Client) sniffVersion() (*version.Version, error) {
 	return v, nil
 }
 
+// versioned returns or initialises a version specific API dispatcher struct.
 func (c *Client) versioned() (dispatcher, error) {
-	var err error
-	c.init.Do(func() {
+	err := c.init.Do(func() error {
 		if c.version == nil {
-			c.version, err = c.sniffVersion()
-		}
-		if err != nil {
-			return
+			sniffed, err := c.sniffVersion()
+			if err != nil {
+				return err
+			}
+			log.Info("sniffed version", "version ", sniffed, "err", err)
+			c.version = sniffed
 		}
 		c.dispatcher = dispatcherFor(*c.version)
+		return nil
 	})
 	return c.dispatcher, err
 }
@@ -288,7 +298,7 @@ func (c *Client) Equal(c2 *Client) bool {
 			return false
 		}
 	}
-	if c.version != c2.version {
+	if c.version != nil && c2.version != nil && *c.version != *c2.version {
 		return false
 	}
 	// compare endpoint and user creds
