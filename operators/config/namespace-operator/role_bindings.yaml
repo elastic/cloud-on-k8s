@@ -16,4 +16,4 @@ subjects:
 - kind: ServiceAccount
   name: elastic-namespace-operator
   # namespace the operator is running in
-  namespace: elastic-namespace-operators
+  namespace: $NAMESPACE_OPERATOR_NAMESPACE
