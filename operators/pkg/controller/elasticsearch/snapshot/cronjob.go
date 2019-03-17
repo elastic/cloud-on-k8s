@@ -36,8 +36,6 @@ const (
 	UserPasswordVar = "PASSWORD"
 	// EsURLVar is the env variable holding the URL of the Es cluster to take snapshots of.
 	EsURLVar = "ELASTICSEARCH_URL"
-	// EsVersionVar is the env variable holding the version of the Es cluster to take snapshots of.
-	EsVersionVar = "ELASTICSEARCH_VERSION"
 	// IntervalVar is the env variable specifying the snapshot interval.
 	IntervalVar = "INTERVAL"
 	// MaxVar is the env variable specifying the maximum number of snapshots to retain.
@@ -104,7 +102,6 @@ func NewCronJob(params CronJobParams) *batchv1beta1.CronJob {
 								Env: []corev1.EnvVar{
 									{Name: CertificateLocationVar, Value: certPath},
 									{Name: EsURLVar, Value: params.EsURL},
-									{Name: EsVersionVar, Value: params.Elasticsearch.Spec.Version},
 									{Name: UserNameVar, Value: params.User.Name},
 									{Name: UserPasswordVar, ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{

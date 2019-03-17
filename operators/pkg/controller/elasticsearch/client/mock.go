@@ -24,7 +24,7 @@ func NewMockClient(v ver.Version, fn RoundTripFunc) Client {
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http://example.com",
-		version:  dispatchFor(v),
+		version:  &v,
 	}
 }
 

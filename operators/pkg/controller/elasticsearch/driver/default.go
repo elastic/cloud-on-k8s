@@ -481,9 +481,5 @@ func (d *defaultDriver) calculateChanges(
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.Service, user user.User, caCert *x509.Certificate) *esclient.Client {
 	url := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", protocol, service.Name, service.Namespace, network.HTTPPort)
-
-	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user.Auth(), []*x509.Certificate{caCert}, d.Version,
-	)
-	return esClient
+	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), []*x509.Certificate{caCert})
 }

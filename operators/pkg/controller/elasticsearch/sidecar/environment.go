@@ -14,5 +14,4 @@ const (
 	EnvPasswordFile      = "PASSWORD_FILE"
 	EnvCertPath          = "CERTIFICATES_PATH"
 	EnvEndpoint          = "ENDPOINT"
-	EnvEsVersion         = "ELASTICSEARCH_VERSION"
 )
