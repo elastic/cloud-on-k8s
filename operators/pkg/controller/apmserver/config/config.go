@@ -40,7 +40,7 @@ func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 		}
 
 		username = auth.SecretKeyRef.Key
-		password = secret.StringData[username]
+		password = string(secret.Data[username])
 	}
 
 	return &Config{
