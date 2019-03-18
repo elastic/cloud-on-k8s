@@ -4,14 +4,13 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: apmelasticsearchassociation-sample
-  namespace: e2e
 spec:
   elasticsearch:
     name: "elasticsearch-sample"
-    namespace: "e2e"
+    namespace: "default"
   apmServer:
     name: "apm-server-sample"
-    namespace: "e2e"
+    namespace: "default"
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: ElasticsearchCluster
@@ -20,7 +19,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
     k8s.elastic.co/expected-license: "trial"
   name: elasticsearch-sample
-  namespace: e2e
 spec:
   version: "6.6.1"
   setVmMaxMapCount: true
@@ -41,7 +39,6 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: apm-server-sample
-  namespace: e2e
 spec:
   version: "6.6.1"
   nodeCount: 1
@@ -52,14 +49,13 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: kibanaelasticsearchassociation-sample
-  namespace: e2e
 spec:
   elasticsearch:
     name: "elasticsearch-sample"
-    namespace: "e2e"
+    namespace: "default"
   kibana:
     name: "kibana-sample"
-    namespace: "e2e"
+    namespace: "default"
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
@@ -67,7 +63,6 @@ metadata:
   labels:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
-  namespace: e2e
 spec:
   version: "6.6.1"
   nodeCount: 1
