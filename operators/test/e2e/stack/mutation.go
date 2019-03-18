@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const continousHealthCheckTimeout = 25 * time.Second
+
 // MutationTestSteps tests topology changes on the given stack
 // we expect the stack to be already created and running.
 // If the stack to mutate to is the same as the original stack,
@@ -123,7 +125,7 @@ func (hc *ContinousHealthCheck) Start() {
 			case <-hc.stopChan:
 				return
 			case <-ticker.C:
-				ctx, cancel := context.WithTimeout(context.Background(), helpers.DefaultTimeout)
+				ctx, cancel := context.WithTimeout(context.Background(), continousHealthCheckTimeout)
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
