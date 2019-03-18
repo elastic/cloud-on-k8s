@@ -21,64 +21,79 @@ metadata:
   namespace: e2e
   name: e2e
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - services
-  - endpoints
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - "apps"
-  resources:
-  - deployments
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - elasticsearch.k8s.elastic.co
-  resources:
-  - elasticsearches
-  - elasticsearches/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - kibana.k8s.elastic.co
-  resources:
-  - kibanas
-  - kibanas/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - associations.k8s.elastic.co
-  resources:
-  - kibanaelasticsearchassociations
-  - kibanaelasticsearchassociations/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - endpoints
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "apps"
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - elasticsearch.k8s.elastic.co
+    resources:
+      - elasticsearches
+      - elasticsearches/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - kibana.k8s.elastic.co
+    resources:
+      - kibanas
+      - kibanas/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - apm.k8s.elastic.co
+    resources:
+      - apmservers
+      - apmservers/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - associations.k8s.elastic.co
+    resources:
+      - kibanaelasticsearchassociations
+      - kibanaelasticsearchassociations/status
+      - apmserverelasticsearchassociations
+      - apmserverelasticsearchassociations/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1
@@ -92,6 +107,6 @@ roleRef:
   kind: ClusterRole
   name: e2e
 subjects:
-- kind: ServiceAccount
-  name: e2e
-  namespace: e2e
+  - kind: ServiceAccount
+    name: e2e
+    namespace: e2e
