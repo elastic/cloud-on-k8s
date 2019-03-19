@@ -20,10 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	continousHealthCheckInterval = 5 * time.Second
-	continousHealthCheckTimeout  = 10 * time.Second
-)
+const continousHealthCheckTimeout = 25 * time.Second
 
 // MutationTestSteps tests topology changes on the given stack
 // we expect the stack to be already created and running.
@@ -122,7 +119,7 @@ func (hc *ContinousHealthCheck) AppendErr(err error) {
 // Start runs health checks in a goroutine, until stopped
 func (hc *ContinousHealthCheck) Start() {
 	go func() {
-		ticker := time.NewTicker(continousHealthCheckInterval)
+		ticker := time.NewTicker(helpers.DefaultRetryDelay)
 		for {
 			select {
 			case <-hc.stopChan:
