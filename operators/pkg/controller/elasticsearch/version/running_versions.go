@@ -10,7 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// CurrentVersions extract the currently running Elasticsearch versions from the running pods
+// CurrentVersions extracts the currently running Elasticsearch versions from the running pods
 func CurrentVersions(pods []corev1.Pod) ([]version.Version, error) {
 	var vs []version.Version
 	for _, pod := range pods {
