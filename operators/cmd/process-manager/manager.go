@@ -6,7 +6,6 @@ package main
 
 import (
 	"github.com/elastic/k8s-operators/operators/cmd/keystore-updater"
-	"github.com/go-logr/logr"
 	"strings"
 	"sync"
 )
@@ -52,16 +51,16 @@ func (pm ProcessManager) Register(name string, cmd string) {
 // Start starts all processes, the process reaper and the HTTP server in a non-blocking way.
 func (pm ProcessManager) Start() {
 	pm.controller.StartAll()
-	//pm.reaper.Start()
+	pm.reaper.Start()
 	pm.server.Start()
 	pm.keystoreUpdater.Run()
-	pm.logger.Info("Process manager started")
+	logger.Info("Process manager started")
 }
 
 // Stop stops all processes, the process reaper and the HTTP server in a blocking way.
 func (pm ProcessManager) Stop() {
 	pm.controller.StopAll()
-	//pm.reaper.Stop()
+	pm.reaper.Stop()
 	pm.server.Stop()
 	logger.Info("Process manager stopped")
 }

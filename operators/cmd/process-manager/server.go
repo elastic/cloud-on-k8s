@@ -15,6 +15,7 @@ const (
 	shutdownTimeout = 5 * time.Second
 )
 
+// ProcessServer is an HTTP server with a process controller.
 type ProcessServer struct {
 	*http.Server
 	controller *ProcessController
