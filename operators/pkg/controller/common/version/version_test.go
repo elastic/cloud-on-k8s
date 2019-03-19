@@ -156,3 +156,82 @@ func TestVersion_IsSameOrAfter(t *testing.T) {
 		})
 	}
 }
+
+func TestMin(t *testing.T) {
+
+	tests := []struct {
+		name string
+		args []Version
+		want *Version
+	}{
+		{
+			name: "nil versions",
+			args: nil,
+			want: nil,
+		},
+		{
+			name: "empty versions",
+			args: []Version{},
+			want: nil,
+		},
+		{
+			name: "two versions",
+			args: []Version{
+				{
+					Major: 2,
+					Minor: 0,
+					Patch: 0,
+					Label: "",
+				},
+				{
+					Major: 1,
+					Minor: 0,
+					Patch: 0,
+					Label: "",
+				},
+			},
+			want: &Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			},
+		},
+		{
+			name: "n versions",
+			args: []Version{
+				{
+					Major: 7,
+					Minor: 0,
+					Patch: 0,
+					Label: "SNAPSHOT",
+				},
+				{
+					Major: 1,
+					Minor: 0,
+					Patch: 0,
+					Label: "rc1",
+				},
+				{
+					Major: 6,
+					Minor: 7,
+					Patch: 0,
+					Label: "",
+				},
+			},
+			want: &Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "rc1",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Min(tt.args); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Min() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

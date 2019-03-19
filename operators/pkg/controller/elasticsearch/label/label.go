@@ -5,8 +5,12 @@
 package label
 
 import (
+	"fmt"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -44,6 +48,19 @@ func IsMasterNode(pod corev1.Pod) bool {
 // IsDataNode returns true if the pod has the data node label
 func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
+}
+
+// ExtractVersion extracts the Elasticsearch version from a pod label.
+func ExtractVersion(pod corev1.Pod) (*version.Version, error) {
+	labelValue, ok := pod.Labels[VersionLabelName]
+	if !ok {
+		return nil, fmt.Errorf("pod %s is missing the version label %s", pod.Name, VersionLabelName)
+	}
+	v, err := version.Parse(labelValue)
+	if err != nil {
+		return nil, errors.Wrapf(err, "pod %s has an invalid version label", pod.Name)
+	}
+	return v, nil
 }
 
 // NewLabels constructs a new set of labels from an Elasticsearch definition.

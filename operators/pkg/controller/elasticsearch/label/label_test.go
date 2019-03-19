@@ -5,15 +5,18 @@
 package label
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -63,6 +66,63 @@ func TestNewLabelSelectorForElasticsearch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewLabelSelectorForElasticsearch(tt.args.es)
 			tt.assertions(t, tt.args, got)
+		})
+	}
+}
+
+func TestExtractVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    corev1.Pod
+		want    *version.Version
+		wantErr bool
+	}{
+		{
+			name:    "no version",
+			args:    corev1.Pod{},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "invalid version",
+			args: corev1.Pod{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{
+						VersionLabelName: "no a version",
+					},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "valid version",
+			args: corev1.Pod{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: map[string]string{
+						VersionLabelName: "1.0.0",
+					},
+				},
+			},
+			want: &version.Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ExtractVersion(tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ExtractVersion() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ExtractVersion() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

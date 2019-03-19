@@ -18,14 +18,20 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req), nil
 }
 
-func NewMockClient(v version.Version, fn RoundTripFunc) Client {
-	return Client{
+func NewMockClient(v version.Version, fn RoundTripFunc) Interface {
+	return NewMockClientWithUser(v, UserAuth{}, fn)
+}
+
+func NewMockClientWithUser(v version.Version, u UserAuth, fn RoundTripFunc) Interface {
+	baseClient := &clientV6{
 		HTTP: &http.Client{
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http://example.com",
-		version:  &v,
+		version:  v,
+		User:     u,
 	}
+	return versioned(baseClient, v)
 }
 
 func NewMockResponse(statusCode int, r *http.Request, body string) *http.Response {

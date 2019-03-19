@@ -163,13 +163,14 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		testClient := NewMockClient(version.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
-			username, password, ok := req.BasicAuth()
-			assert.Equal(t, tt.want.authPresent, ok)
-			assert.Equal(t, tt.want.user.Name, username)
-			assert.Equal(t, tt.want.user.Password, password)
-		}))
-		testClient.User = tt.args
+		testClient := NewMockClientWithUser(version.MustParse("6.7.0"),
+			tt.args,
+			requestAssertion(func(req *http.Request) {
+				username, password, ok := req.BasicAuth()
+				assert.Equal(t, tt.want.authPresent, ok)
+				assert.Equal(t, tt.want.user.Name, username)
+				assert.Equal(t, tt.want.user.Password, password)
+			}))
 
 		_, err := testClient.GetClusterState(context.TODO())
 		assert.NoError(t, err)
@@ -182,10 +183,15 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 func TestClient_request(t *testing.T) {
 	testPath := "/_i_am_an/elasticsearch/endpoint"
-
-	testClient := NewMockClient(version.MustParse("6.7.0"), requestAssertion(func(req *http.Request) {
-		assert.Equal(t, testPath, req.URL.Path)
-	}))
+	testClient := &clientV6{
+		HTTP: &http.Client{
+			Transport: RoundTripFunc(requestAssertion(func(req *http.Request) {
+				assert.Equal(t, testPath, req.URL.Path)
+			})),
+		},
+		Endpoint: "http://example.com",
+		version:  version.MustParse("6.7.0"),
+	}
 	requests := []func() (string, error){
 		func() (string, error) {
 			return "get", testClient.get(context.TODO(), testPath, nil)
@@ -288,96 +294,73 @@ func TestClient_Equal(t *testing.T) {
 		return ca.Cert
 	}
 	dummyCACerts := []*x509.Certificate{createCert()}
+	v6 := version.MustParse("6.7.0")
+	v7 := version.MustParse("7.0.0")
 	x509.NewCertPool()
 	tests := []struct {
 		name string
-		c1   *Client
-		c2   *Client
+		c1   Interface
+		c2   Interface
 		want bool
 	}{
 		{
 			name: "c1 and c2 equals",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
 			want: true,
 		},
 		{
 			name: "c2 nil",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
 			c2:   nil,
 			want: false,
 		},
 		{
 			name: "different endpoint",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, "another-endpoint", dummyUser, v6, dummyCACerts),
 			want: false,
 		},
 		{
 			name: "different user",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, UserAuth{Name: "user", Password: "another-password"}, v6, dummyCACerts),
 			want: false,
 		},
 		{
 			name: "different CA cert",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert()}),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert()}),
 			want: false,
 		},
 		{
 			name: "different CA certs length",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, []*x509.Certificate{createCert(), createCert()}),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, []*x509.Certificate{createCert(), createCert()}),
 			want: false,
 		},
 		{
 			name: "different dialers are not taken into consideration",
-			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
-			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(portforward.NewForwardingDialer(), dummyEndpoint, dummyUser, v6, dummyCACerts),
 			want: true,
 		},
 		{
 			name: "different versions",
-			c1: func() *Client {
-				version := version.MustParse("6.7.0")
-				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
-				c.version = &version
-				return c
-			}(),
-			c2: func() *Client {
-				version := version.MustParse("7.0.0")
-				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
-				c.version = &version
-				return c
-			}(),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v6, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts),
 			want: false,
 		},
 		{
 			name: "same versions",
-			c1: func() *Client {
-				version := version.MustParse("7.0.0")
-				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
-				c.version = &version
-				return c
-			}(),
-			c2: func() *Client {
-				version := version.MustParse("7.0.0")
-				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
-				c.version = &version
-				return c
-			}(),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts),
 			want: true,
 		},
 		{
 			name: "one has a version",
-			c1: func() *Client {
-				version := version.MustParse("7.0.0")
-				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
-				c.version = &version
-				return c
-			}(),
-			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			c1:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, v7, dummyCACerts),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, version.Version{}, dummyCACerts),
 			want: false,
 		},
 	}
@@ -569,80 +552,5 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 		}
-	}
-}
-
-func TestClient_versioned(t *testing.T) {
-	tests := []struct {
-		name     string
-		preset   *version.Version
-		response func(r *http.Request) *http.Response
-		want     func(*Client)
-		wantErr  bool
-	}{
-		{
-			name: "Cannot sniff version e.g. cluster down",
-			response: func(req *http.Request) *http.Response {
-				return &http.Response{
-					Status: "500 Internal Server Error",
-					Body:   ioutil.NopCloser(bytes.NewBufferString("")),
-				}
-			},
-			want: func(client *Client) {
-				assert.Equal(t, dispatcher{}, client.dispatcher)
-			},
-			wantErr: true,
-		},
-		{
-			name: "happy path",
-			response: func(r *http.Request) *http.Response {
-				return &http.Response{
-					StatusCode: 200,
-					Body:       ioutil.NopCloser(strings.NewReader(fixtures.InfoSample)),
-					Header:     make(http.Header),
-					Request:    r,
-				}
-			},
-			want: func(client *Client) {
-				assert.Equal(t, version.MustParse("6.4.1"), *client.version)
-				assert.NotEqual(t, dispatcher{}, client.dispatcher) // cannot compare structs containing pointers to funcs
-			},
-			wantErr: false,
-		},
-		{
-			name: "preset version disables sniffing",
-			preset: &version.Version{
-				Major: 7,
-				Minor: 0,
-				Patch: 0,
-				Label: "",
-			},
-			response: func(r *http.Request) *http.Response {
-				t.Error("No request expected here")
-				return &http.Response{}
-			},
-			want: func(client *Client) {
-				require.NotNil(t, client.version)
-				assert.Equal(t, version.MustParse("7.0.0"), *client.version)
-				assert.NotEqual(t, dispatcher{}, client.dispatcher) // cannot compare structs containing pointers to funcs
-			},
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := Client{
-				HTTP: &http.Client{
-					Transport: RoundTripFunc(tt.response),
-				},
-				Endpoint: "http://example.com",
-				version:  tt.preset,
-			}
-			_, err := c.versioned(context.TODO())
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Client.versioned() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			tt.want(&c)
-		})
 	}
 }

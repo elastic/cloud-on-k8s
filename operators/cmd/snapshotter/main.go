@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/pkg/errors"
@@ -29,6 +30,7 @@ var (
 	intervalFlag            = strings.ToLower(snapshot.IntervalVar)
 	maxFlag                 = strings.ToLower(snapshot.MaxVar)
 	esURLFlag               = strings.ToLower(snapshot.EsURLVar)
+	esVersionFlag           = strings.ToLower(snapshot.EsVersionVar)
 	// Cmd is the cobra command to start a snapshotter run
 	Cmd = &cobra.Command{
 		Use:   "snapshotter",
@@ -49,6 +51,7 @@ func unrecoverable(err error) {
 func init() {
 	Cmd.Flags().StringP(certificateLocationFlag, "c", "", "Location of cacerts in local filesystem")
 	Cmd.Flags().StringP(esURLFlag, "e", "", "Elasticsearch URL")
+	Cmd.Flags().String(esVersionFlag, "", "Elasticsearch version")
 	Cmd.Flags().StringP(userNameFlag, "u", "", "Elasticsearch user name")
 	Cmd.Flags().StringP(userPasswordFlag, "p", "", "Elasticsearch password")
 	Cmd.Flags().DurationP(intervalFlag, "d", 30*time.Minute, "Snapshot interval")
@@ -84,7 +87,11 @@ func execute() {
 	if esURL == "" {
 		unrecoverable(errors.New(fmt.Sprintf("%s is required", esURLFlag)))
 	}
-	apiClient := esclient.NewElasticsearchClient(nil, esURL, user, certs)
+	esVersion, err := version.Parse(viper.GetString(esVersionFlag))
+	if err != nil {
+		unrecoverable(err)
+	}
+	apiClient := esclient.NewElasticsearchClient(nil, esURL, user, *esVersion, certs)
 	interval := viper.GetDuration(intervalFlag)
 	max := viper.GetInt(maxFlag)
 	settings := snapshot.Settings{
@@ -94,7 +101,7 @@ func execute() {
 	}
 
 	log.Info(fmt.Sprintf("Snapshotter initialised with [%+v]", settings))
-	err := snapshot.ExecuteNextPhase(apiClient, settings)
+	err = snapshot.ExecuteNextPhase(apiClient, settings)
 	if err != nil {
 		unrecoverable(errors.Wrap(err, "Error during snapshot maintenance"))
 	}

@@ -19,7 +19,7 @@ import (
 )
 
 type esClusterChecks struct {
-	client *client.Client
+	client client.Interface
 }
 
 // ESClusterChecks returns all test steps to verify the given stack's Elasticsearch

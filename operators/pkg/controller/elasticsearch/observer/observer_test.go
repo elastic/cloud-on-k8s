@@ -20,20 +20,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func fakeEsClient200() client.Client {
-	return client.NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
-		return &http.Response{
-			StatusCode: 200,
-			Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ClusterStateSample)),
-			Header:     make(http.Header),
-			Request:    req,
-		}
-	})
+func fakeEsClient200(user client.UserAuth) client.Interface {
+	return client.NewMockClientWithUser(version.MustParse("6.7.0"),
+		user,
+		func(req *http.Request) *http.Response {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(bytes.NewBufferString(fixtures.ClusterStateSample)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
 }
 
 func createAndRunTestObserver() *Observer {
-	fake := fakeEsClient200()
-	obs := NewObserver(cluster("cluster"), &fake, Settings{
+	fake := fakeEsClient200(client.UserAuth{})
+	obs := NewObserver(cluster("cluster"), fake, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
 	})
@@ -42,9 +44,9 @@ func createAndRunTestObserver() *Observer {
 }
 
 func TestObserver_retrieveState(t *testing.T) {
-	fake := fakeEsClient200()
+	fake := fakeEsClient200(client.UserAuth{})
 	observer := Observer{
-		esClient: &fake,
+		esClient: fake,
 	}
 	require.Equal(t, observer.LastObservationTime(), time.Time{})
 	observer.retrieveState(context.Background())

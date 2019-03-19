@@ -6,6 +6,7 @@ package version
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -94,4 +95,16 @@ func (v *Version) IsSameOrAfter(other Version) bool {
 	return v.Major > other.Major ||
 		(v.Major == other.Major && v.Minor > other.Minor) ||
 		(v.Major == other.Major && v.Minor == other.Minor && v.Patch >= other.Patch)
+}
+
+// Min returns the mininum version in vs or nil.
+func Min(vs []Version) *Version {
+	sort.SliceStable(vs, func(i, j int) bool {
+		return vs[j].IsSameOrAfter(vs[i])
+	})
+	var v *Version
+	if len(vs) > 0 {
+		v = &vs[0]
+	}
+	return v
 }

@@ -20,7 +20,7 @@ import (
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 )
 
-func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
+func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Interface {
 	return client.NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
 		statusCode := 200
 		var respBody io.ReadCloser
@@ -97,7 +97,7 @@ func TestRetrieveState(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fakeEsClient(!tt.wantHealth, !tt.wantState, !tt.wantLicense)
-			state := RetrieveState(context.Background(), &client)
+			state := RetrieveState(context.Background(), client)
 			if tt.wantHealth {
 				require.NotNil(t, state.ClusterHealth)
 				require.Equal(t, state.ClusterHealth.NumberOfNodes, 3)

@@ -21,7 +21,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/sync"
+
 	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -60,230 +60,152 @@ type Role struct {
 	} `json:"transient_metadata,omitempty"`*/
 }
 
-// Client captures the information needed to interact with an Elasticsearch cluster via HTTP
-type Client struct {
-	User       UserAuth
-	HTTP       *http.Client
-	Endpoint   string
-	caCerts    []*x509.Certificate
-	dispatcher dispatcher
-	version    *version.Version
-	init       sync.SuccessOnce
+// // Interface captures the information needed to interact with an Elasticsearch cluster via HTTP
+type Interface interface {
+	Equal(other Interface) bool
+	// GetClusterState returns the current cluster state
+	GetClusterInfo(ctx context.Context) (Info, error)
+	GetClusterState(ctx context.Context) (ClusterState, error)
+	// ExcludeFromShardAllocation takes a comma-separated string of node names and
+	// configures transient allocation excludes for the given nodes.
+	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
+	// GetClusterHealth calls the _cluster/health api.
+	GetClusterHealth(ctx context.Context) (Health, error)
+	// GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
+	GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error)
+	// DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
+	DeleteSnapshotRepository(ctx context.Context, name string) error
+	// UpsertSnapshotRepository inserts or updates the given snapshot repository
+	UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error
+	// GetAllSnapshots returns a list of all snapshots for the given repository.
+	GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error)
+	// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
+	TakeSnapshot(ctx context.Context, repo string, snapshot string) error
+	// DeleteSnapshot deletes the given snapshot from the given repository.
+	DeleteSnapshot(ctx context.Context, repo string, snapshot string) error
+	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
+	SetMinimumMasterNodes(ctx context.Context, n int) error
+	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+	//
+	// If timeout is the empty string, the default is used.
+	//
+	// Introduced in: Elasticsearch 7.0.0
+	AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error
+	// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
+	//
+	// Introduced in: Elasticsearch 7.0.0
+	DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error
+	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
+	// but only the reloadable secure settings will be applied
+	ReloadSecureSettings(ctx context.Context) error
+	// GetNodes calls the _nodes api to return a map(nodeName -> Node)
+	GetNodes(ctx context.Context) (Nodes, error)
+	// GetLicense returns the currently applied license. Can be empty.
+	GetLicense(ctx context.Context) (License, error)
+	// UpdateLicense attempts to update cluster license with the given licenses.
+	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
 }
 
-// dispatcher is a version specific dispatch table to the correct API call for each version.
-type dispatcher struct {
-	getClusterState              func(c *Client, ctx context.Context) (ClusterState, error)
-	excludeFromShardAllocation   func(c *Client, ctx context.Context, nodes string) error
-	getClusterHealth             func(c *Client, ctx context.Context) (Health, error)
-	getSnapshotRepository        func(c *Client, ctx context.Context, name string) (SnapshotRepository, error)
-	deleteSnapshotRepository     func(c *Client, ctx context.Context, name string) error
-	upsertSnapshotRepository     func(c *Client, ctx context.Context, name string, repository SnapshotRepository) error
-	getAllSnapshots              func(c *Client, ctx context.Context, repo string) (SnapshotsList, error)
-	takeSnapshot                 func(c *Client, ctx context.Context, repo string, snapshot string) error
-	deleteSnapshot               func(c *Client, ctx context.Context, repo string, snapshot string) error
-	setMinimumMasterNodes        func(c *Client, ctx context.Context, n int) error
-	addVotingConfigExclusions    func(c *Client, ctx context.Context, nodeNames []string, timeout string) error
-	deleteVotingConfigExclusions func(c *Client, ctx context.Context, waitForRemoval bool) error
-	reloadSecureSettings         func(c *Client, ctx context.Context) error
-	getNodes                     func(c *Client, ctx context.Context) (Nodes, error)
-	getLicense                   func(c *Client, ctx context.Context) (License, error)
-	updateLicense                func(c *Client, ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
+type clientV6 struct {
+	User     UserAuth
+	HTTP     *http.Client
+	Endpoint string
+	caCerts  []*x509.Certificate
+	version  version.Version
 }
 
-func defaultDispatcher() dispatcher {
-	return dispatcher{
-		getClusterState: func(c *Client, ctx context.Context) (ClusterState, error) {
-			var clusterState ClusterState
-			return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
-
-		},
-		excludeFromShardAllocation: func(c *Client, ctx context.Context, nodes string) error {
-			allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
-			return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
-		},
-		getClusterHealth: func(c *Client, ctx context.Context) (Health, error) {
-			var result Health
-			return result, c.get(ctx, "/_cluster/health", &result)
-		},
-		getSnapshotRepository: func(c *Client, ctx context.Context, name string) (SnapshotRepository, error) {
-			var result map[string]SnapshotRepository
-			return result[name], c.get(ctx, path.Join("/_snapshot", name), &result)
-
-		},
-		deleteSnapshotRepository: func(c *Client, ctx context.Context, name string) error {
-			return c.delete(ctx, path.Join("/_snapshot", name), nil, nil)
-		},
-		upsertSnapshotRepository: func(c *Client, ctx context.Context, name string, repository SnapshotRepository) error {
-			return c.put(ctx, path.Join("/_snapshot", name), repository, nil)
-		},
-		getAllSnapshots: func(c *Client, ctx context.Context, repo string) (SnapshotsList, error) {
-			var result SnapshotsList
-			return result, c.get(ctx, path.Join("/_snapshot", repo, "_all"), &result)
-		},
-		takeSnapshot: func(c *Client, ctx context.Context, repo string, snapshot string) error {
-			return c.put(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
-		},
-		deleteSnapshot: func(c *Client, ctx context.Context, repo string, snapshot string) error {
-			return c.delete(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
-		},
-		setMinimumMasterNodes: func(c *Client, ctx context.Context, n int) error {
-			zenSettings := DiscoveryZenSettings{
-				Transient:  DiscoveryZen{MinimumMasterNodes: n},
-				Persistent: DiscoveryZen{MinimumMasterNodes: n},
-			}
-			return c.put(ctx, "/_cluster/settings", &zenSettings, nil)
-
-		},
-		addVotingConfigExclusions: func(c *Client, ctx context.Context, nodeNames []string, timeout string) error {
-			if timeout == "" {
-				timeout = DefaultVotingConfigExclusionsTimeout
-			}
-			path := fmt.Sprintf(
-				"/_cluster/voting_config_exclusions/%s?timeout=%s",
-				strings.Join(nodeNames, ","),
-				timeout,
-			)
-
-			if err := c.post(ctx, path, nil, nil); err != nil {
-				return errors.Wrap(err, "unable to add to voting_config_exclusions")
-			}
-			return nil
-
-		},
-		deleteVotingConfigExclusions: func(c *Client, ctx context.Context, waitForRemoval bool) error {
-			path := fmt.Sprintf(
-				"/_cluster/voting_config_exclusions?wait_for_removal=%s",
-				strconv.FormatBool(waitForRemoval),
-			)
-
-			if err := c.delete(ctx, path, nil, nil); err != nil {
-				return errors.Wrap(err, "unable to delete /_cluster/voting_config_exclusions")
-			}
-			return nil
-
-		},
-		reloadSecureSettings: func(c *Client, ctx context.Context) error {
-			return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
-		},
-		getNodes: func(c *Client, ctx context.Context) (Nodes, error) {
-			var nodes Nodes
-			// restrict call to basic node info only
-			return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
-		},
-		getLicense: func(c *Client, ctx context.Context) (License, error) {
-			var license LicenseResponse
-			return license.License, c.get(ctx, "/_xpack/license", &license)
-
-		},
-		updateLicense: func(c *Client, ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
-			var response LicenseUpdateResponse
-			return response, c.post(ctx, "/_xpack/license", licenses, &response)
-		},
-	}
+// GetClusterInfo get the cluster information at /
+func (c *clientV6) GetClusterInfo(ctx context.Context) (Info, error) {
+	var info Info
+	return info, c.get(ctx, "/", &info)
 }
 
-func version6() dispatcher {
-	v := defaultDispatcher()
-	v.addVotingConfigExclusions = func(c *Client, ctx context.Context, nodeNames []string, timeout string) error {
-		return errors.New("Not supported in dispatcher 6.x")
-	}
-	v.deleteVotingConfigExclusions = func(c *Client, ctx context.Context, waitForRemoval bool) error {
-		return errors.New("Not supported in dispatcher 6.x")
-	}
-	return v
+func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
+	var clusterState ClusterState
+	return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
+
 }
 
-func version7() dispatcher {
-	v := defaultDispatcher()
-
-	v.setMinimumMasterNodes = func(c *Client, ctx context.Context, n int) error {
-		return errors.New("Not supported in dispatcher 7.0")
-	}
-	v.getLicense = func(c *Client, ctx context.Context) (License, error) {
-		var license LicenseResponse
-		return license.License, c.get(ctx, "/_license", &license)
-
-	}
-	v.updateLicense = func(c *Client, ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
-		var response LicenseUpdateResponse
-		return response, c.post(ctx, "/_license", licenses, &response)
-
-	}
-	return v
+func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
+	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 
-// NewElasticsearchClient creates a new client for the target cluster.
-//
-// If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, caCerts []*x509.Certificate) *Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
-
-	transportConfig := http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: certPool,
-		},
-	}
-
-	// use the custom dialer if provided
-	if dialer != nil {
-		transportConfig.DialContext = dialer.DialContext
-	}
-	c := &Client{
-		Endpoint: esURL,
-		User:     esUser,
-		caCerts:  caCerts,
-		HTTP: &http.Client{
-			Transport: &transportConfig,
-		},
-	}
-	return c
+func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
+	var result Health
+	return result, c.get(ctx, "/_cluster/health", &result)
 }
 
-// sniffVersion attempts to the detect the version Elasticsearch by retrieving the cluster info.
-func (c *Client) sniffVersion(ctx context.Context) (*version.Version, error) {
-	info, err := c.GetClusterInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	v, err := version.Parse(info.Version.Number)
-	if err != nil {
-		return nil, err
-	}
-	return v, nil
+func (c *clientV6) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
+	var result map[string]SnapshotRepository
+	return result[name], c.get(ctx, path.Join("/_snapshot", name), &result)
+
 }
 
-// versioned returns or initialises a version specific API dispatcher struct.
-func (c *Client) versioned(ctx context.Context) (dispatcher, error) {
-	err := c.init.Do(func() error {
-		if c.version == nil {
-			sniffed, err := c.sniffVersion(ctx)
-			if err != nil {
-				return err
-			}
-			log.Info("sniffed version", "version ", sniffed, "err", err)
-			c.version = sniffed
-		}
-		c.dispatcher = dispatcherFor(*c.version)
-		return nil
-	})
-	return c.dispatcher, err
+func (c *clientV6) DeleteSnapshotRepository(ctx context.Context, name string) error {
+	return c.delete(ctx, path.Join("/_snapshot", name), nil, nil)
 }
 
-func dispatcherFor(ver version.Version) dispatcher {
-	switch ver.Major {
-	case 6:
-		return version6()
-	default:
-		return version7()
+func (c *clientV6) UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error {
+	return c.put(ctx, path.Join("/_snapshot", name), repository, nil)
+}
+
+func (c *clientV6) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
+	var result SnapshotsList
+	return result, c.get(ctx, path.Join("/_snapshot", repo, "_all"), &result)
+
+}
+
+func (c *clientV6) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
+	return c.put(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
+}
+
+func (c *clientV6) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
+	return c.delete(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
+}
+
+func (c *clientV6) SetMinimumMasterNodes(ctx context.Context, n int) error {
+	zenSettings := DiscoveryZenSettings{
+		Transient:  DiscoveryZen{MinimumMasterNodes: n},
+		Persistent: DiscoveryZen{MinimumMasterNodes: n},
 	}
+	return c.put(ctx, "/_cluster/settings", &zenSettings, nil)
+
 }
 
-// Equal returns true if c2 can be considered the same as c
-func (c *Client) Equal(c2 *Client) bool {
+func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	return errors.New("Not supported in Elasticsearch 6.x")
+}
+
+func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	return errors.New("Not supported in Elasticsearch 6.x")
+}
+
+func (c *clientV6) ReloadSecureSettings(ctx context.Context) error {
+	return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
+}
+
+func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
+	var nodes Nodes
+	// restrict call to basic node info only
+	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
+
+}
+
+func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
+	var license LicenseResponse
+	return license.License, c.get(ctx, "/_xpack/license", &license)
+
+}
+
+func (c *clientV6) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
+	var response LicenseUpdateResponse
+	return response, c.post(ctx, "/_xpack/license", licenses, &response)
+
+}
+
+// equal returns true if c2 can be considered the same as c
+func (c *clientV6) equal(c2 *clientV6) bool {
 	// handle nil case
 	if c2 == nil && c != nil {
 		return false
@@ -303,6 +225,118 @@ func (c *Client) Equal(c2 *Client) bool {
 	// compare endpoint and user creds
 	return c.Endpoint == c2.Endpoint &&
 		c.User == c2.User
+}
+
+// Equal returns true if c2 can be considered the same as c
+func (c *clientV6) Equal(c2 Interface) bool {
+	other, ok := c2.(*clientV6)
+	if !ok {
+		return false
+	}
+	return c.equal(other)
+}
+
+var _ Interface = &clientV6{}
+
+type clientV7 struct {
+	clientV6
+}
+
+func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	if timeout == "" {
+		timeout = DefaultVotingConfigExclusionsTimeout
+	}
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions/%s?timeout=%s",
+		strings.Join(nodeNames, ","),
+		timeout,
+	)
+
+	if err := c.post(ctx, path, nil, nil); err != nil {
+		return errors.Wrap(err, "unable to add to voting_config_exclusions")
+	}
+	return nil
+}
+
+func (c *clientV7) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	path := fmt.Sprintf(
+		"/_cluster/voting_config_exclusions?wait_for_removal=%s",
+		strconv.FormatBool(waitForRemoval),
+	)
+
+	if err := c.delete(ctx, path, nil, nil); err != nil {
+		return errors.Wrap(err, "unable to delete /_cluster/voting_config_exclusions")
+	}
+	return nil
+}
+
+func (c *clientV7) SetMinimumMasterNodes(ctx context.Context, n int) error {
+	return errors.New("Not supported in Elasticsearch 7.0")
+}
+
+func (c *clientV7) GetLicense(ctx context.Context) (License, error) {
+	var license LicenseResponse
+	return license.License, c.get(ctx, "/_license", &license)
+
+}
+
+func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
+	var response LicenseUpdateResponse
+	return response, c.post(ctx, "/_license", licenses, &response)
+
+}
+
+// Equal returns true if c2 can be considered the same as c
+func (c *clientV7) Equal(c2 Interface) bool {
+	other, ok := c2.(*clientV7)
+	if !ok {
+		return false
+	}
+	return c.clientV6.equal(&other.clientV6)
+}
+
+var _ Interface = &clientV7{}
+
+// NewElasticsearchClient creates a new client for the target cluster.
+//
+// If dialer is not nil, it will be used to create new TCP connections
+func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v version.Version, caCerts []*x509.Certificate) Interface {
+	certPool := x509.NewCertPool()
+	for _, c := range caCerts {
+		certPool.AddCert(c)
+	}
+
+	transportConfig := http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: certPool,
+		},
+	}
+
+	// use the custom dialer if provided
+	if dialer != nil {
+		transportConfig.DialContext = dialer.DialContext
+	}
+	c6 := &clientV6{
+		Endpoint: esURL,
+		User:     esUser,
+		caCerts:  caCerts,
+		HTTP: &http.Client{
+			Transport: &transportConfig,
+		},
+		version: v,
+	}
+	return versioned(c6, v)
+}
+
+func versioned(baseClient *clientV6, v version.Version) Interface {
+	switch v.Major {
+	case 7:
+		return &clientV7{
+			clientV6: *baseClient,
+		}
+	default:
+		return baseClient
+	}
 }
 
 // APIError is a non 2xx response from the Elasticsearch API
@@ -342,7 +376,7 @@ func checkError(response *http.Response) error {
 	return nil
 }
 
-func (c *Client) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
+func (c *clientV6) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
 	withContext := request.WithContext(context)
 	withContext.Header.Set("Content-Type", "application/json; charset=utf-8")
 
@@ -358,19 +392,19 @@ func (c *Client) doRequest(context context.Context, request *http.Request) (*htt
 	return response, err
 }
 
-func (c *Client) get(ctx context.Context, pathWithQuery string, out interface{}) error {
+func (c *clientV6) get(ctx context.Context, pathWithQuery string, out interface{}) error {
 	return c.request(ctx, http.MethodGet, pathWithQuery, nil, out)
 }
 
-func (c *Client) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *clientV6) put(ctx context.Context, pathWithQuery string, in, out interface{}) error {
 	return c.request(ctx, http.MethodPut, pathWithQuery, in, out)
 }
 
-func (c *Client) post(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *clientV6) post(ctx context.Context, pathWithQuery string, in, out interface{}) error {
 	return c.request(ctx, http.MethodPost, pathWithQuery, in, out)
 }
 
-func (c *Client) delete(ctx context.Context, pathWithQuery string, in, out interface{}) error {
+func (c *clientV6) delete(ctx context.Context, pathWithQuery string, in, out interface{}) error {
 	return c.request(ctx, http.MethodDelete, pathWithQuery, in, out)
 }
 
@@ -379,7 +413,7 @@ func (c *Client) delete(ctx context.Context, pathWithQuery string, in, out inter
 // if requestObj is not nil, it's marshalled as JSON and used as the request body
 // if responseObj is not nil, it should be a pointer to an struct. the response body will be unmarshalled from JSON
 // into this struct.
-func (c *Client) request(
+func (c *clientV6) request(
 	ctx context.Context,
 	method string,
 	pathWithQuery string,
@@ -414,162 +448,4 @@ func (c *Client) request(
 	}
 
 	return nil
-}
-
-// GetClusterInfo get the cluster information at /
-func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
-	var info Info
-	return info, c.get(ctx, "/", &info)
-}
-
-// GetClusterState returns the current cluster state
-func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return ClusterState{}, err
-	}
-	return dispatch.getClusterState(c, ctx)
-}
-
-// ExcludeFromShardAllocation takes a comma-separated string of node names and
-// configures transient allocation excludes for the given nodes.
-func (c *Client) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.excludeFromShardAllocation(c, ctx, nodes)
-}
-
-// GetClusterHealth calls the _cluster/health api.
-func (c *Client) GetClusterHealth(ctx context.Context) (Health, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return Health{}, err
-	}
-	return dispatch.getClusterHealth(c, ctx)
-}
-
-// GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
-func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return SnapshotRepository{}, err
-	}
-	return dispatch.getSnapshotRepository(c, ctx, name)
-}
-
-// DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
-func (c *Client) DeleteSnapshotRepository(ctx context.Context, name string) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.deleteSnapshotRepository(c, ctx, name)
-}
-
-// UpsertSnapshotRepository inserts or updates the given snapshot repository
-func (c *Client) UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.upsertSnapshotRepository(c, ctx, name, repository)
-}
-
-// GetAllSnapshots returns a list of all snapshots for the given repository.
-func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return SnapshotsList{}, err
-	}
-	return dispatch.getAllSnapshots(c, ctx, repo)
-}
-
-// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
-func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.takeSnapshot(c, ctx, repo, snapshot)
-}
-
-// DeleteSnapshot deletes the given snapshot from the given repository.
-func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.deleteSnapshot(c, ctx, repo, snapshot)
-}
-
-// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
-func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.setMinimumMasterNodes(c, ctx, n)
-}
-
-// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
-//
-// If timeout is the empty string, the default is used.
-//
-// Introduced in: Elasticsearch 7.0.0
-func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.addVotingConfigExclusions(c, ctx, nodeNames, timeout)
-}
-
-// DeleteVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
-//
-// Introduced in: Elasticsearch 7.0.0
-func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.deleteVotingConfigExclusions(c, ctx, waitForRemoval)
-}
-
-// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
-// but only the reloadable secure settings will be applied
-func (c *Client) ReloadSecureSettings(ctx context.Context) error {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return err
-	}
-	return dispatch.reloadSecureSettings(c, ctx)
-}
-
-// GetNodes calls the _nodes api to return a map(nodeName -> Node)
-func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return Nodes{}, err
-	}
-	return dispatch.getNodes(c, ctx)
-}
-
-// GetLicense returns the currently applied license. Can be empty.
-func (c *Client) GetLicense(ctx context.Context) (License, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return License{}, err
-	}
-	return dispatch.getLicense(c, ctx)
-}
-
-// UpdateLicense attempts to update cluster license with the given licenses.
-func (c *Client) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
-	dispatch, err := c.versioned(ctx)
-	if err != nil {
-		return LicenseUpdateResponse{}, err
-	}
-	return dispatch.updateLicense(c, ctx, licenses)
 }

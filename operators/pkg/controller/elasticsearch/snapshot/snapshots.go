@@ -201,7 +201,7 @@ func ValidateSnapshotCredentials(kind v1alpha1.SnapshotRepositoryType, raw map[s
 }
 
 // ReconcileSnapshotRepository attempts to upsert a repository definition into the given cluster.
-func ReconcileSnapshotRepository(ctx context.Context, es *client.Client, repo *v1alpha1.SnapshotRepository) error {
+func ReconcileSnapshotRepository(ctx context.Context, es client.Interface, repo *v1alpha1.SnapshotRepository) error {
 
 	current, err := es.GetSnapshotRepository(ctx, SnapshotRepositoryName)
 	if err != nil && !client.IsNotFound(err) {

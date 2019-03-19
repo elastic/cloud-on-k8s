@@ -29,13 +29,13 @@ func NewManager(settings Settings) *Manager {
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient *client.Client) State {
+func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient client.Interface) State {
 	return m.Observe(cluster, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster types.NamespacedName, esClient *client.Client) *Observer {
+func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Interface) *Observer {
 	m.lock.RLock()
 	observer, exists := m.observers[cluster]
 	m.lock.RUnlock()
@@ -54,7 +54,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient *client.Client)
 
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
-func (m *Manager) createObserver(cluster types.NamespacedName, esClient *client.Client) *Observer {
+func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Interface) *Observer {
 	observer := NewObserver(cluster, esClient, m.settings)
 	observer.Start()
 	m.lock.Lock()
