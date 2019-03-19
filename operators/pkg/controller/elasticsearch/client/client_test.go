@@ -638,7 +638,7 @@ func TestClient_versioned(t *testing.T) {
 				Endpoint: "http://example.com",
 				version:  tt.preset,
 			}
-			_, err := c.versioned()
+			_, err := c.versioned(context.TODO())
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Client.versioned() error = %v, wantErr %v", err, tt.wantErr)
 			}
