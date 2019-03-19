@@ -17,7 +17,7 @@ import (
 
 const (
 	DefaultRetryDelay = 3 * time.Second
-	DefaultTimeout    = 5 * time.Minute
+	defaultTimeout    = 5 * time.Minute
 )
 
 // ExitOnErr exits with code 1 if the given error is not nil
@@ -33,11 +33,11 @@ func ExitOnErr(err error) {
 // with a default timeout
 func Eventually(f func() error) func(*testing.T) {
 	return func(t *testing.T) {
-		fmt.Printf("Retries (%s timeout): ", DefaultTimeout)
+		fmt.Printf("Retries (%s timeout): ", defaultTimeout)
 		err := retry.UntilSuccess(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
-		}, DefaultTimeout, DefaultRetryDelay)
+		}, defaultTimeout, DefaultRetryDelay)
 		fmt.Println()
 		require.NoError(t, err)
 	}
