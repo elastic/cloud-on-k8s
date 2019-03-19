@@ -1,7 +1,8 @@
 package main
 
 import (
-	"flag"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,26 +11,46 @@ import (
 )
 
 var (
-	logger = logf.Log.WithName("process-manager")
+	name   = "process-manager"
+	logger = logf.Log.WithName(name)
 
-	processName string
-	processCmd  string
+	procNameFlag = "name"
+	procCmdFlag  = "cmd"
 )
 
 func main() {
 	logf.SetLogger(logf.ZapLogger(false))
 
-	flag.StringVar(&processName, "name", "", "process name")
-	flag.StringVar(&processCmd, "cmd", "", "process command")
-	flag.Parse()
+	cmd := &cobra.Command{
+		Use: name,
+		Run: func(cmd *cobra.Command, args []string) {
 
-	pm := NewProcessManager()
-	pm.Register(processName, processCmd)
-	pm.Start()
+			// FIXME
+			procName := viper.GetString(procNameFlag)
+			procCmd := viper.GetString(procCmdFlag)
 
-	waitForStop()
-	pm.Stop()
-	os.Exit(0)
+			pm := NewProcessManager()
+			pm.Register(procName, procCmd)
+			pm.Start()
+
+			waitForStop()
+			pm.Stop()
+			os.Exit(0)
+		},
+	}
+
+	// FIXME
+	cmd.Flags().StringP(procNameFlag, "n", "", "process name to manage")
+	cmd.Flags().StringP(procCmdFlag, "m", "", "process command to manage")
+
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		logger.Error(err, "Unexpected error while binding flags")
+		return
+	}
+
+	if err := cmd.Execute(); err != nil {
+		logger.Error(err, "Unexpected error while running command")
+	}
 }
 
 func waitForStop() {
