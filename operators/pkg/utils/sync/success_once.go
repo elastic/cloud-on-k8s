@@ -25,7 +25,7 @@ func (o *SuccessOnce) Do(f func() error) error {
 		if err := f(); err != nil {
 			return err
 		}
-		defer atomic.StoreUint32(&o.done, 1)
+		atomic.StoreUint32(&o.done, 1)
 	}
 	return nil
 }

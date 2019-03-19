@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -243,8 +244,8 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, ca
 }
 
 // sniffVersion attempts to the detect the version Elasticsearch by retrieving the cluster info.
-func (c *Client) sniffVersion() (*version.Version, error) {
-	info, err := c.GetClusterInfo(context.Background())
+func (c *Client) sniffVersion(ctx context.Context) (*version.Version, error) {
+	info, err := c.GetClusterInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -256,10 +257,10 @@ func (c *Client) sniffVersion() (*version.Version, error) {
 }
 
 // versioned returns or initialises a version specific API dispatcher struct.
-func (c *Client) versioned() (dispatcher, error) {
+func (c *Client) versioned(ctx context.Context) (dispatcher, error) {
 	err := c.init.Do(func() error {
 		if c.version == nil {
-			sniffed, err := c.sniffVersion()
+			sniffed, err := c.sniffVersion(ctx)
 			if err != nil {
 				return err
 			}
@@ -296,7 +297,7 @@ func (c *Client) Equal(c2 *Client) bool {
 			return false
 		}
 	}
-	if c.version != nil && c2.version != nil && *c.version != *c2.version {
+	if !reflect.DeepEqual(c.version, c2.version) {
 		return false
 	}
 	// compare endpoint and user creds
@@ -423,7 +424,7 @@ func (c *Client) GetClusterInfo(ctx context.Context) (Info, error) {
 
 // GetClusterState returns the current cluster state
 func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return ClusterState{}, err
 	}
@@ -433,7 +434,7 @@ func (c *Client) GetClusterState(ctx context.Context) (ClusterState, error) {
 // ExcludeFromShardAllocation takes a comma-separated string of node names and
 // configures transient allocation excludes for the given nodes.
 func (c *Client) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -442,7 +443,7 @@ func (c *Client) ExcludeFromShardAllocation(ctx context.Context, nodes string) e
 
 // GetClusterHealth calls the _cluster/health api.
 func (c *Client) GetClusterHealth(ctx context.Context) (Health, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return Health{}, err
 	}
@@ -451,7 +452,7 @@ func (c *Client) GetClusterHealth(ctx context.Context) (Health, error) {
 
 // GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
 func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return SnapshotRepository{}, err
 	}
@@ -460,7 +461,7 @@ func (c *Client) GetSnapshotRepository(ctx context.Context, name string) (Snapsh
 
 // DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
 func (c *Client) DeleteSnapshotRepository(ctx context.Context, name string) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -469,7 +470,7 @@ func (c *Client) DeleteSnapshotRepository(ctx context.Context, name string) erro
 
 // UpsertSnapshotRepository inserts or updates the given snapshot repository
 func (c *Client) UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -478,7 +479,7 @@ func (c *Client) UpsertSnapshotRepository(ctx context.Context, name string, repo
 
 // GetAllSnapshots returns a list of all snapshots for the given repository.
 func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return SnapshotsList{}, err
 	}
@@ -487,7 +488,7 @@ func (c *Client) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsLis
 
 // TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
 func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -496,7 +497,7 @@ func (c *Client) TakeSnapshot(ctx context.Context, repo string, snapshot string)
 
 // DeleteSnapshot deletes the given snapshot from the given repository.
 func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -505,7 +506,7 @@ func (c *Client) DeleteSnapshot(ctx context.Context, repo string, snapshot strin
 
 // SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -518,7 +519,7 @@ func (c *Client) SetMinimumMasterNodes(ctx context.Context, n int) error {
 //
 // Introduced in: Elasticsearch 7.0.0
 func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -529,7 +530,7 @@ func (c *Client) AddVotingConfigExclusions(ctx context.Context, nodeNames []stri
 //
 // Introduced in: Elasticsearch 7.0.0
 func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -539,7 +540,7 @@ func (c *Client) DeleteVotingConfigExclusions(ctx context.Context, waitForRemova
 // ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
 // but only the reloadable secure settings will be applied
 func (c *Client) ReloadSecureSettings(ctx context.Context) error {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return err
 	}
@@ -548,7 +549,7 @@ func (c *Client) ReloadSecureSettings(ctx context.Context) error {
 
 // GetNodes calls the _nodes api to return a map(nodeName -> Node)
 func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return Nodes{}, err
 	}
@@ -557,7 +558,7 @@ func (c *Client) GetNodes(ctx context.Context) (Nodes, error) {
 
 // GetLicense returns the currently applied license. Can be empty.
 func (c *Client) GetLicense(ctx context.Context) (License, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return License{}, err
 	}
@@ -566,7 +567,7 @@ func (c *Client) GetLicense(ctx context.Context) (License, error) {
 
 // UpdateLicense attempts to update cluster license with the given licenses.
 func (c *Client) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
-	dispatch, err := c.versioned()
+	dispatch, err := c.versioned(ctx)
 	if err != nil {
 		return LicenseUpdateResponse{}, err
 	}

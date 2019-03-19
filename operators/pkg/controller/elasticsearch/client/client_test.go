@@ -369,6 +369,17 @@ func TestClient_Equal(t *testing.T) {
 			}(),
 			want: true,
 		},
+		{
+			name: "one has a version",
+			c1: func() *Client {
+				version := version.MustParse("7.0.0")
+				c := NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts)
+				c.version = &version
+				return c
+			}(),
+			c2:   NewElasticsearchClient(nil, dummyEndpoint, dummyUser, dummyCACerts),
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

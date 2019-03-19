@@ -57,7 +57,7 @@ func TestSuccessOnce_Do(t *testing.T) {
 			},
 		},
 		{
-			name: "panic counts as error",
+			name: "panic counts as error (assuming recover)",
 			args: func(o *one) []func() error {
 				return []func() error{
 					func() (e error) {
