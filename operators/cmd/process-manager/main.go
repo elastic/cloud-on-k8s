@@ -6,7 +6,6 @@ package main
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,9 +16,6 @@ import (
 var (
 	name   = "process-manager"
 	logger = logf.Log.WithName(name)
-
-	procNameFlag = "name"
-	procCmdFlag  = "cmd"
 )
 
 func main() {
@@ -29,27 +25,23 @@ func main() {
 		Use: name,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			// FIXME
-			procName := viper.GetString(procNameFlag)
-			procCmd := viper.GetString(procCmdFlag)
+			pm, err := NewProcessManager(cmd)
+			fatal("Fail to create process manager", err)
+			msg, err := pm.Start()
+			fatal(msg, err)
 
-			pm := NewProcessManager()
-			pm.Register(procName, procCmd)
-			pm.Start()
+			sig := waitForStop()
+			logger.Info("Forward signal", "sig", sig)
+			msg, err = pm.Stop(sig)
+			if err != nil {
+				if err.Error() == errNoSuchProcess {
+					logger.Info("No process to stop")
+				}
+				os.Exit(1)
+			}
 
-			waitForStop()
-			pm.Stop()
 			os.Exit(0)
 		},
-	}
-
-	// FIXME
-	cmd.Flags().StringP(procNameFlag, "n", "", "process name to manage")
-	cmd.Flags().StringP(procCmdFlag, "m", "", "process command to manage")
-
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		logger.Error(err, "Unexpected error while binding flags")
-		return
 	}
 
 	if err := cmd.Execute(); err != nil {
@@ -57,9 +49,17 @@ func main() {
 	}
 }
 
-func waitForStop() {
+func waitForStop() os.Signal {
 	stop := make(chan os.Signal)
 	signal.Notify(stop)
 	signal.Ignore(syscall.SIGCHLD)
-	<-stop
+	sig := <-stop
+	return sig
+}
+
+func fatal(msg string, err error) {
+	if err != nil {
+		logger.Error(err, msg)
+		os.Exit(1)
+	}
 }

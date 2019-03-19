@@ -6,37 +6,40 @@ package main
 
 import (
 	"context"
+	_ "expvar"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
+	"strconv"
 	"time"
 )
 
 const (
 	shutdownTimeout = 5 * time.Second
+	HTTPPort        = ":8080"
 )
 
 // ProcessServer is an HTTP server with a process controller.
 type ProcessServer struct {
 	*http.Server
-	controller *ProcessController
+	esProcess *Process
 }
 
-func NewServer(controller *ProcessController) *ProcessServer {
-	mux := http.NewServeMux()
+func NewServer(process *Process) *ProcessServer {
+	mux := http.DefaultServeMux
 	s := ProcessServer{
 		&http.Server{
 			Addr:    HTTPPort,
 			Handler: mux,
 		},
-		controller,
+		process,
 	}
 
 	mux.HandleFunc("/health", s.Health)
-	mux.HandleFunc("/es/start", s.EsStart)
-	mux.HandleFunc("/es/stop", s.EsStop)
-	mux.HandleFunc("/es/restart", s.EsRestart)
-	mux.HandleFunc("/es/kill", s.EsKill)
-	mux.HandleFunc("/es/status", s.EsStatus)
+	mux.HandleFunc("/elasticsearch/start", s.EsStart)
+	mux.HandleFunc("/elasticsearch/stop", s.EsStop)
+	mux.HandleFunc("/elasticsearch/health", s.EsStatus)
+	mux.HandleFunc("/keystore-updater/health", s.EsStatus)
 
 	return &s
 }
@@ -48,9 +51,9 @@ func (s *ProcessServer) Start() {
 				logger.Info("HTTP server closed")
 			} else {
 				logger.Error(err, "Could not start HTTP server")
+				fatal("Could not start HTTP server", err)
 			}
 		}
-		logger.Info("goroutine 'HTTP server' exited")
 		return
 	}()
 }
@@ -68,59 +71,75 @@ func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
-	err := s.controller.Start("es")
+	msg, err := s.esProcess.Start()
 	if err != nil {
-		ko(w, "es start failed: "+err.Error())
+		ko(w, fmt.Sprintf("%s: %s", msg, err.Error()))
 		return
 	}
 
-	ok(w, "es started")
+	ok(w, msg)
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
-	err := s.controller.Stop("es", false)
+	var err error
+
+	killHard := false
+	hardParam := req.URL.Query().Get("hard")
+	if hardParam != "" {
+		killHard, err = strconv.ParseBool(hardParam)
+		if err != nil {
+			logger.Error(err, "Fail to stop")
+			ko(w, "Invalid `hard` query parameter")
+			return
+		}
+	}
+
+	/*alwaysHardKill := false
+	alwaysHardKillParam := req.URL.Query().Get("safe")
+	if alwaysHardKillParam != "" {
+		alwaysHardKill, err = strconv.ParseBool(alwaysHardKillParam)
+		if err != nil {
+			logger.Error(err, "Fail to stop")
+			ko(w, "Invalid `always` query parameter")
+			return
+		}
+	}*/
+
+	killHardTimeout := 0
+	timeoutParam := req.URL.Query().Get("timeout")
+	if timeoutParam != "" {
+		hardKillTimeoutSeconds, err := strconv.Atoi(timeoutParam)
+		if err != nil {
+			logger.Error(err, "Fail to stop")
+			ko(w, "Invalid `timeout` query parameter")
+			return
+		}
+		if hardKillTimeoutSeconds < 0 {
+			logger.Error(err, "Fail to stop")
+			ko(w, "Invalid `timeout` query parameter, must be greater than 0.")
+			return
+		}
+		killHardTimeout = hardKillTimeoutSeconds
+	}
+
+	msg, err := s.esProcess.Stop(killHard, time.Duration(killHardTimeout)*time.Second)
 	if err != nil {
-		ko(w, "es stop failed: "+err.Error())
+		logger.Info(msg, "err", err.Error())
+		ko(w, fmt.Sprintf("%s", msg))
 		return
 	}
 
-	ok(w, "es stopped")
-}
-
-func (s *ProcessServer) EsRestart(w http.ResponseWriter, req *http.Request) {
-	err := s.controller.Stop("es", true)
-	if err != nil {
-		ko(w, "es stop failed: "+err.Error())
-		return
-	}
-
-	err = s.controller.Start("es")
-	if err != nil {
-		ko(w, "es start failed: "+err.Error())
-		return
-	}
-
-	ok(w, "es restarted")
+	ok(w, msg)
 }
 
 func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
-	pgid, err := s.controller.Pgid("es")
+	status, err := s.esProcess.Status()
 	if err != nil {
-		ko(w, "get pgid failed: "+err.Error())
+		ko(w, "Fail to get status: "+err.Error())
 		return
 	}
 
-	ok(w, fmt.Sprintf(`{"pgid":%d}`, pgid))
-}
-
-func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
-	err := s.controller.HardKill("es")
-	if err != nil {
-		ko(w, "es kill failed: "+err.Error())
-		return
-	}
-
-	ok(w, "es killed")
+	ok(w, fmt.Sprintf(`{"status":"%s"}`, status))
 }
 
 // HTTP utilities

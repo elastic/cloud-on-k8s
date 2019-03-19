@@ -5,149 +5,296 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
 
 const (
-	killHardTimeout     = 5 * time.Second
-	killSoftSignal      = syscall.SIGTERM
-	killHardSignal      = syscall.SIGKILL
-	errNoSuchProcess    = "no such process"
-	errNoChildProcesses = "waitid: no child processes"
+	defaultKillHardTimeout = 1 * time.Hour
+	killSoftSignal         = syscall.SIGTERM
+	killHardSignal         = syscall.SIGKILL
+	errNoChildProcesses    = "waitid: no child processes"
+	errNoSuchProcess       = "no such process"
+	errSignalTerminated    = "signal: terminated"
+	errSignalKilled        = "signal: killed"
+
+	notInitialized ProcessState = "notInitialized"
+	starting       ProcessState = "starting"
+	started        ProcessState = "started"
+	stopping       ProcessState = "stopping"
+	stopped        ProcessState = "stopped"
+	startFailed    ProcessState = "startFailed"
+	killFailed     ProcessState = "killFailed"
+	noProcess      ProcessState = "noProcess"
+
+	stopAction            = "stop"
+	startAction           = "start"
+	hardKillTimeoutAction = "hardKillTimeout"
+	noSignal              = syscall.Signal(0)
 )
+
+type ProcessState string
+
+func (s ProcessState) String() string {
+	return string(s)
+}
+
+func (s ProcessState) Error() error {
+	return fmt.Errorf("error: process %s", s)
+}
 
 type Process struct {
 	id   string
 	name string
 	args []string
-	cmd  *exec.Cmd
+
+	cmd   *exec.Cmd
+	state ProcessState
+	mutex sync.RWMutex
 }
 
-func (p *Process) isStarted() bool {
-	pgid, _ := p.Pgid()
-	return pgid != -1
+func NewProcess(name string, cmd string) *Process {
+	args := strings.Split(strings.Trim(cmd, " "), " ")
+	return &Process{
+		id:    name,
+		name:  args[0],
+		args:  args[1:],
+		cmd:   nil,
+		state: notInitialized,
+		mutex: sync.RWMutex{},
+	}
 }
 
-func (p *Process) Start() error {
-	if p.isStarted() {
-		return fmt.Errorf("cannot start process %s already started", p.id)
+func canStart(state ProcessState) (bool, ProcessState, error) {
+	switch state {
+	case starting, started:
+		return false, state, nil
+	case stopping:
+		return false, state, state.Error()
+	default:
+		return true, state, nil
+	}
+}
+
+func (p *Process) Start() (string, error) {
+	p.mutex.Lock()
+
+	ok, state, err := canStart(p.state)
+	if !ok {
+		p.mutex.Unlock()
+		return state.String(), err
 	}
 
+	p.updateState(startAction, starting, 0, syscall.Signal(0), nil)
+	p.mutex.Unlock()
+
+	go func() {
+		newState := p.exec()
+		p.mutex.Lock()
+		p.updateState(startAction, newState, 0, syscall.Signal(0), err)
+		p.mutex.Unlock()
+	}()
+
+	return starting.String(), nil
+}
+
+func (p *Process) exec() ProcessState {
 	cmd := exec.Command(p.name, p.args...)
-
-	// Dedicated process group to forward signals to main process and all children
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	logger.Info("Start", "process", p.id, "args", strings.Join(p.args, " "))
+	// Dedicated process group to forward signals to the main process and all children
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if err := cmd.Start(); err != nil {
-		logger.Error(err, "Failed to start", "process", p.id)
-		return err
+		return startFailed
 	}
 
-	// Set cmd
 	p.cmd = cmd
-
-	logger.Info("Started successfully", "process", p.id)
-
-	return nil
+	return started
 }
 
-func (p *Process) Stop(canBeStopped bool) error {
-	if !p.isStarted() {
-		if !canBeStopped {
-			return fmt.Errorf("cannot stop process %s already stopped", p.id)
-		} else {
-			return nil
+func (p *Process) Kill(sig os.Signal) {
+	s, ok := sig.(syscall.Signal)
+	if !ok {
+		err := errors.New("os: unsupported signal type")
+		logger.Error(err, "Fail to kill process")
+	}
+
+	err := killProcessGroup(p.cmd.Process.Pid, s)
+	if err != nil {
+		if err.Error() != errNoSuchProcess {
+			logger.Error(err, "Fail to kill process")
 		}
 	}
+	logger.Info("Process killed")
+}
 
-	cmd := p.cmd
-	defer func() {
-		// Reset cmd
-		p.cmd = nil
-	}()
+func canStop(state ProcessState) (bool, ProcessState, error) {
+	switch state {
+	case stopped, noProcess, notInitialized:
+		return false, state, nil
+	case stopping, starting:
+		return false, state, state.Error()
+	default:
+		return true, state, nil
+	}
+}
 
-	pgid, err := p.Pgid()
+func (p *Process) Stop(hard bool, killHardTimeout time.Duration) (string, error) {
+	p.mutex.RLock()
+	ok, state, err := canStop(p.state)
+	if !ok {
+		defer p.mutex.RUnlock()
+		return state.String(), err
+	}
+	pid := p.cmd.Process.Pid
+	p.mutex.RUnlock()
+
+	pgid, err := syscall.Getpgid(pid)
 	if err != nil {
-		return err
+		p.mutex.Lock()
+		p.updateState(stopAction, noProcess, pid, noSignal, err)
+		p.mutex.Unlock()
+		return noProcess.String(), err
 	}
 
-	logger.Info("Stop", "process", p.id, "pid", p.cmd.Process.Pid, "group", pgid)
+	p.mutex.Lock()
+	p.updateState(stopAction, stopping, pid, noSignal, nil)
+	p.mutex.Unlock()
 
-	err = syscall.Kill(-(pgid), killSoftSignal)
-	if err != nil && err.Error() != errNoChildProcesses {
-		logger.Error(err, "Failed to kill soft", "process", p.id, "group", pgid)
+	signal := killSoftSignal
+	if hard {
+		signal = killHardSignal
 	}
 
-	// Wait
-	done := make(chan error, 1)
+	err = killProcessGroup(pgid, signal)
+	if err != nil {
+		p.mutex.Lock()
+		p.updateState(stopAction, killFailed, pgid, noSignal, err)
+		p.mutex.Unlock()
+		return killFailed.String(), err
+	}
+
 	go func() {
-		done <- cmd.Wait()
+		s := <-p.wait(pgid, signal, hard, killHardTimeout)
+		p.mutex.Lock()
+		p.updateState(stopAction, s.state, pgid, signal, s.err)
+		p.mutex.Unlock()
 	}()
 
-	select {
-	// Kill hard because a timeout is reached
-	case <-time.After(killHardTimeout):
-		if err = syscall.Kill(-(pgid), killHardSignal); err != nil {
-			logger.Error(err, "Failed to kill hard", "process", p.id, "pgid", pgid)
-			return err
-		}
-		logger.Info("Kill as timeout reached", "process", p.id, "pgid", pgid)
-		return nil
+	/*
+		done := make(chan error, 1)
+		go func() {
+			done <- p.cmd.Wait()
+		}()
 
-	// Kill hard to be sure to clean up every children processes
-	case err := <-done:
-		if err != nil && err.Error() != errNoChildProcesses {
-			logger.Error(err, "Failed to kill soft", "process", p.id, "pgid", pgid)
-		}
+			select {
+			// Kill hard because a timeout is reached
+			case <-time.After(killHardTimeout):
+				err := killProcessGroup(pgid, killHardSignal)
+				if err != nil {
+					p.mutex.Lock()
+					p.updateState(stopAction, killFailed, pgid, noSignal, err)
+					p.mutex.Unlock()
+				}
+				p.mutex.Lock()
+				p.updateState(hardKillTimeoutAction, stopped, pgid, noSignal, nil)
+				p.mutex.Unlock()
 
-		err = syscall.Kill(-(pgid), killHardSignal)
-		if err != nil {
-			logger.Error(err, "Failed to kill hard (2)", "process", p.id, "pgid", pgid)
-			return err
-		}
+			case err := <-done:
+				// Process completed
+				if err != nil {
+					if (soft && err.Error() != errSignalTerminated || !soft && err.Error() != errSignalKilled) &&
+						err.Error() != errNoChildProcesses {
+						p.mutex.Lock()
+						p.updateState(stopAction, killFailed, pgid, noSignal, err)
+						p.mutex.Unlock()
+					}
+				}
 
-		logger.Info("Stopped successfully", "process", p.id, "pgid", pgid)
-		return nil
+				p.mutex.Lock()
+				logger.Info("stopppped")
+				p.updateState(stopAction, stopped, pgid, signal, nil)
+				p.mutex.Unlock()
+			}*/
+
+	return stopping.String(), nil
+}
+
+type stopState struct {
+	state ProcessState
+	err   error
+}
+
+func (p *Process) wait(pgid int, signal syscall.Signal, soft bool, killHardTimeout time.Duration) chan stopState {
+	state := make(chan stopState, 1)
+	done := make(chan error, 1)
+
+	if killHardTimeout == 0 {
+		killHardTimeout = defaultKillHardTimeout
+	}
+
+	go func() {
+		done <- p.cmd.Wait()
+	}()
+
+	go func() {
+		defer close(state)
+		select {
+
+		// Kill hard because a timeout is reached
+		case <-time.After(killHardTimeout):
+			err := killProcessGroup(pgid, killHardSignal)
+			if err != nil {
+				state <- stopState{killFailed, err}
+				return
+			}
+			state <- stopState{stopped, nil}
+			return
+
+		// Process completed
+		case err := <-done:
+			if err != nil {
+				if (soft && err.Error() != errSignalTerminated || !soft && err.Error() != errSignalKilled) &&
+					err.Error() != errNoChildProcesses {
+					state <- stopState{killFailed, err}
+					return
+				}
+			}
+			state <- stopState{stopped, nil}
+			return
+		}
+	}()
+
+	return state
+}
+
+func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, err error) {
+	p.state = state
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("error: %s process", action),
+			"id", p.id, "state", state, "pid", pid, "signal", signal)
+	} else {
+		logger.Info(fmt.Sprintf("ok: %s process", action),
+			"id", p.id, "state", state, "pid", pid, "signal", signal)
 	}
 }
 
-func (p *Process) Pgid() (int, error) {
-	if p.cmd == nil {
-		return -1, fmt.Errorf("no process %s", p.id)
-	}
-
-	pgid, err := syscall.Getpgid(p.cmd.Process.Pid)
-	if err != nil {
-		if err.Error() == errNoSuchProcess {
-			return -1, fmt.Errorf("no process %s", p.id)
-		}
-		logger.Error(err, "Failed to get pgid", "process", p.id)
-		return -1, err
-	}
-
-	return pgid, nil
+func (p *Process) Status() (ProcessState, error) {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+	return p.state, nil
 }
 
-func (p *Process) HardKill() error {
-	pgid, err := p.Pgid()
-	if err != nil {
-		return err
-	}
-
-	logger.Info("Kill", "process", p.id, "pid", p.cmd.Process.Pid, "group", pgid)
-	err = syscall.Kill(-(pgid), killHardSignal)
-	if err != nil {
-		logger.Info("Fail to kill", "process", p.id, "pid", p.cmd.Process.Pid, "group", pgid)
+func killProcessGroup(pgid int, signal syscall.Signal) error {
+	err := syscall.Kill(-(pgid), signal)
+	if err != nil && err.Error() != errNoChildProcesses {
 		return err
 	}
 
