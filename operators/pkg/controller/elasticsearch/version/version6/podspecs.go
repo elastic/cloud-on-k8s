@@ -5,13 +5,7 @@
 package version6
 
 import (
-	"errors"
 	"fmt"
-	"path"
-	"strconv"
-
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
@@ -20,12 +14,13 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
+	"path"
+	"strconv"
 )
 
 var (
@@ -46,10 +41,6 @@ var (
 			},
 		},
 	}
-	sideCarSharedVolume = volume.NewEmptyDirVolume("sidecar-bin", "/opt/sidecar/bin")
-
-	defaultSidecarMemoryLimits = resource.MustParse("64Mi")
-	defaultSidecarCPULimits    = resource.MustParse("10m")
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
@@ -71,8 +62,6 @@ func ExpectedPodSpecs(
 		paramsTmpl,
 		newEnvironmentVars,
 		newInitContainers,
-		newSidecarContainers,
-		[]corev1.Volume{sideCarSharedVolume.Volume()},
 		operatorImage,
 	)
 }
@@ -90,60 +79,7 @@ func newInitContainers(
 		linkedFiles6,
 		setVMMaxMapCount,
 		nodeCertificatesVolume,
-		initcontainer.NewSidecarInitContainer(sideCarSharedVolume, operatorImage),
 	)
-}
-
-// newSidecarContainers returns a list of sidecar containers.
-func newSidecarContainers(
-	imageName string,
-	spec pod.NewPodSpecParams,
-	volumes map[string]volume.VolumeLike,
-) ([]corev1.Container, error) {
-
-	keystoreVolume, ok := volumes[keystore.SecretVolumeName]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("no keystore volume present %v", volumes))
-	}
-	reloadCredsUser, ok := volumes[volume.ReloadCredsUserVolumeName]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("no reload creds user volume present %v", volumes))
-	}
-	certs, ok := volumes[volume.NodeCertificatesSecretVolumeName]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("no node certificates volume present %v", volumes))
-	}
-	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", network.ProtocolForLicense(spec.LicenseType), network.HTTPPort)
-	return []corev1.Container{
-		{
-			Name:            "keystore-updater",
-			Image:           imageName,
-			ImagePullPolicy: corev1.PullIfNotPresent,
-			Command:         []string{path.Join(sideCarSharedVolume.VolumeMount().MountPath, "keystore-updater")},
-			Env: []corev1.EnvVar{
-				{Name: sidecar.EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
-				{Name: sidecar.EnvReloadCredentials, Value: "true"},
-				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
-				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
-				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, certificates.CAFileName)},
-				{Name: sidecar.EnvEndpoint, Value: esEndpoint},
-			},
-			VolumeMounts: append(
-				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
-				sideCarSharedVolume.VolumeMount(),
-				certs.VolumeMount(),
-				keystoreVolume.VolumeMount(),
-				reloadCredsUser.VolumeMount(),
-			),
-			Resources: corev1.ResourceRequirements{
-				// Requests is not specified to get assigned a qosClass of Guaranteed, like for the Elasticsearch container
-				Limits: corev1.ResourceList{
-					corev1.ResourceMemory: defaultSidecarMemoryLimits,
-					corev1.ResourceCPU:    defaultSidecarCPULimits,
-				},
-			},
-		},
-	}, nil
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod

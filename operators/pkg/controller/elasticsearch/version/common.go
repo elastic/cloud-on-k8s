@@ -38,8 +38,6 @@ func NewExpectedPodSpecs(
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-	newSideCarContainersFn func(imageName string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
-	additionalVolumes []corev1.Volume,
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -70,8 +68,6 @@ func NewExpectedPodSpecs(
 				operatorImage,
 				newEnvironmentVarsFn,
 				newInitContainersFn,
-				newSideCarContainersFn,
-				additionalVolumes,
 			)
 			if err != nil {
 				return nil, err
@@ -90,8 +86,6 @@ func podSpec(
 	operatorImage string,
 	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-	newSideCarContainersFn func(elasticsearchImage string, spec pod.NewPodSpecParams, volumes map[string]volume.VolumeLike) ([]corev1.Container, error),
-	additionalVolumes []corev1.Volume,
 ) (corev1.PodSpec, error) {
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -208,15 +202,6 @@ func podSpec(
 		),
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
-
-	podSpec.Volumes = append(podSpec.Volumes, additionalVolumes...)
-
-	// Setup sidecars if any
-	sidecars, err := newSideCarContainersFn(elasticsearchImage, p, volumes)
-	if err != nil {
-		return corev1.PodSpec{}, err
-	}
-	podSpec.Containers = append(podSpec.Containers, sidecars...)
 
 	// Setup init containers
 	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)

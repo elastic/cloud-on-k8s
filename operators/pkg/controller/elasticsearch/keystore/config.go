@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io/ioutil"

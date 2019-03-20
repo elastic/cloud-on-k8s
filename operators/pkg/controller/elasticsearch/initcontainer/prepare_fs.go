@@ -31,13 +31,13 @@ var (
 	PrepareFsSharedVolumes = SharedVolumeArray{
 		Array: []SharedVolume{
 			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
-			SharedVolume{
+			{
 				Name:                   "config-volume",
 				InitContainerMountPath: "/volume/config",
 				EsContainerMountPath:   "/usr/share/elasticsearch/config",
 			},
 			// Contains plugins data
-			SharedVolume{
+			{
 				Name:                   "plugins-volume",
 				InitContainerMountPath: "/volume/plugins",
 				EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
