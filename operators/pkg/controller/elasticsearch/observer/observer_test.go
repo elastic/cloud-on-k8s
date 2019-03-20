@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func fakeEsClient200(user client.UserAuth) client.Interface {
+func fakeEsClient200(user client.UserAuth) client.Client {
 	return client.NewMockClientWithUser(version.MustParse("6.7.0"),
 		user,
 		func(req *http.Request) *http.Response {

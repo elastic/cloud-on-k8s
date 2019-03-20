@@ -183,14 +183,13 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 
 func TestClient_request(t *testing.T) {
 	testPath := "/_i_am_an/elasticsearch/endpoint"
-	testClient := &clientV6{
+	testClient := &baseClient{
 		HTTP: &http.Client{
 			Transport: RoundTripFunc(requestAssertion(func(req *http.Request) {
 				assert.Equal(t, testPath, req.URL.Path)
 			})),
 		},
 		Endpoint: "http://example.com",
-		version:  version.MustParse("6.7.0"),
 	}
 	requests := []func() (string, error){
 		func() (string, error) {
@@ -299,8 +298,8 @@ func TestClient_Equal(t *testing.T) {
 	x509.NewCertPool()
 	tests := []struct {
 		name string
-		c1   Interface
-		c2   Interface
+		c1   Client
+		c2   Client
 		want bool
 	}{
 		{

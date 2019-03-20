@@ -18,7 +18,7 @@ func TestCurrentVersions(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    []corev1.Pod
-		want    []version.Version
+		want    *version.Version
 		wantErr bool
 	}{
 		{
@@ -46,12 +46,12 @@ func TestCurrentVersions(t *testing.T) {
 					},
 				},
 			},
-			want: []version.Version{{
+			want: &version.Version{
 				Major: 1,
 				Minor: 0,
 				Patch: 0,
 				Label: "",
-			}},
+			},
 			wantErr: false,
 		},
 		{
@@ -72,32 +72,24 @@ func TestCurrentVersions(t *testing.T) {
 					},
 				},
 			},
-			want: []version.Version{
-				{
-					Major: 2,
-					Minor: 0,
-					Patch: 0,
-					Label: "",
-				},
-				{
-					Major: 1,
-					Minor: 0,
-					Patch: 0,
-					Label: "",
-				},
+			want: &version.Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CurrentVersions(tt.args)
+			got, err := MinVersion(tt.args)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CurrentVersions() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("MinVersion() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CurrentVersions() = %v, want %v", got, tt.want)
+				t.Errorf("MinVersion() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -40,7 +40,7 @@ var DefaultSettings = Settings{
 // in a thread-safe way
 type Observer struct {
 	cluster  types.NamespacedName
-	esClient client.Interface
+	esClient client.Client
 
 	settings Settings
 
@@ -55,7 +55,7 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Interface, settings Settings) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings) *Observer {
 	observer := Observer{
 		cluster:      cluster,
 		esClient:     esClient,

@@ -97,7 +97,7 @@ func (v *Version) IsSameOrAfter(other Version) bool {
 		(v.Major == other.Major && v.Minor == other.Minor && v.Patch >= other.Patch)
 }
 
-// Min returns the mininum version in vs or nil.
+// Min returns the minimum version in vs or nil.
 func Min(vs []Version) *Version {
 	sort.SliceStable(vs, func(i, j int) bool {
 		return vs[j].IsSameOrAfter(vs[i])

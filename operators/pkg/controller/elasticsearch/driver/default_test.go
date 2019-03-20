@@ -231,7 +231,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 		resourcesState *reconcile.ResourcesState
 		observedState  observer.State
 		results        *reconciler.Results
-		esClient       esclient.Interface
+		esClient       esclient.Client
 		namespacedName types.NamespacedName
 	}
 

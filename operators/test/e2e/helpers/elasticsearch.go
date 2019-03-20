@@ -26,7 +26,7 @@ var autoPortForward = flag.Bool(
 		"k8s resources on ephemeral ports to localhost)")
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
-func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Interface, error) {
+func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Client, error) {
 	password, err := k.GetElasticPassword(es.Name)
 	if err != nil {
 		return nil, err

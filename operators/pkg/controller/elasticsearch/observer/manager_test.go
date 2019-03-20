@@ -53,7 +53,7 @@ func TestManager_Observe(t *testing.T) {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer
 		clusterToObserve       types.NamespacedName
-		clusterToObserveClient client.Interface
+		clusterToObserveClient client.Client
 		expectedObservers      []types.NamespacedName
 		expectNewObserver      bool
 	}{

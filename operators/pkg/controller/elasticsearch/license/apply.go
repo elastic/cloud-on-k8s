@@ -56,7 +56,7 @@ func secretRefResolver(c k8s.Client, ns string, ref corev1.SecretKeySelector) fu
 }
 
 func updateLicense(
-	c esclient.Interface,
+	c esclient.Client,
 	current *esclient.License,
 	desired v1alpha1.ClusterLicense,
 	sigResolver func() (string, error),

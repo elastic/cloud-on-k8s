@@ -10,8 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// CurrentVersions extracts the currently running Elasticsearch versions from the running pods
-func CurrentVersions(pods []corev1.Pod) ([]version.Version, error) {
+// MinVersion extracts the currently running Elasticsearch versions from the running pods
+func MinVersion(pods []corev1.Pod) (*version.Version, error) {
 	var vs []version.Version
 	for _, pod := range pods {
 		v, err := label.ExtractVersion(pod)
@@ -20,5 +20,5 @@ func CurrentVersions(pods []corev1.Pod) ([]version.Version, error) {
 		}
 		vs = append(vs, *v)
 	}
-	return vs, nil
+	return version.Min(vs), nil
 }
