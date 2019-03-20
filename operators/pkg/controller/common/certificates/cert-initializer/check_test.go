@@ -4,7 +4,7 @@
 
 // +build integration
 
-package main
+package certinitializer
 
 import (
 	cryptorand "crypto/rand"

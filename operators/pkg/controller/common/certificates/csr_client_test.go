@@ -4,7 +4,7 @@
 
 // +build integration
 
-package certificates
+package main
 
 import (
 	"net/http"
