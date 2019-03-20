@@ -89,6 +89,22 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 		return err
 	}
 
+	// Watch owned secrets
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
+		OwnerType:    &assoctype.KibanaElasticsearchAssociation{},
+		IsController: true,
+	}); err != nil {
+		return err
+	}
+
+	// Watch owned Users
+	if err := c.Watch(&source.Kind{Type: &estype.User{}}, &handler.EnqueueRequestForOwner{
+		OwnerType:    &assoctype.KibanaElasticsearchAssociation{},
+		IsController: true,
+	}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
