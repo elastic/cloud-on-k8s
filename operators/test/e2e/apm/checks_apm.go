@@ -6,9 +6,10 @@ package apm
 
 import (
 	"context"
+	"testing"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"testing"
 
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -19,7 +20,7 @@ import (
 
 type apmClusterChecks struct {
 	apmClient *helpers.ApmClient
-	esClient  *client.Client
+	esClient  client.Interface
 }
 
 // ApmServerChecks returns all test steps to verify the given Apm Server is running as expected
