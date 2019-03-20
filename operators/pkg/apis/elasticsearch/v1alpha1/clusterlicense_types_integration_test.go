@@ -29,20 +29,20 @@ func TestStorageClusterLicense(t *testing.T) {
 
 	// Test Create
 	fetched := &ClusterLicense{}
-	g.Expect(c.Create(context.TODO(), created)).NotTo(gomega.HaveOccurred())
+	g.Expect(c.Create(context.Background(), created)).NotTo(gomega.HaveOccurred())
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
+	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
 	g.Expect(fetched).To(gomega.Equal(created))
 
 	// Test Updating the Labels
 	updated := fetched.DeepCopy()
 	updated.Labels = map[string]string{"hello": "world"}
-	g.Expect(c.Update(context.TODO(), updated)).NotTo(gomega.HaveOccurred())
+	g.Expect(c.Update(context.Background(), updated)).NotTo(gomega.HaveOccurred())
 
-	g.Expect(c.Get(context.TODO(), key, fetched)).NotTo(gomega.HaveOccurred())
+	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
 	g.Expect(fetched).To(gomega.Equal(updated))
 
 	// Test Delete
-	g.Expect(c.Delete(context.TODO(), fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(c.Get(context.TODO(), key, fetched)).To(gomega.HaveOccurred())
+	g.Expect(c.Delete(context.Background(), fetched)).NotTo(gomega.HaveOccurred())
+	g.Expect(c.Get(context.Background(), key, fetched)).To(gomega.HaveOccurred())
 }

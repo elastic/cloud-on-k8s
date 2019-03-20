@@ -25,7 +25,9 @@ func UpdateZen2Settings(
 ) error {
 	if !changes.HasChanges() {
 		log.Info("Ensuring no voting exclusions are set")
-		if err := esClient.DeleteVotingConfigExclusions(context.TODO(), false); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+		defer cancel()
+		if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {
 			return err
 		}
 		return nil
@@ -40,7 +42,9 @@ func UpdateZen2Settings(
 	if len(leavingMasters) != 0 {
 		// TODO: only update if required and remove old exclusions as well
 		log.Info("Setting voting config exclusions", "excluding", leavingMasters)
-		if err := esClient.AddVotingConfigExclusions(context.TODO(), leavingMasters, ""); err != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+		defer cancel()
+		if err := esClient.AddVotingConfigExclusions(ctx, leavingMasters, ""); err != nil {
 			return err
 		}
 	}

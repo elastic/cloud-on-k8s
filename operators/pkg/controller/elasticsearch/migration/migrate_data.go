@@ -85,7 +85,7 @@ type AllocationSettings interface {
 }
 
 // setAllocationExcludes sets allocation filters for the given nodes.
-func setAllocationExcludes(client AllocationSettings, leavingNodes []string, now time.Time) error {
+func setAllocationExcludes(asClient AllocationSettings, leavingNodes []string, now time.Time) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
 		// See https://github.com/elastic/elasticsearch/issues/28316
@@ -93,7 +93,9 @@ func setAllocationExcludes(client AllocationSettings, leavingNodes []string, now
 		exclusions = strings.Join(withBugfix, ",")
 	}
 	// update allocation exclusions
-	return client.ExcludeFromShardAllocation(context.TODO(), exclusions)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	return asClient.ExcludeFromShardAllocation(ctx, exclusions)
 }
 
 // MigrateData sets allocation filters for the given nodes.
