@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -40,6 +41,10 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Int
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()
 	}
-	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, caCert)
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, *v, caCert)
 	return client, nil
 }
