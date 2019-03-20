@@ -56,7 +56,7 @@ func (s *forwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 			delete(s.forwarders, key)
 		}()
 		// TODO: cancel this at some point to GC?
-		if err := fwd.Run(context.TODO()); err != nil {
+		if err := fwd.Run(context.Background()); err != nil {
 			log.Error(err, "Forwarder returned with an error", "addr", addr)
 		} else {
 			log.Info("Forwarder returned without an error", "addr", addr)

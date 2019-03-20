@@ -6,6 +6,7 @@ package client
 
 import (
 	"context"
+	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -14,8 +15,12 @@ var (
 	log = logf.Log.WithName("client")
 )
 
-// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
-const DefaultVotingConfigExclusionsTimeout = "30s"
+const (
+	// DefaultVotingConfigExclusionsTimeout is the default timeout for setting voting exclusions.
+	DefaultVotingConfigExclusionsTimeout = "30s"
+	// DefaultReqTimeout is the default timeout used when performing HTTP calls against Elasticsearch
+	DefaultReqTimeout = 3 * time.Minute
+)
 
 // UserAuth is authentication information for the Elasticsearch client.
 type UserAuth struct {

@@ -107,7 +107,9 @@ func (s *Settings) purge(esClient SnapshotAPI, snapshots []client.Snapshot) erro
 	toDelete := snapshots[len(snapshots)-1]
 	log.Info(fmt.Sprintf("Deleting snapshot [%s]", toDelete.Snapshot))
 	//TODO how to keeep track of failed purges?
-	return esClient.DeleteSnapshot(context.TODO(), s.Repository, toDelete.Snapshot)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	return esClient.DeleteSnapshot(ctx, s.Repository, toDelete.Snapshot)
 }
 
 func nextSnapshotName(now time.Time) string {
@@ -118,7 +120,9 @@ func nextSnapshotName(now time.Time) string {
 // the most recent one is younger than the configured snapshot interval by trying to purge
 // outdated snapshots.
 func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
-	snapshotList, err := esClient.GetAllSnapshots(context.TODO(), settings.Repository)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	snapshotList, err := esClient.GetAllSnapshots(ctx, settings.Repository)
 	if err != nil {
 		return err
 	}
@@ -136,7 +140,9 @@ func ExecuteNextPhase(esClient SnapshotAPI, settings Settings) error {
 	case PhaseWait:
 		return nil
 	case PhaseTake:
-		return esClient.TakeSnapshot(context.TODO(), settings.Repository, nextSnapshotName(time.Now()))
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+		defer cancel()
+		return esClient.TakeSnapshot(ctx, settings.Repository, nextSnapshotName(time.Now()))
 	}
 	return nil
 }

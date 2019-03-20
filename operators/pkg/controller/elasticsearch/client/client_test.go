@@ -101,14 +101,14 @@ func TestClientErrorHandling(t *testing.T) {
 	testClient := NewMockClient(version.MustParse("6.7.0"), errorResponses(codes))
 	requests := []func() (string, error){
 		func() (string, error) {
-			_, err := testClient.GetClusterState(context.TODO())
+			_, err := testClient.GetClusterState(context.Background())
 			return "GetClusterState", err
 		},
 		func() (string, error) {
-			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.TODO(), "")
+			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.Background(), "")
 		},
 		func() (string, error) {
-			return "UpsertSnapshotRepository", testClient.UpsertSnapshotRepository(context.TODO(), "test", SnapshotRepository{})
+			return "UpsertSnapshotRepository", testClient.UpsertSnapshotRepository(context.Background(), "test", SnapshotRepository{})
 		},
 	}
 
@@ -126,10 +126,10 @@ func TestClientUsesJsonContentType(t *testing.T) {
 		assert.Equal(t, []string{"application/json; charset=utf-8"}, req.Header["Content-Type"])
 	}))
 
-	_, err := testClient.GetClusterState(context.TODO())
+	_, err := testClient.GetClusterState(context.Background())
 	assert.NoError(t, err)
 
-	assert.NoError(t, testClient.ExcludeFromShardAllocation(context.TODO(), ""))
+	assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
 }
 
 func TestClientSupportsBasicAuth(t *testing.T) {
@@ -172,10 +172,10 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 				assert.Equal(t, tt.want.user.Password, password)
 			}))
 
-		_, err := testClient.GetClusterState(context.TODO())
+		_, err := testClient.GetClusterState(context.Background())
 		assert.NoError(t, err)
-		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.TODO(), ""))
-		assert.NoError(t, testClient.UpsertSnapshotRepository(context.TODO(), "", SnapshotRepository{}))
+		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
+		assert.NoError(t, testClient.UpsertSnapshotRepository(context.Background(), "", SnapshotRepository{}))
 
 	}
 
@@ -193,13 +193,13 @@ func TestClient_request(t *testing.T) {
 	}
 	requests := []func() (string, error){
 		func() (string, error) {
-			return "get", testClient.get(context.TODO(), testPath, nil)
+			return "get", testClient.get(context.Background(), testPath, nil)
 		},
 		func() (string, error) {
-			return "put", testClient.put(context.TODO(), testPath, nil, nil)
+			return "put", testClient.put(context.Background(), testPath, nil, nil)
 		},
 		func() (string, error) {
-			return "delete", testClient.delete(context.TODO(), testPath, nil, nil)
+			return "delete", testClient.delete(context.Background(), testPath, nil, nil)
 		},
 	}
 
@@ -258,7 +258,7 @@ func TestClientGetNodes(t *testing.T) {
 			Request:    req,
 		}
 	})
-	resp, err := testClient.GetNodes(context.TODO())
+	resp, err := testClient.GetNodes(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, 3, len(resp.Nodes))
 	require.Contains(t, resp.Nodes, "iXqjbgPYThO-6S7reL5_HA")
@@ -277,7 +277,7 @@ func TestGetInfo(t *testing.T) {
 			Request:    req,
 		}
 	})
-	info, err := testClient.GetClusterInfo(context.TODO())
+	info, err := testClient.GetClusterInfo(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, "af932d24216a4dd69ba47d2fd3214796", info.ClusterName)
 	require.Equal(t, "LGA3VblKTNmzP6Q6SWxfkw", info.ClusterUUID)
@@ -408,7 +408,7 @@ func TestClient_UpdateLicense(t *testing.T) {
 				},
 			},
 		}
-		got, err := testClient.UpdateLicense(context.TODO(), in)
+		got, err := testClient.UpdateLicense(context.Background(), in)
 		assert.NoError(t, err)
 		assert.Equal(t, true, got.Acknowledged)
 		assert.Equal(t, "valid", got.LicenseStatus)
@@ -441,7 +441,7 @@ func TestClient_GetLicense(t *testing.T) {
 				Request:    req,
 			}
 		})
-		got, err := testClient.GetLicense(context.TODO())
+		got, err := testClient.GetLicense(context.Background())
 		assert.NoError(t, err)
 		assert.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", got.UID)
 		assert.Equal(t, "platinum", got.Type)
@@ -481,7 +481,7 @@ func TestClient_AddVotingConfigExclusions(t *testing.T) {
 				Body:       ioutil.NopCloser(strings.NewReader("")),
 			}
 		})
-		err := client.AddVotingConfigExclusions(context.TODO(), []string{"a", "b"}, "")
+		err := client.AddVotingConfigExclusions(context.Background(), []string{"a", "b"}, "")
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.AddVotingConfigExlusions() error = %v, wantErr %v", err, tt.wantErr)
 		}
@@ -514,7 +514,7 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 				Body:       ioutil.NopCloser(strings.NewReader("")),
 			}
 		})
-		err := client.DeleteVotingConfigExclusions(context.TODO(), false)
+		err := client.DeleteVotingConfigExclusions(context.Background(), false)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.DeleteVotingConfigExclusions() error = %v, wantErr %v", err, tt.wantErr)
 		}
@@ -547,7 +547,7 @@ func TestClient_SetMinimumMasterNodes(t *testing.T) {
 				Body:       ioutil.NopCloser(strings.NewReader("")),
 			}
 		})
-		err := client.SetMinimumMasterNodes(context.TODO(), 1)
+		err := client.SetMinimumMasterNodes(context.Background(), 1)
 		if (err != nil) != tt.wantErr {
 			t.Errorf("Client.SetMinimumMasterNodes() error = %v, wantErr %v", err, tt.wantErr)
 		}

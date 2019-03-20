@@ -14,25 +14,30 @@ metadata:
   namespace: elastic-local
 
 ---
-
-# TODO: check if we need *all* these verbs
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: elastic-local
 rules:
 - apiGroups:
+    - storage.k8s.io
+  resources:
+    - storageclasses
+  verbs:
+    - get
+    - list
+    - watch
+- apiGroups:
   - ""
   resources:
-  - "persistentvolumes"
-  verbs: 
-  - "get"
-  - "list"
-  - "watch"
-  - "create"
-  - "delete"
-  - "update"
+  - persistentvolumes
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
 - apiGroups:
   - ""
   resources:
@@ -41,49 +46,33 @@ rules:
   - get
   - list
   - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - storage.k8s.io
-  resources:
-  - storageclasses
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
 - apiGroups:
   - ""
   resources:
-  - "events"
+    # an endpoint is used as a lock for leader election between providers
+    - endpoints
   verbs:
-  - "list"
-  - "watch"
-  - "create"
-  - "update"
-  - "patch"
+    - get
+    - create
+    - update
+    - list
+    - watch
 - apiGroups:
   - ""
   resources:
-  - "endpoints"
+    - events
   verbs:
-  - "get"
-  - "create"
-  - "update"
-  - "list"
-  - "watch"
+    - get
+    - create
+    - update
+    - list
+    - watch
 
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
   name: elastic-local
 roleRef:
   apiGroup: rbac.authorization.k8s.io

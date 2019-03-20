@@ -84,7 +84,9 @@ func updateLicense(
 			},
 		},
 	}
-	response, err := c.UpdateLicense(context.TODO(), request)
+	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+	defer cancel()
+	response, err := c.UpdateLicense(ctx, request)
 	if err != nil {
 		return err
 	}

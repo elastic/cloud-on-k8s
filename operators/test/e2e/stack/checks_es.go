@@ -51,7 +51,9 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch endpoint should eventually be reachable",
 		Test: helpers.Eventually(func() error {
-			if _, err := e.client.GetClusterHealth(context.TODO()); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+			defer cancel()
+			if _, err := e.client.GetClusterHealth(ctx); err != nil {
 				return err
 			}
 			return nil
@@ -63,7 +65,9 @@ func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) helpers.TestSt
 	return helpers.TestStep{
 		Name: "Elasticsearch version should be the expected one",
 		Test: func(t *testing.T) {
-			info, err := e.client.GetClusterInfo(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+			defer cancel()
+			info, err := e.client.GetClusterInfo(ctx)
 			require.NoError(t, err)
 			require.Equal(t, es.Spec.Version, info.Version.Number)
 		},
@@ -74,7 +78,9 @@ func (e *esClusterChecks) CheckESLicense(es estype.Elasticsearch) helpers.TestSt
 	return helpers.TestStep{
 		Name: "Elasticsearch license type should be the expected one",
 		Test: func(t *testing.T) {
-			license, err := e.client.GetLicense(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+			defer cancel()
+			license, err := e.client.GetLicense(ctx)
 			require.NoError(t, err)
 			assert.Equal(t, es.Spec.GetLicenseType().String(), license.Type)
 			assert.Equal(t, "active", license.Status)
@@ -86,7 +92,9 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch endpoint should eventually be reachable",
 		Test: helpers.Eventually(func() error {
-			health, err := e.client.GetClusterHealth(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+			defer cancel()
+			health, err := e.client.GetClusterHealth(ctx)
 			if err != nil {
 				return err
 			}
@@ -103,7 +111,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 	return helpers.TestStep{
 		Name: "Elasticsearch nodes topology should be the expected one",
 		Test: func(t *testing.T) {
-			nodes, err := e.client.GetNodes(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+			defer cancel()
+			nodes, err := e.client.GetNodes(ctx)
 			require.NoError(t, err)
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 

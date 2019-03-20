@@ -69,7 +69,9 @@ func (c *apmClusterChecks) CheckApmServerReachable() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "ApmServer endpoint should eventually be reachable",
 		Test: helpers.Eventually(func() error {
-			if _, err := c.apmClient.ServerInfo(context.TODO()); err != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), helpers.DefaultReqTimeout)
+			defer cancel()
+			if _, err := c.apmClient.ServerInfo(ctx); err != nil {
 				return err
 			}
 			return nil
@@ -81,7 +83,9 @@ func (c *apmClusterChecks) CheckApmServerVersion(as apmtype.ApmServer) helpers.T
 	return helpers.TestStep{
 		Name: "ApmServer version should be the expected one",
 		Test: func(t *testing.T) {
-			info, err := c.apmClient.ServerInfo(context.TODO())
+			ctx, cancel := context.WithTimeout(context.Background(), helpers.DefaultReqTimeout)
+			defer cancel()
+			info, err := c.apmClient.ServerInfo(ctx)
 			require.NoError(t, err)
 
 			require.Equal(t, as.Spec.Version, info.Version)
@@ -97,7 +101,9 @@ func (c *apmClusterChecks) CheckEventsAPI() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Events should be accepted",
 		Test: func(t *testing.T) {
-			eventsErrorResponse, err := c.apmClient.IntakeV2Events(context.TODO(), []byte(sampleBody))
+			ctx, cancel := context.WithTimeout(context.Background(), helpers.DefaultReqTimeout)
+			defer cancel()
+			eventsErrorResponse, err := c.apmClient.IntakeV2Events(ctx, []byte(sampleBody))
 			require.NoError(t, err)
 
 			// in the happy case, we get no error response

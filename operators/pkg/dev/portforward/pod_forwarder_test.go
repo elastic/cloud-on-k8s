@@ -92,7 +92,7 @@ func Test_podForwarder_DialContext(t *testing.T) {
 			tt.forwarder.dialerFunc = dialer.DialContext
 
 			if tt.args.ctx == nil {
-				tt.args.ctx = context.TODO()
+				tt.args.ctx = context.Background()
 			}
 
 			// wait for our goroutines to finish before returning

@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	defaultRetryDelay = 3 * time.Second
-	defaultTimeout    = 3 * time.Minute
+	DefaultRetryDelay = 3 * time.Second
+	defaultTimeout    = 5 * time.Minute
 )
 
 // ExitOnErr exits with code 1 if the given error is not nil
@@ -37,7 +37,7 @@ func Eventually(f func() error) func(*testing.T) {
 		err := retry.UntilSuccess(func() error {
 			fmt.Print(".") // super modern progress bar 2.0!
 			return f()
-		}, defaultTimeout, defaultRetryDelay)
+		}, defaultTimeout, DefaultRetryDelay)
 		fmt.Println()
 		require.NoError(t, err)
 	}

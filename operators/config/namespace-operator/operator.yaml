@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: elastic-namespace-operator
-  namespace: elastic-namespace-operators
+  namespace: $NAMESPACE_OPERATOR_NAMESPACE
   labels:
     control-plane: elastic-namespace-operator
     controller-tools.k8s.io: "1.0"
@@ -19,7 +19,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: elastic-namespace-operator
-  namespace: elastic-namespace-operators
+  namespace: $NAMESPACE_OPERATOR_NAMESPACE
   labels:
     control-plane: elastic-namespace-operator
     controller-tools.k8s.io: "1.0"
@@ -76,4 +76,4 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: webhook-server-secret
-  namespace: elastic-namespace-operators
+  namespace: $NAMESPACE_OPERATOR_NAMESPACE
