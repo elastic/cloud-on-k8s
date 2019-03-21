@@ -195,19 +195,19 @@ func doReconcile(
 		secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 	}
 
-	// prepare trusted CA : CA of this node + additional CA certs from trustrelationship
+	// prepare trusted CA certs: CA of this node + additional CA certs from trustrelationships
 	trusted := certificates.EncodePEMCert(ca.Cert.Raw)
 	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
 		trusted = append(trusted, caPemBytes...)
 	}
 
-	// Compare with current trusted CAs
-	updateTrustedCA := !bytes.Equal(trusted, secret.Data[certificates.CAFileName])
-	if updateTrustedCA {
+	// compare with current trusted CA certs.
+	updateTrustedCACerts := !bytes.Equal(trusted, secret.Data[certificates.CAFileName])
+	if updateTrustedCACerts {
 		secret.Data[certificates.CAFileName] = trusted
 	}
 
-	if issueNewCertificate || updateTrustedCA {
+	if issueNewCertificate || updateTrustedCACerts {
 		log.Info("Updating node certificate secret", "secret", secret.Name)
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
