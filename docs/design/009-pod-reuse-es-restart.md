@@ -108,7 +108,6 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
     * Compare the pods spec
     * Compare actual config secret content vs. expected config content
         * If actual config does not exist yet, requeue (stale cache).
-        * If actual config checksum does not match the pod `configuration-checksum` annotation, requeue (stale cache).
     * The comparison result will return
         * Pods to create
         * Pods to delete
