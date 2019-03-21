@@ -1,0 +1,39 @@
+#!/bin/bash -eu
+
+zombies=${1:-""}
+enableTrap=${2:-""}
+recursive=${3:-""}
+
+here=$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )
+
+on_trap() {
+    while true; do
+        if [[ "$zombies" != "" ]]; then
+            $here/zb &
+        fi
+        if [[ "recursive" != "" ]]; then
+                $here/script zombies traap &
+        fi
+        echo "tack $(date +%s)"
+        sleep 2
+    done
+}
+
+main() {
+    if [[ "$enableTrap" != "" ]]; then
+        trap on_trap 0 1 2 6 15
+    fi
+
+    while true; do
+        if [[ "$zombies" != "" ]]; then
+            $here/zb &
+        fi
+        if [[ "$recursive" != "" ]]; then
+            $here/script zombies traap &
+        fi
+        echo "tick $(date +%s)"
+        sleep 1
+    done
+}
+
+main
