@@ -523,19 +523,22 @@ func TestClient_DeleteVotingConfigExclusions(t *testing.T) {
 
 func TestClient_SetMinimumMasterNodes(t *testing.T) {
 	tests := []struct {
+		name         string
 		expectedPath string
 		version      version.Version
 		wantErr      bool
 	}{
 		{
+			name:         "mininum master nodes is essential in v6",
 			expectedPath: "/_cluster/settings",
 			version:      version.MustParse("6.7.0"),
 			wantErr:      false,
 		},
 		{
-			expectedPath: "",
+			name:         "in v7 it is still supported for bwc but devoid of meaning",
+			expectedPath: "/_cluster/settings",
 			version:      version.MustParse("7.0.0"),
-			wantErr:      true,
+			wantErr:      false,
 		},
 	}
 
