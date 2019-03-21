@@ -5,8 +5,6 @@
 package config
 
 import (
-	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
@@ -16,69 +14,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-// getDefaultConfigWithOuput returns a configuration with an Output containing the provided parameters.
-func getDefaultConfigWithOuput(hosts []string, username, password string) *Config {
-	return &Config{
-		Name: "${POD_NAME}",
-		ApmServer: ApmServerConfig{
-			Host:               fmt.Sprintf(":%d", DefaultHTTPPort),
-			SecretToken:        "${SECRET_TOKEN}",
-			ReadTimeout:        3600,
-			ShutdownTimeout:    "30s",
-			Rum:                RumConfig{Enabled: true, RateLimit: 10},
-			ConcurrentRequests: 1,
-			MaxUnzippedSize:    5242880,
-			SSL: TLSConfig{
-				Enabled: false,
-			},
-		},
-		XPackMonitoringEnabled: true,
-
-		Logging: LoggingConfig{
-			JSON:           true,
-			MetricsEnabled: true,
-		},
-		Queue: QueueConfig{
-			Mem: QueueMemConfig{
-				Events: 2000,
-				Flush: FlushConfig{
-					MinEvents: 267,
-					Timeout:   "1s",
-				},
-			},
-		},
-		SetupTemplateSettingsIndex: SetupTemplateSettingsIndex{
-			NumberOfShards:     1,
-			NumberOfReplicas:   1,
-			AutoExpandReplicas: "0-2",
-		},
-		Output: OutputConfig{
-			Elasticsearch: ElasticsearchOutputConfig{
-				Worker:           5,
-				MaxBulkSize:      267,
-				CompressionLevel: 5,
-				Hosts:            hosts,
-				Username:         username,
-				Password:         password,
-				SSL: TLSConfig{
-					Enabled:                true,
-					CertificateAuthorities: []string{"config/elasticsearch-certs/ca.pem"},
-				},
-			},
-		},
-	}
-}
-
-func TestFromResourceSpec(t *testing.T) {
+func Test_getCredentials(t *testing.T) {
 	type args struct {
 		c  k8s.Client
 		as v1alpha1.ApmServer
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    *Config
-		wantErr bool
+		name         string
+		args         args
+		wantUsername string
+		wantPassword string
+		wantErr      bool
 	}{
 		{
 			name: "Test output configuration with a SecretKeyRef",
@@ -112,21 +58,22 @@ func TestFromResourceSpec(t *testing.T) {
 					},
 				},
 			},
-			want: getDefaultConfigWithOuput(
-				[]string{"https://elasticsearch-sample-es.default.svc.cluster.local:9200"},
-				"elastic-internal-apm",
-				"a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy"),
+			wantUsername: "elastic-internal-apm",
+			wantPassword: "a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FromResourceSpec(tt.args.c, tt.args.as)
+			gotUsername, gotPassword, err := getCredentials(tt.args.c, tt.args.as)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("FromResourceSpec() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FromResourceSpec() = %v, want %v", got, tt.want)
+			if gotUsername != tt.wantUsername {
+				t.Errorf("getCredentials() gotUsername = %v, want %v", gotUsername, tt.wantUsername)
+			}
+			if gotPassword != tt.wantPassword {
+				t.Errorf("getCredentials() gotPassword = %v, want %v", gotPassword, tt.wantPassword)
 			}
 		})
 	}
