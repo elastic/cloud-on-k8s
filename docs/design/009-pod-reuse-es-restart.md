@@ -150,6 +150,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
         * If annotated with `start`:
             * If the pod is marked for reuse, update the configuration secret with the new expected configuration (else, we'll use the current one)
             * Check if the config (expected one if reuse, else current one) is propagated to the pod by requesting the process manager (`GET /es/status` should return the configuration file checksum), or requeue.
+            * Update the pods labels if required (eg. new node types)
             * Start the ES process: `POST /es/start` (idempotent)
             * Wait until the ES process is started (`GET /es/status`)
             * Enable shards allocations
