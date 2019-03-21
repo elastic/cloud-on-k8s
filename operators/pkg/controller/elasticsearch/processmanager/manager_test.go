@@ -8,11 +8,12 @@ package processmanager
 
 import (
 	"context"
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Simple_Script(t *testing.T) {
