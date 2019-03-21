@@ -6,13 +6,16 @@ package helpers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 )
 
 // NewHTTPClient creates a new HTTP client that is aware of any port forwarding configuration.
 func NewHTTPClient() http.Client {
-	client := http.Client{}
+	client := http.Client{
+		Timeout: 60 * time.Second,
+	}
 	if *autoPortForward {
 		client.Transport = &http.Transport{
 			DialContext: portforward.NewForwardingDialer().DialContext,

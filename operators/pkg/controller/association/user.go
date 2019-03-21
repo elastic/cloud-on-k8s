@@ -96,9 +96,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 	if err != nil {
 		return err
 	}
-	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
+	reconciledPw := reconciledSecret.Data[InternalKibanaServerUserName] // make sure we don't constantly update the password
 
-	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalKibanaServerUserName], bcrypt.DefaultCost)
+	bcryptHash, err := bcrypt.GenerateFromPassword(reconciledPw, bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -131,8 +131,10 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Expected:   expectedUser,
 		Reconciled: &reconciledUser,
 		NeedsUpdate: func() bool {
-			return !hasExpectedLabels(expectedUser, &reconciledSecret) ||
-				!reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
+			return !hasExpectedLabels(expectedUser, &reconciledUser) ||
+				expectedUser.Spec.Name != reconciledUser.Spec.Name ||
+				!reflect.DeepEqual(expectedUser.Spec.UserRoles, reconciledUser.Spec.UserRoles) ||
+				bcrypt.CompareHashAndPassword([]byte(reconciledUser.Spec.PasswordHash), reconciledPw) != nil
 		},
 		UpdateReconciled: func() {
 			setExpectedLabels(expectedUser, &reconciledUser)

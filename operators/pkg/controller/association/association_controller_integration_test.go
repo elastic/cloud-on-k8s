@@ -121,6 +121,28 @@ func TestReconcile(t *testing.T) {
 		}
 	})
 
+	// Manually delete secret containing Kibana user credentials and expect recreation
+	kbUserSecretKey := secretKey(*instance)
+	test.CheckResourceDeletionTriggersReconcile(
+		t, c, requests,
+		kbUserSecretKey,
+		&corev1.Secret{
+			ObjectMeta: k8s.ToObjectMeta(kbUserSecretKey),
+		},
+		expectedRequest,
+	)
+
+	// Manually delete user resource and expect recreation
+	kbUserKey := userKey(*instance)
+	test.CheckResourceDeletionTriggersReconcile(
+		t, c, requests,
+		kbUserKey,
+		&esv1alpha1.User{
+			ObjectMeta: k8s.ToObjectMeta(kbUserKey),
+		},
+		expectedRequest,
+	)
+
 	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
 	test.DeleteIfExists(t, c, es)
 	test.DeleteIfExists(t, c, caSecret)
