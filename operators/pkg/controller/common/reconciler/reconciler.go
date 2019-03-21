@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -75,7 +76,11 @@ func ReconcileResource(params Params) error {
 	}
 	namespace := metaObj.GetNamespace()
 	name := metaObj.GetName()
-	kind := params.Expected.GetObjectKind().GroupVersionKind().Kind
+	gvk, err := apiutil.GVKForObject(params.Expected, params.Scheme)
+	if err != nil {
+		return err
+	}
+	kind := gvk.Kind
 
 	if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
 		return err

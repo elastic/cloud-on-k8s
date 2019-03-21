@@ -11,8 +11,11 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -148,6 +151,49 @@ func Test_reconcileEsUser(t *testing.T) {
 				for k, v := range expectedLabels {
 					assert.Equal(t, v, u.Labels[k])
 				}
+			},
+		},
+		{
+			name: "Reconcile avoids unnecessary updates",
+			args: args{
+				initialObjects: []runtime.Object{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Namespace: "default",
+							Name:      "foo-elastic-internal-kibana",
+							Labels: map[string]string{
+								kibana.KibanaNameLabelName: "kibana",
+								common.TypeLabelName:       kibana.Type,
+								AssociationLabelName:       associationFixture.Name,
+							},
+						},
+						Data: map[string][]byte{
+							InternalKibanaServerUserName: []byte("my-secret-pw"),
+						},
+					},
+					&estype.User{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      resourceNameFixture,
+							Namespace: "default",
+							Labels: map[string]string{
+								AssociationLabelName:       associationFixture.Name,
+								common.TypeLabelName:       label.Type,
+								label.ClusterNameLabelName: "es",
+							},
+						},
+						Spec: estype.UserSpec{
+							Name:         InternalKibanaServerUserName,
+							PasswordHash: "$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e",
+							UserRoles:    []string{user.KibanaSystemUserBuiltinRole},
+						},
+					}},
+				assoc: associationFixture,
+			},
+			wantErr: false,
+			postCondition: func(c k8s.Client) {
+				var u estype.User
+				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
+				require.Equal(t, "$2a$10$mE3yo/AkZgR4eVW9kbA1TeIQ40Jv6WaWU494rx4C6EhLvuY0BSg4e", u.Spec.PasswordHash)
 			},
 		},
 		{
