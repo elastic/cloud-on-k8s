@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/cert-initializer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
@@ -86,6 +88,8 @@ func newInitContainers(
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
 	nodeCertificatesVolume volume.SecretVolume,
+	reloadCredsUserSecretVolume volume.SecretVolume,
+	keystoreSecretVolume volume.SecretVolume,
 	extraFilesSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
@@ -119,6 +123,9 @@ func newEnvironmentVars(
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(network.TransportClientPort)},
 	}
 
+	vars = append(vars, processmanager.NewEnvVars()...)
+	vars = append(vars, keystore.NewEnvVars(p, nodeCertificatesVolume, reloadCredsUserSecretVolume, keystoreSecretVolume)...)
+	vars = append(vars, certinitializer.NewEnvVars()...)
 	vars = append(vars, xpackEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
 
 	return vars

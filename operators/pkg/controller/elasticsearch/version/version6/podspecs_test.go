@@ -5,12 +5,10 @@
 package version6
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
@@ -30,6 +28,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
 		nodeCertificatesVolume volume.SecretVolume
+		reloadCredsUserVolume  volume.SecretVolume
+		keystoreVolume         volume.SecretVolume
 		extraFilesSecretVolume volume.SecretVolume
 	}
 
@@ -58,7 +58,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 					ProbeUser:        testProbeUser,
 					ReloadCredsUser:  testReloadCredsUser,
 				},
-				nodeCertificatesVolume: volume.SecretVolume{},
+				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
+				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
+				keystoreVolume:         volume.NewSecretVolumeWithMountPath("keystore", "/keystore", "/keystore"),
 				extraFilesSecretVolume: volume.SecretVolume{},
 			},
 			wantEnvSubset: []corev1.EnvVar{
@@ -77,6 +79,14 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: "username1"},
 				{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+				{Name: "PROC_NAME", Value: "es"},
+				{Name: "PROC_CMD", Value: "/usr/local/bin/docker-entrypoint.sh"},
+				{Name: "KEYSTORE_SOURCE_DIR", Value: "/keystore"},
+				{Name: "KEYSTORE_RELOAD_CREDENTIALS", Value: "true"},
+				{Name: "KEYSTORE_ES_USERNAME", Value: "username2"},
+				{Name: "KEYSTORE_ES_PASSWORD_FILE", Value: "/creds/username2"},
+				{Name: "KEYSTORE_ES_CA_CERTS_PATH", Value: "/certs/ca.pem"},
+				{Name: "KEYSTORE_ES_ENDPOINT", Value: "https://127.0.0.1:9200"},
 			},
 		},
 		{
@@ -171,7 +181,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newEnvironmentVars(
-				tt.args.p, tt.args.nodeCertificatesVolume, tt.args.extraFilesSecretVolume,
+				tt.args.p, tt.args.nodeCertificatesVolume, tt.args.reloadCredsUserVolume, tt.args.keystoreVolume, tt.args.extraFilesSecretVolume,
 			)
 			for _, v := range tt.wantEnvSubset {
 				assert.Contains(t, got, v)
@@ -262,7 +272,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 13, len(esPodSpec.Volumes))
+	assert.Equal(t, 12, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -271,6 +281,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
-	assert.Equal(t, 11, len(esContainer.VolumeMounts))
+	assert.Equal(t, 12, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

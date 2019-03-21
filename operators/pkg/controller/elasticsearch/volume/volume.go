@@ -16,8 +16,12 @@ const (
 	ProbeUserVolumeName                   = "probe-user"
 	ReloadCredsUserSecretMountPath        = "/mnt/elastic/reload-creds-user"
 	ReloadCredsUserVolumeName             = "reload-creds-user"
-	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
+	NodeCertificatesSecretVolumeName      = "node-certificates"
+	KeystoreSecretMountPath               = "/mnt/elastic/keystore-secrets"
+	KeystoreSecretVolumeName              = "keystore"
+	ExtraFilesSecretVolumeMountPath       = "/usr/share/elasticsearch/config/extrafiles"
+	ExtraFilesSecretVolumeName            = "extrafiles"
 )
 
 var (

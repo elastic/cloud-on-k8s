@@ -13,9 +13,9 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
@@ -36,7 +36,7 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore, extra volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -84,7 +84,7 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(pod.NewPodSpecParams, volume.SecretVolume, volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore, extra volume.SecretVolume) []corev1.EnvVar,
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, error) {
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
@@ -93,47 +93,35 @@ func podSpec(
 	}
 
 	terminationGracePeriodSeconds := pod.DefaultTerminationGracePeriodSeconds
-	volumes := map[string]volume.VolumeLike{
-		p.ConfigMapVolume.Name():   p.ConfigMapVolume,
-		p.UsersSecretVolume.Name(): p.UsersSecretVolume,
-	}
 
-	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+	probeSecretVolume := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
-	volumes[probeSecret.Name()] = probeSecret
 
-	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+	credsSecretVolume := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
 		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
 	)
-	volumes[reloadCredsSecret.Name()] = reloadCredsSecret
 
 	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
-		"extrafiles",
-		"/usr/share/elasticsearch/config/extrafiles",
+		volume.ExtraFilesSecretVolumeName,
+		volume.ExtraFilesSecretVolumeMountPath,
 	)
-
-	volumes[extraFilesSecretVolume.Name()] = extraFilesSecretVolume
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+	nodeCertsSecretVolume := volume.NewSecretVolumeWithMountPath(
 		"",
 		volume.NodeCertificatesSecretVolumeName,
 		volume.NodeCertificatesSecretVolumeMountPath,
 	)
 
-	volumes[nodeCertificatesVolume.Name()] = nodeCertificatesVolume
-
-	keystoreVolume := volume.NewSecretVolumeWithMountPath(
+	keystoreSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.KeystoreSecretRef.Name,
-		keystore.SecretVolumeName,
-		keystore.SecretMountPath)
-
-	volumes[keystoreVolume.Name()] = keystoreVolume
+		volume.KeystoreSecretVolumeName,
+		volume.KeystoreSecretMountPath)
 
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
@@ -142,13 +130,14 @@ func podSpec(
 		resourceLimits[corev1.ResourceCPU] = *p.Resources.Limits.Cpu()
 	}
 
+	env := newEnvironmentVarsFn(p, nodeCertsSecretVolume, credsSecretVolume, keystoreSecretVolume, extraFilesSecretVolume)
+
 	// TODO: Security Context
 	automountServiceAccountToken := false
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
-
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, extraFilesSecretVolume),
+			Env:             env,
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,
@@ -179,15 +168,12 @@ func podSpec(
 				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.ConfigMapVolume.VolumeMount(),
-				probeSecret.VolumeMount(),
+				probeSecretVolume.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
-				nodeCertificatesVolume.VolumeMount(),
+				nodeCertsSecretVolume.VolumeMount(),
+				keystoreSecretVolume.VolumeMount(),
 			),
-			Command: []string{
-				"/usr/share/elasticsearch/bin/process-manager",
-				"--name", "es",
-				"--cmd", "/usr/local/bin/docker-entrypoint.sh",
-			},
+			Command: []string{processmanager.CommandPath},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(
@@ -195,16 +181,16 @@ func podSpec(
 			initcontainer.PrivateKeySharedVolume.Volume(),
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
-			probeSecret.Volume(),
-			reloadCredsSecret.Volume(),
+			probeSecretVolume.Volume(),
+			credsSecretVolume.Volume(),
 			extraFilesSecretVolume.Volume(),
-			keystoreVolume.Volume(),
+			keystoreSecretVolume.Volume(),
 		),
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
+	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertsSecretVolume)
 	if err != nil {
 		return corev1.PodSpec{}, err
 	}
@@ -236,7 +222,7 @@ func NewPod(
 		}
 	}
 
-	pod := corev1.Pod{
+	return corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        pod.NewNodeName(es.Name),
 			Namespace:   es.Namespace,
@@ -244,9 +230,7 @@ func NewPod(
 			Annotations: podSpecCtx.TopologyElement.PodTemplate.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
-	}
-
-	return pod, nil
+	}, nil
 }
 
 func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {

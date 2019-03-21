@@ -14,7 +14,7 @@ const (
 	EnvSourceDir         = "KEYSTORE_SOURCE_DIR"
 	EnvKeystoreBinary    = "KEYSTORE_BINARY"
 	EnvKeystorePath      = "KEYSTORE_PATH"
-	EnvReloadCredentials = "KEYSTORE_RELOAD_CREDENTIALS_ENABLED"
+	EnvReloadCredentials = "KEYSTORE_RELOAD_CREDENTIALS"
 	EnvEsUsername        = "KEYSTORE_ES_USERNAME"
 	EnvEsPassword        = "KEYSTORE_ES_PASSWORD"
 	EnvEsPasswordFile    = "KEYSTORE_ES_PASSWORD_FILE"
