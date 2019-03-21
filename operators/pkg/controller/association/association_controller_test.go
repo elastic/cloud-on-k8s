@@ -40,12 +40,18 @@ func Test_deleteOrphanedResources(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
 						Namespace: associationFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
 						Namespace: associationFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
 			},
@@ -65,6 +71,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Labels: map[string]string{
 							AssociationLabelName: associationFixture.Name,
 						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
 				&estype.User{
@@ -73,6 +82,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Namespace: associationFixture.Namespace,
 						Labels: map[string]string{
 							AssociationLabelName: associationFixture.Name,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
 						},
 					},
 				},
@@ -83,6 +95,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Labels: map[string]string{
 							AssociationLabelName: associationFixture.Name,
 						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
 				&estype.User{
@@ -91,6 +106,9 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Namespace: "other-ns",
 						Labels: map[string]string{
 							AssociationLabelName: associationFixture.Name,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
 						},
 					},
 				},

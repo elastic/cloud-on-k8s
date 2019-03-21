@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -111,7 +112,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
 	defer func() {
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
@@ -275,7 +276,7 @@ func deleteOrphanedResources(c k8s.Client, assoc assoctype.KibanaElasticsearchAs
 	}
 	expectedSecretKey := secretKey(assoc)
 	for _, s := range secrets.Items {
-		if k8s.ExtractNamespacedName(&s) != expectedSecretKey {
+		if k8s.ExtractNamespacedName(&s) != expectedSecretKey && metav1.IsControlledBy(&s, &assoc) {
 			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 			if err := c.Delete(&s); err != nil {
 				return err
@@ -289,7 +290,7 @@ func deleteOrphanedResources(c k8s.Client, assoc assoctype.KibanaElasticsearchAs
 	}
 	expectedUserKey := userKey(assoc)
 	for _, u := range users.Items {
-		if k8s.ExtractNamespacedName(&u) != expectedUserKey {
+		if k8s.ExtractNamespacedName(&u) != expectedUserKey && metav1.IsControlledBy(&u, &assoc) {
 			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
 			if err := c.Delete(&u); err != nil {
 				return err
