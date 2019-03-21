@@ -14,6 +14,10 @@ spec:
     description: Available nodes
     name: nodes
     type: integer
+  - JSONPath: .spec.version
+    description: Elasticsearch version
+    name: version
+    type: string
   - JSONPath: .status.phase
     name: phase
     type: string
