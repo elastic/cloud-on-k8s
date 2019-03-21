@@ -90,7 +90,7 @@ func getCredentials(c k8s.Client, as v1alpha1.ApmServer) (username, password str
 		return auth.Inline.Username, auth.Inline.Password, nil
 	}
 
-	// if auth is provided via a secret, we must resolve it at this point in order to have it as part of the config.
+	// if auth is provided via a secret, resolve credentials from it.
 	if auth.SecretKeyRef != nil {
 		secretObjKey := types.NamespacedName{Namespace: as.Namespace, Name: auth.SecretKeyRef.Name}
 		var secret v1.Secret
