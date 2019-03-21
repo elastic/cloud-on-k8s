@@ -45,6 +45,16 @@ var associationFixture = assoctype.KibanaElasticsearchAssociation{
 	},
 }
 
+var t = true
+var ownerRefFixture = metav1.OwnerReference{
+	APIVersion:         "associations.k8s.elastic.co/v1alpha1",
+	Kind:               "KibanaElasticsearchAssociation",
+	Name:               "foo",
+	UID:                "",
+	Controller:         &t,
+	BlockOwnerDeletion: &t,
+}
+
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
