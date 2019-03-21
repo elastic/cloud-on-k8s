@@ -9,7 +9,6 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -41,57 +40,6 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 	// compare endpoint and user creds
 	return c.Endpoint == c2.Endpoint &&
 		c.User == c2.User
-}
-
-func versioned(b *baseClient, v version.Version) Client {
-	v6 := clientV6{
-		baseClient: *b,
-	}
-	switch v.Major {
-	case 7:
-		return &clientV7{
-			clientV6: v6,
-		}
-	default:
-		return &v6
-	}
-}
-
-// APIError is a non 2xx response from the Elasticsearch API
-type APIError struct {
-	response *http.Response
-}
-
-// Error() implements the error interface.
-func (e *APIError) Error() string {
-	defer e.response.Body.Close()
-	reason := "unknown"
-	// Elasticsearch has a detailed error message in the response body
-	var errMsg ErrorResponse
-	err := json.NewDecoder(e.response.Body).Decode(&errMsg)
-	if err == nil {
-		reason = errMsg.Error.Reason
-	}
-	return fmt.Sprintf("%s: %s", e.response.Status, reason)
-}
-
-// IsNotFound checks whether the error was a HTTP 404 error.
-func IsNotFound(err error) bool {
-	switch err := err.(type) {
-	case *APIError:
-		return err.response.StatusCode == http.StatusNotFound
-	default:
-		return false
-	}
-}
-
-func checkError(response *http.Response) error {
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return &APIError{
-			response: response,
-		}
-	}
-	return nil
 }
 
 func (c *baseClient) doRequest(context context.Context, request *http.Request) (*http.Response, error) {
@@ -165,5 +113,28 @@ func (c *baseClient) request(
 		}
 	}
 
+	return nil
+}
+
+func versioned(b *baseClient, v version.Version) Client {
+	v6 := clientV6{
+		baseClient: *b,
+	}
+	switch v.Major {
+	case 7:
+		return &clientV7{
+			clientV6: v6,
+		}
+	default:
+		return &v6
+	}
+}
+
+func checkError(response *http.Response) error {
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return &APIError{
+			response: response,
+		}
+	}
 	return nil
 }

@@ -8,6 +8,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -54,7 +56,7 @@ type Role struct {
 	} `json:"transient_metadata,omitempty"`*/
 }
 
-// // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
+// Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client interface {
 	Equal(other Client) bool
 	// GetClusterInfo get the cluster information at /
@@ -129,4 +131,32 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v 
 		},
 	}
 	return versioned(base, v)
+}
+
+// APIError is a non 2xx response from the Elasticsearch API
+type APIError struct {
+	response *http.Response
+}
+
+// Error() implements the error interface.
+func (e *APIError) Error() string {
+	defer e.response.Body.Close()
+	reason := "unknown"
+	// Elasticsearch has a detailed error message in the response body
+	var errMsg ErrorResponse
+	err := json.NewDecoder(e.response.Body).Decode(&errMsg)
+	if err == nil {
+		reason = errMsg.Error.Reason
+	}
+	return fmt.Sprintf("%s: %s", e.response.Status, reason)
+}
+
+// IsNotFound checks whether the error was a HTTP 404 error.
+func IsNotFound(err error) bool {
+	switch err := err.(type) {
+	case *APIError:
+		return err.response.StatusCode == http.StatusNotFound
+	default:
+		return false
+	}
 }
