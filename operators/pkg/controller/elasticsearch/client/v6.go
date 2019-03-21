@@ -69,14 +69,6 @@ func (c *clientV6) SetMinimumMasterNodes(ctx context.Context, n int) error {
 	return c.put(ctx, "/_cluster/settings", &zenSettings, nil)
 }
 
-func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
-	return errors.New("Not supported in Elasticsearch 6.x")
-}
-
-func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
-	return errors.New("Not supported in Elasticsearch 6.x")
-}
-
 func (c *clientV6) ReloadSecureSettings(ctx context.Context) error {
 	return c.post(ctx, "/_nodes/reload_secure_settings", nil, nil)
 }
@@ -95,6 +87,14 @@ func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 func (c *clientV6) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
 	var response LicenseUpdateResponse
 	return response, c.post(ctx, "/_xpack/license", licenses, &response)
+}
+
+func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
+	return errors.New("Not supported in Elasticsearch 6.x")
+}
+
+func (c *clientV6) DeleteVotingConfigExclusions(ctx context.Context, waitForRemoval bool) error {
+	return errors.New("Not supported in Elasticsearch 6.x")
 }
 
 // Equal returns true if c2 can be considered the same as c

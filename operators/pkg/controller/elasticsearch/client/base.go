@@ -7,7 +7,6 @@ package client
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -15,7 +14,6 @@ import (
 	"net/http"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 )
 
@@ -43,36 +41,6 @@ func (c *baseClient) equal(c2 *baseClient) bool {
 	// compare endpoint and user creds
 	return c.Endpoint == c2.Endpoint &&
 		c.User == c2.User
-}
-
-// NewElasticsearchClient creates a new client for the target cluster.
-//
-// If dialer is not nil, it will be used to create new TCP connections
-func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v version.Version, caCerts []*x509.Certificate) Client {
-	certPool := x509.NewCertPool()
-	for _, c := range caCerts {
-		certPool.AddCert(c)
-	}
-
-	transportConfig := http.Transport{
-		TLSClientConfig: &tls.Config{
-			RootCAs: certPool,
-		},
-	}
-
-	// use the custom dialer if provided
-	if dialer != nil {
-		transportConfig.DialContext = dialer.DialContext
-	}
-	base := &baseClient{
-		Endpoint: esURL,
-		User:     esUser,
-		caCerts:  caCerts,
-		HTTP: &http.Client{
-			Transport: &transportConfig,
-		},
-	}
-	return versioned(base, v)
 }
 
 func versioned(b *baseClient, v version.Version) Client {

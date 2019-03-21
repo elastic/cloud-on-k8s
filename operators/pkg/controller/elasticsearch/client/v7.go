@@ -17,6 +17,16 @@ type clientV7 struct {
 	clientV6
 }
 
+func (c *clientV7) GetLicense(ctx context.Context) (License, error) {
+	var license LicenseResponse
+	return license.License, c.get(ctx, "/_license", &license)
+}
+
+func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
+	var response LicenseUpdateResponse
+	return response, c.post(ctx, "/_license", licenses, &response)
+}
+
 func (c *clientV7) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	if timeout == "" {
 		timeout = DefaultVotingConfigExclusionsTimeout
@@ -45,21 +55,6 @@ func (c *clientV7) DeleteVotingConfigExclusions(ctx context.Context, waitForRemo
 	return nil
 }
 
-func (c *clientV7) SetMinimumMasterNodes(ctx context.Context, n int) error {
-	return errors.New("Not supported in Elasticsearch 7.0")
-}
-
-func (c *clientV7) GetLicense(ctx context.Context) (License, error) {
-	var license LicenseResponse
-	return license.License, c.get(ctx, "/_license", &license)
-}
-
-func (c *clientV7) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error) {
-	var response LicenseUpdateResponse
-	return response, c.post(ctx, "/_license", licenses, &response)
-}
-
-// // Equal returns true if c2 can be considered the same as c
 func (c *clientV7) Equal(c2 Client) bool {
 	other, ok := c2.(*clientV7)
 	if !ok {
