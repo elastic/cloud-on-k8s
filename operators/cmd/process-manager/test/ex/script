@@ -1,0 +1,36 @@
+#!/bin/bash -eu
+
+zombies=${1:-""}
+more=${2:-""}
+script2=${3:-""}
+
+on_trap() {
+    while true; do
+        ex/zb &
+        if [[ "$script2" != "" ]]; then
+                ex/script2 &
+        fi
+        echo trap1 $(date)
+        sleep 2
+    done
+}
+
+main() {
+    if [[ "$more" != "" ]]; then
+        trap on_trap 0 1 2 6 15 9
+    fi
+
+    while true; do
+        if [[ "$zombies" != "" ]]; then
+            ex/zb &
+ #           exec ex/zb &
+            if [[ "$script2" != "" ]]; then
+                ex/script2 &
+            fi
+         fi
+        echo script1 $(date)
+        sleep 1
+    done
+}
+
+main
