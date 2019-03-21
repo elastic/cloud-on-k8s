@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
@@ -189,11 +190,7 @@ func podSpec(
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
 			),
-			Command: []string{
-				"/usr/share/elasticsearch/bin/process-manager",
-				"--name", "es",
-				"--cmd", "/usr/local/bin/docker-entrypoint.sh",
-			},
+			Command: []string{processmanager.CommandPath},
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 		Volumes: append(

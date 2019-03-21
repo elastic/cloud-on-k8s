@@ -2,65 +2,57 @@
 
 Goals:
 - Control the Elasticsearch process (stop/start)
-- Fold the keystore-updater & the cert initializer
-- Report the keystore-updater health
-- Be extremely conservative with resource usage
+- Run the keystore-updater
 
-# Configuration
+## Configuration
 
-Flags to declare the process to manage:
+Env vars to configure the process-manager:
 
-    --name es
-    --cmd /usr/local/bin/docker-entrypoint.sh
-
+	PM_PROC_NAME=es
+	PM_PROC_CMD=/usr/local/bin/docker-entrypoint.sh
+	PM_REAPER=false
+	PM_TLS=false
+	
 Env vars to configure the keystore-updater:
 
-	SOURCE_DIR=/volumes/secrets
+	KEYSTORE_SOURCE_DIR=/volumes/secrets
 	KEYSTORE_BINARY=/usr/share/elasticsearch/bin/elasticsearch-keystore
 	KEYSTORE_PATH=/usr/share/elasticsearch/config/elasticsearch.keystore
-	RELOAD_CREDENTIALS=false
-	USERNAME=
-	PASSWORD=
-	PASSWORD_FILE=
-	CERTIFICATES_PATH=/volume/node-certs
-	ENDPOINT=https://127.0.0.1:9200
+	KEYSTORE_RELOAD_CREDENTIALS=false
+	KEYSTORE_ES_USERNAME=
+	KEYSTORE_ES_PASSWORD=
+	KEYSTORE_ES_PASSWORD_FILE=
+	KEYSTORE_ES_CA_CERTS_PATH=/volume/node-certs
+	KEYSTORE_ES_ENDPOINT=https://127.0.0.1:9200
+	KEYSTORE_ES_VERSION=
 
-Flags to configure the cert initializer:
+## HTTP API
 
-	--port
-	--private-key-path
-	--cert-path
-	--csr-path
-
-# HTTP API
-
-Exposes the control of the Elasticsearch process over HTTP.
+Exposes the control of the Elasticsearch process over HTTP or HTTPS.
 
 ```
-/health
-/es/start
-/es/stop
-/es/restart
-/es/kill
-/es/status
+GET     /health                         =>  200 || 500
+POST    /es/start                       =>  202, starting || 200, started || 500
+POST    /es/stop?hard=true&timeout=10   =>  202, stopping || 200, stopped || 500
+GET     /es/status                      =>  200 || 500
+GET     /keystore/status                =>  200 || 500
 ```
 
-# FAQ
+## FAQ
 
 #### Blocking/non-blocking start/stop?
 
-- Non-blocking start
-- Blocking stop with a timeout (5s)
+The start and stop endpoints are non-blocking and idempotent.
 
 #### Stop behaviour?
 
-Kill in 2 phases: 
-- 1: soft kill (SIGTERM)
-- 2: hard kill (SIGKILL)
-    - immediately after the soft kill success, to try to kill resilient child processes
-    - after a timeout, if the kill soft fails
+By default, the stop is a soft kill (SIGTERM).
 
-#### Progress group usage to avoid zombies processes?
+A hard kill can be forced (`/es/stop?force=true`).
+
+An overridable timeout is configured to kill hard (SIGKILL) if the process has not terminated fast enough `/es/stop?timeout=10`.
+
+#### Process group usage to avoid zombies processes?
 
 The process is started with a dedicated group to forward signals to the main process and all children:
 
@@ -72,6 +64,8 @@ When killing the process, the signal is sent to the negation of the group number
 
 #### Reap zombies processes?
 
+A Zombies processes repear can be started.
+
 How does it work?
 
 It blocks waiting for child processes to exit. It's done by listening `SIGCHLD` signals and 
@@ -81,8 +75,6 @@ attempt to reap abandoned child processes by calling:
 
 This can steal return values from uses of packages like Go's exec.
 
-Some examples:
-- https://github.com/hashicorp/go-reap/blob/master/reap_unix.go
-- https://github.com/aerokube/init/blob/master/init.go#L50 
-- https://github.com/ramr/go-reaper/blob/master/reaper.go#L40
-- https://github.com/pablo-ruth/go-init/blob/master/main.go#L94
+Heavily inspired from https://github.com/hashicorp/go-reap/blob/master/reap_unix.go.
+
+

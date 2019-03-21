@@ -1,0 +1,97 @@
+package processmanager
+
+import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+type Client struct {
+	Endpoint string
+	caCerts  []*x509.Certificate
+	HTTP     *http.Client
+}
+
+func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
+	client := http.DefaultClient
+	if len(caCerts) > 0 {
+		certPool := x509.NewCertPool()
+		for _, c := range caCerts {
+			certPool.AddCert(c)
+		}
+
+		transportConfig := http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: certPool,
+			},
+		}
+
+		client = &http.Client{
+			Transport: &transportConfig,
+		}
+	}
+
+	return &Client{
+		endpoint,
+		caCerts,
+		client,
+	}
+}
+
+func (c *Client) Start(ctx context.Context) (ProcessStatus, error) {
+	var status ProcessStatus
+	err := c.doRequest(ctx, "GET", "/es/start", &status)
+	return status, err
+}
+
+func (c *Client) Stop(ctx context.Context, force bool) (ProcessStatus, error) {
+	uri := "/es/stop"
+	if force {
+		uri += "?force=true"
+	}
+	var status ProcessStatus
+	err := c.doRequest(ctx, "GET", uri, &status)
+	return status, err
+}
+
+func (c *Client) Status(ctx context.Context) (ProcessStatus, error) {
+	var status ProcessStatus
+	err := c.doRequest(ctx, "GET", "/es/status", &status)
+	return status, err
+}
+
+func (c *Client) doRequest(ctx context.Context, method string, uri string, obj interface{}) error {
+	url := c.Endpoint + uri
+	req, err := http.NewRequest(method, url, nil)
+	req = req.WithContext(ctx)
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if 200 > resp.StatusCode || resp.StatusCode > 299 {
+		// Try to unmarshal the response anyway
+		_ = json.Unmarshal(body, obj)
+
+		return fmt.Errorf("%s %s failed, status: %d, err: %s", method, url, resp.StatusCode, string(body))
+	}
+
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

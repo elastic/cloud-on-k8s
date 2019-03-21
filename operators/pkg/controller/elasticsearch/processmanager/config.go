@@ -1,0 +1,85 @@
+package processmanager
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+var (
+	procNameFlag = envToFlag(EnvProcName)
+	procCmdFlag  = envToFlag(EnvProcCmd)
+	reaperFlag   = envToFlag(EnvReaper)
+	tlsFlag      = envToFlag(EnvTLS)
+	certPathFlag = envToFlag(EnvCertPath)
+	keyPathFlag  = envToFlag(EnvKeyPath)
+)
+
+// Config contains configuration parameters for the process manager.
+type Config struct {
+	ProcessName  string
+	ProcessCmd   string
+	EnableReaper bool
+
+	EnableTLS bool
+	CertPath  string
+	KeyPath   string
+}
+
+// BindFlagsToEnv binds flags to environment variables.
+func BindFlagsToEnv(cmd *cobra.Command) error {
+	cmd.Flags().StringP(procNameFlag, "", "", "process name to manage")
+	cmd.Flags().StringP(procCmdFlag, "", "", "process command to manage")
+	cmd.Flags().BoolP(reaperFlag, "", false, "enable the child processes reaper")
+	cmd.Flags().BoolP(tlsFlag, "", false, "secure the HTTP server using TLS")
+	cmd.Flags().StringP(certPathFlag, "", "", "path to the certificate file used to secure the HTTP server")
+	cmd.Flags().StringP(keyPathFlag, "", "", "path to the private key file used to secure the HTTP server")
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
+
+	return viper.BindPFlags(cmd.Flags())
+}
+
+// NewConfigFromFlags creates a Config from the flags.
+func NewConfigFromFlags() (Config, error) {
+	procName := viper.GetString(procNameFlag)
+	if procName == "" {
+		return Config{}, flagRequiredError(procNameFlag)
+	}
+
+	procCmd := viper.GetString(procCmdFlag)
+	if procCmd == "" {
+		return Config{}, flagRequiredError(procCmdFlag)
+	}
+
+	reaper := viper.GetBool(reaperFlag)
+
+	tls := viper.GetBool(tlsFlag)
+	certPath := viper.GetString(certPathFlag)
+	keyPath := viper.GetString(keyPathFlag)
+	if tls {
+		if certPath == "" {
+			return Config{}, flagRequiredError(certPathFlag)
+		}
+
+		if keyPath == "" {
+			return Config{}, flagRequiredError(keyPathFlag)
+		}
+	}
+
+	return Config{
+		procName, procCmd, reaper,
+		tls, certPath, keyPath,
+	}, nil
+}
+
+func flagRequiredError(flagName string) error {
+	return fmt.Errorf("flag --%s is required", flagName)
+}
+
+func envToFlag(env string) string {
+	return strings.Replace(strings.ToLower(env), "_", "-", -1)
+}

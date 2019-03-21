@@ -1,74 +1,0 @@
-Script démarré sur 2019-03-20 00:28:51+0100
-
-[38;5;184m [0m[38;5;184m_[0m[38;5;178m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;214m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;208m_[0m[38;5;209m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;203m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m
-[38;5;214m/[0m[38;5;214m [0m[38;5;214mI[0m[38;5;214mf[0m[38;5;214m [0m[38;5;214mm[0m[38;5;214mo[0m[38;5;214mr[0m[38;5;214me[0m[38;5;208m [0m[38;5;208mo[0m[38;5;208mf[0m[38;5;208m [0m[38;5;208mu[0m[38;5;208ms[0m[38;5;208m [0m[38;5;208mv[0m[38;5;208ma[0m[38;5;208ml[0m[38;5;209mu[0m[38;5;203me[0m[38;5;203md[0m[38;5;203m [0m[38;5;203mf[0m[38;5;203mo[0m[38;5;203mo[0m[38;5;203md[0m[38;5;203m [0m[38;5;203ma[0m[38;5;203mn[0m[38;5;203md[0m[38;5;198m [0m[38;5;198mc[0m[38;5;198mh[0m[38;5;198me[0m[38;5;198me[0m[38;5;198mr[0m[38;5;198m [0m[38;5;198ma[0m[38;5;198mn[0m[38;5;198md[0m[38;5;199m [0m[38;5;199m\[0m
-[38;5;214m|[0m[38;5;214m [0m[38;5;214ms[0m[38;5;214mo[0m[38;5;214mn[0m[38;5;214mg[0m[38;5;208m [0m[38;5;208ma[0m[38;5;208mb[0m[38;5;208mo[0m[38;5;208mv[0m[38;5;208me[0m[38;5;208m [0m[38;5;208mh[0m[38;5;208mo[0m[38;5;208ma[0m[38;5;209mr[0m[38;5;203md[0m[38;5;203me[0m[38;5;203md[0m[38;5;203m [0m[38;5;203mg[0m[38;5;203mo[0m[38;5;203ml[0m[38;5;203md[0m[38;5;203m,[0m[38;5;203m [0m[38;5;203mi[0m[38;5;198mt[0m[38;5;198m [0m[38;5;198mw[0m[38;5;198mo[0m[38;5;198mu[0m[38;5;198ml[0m[38;5;198md[0m[38;5;198m [0m[38;5;198mb[0m[38;5;198me[0m[38;5;199m [0m[38;5;199ma[0m[38;5;199m [0m[38;5;199m [0m[38;5;199m|[0m
-[38;5;214m|[0m[38;5;214m [0m[38;5;214mm[0m[38;5;208me[0m[38;5;208mr[0m[38;5;208mr[0m[38;5;208mi[0m[38;5;208me[0m[38;5;208mr[0m[38;5;208m [0m[38;5;208mw[0m[38;5;208mo[0m[38;5;208mr[0m[38;5;209ml[0m[38;5;203md[0m[38;5;203m.[0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m|[0m
-[38;5;208m|[0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;208m [0m[38;5;209m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;163m [0m[38;5;164m|[0m
-[38;5;208m\[0m[38;5;208m [0m[38;5;208m-[0m[38;5;208m-[0m[38;5;208m [0m[38;5;208mJ[0m[38;5;208m.[0m[38;5;209mR[0m[38;5;203m.[0m[38;5;203mR[0m[38;5;203m.[0m[38;5;203m [0m[38;5;203mT[0m[38;5;203mo[0m[38;5;203ml[0m[38;5;203mk[0m[38;5;203mi[0m[38;5;203me[0m[38;5;203mn[0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;163m [0m[38;5;164m [0m[38;5;164m [0m[38;5;164m [0m[38;5;164m/[0m
-[38;5;208m [0m[38;5;208m-[0m[38;5;208m-[0m[38;5;208m-[0m[38;5;209m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;203m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;198m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;163m-[0m[38;5;164m-[0m[38;5;164m-[0m[38;5;164m-[0m[38;5;164m-[0m[38;5;164m-[0m[38;5;164m-[0m
-[38;5;208m [0m[38;5;209m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m\[0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m^[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m^[0m
-[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m\[0m[38;5;198m [0m[38;5;198m [0m[38;5;198m([0m[38;5;198mo[0m[38;5;198mo[0m[38;5;198m)[0m[38;5;198m\[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m_[0m[38;5;199m_[0m[38;5;199m_[0m[38;5;199m_[0m[38;5;199m_[0m
-[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m([0m[38;5;198m_[0m[38;5;198m_[0m[38;5;198m)[0m[38;5;198m\[0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m)[0m[38;5;199m\[0m[38;5;163m/[0m[38;5;164m\[0m
-[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;203m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m|[0m[38;5;199m|[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199m-[0m[38;5;199mw[0m[38;5;163m [0m[38;5;164m|[0m
-[38;5;203m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;198m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m [0m[38;5;199m|[0m[38;5;199m|[0m[38;5;199m [0m[38;5;199m [0m[38;5;163m [0m[38;5;164m [0m[38;5;164m [0m[38;5;164m|[0m[38;5;164m|[0m
-                                                                                                                                                           k..-manager/test\
-[38;5;033m~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[37m process-manager[39m ]0;~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[33m*[39m[31m*[39m  thb@fun  [33m[39m
-[0m[23m[24m[J[35m>[39m [K[?1h=[?2004h../scrtypescript[1m [0m[?2004l
-                                                                                                                                                           k..-manager/test\
-[38;5;033m~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[37m process-manager[39m ]0;~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[33m*[39m[31m*[39m  thb@fun  [33m[39m
-[0m[23m[24m[J[31m>[39m [K[?1h=[?2004hlll[?1l>[?2004l
-kll\]0;test: ls --color=tty -lhtotal 21M
--rw-rw-r-- 1 thb thb   48 mars  13 15:49 Dockerfile
-drwxrwxr-x 2 thb thb 4,0K mars  19 23:44 [0m[01;34mex[0m
--rw-rw-r-- 1 thb thb  445 mars  20 00:07 Makefile
--rwxrwxr-x 1 thb thb  21M mars  20 00:14 [01;32mpm[0m
--rwxrwxr-x 1 thb thb  844 mars  20 00:27 [01;32mtests.sh[0m
--rw-rw-r-- 1 thb thb 4,0K mars  20 00:28 typescript
-                                                                                                                                                           k..-manager/test\
-[38;5;033m~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[37m process-manager[39m ]0;~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[33m*[39m[31m*[39m  thb@fun  [33m[39m
-[0m[23m[24m[J[35m>[39m [K[?1h=[?2004hllscriptll    ./tests.sh[?1l>[?2004l
-k./tests.sh\]0;test: ./tests.sh+ test ex/script stop 0
-+ declare test=ex/script stop=stop expected=0
-+ pm::start ex/script
-+ docker run -d --name pm -p 8080:8080 -e PROC_NAME=es -e PROC_CMD=ex/script pm
-d70eb5ab6b735eae6a98c4011ff9ac9e6df112405d2af5078cbc4a25d3cd76c1
-+ sleep 4
-+ docker logs pm
-{"level":"error","ts":1553038148.7872658,"logger":"process-manager","msg":"Error creating keystore-updater config from flags","msg":"no flag provided","error":"cmd is nil","stacktrace":"github.com/elastic/k8s-operators/operators/vendor/github.com/go-logr/zapr.(*zapLogger).Error\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/vendor/github.com/go-logr/zapr/zapr.go:128\nmain.NewProcessManager\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/manager.go:67\nmain.main.func1\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/main.go:28\ngithub.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra.(*Command).execute\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra/command.go:766\ngithub.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra.(*Command).ExecuteC\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra/command.go:852\ngithub.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra.(*Command).Execute\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/vendor/github.com/spf13/cobra/command.go:800\nmain.main\n\t/home/thb/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/main.go:54\nruntime.main\n\t/home/thb/dev/tools/go/src/runtime/proc.go:201"}
-{"level":"info","ts":1553038148.787361,"logger":"process-manager","msg":"Starting","process":"es"}
-{"level":"info","ts":1553038148.7873802,"logger":"process-manager","msg":"Process manager started"}
-{"level":"info","ts":1553038148.7875075,"logger":"process-manager","msg":"Watch for update"}
-{"level":"info","ts":1553038148.787696,"logger":"process-manager","msg":"Started","process":"es"}
-{"level":"info","ts":1553038148.7882607,"logger":"process-manager","msg":"Wait for signal"}
-script1 Tue Mar 19 23:29:08 UTC 2019
-+ pm::api stop
-+ curl 127.0.0.1:8080/elasticsearch/stop
-Process stopping+ wait
-+ ps -eo pid,ppid,pgid,cmd
-+ grep -v grep
-+ grep -cE '(script|zb)'
-1
-++ ps -eo pid,ppid,pgid,cmd
-++ grep -v grep
-++ grep -cE '(script|zb)'
-+ count=1
-+ [[ 0 == n ]]
-+ [[ 0 == 0 ]]
-+ [[ 1 -ne 0 ]]
-+ echo 'failed: ex/script, is: 1, expected: 0'
-failed: ex/script, is: 1, expected: 0
-+ echo 'ok: ex/script, is: 1'
-ok: ex/script, is: 1
-+ pm::stop
-+ docker stop pm
-pm
-+ docker rm pm
-pm
-                                                                                                                                                           k..-manager/test\
-[38;5;033m~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[37m process-manager[39m ]0;~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[33m*[39m[31m*[39m  thb@fun  [33m[39m
-[0m[23m[24m[J[35m>[39m [K[?1h=[?2004hddps[?1l>[?2004l
-kdps\]0;test: dpsNAMES               STATUS
-metricbeat          Up 14 hours
-                                                                                                                                                           k..-manager/test\
-[38;5;033m~/dev/src/github.com/elastic/k8s-operators/operators/cmd/process-manager/test[37m process-manager[39m ]0;~/dev/src/github.com/elastic/k8s-operators/operators/cm

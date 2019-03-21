@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
@@ -183,6 +184,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(network.TransportClientPort)},
 	}
 
+	vars = append(vars, processmanager.NewEnvVars()...)
 	vars = append(vars, xpackEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
 
 	return vars

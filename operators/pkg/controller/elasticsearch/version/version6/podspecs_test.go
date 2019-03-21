@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 
@@ -77,6 +78,14 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: "xpack.security.authc.reserved_realm.enabled", Value: "false"},
 				{Name: "PROBE_USERNAME", Value: "username1"},
 				{Name: "READINESS_PROBE_PROTOCOL", Value: "https"},
+				{Name: processmanager.EnvProcName, Value: "es"},
+				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
+				{Name: "KEYSTORE_SOURCE_DIR", Value: "/keystore"},
+				{Name: "KEYSTORE_RELOAD_CREDENTIALS", Value: "true"},
+				{Name: "KEYSTORE_ES_USERNAME", Value: "username2"},
+				{Name: "KEYSTORE_ES_PASSWORD_FILE", Value: "/creds/username2"},
+				{Name: "KEYSTORE_ES_CA_CERTS_PATH", Value: "/certs/ca.pem"},
+				{Name: "KEYSTORE_ES_ENDPOINT", Value: "https://127.0.0.1:9200"},
 			},
 		},
 		{

@@ -5,21 +5,20 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	pm "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/spf13/cobra"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
-	name   = "process-manager"
-	logger = logf.Log.WithName(name)
-
-	procNameFlag = "name"
-	procCmdFlag  = "cmd"
+	name = "process-manager"
+	log  = logf.Log.WithName(name)
 )
 
 func main() {
@@ -29,37 +28,44 @@ func main() {
 		Use: name,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			// FIXME
-			procName := viper.GetString(procNameFlag)
-			procCmd := viper.GetString(procCmdFlag)
+			procMgr, err := pm.NewProcessManager()
+			exitOnErr(err)
 
-			pm := NewProcessManager()
-			pm.Register(procName, procCmd)
-			pm.Start()
+			err = procMgr.Start()
+			exitOnErr(err)
 
-			waitForStop()
-			pm.Stop()
-			os.Exit(0)
+			sig := waitForStop()
+			log.Info("Forward signal", "sig", sig)
+
+			err = procMgr.Stop(sig)
+			if err != nil && err.Error() == pm.ErrNoSuchProcess {
+				exitOnErr(err)
+			}
 		},
 	}
 
-	// FIXME
-	cmd.Flags().StringP(procNameFlag, "n", "", "process name to manage")
-	cmd.Flags().StringP(procCmdFlag, "m", "", "process command to manage")
+	err := keystore.BindEnvToFlags(cmd)
+	exitOnErr(err)
 
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		logger.Error(err, "Unexpected error while binding flags")
-		return
-	}
+	err = pm.BindFlagsToEnv(cmd)
+	exitOnErr(err)
 
-	if err := cmd.Execute(); err != nil {
-		logger.Error(err, "Unexpected error while running command")
-	}
+	err = cmd.Execute()
+	exitOnErr(err)
 }
 
-func waitForStop() {
+func waitForStop() os.Signal {
 	stop := make(chan os.Signal)
 	signal.Notify(stop)
 	signal.Ignore(syscall.SIGCHLD)
-	<-stop
+	sig := <-stop
+	return sig
+}
+
+// exitOnErr exits the program if err exists.
+func exitOnErr(err error) {
+	if err != nil {
+		log.Error(err, "Fatal error")
+		os.Exit(1)
+	}
 }
