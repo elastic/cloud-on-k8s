@@ -73,16 +73,17 @@ func privateKeyMatchesCSR(privateKey rsa.PrivateKey, csr x509.CertificateRequest
 }
 
 // watchForCertUpdate watches for changes on the cert file until it becomes valid.
-func watchForCertUpdate(config Config) error {
+func (i *CertInitializer) watchForCertUpdate() error {
 	// on each change to the cert, check cert, csr and private key
 	onEvent := func(files fs.FilesCRC) (stop bool, err error) {
-		if checkExistingOnDisk(config) {
+		if checkExistingOnDisk(i.config) {
 			// we're good to go!
+			i.Terminated = true
 			return true, nil
 		}
 		return false, nil
 	}
-	watcher, err := fs.FileWatcher(context.Background(), config.CertPath, onEvent, 1*time.Second)
+	watcher, err := fs.FileWatcher(context.Background(), i.config.CertPath, onEvent, 1*time.Second)
 	if err != nil {
 		return err
 	}
