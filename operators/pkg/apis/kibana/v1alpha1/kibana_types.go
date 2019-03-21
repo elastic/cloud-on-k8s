@@ -113,6 +113,7 @@ func (e Kibana) IsMarkedForDeletion() bool {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="health",type="string",JSONPath=".status.health"
 // +kubebuilder:printcolumn:name="nodes",type="integer",JSONPath=".status.availableNodes",description="Available nodes"
+// +kubebuilder:printcolumn:name="version",type="string",JSONPath=".spec.version",description="Kibana version"
 // +kubebuilder:printcolumn:name="age",type="date",JSONPath=".metadata.creationTimestamp"
 type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
