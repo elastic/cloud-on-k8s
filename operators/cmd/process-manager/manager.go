@@ -20,7 +20,7 @@ type ProcessManager struct {
 	server          *ProcessServer
 	process         *Process
 	reaper          *ProcessReaper
-	keystoreUpdater *keystore.KeystoreUpdater
+	keystoreUpdater *keystore.Updater
 }
 
 // NewProcessManager creates a new process manager.
@@ -43,7 +43,7 @@ func NewProcessManager(cmd *cobra.Command) (ProcessManager, error) {
 		NewServer(process),
 		process,
 		NewProcessReaper(),
-		keystore.NewKeystoreUpdater(logger, keystoreUpdaterCfg),
+		keystore.NewUpdater(logger, keystoreUpdaterCfg),
 	}, nil
 }
 

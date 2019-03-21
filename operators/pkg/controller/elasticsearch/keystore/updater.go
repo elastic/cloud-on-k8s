@@ -24,20 +24,20 @@ import (
 
 const attemptReload = "attempt-reload"
 
-type KeystoreUpdater struct {
+type Updater struct {
 	logger logr.Logger
 	cfg    Config
 }
 
-func NewKeystoreUpdater(logger logr.Logger, cfg Config) *KeystoreUpdater {
-	return &KeystoreUpdater{
+func NewUpdater(logger logr.Logger, cfg Config) *Updater {
+	return &Updater{
 		logger: logger,
 		cfg:    cfg,
 	}
 }
 
 // Run updates the keystore once and then starts a watcher on source dir to update again on file changes.
-func (u KeystoreUpdater) Start() {
+func (u Updater) Start() {
 	if u.cfg.ReloadCredentials {
 		go u.coalescingRetry()
 	}
@@ -45,7 +45,7 @@ func (u KeystoreUpdater) Start() {
 	go u.watchForUpdate()
 }
 
-func (u KeystoreUpdater) watchForUpdate() {
+func (u Updater) watchForUpdate() {
 	// on each filesystem event for config.SourceDir, update the keystore
 	onEvent := func(files fs.FilesCRC) (stop bool, e error) {
 		u.logger.Info("On event")
@@ -57,26 +57,25 @@ func (u KeystoreUpdater) watchForUpdate() {
 	}
 
 	u.logger.Info("Watch for update")
-	watcher, err := fs.DirectoryWatcher(context.Background(), u.cfg.SourceDir, onEvent, 1*time.Second)
+	watcher, err := fs.DirectoryWatcher(context.Background(), u.cfg.SecretsSourceDir, onEvent, 1*time.Second)
 	if err != nil {
 		// FIXME: should we exit here?
-		u.logger.Error(err, "Cannot watch filesystem", "path", u.cfg.SourceDir)
+		u.logger.Error(err, "Cannot watch filesystem", "path", u.cfg.SecretsSourceDir)
 		return
 	}
 	if err := watcher.Run(); err != nil {
-		u.logger.Error(err, "Cannot watch filesystem", "path", u.cfg.SourceDir)
+		u.logger.Error(err, "Cannot watch filesystem", "path", u.cfg.SecretsSourceDir)
 	}
 }
 
 // coalescingRetry attempts to reload the keystore coalescing subsequent requests into one when retrying.
-func (u KeystoreUpdater) coalescingRetry() {
+func (u Updater) coalescingRetry() {
 	var item interface{}
 	shutdown := false
 	for !shutdown {
-		u.logger.Info("Wait for an item in the queue")
+		u.logger.Info("Wait for reloading credentials")
 		item, shutdown = u.cfg.ReloadQueue.Get()
 
-		u.logger.Info("reloadCredentials")
 		err, msg := u.reloadCredentials()
 		if err != nil {
 			u.logger.Error(err, msg+". Continuing.")
@@ -90,16 +89,16 @@ func (u KeystoreUpdater) coalescingRetry() {
 
 // reloadCredentials tries to make an API call to the reload_secure_credentials API
 // to reload reloadable settings after the keystore has been updated.
-func (u KeystoreUpdater) reloadCredentials() (error, string) {
-	caCerts, err := loadCerts(u.cfg.CACertsPath)
+func (u Updater) reloadCredentials() (error, string) {
+	u.logger.Info("Reloading secure settings")
+	caCerts, err := loadCerts(u.cfg.EsCACertsPath)
 	if err != nil {
 		return err, "cannot create Elasticsearch client with CA certs"
 	}
-	api := client.NewElasticsearchClient(nil, u.cfg.Endpoint, u.cfg.User, caCerts)
+	api := client.NewElasticsearchClient(nil, u.cfg.EsEndpoint, u.cfg.EsUser, caCerts)
 	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
 	// keystore which is something we cannot guarantee from this process. Also this call will be issued
 	// on each node which is redundant and might be problematic as well.
-	u.logger.Info("ReloadSecureSettings")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	return api.ReloadSecureSettings(ctx), "Error reloading credentials"
 }
@@ -114,7 +113,7 @@ func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
 
 // updateKeystore reconciles the source directory with Elasticsearch keystores by recreating the
 // keystore and adding a setting for each file in the source directory.
-func (u KeystoreUpdater) updateKeystore() (error, string) {
+func (u Updater) updateKeystore() (error, string) {
 	// delete existing keystore (TODO can we do that to a running cluster?)
 	_, err := os.Stat(u.cfg.KeystorePath)
 	if !os.IsNotExist(err) {
@@ -133,7 +132,7 @@ func (u KeystoreUpdater) updateKeystore() (error, string) {
 		return err, "could not create new keystore"
 	}
 
-	fileInfos, err := ioutil.ReadDir(u.cfg.SourceDir)
+	fileInfos, err := ioutil.ReadDir(u.cfg.SecretsSourceDir)
 	if err != nil {
 		return err, "could not read source directory"
 	}
@@ -144,7 +143,7 @@ func (u KeystoreUpdater) updateKeystore() (error, string) {
 			continue
 		}
 		u.logger.Info("Adding setting to keystore", "file", file.Name())
-		add := exec.Command(u.cfg.KeystoreBinary, "add-file", file.Name(), path.Join(u.cfg.SourceDir, file.Name()))
+		add := exec.Command(u.cfg.KeystoreBinary, "add-file", file.Name(), path.Join(u.cfg.SecretsSourceDir, file.Name()))
 		err := add.Run()
 		if err != nil {
 			return err, fmt.Sprintf("could not add setting %s", file.Name())

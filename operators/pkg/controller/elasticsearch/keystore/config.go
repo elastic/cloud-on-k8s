@@ -19,33 +19,36 @@ import (
 )
 
 var (
-	sourceDirFlag         = envToFlag(sidecar.EnvSourceDir)
-	keystoreBinaryFlag    = envToFlag(sidecar.EnvKeystoreBinary)
-	keystorePathFlag      = envToFlag(sidecar.EnvKeystorePath)
-	reloadCredentialsFlag = envToFlag(sidecar.EnvReloadCredentials)
-	usernameFlag          = envToFlag(sidecar.EnvUsername)
-	passwordFlag          = envToFlag(sidecar.EnvPassword)
-	passwordFileFlag      = envToFlag(sidecar.EnvPasswordFile)
-	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
-	certPathFlag          = envToFlag(sidecar.EnvCertPath)
+	sourceDirFlag         = envToFlag(EnvSourceDir)
+	keystoreBinaryFlag    = envToFlag(EnvKeystoreBinary)
+	keystorePathFlag      = envToFlag(EnvKeystorePath)
+	reloadCredentialsFlag = envToFlag(EnvReloadCredentials)
+	esUsernameFlag        = envToFlag(EnvEsUsername)
+	esPasswordFlag        = envToFlag(EnvEsPassword)
+	esPasswordFileFlag    = envToFlag(EnvEsPasswordFile)
+	esEndpointFlag        = envToFlag(EnvEsEndpoint)
+	esCaCertsPathFlag     = envToFlag(EnvEsCaCertsPath)
 )
 
 // Config contains configuration parameters for the keystore updater.
 type Config struct {
-	// SourceDir is the directory where secrets will appear that need to be added to the keystore.
-	SourceDir string
+	// SecretsSourceDir is the directory where secrets will appear that need to be added to the keystore.
+	SecretsSourceDir string `split_words:"true" required:"true"`
 	// KeystoreBinary is the path to the Elasticsearch keystore tool binary.
-	KeystoreBinary string
+	KeystoreBinary string `split_words:"true" required:"true"`
 	// KeystorePath is the path to the Elasticsearch keystore file.
-	KeystorePath string
+	KeystorePath string `split_words:"true" required:"true"`
 	// ReloadCredentials indicates whether the updater should attempt to reload secure settings in Elasticsearch.
-	ReloadCredentials bool
-	// User is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
-	User client.UserAuth
+	ReloadCredentials bool   `split_words:"true" required:"true"`
+	EsUsername        string `split_words:"true" required:"true"`
+	EsPasswordFile    string `split_words:"true" required:"true"`
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
-	Endpoint string
+	EsEndpoint string `split_words:"true" required:"true"`
 	// CACertsPath points to the CA certificate chain to call the Elasticsearch API.
-	CACertsPath string
+	EsCACertsPath string `split_words:"true" required:"true"`
+
+	// User is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
+	EsUser client.UserAuth
 	// ReloadQueue is a channel to schedule config reload requests
 	ReloadQueue workqueue.DelayingInterface
 }
@@ -60,10 +63,10 @@ func parseFlags(cmd *cobra.Command) (error, string) {
 	cmd.Flags().StringP(keystoreBinaryFlag, "b", "/usr/share/elasticsearch/bin/elasticsearch-keystore", "path to keystore binary")
 	cmd.Flags().StringP(keystorePathFlag, "k", "/usr/share/elasticsearch/config/elasticsearch.keystore", "path to keystore file")
 	cmd.Flags().BoolP(reloadCredentialsFlag, "r", false, "whether or not to trigger a credential reload in Elasticsearch")
-	cmd.Flags().StringP(usernameFlag, "u", "", "Elasticsearch username to reload credentials")
-	cmd.Flags().StringP(passwordFlag, "p", "", "Elasticsearch password to reload credentials")
-	cmd.Flags().StringP(endpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
-	cmd.Flags().StringP(certPathFlag, "c", path.Join("/volume/node-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
+	cmd.Flags().StringP(esUsernameFlag, "u", "", "Elasticsearch username to reload credentials")
+	cmd.Flags().StringP(esPasswordFlag, "p", "", "Elasticsearch password to reload credentials")
+	cmd.Flags().StringP(esEndpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
+	cmd.Flags().StringP(esCaCertsPathFlag, "c", path.Join("/volume/node-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
 
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err, "unexpected error while binding flags"
@@ -97,7 +100,7 @@ func NewConfigFromFlags(cmd *cobra.Command) (Config, error, string) {
 	}
 	shouldReload := viper.GetBool(reloadCredentialsFlag)
 	config := Config{
-		SourceDir:         sourceDir,
+		SecretsSourceDir:  sourceDir,
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
@@ -105,11 +108,11 @@ func NewConfigFromFlags(cmd *cobra.Command) (Config, error, string) {
 	}
 
 	if shouldReload {
-		user := viper.GetString(usernameFlag)
-		pass := viper.GetString(passwordFlag)
+		user := viper.GetString(esUsernameFlag)
+		pass := viper.GetString(esPasswordFlag)
 
 		if pass == "" {
-			passwordFile := viper.GetString(passwordFileFlag)
+			passwordFile := viper.GetString(esPasswordFileFlag)
 			bytes, err := ioutil.ReadFile(passwordFile)
 			if err != nil {
 				return Config{}, err, fmt.Sprintf("password file %s could not be read", passwordFile)
@@ -130,15 +133,15 @@ func NewConfigFromFlags(cmd *cobra.Command) (Config, error, string) {
 				),
 				"Invalid config"
 		}
-		config.User = client.UserAuth{Name: user, Password: pass}
+		config.EsUser = client.UserAuth{Name: user, Password: pass}
 
-		caCerts := viper.GetString(certPathFlag)
+		caCerts := viper.GetString(esCaCertsPathFlag)
 		_, err := loadCerts(caCerts)
 		if err != nil {
 			return Config{}, err, "CA certificates are required when reloading credentials but could not be read"
 		}
-		config.CACertsPath = caCerts
-		config.Endpoint = viper.GetString(endpointFlag)
+		config.EsCACertsPath = caCerts
+		config.EsEndpoint = viper.GetString(esEndpointFlag)
 	}
 	return config, nil, ""
 }
