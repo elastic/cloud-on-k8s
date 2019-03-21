@@ -268,6 +268,14 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:e488b6640dd8b0a5007388585919776aa4ac343ef4d7fe143059deab817b788b"
+  name = "github.com/kelseyhightower/envconfig"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
+  version = "v1.3.0"
+
+[[projects]]
   digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
   name = "github.com/magiconair/properties"
   packages = [
@@ -1072,6 +1080,7 @@
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
+    "github.com/kelseyhightower/envconfig",
     "github.com/magiconair/properties/assert",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
