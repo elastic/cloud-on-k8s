@@ -165,58 +165,67 @@ func doReconcile(
 		return reconcile.Result{}, nil
 	}
 
-	if !issueNewCertificate {
-		// nothing to do, we're all set
-		return reconcile.Result{}, nil
+	if issueNewCertificate {
+		log.Info(
+			"Issuing new certificate",
+			"secret", secret.Name,
+			"clusterName", clusterName,
+			"namespace", namespace,
+		)
+
+		// create a cert from the csr
+		parsedCSR, err := x509.ParseCertificateRequest(csr)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, parsedCSR, nodeCertValidity)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// sign the certificate
+		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// store CSR and signed certificate in a secret mounted into the pod
+		secret.Data[CSRFileName] = csr
+		secret.Data[CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
+		// store last CSR update in the pod annotations
+		secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 	}
 
-	log.Info(
-		"Issuing new certificate",
-		"secret", secret.Name,
-		"clusterName", clusterName,
-		"namespace", namespace,
-	)
-
-	// create a cert from the csr
-	parsedCSR, err := x509.ParseCertificateRequest(csr)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, parsedCSR, nodeCertValidity)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	// sign the certificate
-	certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// store CA cert, CSR and signed certificate in a secret mounted into the pod
-	secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
+	// prepare trusted CA : CA of this node + additional CA certs from trustrelationship
+	trusted := certificates.EncodePEMCert(ca.Cert.Raw)
 	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
-		secret.Data[certificates.CAFileName] = append(secret.Data[certificates.CAFileName], caPemBytes...)
-	}
-	secret.Data[CSRFileName] = csr
-	secret.Data[CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
-	// store last CSR update in the pod annotations
-	secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
-
-	log.Info("Updating node certificate secret", "secret", secret.Name)
-	if err := c.Update(&secret); err != nil {
-		return reconcile.Result{}, err
+		trusted = append(trusted, caPemBytes...)
 	}
 
-	// To speedup secret propagation into the pod, also update the pod itself
-	// with a "dummy" annotation. Otherwise, it may take 1+ minute.
-	// This could be fixed in kubelet at some point,
-	// see https://github.com/kubernetes/kubernetes/issues/30189
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
+	// Compare with current trusted CAs
+	updateTrustedCA := !bytes.Equal(trusted, secret.Data[certificates.CAFileName])
+	if updateTrustedCA {
+		secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
+		for _, caPemBytes := range additionalTrustedCAsPemEncoded {
+			secret.Data[certificates.CAFileName] = append(secret.Data[certificates.CAFileName], caPemBytes...)
+		}
 	}
-	pod.Annotations[lastCertUpdateAnnotation] = time.Now().Format(time.RFC3339)
-	if err := c.Update(&pod); err != nil {
-		return reconcile.Result{}, err
+
+	if issueNewCertificate || updateTrustedCA {
+		log.Info("Updating node certificate secret", "secret", secret.Name)
+		if err := c.Update(&secret); err != nil {
+			return reconcile.Result{}, err
+		}
+		// To speedup secret propagation into the pod, also update the pod itself
+		// with a "dummy" annotation. Otherwise, it may take 1+ minute.
+		// This could be fixed in kubelet at some point,
+		// see https://github.com/kubernetes/kubernetes/issues/30189
+		if pod.Annotations == nil {
+			pod.Annotations = map[string]string{}
+		}
+		pod.Annotations[lastCertUpdateAnnotation] = time.Now().Format(time.RFC3339)
+		if err := c.Update(&pod); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	return reconcile.Result{}, nil
