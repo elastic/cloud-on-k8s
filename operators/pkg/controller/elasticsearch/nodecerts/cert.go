@@ -204,10 +204,7 @@ func doReconcile(
 	// Compare with current trusted CAs
 	updateTrustedCA := !bytes.Equal(trusted, secret.Data[certificates.CAFileName])
 	if updateTrustedCA {
-		secret.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
-		for _, caPemBytes := range additionalTrustedCAsPemEncoded {
-			secret.Data[certificates.CAFileName] = append(secret.Data[certificates.CAFileName], caPemBytes...)
-		}
+		secret.Data[certificates.CAFileName] = trusted
 	}
 
 	if issueNewCertificate || updateTrustedCA {
