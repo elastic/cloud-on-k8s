@@ -8,6 +8,8 @@ import (
 	"context"
 	_ "expvar"
 	"fmt"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/cert-initializer"
 	"net/http"
 	_ "net/http/pprof"
 	"strconv"
@@ -23,9 +25,10 @@ const (
 type ProcessServer struct {
 	*http.Server
 	esProcess *Process
+	certInit  *certinitializer.CertInitializer
 }
 
-func NewServer(process *Process) *ProcessServer {
+func NewServer(process *Process, certInit *certinitializer.CertInitializer) *ProcessServer {
 	mux := http.DefaultServeMux
 	s := ProcessServer{
 		&http.Server{
@@ -33,13 +36,15 @@ func NewServer(process *Process) *ProcessServer {
 			Handler: mux,
 		},
 		process,
+		certInit,
 	}
 
 	mux.HandleFunc("/health", s.Health)
-	mux.HandleFunc("/elasticsearch/start", s.EsStart)
-	mux.HandleFunc("/elasticsearch/stop", s.EsStop)
-	mux.HandleFunc("/elasticsearch/health", s.EsStatus)
-	mux.HandleFunc("/keystore-updater/health", s.EsStatus)
+	mux.HandleFunc("/es/start", s.EsStart)
+	mux.HandleFunc("/es/stop", s.EsStop)
+	mux.HandleFunc("/es/status", s.EsStatus)
+	mux.HandleFunc("/keystore/status", s.EsStatus)
+	mux.HandleFunc(certificates.CertInitializerRoute, s.ServeCSR)
 
 	return &s
 }
@@ -140,6 +145,20 @@ func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
 	}
 
 	ok(w, fmt.Sprintf(`{"status":"%s"}`, status))
+}
+
+func (s *ProcessServer) ServeCSR(w http.ResponseWriter, r *http.Request) {
+	if s.certInit.Terminated {
+		ko(w, "CSR already served")
+		return
+	}
+	logger.Info("CSR request")
+	if _, err := w.Write(s.certInit.CSR); err != nil {
+		logger.Error(err, "Failed to write CSR to the HTTP response")
+		ko(w, "Fail to serve CSR")
+		return
+	}
+	return
 }
 
 // HTTP utilities

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates/cert-initializer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/spf13/cobra"
 	"os"
@@ -36,11 +37,19 @@ func NewProcessManager(cmd *cobra.Command) (ProcessManager, error) {
 	if err != nil {
 		return ProcessManager{}, err
 	}
-
 	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
 
+	certInitCfg := certinitializer.NewConfig()
+	certInit := certinitializer.NewCertInitializer(certInitCfg)
+	err = certInit.Start(false)
+	if err != nil {
+		// FIXME
+		logger.Error(err, "Fail to create cert init")
+		//return ProcessManager{}, err
+	}
+
 	return ProcessManager{
-		NewServer(process),
+		NewServer(process, &certInit),
 		process,
 		NewProcessReaper(),
 		keystore.NewUpdater(logger, keystoreUpdaterCfg),
