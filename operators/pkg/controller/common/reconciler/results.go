@@ -52,6 +52,7 @@ func (r *Results) Aggregate() (reconcile.Result, error) {
 			current = next
 		}
 	}
+	log.Info(fmt.Sprintf("Aggregate reconcile result is %+v", current))
 	return current, k8serrors.NewAggregate(r.errors)
 }
 

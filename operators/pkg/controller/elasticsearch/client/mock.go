@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 )
 
 type RoundTripFunc func(req *http.Request) *http.Response
@@ -16,13 +18,19 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req), nil
 }
 
-func NewMockClient(fn RoundTripFunc) Client {
-	return Client{
+func NewMockClient(v version.Version, fn RoundTripFunc) Client {
+	return NewMockClientWithUser(v, UserAuth{}, fn)
+}
+
+func NewMockClientWithUser(v version.Version, u UserAuth, fn RoundTripFunc) Client {
+	baseClient := &baseClient{
 		HTTP: &http.Client{
 			Transport: RoundTripFunc(fn),
 		},
 		Endpoint: "http://example.com",
+		User:     u,
 	}
+	return versioned(baseClient, v)
 }
 
 func NewMockResponse(statusCode int, r *http.Request, body string) *http.Response {

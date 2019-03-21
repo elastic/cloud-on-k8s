@@ -19,7 +19,7 @@ var (
 )
 
 func UpdateZen2Settings(
-	esClient *esclient.Client,
+	esClient esclient.Client,
 	changes mutation.Changes,
 	performableChanges mutation.PerformableChanges,
 ) error {

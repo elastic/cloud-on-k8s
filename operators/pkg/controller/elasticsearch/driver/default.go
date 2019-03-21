@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -95,7 +96,7 @@ type defaultDriver struct {
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, esClient *esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -112,12 +113,12 @@ type defaultDriver struct {
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(esClient *esclient.Client, allPods []corev1.Pod) error
+	zen1SettingsUpdater func(esClient esclient.Client, allPods []corev1.Pod) error
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
 	zen2SettingsUpdater func(
-		esClient *esclient.Client,
+		esClient esclient.Client,
 		changes mutation.Changes,
 		performableChanges mutation.PerformableChanges,
 	) error
@@ -174,14 +175,26 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	esClient := d.newElasticsearchClient(network.ProtocolForCluster(es), genericResources.ExternalService, internalUsers.ControllerUser, caCert)
-
-	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
-
 	resourcesState, err := d.resourcesStateResolver(d.Client, es)
 	if err != nil {
 		return results.WithError(err)
 	}
+	min, err := esversion.MinVersion(resourcesState.CurrentPods)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if min == nil {
+		min = &d.Version
+	}
+	esClient := d.newElasticsearchClient(
+		network.ProtocolForCluster(es),
+		genericResources.ExternalService,
+		internalUsers.ControllerUser,
+		*min,
+		caCert,
+	)
+
+	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
@@ -389,7 +402,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 	resourcesState *reconcile.ResourcesState,
 	observedState observer.State,
 	results *reconciler.Results,
-	esClient *esclient.Client,
+	esClient esclient.Client,
 	namespacedName types.NamespacedName,
 ) error {
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
@@ -479,11 +492,7 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.Service, user user.User, caCert *x509.Certificate) *esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", protocol, service.Name, service.Namespace, network.HTTPPort)
-
-	esClient := esclient.NewElasticsearchClient(
-		d.Dialer, url, user.Auth(), []*x509.Certificate{caCert},
-	)
-	return esClient
+	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, []*x509.Certificate{caCert})
 }

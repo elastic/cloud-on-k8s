@@ -47,14 +47,13 @@ func cluster(name string) types.NamespacedName {
 }
 
 func TestManager_Observe(t *testing.T) {
-	fakeClient := fakeEsClient200()
-	fakeClientWithDifferentUser := fakeEsClient200()
-	fakeClientWithDifferentUser.User = client.UserAuth{Name: "name", Password: "another-one"}
+	fakeClient := fakeEsClient200(client.UserAuth{})
+	fakeClientWithDifferentUser := fakeEsClient200(client.UserAuth{Name: "name", Password: "another-one"})
 	tests := []struct {
 		name                   string
 		initiallyObserved      map[types.NamespacedName]*Observer
 		clusterToObserve       types.NamespacedName
-		clusterToObserveClient *client.Client
+		clusterToObserveClient client.Client
 		expectedObservers      []types.NamespacedName
 		expectNewObserver      bool
 	}{
@@ -62,30 +61,30 @@ func TestManager_Observe(t *testing.T) {
 			name:                   "Observe a first cluster",
 			initiallyObserved:      map[types.NamespacedName]*Observer{},
 			clusterToObserve:       cluster("cluster"),
-			clusterToObserveClient: &fakeClient,
+			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
 		},
 		{
 			name:                   "Observe a second cluster",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), &fakeClient, DefaultSettings)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
 			clusterToObserve:       cluster("cluster2"),
-			clusterToObserveClient: &fakeClient,
+			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster"), cluster("cluster2")},
 		},
 		{
 			name:                   "Observe twice the same cluster (idempotent)",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), &fakeClient, DefaultSettings)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
 			clusterToObserve:       cluster("cluster"),
-			clusterToObserveClient: &fakeClient,
+			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
 			expectNewObserver:      false,
 		},
 		{
 			name:              "Observe twice the same cluster with a different client",
-			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), &fakeClient, DefaultSettings)},
+			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
 			clusterToObserve:  cluster("cluster"),
 			// more client comparison tests in client_test.go
-			clusterToObserveClient: &fakeClientWithDifferentUser,
+			clusterToObserveClient: fakeClientWithDifferentUser,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
 			expectNewObserver:      true,
 		},

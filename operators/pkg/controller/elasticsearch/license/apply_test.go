@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -194,8 +195,8 @@ func Test_updateLicense(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			c := esclient.NewMockClient(tt.reqFn)
-			if err := updateLicense(&c, tt.args.current, tt.args.desired, tt.args.sigResolver); (err != nil) != tt.wantErr {
+			c := esclient.NewMockClient(version.MustParse("6.7.0"), tt.reqFn)
+			if err := updateLicense(c, tt.args.current, tt.args.desired, tt.args.sigResolver); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

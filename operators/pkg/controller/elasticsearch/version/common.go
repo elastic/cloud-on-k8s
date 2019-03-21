@@ -259,7 +259,7 @@ func NewPod(
 	return pod, nil
 }
 
-func UpdateZen1Discovery(esClient *client.Client, allPods []corev1.Pod) error {
+func UpdateZen1Discovery(esClient client.Client, allPods []corev1.Pod) error {
 	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
 	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)

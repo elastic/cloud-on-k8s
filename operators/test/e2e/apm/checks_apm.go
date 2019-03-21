@@ -20,7 +20,7 @@ import (
 
 type apmClusterChecks struct {
 	apmClient *helpers.ApmClient
-	esClient  *client.Client
+	esClient  client.Client
 }
 
 // ApmServerChecks returns all test steps to verify the given Apm Server is running as expected

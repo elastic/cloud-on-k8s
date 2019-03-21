@@ -92,7 +92,7 @@ type ContinousHealthCheck struct {
 	FailureCount int
 	Failures     []ContinuousHealthCheckFailure
 	stopChan     chan struct{}
-	esClient     *esclient.Client
+	esClient     esclient.Client
 }
 
 // NewContinousHealthCheck sets up a ContinousHealthCheck struct

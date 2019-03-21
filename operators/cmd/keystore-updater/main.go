@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
@@ -38,6 +39,7 @@ var (
 	passwordFileFlag      = envToFlag(sidecar.EnvPasswordFile)
 	endpointFlag          = envToFlag(sidecar.EnvEndpoint)
 	certPathFlag          = envToFlag(sidecar.EnvCertPath)
+	versionFlag           = envToFlag(sidecar.EnvVersion)
 	attemptReload         = "attempt-reload"
 
 	cmd = &cobra.Command{
@@ -62,6 +64,8 @@ type Config struct {
 	User client.UserAuth
 	// Endpoint is the Elasticsearch endpoint for API calls. Can be empty if ReloadCredentials is false.
 	Endpoint string
+	// Version is the Elasticsearch version.
+	Version version.Version
 	// CACertsPath points to the CA certificate chain to call the Elasticsearch API.
 	CACertsPath string
 	// ReloadQueue is a channel to schedule config reload requests
@@ -80,6 +84,7 @@ func init() {
 	cmd.Flags().BoolP(reloadCredentialsFlag, "r", false, "whether or not to trigger a credential reload in Elasticsearch")
 	cmd.Flags().StringP(usernameFlag, "u", "", "Elasticsearch username to reload credentials")
 	cmd.Flags().StringP(passwordFlag, "p", "", "Elasticsearch password to reload credentials")
+	cmd.Flags().String(versionFlag, "", "Elasticsearch version")
 	cmd.Flags().StringP(endpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
 	cmd.Flags().StringP(certPathFlag, "c", path.Join("/volume/node-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
 
@@ -128,7 +133,7 @@ func reloadCredentials(cfg Config) error {
 	if err != nil {
 		fatal(err, "Cannot create Elasticsearch client with CA certs")
 	}
-	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, caCerts)
+	api := client.NewElasticsearchClient(nil, cfg.Endpoint, cfg.User, cfg.Version, caCerts)
 	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
 	// keystore which is something we cannot guarantee from this process. Also this call will be issued
 	// on each node which is redundant and might be problematic as well.
@@ -199,6 +204,11 @@ func validateConfig() Config {
 	if os.IsNotExist(err) {
 		fatal(err, "keystore binary does not exist")
 	}
+
+	v, err := version.Parse(viper.GetString(versionFlag))
+	if err != nil {
+		fatal(err, "no or invalid version")
+	}
 	shouldReload := viper.GetBool(reloadCredentialsFlag)
 	config := Config{
 		SourceDir:         sourceDir,
@@ -206,6 +216,7 @@ func validateConfig() Config {
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
 		ReloadQueue:       workqueue.NewDelayingQueue(),
+		Version:           *v,
 	}
 
 	if shouldReload {

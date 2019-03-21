@@ -16,7 +16,7 @@ func Reconcile(
 	c k8s.Client,
 	w watches.DynamicWatches,
 	esCluster v1alpha1.Elasticsearch,
-	clusterClient *esclient.Client,
+	clusterClient esclient.Client,
 	current *esclient.License,
 ) error {
 	if !esCluster.Spec.GetLicenseType().IsGoldOrPlatinum() {

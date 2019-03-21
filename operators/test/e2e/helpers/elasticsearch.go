@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -25,7 +26,7 @@ var autoPortForward = flag.Bool(
 		"k8s resources on ephemeral ports to localhost)")
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
-func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (*client.Client, error) {
+func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Client, error) {
 	password, err := k.GetElasticPassword(es.Name)
 	if err != nil {
 		return nil, err
@@ -40,6 +41,10 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (*client.Cl
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()
 	}
-	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, caCert)
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return nil, err
+	}
+	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, *v, caCert)
 	return client, nil
 }
