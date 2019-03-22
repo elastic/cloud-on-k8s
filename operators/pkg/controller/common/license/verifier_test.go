@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
-	"encoding/binary"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -372,12 +371,10 @@ func TestNewLicenseVerifier(t *testing.T) {
 				_, err := base64.StdEncoding.Decode(malice, signatureFixture)
 				require.NoError(t, err)
 				// inject max uint32 as the magic length
-				maxUInt32 := 1<<32 - 1
-				maxIntBytes := make([]byte, 4)
-				binary.BigEndian.PutUint32(maxIntBytes, uint32(maxUInt32))
-				for i, b := range maxIntBytes {
-					malice[i+4] = b
-				}
+				malice[5] = 255
+				malice[6] = 255
+				malice[7] = 255
+				malice[8] = 255
 				tampered := make([]byte, base64.StdEncoding.EncodedLen(len(malice)))
 				base64.StdEncoding.Encode(tampered, malice)
 				err = v.Valid(licenseFixture, tampered)
