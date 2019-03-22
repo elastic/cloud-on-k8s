@@ -6,6 +6,7 @@ package settings
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -33,12 +34,8 @@ func ComputeMinimumMasterNodes(topology []v1alpha1.TopologyElementSpec) int {
 func ComputeMinimumMasterNodesFromPods(cluster []corev1.Pod) int {
 	nMasters := 0
 	for _, p := range cluster {
-		for _, c := range p.Spec.Containers {
-			for _, e := range c.Env {
-				if e.Name == EnvNodeMaster && e.Value == "true" {
-					nMasters++
-				}
-			}
+		if label.IsMasterNode(p) {
+			nMasters++
 		}
 	}
 	return quorum(nMasters)
