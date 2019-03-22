@@ -5,7 +5,10 @@
 package version7
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 
@@ -13,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -35,23 +37,37 @@ func newPod(name string, master bool) pod.PodWithConfig {
 	return pod.PodWithConfig{Pod: p, Config: settings.FlatConfig{}}
 }
 
-// buildInitialMasterNodesByPod conveniently summarizes the initial_master_nodes setting by the pod names
-func buildInitialMasterNodesByPod(changes *mutation.PerformableChanges) map[string]string {
-	res := make(map[string]string)
+//// buildInitialMasterNodesByPod conveniently summarizes the initial_master_nodes setting by the pod names
+//func buildInitialMasterNodesByPod(changes *mutation.PerformableChanges) map[string]string {
+//	res := make(map[string]string)
+//
+//pod:
+//	for _, change := range changes.ToCreate {
+//		for _, container := range change.Pod.Spec.Containers {
+//			for _, env := range container.Env {
+//				if env.Name == settings.ClusterInitialMasterNodes {
+//					res[change.Pod.Name] = env.Value
+//					continue pod
+//				}
+//			}
+//		}
+//	}
+//
+//	return res
+//}
 
-pod:
+func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
 	for _, change := range changes.ToCreate {
-		for _, container := range change.Pod.Spec.Containers {
-			for _, env := range container.Env {
-				if env.Name == settings.ClusterInitialMasterNodes {
-					res[change.Pod.Name] = env.Value
-					continue pod
-				}
-			}
+		nodes, isSet := change.PodSpecCtx.Config[settings.ClusterInitialMasterNodes]
+		if !label.IsMasterNode(change.Pod) {
+			require.False(t, isSet)
+		} else if !shouldBeSet {
+			require.False(t, isSet)
+		} else {
+			require.True(t, isSet)
+			require.Equal(t, strings.Join(nodeNames, ","), nodes)
 		}
 	}
-
-	return res
 }
 
 func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
@@ -80,8 +96,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
-				initialMasterNodesByPod := buildInitialMasterNodesByPod(changes)
-				assert.Empty(t, initialMasterNodesByPod)
+				assertInitialMasterNodes(t, changes, false)
 			},
 		},
 		{
@@ -99,10 +114,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
-				initialMasterNodesByPod := buildInitialMasterNodesByPod(changes)
-				assert.Equal(t, map[string]string{
-					"b": "b",
-				}, initialMasterNodesByPod)
+				assertInitialMasterNodes(t, changes, true, "b")
 			},
 		},
 		{
@@ -122,13 +134,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
-				initialMasterNodesByPod := buildInitialMasterNodesByPod(changes)
-				assert.Equal(t, map[string]string{
-					"b": "b,c,d,e",
-					"c": "b,c,d,e",
-					"d": "b,c,d,e",
-					"e": "b,c,d,e",
-				}, initialMasterNodesByPod)
+				assertInitialMasterNodes(t, changes, true, "b,c,d,e")
 			},
 		},
 	}

@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	corev1 "k8s.io/api/core/v1"
 )
 
 // ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
@@ -39,20 +38,22 @@ func ClusterInitialMasterNodesEnforcer(
 	}
 
 	// make every master node in the cluster aware of the others:
-	for _, change := range performableChanges.ToCreate {
+	for i, change := range performableChanges.ToCreate {
 		if !label.IsMasterNode(change.Pod) {
 			// we only need to set this on master nodes
 			continue
 		}
 
-		for i, container := range change.Pod.Spec.Containers {
-			container.Env = append(container.Env, corev1.EnvVar{
-				Name:  settings.EnvClusterInitialMasterNodes,
-				Value: strings.Join(masterEligibleNodeNames, ","),
-			})
-			change.Pod.Spec.Containers[i] = container
-		}
+		cfg := InitialMasterNodesConfig(masterEligibleNodeNames)
+		performableChanges.ToCreate[i].PodSpecCtx.Config = change.PodSpecCtx.Config.MergeWith(cfg)
 	}
 
 	return &performableChanges, nil
+}
+
+// InitialMasterNodesConfig returns the configuration to set up initial master nodes on v7+
+func InitialMasterNodesConfig(masterEligibleNodes []string) settings.FlatConfig {
+	return settings.FlatConfig{
+		settings.ClusterInitialMasterNodes: strings.Join(masterEligibleNodes, ","),
+	}
 }
