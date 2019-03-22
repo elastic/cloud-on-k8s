@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -140,6 +141,11 @@ func (d *defaultDriver) Reconcile(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
+	// garbage collect resources attached to this cluster that we don't need anymore
+	if err := cleanup.DeleteOrphanedResources(d.Client, es); err != nil {
+		return results.WithError(err)
+	}
+
 	genericResources, err := d.genericResourcesReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -179,7 +185,7 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := esversion.MinVersion(resourcesState.CurrentPods)
+	min, err := esversion.MinVersion(resourcesState.CurrentPods.Pods())
 	if err != nil {
 		return results.WithError(err)
 	}
