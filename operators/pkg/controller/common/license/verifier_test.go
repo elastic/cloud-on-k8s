@@ -349,7 +349,6 @@ func TestNewLicenseVerifier(t *testing.T) {
 
 	tests := []struct {
 		name string
-
 		want func(verifier *Verifier)
 	}{
 		{
