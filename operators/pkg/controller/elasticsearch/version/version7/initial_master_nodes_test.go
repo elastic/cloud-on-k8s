@@ -7,6 +7,8 @@ package version7
 import (
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -17,8 +19,8 @@ import (
 )
 
 // newPod creates a new named potentially labeled as master
-func newPod(name string, master bool) corev1.Pod {
-	pod := corev1.Pod{
+func newPod(name string, master bool) pod.PodWithConfig {
+	p := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: make(map[string]string),
@@ -28,9 +30,9 @@ func newPod(name string, master bool) corev1.Pod {
 		},
 	}
 
-	label.NodeTypesMasterLabelName.Set(master, pod.Labels)
+	label.NodeTypesMasterLabelName.Set(master, p.Labels)
 
-	return pod
+	return pod.PodWithConfig{Pod: p, Config: settings.FlatConfig{}}
 }
 
 // buildInitialMasterNodesByPod conveniently summarizes the initial_master_nodes setting by the pod names
@@ -41,7 +43,7 @@ pod:
 	for _, change := range changes.ToCreate {
 		for _, container := range change.Pod.Spec.Containers {
 			for _, env := range container.Env {
-				if env.Name == settings.EnvClusterInitialMasterNodes {
+				if env.Name == settings.ClusterInitialMasterNodes {
 					res[change.Pod.Name] = env.Value
 					continue pod
 				}
@@ -69,12 +71,12 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
-							Pod: newPod("b", true),
+							Pod: newPod("b", true).Pod,
 						}},
 					},
 				},
 				resourcesState: reconcile.ResourcesState{
-					CurrentPods: []corev1.Pod{newPod("a", true)},
+					CurrentPods: pod.PodsWithConfig{newPod("a", true)},
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
@@ -88,12 +90,12 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
-							Pod: newPod("b", true),
+							Pod: newPod("b", true).Pod,
 						}},
 					},
 				},
 				resourcesState: reconcile.ResourcesState{
-					CurrentPods: []corev1.Pod{newPod("a", false)},
+					CurrentPods: pod.PodsWithConfig{newPod("a", false)},
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
@@ -109,12 +111,12 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{
-							{Pod: newPod("b", true)},
-							{Pod: newPod("c", true)},
-							{Pod: newPod("d", true)},
-							{Pod: newPod("e", true)},
+							{Pod: newPod("b", true).Pod},
+							{Pod: newPod("c", true).Pod},
+							{Pod: newPod("d", true).Pod},
+							{Pod: newPod("e", true).Pod},
 							// f is not master, so masters should not be informed of it
-							{Pod: newPod("f", false)},
+							{Pod: newPod("f", false).Pod},
 						},
 					},
 				},

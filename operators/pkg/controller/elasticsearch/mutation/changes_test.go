@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/stretchr/testify/assert"
@@ -15,36 +17,43 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var defaultPod = ESPod(defaultImage, defaultCPULimit)
+var defaultPodWithConfig = ESPodWithConfig(defaultImage, defaultCPULimit)
+var emptyPodWithConfig = pod.PodWithConfig{Pod: corev1.Pod{}, Config: settings.FlatConfig{}}
 var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
-func namedPod(name string) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+func namedPod(name string) pod.PodWithConfig {
+	return pod.PodWithConfig{
+		Pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
 		},
+		Config: nil,
 	}
 }
 
-func namedPodWithCreationTimestamp(name string, creationTimestamp time.Time) corev1.Pod {
-	return corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              name,
-			CreationTimestamp: metav1.Time{Time: creationTimestamp},
+func namedPodWithCreationTimestamp(name string, creationTimestamp time.Time) pod.PodWithConfig {
+	return pod.PodWithConfig{
+		Pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:              name,
+				CreationTimestamp: metav1.Time{Time: creationTimestamp},
+			},
 		},
+		Config: nil,
 	}
 }
 
-func withLabels(pod corev1.Pod, labels map[string]string) corev1.Pod {
-	pod.Labels = labels
-	return pod
+func withLabels(p pod.PodWithConfig, labels map[string]string) pod.PodWithConfig {
+	p.Pod.Labels = labels
+	return p
 }
 
 func TestChanges_HasChanges(t *testing.T) {
 	type fields struct {
 		ToCreate []PodToCreate
-		ToKeep   []corev1.Pod
-		ToDelete []corev1.Pod
+		ToKeep   pod.PodsWithConfig
+		ToDelete pod.PodsWithConfig
 	}
 	tests := []struct {
 		name   string
@@ -59,7 +68,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to keep still has no changes",
 			fields: fields{
-				ToKeep: []corev1.Pod{corev1.Pod{}},
+				ToKeep: pod.PodsWithConfig{emptyPodWithConfig},
 			},
 			want: false,
 		},
@@ -73,7 +82,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to delete has changes",
 			fields: fields{
-				ToDelete: []corev1.Pod{corev1.Pod{}},
+				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
 			},
 			want: true,
 		},
@@ -81,7 +90,7 @@ func TestChanges_HasChanges(t *testing.T) {
 			name: "create and delete has changes",
 			fields: fields{
 				ToCreate: []PodToCreate{PodToCreate{}},
-				ToDelete: []corev1.Pod{corev1.Pod{}},
+				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
 			},
 			want: true,
 		},
@@ -103,8 +112,8 @@ func TestChanges_HasChanges(t *testing.T) {
 func TestChanges_IsEmpty(t *testing.T) {
 	type fields struct {
 		ToCreate []PodToCreate
-		ToKeep   []corev1.Pod
-		ToDelete []corev1.Pod
+		ToKeep   pod.PodsWithConfig
+		ToDelete pod.PodsWithConfig
 	}
 	tests := []struct {
 		name   string
@@ -120,8 +129,8 @@ func TestChanges_IsEmpty(t *testing.T) {
 			name: "empty inner lists should be empty",
 			fields: fields{
 				ToCreate: []PodToCreate{},
-				ToKeep:   []corev1.Pod{},
-				ToDelete: []corev1.Pod{},
+				ToKeep:   pod.PodsWithConfig{},
+				ToDelete: pod.PodsWithConfig{},
 			},
 			want: true,
 		},
@@ -129,8 +138,8 @@ func TestChanges_IsEmpty(t *testing.T) {
 			name: "with pod to create should not be empty",
 			fields: fields{
 				ToCreate: []PodToCreate{{}},
-				ToKeep:   []corev1.Pod{},
-				ToDelete: []corev1.Pod{},
+				ToKeep:   pod.PodsWithConfig{},
+				ToDelete: pod.PodsWithConfig{},
 			},
 			want: false,
 		},
@@ -138,8 +147,8 @@ func TestChanges_IsEmpty(t *testing.T) {
 			name: "with pod to keep not be empty",
 			fields: fields{
 				ToCreate: []PodToCreate{},
-				ToKeep:   []corev1.Pod{{}},
-				ToDelete: []corev1.Pod{},
+				ToKeep:   pod.PodsWithConfig{{}},
+				ToDelete: pod.PodsWithConfig{},
 			},
 			want: false,
 		},
@@ -147,8 +156,8 @@ func TestChanges_IsEmpty(t *testing.T) {
 			name: "with pod to delete should not empty",
 			fields: fields{
 				ToCreate: []PodToCreate{},
-				ToKeep:   []corev1.Pod{},
-				ToDelete: []corev1.Pod{{}},
+				ToKeep:   pod.PodsWithConfig{},
+				ToDelete: pod.PodsWithConfig{{}},
 			},
 			want: false,
 		},
@@ -175,7 +184,7 @@ func TestChanges_Group(t *testing.T) {
 	fooPod := withLabels(namedPod("1"), map[string]string{"foo": "bar"})
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
 	bazPodToCreate := PodToCreate{
-		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}),
+		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}).Pod,
 		PodSpecCtx: pod.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
 	}
 
@@ -201,7 +210,7 @@ func TestChanges_Group(t *testing.T) {
 		},
 		{
 			name:    "no group definitions should result in a defaulted group",
-			changes: Changes{ToKeep: []corev1.Pod{namedPod("1")}},
+			changes: Changes{ToKeep: pod.PodsWithConfig{namedPod("1")}},
 			args: args{
 				remainingPodsState: NewEmptyPodsState(),
 			},
@@ -209,9 +218,9 @@ func TestChanges_Group(t *testing.T) {
 				ChangeGroup{
 					Name: UnmatchedGroupName,
 					Changes: Changes{
-						ToKeep:   []corev1.Pod{namedPod("1")},
+						ToKeep:   pod.PodsWithConfig{namedPod("1")},
 						ToCreate: []PodToCreate{},
-						ToDelete: []corev1.Pod{},
+						ToDelete: pod.PodsWithConfig{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -219,7 +228,7 @@ func TestChanges_Group(t *testing.T) {
 		},
 		{
 			name:    "non-matching group definitions should result in a defaulted group",
-			changes: Changes{ToKeep: []corev1.Pod{namedPod("1")}},
+			changes: Changes{ToKeep: pod.PodsWithConfig{namedPod("1")}},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
 					fooMatchingGroupingDefinition,
@@ -230,9 +239,9 @@ func TestChanges_Group(t *testing.T) {
 				ChangeGroup{
 					Name: UnmatchedGroupName,
 					Changes: Changes{
-						ToKeep:   []corev1.Pod{namedPod("1")},
+						ToKeep:   pod.PodsWithConfig{namedPod("1")},
 						ToCreate: []PodToCreate{},
-						ToDelete: []corev1.Pod{},
+						ToDelete: pod.PodsWithConfig{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -242,16 +251,16 @@ func TestChanges_Group(t *testing.T) {
 			name: "pods should be bucketed into the groups based on the selector and include relevant PodsState",
 			changes: Changes{
 				ToCreate: []PodToCreate{bazPodToCreate},
-				ToKeep:   []corev1.Pod{fooPod},
-				ToDelete: []corev1.Pod{barPod},
+				ToKeep:   pod.PodsWithConfig{fooPod},
+				ToDelete: pod.PodsWithConfig{barPod},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
 					fooMatchingGroupingDefinition,
 				},
 				remainingPodsState: initializePodsState(PodsState{
-					Pending:        map[string]corev1.Pod{fooPod.Name: fooPod},
-					RunningJoining: map[string]corev1.Pod{barPod.Name: barPod},
+					Pending:        map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
+					RunningJoining: map[string]corev1.Pod{barPod.Pod.Name: barPod.Pod},
 				}),
 			},
 			want: ChangeGroups{
@@ -259,22 +268,22 @@ func TestChanges_Group(t *testing.T) {
 					Name: indexedGroupName(0),
 					Changes: Changes{
 						ToCreate: []PodToCreate{},
-						ToKeep:   []corev1.Pod{fooPod},
-						ToDelete: []corev1.Pod{},
+						ToKeep:   pod.PodsWithConfig{fooPod},
+						ToDelete: pod.PodsWithConfig{},
 					},
 					PodsState: initializePodsState(PodsState{
-						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},
+						Pending: map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
 					}),
 				},
 				ChangeGroup{
 					Name: UnmatchedGroupName,
 					Changes: Changes{
-						ToKeep:   []corev1.Pod{},
-						ToDelete: []corev1.Pod{barPod},
+						ToKeep:   pod.PodsWithConfig{},
+						ToDelete: pod.PodsWithConfig{barPod},
 						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
-						RunningJoining: map[string]corev1.Pod{barPod.Name: barPod},
+						RunningJoining: map[string]corev1.Pod{barPod.Pod.Name: barPod.Pod},
 					}),
 				},
 			},
@@ -283,8 +292,8 @@ func TestChanges_Group(t *testing.T) {
 			name: "should match when there are multiple labels",
 			changes: Changes{
 				ToCreate: []PodToCreate{bazPodToCreate},
-				ToKeep:   []corev1.Pod{fooPod},
-				ToDelete: []corev1.Pod{foobarPod},
+				ToKeep:   pod.PodsWithConfig{fooPod},
+				ToDelete: pod.PodsWithConfig{foobarPod},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -298,8 +307,8 @@ func TestChanges_Group(t *testing.T) {
 					},
 				},
 				remainingPodsState: initializePodsState(PodsState{
-					Pending:        map[string]corev1.Pod{fooPod.Name: fooPod},
-					RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
+					Pending:        map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
+					RunningJoining: map[string]corev1.Pod{foobarPod.Pod.Name: foobarPod.Pod},
 				}),
 			},
 			want: ChangeGroups{
@@ -307,22 +316,22 @@ func TestChanges_Group(t *testing.T) {
 					Name: indexedGroupName(0),
 					Changes: Changes{
 						ToCreate: []PodToCreate{},
-						ToKeep:   []corev1.Pod{},
-						ToDelete: []corev1.Pod{foobarPod},
+						ToKeep:   pod.PodsWithConfig{},
+						ToDelete: pod.PodsWithConfig{foobarPod},
 					},
 					PodsState: initializePodsState(PodsState{
-						RunningJoining: map[string]corev1.Pod{foobarPod.Name: foobarPod},
+						RunningJoining: map[string]corev1.Pod{foobarPod.Pod.Name: foobarPod.Pod},
 					}),
 				},
 				ChangeGroup{
 					Name: UnmatchedGroupName,
 					Changes: Changes{
-						ToKeep:   []corev1.Pod{fooPod},
-						ToDelete: []corev1.Pod{},
+						ToKeep:   pod.PodsWithConfig{fooPod},
+						ToDelete: pod.PodsWithConfig{},
 						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
-						Pending: map[string]corev1.Pod{fooPod.Name: fooPod},
+						Pending: map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
 					}),
 				},
 			},

@@ -9,7 +9,9 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,11 +26,11 @@ type ResourcesState struct {
 	// DeletionTimestamp tombstone set.
 	AllPods []corev1.Pod
 	// CurrentPods are all non-deleted Elasticsearch pods.
-	CurrentPods []corev1.Pod
+	CurrentPods pod.PodsWithConfig
 	// CurrentPodsByPhase are all non-deleted Elasticsearch indexed by their PodPhase
-	CurrentPodsByPhase map[corev1.PodPhase][]corev1.Pod
+	CurrentPodsByPhase map[corev1.PodPhase]pod.PodsWithConfig
 	// DeletingPods are all deleted Elasticsearch pods.
-	DeletingPods []corev1.Pod
+	DeletingPods pod.PodsWithConfig
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
 	// ExternalService is the user-facing service related to the Elasticsearch cluster.
@@ -44,22 +46,23 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 		return nil, err
 	}
 
-	deletingPods := make([]corev1.Pod, 0)
-	currentPods := make([]corev1.Pod, 0, len(allPods))
-	currentPodsByPhase := make(map[corev1.PodPhase][]corev1.Pod, 0)
+	deletingPods := make(pod.PodsWithConfig, 0)
+	currentPods := make(pod.PodsWithConfig, 0, len(allPods))
+	currentPodsByPhase := make(map[corev1.PodPhase]pod.PodsWithConfig, 0)
 	// filter out pods scheduled for deletion
 	for _, p := range allPods {
 		if p.DeletionTimestamp != nil {
-			deletingPods = append(deletingPods, p)
+			deletingPods = append(deletingPods, podWithConfig)
 			continue
 		}
-		currentPods = append(currentPods, p)
+
+		currentPods = append(currentPods, podWithConfig)
 
 		podsInPhase, ok := currentPodsByPhase[p.Status.Phase]
 		if !ok {
-			podsInPhase = []corev1.Pod{p}
+			podsInPhase = pod.PodsWithConfig{podWithConfig}
 		} else {
-			podsInPhase = append(podsInPhase, p)
+			podsInPhase = append(podsInPhase, podWithConfig)
 		}
 		currentPodsByPhase[p.Status.Phase] = podsInPhase
 	}

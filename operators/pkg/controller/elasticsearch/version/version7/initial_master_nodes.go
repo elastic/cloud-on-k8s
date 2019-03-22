@@ -21,8 +21,8 @@ func ClusterInitialMasterNodesEnforcer(
 ) (*mutation.PerformableChanges, error) {
 	var masterEligibleNodeNames []string
 	for _, pod := range resourcesState.CurrentPods {
-		if label.IsMasterNode(pod) {
-			masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Name)
+		if label.IsMasterNode(pod.Pod) {
+			masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Pod.Name)
 		}
 	}
 

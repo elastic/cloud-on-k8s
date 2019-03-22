@@ -36,11 +36,11 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
-						ToDelete: []corev1.Pod{namedPod("2")},
+						ToCreate: []PodToCreate{{Pod: namedPod("1").Pod}},
+						ToDelete: pod.PodsWithConfig{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
-						RunningReady: map[string]corev1.Pod{"2": namedPod("2")},
+						RunningReady: map[string]corev1.Pod{"2": namedPod("2").Pod},
 					}),
 				},
 			},
@@ -52,7 +52,7 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			want: &PerformableChanges{
 				Changes: Changes{
 					ToCreate: []PodToCreate{
-						{Pod: namedPod("1"), PodSpecCtx: pod.PodSpecContext{}},
+						{Pod: namedPod("1").Pod, PodSpecCtx: pod.PodSpecContext{}},
 					},
 				},
 				MaxUnavailableGroups: []string{"foo"},
@@ -64,11 +64,11 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToCreate: []PodToCreate{{Pod: namedPod("1")}},
-						ToDelete: []corev1.Pod{namedPod("2")},
+						ToCreate: []PodToCreate{{Pod: namedPod("1").Pod}},
+						ToDelete: pod.PodsWithConfig{namedPod("2")},
 					},
 					PodsState: initializePodsState(PodsState{
-						RunningReady: map[string]corev1.Pod{"2": namedPod("2"), "3": namedPod("3")},
+						RunningReady: map[string]corev1.Pod{"2": namedPod("2").Pod, "3": namedPod("3").Pod},
 					}),
 				},
 			},
@@ -79,7 +79,7 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			},
 			want: &PerformableChanges{
 				Changes: Changes{
-					ToDelete: []corev1.Pod{
+					ToDelete: pod.PodsWithConfig{
 						namedPod("2"),
 					},
 				},
@@ -92,15 +92,15 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 				ChangeGroup{
 					Name: "foo",
 					Changes: Changes{
-						ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
-						ToKeep:   []corev1.Pod{namedPod("keep-3")},
-						ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
+						ToCreate: []PodToCreate{{Pod: namedPod("create-1").Pod}, {Pod: namedPod("create-2").Pod}},
+						ToKeep:   pod.PodsWithConfig{namedPod("keep-3")},
+						ToDelete: pod.PodsWithConfig{namedPod("delete-1"), namedPod("delete-2")},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningReady: map[string]corev1.Pod{
-							"delete-1": namedPod("delete-1"),
-							"delete-2": namedPod("delete-2"),
-							"keep-3":   namedPod("keep-3"),
+							"delete-1": namedPod("delete-1").Pod,
+							"delete-2": namedPod("delete-2").Pod,
+							"keep-3":   namedPod("keep-3").Pod,
 						},
 					}),
 				},
@@ -113,9 +113,9 @@ func TestChangeGroups_CalculatePerformableChanges(t *testing.T) {
 			want: &PerformableChanges{
 				Changes: Changes{
 					ToCreate: []PodToCreate{
-						{Pod: namedPod("create-1"), PodSpecCtx: pod.PodSpecContext{}},
+						{Pod: namedPod("create-1").Pod, PodSpecCtx: pod.PodSpecContext{}},
 					},
-					ToDelete: []corev1.Pod{
+					ToDelete: pod.PodsWithConfig{
 						namedPod("delete-1"),
 					},
 				},
@@ -156,15 +156,15 @@ func TestChangeGroups_ChangeStats(t *testing.T) {
 					Selector: metav1.LabelSelector{},
 				},
 				Changes: Changes{
-					ToCreate: []PodToCreate{{Pod: namedPod("create-1")}, {Pod: namedPod("create-2")}},
-					ToKeep:   []corev1.Pod{namedPod("keep-3")},
-					ToDelete: []corev1.Pod{namedPod("delete-1"), namedPod("delete-2")},
+					ToCreate: []PodToCreate{{Pod: namedPod("create-1").Pod}, {Pod: namedPod("create-2").Pod}},
+					ToKeep:   pod.PodsWithConfig{namedPod("keep-3")},
+					ToDelete: pod.PodsWithConfig{namedPod("delete-1"), namedPod("delete-2")},
 				},
 				PodsState: initializePodsState(PodsState{
 					RunningReady: map[string]corev1.Pod{
-						"delete-1": namedPod("delete-1"),
-						"delete-2": namedPod("delete-2"),
-						"keep-3":   namedPod("keep-3"),
+						"delete-1": namedPod("delete-1").Pod,
+						"delete-2": namedPod("delete-2").Pod,
+						"keep-3":   namedPod("keep-3").Pod,
 					},
 				}),
 			},
@@ -209,29 +209,29 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 			name: "deletion",
 			fields: fields{
 				Changes: Changes{
-					ToKeep:   []corev1.Pod{namedPod("bar")},
-					ToDelete: []corev1.Pod{namedPod("foo"), namedPod("baz")},
+					ToKeep:   pod.PodsWithConfig{namedPod("bar")},
+					ToDelete: pod.PodsWithConfig{namedPod("foo"), namedPod("baz")},
 				},
 				PodsState: initializePodsState(PodsState{
-					Deleting:     map[string]corev1.Pod{"baz": namedPod("baz")},
-					RunningReady: map[string]corev1.Pod{"foo": namedPod("foo"), "bar": namedPod("bar")},
+					Deleting:     map[string]corev1.Pod{"baz": namedPod("baz").Pod},
+					RunningReady: map[string]corev1.Pod{"foo": namedPod("foo").Pod, "bar": namedPod("bar").Pod},
 				}),
 			},
 			args: args{
 				performableChanges: PerformableChanges{
 					Changes: Changes{
-						ToDelete: []corev1.Pod{namedPod("foo")},
+						ToDelete: pod.PodsWithConfig{namedPod("foo")},
 					},
 				},
 			},
 			want: ChangeGroup{
 				Changes: Changes{
-					ToKeep:   []corev1.Pod{namedPod("bar")},
-					ToDelete: []corev1.Pod{namedPod("baz")},
+					ToKeep:   pod.PodsWithConfig{namedPod("bar")},
+					ToDelete: pod.PodsWithConfig{namedPod("baz")},
 				},
 				PodsState: initializePodsState(PodsState{
-					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
-					Deleting:     map[string]corev1.Pod{"foo": namedPod("foo"), "baz": namedPod("baz")},
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar").Pod},
+					Deleting:     map[string]corev1.Pod{"foo": namedPod("foo").Pod, "baz": namedPod("baz").Pod},
 				}),
 			},
 		},
@@ -239,28 +239,28 @@ func TestChangeGroups_simulatePerformableChangesApplied(t *testing.T) {
 			name: "creation",
 			fields: fields{
 				Changes: Changes{
-					ToKeep:   []corev1.Pod{namedPod("bar")},
-					ToCreate: []PodToCreate{{Pod: namedPod("foo")}, {Pod: namedPod("baz")}},
+					ToKeep:   pod.PodsWithConfig{namedPod("bar")},
+					ToCreate: []PodToCreate{{Pod: namedPod("foo").Pod}, {Pod: namedPod("baz").Pod}},
 				},
 				PodsState: initializePodsState(PodsState{
-					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar").Pod},
 				}),
 			},
 			args: args{
 				performableChanges: PerformableChanges{
 					Changes: Changes{
-						ToCreate: []PodToCreate{{Pod: namedPod("foo")}},
+						ToCreate: []PodToCreate{{Pod: namedPod("foo").Pod}},
 					},
 				},
 			},
 			want: ChangeGroup{
 				Changes: Changes{
-					ToCreate: []PodToCreate{{Pod: namedPod("baz")}},
-					ToKeep:   []corev1.Pod{namedPod("bar"), namedPod("foo")},
+					ToCreate: []PodToCreate{{Pod: namedPod("baz").Pod}},
+					ToKeep:   pod.PodsWithConfig{namedPod("bar"), namedPod("foo")},
 				},
 				PodsState: initializePodsState(PodsState{
-					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar")},
-					Pending:      map[string]corev1.Pod{"foo": namedPod("foo")},
+					RunningReady: map[string]corev1.Pod{"bar": namedPod("bar").Pod},
+					Pending:      map[string]corev1.Pod{"foo": namedPod("foo").Pod},
 				}),
 			},
 		},
