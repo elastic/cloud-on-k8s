@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"strconv"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -17,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/sidecar"
@@ -29,7 +27,7 @@ import (
 )
 
 var (
-	// linkedFiles6 describe how the user related secrets are mapped into the pod's filesystem.
+	// linkedFiles6 describe how various secrets are mapped into the pod's filesystem.
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
@@ -43,6 +41,10 @@ var (
 			{
 				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticUsersRolesFile),
 				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticUsersRolesFile),
+			},
+			{
+				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", settings.ConfigFileName),
 			},
 		},
 	}
@@ -70,6 +72,7 @@ func ExpectedPodSpecs(
 		es,
 		paramsTmpl,
 		newEnvironmentVars,
+		settings.NewDefaultESConfig,
 		newInitContainers,
 		newSidecarContainers,
 		[]corev1.Volume{sideCarSharedVolume.Volume()},
@@ -147,116 +150,25 @@ func newSidecarContainers(
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
-func newEnvironmentVars(
-	p pod.NewPodSpecParams,
-	nodeCertificatesVolume volume.SecretVolume,
-	extraFilesSecretVolume volume.SecretVolume,
-) []corev1.EnvVar {
+func newEnvironmentVars(p pod.NewPodSpecParams) []corev1.EnvVar {
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
 	vars := []corev1.EnvVar{
-		{Name: settings.EnvNodeName, Value: "", ValueFrom: &corev1.EnvVarSource{
+		// inject pod name and IP as environment variables dynamically,
+		// to be referenced in elasticsearch configuration file
+		{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 		}},
-		{Name: settings.EnvDiscoveryZenPingUnicastHosts, Value: p.DiscoveryServiceName},
-		{Name: settings.EnvClusterName, Value: p.ClusterName},
-		{Name: settings.EnvDiscoveryZenMinimumMasterNodes, Value: strconv.Itoa(p.DiscoveryZenMinimumMasterNodes)},
-		{Name: settings.EnvNetworkHost, Value: "0.0.0.0"},
-		{Name: settings.EnvNetworkPublishHost, Value: "", ValueFrom: &corev1.EnvVarSource{
+		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
-
-		{Name: settings.EnvPathData, Value: initcontainer.DataSharedVolume.EsContainerMountPath},
-		{Name: settings.EnvPathLogs, Value: initcontainer.LogsSharedVolume.EsContainerMountPath},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
 		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
-		{Name: settings.EnvNodeMaster, Value: fmt.Sprintf("%t", p.NodeTypes.Master)},
-		{Name: settings.EnvNodeData, Value: fmt.Sprintf("%t", p.NodeTypes.Data)},
-		{Name: settings.EnvNodeIngest, Value: fmt.Sprintf("%t", p.NodeTypes.Ingest)},
-		{Name: settings.EnvNodeML, Value: fmt.Sprintf("%t", p.NodeTypes.ML)},
-
 		{Name: settings.EnvReadinessProbeProtocol, Value: network.ProtocolForLicense(p.LicenseType)},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
-		{Name: settings.EnvTransportProfilesClientPort, Value: strconv.Itoa(network.TransportClientPort)},
-	}
-
-	vars = append(vars, xpackEnvVars(nodeCertificatesVolume, extraFilesSecretVolume, p.LicenseType)...)
-
-	return vars
-}
-
-func xpackEnvVars(
-	nodeCertificatesVolume volume.SecretVolume,
-	extraFilesSecretVolume volume.SecretVolume,
-	licenseType v1alpha1.LicenseType,
-) []corev1.EnvVar {
-
-	if licenseType == v1alpha1.LicenseTypeBasic {
-		// disable x-pack security
-		return []corev1.EnvVar{
-			{Name: settings.EnvXPackSecurityEnabled, Value: "false"},
-		}
-	}
-
-	// enable x-pack security, including TLS
-	vars := []corev1.EnvVar{
-		// x-pack security general settings
-		{Name: settings.EnvXPackSecurityEnabled, Value: "true"},
-		{Name: settings.EnvXPackSecurityAuthcReservedRealmEnabled, Value: "false"},
-		{Name: settings.EnvXPackSecurityTransportSslVerificationMode, Value: "certificate"},
-
-		// client profiles
-		{Name: settings.EnvTransportProfilesClientXPackSecurityType, Value: "client"},
-		{Name: settings.EnvTransportProfilesClientXPackSecuritySslClientAuthentication, Value: "none"},
-
-		// x-pack security http settings
-		{Name: settings.EnvXPackSecurityHttpSslEnabled, Value: "true"},
-		{
-			Name:  settings.EnvXPackSecurityHttpSslKey,
-			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
-		},
-		{
-			Name:  settings.EnvXPackSecurityHttpSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
-		},
-		{
-			Name:  settings.EnvXPackSecurityHttpSslCertificateAuthorities,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
-		},
-		// x-pack security transport settings
-		{Name: settings.EnvXPackSecurityTransportSslEnabled, Value: "true"},
-		{
-			Name:  settings.EnvXPackSecurityTransportSslKey,
-			Value: path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
-		},
-		{
-			Name:  settings.EnvXPackSecurityTransportSslCertificate,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, nodecerts.CertFileName),
-		},
-		{
-			Name:  settings.EnvXPackSecurityTransportSslCertificateAuthorities,
-			Value: path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
-		},
-
-		// TODO: it would be great if we could move this out of "generic extra files" and into a more scoped secret
-		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
-		//       reusable component somehow.
-		{
-			Name: settings.EnvXPackSecurityTransportSslTrustRestrictionsPath,
-			Value: fmt.Sprintf(
-				"%s/%s",
-				extraFilesSecretVolume.VolumeMount().MountPath,
-				nodecerts.TrustRestrictionsFilename,
-			),
-		},
-	}
-
-	if licenseType == v1alpha1.LicenseTypeTrial {
-		// auto-generate a trial license
-		vars = append(vars, corev1.EnvVar{Name: settings.EnvXPackLicenseSelfGeneratedType, Value: "trial"})
 	}
 
 	return vars
