@@ -1,0 +1,40 @@
+package settings
+
+const (
+	ClusterName = "cluster.name"
+
+	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
+	DiscoveryZenPingUnicastHosts   = "discovery.zen.ping.unicast.hosts"
+	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
+
+	NetworkHost        = "network.host"
+	NetworkPublishHost = "network.publish_host"
+
+	NodeData   = "node.data"
+	NodeIngest = "node.ingest"
+	NodeMaster = "node.master"
+	NodeML     = "node.ml"
+
+	NodeName = "node.name"
+
+	PathData = "path.data"
+	PathLogs = "path.logs"
+
+	TransportProfilesClientPort                                 = "transport.profiles.client.port"
+	TransportProfilesClientXPackSecuritySslClientAuthentication = "transport.profiles.client.xpack.security.ssl.client_authentication"
+	TransportProfilesClientXPackSecurityType                    = "transport.profiles.client.xpack.security.type"
+
+	XPackLicenseSelfGeneratedType                   = "xpack.license.self_generated.type"
+	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
+	XPackSecurityEnabled                            = "xpack.security.enabled"
+	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"
+	XPackSecurityHttpSslCertificateAuthorities      = "xpack.security.http.ssl.certificate_authorities"
+	XPackSecurityHttpSslEnabled                     = "xpack.security.http.ssl.enabled"
+	XPackSecurityHttpSslKey                         = "xpack.security.http.ssl.key"
+	XPackSecurityTransportSslCertificate            = "xpack.security.transport.ssl.certificate"
+	XPackSecurityTransportSslCertificateAuthorities = "xpack.security.transport.ssl.certificate_authorities"
+	XPackSecurityTransportSslEnabled                = "xpack.security.transport.ssl.enabled"
+	XPackSecurityTransportSslKey                    = "xpack.security.transport.ssl.key"
+	XPackSecurityTransportSslTrustRestrictionsPath  = "xpack.security.transport.ssl.trust_restrictions.path"
+	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
+)
