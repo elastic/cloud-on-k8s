@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,6 +34,24 @@ var (
 		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
+
+// PodWithConfig contains a pod and its configuration
+type PodWithConfig struct {
+	Pod    corev1.Pod
+	Config settings.FlatConfig
+}
+
+// PodsWithConfig is simply a list of PodWithConfig
+type PodsWithConfig []PodWithConfig
+
+// Pods is a helper method to retrieve pods only (no configuration)
+func (p PodsWithConfig) Pods() []corev1.Pod {
+	pods := make([]corev1.Pod, len(p))
+	for i, withConfig := range p {
+		pods[i] = withConfig.Pod
+	}
+	return pods
+}
 
 // NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
 type NewPodSpecParams struct {
@@ -62,6 +81,8 @@ type NewPodSpecParams struct {
 	// Resources is the memory/cpu resources the pod wants
 	Resources commonv1alpha1.ResourcesSpec
 
+	// ESConfigVolume is the secret volume that contains elasticsearch.yml configuration
+	ESConfigVolume volume.SecretVolume
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume volume.SecretVolume
 	// ConfigMapVolume is a volume containing a config map with configuration files
@@ -80,6 +101,7 @@ type NewPodSpecParams struct {
 type PodSpecContext struct {
 	PodSpec         corev1.PodSpec
 	TopologyElement v1alpha1.TopologyElementSpec
+	Config          settings.FlatConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.
