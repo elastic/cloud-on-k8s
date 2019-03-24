@@ -79,6 +79,7 @@ var (
 		},
 	}
 	fakeCSRClient FakeCSRClient
+	additionalCA  = [][]byte{[]byte(testAdditionalCA)}
 )
 
 const (
@@ -99,6 +100,25 @@ AAA7eoZ9AEHflUeuLn9QJI/r0hyQQLEtrpwv6rDT1GCWaLII5HJ6NUFVf4TTcqxo
 wg/HcAJWY60xZTJDFN+Qfx8ZQvBEin6c2/h+zZi5IVY=
 -----END RSA PRIVATE KEY-----
 `
+	testAdditionalCA = `-----BEGIN CERTIFICATE-----
+MIIDKzCCAhOgAwIBAgIRAK7i/u/wsh+i2G0yUygsJckwDQYJKoZIhvcNAQELBQAw
+LzEZMBcGA1UECxMQNG1jZnhjbnh0ZjZuNHA5bDESMBAGA1UEAxMJdHJ1c3Qtb25l
+MB4XDTE5MDMyMDIwNDg1NloXDTIwMDMxOTIwNDk1NlowLzEZMBcGA1UECxMQNG1j
+Znhjbnh0ZjZuNHA5bDESMBAGA1UEAxMJdHJ1c3Qtb25lMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEAu/Pws5FcyJw843pNow/Y95rApWAuGanU99DEmeOG
+ggtpc3qtDWWKwLZ6cU+av3u82tf0HYSpy0Z2hn3PS2dGGgHPTr/tTGYA5alu1dn5
+CgqQDBVLbkKA1lDcm8w98fRavRw6a0TX5DURqXs+smhdMztQjDNCl3kJ40JbXVAY
+x5vhD2pKPCK0VIr9uYK0E/9dvrU0SJGLUlB+CY/DU7c8t22oer2T6fjCZzh3Fhwi
+/aOKEwEUoE49orte0N9b1HSKlVePzIUuTTc3UU2ntWi96Uf2FesuAubU11WH4kIL
+wRlofty7ewBzVmGte1fKUMjHB3mgb+WYwkEFwjpQL4LhkQIDAQABo0IwQDAOBgNV
+HQ8BAf8EBAMCAoQwHQYDVR0lBBYwFAYIKwYBBQUHAwEGCCsGAQUFBwMCMA8GA1Ud
+EwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAI+qczKQgkb5L5dXzn+KW92J
+Sq1rrmaYUYLRTtPFH7t42REPYLs4UV0qR+6v/hJljQbAS+Vu3BioLWuxq85NsIjf
+OK1KO7D8lwVI9tAetE0tKILqljTjwZpqfZLZ8fFqwzd9IM/WfoI7Z05k8BSL6XdM
+FaRfSe/GJ+DR1dCwnWAVKGxAry4JSceVS9OXxYNRTcfQuT5s8h/6X5UaonTbhil7
+91fQFaX8LSuZj23/3kgDTnjPmvj2sz5nODymI4YeTHLjdlMmTufWSJj901ITp7Bw
+DMO3GhRADFpMz3vjHA2rHA4AQ6nC8N4lIYTw0AF1VAOC0SDntf6YEgrhRKRFAUY=
+-----END CERTIFICATE-----`
 )
 
 func init() {
@@ -219,28 +239,48 @@ func Test_doReconcile(t *testing.T) {
 		Name:      "secret",
 	}
 	tests := []struct {
-		name              string
-		secret            corev1.Secret
-		pod               corev1.Pod
-		wantSecretUpdated bool
+		name                            string
+		secret                          corev1.Secret
+		pod                             corev1.Pod
+		additionalTrustedCAsPemEncoded  [][]byte
+		wantSecretUpdated               bool
+		wantCertUpdateAnnotationUpdated bool
 	}{
 		{
-			name:              "no cert generated yet: issue one",
-			secret:            corev1.Secret{ObjectMeta: objMeta},
-			pod:               podWithRunningCertInitializer,
-			wantSecretUpdated: true,
+			name: "Do not requeue without updating secret if there is an additional CA",
+			secret: corev1.Secret{
+				ObjectMeta: objMeta,
+				Data: map[string][]byte{
+					CertFileName:            pemCert,
+					CSRFileName:             testCSRBytes,
+					certificates.CAFileName: certificates.EncodePEMCert(testCA.Cert.Raw),
+				},
+			},
+			additionalTrustedCAsPemEncoded:  additionalCA,
+			pod:                             corev1.Pod{},
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: false,
 		},
 		{
-			name:              "no cert generated, but pod has no IP yet: requeue",
-			secret:            corev1.Secret{ObjectMeta: objMeta},
-			pod:               corev1.Pod{},
-			wantSecretUpdated: false,
+			name:                            "no cert generated yet: issue one",
+			secret:                          corev1.Secret{ObjectMeta: objMeta},
+			pod:                             podWithRunningCertInitializer,
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: true,
 		},
 		{
-			name:              "no cert generated, but cert-initializer not running: requeue",
-			secret:            corev1.Secret{ObjectMeta: objMeta},
-			pod:               podWithTerminatedCertInitializer,
-			wantSecretUpdated: false,
+			name:                            "no cert generated, but pod has no IP yet: requeue",
+			secret:                          corev1.Secret{ObjectMeta: objMeta},
+			pod:                             corev1.Pod{},
+			wantSecretUpdated:               false,
+			wantCertUpdateAnnotationUpdated: true,
+		},
+		{
+			name:                            "no cert generated, but cert-initializer not running: requeue",
+			secret:                          corev1.Secret{ObjectMeta: objMeta},
+			pod:                             podWithTerminatedCertInitializer,
+			wantSecretUpdated:               false,
+			wantCertUpdateAnnotationUpdated: true,
 		},
 		{
 			name: "a cert already exists, is valid, and cert-initializer is not running: requeue",
@@ -250,8 +290,9 @@ func Test_doReconcile(t *testing.T) {
 					CertFileName: pemCert,
 				},
 			},
-			pod:               podWithTerminatedCertInitializer,
-			wantSecretUpdated: false,
+			pod:                             podWithTerminatedCertInitializer,
+			wantSecretUpdated:               false,
+			wantCertUpdateAnnotationUpdated: true,
 		},
 		{
 			name: "a cert already exists, is valid, and cert-initializer is running to serve a new CSR: issue cert",
@@ -261,20 +302,23 @@ func Test_doReconcile(t *testing.T) {
 					CertFileName: pemCert,
 				},
 			},
-			pod:               podWithRunningCertInitializer,
-			wantSecretUpdated: true,
+			pod:                             podWithRunningCertInitializer,
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: true,
 		},
 		{
 			name: "a cert already exists, is valid, and cert-initializer is running to serve the same CSR: requeue",
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: pemCert,
-					CSRFileName:  testCSRBytes,
+					CertFileName:            pemCert,
+					CSRFileName:             testCSRBytes,
+					certificates.CAFileName: certificates.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
-			pod:               podWithRunningCertInitializer,
-			wantSecretUpdated: false,
+			pod:                             podWithRunningCertInitializer,
+			wantSecretUpdated:               false,
+			wantCertUpdateAnnotationUpdated: true,
 		},
 	}
 	for _, tt := range tests {
@@ -285,13 +329,13 @@ func Test_doReconcile(t *testing.T) {
 
 			_, err = doReconcile(
 				fakeClient,
-				tt.secret,
+				*tt.secret.DeepCopy(), // We need a deepcopy to not update the original data slice
 				tt.pod,
 				fakeCSRClient,
 				"cluster",
 				"namespace",
 				[]corev1.Service{testSvc},
-				testCA, nil,
+				testCA, tt.additionalTrustedCAsPemEncoded,
 				certificates.DefaultCertValidity,
 				certificates.DefaultRotateBefore,
 			)
@@ -307,13 +351,15 @@ func Test_doReconcile(t *testing.T) {
 			isUpdated := !reflect.DeepEqual(tt.secret, updatedSecret)
 			require.Equal(t, tt.wantSecretUpdated, isUpdated)
 			if tt.wantSecretUpdated {
-				assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
-				lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[lastCertUpdateAnnotation])
-				require.NoError(t, err)
-				assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
+				if tt.wantCertUpdateAnnotationUpdated {
+					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
+					lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[lastCertUpdateAnnotation])
+					require.NoError(t, err)
+					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
+				}
 			}
 		})
 	}
