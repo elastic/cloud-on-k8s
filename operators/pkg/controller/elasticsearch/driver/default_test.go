@@ -257,7 +257,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				namespacedName: nn,
 				ToDelete:       []corev1.Pod{pod1, pod2},
 				resourcesState: &reconcile.ResourcesState{
-					CurrentPods: pod.PodsWithConfig{{pod1, settings.FlatConfig{}}, {pod2, settings.FlatConfig{}}, {pod3, settings.FlatConfig{}}},
+					CurrentPods: pod.PodsWithConfig{{Pod: pod1, Config: settings.FlatConfig{}}, {Pod: pod2, Config: settings.FlatConfig{}}, {Pod: pod3, Config: settings.FlatConfig{}}},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
@@ -282,7 +282,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				namespacedName: nn,
 				ToDelete:       []corev1.Pod{pod4},
 				resourcesState: &reconcile.ResourcesState{
-					CurrentPods: pod.PodsWithConfig{{pod1, settings.FlatConfig{}}, {pod2, settings.FlatConfig{}}, {pod3, settings.FlatConfig{}}, {pod4, settings.FlatConfig{}}},
+					CurrentPods: pod.PodsWithConfig{{Pod: pod1, Config: settings.FlatConfig{}}, {Pod: pod2, Config: settings.FlatConfig{}}, {Pod: pod3, Config: settings.FlatConfig{}}, {Pod: pod4, Config: settings.FlatConfig{}}},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
