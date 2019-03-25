@@ -29,7 +29,7 @@ var (
 	esPasswordFileFlag    = envToFlag(EnvEsPasswordFile)
 	esEndpointFlag        = envToFlag(EnvEsEndpoint)
 	esCaCertsPathFlag     = envToFlag(EnvEsCaCertsPath)
-	esVersionFlag         = envToFlag(EnvVersion)
+	esVersionFlag         = envToFlag(EnvEsVersion)
 )
 
 // Config contains configuration parameters for the keystore updater.

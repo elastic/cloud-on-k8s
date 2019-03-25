@@ -25,7 +25,7 @@ const (
 	EnvEsPasswordFile    = "KEYSTORE_ES_PASSWORD_FILE"
 	EnvEsCaCertsPath     = "KEYSTORE_ES_CA_CERTS_PATH"
 	EnvEsEndpoint        = "KEYSTORE_ES_ENDPOINT"
-	EnvVersion           = "KEYSTORE_ES_VERSION"
+	EnvEsVersion         = "KEYSTORE_ES_VERSION"
 )
 
 // NewEnvVars returns the environments variables required by the keystore updater.
@@ -38,6 +38,6 @@ func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUse
 		{Name: EnvEsPasswordFile, Value: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, spec.ReloadCredsUser.Name)},
 		{Name: EnvEsCaCertsPath, Value: path.Join(nodeCertsSecretVolume.VolumeMount().MountPath, certificates.CAFileName)},
 		{Name: EnvEsEndpoint, Value: esEndpoint},
-		{Name: EnvVersion, Value: spec.Version},
+		{Name: EnvEsVersion, Value: spec.Version},
 	}
 }
