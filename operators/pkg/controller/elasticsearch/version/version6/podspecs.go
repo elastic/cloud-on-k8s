@@ -125,6 +125,7 @@ func newSidecarContainers(
 				{Name: sidecar.EnvReloadCredentials, Value: "true"},
 				{Name: sidecar.EnvUsername, Value: spec.ReloadCredsUser.Name},
 				{Name: sidecar.EnvPasswordFile, Value: path.Join(volume.ReloadCredsUserSecretMountPath, spec.ReloadCredsUser.Name)},
+				{Name: sidecar.EnvVersion, Value: spec.Version},
 				{Name: sidecar.EnvCertPath, Value: path.Join(certs.VolumeMount().MountPath, certificates.CAFileName)},
 				{Name: sidecar.EnvEndpoint, Value: esEndpoint},
 			},

@@ -339,6 +339,7 @@ func Test_newSidecarContainers(t *testing.T) {
 						{Name: "RELOAD_CREDENTIALS", Value: "true"},
 						{Name: "USERNAME", Value: "username2"},
 						{Name: "PASSWORD_FILE", Value: "/mnt/elastic/reload-creds-user/username2"},
+						{Name: "VERSION", Value: ""},
 						{Name: "CERTIFICATES_PATH", Value: "/certs/ca.pem"},
 						{Name: "ENDPOINT", Value: "https://127.0.0.1:9200"},
 					},
