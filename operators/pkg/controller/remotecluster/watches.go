@@ -59,8 +59,6 @@ func newToRequestsFuncFromTrustRelationshipLabel() handler.ToRequestsFunc {
 				Name:      clusterAssociationName},
 			},
 		}
-
-		return nil
 	})
 }
 
