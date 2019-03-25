@@ -126,11 +126,12 @@ func (p *Process) exec() ProcessState {
 	state := started
 	if err != nil {
 		state = startFailed
+		cmd = nil
 	}
 
 	p.mutex.Lock()
-	p.cmd = cmd
 	p.updateState(startAction, state, 0, syscall.Signal(0), err)
+	p.cmd = cmd
 	p.mutex.Unlock()
 
 	return state
@@ -148,17 +149,23 @@ func (p *Process) Kill(sig os.Signal) {
 
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if p.cmd == nil {
-		log.Info("Process not killed because not running")
+	if ok, err := canStop(p.state, true); !ok {
+		if err != nil {
+			log.Error(err, "Fail to kill process", "state", p.state)
+		} else {
+			log.Info("Process not killed because not running", "state", p.state)
+		}
 		return
 	}
 
 	err := killProcessGroup(p.cmd.Process.Pid, s)
 	if err != nil {
 		if err.Error() != ErrNoSuchProcess {
-			log.Error(err, "Fail to kill process")
+			log.Error(err, "Fail to kill process", "state", p.state)
+			return
 		}
 	}
+
 	log.Info("Process killed", "signal", sig)
 }
 
@@ -166,7 +173,7 @@ func canStop(state ProcessState, killHard bool) (bool, error) {
 	switch state {
 	case stopping:
 		return killHard, nil
-	case stopped, killed, noProcess, notInitialized:
+	case stopped, killed, noProcess, notInitialized, startFailed:
 		return false, nil
 	case killing, starting:
 		return false, state.Error()
@@ -195,6 +202,7 @@ func (p *Process) Stop(killHard bool, killHardTimeout time.Duration) (ProcessSta
 	pgid, err := syscall.Getpgid(pid)
 	if err != nil {
 		p.updateState(stopAction, noProcess, pid, noSignal, err)
+		p.cmd = nil
 		return noProcess, err
 	}
 
@@ -294,29 +302,27 @@ func (p *Process) updateState(action string, state ProcessState, pid int, signal
 		kv = append(kv, "pid", pid, "signal", signal)
 	}
 	if err != nil {
-		log.Error(err, "Update state", kv...)
+		log.Error(err, "Update process state", kv...)
 	} else {
-		log.Info("Update state", kv...)
+		log.Info("Update process state", kv...)
 	}
 }
 
 func (p *Process) Status() (ProcessStatus, error) {
 	pid := 0
 	p.mutex.RLock()
-	if p.cmd != nil {
-		pid = p.cmd.Process.Pid
-	}
 	state := p.state
 	lastUpdate := p.lastUpdate
 	p.mutex.RUnlock()
 
-	// Check that the process is alive
-	if p.cmd != nil {
+	// Check that the process is still alive
+	if p.state == started {
 		_, err := syscall.Getpgid(pid)
 		if err != nil {
 			state = noProcess
 			p.mutex.Lock()
 			p.updateState(stopAction, noProcess, pid, noSignal, err)
+			p.cmd = nil
 			lastUpdate = p.lastUpdate
 			p.mutex.Unlock()
 		}

@@ -47,8 +47,7 @@ func (d *ProcessReaper) Stop() {
 }
 
 // removeZombies is a long-running routine that blocks waiting for child
-// processes to exit and reaps them, reporting reaped process IDs to the
-// optional pids channel and any errors to the optional errors channel.
+// processes to exit and reaps them.
 // Forked from https://github.com/hashicorp/go-reap/blob/master/reap_unix.go.
 func (d *ProcessReaper) removeZombies() {
 	c := make(chan os.Signal, 1)

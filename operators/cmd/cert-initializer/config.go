@@ -57,7 +57,7 @@ func BindEnvFromFlags(cmd *cobra.Command) error {
 	return viper.BindPFlags(cmd.Flags())
 }
 
-// NewConfig creates a new configuration from the flags.
+// NewConfigFromFlags creates a new configuration from the flags.
 func NewConfigFromFlags() Config {
 	return Config{
 		Port:           viper.GetInt(PortFlag),

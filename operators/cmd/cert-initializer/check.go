@@ -78,7 +78,6 @@ func (i *CertInitializer) watchForCertUpdate() error {
 	onEvent := func(files fs.FilesCRC) (stop bool, err error) {
 		if checkExistingOnDisk(i.config) {
 			// we're good to go!
-			i.Terminated = true
 			return true, nil
 		}
 		return false, nil

@@ -19,6 +19,8 @@ var (
 	tlsFlag      = envToFlag(EnvTLS)
 	certPathFlag = envToFlag(EnvCertPath)
 	keyPathFlag  = envToFlag(EnvKeyPath)
+	expVarsFlag  = envToFlag(EnvExpVars)
+	profilerFlag = envToFlag(EnvProfiler)
 )
 
 // Config contains configuration parameters for the process manager.
@@ -30,6 +32,9 @@ type Config struct {
 	EnableTLS bool
 	CertPath  string
 	KeyPath   string
+
+	EnableExpVars  bool
+	EnableProfiler bool
 }
 
 // BindFlagsToEnv binds flags to environment variables.
@@ -40,6 +45,8 @@ func BindFlagsToEnv(cmd *cobra.Command) error {
 	cmd.Flags().BoolP(tlsFlag, "", false, "secure the HTTP server using TLS")
 	cmd.Flags().StringP(certPathFlag, "", "", "path to the certificate file used to secure the HTTP server")
 	cmd.Flags().StringP(keyPathFlag, "", "", "path to the private key file used to secure the HTTP server")
+	cmd.Flags().BoolP(expVarsFlag, "", false, "enable exported variables (basic memory metrics)")
+	cmd.Flags().BoolP(profilerFlag, "", false, "enable the pprof go profiler")
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
@@ -74,13 +81,18 @@ func NewConfigFromFlags() (Config, error) {
 		}
 	}
 
+	profiler := viper.GetBool(profilerFlag)
+	expVars := viper.GetBool(expVarsFlag)
+
 	return Config{
-		ProcessName:  procName,
-		ProcessCmd:   procCmd,
-		EnableReaper: reaper,
-		EnableTLS:    tls,
-		CertPath:     certPath,
-		KeyPath:      keyPath,
+		ProcessName:    procName,
+		ProcessCmd:     procCmd,
+		EnableReaper:   reaper,
+		EnableTLS:      tls,
+		CertPath:       certPath,
+		KeyPath:        keyPath,
+		EnableProfiler: profiler,
+		EnableExpVars:  expVars,
 	}, nil
 }
 

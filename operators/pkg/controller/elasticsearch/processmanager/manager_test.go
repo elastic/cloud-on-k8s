@@ -17,7 +17,7 @@ import (
 )
 
 func Test_Simple_Script(t *testing.T) {
-	runTest(t, "fixtures/bin/script", func(client *Client) {
+	runTest(t, "fixtures/script", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -47,7 +47,7 @@ func Test_Simple_Script(t *testing.T) {
 }
 
 func Test_Zombies_Script(t *testing.T) {
-	runTest(t, "fixtures/bin/script zombies", func(client *Client) {
+	runTest(t, "fixtures/script zombies", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -77,7 +77,7 @@ func Test_Zombies_Script(t *testing.T) {
 }
 
 func Test_ZombiesAndTrap_Script(t *testing.T) {
-	runTest(t, "fixtures/bin/script zombies trap", func(client *Client) {
+	runTest(t, "fixtures/script zombies trap", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -112,7 +112,7 @@ func Test_ZombiesAndTrap_Script(t *testing.T) {
 }
 
 func Test_Recursive_Script(t *testing.T) {
-	runTest(t, "fixtures/bin/script zombies trap recursive", func(client *Client) {
+	runTest(t, "fixtures/script zombies trap recursive", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -143,6 +143,12 @@ func Test_Recursive_Script(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 
 		assertState(t, client, killed)
+	})
+}
+
+func Test_Invalid_Command(t *testing.T) {
+	runTest(t, "invalid_command", func(client *Client) {
+		assertState(t, client, startFailed)
 	})
 }
 

@@ -63,7 +63,7 @@ func envToFlag(env string) string {
 	return strings.Replace(strings.ToLower(env), "_", "-", -1)
 }
 
-// BindFlagsToEnv binds flags to environment variables.
+// BindEnvToFlags binds flags to environment variables.
 func BindEnvToFlags(cmd *cobra.Command) error {
 	cmd.Flags().StringP(sourceDirFlag, "s", "/volumes/secrets", "directory containing keystore settings source files")
 	cmd.Flags().StringP(keystoreBinaryFlag, "b", "/usr/share/elasticsearch/bin/elasticsearch-keystore", "path to keystore binary")

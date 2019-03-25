@@ -9,12 +9,11 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"

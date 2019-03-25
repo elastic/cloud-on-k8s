@@ -7,10 +7,10 @@ package processmanager
 import (
 	"context"
 	"encoding/json"
-	_ "expvar"
+	"expvar"
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
+	"net/http/pprof"
 	"os"
 	"strconv"
 	"time"
@@ -50,6 +50,18 @@ func NewProcessServer(cfg Config, process *Process, updater *keystore.Updater) *
 	mux.HandleFunc("/es/stop", s.EsStop)
 	mux.HandleFunc("/es/status", s.EsStatus)
 	mux.HandleFunc("/keystore/status", s.KeystoreStatus)
+
+	if cfg.EnableExpVars {
+		mux.Handle("/debug/vars", expvar.Handler())
+	}
+
+	if cfg.EnableProfiler {
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	}
 
 	return &s
 }

@@ -38,7 +38,7 @@ func main() {
 			log.Info("Forward signal", "sig", sig)
 
 			err = procMgr.Stop(sig)
-			if err != nil && err.Error() == pm.ErrNoSuchProcess {
+			if err != nil {
 				exitOnErr(err)
 			}
 		},

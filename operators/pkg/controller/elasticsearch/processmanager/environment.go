@@ -15,6 +15,8 @@ const (
 	EnvTLS      = "PM_TLS"
 	EnvCertPath = "PM_CERT_PATH"
 	EnvKeyPath  = "PM_KEY_PATH"
+	EnvExpVars  = "PM_EXP_VARS"
+	EnvProfiler = "PM_PROFILER"
 )
 
 func NewEnvVars() []corev1.EnvVar {

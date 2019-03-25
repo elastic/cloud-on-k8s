@@ -9,14 +9,12 @@ import (
 )
 
 type CertInitializer struct {
-	config     Config
-	Terminated bool
+	config Config
 }
 
 func NewCertInitializer(cfg Config) CertInitializer {
 	return CertInitializer{
-		config:     cfg,
-		Terminated: false,
+		config: cfg,
 	}
 }
 
