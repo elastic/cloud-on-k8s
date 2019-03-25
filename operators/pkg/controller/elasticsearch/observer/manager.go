@@ -14,6 +14,7 @@ import (
 // Manager for a set of observers
 type Manager struct {
 	observers map[types.NamespacedName]*Observer
+	listeners []OnObservation // invoked on each observation event
 	lock      sync.RWMutex
 	settings  Settings
 }
@@ -55,7 +56,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) 
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
 func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Client) *Observer {
-	observer := NewObserver(cluster, esClient, m.settings)
+	observer := NewObserver(cluster, esClient, m.settings, m.notifyListeners)
 	observer.Start()
 	m.lock.Lock()
 	m.observers[cluster] = observer
@@ -87,4 +88,30 @@ func (m *Manager) List() []types.NamespacedName {
 		list = append(list, name)
 	}
 	return list
+}
+
+// AddObservationListener adds the given listener to the list of listeners notified
+// on every observation.
+func (m *Manager) AddObservationListener(listener OnObservation) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.listeners = append(m.listeners, listener)
+}
+
+// onObservation notifies all listeners that an observation occurred.
+func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState State, newState State) {
+	wg := sync.WaitGroup{}
+	m.lock.Lock()
+	wg.Add(len(m.listeners))
+	// run all listeners in parallel
+	for _, l := range m.listeners {
+		go func() {
+			defer wg.Done()
+			l(cluster, previousState, newState)
+		}()
+	}
+	// release the lock asap
+	m.lock.Unlock()
+	// wait for all listeners to be done
+	wg.Wait()
 }
