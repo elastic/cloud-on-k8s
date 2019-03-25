@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func fakeEsClient200(user client.UserAuth) client.Client {
@@ -33,53 +35,75 @@ func fakeEsClient200(user client.UserAuth) client.Client {
 		})
 }
 
-func createAndRunTestObserver() *Observer {
+func createAndRunTestObserver(onObs OnObservation) *Observer {
 	fake := fakeEsClient200(client.UserAuth{})
 	obs := NewObserver(cluster("cluster"), fake, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
-	})
+	}, onObs)
 	obs.Start()
 	return obs
 }
 
 func TestObserver_retrieveState(t *testing.T) {
+	counter := int32(0)
+	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+		atomic.AddInt32(&counter, 1)
+	}
 	fake := fakeEsClient200(client.UserAuth{})
 	observer := Observer{
-		esClient: fake,
+		esClient:      fake,
+		onObservation: onObservation,
 	}
-	require.Equal(t, observer.LastObservationTime(), time.Time{})
 	observer.retrieveState(context.Background())
-	require.NotEqual(t, observer.LastObservationTime(), time.Time{})
+	require.Equal(t, int32(1), atomic.LoadInt32(&counter))
+	observer.retrieveState(context.Background())
+	require.Equal(t, int32(2), atomic.LoadInt32(&counter))
+}
+
+func TestObserver_retrieveState_nilFunction(t *testing.T) {
+	var nilFunc OnObservation
+	fake := fakeEsClient200(client.UserAuth{})
+	observer := Observer{
+		esClient:      fake,
+		onObservation: nilFunc,
+	}
+	// should not panic
+	observer.retrieveState(context.Background())
 }
 
 func TestNewObserver(t *testing.T) {
-	observer := createAndRunTestObserver()
-	initialObservationTime := observer.LastObservationTime()
-	// check observer is running by looking at its last observation time
-	test.RetryUntilSuccess(t, func() error {
-		if observer.LastObservationTime() == initialObservationTime {
-			return errors.New("Observer does not seem to perform any request")
-		}
-		return nil
-	})
-	observer.Stop()
+	events := make(chan types.NamespacedName)
+	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+		events <- cluster
+	}
+	observer := createAndRunTestObserver(onObservation)
+	defer observer.Stop()
+	// let it observe at least 3 times
+	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
+	require.Equal(t, types.NamespacedName{Namespace: "ns", Name: "cluster"}, <-events)
 }
 
 func TestObserver_Stop(t *testing.T) {
-	observer := createAndRunTestObserver()
-	// force at least one observation for time comparison
+	counter := int32(0)
+	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
+		atomic.AddInt32(&counter, 1)
+	}
+	observer := createAndRunTestObserver(onObservation)
+	// force at least one observation
 	observer.retrieveState(context.Background())
+	// stop the observer
 	observer.Stop()
 	// should be safe to call multiple times
 	observer.Stop()
 	// should stop running at some point
+	lastCounter := int32(0)
 	test.RetryUntilSuccess(t, func() error {
-		observationTime := observer.LastObservationTime()
-		// optimistically check nothing new happened after 50ms
-		time.Sleep(50 * time.Millisecond)
-		if observationTime != observer.LastObservationTime() {
-			return errors.New("Observer does not seem to be stopped yet")
+		currentCounter := atomic.LoadInt32(&counter)
+		if lastCounter != currentCounter {
+			lastCounter = currentCounter
+			return errors.New("observer does not seem stopped yet")
 		}
 		return nil
 	})
