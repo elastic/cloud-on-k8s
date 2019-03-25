@@ -16,7 +16,7 @@ var (
 	log  = logf.Log.WithName(name)
 )
 
-// ProcessManager wraps a process server, a process controller and a process reaper.
+// ProcessManager wraps a process server, a process controller, a process reaper and a keystore updater.
 type ProcessManager struct {
 	server          *ProcessServer
 	process         *Process
@@ -27,11 +27,10 @@ type ProcessManager struct {
 
 // NewProcessManager creates a new process manager.
 func NewProcessManager() (ProcessManager, error) {
-	keystoreUpdaterCfg, err, msg := keystore.NewConfigFromFlags()
+	keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
 	if err != nil {
-		log.Error(err, "Error creating keystore-updater config from flags", "msg", msg)
-		// FIXME
-		// Continue ...
+		log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
+		return ProcessManager{}, err
 	}
 
 	cfg, err := NewConfigFromFlags()

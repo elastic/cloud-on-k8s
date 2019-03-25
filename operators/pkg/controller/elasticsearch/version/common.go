@@ -183,7 +183,6 @@ func podSpec(
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),
-			reloadCredsSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			keystoreVolume.Volume(),

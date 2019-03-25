@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	PortFlag           = "csr-port"
-	PrivateKeyPathFlag = "csr-private-key-path"
-	CertPathFlag       = "csr-cert-path"
-	CSRPathFlag        = "csr-csr-path"
+	PortFlag           = "port"
+	PrivateKeyPathFlag = "private-key-path"
+	CertPathFlag       = "cert-path"
+	CSRPathFlag        = "csr-path"
 )
 
 // Config contains configuration parameters for the cert initializer.
@@ -30,7 +30,7 @@ type Config struct {
 	CSRPath        string
 }
 
-// BindFlagsToEnv binds flags to environment variables.
+// BindEnvFromFlags binds flags to environment variables.
 func BindEnvFromFlags(cmd *cobra.Command) error {
 	cmd.Flags().Int(
 		PortFlag,

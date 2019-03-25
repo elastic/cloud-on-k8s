@@ -10,7 +10,6 @@ import (
 
 type CertInitializer struct {
 	config     Config
-	CSR        []byte
 	Terminated bool
 }
 
@@ -40,13 +39,11 @@ func (i *CertInitializer) Start() error {
 		return err
 	}
 
-	i.CSR = csr
-
 	log.Info("Serving CSR over HTTP", "port", i.config.Port)
 	stopChan := make(chan struct{})
 	defer close(stopChan)
 	go func() {
-		err := i.serveCSR(stopChan)
+		err := i.serveCSR(stopChan, csr)
 		if err != nil {
 			log.Error(err, "Fail to serve CSR")
 			os.Exit(1)

@@ -5,15 +5,12 @@
 package processmanager
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -33,6 +30,8 @@ const (
 	stopAction  = "stop"
 	startAction = "start"
 	noSignal    = syscall.Signal(0)
+
+	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
 )
 
 // ProcessStatus represents the status of a process with its state,
@@ -134,7 +133,7 @@ func (p *Process) exec() ProcessState {
 	p.updateState(startAction, state, 0, syscall.Signal(0), err)
 	p.mutex.Unlock()
 
-	return started
+	return state
 }
 
 // Kill kills a process group by forwarding a signal.
@@ -144,6 +143,7 @@ func (p *Process) Kill(sig os.Signal) {
 	if !ok {
 		err := errors.New("os: unsupported signal type")
 		log.Error(err, "Fail to kill process")
+		return
 	}
 
 	p.mutex.RLock()
@@ -222,98 +222,66 @@ func (p *Process) Stop(killHard bool, killHardTimeout time.Duration) (ProcessSta
 	return state, nil
 }
 
-// stopState represents the state of a process after a stop
-type stopState struct {
-	state ProcessState
-	err   error
-}
-
-// wait waits for a process to complete.
-// 3 goroutines are started to:
-// - wait for the process command is completed
-// - wait to update the process state
-// - wait to capture the final state of the process after a normal stop/kill, a failed stop/kill or a timeout.
-func (p *Process) wait(pgid int, signal syscall.Signal, hard bool, killHardTimeout time.Duration) chan stopState {
-	stateChan := make(chan stopState, 1)
-	done := make(chan error, 1)
-
+// wait waits for a process to complete with a timeout to trigger a kill hard.
+func (p *Process) wait(pgid int, signal syscall.Signal, hard bool, killHardTimeout time.Duration) {
 	if killHardTimeout == 0 {
 		killHardTimeout = defaultKillHardTimeout
 	}
 
-	go func() {
-		done <- p.cmd.Wait()
-	}()
-
-	go func() {
-		s := <-stateChan
+	killTimer := time.AfterFunc(killHardTimeout, func() {
+		log.Info("Killing process as timeout is reached", "timeout", killHardTimeout)
+		err := killProcessGroup(pgid, killHardSignal)
+		state := killed
+		if err != nil {
+			state = killFailed
+		}
 
 		p.mutex.Lock()
-		p.updateState(stopAction, s.state, pgid, signal, s.err)
+		p.updateState(stopAction, state, pgid, signal, err)
 		p.cmd = nil
 		p.mutex.Unlock()
-	}()
+	})
 
-	go func() {
-		defer close(stateChan)
+	err := p.cmd.Wait()
+	killTimer.Stop()
 
-		select {
+	// Read again the process state
+	p.mutex.RLock()
+	prevState := p.state
+	p.mutex.RUnlock()
 
-		// Kill hard because a timeout is reached
-		case <-time.After(killHardTimeout):
-			log.Info("killing process as timeout is reached", "timeout", killHardTimeout)
-			err := killProcessGroup(pgid, killHardSignal)
-			if err != nil {
-				stateChan <- stopState{killFailed, err}
-				return
-			}
+	// Should be stopping or killing
+	state := unknown
+	switch prevState {
+	case stopping:
+		state = stopped
+	case killing:
+		state = killed
+	}
 
-			stateChan <- stopState{killed, nil}
-			return
-
-		// Process completed
-		case err := <-done:
-			close(done)
-
-			// Read again the process state
-			p.mutex.RLock()
-			prevState := p.state
-			p.mutex.RUnlock()
-
-			// Should be stopping or killing
-			state := unknown
-			switch prevState {
+	if err != nil {
+		switch err.Error() {
+		// No more children, we are done
+		case errNoChildProcesses:
+			err = nil
+		// Normal stop signal
+		case errSignalTerminated, errSignalKilled:
+			err = nil
+		// An error occurred
+		default:
+			switch state {
 			case stopping:
-				state = stopped
+				state = stopFailed
 			case killing:
-				state = killed
+				state = killFailed
 			}
-
-			if err != nil {
-				switch err.Error() {
-				// No more children, we are done
-				case errNoChildProcesses:
-					err = nil
-				// Normal stop signal
-				case errSignalTerminated, errSignalKilled:
-					err = nil
-				// An error occurred
-				default:
-					switch state {
-					case stopping:
-						state = stopFailed
-					case killing:
-						state = killFailed
-					}
-				}
-			}
-
-			stateChan <- stopState{state, err}
-			return
 		}
-	}()
+	}
 
-	return stateChan
+	p.mutex.Lock()
+	p.updateState(stopAction, state, pgid, signal, err)
+	p.cmd = nil
+	p.mutex.Unlock()
 }
 
 // updateState updates the process state and the last update time.
@@ -354,10 +322,7 @@ func (p *Process) Status() (ProcessStatus, error) {
 		}
 	}
 
-	cfgChecksum, err := calcConfigChecksum()
-	if err != nil {
-		return ProcessStatus{}, err
-	}
+	cfgChecksum, _ := computeConfigChecksum()
 
 	return ProcessStatus{
 		state,
@@ -366,41 +331,13 @@ func (p *Process) Status() (ProcessStatus, error) {
 	}, nil
 }
 
-func calcConfigChecksum() (string, error) {
-	configPath := "/usr/share/elasticsearch/config"
-
-	buf := new(bytes.Buffer)
-	err := filepath.Walk(configPath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return nil
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		data, err := ioutil.ReadFile(path)
-		if err != nil {
-			log.Info("error", "err", err)
-			return nil
-		}
-
-		checksum := crc32.ChecksumIEEE(data)
-
-		err = binary.Write(buf, binary.LittleEndian, checksum)
-		if err != nil {
-			return nil
-		}
-		return nil
-	})
+func computeConfigChecksum() (string, error) {
+	data, err := ioutil.ReadFile(EsConfigFilePath)
 	if err != nil {
-		return "", err
+		return "unknown", err
 	}
 
-	cks := crc32.ChecksumIEEE(buf.Bytes())
-
-	return fmt.Sprint(cks), nil
-
+	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
 }
 
 func killProcessGroup(pgid int, signal syscall.Signal) error {

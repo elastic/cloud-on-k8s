@@ -73,7 +73,6 @@ func (s *ProcessServer) Start() {
 				os.Exit(1)
 			}
 		}
-		return
 	}()
 }
 
@@ -83,34 +82,34 @@ func (s *ProcessServer) Stop() {
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err, "Fail to stop HTTP server")
+		return
 	}
 	log.Info("HTTP server stopped")
 }
 
 func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
-	ok(w, "ping")
+	ok(w, "pong")
 }
 
 func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 	state, err := s.esProcess.Start()
 	if err != nil {
-		log.Info("Failed to start es process", "state", state, "err", err.Error())
-		//ko(w, state.String())
-		//return
-		w.WriteHeader(http.StatusInternalServerError)
+		log.Error(err, "Failed to start es process", "state", state)
 	}
 
-	if state == starting {
-		w.WriteHeader(http.StatusAccepted)
-	}
-
-	status, err := s.esProcess.Status()
-	if err != nil {
-		ko(w, "Failed to get es status while starting process: "+err.Error())
+	status, err2 := s.esProcess.Status()
+	if err2 != nil {
+		ko(w, "Failed to get es status while starting process: "+err2.Error())
 		return
 	}
 
-	jsonOk(w, status)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if state == starting {
+		w.WriteHeader(http.StatusAccepted)
+	}
+
+	writeJson(w, status)
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
@@ -121,7 +120,7 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 	if forceParam != "" {
 		killHard, err = strconv.ParseBool(forceParam)
 		if err != nil {
-			log.Error(err, "Fail to stop")
+			log.Error(err, "Fail to stop es process")
 			ko(w, "Invalid `force` query parameter")
 			return
 		}
@@ -130,41 +129,40 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 	killHardTimeout := 0
 	timeoutParam := req.URL.Query().Get("timeout")
 	if timeoutParam != "" {
-		hardKillTimeoutSeconds, err := strconv.Atoi(timeoutParam)
+		killHardTimeoutSeconds, err := strconv.Atoi(timeoutParam)
 		if err != nil {
-			log.Error(err, "Fail to stop")
+			log.Error(err, "Fail to stop es process")
 			ko(w, "Invalid `timeout` query parameter")
 			return
 		}
-		if hardKillTimeoutSeconds < 0 {
-			log.Error(err, "Fail to stop")
+		if killHardTimeoutSeconds < 0 {
+			log.Error(err, "Fail to stop es process")
 			ko(w, "Invalid `timeout` query parameter, must be greater than 0.")
 			return
 		}
-		killHardTimeout = hardKillTimeoutSeconds
+		killHardTimeout = killHardTimeoutSeconds
 	}
 
 	state, err := s.esProcess.Stop(killHard, time.Duration(killHardTimeout)*time.Second)
 	if err != nil {
-		log.Info("Failed to stop es process", "state", state, "err", err.Error())
-		//ko(w, state.String())
-		//return
-		w.WriteHeader(http.StatusInternalServerError)
-		//ko(w, state.String())
+		log.Error(err, "Failed to stop es process", "state", state)
+		ko(w, state.String())
 		return
 	}
 
-	if state == stopping || state == killing {
+	status, err2 := s.esProcess.Status()
+	if err2 != nil {
+		ko(w, "Failed to get es status while stopping process: "+err2.Error())
+		return
+	}
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if state == stopping || state == killing {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
-	status, err := s.esProcess.Status()
-	if err != nil {
-		ko(w, "Failed to get es status while stopping process: "+err.Error())
-		return
-	}
-
-	jsonOk(w, status)
+	writeJson(w, status)
 }
 
 func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
@@ -174,7 +172,7 @@ func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	jsonOk(w, status)
+	writeJson(w, status)
 }
 
 func (s *ProcessServer) KeystoreStatus(w http.ResponseWriter, req *http.Request) {
@@ -184,25 +182,22 @@ func (s *ProcessServer) KeystoreStatus(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	jsonOk(w, status)
+	writeJson(w, status)
 }
 
 // HTTP utilities
 
 func ok(w http.ResponseWriter, msg string) {
-	//log.Info("HTTP response", "status", "Ok", "msg", msg)
 	write(w, http.StatusOK, msg)
 }
 
-func jsonOk(w http.ResponseWriter, obj interface{}) {
-	//log.Info("HTTP response", "status", "Ok", "msg", msg)
-	bytes, _ := json.Marshal(obj)
-	_, _ = w.Write(bytes)
+func ko(w http.ResponseWriter, msg string) {
+	write(w, http.StatusInternalServerError, fmt.Sprintf(`{"error": "%s"}`, msg))
 }
 
-func ko(w http.ResponseWriter, msg string) {
-	//log.Info("HTTP response", "status", "Error", "msg", msg)
-	write(w, http.StatusInternalServerError, fmt.Sprintf(`{"error": "%s"}`, msg))
+func writeJson(w http.ResponseWriter, obj interface{}) {
+	bytes, _ := json.Marshal(obj)
+	_, _ = w.Write(bytes)
 }
 
 func write(w http.ResponseWriter, statusCode int, msg string) {

@@ -68,9 +68,13 @@ func (c *Client) Status(ctx context.Context) (ProcessStatus, error) {
 	return status, err
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, uri string, obj interface{}) error {
+func (c *Client) doRequest(ctx context.Context, method string, uri string, respBody interface{}) error {
 	url := c.Endpoint + uri
 	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return err
+	}
+
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
@@ -85,14 +89,14 @@ func (c *Client) doRequest(ctx context.Context, method string, uri string, obj i
 		return err
 	}
 
-	if 200 > resp.StatusCode || resp.StatusCode > 299 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		// Try to unmarshal the response anyway
-		_ = json.Unmarshal(body, obj)
+		_ = json.Unmarshal(body, respBody)
 
-		return fmt.Errorf("%s %s failed, status: %d, err: %s", method, url, resp.StatusCode, string(body))
+		return fmt.Errorf("%s %s failed, status: %d, body: %s", method, url, resp.StatusCode, string(body))
 	}
 
-	err = json.Unmarshal(body, obj)
+	err = json.Unmarshal(body, respBody)
 	if err != nil {
 		return err
 	}

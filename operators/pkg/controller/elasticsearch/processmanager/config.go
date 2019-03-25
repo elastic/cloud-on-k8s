@@ -75,8 +75,12 @@ func NewConfigFromFlags() (Config, error) {
 	}
 
 	return Config{
-		procName, procCmd, reaper,
-		tls, certPath, keyPath,
+		ProcessName:  procName,
+		ProcessCmd:   procCmd,
+		EnableReaper: reaper,
+		EnableTLS:    tls,
+		CertPath:     certPath,
+		KeyPath:      keyPath,
 	}, nil
 }
 

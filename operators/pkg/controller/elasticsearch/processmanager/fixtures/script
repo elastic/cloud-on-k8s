@@ -1,5 +1,17 @@
 #!/bin/bash -eu
 
+# Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+# or more contributor license agreements. Licensed under the Elastic License;
+# you may not use this file except in compliance with the Elastic License.
+
+# Script to test the destruction of child processes (especially zombies processes).
+# Usage:
+#    ./script                                   Run the script without creating child processes
+#    ./script zombies                           Run the script and create zombies child processes
+#    ./script zombies enableTrap                Run the script, create zombies processes and trap stop signals
+#    ./script zombies enableTrap recursive      Run the script, create zombies processes, trap stop signals and
+#                                               call ./script again to create more zombies processes
+
 zombies=${1:-""}
 enableTrap=${2:-""}
 recursive=${3:-""}
@@ -21,7 +33,7 @@ on_trap() {
 
 main() {
     if [[ "$enableTrap" != "" ]]; then
-        trap on_trap 0 1 2 6 15
+        trap on_trap EXIT SIGHUP SIGINT SIGQUIT SIGABRT SIGTERM
     fi
 
     while true; do
