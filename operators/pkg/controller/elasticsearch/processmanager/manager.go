@@ -27,20 +27,23 @@ type ProcessManager struct {
 
 // NewProcessManager creates a new process manager.
 func NewProcessManager() (ProcessManager, error) {
-	keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
-	if err != nil {
-		log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
-		return ProcessManager{}, err
-	}
-
 	cfg, err := NewConfigFromFlags()
 	if err != nil {
 		return ProcessManager{}, err
 	}
 
-	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
+	var ksu *keystore.Updater
+	if cfg.EnableKeystoreUpdater {
+		keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
+		if err != nil {
+			log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
+			return ProcessManager{}, err
+		}
 
-	ksu := keystore.NewUpdater(keystoreUpdaterCfg)
+		ksu = keystore.NewUpdater(keystoreUpdaterCfg)
+	}
+
+	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
 
 	return ProcessManager{
 		NewProcessServer(cfg, process, ksu),
@@ -63,7 +66,10 @@ func (pm ProcessManager) Start() error {
 	}
 
 	pm.server.Start()
-	pm.keystoreUpdater.Start()
+
+	if pm.keystoreUpdater != nil {
+		pm.keystoreUpdater.Start()
+	}
 
 	log.Info("Process manager started")
 	return nil

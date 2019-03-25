@@ -49,7 +49,10 @@ func NewProcessServer(cfg Config, process *Process, updater *keystore.Updater) *
 	mux.HandleFunc("/es/start", s.EsStart)
 	mux.HandleFunc("/es/stop", s.EsStop)
 	mux.HandleFunc("/es/status", s.EsStatus)
-	mux.HandleFunc("/keystore/status", s.KeystoreStatus)
+
+	if cfg.EnableKeystoreUpdater {
+		mux.HandleFunc("/keystore/status", s.KeystoreStatus)
+	}
 
 	if cfg.EnableExpVars {
 		mux.Handle("/debug/vars", expvar.Handler())

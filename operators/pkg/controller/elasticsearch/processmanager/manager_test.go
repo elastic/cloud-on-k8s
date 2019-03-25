@@ -157,6 +157,9 @@ func runTest(t *testing.T, cmd string, do func(client *Client)) {
 	assert.NoError(t, err)
 	err = os.Setenv(EnvProcCmd, cmd)
 	assert.NoError(t, err)
+	err = os.Setenv(EnvKeystoreUpdater, "false")
+	assert.NoError(t, err)
+
 	err = BindFlagsToEnv(&cobra.Command{})
 	assert.NoError(t, err)
 
