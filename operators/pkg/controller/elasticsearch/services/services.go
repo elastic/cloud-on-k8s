@@ -69,6 +69,11 @@ func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
 	return stringsutil.Concat(network.ProtocolForCluster(es), "://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
+// ExternalDiscoveryServiceHostname returns the hostname used to reach Elasticsearch external endpoint.
+func ExternalDiscoveryServiceHostname(es types.NamespacedName) string {
+	return stringsutil.Concat(DiscoveryServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
+}
+
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {

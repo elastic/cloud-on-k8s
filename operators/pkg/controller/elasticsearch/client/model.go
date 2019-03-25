@@ -329,3 +329,18 @@ func (lr LicenseUpdateResponse) IsSuccess() bool {
 type LicenseResponse struct {
 	License License `json:"license"`
 }
+
+// PersistentSettings is the root element of persistent settings.
+type PersistentSettings struct {
+	Settings interface{} `json:"persistent"`
+}
+
+// RemoteCluster is the content of a request to update remote cluster settings.
+type RemoteCluster struct {
+	Seeds map[string]RemoteClusterSeeds `json:"cluster.remote"`
+}
+
+// RemoteClusterSeeds is the set of seeds to use in a remote cluster setting.
+type RemoteClusterSeeds struct {
+	Seeds *[]string `json:"seeds"`
+}

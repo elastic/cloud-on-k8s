@@ -5,8 +5,11 @@
 package client
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSnapshot_EndedBefore(t *testing.T) {
@@ -44,6 +47,48 @@ func TestSnapshot_EndedBefore(t *testing.T) {
 			if got := s.EndedBefore(tt.args, now); got != tt.want {
 				t.Errorf("Snapshot.EndedBefore() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestModel_RemoteCluster(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  PersistentSettings
+		want string
+	}{
+		{
+			name: "Simple remote cluster",
+			arg: PersistentSettings{
+				Settings: RemoteCluster{
+					Seeds: map[string]RemoteClusterSeeds{
+						"leader": {
+							Seeds: &[]string{"127.0.0.1:9300"},
+						},
+					},
+				},
+			},
+			want: `{"persistent":{"cluster.remote":{"leader":{"seeds":["127.0.0.1:9300"]}}}}`,
+		},
+		{
+			name: "Deleted remote cluster",
+			arg: PersistentSettings{
+				Settings: RemoteCluster{
+					Seeds: map[string]RemoteClusterSeeds{
+						"leader": {
+							Seeds: nil,
+						},
+					},
+				},
+			},
+			want: `{"persistent":{"cluster.remote":{"leader":{"seeds":null}}}}`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			json, err := json.Marshal(tt.arg)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, string(json))
 		})
 	}
 }

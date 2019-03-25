@@ -261,6 +261,7 @@ type ElasticsearchStatus struct {
 	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
+	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

@@ -110,6 +110,16 @@ func (s *State) UpdateElasticsearchMigrating(
 	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }
 
+// UpdateRemoteClusters updates the remote clusters saved in the persistent settings of the cluster.
+func (s *State) UpdateRemoteClusters(remoteCluster map[string]string) {
+	s.status.RemoteClusters = remoteCluster
+}
+
+// GetRemoteClusters returns the remote clusters that have been set in the cluster.
+func (s *State) GetRemoteClusters() map[string]string {
+	return s.status.RemoteClusters
+}
+
 // AddEvent records the intent to emit a k8s event with the given attributes.
 func (s *State) AddEvent(eventType, reason, message string) *State {
 	s.events = append(s.events, Event{

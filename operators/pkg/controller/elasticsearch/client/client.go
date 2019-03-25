@@ -63,6 +63,8 @@ type Client interface {
 	GetClusterInfo(ctx context.Context) (Info, error)
 	// GetClusterState returns the current cluster state
 	GetClusterState(ctx context.Context) (ClusterState, error)
+	// UpdatePersistentSettings updates the persistent settings of a cluster.
+	UpdatePersistentSettings(ctx context.Context, persistentSettings PersistentSettings) error
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation excludes for the given nodes.
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
