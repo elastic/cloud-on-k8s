@@ -37,25 +37,6 @@ func newPod(name string, master bool) pod.PodWithConfig {
 	return pod.PodWithConfig{Pod: p, Config: settings.FlatConfig{}}
 }
 
-//// buildInitialMasterNodesByPod conveniently summarizes the initial_master_nodes setting by the pod names
-//func buildInitialMasterNodesByPod(changes *mutation.PerformableChanges) map[string]string {
-//	res := make(map[string]string)
-//
-//pod:
-//	for _, change := range changes.ToCreate {
-//		for _, container := range change.Pod.Spec.Containers {
-//			for _, env := range container.Env {
-//				if env.Name == settings.ClusterInitialMasterNodes {
-//					res[change.Pod.Name] = env.Value
-//					continue pod
-//				}
-//			}
-//		}
-//	}
-//
-//	return res
-//}
-
 func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
 	for _, change := range changes.ToCreate {
 		nodes, isSet := change.PodSpecCtx.Config[settings.ClusterInitialMasterNodes]
