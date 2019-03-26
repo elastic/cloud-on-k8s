@@ -87,7 +87,7 @@ func (c FlatConfig) Sorted() []KeyValue {
 	for k, v := range c {
 		kv = append(kv, KeyValue{Key: k, Value: v})
 	}
-	sort.SliceStable(kv, func(i, j int) bool {
+	sort.Slice(kv, func(i, j int) bool {
 		return kv[i].Key < kv[j].Key
 	})
 	return kv
