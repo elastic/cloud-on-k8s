@@ -52,7 +52,7 @@ Why a secret volume and not a configmap volume? Because it may contain some secr
 
 The order in which we create pod and configuration volume is important here.
 
-* Approach 1: creating the secret first
+#### Approach 1: creating the secret first
 
 1. Create the secret
 1. Create the pod, using the secret volume
@@ -67,7 +67,7 @@ Concerns:
 * Volume ownership cannot be set to the pod, since the pod does not exist yet.
 * Because of that, we need to garbage-collect secrets that are not associated to any pods.
 
-* Approach 2: creating the pod first
+#### Approach 2: creating the pod first
 
 1. Create the pod, using a secret volume which does not exist yet
 1. Create the secret
@@ -82,11 +82,11 @@ Concerns:
 * This can significantly delay pod startup time.
 * The operator could restart in-between these two steps: secret configuration reconciliation must be done at every reconciliation, and not only at pod creation time.
 
-* Chosen approach
+#### Chosen approach
 
 The first one (create the secret first): the impact on startup time is important.
 
-#### Detecting configuration changes eligible for pod reuse
+### Detecting configuration changes eligible for pod reuse
 
 Some configuration settings are compatible with pod reuse (license type, plugins, minor settings tweaks).
 Some aren't (increasing the amount of RAM for the pod).
@@ -98,7 +98,7 @@ Changes in licenses are special because they may provoke a full cluster restart.
 * moving from basic to (trial | gold | platinum) - enable XPack security and TLS
 * moving from (trial | gold | platinum) to basic - disable XPack security and TLS
 
-#### Reconciliation loop algorithm
+### Reconciliation loop algorithm
 
 Note: this does not represent the _entire_ reconciliation loop, it focuses on the pieces we're interested in.
 
