@@ -2,7 +2,7 @@
 
 ## Overview
 
-This quickstart tutorial will guide through:
+This quickstart tutorial will guide you through:
 
 * Deploying the operator in your Kubernetes cluster
 * Deploying an Elasticsearch cluster
