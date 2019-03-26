@@ -112,19 +112,13 @@ func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 		log.Error(err, "Failed to start es process", "state", state)
 	}
 
-	status, err2 := s.esProcess.Status()
-	if err2 != nil {
-		ko(w, "Failed to get es status while starting process: "+err2.Error())
-		return
-	}
-
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if state == starting {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
-	writeJson(w, status)
+	writeJson(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
@@ -165,29 +159,17 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	status, err2 := s.esProcess.Status()
-	if err2 != nil {
-		ko(w, "Failed to get es status while stopping process: "+err2.Error())
-		return
-	}
-
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else if state == stopping || state == killing {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
-	writeJson(w, status)
+	writeJson(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
-	status, err := s.esProcess.Status()
-	if err != nil {
-		ko(w, "Failed to get es status: "+err.Error())
-		return
-	}
-
-	writeJson(w, status)
+	writeJson(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) KeystoreStatus(w http.ResponseWriter, req *http.Request) {

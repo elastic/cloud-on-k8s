@@ -308,33 +308,28 @@ func (p *Process) updateState(action string, state ProcessState, pid int, signal
 	}
 }
 
-func (p *Process) Status() (ProcessStatus, error) {
-	pid := 0
-	p.mutex.RLock()
-	state := p.state
-	lastUpdate := p.lastUpdate
-	p.mutex.RUnlock()
+// Status returns the status of the process.
+func (p *Process) Status() ProcessStatus {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
 
 	// Check that the process is still alive
 	if p.state == started {
+		pid := p.cmd.Process.Pid
 		_, err := syscall.Getpgid(pid)
 		if err != nil {
-			state = noProcess
-			p.mutex.Lock()
 			p.updateState(stopAction, noProcess, pid, noSignal, err)
 			p.cmd = nil
-			lastUpdate = p.lastUpdate
-			p.mutex.Unlock()
 		}
 	}
 
 	cfgChecksum, _ := computeConfigChecksum()
 
 	return ProcessStatus{
-		state,
-		time.Since(lastUpdate).String(),
+		p.state,
+		time.Since(p.lastUpdate).String(),
 		cfgChecksum,
-	}, nil
+	}
 }
 
 func computeConfigChecksum() (string, error) {
