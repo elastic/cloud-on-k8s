@@ -5,23 +5,9 @@
 package v1alpha1
 
 import (
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
-
-// ObjectSelector allows to specify a reference to an object across namespace boundaries.
-type ObjectSelector struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-}
-
-// NamespacedName is a convenience method to turn an ObjectSelector into a NamespaceName.
-func (s ObjectSelector) NamespacedName() types.NamespacedName {
-	return types.NamespacedName{
-		Name:      s.Name,
-		Namespace: s.Namespace,
-	}
-}
 
 // RemoteClusterSpec defines the desired state of RemoteCluster.
 type RemoteClusterSpec struct {
@@ -29,17 +15,17 @@ type RemoteClusterSpec struct {
 }
 
 type InClusterSpec struct {
-	InRemoteCluster ObjectSelector `json:"inCluster"`
+	InRemoteCluster assoctype.ObjectSelector `json:"inCluster"`
 }
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.
 type RemoteClusterStatus struct {
-	State                                string         `json:"state,omitempty"`
-	ClusterName                          string         `json:"cluster-name,omitempty"`
-	LocalTrustRelationshipName           string         `json:"localTrustRelationshipName,omitempty"`
-	InClusterRemoteSelector              ObjectSelector `json:"inClusterRemoteSelector,omitempty"`
-	InClusterRemoteTrustRelationshipName string         `json:"inClusterRemoteTrustRelationshipName,omitempty"`
-	SeedHosts                            []string       `json:"seedHosts,omitempty"`
+	State                                string                   `json:"state,omitempty"`
+	ClusterName                          string                   `json:"cluster-name,omitempty"`
+	LocalTrustRelationshipName           string                   `json:"localTrustRelationshipName,omitempty"`
+	InClusterRemoteSelector              assoctype.ObjectSelector `json:"inClusterRemoteSelector,omitempty"`
+	InClusterRemoteTrustRelationshipName string                   `json:"inClusterRemoteTrustRelationshipName,omitempty"`
+	SeedHosts                            []string                 `json:"seedHosts,omitempty"`
 }
 
 const (

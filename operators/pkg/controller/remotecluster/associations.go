@@ -7,6 +7,7 @@ package remotecluster
 import (
 	"reflect"
 
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
@@ -23,12 +24,12 @@ import (
 // It contains an object selector and the secret that contains the CA, this is all we need to
 // create an association. The CA reference can be nil if there is no CA for the given Selector.
 type associatedCluster struct {
-	Selector v1alpha1.ObjectSelector
+	Selector assoctype.ObjectSelector
 	CA       *[]byte
 }
 
 // newAssociatedCluster creates an associatedCluster from an object selector.
-func newAssociatedCluster(c k8s.Client, selector v1alpha1.ObjectSelector) (associatedCluster, error) {
+func newAssociatedCluster(c k8s.Client, selector assoctype.ObjectSelector) (associatedCluster, error) {
 	ca, err := getCA(c, selector.NamespacedName())
 	if err != nil {
 		return associatedCluster{}, err
@@ -90,7 +91,7 @@ func ensureTrustRelationshipIsDeleted(
 	c k8s.Client,
 	name string,
 	owner *v1alpha1.RemoteCluster,
-	cluster v1alpha1.ObjectSelector,
+	cluster assoctype.ObjectSelector,
 ) error {
 	trustRelationShip := &v1alpha1.TrustRelationship{}
 	trustRelationShipObjectMeta := trustRelationshipObjectMeta(name, owner, cluster)

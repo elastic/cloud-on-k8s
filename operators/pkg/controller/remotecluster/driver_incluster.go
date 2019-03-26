@@ -7,6 +7,7 @@ package remotecluster
 import (
 	"fmt"
 
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
@@ -47,7 +48,7 @@ func apply(
 		}
 	}
 
-	var localClusterSelector v1alpha1.ObjectSelector
+	var localClusterSelector assoctype.ObjectSelector
 	// Get local cluster selector
 	if localClusterName, ok := remoteCluster.Labels[label.ClusterNameLabelName]; !ok {
 		log.Error(
@@ -59,7 +60,7 @@ func apply(
 		rca.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonConfigurationError, ClusterNameLabelMissing)
 		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), nil // Wait for the object to be updated
 	} else {
-		localClusterSelector = v1alpha1.ObjectSelector{
+		localClusterSelector = assoctype.ObjectSelector{
 			Namespace: remoteCluster.Namespace,
 			Name:      localClusterName,
 		}

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +36,7 @@ func newTrustRelationship(namespace, name, caCert string, subjectName []string) 
 func Test_newAssociatedCluster(t *testing.T) {
 	type args struct {
 		c        k8s.Client
-		selector v1alpha1.ObjectSelector
+		selector assoctype.ObjectSelector
 	}
 	tests := []struct {
 		name    string
@@ -65,7 +66,7 @@ func Test_ensureTrustRelationshipIsDeleted(t *testing.T) {
 		c       k8s.Client
 		name    string
 		owner   *v1alpha1.RemoteCluster
-		cluster v1alpha1.ObjectSelector
+		cluster assoctype.ObjectSelector
 	}
 	tests := []struct {
 		name    string
@@ -78,7 +79,7 @@ func Test_ensureTrustRelationshipIsDeleted(t *testing.T) {
 				c:     newFakeClient(t, []runtime.Object{&trustRelationShip1}),
 				name:  "trustrelationship1",
 				owner: newRemoteInCluster("remotecluster-sample", "ns1", "es1", "ns2", "es2"),
-				cluster: v1alpha1.ObjectSelector{
+				cluster: assoctype.ObjectSelector{
 					Namespace: "ns1",
 					Name:      "es1",
 				},
@@ -90,7 +91,7 @@ func Test_ensureTrustRelationshipIsDeleted(t *testing.T) {
 				c:     newFakeClient(t, []runtime.Object{}),
 				name:  "trustrelationship1",
 				owner: newRemoteInCluster("remotecluster-sample", "ns1", "es1", "ns2", "es2"),
-				cluster: v1alpha1.ObjectSelector{
+				cluster: assoctype.ObjectSelector{
 					Namespace: "ns1",
 					Name:      "es1",
 				},

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
@@ -98,7 +99,7 @@ func newRemoteInCluster(
 		},
 		Spec: v1alpha1.RemoteClusterSpec{
 			Remote: v1alpha1.InClusterSpec{
-				InRemoteCluster: v1alpha1.ObjectSelector{
+				InRemoteCluster: assoctype.ObjectSelector{
 					Name:      remoteName,
 					Namespace: remoteNamespace,
 				},
@@ -144,7 +145,7 @@ func Test_apply(t *testing.T) {
 				State:                      v1alpha1.RemoteClusterPropagated,
 				ClusterName:                "trust-one-es",
 				LocalTrustRelationshipName: "rc-remotecluster-sample-1-2",
-				InClusterRemoteSelector: v1alpha1.ObjectSelector{
+				InClusterRemoteSelector: assoctype.ObjectSelector{
 					Name:      "trust-two-es",
 					Namespace: "default",
 				},
