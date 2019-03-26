@@ -74,7 +74,7 @@ func (c FlatConfig) Render() []byte {
 	return b.Bytes()
 }
 
-// KeyValue stores a key and a value
+// KeyValue stores a key and a value.
 type KeyValue struct {
 	Key   string
 	Value string
