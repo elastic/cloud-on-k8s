@@ -7,7 +7,6 @@ package license
 import (
 	"bytes"
 	"crypto"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
@@ -26,6 +25,67 @@ type Verifier struct {
 	publicKey *rsa.PublicKey
 }
 
+// Valid checks the validity of the given Enterprise license. Returns nil if valid.
+func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte) error {
+	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(sig)))
+	_, err := base64.StdEncoding.Decode(allParts, sig)
+	if err != nil {
+		return errors2.Wrap(err, "failed to base64 decode signature")
+	}
+	buf := bytes.NewBuffer(allParts)
+	maxLen := uint32(len(allParts))
+
+	var version uint32
+	if err := readInt(buf, &version); err != nil {
+		return errors2.Wrap(err, "failed to read version")
+	}
+
+	var magicLen uint32
+	if err := readInt(buf, &magicLen); err != nil {
+		return errors2.Wrap(err, "failed to read magic length")
+	}
+	if magicLen > maxLen {
+		return errors.New("magic exceeds max length")
+	}
+	magic := make([]byte, magicLen)
+	_, err = buf.Read(magic)
+	if err != nil {
+		return errors2.Wrap(err, "failed to read magic")
+	}
+
+	var hashLen uint32
+	if err := readInt(buf, &hashLen); err != nil {
+		return errors2.Wrap(err, "failed to read hash length")
+	}
+	if hashLen > maxLen {
+		return errors.New("hash exceeds max len")
+	}
+	pubKeyFingerprint := make([]byte, hashLen)
+	_, err = buf.Read(pubKeyFingerprint)
+	if err != nil {
+		return err
+	}
+	var signedContentLen uint32
+	if err := readInt(buf, &signedContentLen); err != nil {
+		return errors2.Wrap(err, "failed to read signed content length")
+	}
+	if signedContentLen > maxLen {
+		return errors.New("signed content exceeds max length")
+	}
+	signedContentSig := make([]byte, signedContentLen)
+	_, err = buf.Read(signedContentSig)
+	if err != nil {
+		return err
+	}
+	contentBytes, err := json.Marshal(toVerifiableSpec(l))
+	if err != nil {
+		return err
+	}
+	//TODO optional pubkey fingerprint check
+	hashed := sha512.Sum512(contentBytes)
+	return rsa.VerifyPKCS1v15(v.publicKey, crypto.SHA512, hashed[:], signedContentSig)
+}
+
 // NewVerifier creates a new license verifier from a DER encoded public key.
 func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 	pub, err := x509.ParsePKIXPublicKey(pubKeyBytes)
@@ -39,22 +99,6 @@ func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 	return &Verifier{
 		publicKey: pubKey,
 	}, nil
-}
-
-// Signer signs Enterprise licenses. Exists here exclusively for testing purposes.
-type Signer struct {
-	Verifier
-	privateKey *rsa.PrivateKey
-}
-
-// NewSigner creates a new license signer from a private key. For testing purposes only.
-func NewSigner(privKey *rsa.PrivateKey) *Signer {
-	return &Signer{
-		Verifier: Verifier{
-			publicKey: &privKey.PublicKey,
-		},
-		privateKey: privKey,
-	}
 }
 
 type licenseSpec struct {
@@ -99,124 +143,4 @@ func readInt(r io.Reader, i *uint32) error {
 	}
 	*i = binary.BigEndian.Uint32(out)
 	return nil
-}
-
-// Sign signs the given Enterprise license.
-func (s *Signer) Sign(l v1alpha1.EnterpriseLicense) ([]byte, error) {
-	spec := toVerifiableSpec(l)
-	toSign, err := json.Marshal(spec)
-	if err != nil {
-		return nil, err
-	}
-	rng := rand.Reader
-	hashed := sha512.Sum512(toSign)
-
-	publicKeyBytes := x509.MarshalPKCS1PublicKey(s.publicKey)
-	rsaSig, err := rsa.SignPKCS1v15(rng, s.privateKey, crypto.SHA512, hashed[:])
-	if err != nil {
-		return nil, err
-	}
-	const magicLen = 13
-	magic := make([]byte, magicLen)
-	_, err = rand.Read(magic)
-	if err != nil {
-		return nil, err
-	}
-	hash := make([]byte, base64.StdEncoding.EncodedLen(len(publicKeyBytes)))
-	base64.StdEncoding.Encode(hash, publicKeyBytes)
-	// version + magicLen + magic + hashLen + hash + sigLen + sig
-	sig := make([]byte, 0, 4+4+magicLen+4+len(hash)+4+len(rsaSig))
-
-	buf := bytes.NewBuffer(sig)
-
-	// we only support version 3 for now
-	if err := writeInt(buf, 3); err != nil {
-		return nil, err
-	}
-	if err := writeInt(buf, len(magic)); err != nil {
-		return nil, err
-	}
-	_, err = buf.Write(magic)
-	if err != nil {
-		return nil, err
-	}
-	if err := writeInt(buf, len(hash)); err != nil {
-		return nil, err
-	}
-	_, err = buf.Write(hash)
-	if err != nil {
-		return nil, err
-	}
-	if err := writeInt(buf, len(rsaSig)); err != nil {
-		return nil, err
-	}
-	_, err = buf.Write(rsaSig)
-	if err != nil {
-		return nil, err
-	}
-	sigBytes := buf.Bytes()
-	out := make([]byte, base64.StdEncoding.EncodedLen(len(sigBytes)))
-	base64.StdEncoding.Encode(out, sigBytes)
-	return out, nil
-}
-
-// Valid checks the validity of the given Enterprise license. Returns nil if valid.
-func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte) error {
-	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(sig)))
-	_, err := base64.StdEncoding.Decode(allParts, sig)
-	if err != nil {
-		return errors2.Wrap(err, "failed to base64 decode signature")
-	}
-	buf := bytes.NewBuffer(allParts)
-	maxLen := uint32(len(allParts))
-
-	var version uint32
-	if err := readInt(buf, &version); err != nil {
-		return errors2.Wrap(err, "failed to read version")
-	}
-
-	var magicLen uint32
-	if err := readInt(buf, &magicLen); err != nil {
-		return errors2.Wrap(err, "failed to read magicLen")
-	}
-	if magicLen > maxLen {
-		return errors.New("magic exceeds max len")
-	}
-	magic := make([]byte, magicLen)
-	_, err = buf.Read(magic)
-	if err != nil {
-		return errors2.Wrap(err, "failed to read magic")
-	}
-
-	var hashLen uint32
-	if err := readInt(buf, &hashLen); err != nil {
-		return errors2.Wrap(err, "failed to read hashLen")
-	}
-	if hashLen > maxLen {
-		return errors.New("hash exceeds max len")
-	}
-	pubKeyFingerprint := make([]byte, hashLen)
-	_, err = buf.Read(pubKeyFingerprint)
-	if err != nil {
-		return err
-	}
-	var signedContentLen uint32
-	if err := readInt(buf, &signedContentLen); err != nil {
-		return errors2.Wrap(err, "failed to read signedContentLen")
-	}
-	if signedContentLen > maxLen {
-		return errors.New("signed content exceeds max len")
-	}
-	signedContentSig := make([]byte, signedContentLen)
-	_, err = buf.Read(signedContentSig)
-	if err != nil {
-		return err
-	}
-	contentBytes, err := json.Marshal(toVerifiableSpec(l))
-	if err != nil {
-		return err
-	}
-	//TODO optional pubkey fingerprint check
-	hashed := sha512.Sum512(contentBytes)
-	return rsa.VerifyPKCS1v15(v.publicKey, crypto.SHA512, hashed[:], signedContentSig)
 }
