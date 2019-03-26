@@ -83,15 +83,12 @@ type KeyValue struct {
 // Sorted returns a list of KeyValue for this config,
 // sorted alphabetically.
 func (c FlatConfig) Sorted() []KeyValue {
-	// sort keys
-	keys := make([]string, 0, len(c))
-	for k := range c {
-		keys = append(keys, k)
+	kv := make([]KeyValue, 0, len(c))
+	for k, v := range c {
+		kv = append(kv, KeyValue{Key: k, Value: v})
 	}
-	sort.Strings(keys)
-	sorted := make([]KeyValue, len(keys))
-	for i, k := range keys {
-		sorted[i] = KeyValue{Key: k, Value: c[k]}
-	}
-	return sorted
+	sort.SliceStable(kv, func(i, j int) bool {
+		return kv[i].Key < kv[j].Key
+	})
+	return kv
 }
