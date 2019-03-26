@@ -2,4 +2,4 @@
 
 This repository contains operators and related tooling for running Elastic products on Kubernetes.
 
-![](k8s-operator.gif)
+![](img/k8s-operator.gif)
