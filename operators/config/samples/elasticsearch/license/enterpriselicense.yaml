@@ -1,3 +1,6 @@
+# This sample demonstrates how to create an enterprise license resource
+# that contains a set of ClusterLicenses. The best match will automatically
+# be applied to any cluster requesting a license.
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: EnterpriseLicense
 metadata:
@@ -27,14 +30,14 @@ spec:
       uid: "893361dc-9749-4997-93cb-xx2e3d7fa4xx"
       signatureRef:
         key: "cl"
-        name: "stack-sample-license"
+        name: "license-secret"
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "stack-sample-license"
+  name: "license-secret"
   namespace: "default"
 type: Opaque
 data:
-  el: "not-a-valid-signature"
-  cl: "another-made-up-signature"
+  el: "not-a-valid-signature" # enterprise license signature
+  cl: "another-made-up-signature" # cluster license signature
