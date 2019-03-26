@@ -6,10 +6,10 @@ package e2e
 
 import (
 	"bufio"
-	"github.com/elastic/k8s-operators/operators/test/e2e/apm"
 	"os"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/test/e2e/apm"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
@@ -18,7 +18,7 @@ import (
 // Re-use the sample stack for e2e tests.
 // This is a way to make sure both the sample and the e2e tests are always up-to-date.
 // Path is relative to the e2e directory.
-const sampleEsApmFile = "../../config/samples/es_apmserver_sample.yaml"
+const sampleEsApmFile = "../../config/samples/apm/association.yaml"
 
 // TestEsApmServerSample runs a test suite using the sample es + apm server resources
 func TestEsApmServerSample(t *testing.T) {
