@@ -105,10 +105,10 @@ func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState St
 	wg.Add(len(m.listeners))
 	// run all listeners in parallel
 	for _, l := range m.listeners {
-		go func() {
+		go func(f OnObservation) {
 			defer wg.Done()
-			l(cluster, previousState, newState)
-		}()
+			f(cluster, previousState, newState)
+		}(l)
 	}
 	// release the lock asap
 	m.lock.Unlock()

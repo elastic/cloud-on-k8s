@@ -174,19 +174,23 @@ func TestManager_AddObservationListener(t *testing.T) {
 	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}))
 	defer obs2.Stop()
 
-	// add a listener
+	// add a listener that is only interested in cluster1
 	eventsCluster1 := make(chan types.NamespacedName)
+	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
+		if cluster.Name == "cluster1" {
+			eventsCluster1 <- cluster
+		}
+	})
+
+	// add a 2nd listener that is only interested in clusterE
 	eventsCluster2 := make(chan types.NamespacedName)
 	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
-		switch cluster.Name {
-		case "cluster1":
-			eventsCluster1 <- cluster
-		case "cluster2":
+		if cluster.Name == "cluster2" {
 			eventsCluster2 <- cluster
 		}
 	})
 
-	// events should be propagated for both clusters
+	// events should be propagated by both listeners
 	<-eventsCluster1
 	<-eventsCluster2
 	<-eventsCluster1
