@@ -15,7 +15,12 @@ Managed Elastic products and services in Kubernetes.
 * [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (For Mac `brew install md5sha1sum`)
 
+## Quickstart
+
+See the [quickstart tutorial](docs/quickstart.md).
+
 ## Development
+
 Run `make check-requisites` to check that all dependencies are installed.    
 After installing the [requirements](#requirements), you can jump straight to development with `make bootstrap-gke` or `make bootstrap-minikube` to setup a development kubernetes cluster.    
 Then, use either `make run` to run the operator locally, or `make deploy` to deploy the operators on the cluster.
