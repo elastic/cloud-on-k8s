@@ -6,19 +6,10 @@ package comparison
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
-)
-
-const (
-	// TaintedAnnotationName used to represent a tainted resource in k8s resources
-	TaintedAnnotationName = "elasticsearch.k8s.elastic.co/tainted"
-
-	// TaintedReason message
-	TaintedReason = "mismatch due to tainted node"
 )
 
 func PodMatchesSpec(podWithConfig pod.PodWithConfig, spec pod.PodSpecContext, state reconcile.ResourcesState) (bool, []string, error) {
@@ -68,12 +59,4 @@ func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 		}
 	}
 	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", pod.DefaultContainerName)
-}
-
-func IsTainted(pod corev1.Pod) bool {
-	if v, ok := pod.Annotations[TaintedAnnotationName]; ok {
-		tainted, _ := strconv.ParseBool(v) // #nosec G104 // ignore unhandled error because we want to default to false
-		return tainted
-	}
-	return false
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation/comparison"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/stretchr/testify/assert"
@@ -69,8 +68,6 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 }
 
 func TestCalculateChanges(t *testing.T) {
-	var taintedPod = defaultPodWithConfig
-	taintedPod.Pod.Annotations = map[string]string{comparison.TaintedAnnotationName: "true"}
 	type args struct {
 		expected []pod.PodSpecContext
 		state    reconcile.ResourcesState
@@ -141,14 +138,6 @@ func TestCalculateChanges(t *testing.T) {
 				ToDelete: pod.PodsWithConfig{defaultPodWithConfig},
 				ToCreate: []PodToCreate{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
 			},
-		},
-		{
-			name: "1 pod replaced on pod tainted",
-			args: args{
-				expected: []pod.PodSpecContext{defaultPodSpecCtx, defaultPodSpecCtx},
-				state:    reconcile.ResourcesState{CurrentPods: pod.PodsWithConfig{taintedPod, defaultPodWithConfig}},
-			},
-			want: Changes{ToKeep: pod.PodsWithConfig{defaultPodWithConfig}, ToDelete: pod.PodsWithConfig{defaultPodWithConfig}, ToCreate: []PodToCreate{PodToCreate{PodSpecCtx: defaultPodSpecCtx}}},
 		},
 	}
 	for _, tt := range tests {

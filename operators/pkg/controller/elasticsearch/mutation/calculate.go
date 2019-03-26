@@ -101,10 +101,6 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.P
 
 	for i, podWithConfig := range podsWithConfig {
 		pod := podWithConfig.Pod
-		if comparison.IsTainted(pod) {
-			mismatchReasonsPerPod[pod.Name] = []string{comparison.TaintedReason}
-			continue
-		}
 
 		isMatch, mismatchReasons, err := comparison.PodMatchesSpec(podWithConfig, podSpecCtx, state)
 		if err != nil {
