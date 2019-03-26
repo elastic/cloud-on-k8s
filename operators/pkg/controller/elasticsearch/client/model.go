@@ -331,8 +331,9 @@ type LicenseResponse struct {
 }
 
 // PersistentSettings is the root element of persistent settings.
-type PersistentSettings struct {
-	Settings interface{} `json:"persistent"`
+type Settings struct {
+	PersistentSettings interface{} `json:"persistent,omitempty"`
+	TransientSettings  interface{} `json:"transient,omitempty"`
 }
 
 // RemoteCluster is the content of a request to update remote cluster settings.

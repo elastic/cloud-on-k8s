@@ -102,9 +102,9 @@ func loadRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string
 }
 
 // newRemoteClusterSetting creates a persistent setting to add or remove a remote cluster.
-func newRemoteClusterSetting(name string, seedHosts *[]string) esclient.PersistentSettings {
-	return esclient.PersistentSettings{
-		Settings: esclient.RemoteCluster{
+func newRemoteClusterSetting(name string, seedHosts *[]string) esclient.Settings {
+	return esclient.Settings{
+		PersistentSettings: esclient.RemoteCluster{
 			Seeds: map[string]esclient.RemoteClusterSeeds{
 				name: {
 					Seeds: seedHosts,
@@ -115,8 +115,8 @@ func newRemoteClusterSetting(name string, seedHosts *[]string) esclient.Persiste
 }
 
 // updateRemoteCluster makes a call to an Elasticsearch cluster to apply a persistent setting.
-func updateRemoteCluster(esClient esclient.Client, persistentSettings esclient.PersistentSettings) error {
+func updateRemoteCluster(esClient esclient.Client, persistentSettings esclient.Settings) error {
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
-	return esClient.UpdatePersistentSettings(ctx, persistentSettings)
+	return esClient.UpdateSettings(ctx, persistentSettings)
 }

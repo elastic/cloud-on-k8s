@@ -54,13 +54,13 @@ func TestSnapshot_EndedBefore(t *testing.T) {
 func TestModel_RemoteCluster(t *testing.T) {
 	tests := []struct {
 		name string
-		arg  PersistentSettings
+		arg  Settings
 		want string
 	}{
 		{
 			name: "Simple remote cluster",
-			arg: PersistentSettings{
-				Settings: RemoteCluster{
+			arg: Settings{
+				PersistentSettings: RemoteCluster{
 					Seeds: map[string]RemoteClusterSeeds{
 						"leader": {
 							Seeds: &[]string{"127.0.0.1:9300"},
@@ -72,8 +72,8 @@ func TestModel_RemoteCluster(t *testing.T) {
 		},
 		{
 			name: "Deleted remote cluster",
-			arg: PersistentSettings{
-				Settings: RemoteCluster{
+			arg: Settings{
+				PersistentSettings: RemoteCluster{
 					Seeds: map[string]RemoteClusterSeeds{
 						"leader": {
 							Seeds: nil,
