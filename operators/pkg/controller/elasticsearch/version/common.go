@@ -137,11 +137,6 @@ func podSpec(
 	)
 	volumes[nodeCertificatesVolume.Name()] = nodeCertificatesVolume
 
-	// same regarding the config volume: we don't have a pod name yet to build the secret name.
-	// Let's inject the volume mount now, the volume will be added at pod creation time (from pod name).
-	esConfig := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.NodeTypes, p.LicenseType)
-	esConfigVolumeMount := settings.ConfigSecretVolume("no name yet").VolumeMount()
-
 	keystoreVolume := volume.NewSecretVolumeWithMountPath(
 		p.KeystoreSecretRef.Name,
 		keystore.SecretVolumeName,
@@ -195,7 +190,6 @@ func podSpec(
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
-				esConfigVolumeMount,
 			),
 		}},
 		TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
@@ -227,6 +221,10 @@ func podSpec(
 		return corev1.PodSpec{}, settings.FlatConfig{}, err
 	}
 	podSpec.InitContainers = initContainers
+
+	// generate the configuration
+	// actual volumes to propagate it will be created later on
+	esConfig := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.NodeTypes, p.LicenseType)
 
 	return podSpec, esConfig, nil
 }

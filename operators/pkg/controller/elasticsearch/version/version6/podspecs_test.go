@@ -156,7 +156,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
-	assert.Equal(t, 12, len(esContainer.VolumeMounts))
+	assert.Equal(t, 11, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }
 

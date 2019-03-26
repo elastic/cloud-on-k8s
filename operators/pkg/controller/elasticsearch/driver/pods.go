@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	espod "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -114,11 +115,17 @@ func createElasticsearchPod(
 	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
 
 	// create the config volume for this pod, now that we have a proper name for the pod
-	// the volume mount was setup at pod spec creation time
 	if err := settings.ReconcileConfig(c, es, pod, podSpecCtx.Config); err != nil {
 		return err
 	}
-	pod.Spec.Volumes = append(pod.Spec.Volumes, settings.ConfigSecretVolume(pod.Name).Volume())
+	configSecretVolume := settings.ConfigSecretVolume(pod.Name)
+	// inject both volume and volume mount
+	pod.Spec.Volumes = append(pod.Spec.Volumes, configSecretVolume.Volume())
+	for i, c := range pod.Spec.Containers {
+		if c.Name == espod.DefaultContainerName {
+			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, configSecretVolume.VolumeMount())
+		}
+	}
 
 	if err := controllerutil.SetControllerReference(&es, &pod, scheme); err != nil {
 		return err
