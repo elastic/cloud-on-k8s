@@ -16,6 +16,7 @@ var (
 	procNameFlag        = envToFlag(EnvProcName)
 	procCmdFlag         = envToFlag(EnvProcCmd)
 	reaperFlag          = envToFlag(EnvReaper)
+	HTTPPortFlag        = envToFlag(EnvHTTPPort)
 	tlsFlag             = envToFlag(EnvTLS)
 	certPathFlag        = envToFlag(EnvCertPath)
 	keyPathFlag         = envToFlag(EnvKeyPath)
@@ -30,6 +31,7 @@ type Config struct {
 	ProcessCmd   string
 	EnableReaper bool
 
+	HTTPPort  int
 	EnableTLS bool
 	CertPath  string
 	KeyPath   string
@@ -45,6 +47,7 @@ func BindFlagsToEnv(cmd *cobra.Command) error {
 	cmd.Flags().StringP(procNameFlag, "", "", "process name to manage")
 	cmd.Flags().StringP(procCmdFlag, "", "", "process command to manage")
 	cmd.Flags().BoolP(reaperFlag, "", true, "enable the child processes reaper")
+	cmd.Flags().IntP(HTTPPortFlag, "", 8080, "HTTP server port")
 	cmd.Flags().BoolP(tlsFlag, "", false, "secure the HTTP server using TLS")
 	cmd.Flags().StringP(certPathFlag, "", "", "path to the certificate file used to secure the HTTP server")
 	cmd.Flags().StringP(keyPathFlag, "", "", "path to the private key file used to secure the HTTP server")
@@ -72,6 +75,8 @@ func NewConfigFromFlags() (Config, error) {
 
 	reaper := viper.GetBool(reaperFlag)
 
+	HTTPPort := viper.GetInt(HTTPPortFlag)
+
 	tls := viper.GetBool(tlsFlag)
 	certPath := viper.GetString(certPathFlag)
 	keyPath := viper.GetString(keyPathFlag)
@@ -93,6 +98,7 @@ func NewConfigFromFlags() (Config, error) {
 		ProcessName:           procName,
 		ProcessCmd:            procCmd,
 		EnableReaper:          reaper,
+		HTTPPort:              HTTPPort,
 		EnableTLS:             tls,
 		CertPath:              certPath,
 		KeyPath:               keyPath,

@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	utilsnet "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -75,7 +76,7 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 
 		initChan: make(chan struct{}),
 
-		ephemeralPortFinder:  defaultEphemeralPortFinder,
+		ephemeralPortFinder:  utilsnet.GetRandomPort,
 		portForwarderFactory: defaultPortForwarderFactory,
 		dialerFunc:           defaultDialerFunc,
 	}, nil
@@ -133,24 +134,6 @@ func getPodWithIP(ip string) (*types.NamespacedName, error) {
 	}
 	nsn := k8s.ExtractNamespacedName(&(pods.Items[0].ObjectMeta))
 	return &nsn, nil
-}
-
-// defaultEphemeralPortFinder finds an ephemeral port by binding to :0 and checking what port was bound
-var defaultEphemeralPortFinder = func() (string, error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return "", err
-	}
-
-	addr := listener.Addr().String()
-
-	if err := listener.Close(); err != nil {
-		return "", err
-	}
-
-	_, localPort, err := net.SplitHostPort(addr)
-
-	return localPort, err
 }
 
 // defaultPortForwarderFactory is the default factory used for port forwarders outside of tests

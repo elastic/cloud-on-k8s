@@ -12,6 +12,7 @@ const (
 	EnvProcName        = "PM_PROC_NAME"
 	EnvProcCmd         = "PM_PROC_CMD"
 	EnvReaper          = "PM_REAPER"
+	EnvHTTPPort        = "PM_HTTP_PORT"
 	EnvTLS             = "PM_TLS"
 	EnvCertPath        = "PM_CERT_PATH"
 	EnvKeyPath         = "PM_KEY_PATH"

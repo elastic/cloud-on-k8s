@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -153,7 +154,11 @@ func Test_Invalid_Command(t *testing.T) {
 }
 
 func runTest(t *testing.T, cmd string, do func(client *Client)) {
-	err := os.Setenv(EnvProcName, "test")
+	port, err := net.GetRandomPort()
+	assert.NoError(t, err)
+	err = os.Setenv(EnvHTTPPort, port)
+	assert.NoError(t, err)
+	err = os.Setenv(EnvProcName, "test")
 	assert.NoError(t, err)
 	err = os.Setenv(EnvProcCmd, cmd)
 	assert.NoError(t, err)
@@ -168,7 +173,7 @@ func runTest(t *testing.T, cmd string, do func(client *Client)) {
 	err = procMgr.Start()
 	assert.NoError(t, err)
 
-	client := NewClient("http://localhost"+HTTPPort, nil)
+	client := NewClient("http://localhost:"+port, nil)
 
 	time.Sleep(3 * time.Second)
 	do(client)

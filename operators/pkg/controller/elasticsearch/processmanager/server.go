@@ -20,7 +20,6 @@ import (
 
 const (
 	shutdownTimeout = 5 * time.Second
-	HTTPPort        = ":8080"
 )
 
 // ProcessServer is an HTTP server that can access to the managed process and the keystore updater.
@@ -37,7 +36,7 @@ func NewProcessServer(cfg Config, process *Process, updater *keystore.Updater) *
 	mux := http.NewServeMux()
 	s := ProcessServer{
 		&http.Server{
-			Addr:    HTTPPort,
+			Addr:    fmt.Sprintf(":%d", cfg.HTTPPort),
 			Handler: mux,
 		},
 		cfg,
