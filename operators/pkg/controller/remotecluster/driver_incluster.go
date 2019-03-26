@@ -22,7 +22,7 @@ const (
 )
 
 func apply(
-	rca *ReconcileClusterAssociation,
+	rca *ReconcileRemoteCluster,
 	remoteCluster v1alpha1.RemoteCluster,
 ) (v1alpha1.RemoteClusterStatus, error) {
 

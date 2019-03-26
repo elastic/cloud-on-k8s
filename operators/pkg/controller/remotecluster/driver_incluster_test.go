@@ -110,7 +110,7 @@ func newRemoteInCluster(
 
 func Test_apply(t *testing.T) {
 	type args struct {
-		rca           *ReconcileClusterAssociation
+		rca           *ReconcileRemoteCluster
 		remoteCluster v1alpha1.RemoteCluster
 	}
 	tests := []struct {
@@ -122,7 +122,7 @@ func Test_apply(t *testing.T) {
 		{
 			name: "State successfully updated",
 			args: args{
-				rca: &ReconcileClusterAssociation{
+				rca: &ReconcileRemoteCluster{
 					Client: newFakeClient(t, []runtime.Object{
 						newCASecret("default", "trust-one-es-ca", ca1),
 						newCASecret("default", "trust-two-es-ca", ca2),

@@ -20,7 +20,7 @@ import (
 )
 
 // addWatches set watched on objects needed to manage the association between a local and a remote cluster.
-func addWatches(c controller.Controller, r *ReconcileClusterAssociation) error {
+func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.RemoteCluster{}}, &handler.EnqueueRequestForObject{}); err != nil {
 		return err
@@ -75,7 +75,7 @@ func watchName(clusterAssociation v1alpha1.RemoteCluster, elasticsearch assoctyp
 
 // addCertificatesAuthorityWatches sets some watches on all secrets containing the certificate of a CA involved in a association.
 func addCertificatesAuthorityWatches(
-	reconcileClusterAssociation *ReconcileClusterAssociation,
+	reconcileClusterAssociation *ReconcileRemoteCluster,
 	clusterAssociation v1alpha1.RemoteCluster,
 	cluster assoctype.ObjectSelector) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.

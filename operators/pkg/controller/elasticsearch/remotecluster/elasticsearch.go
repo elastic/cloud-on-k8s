@@ -26,7 +26,8 @@ func UpdateRemoteCluster(
 	c k8s.Client,
 	esClient esclient.Client,
 	es v1alpha1.Elasticsearch,
-	reconcileState *reconcile.State) error {
+	reconcileState *reconcile.State,
+) error {
 
 	currentRemoteClusters := reconcileState.GetRemoteClusters()
 	if currentRemoteClusters == nil {

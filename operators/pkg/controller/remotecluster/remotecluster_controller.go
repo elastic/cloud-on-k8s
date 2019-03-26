@@ -50,9 +50,9 @@ func Add(mgr manager.Manager, parameter operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, dialer net.Dialer) *ReconcileClusterAssociation {
+func newReconciler(mgr manager.Manager, dialer net.Dialer) *ReconcileRemoteCluster {
 	c := k8s.WrapClient(mgr.GetClient())
-	return &ReconcileClusterAssociation{
+	return &ReconcileRemoteCluster{
 		Client:   c,
 		scheme:   mgr.GetScheme(),
 		watches:  watches.NewDynamicWatches(),
@@ -70,10 +70,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 	return c, nil
 }
 
-var _ reconcile.Reconciler = &ReconcileClusterAssociation{}
+var _ reconcile.Reconciler = &ReconcileRemoteCluster{}
 
-// ReconcileClusterAssociation reconciles a RemoteCluster object.
-type ReconcileClusterAssociation struct {
+// ReconcileRemoteCluster reconciles a RemoteCluster object.
+type ReconcileRemoteCluster struct {
 	k8s.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
@@ -85,7 +85,7 @@ type ReconcileClusterAssociation struct {
 
 // Reconcile reads that state of the cluster for a RemoteCluster object and makes changes based on the state read
 // and what is in the RemoteCluster.Spec
-func (r *ReconcileClusterAssociation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
@@ -123,7 +123,7 @@ func (r *ReconcileClusterAssociation) Reconcile(request reconcile.Request) (reco
 }
 
 // silentUpdateStatus updates the status as a best effort, it is used when the driver has already returned an error.
-func (r *ReconcileClusterAssociation) silentUpdateStatus(
+func (r *ReconcileRemoteCluster) silentUpdateStatus(
 	instance v1alpha1.RemoteCluster,
 	status v1alpha1.RemoteClusterStatus,
 ) {
@@ -136,7 +136,7 @@ func (r *ReconcileClusterAssociation) silentUpdateStatus(
 }
 
 // updateStatus updates the status and returns any errors encountered.
-func (r *ReconcileClusterAssociation) updateStatus(
+func (r *ReconcileRemoteCluster) updateStatus(
 	instance v1alpha1.RemoteCluster,
 	status v1alpha1.RemoteClusterStatus,
 ) error {
