@@ -38,7 +38,7 @@ spec:
       - image: $OPERATOR_IMAGE
         imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--operator-role", "global"]
+        args: ["manager", "--development", "--operator-role", "all"]
         env:
           - name: POD_NAMESPACE
             valueFrom:
