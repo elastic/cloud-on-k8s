@@ -142,7 +142,7 @@ func (d *defaultDriver) Reconcile(
 	results := &reconciler.Results{}
 
 	// garbage collect resources attached to this cluster that we don't need anymore
-	if err := cleanup.DeleteOrphanedResources(d.Client, es); err != nil {
+	if err := cleanup.DeleteOrphanedSecrets(d.Client, es); err != nil {
 		return results.WithError(err)
 	}
 

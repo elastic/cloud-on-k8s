@@ -38,8 +38,8 @@ func IsTooYoungForGC(object metav1.Object) bool {
 	return true
 }
 
-// DeleteOrphanedResources cleans up resources that are not needed anymore for the given es cluster.
-func DeleteOrphanedResources(c k8s.Client, es v1alpha1.Elasticsearch) error {
+// DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
+func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
 	var resources []runtime.Object
 	var secrets corev1.SecretList
 	if err := c.List(&client.ListOptions{

@@ -69,7 +69,7 @@ func secret(name string, clusterName string, podRef string, creationTime time.Ti
 	}
 }
 
-func TestCleanupOrphanedResources(t *testing.T) {
+func TestDeleteOrphanedSecrets(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 
 	now := time.Now()
@@ -147,7 +147,7 @@ func TestCleanupOrphanedResources(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteOrphanedResources(tt.client, tt.es)
+			err := DeleteOrphanedSecrets(tt.client, tt.es)
 			require.NoError(t, err)
 			// the correct number of secrets should remain in the cache
 			var secrets corev1.SecretList
