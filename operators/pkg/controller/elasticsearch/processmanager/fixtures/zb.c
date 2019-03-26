@@ -1,6 +1,9 @@
 // A C program to demonstrate zombie process.
 // Child becomes zombie as parent is sleeping
 // when child process exits.
+//
+// Run the following command to compile this program: cc zb.c -o zb
+//
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
