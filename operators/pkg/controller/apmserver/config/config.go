@@ -22,25 +22,10 @@ const DefaultHTTPPort = 8200
 func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 	// TODO: consider scaling the default values provided based on the apm server resources
 	// these defaults are taken (without scaling) from a defaulted ECE install
-	var username, password string
-	auth := as.Spec.Output.Elasticsearch.Auth
 
-	if auth.Inline != nil {
-		username = auth.Inline.Username
-		password = auth.Inline.Password
-	}
-
-	// if auth is provided via a secret, we must resolve it at this point in order to have it as part of the config.
-	if auth.SecretKeyRef != nil {
-		secretObjKey := types.NamespacedName{Namespace: as.Namespace, Name: auth.SecretKeyRef.Name}
-		var secret v1.Secret
-
-		if err := c.Get(secretObjKey, &secret); err != nil {
-			return nil, err
-		}
-
-		username = auth.SecretKeyRef.Key
-		password = secret.StringData[username]
+	username, password, err := getCredentials(c, as)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Config{
@@ -96,6 +81,27 @@ func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 			},
 		},
 	}, nil
+}
+
+func getCredentials(c k8s.Client, as v1alpha1.ApmServer) (username, password string, err error) {
+	auth := as.Spec.Output.Elasticsearch.Auth
+
+	if auth.Inline != nil {
+		return auth.Inline.Username, auth.Inline.Password, nil
+	}
+
+	// if auth is provided via a secret, resolve credentials from it.
+	if auth.SecretKeyRef != nil {
+		secretObjKey := types.NamespacedName{Namespace: as.Namespace, Name: auth.SecretKeyRef.Name}
+		var secret v1.Secret
+		if err := c.Get(secretObjKey, &secret); err != nil {
+			return "", "", err
+		}
+		return auth.SecretKeyRef.Key, string(secret.Data[auth.SecretKeyRef.Key]), nil
+	}
+
+	// no authentication method provided, return an empty credential
+	return "", "", nil
 }
 
 type Config struct {
