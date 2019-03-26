@@ -149,12 +149,8 @@ func (p *Process) Kill(sig os.Signal) {
 
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
-	if ok, err := canStop(p.state, true); !ok {
-		if err != nil {
-			log.Error(err, "Fail to kill process", "state", p.state)
-		} else {
-			log.Info("Process not killed because not running", "state", p.state)
-		}
+	if ok := canStop(p.state, s == killHardSignal); !ok {
+		log.Info("Process not killed", "state", p.state)
 		return
 	}
 
@@ -169,21 +165,19 @@ func (p *Process) Kill(sig os.Signal) {
 	log.Info("Process killed", "signal", sig)
 }
 
-func canStop(state ProcessState, killHard bool) (bool, error) {
+func canStop(state ProcessState, killHard bool) bool {
 	switch state {
 	case stopping:
-		return killHard, nil
-	case stopped, killed, noProcess, notInitialized, startFailed:
-		return false, nil
-	case killing, starting:
-		return false, state.Error()
+		return killHard
+	case stopped, killing, killed, noProcess, notInitialized, startFailed:
+		return false
 	default:
-		return true, nil
+		return true
 	}
 }
 
 // Stop stops a process in a non blocking way.
-// The process is stopped only if it's not stopping, stopped, killed, not found or not initialized.
+// The process is stopped only if it's not stopped, killing, killed, not found or not initialized.
 // An error is returned if the process is starting or being killed.
 func (p *Process) Stop(killHard bool, killHardTimeout time.Duration) (ProcessState, error) {
 	p.mutex.Lock()
@@ -191,9 +185,9 @@ func (p *Process) Stop(killHard bool, killHardTimeout time.Duration) (ProcessSta
 
 	prevState := p.state
 
-	ok, err := canStop(prevState, killHard)
+	ok := canStop(prevState, killHard)
 	if !ok {
-		return prevState, err
+		return prevState, nil
 	}
 	pid := p.cmd.Process.Pid
 
