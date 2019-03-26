@@ -41,7 +41,7 @@ Other options that are considered not good enough:
 * A restart is divided into 2 steps: stop, then start. They map to 2 different API calls.
 * The operator controls pods restarts through a state machine, persisted through annotations in the pod. Within a given "state", all operations are idempotent.
 * Configuration is passed through a secret volume mount to the pod. To avoid restarting ES with an out-of-date configuration, the operator requests the process manager for the checksum of the current configuration mounted inside the pod.
-* Restarting pods in a cluster is orchestrated by the operator. ES restarts can be coordinated (full cluster restart), or performed in a rolling fashion.
+* Restarting ES processes in a cluster is orchestrated by the operator. ES restarts can be coordinated (full cluster restart), or performed in a rolling fashion.
 
 ### Configuration through a secret volume
 
@@ -125,9 +125,9 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
     * Delete the configuration secret (would be garbage collected, but still)
 * Handle pods reuse and pods restarts (always executed)
     * Annotate each pod to reuse, unless already annotated
-        * `restart-phase: schedule` for restarting the pod. The operator has no reason to apply this (a human could).
-        * `restart-phase: schedule-rolling` for restarting pods one by one. The operator would apply this to perform a safe restart (default case).
-        * `restart-phase: schedule-coordinated` for all pods at once (full cluster restart). The operator would apply this to switch TLS setting following a license change (eg. basic with no TLS to Gold with TLS).
+        * `restart-phase: schedule` for restarting the ES process. The operator has no reason to apply this (a human could).
+        * `restart-phase: schedule-rolling` for restarting ES processes one by one. The operator would apply this to perform a safe restart (default case).
+        * `restart-phase: schedule-coordinated` for all ES processes at once (full cluster restart). The operator would apply this to switch TLS setting following a license change (eg. basic with no TLS to Gold with TLS).
      * Handle pods in a _schedule_ phase
         * If annotated with `schedule`: annotate them with `restart-phase: stop`.
         * If annotated with `schedule-rolling`
@@ -143,7 +143,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
             * Annotate pod with `restart-phase: start`
         * If annotated with `stop-coordinated`
             * Apply the same steps as above, but:
-                * wait for all pods ES processes to be stopped instead of only the current pod
+                * wait for all ES processes to be stopped instead of only the current pod one
                 * annotate pod with `restart-phase: start-coordinated`
      * Handle pods in a `start` phase
         * If annotated with `start`:
@@ -155,7 +155,7 @@ Note: this does not represent the _entire_ reconciliation loop, it focuses on th
             * Enable shards allocations
             * Remove the `restart-phase` annotation from the pod
         * If annotated with `start-coordinated`:
-            * Perform the same steps as above, but Wait until *all* pods ES processes is started before enabling shards allocations
+            * Perform the same steps as above, but wait until *all* ES processes are started before enabling shards allocations
 * Garbage-collect useless resources
     * Configuration secrets that do not match any pod and existed for more than eg. 15min are safe to delete
 
@@ -166,19 +166,19 @@ It is important in the algorithm outlined above that:
 * any step in a given phase is idempotent. For instance, it should be ok to run steps of the `stop` phase over and over again.
 * transition to the next step is resilient to stale cache. If a pod is annotated with the `start` phase, it should be ok to perform all steps of the `stop` phase again (no-op). However the cache cannot go back in time: once we reach the `start` phase we must not perform the `stop` phase at the next iteration. Our apiserver and cache implementation consistency model guarantee this behaviour.
 * the operator can restart at any point: on restart it should get back to the current phase.
-* a pod that should be reused will be reflected in the results of the comparison algorithm. However, once its configuration has been updated (but before it is actually restarted), it might not be reflected anymore. The comparison would then be based on the "new" configuration (not yet applied to the ES process), and the pod would require no change. That's OK: the pod will still eventually be restarted with this correct new configuration, since annotated in the `start` phase.
+* a pod that should be reused will be reflected in the results of the comparison algorithm. However, once its configuration has been updated (but before it is actually restarted), it might not be reflected anymore. The comparison would then be based on the "new" configuration (not yet applied to the ES process), and the pod would require no change. That's OK: the ES process will still eventually be restarted with this correct new configuration, since annotated in the `start` phase.
 * if a pod is no longer requested for reuse (eg. user changed their mind and reverted ES spec to the previous version) but is in the middle of a restart process, it will still go through that restart process. Depending on when the user reverted back the ES spec, compared to the pod current phase in the state machine:
-    * if the new config was not yet applied, the pod will still be restarted with its current config
-    * if the new config was already applied and the pod is starting, we'll have to wait for the restart process to be over before the pod can be reused with the old configuration (and restarted again). Depending on the pods reuse choices, we might end up reverting the original configuration to different pods. But eventually things will get back to the expected state.
+    * if the new config was not yet applied, the ES process will still be restarted with its current config
+    * if the new config was already applied and the ES process is starting, we'll have to wait for the restart process to be over before the pod can be reused with the old configuration (and restarted again). Depending on the pods reuse choices, we might end up reverting the original configuration to different pods. But eventually things will get back to the expected state.
 
 #### Naming
 
 * Restart annotation name: `elasticsearch.k8s.elastic.co/restart-phase`
 * Restart phases:
     * `schedule`, `schedule-rolling`, `schedule-coordinated` represents work and preparation to be done by the operator
-    * `stop`, `stop-coordinated` when the pod are in the process of being stopped
-    * `start`, `start-coordinated` when pods are in the process of being started
-    * nothing when there is nothing to be done (or pod restart is over)
+    * `stop`, `stop-coordinated` when the ES processes are in the process of being stopped
+    * `start`, `start-coordinated` when ES processes are in the process of being started
+    * nothing when there is nothing to be done (or ES process restart is over)
  
 #### Extensions to other use cases (TBD if worth implementing)
 
