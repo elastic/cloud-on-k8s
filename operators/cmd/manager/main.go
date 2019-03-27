@@ -236,7 +236,6 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 	svcSelector := viper.GetString(WebhookPodsLabelFlag)
 	sec := viper.GetString(WebhookSecretFlag)
 	return &webhook.Parameters{
-		Namespace: ns,
 		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
 			Namespace:       ns,
 			SecretName:      sec,
