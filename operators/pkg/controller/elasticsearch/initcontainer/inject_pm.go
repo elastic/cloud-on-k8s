@@ -4,22 +4,34 @@
 
 package initcontainer
 
-import corev1 "k8s.io/api/core/v1"
+import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	corev1 "k8s.io/api/core/v1"
+)
 
-const script = `
-	#!/usr/bin/env bash -eu
-	cp process-manager $ES_BIN
+const (
+	envBinDirectoryPath = "LOCAL_BIN"
+	script              = `
+		#!/usr/bin/env bash -eu
+		cp process-manager $` + envBinDirectoryPath + `
 `
+)
 
-func NewInjectProcessManagerInitContainer(imageName string, sharedVolume SharedVolume) (corev1.Container, error) {
+var ExtraBinaries = SharedVolume{
+	Name:                   "local-bin-volume",
+	InitContainerMountPath: "/volume/bin",
+	EsContainerMountPath:   volume.ExtraBinariesPath,
+}
+
+func NewInjectProcessManagerInitContainer(imageName string) (corev1.Container, error) {
 	container := corev1.Container{
 		Image: imageName,
 		Env: []corev1.EnvVar{
-			{Name: "ES_BIN", Value: sharedVolume.InitContainerMountPath},
+			{Name: envBinDirectoryPath, Value: ExtraBinaries.InitContainerMountPath},
 		},
 		Name:         "inject-process-manager",
 		Command:      []string{"bash", "-c", script},
-		VolumeMounts: []corev1.VolumeMount{sharedVolume.InitContainerVolumeMount()},
+		VolumeMounts: []corev1.VolumeMount{ExtraBinaries.InitContainerVolumeMount()},
 	}
 	return container, nil
 }

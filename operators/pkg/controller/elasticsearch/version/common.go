@@ -170,6 +170,7 @@ func podSpec(
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
+				initcontainer.ExtraBinaries.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.ConfigMapVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
@@ -184,6 +185,7 @@ func podSpec(
 		Volumes: append(
 			initcontainer.PrepareFsSharedVolumes.Volumes(),
 			initcontainer.PrivateKeySharedVolume.Volume(),
+			initcontainer.ExtraBinaries.Volume(),
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
 			probeSecret.Volume(),

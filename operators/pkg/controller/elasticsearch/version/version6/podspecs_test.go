@@ -47,7 +47,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 			name: "2 nodes",
 			args: args{
 				p: pod.NewPodSpecParams{
-					ProbeUser: testProbeUser,
+					ProbeUser:       testProbeUser,
+					ReloadCredsUser: testReloadCredsUser,
+					Version:         "6",
 				},
 				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
@@ -72,6 +74,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
 				{Name: keystore.EnvEsCaCertsPath, Value: "/certs/ca.pem"},
 				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
+				{Name: keystore.EnvEsVersion, Value: "6"},
 			},
 		},
 	}
@@ -163,7 +166,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 12, len(esPodSpec.Volumes))
+	assert.Equal(t, 13, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -172,6 +175,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
-	assert.Equal(t, 12, len(esContainer.VolumeMounts))
+	assert.Equal(t, 14, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

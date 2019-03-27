@@ -40,7 +40,7 @@ func NewInitContainers(
 		return nil, err
 	}
 
-	injectProcessManager, err := NewInjectProcessManagerInitContainer(operatorImage, EsBinSharedVolume)
+	injectProcessManager, err := NewInjectProcessManagerInitContainer(operatorImage)
 	if err != nil {
 		return nil, err
 	}
