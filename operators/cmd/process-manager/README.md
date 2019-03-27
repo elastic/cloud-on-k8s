@@ -1,7 +1,7 @@
 # Lightweight Process Manager
 
 Goals:
-- Control the Elasticsearch process (stop/start)
+- Control the Elasticsearch process (start/stop/kill)
 - Run the keystore-updater
 
 ## Configuration
@@ -11,8 +11,15 @@ Env vars to configure the process-manager:
 ```bash
 PM_PROC_NAME=es
 PM_PROC_CMD=/usr/local/bin/docker-entrypoint.sh
-PM_REAPER=false
+PM_REAPER=true
+PM_HTTP_PORT=8080
 PM_TLS=false
+PM_CERT_PATH=
+PM_KEY_PATH=
+PM_KEYSTORE_UPDATER=true
+PM_EXP_VARS=false
+PM_PROFILER=false
+
 ```
 
 Env vars to configure the keystore-updater:
@@ -37,7 +44,8 @@ Exposes the control of the Elasticsearch process over HTTP or HTTPS.
 ```
 GET     /health                         =>  200 || 500
 POST    /es/start                       =>  202, starting || 200, started || 500
-POST    /es/stop?force=true&timeout=10  =>  202, stopping || 200, stopped || 500
+POST    /es/stop                        =>  202, stopping || 200, stopped || 500
+POST    /es/kill                        =>  202, killing  || 200, killed  || 500
 GET     /es/status                      =>  200 || 500
 GET     /keystore/status                =>  200 || 500
 ```
@@ -48,13 +56,18 @@ GET     /keystore/status                =>  200 || 500
 
 The start and stop endpoints are non-blocking and idempotent.
 
-#### Stop behaviour?
+#### Stop vs kill?
 
-By default, the stop is a soft kill (SIGTERM).
+The stop endpoint does a soft kill (SIGTERM) while the kill endpoint does a hard kill (SIGKILL).
 
-A hard kill can be forced (`/es/stop?force=true`).
+#### What happens when the process manager is terminated or killed?
 
-An overridable timeout is configured to kill hard (SIGKILL) if the process has not terminated fast enough `/es/stop?timeout=10`.
+The Elasticsearch process does the same.
+All signals received by the process manager are forwarded to the Elasticsearch process. 
+
+### What happens when the Elasticsearch process dies in background?
+
+The process manager exits.
 
 #### Process group usage to avoid zombies processes?
 
@@ -78,7 +91,4 @@ attempting to reap abandoned child processes by calling:
 `unix.Wait4(-1, &status, unix.WNOHANG, nil)`.
 
 This can steal return values from uses of packages like Go's exec.
-
-Heavily inspired from https://github.com/hashicorp/go-reap/blob/master/reap_unix.go.
-
 

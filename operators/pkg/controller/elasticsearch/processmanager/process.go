@@ -189,7 +189,7 @@ func (p *Process) Status() ProcessStatus {
 }
 
 // isAlive returns if the process is alive by trying to get the process group id.
-// The process is state is updated if the process is not alive.
+// The process state is updated if the process is not alive.
 func (p *Process) isAlive(action string) bool {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
