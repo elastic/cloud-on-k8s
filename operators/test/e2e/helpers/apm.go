@@ -16,8 +16,6 @@ import (
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -42,15 +40,8 @@ func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) 
 	inClusterURL := fmt.Sprintf(
 		"http://%s.%s.svc.cluster.local:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
 	)
-	var dialer net.Dialer
-	if *autoPortForward {
-		dialer = portforward.NewForwardingDialer()
-	}
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: dialer.DialContext,
-		},
-	}
+
+	client := NewHTTPClient()
 
 	secretToken, ok := secretTokenSecret.Data[apmserver.SecretTokenKey]
 	if !ok {
@@ -58,7 +49,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) 
 	}
 
 	return &ApmClient{
-		client:                   client,
+		client:                   &client,
 		endpoint:                 inClusterURL,
 		authorizationHeaderValue: fmt.Sprintf("Bearer %s", secretToken),
 	}, nil
