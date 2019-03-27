@@ -31,8 +31,7 @@ import (
 )
 
 var (
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
-	log            = logf.Log.WithName("kibana-controller")
+	log = logf.Log.WithName("kibana-controller")
 )
 
 const (
