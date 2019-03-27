@@ -17,24 +17,31 @@ import (
 const (
 	admissionServerName = "elastic-admission-server"
 	svcName             = "elastic-global-operator"
+	controlPlane        = "control-plane"
 )
 
+type BootstrapOptionsParams struct {
+	Namespace       string
+	SecretName      string
+	ServiceSelector string
+}
+
 // NewBootstrapOptions are options for the webhook bootstrap process.
-func NewBootstrapOptions(ns string, secretName, svcSelector string) webhook.BootstrapOptions {
+func NewBootstrapOptions(params BootstrapOptionsParams) webhook.BootstrapOptions {
 	var secret *types.NamespacedName
-	if secretName != "" {
+	if params.SecretName != "" {
 		secret = &types.NamespacedName{
-			Namespace: ns,
-			Name:      secretName,
+			Namespace: params.Namespace,
+			Name:      params.SecretName,
 		}
 	}
 	var svc *webhook.Service
-	if svcSelector != "" {
+	if params.ServiceSelector != "" {
 		svc = &webhook.Service{
-			Namespace: ns,
+			Namespace: params.Namespace,
 			Name:      svcName,
 			Selectors: map[string]string{
-				"control-plane": svcSelector,
+				controlPlane: params.ServiceSelector,
 			},
 		}
 	}
@@ -60,19 +67,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
 		CertDir:                       "/tmp/cert",
 		DisableWebhookConfigInstaller: &disabled,
-		BootstrapOptions: &webhook.BootstrapOptions{
-			Secret: &types.NamespacedName{
-				Namespace: params.Namespace,
-				Name:      "webhook-server-secret",
-			},
-			Service: &webhook.Service{
-				Namespace: params.Namespace,
-				Name:      "elastic-global-operator",
-				Selectors: map[string]string{
-					"control-plane": "elastic-global-operator",
-				},
-			},
-		},
+		BootstrapOptions:              &params.Bootstrap,
 	})
 	if err != nil {
 		return err

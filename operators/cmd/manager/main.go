@@ -232,14 +232,16 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 	ns := viper.GetString(OperatorNamespaceFlag)
 	if ns == "" && autoInstall {
 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
-
 	}
-
 	svcSelector := viper.GetString(WebhookPodsLabelFlag)
 	sec := viper.GetString(WebhookSecretFlag)
 	return &webhook.Parameters{
-		Namespace:   ns,
-		Bootstrap:   webhook.NewBootstrapOptions(ns, sec, svcSelector),
+		Namespace: ns,
+		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
+			Namespace:       ns,
+			SecretName:      sec,
+			ServiceSelector: svcSelector,
+		}),
 		AutoInstall: autoInstall,
 	}, nil
 }
