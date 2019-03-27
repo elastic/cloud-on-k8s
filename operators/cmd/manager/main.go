@@ -42,7 +42,7 @@ const (
 	AutoInstallWebhooksFlag = "auto-install-webhooks"
 	OperatorNamespaceFlag   = "operator-namespace"
 	WebhookSecretFlag       = "webhook-secret"
-	ControlPlaneLabelFlag   = "control-plane-label"
+	WebhookPodsLabelFlag    = "webhook-pods-label"
 )
 
 var (
@@ -119,7 +119,7 @@ func init() {
 		"k8s namespace the operator runs in",
 	)
 	Cmd.Flags().String(
-		ControlPlaneLabelFlag,
+		WebhookPodsLabelFlag,
 		"",
 		"k8s label to select pods running the operator",
 	)
@@ -235,7 +235,7 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 
 	}
 
-	svcSelector := viper.GetString(ControlPlaneLabelFlag)
+	svcSelector := viper.GetString(WebhookPodsLabelFlag)
 	sec := viper.GetString(WebhookSecretFlag)
 	return &webhook.Parameters{
 		Namespace:   ns,

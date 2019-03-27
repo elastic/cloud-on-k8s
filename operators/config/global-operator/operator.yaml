@@ -32,7 +32,7 @@ spec:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SECRET
             value: webhook-server-secret
-          - name: CONTROL_PLANE_LABEL
+          - name: WEBHOOK_PODS_LABEL
             value: elastic-global-operator
           - name: OPERATOR_IMAGE
             value: $OPERATOR_IMAGE
