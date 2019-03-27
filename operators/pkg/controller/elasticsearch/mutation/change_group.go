@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
@@ -154,7 +156,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 		changeStats.CurrentSurge++
 		changeStats.CurrentPods++
 
-		log.V(4).Info(
+		log.V(1).Info(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"change_stats", changeStats,
@@ -166,15 +168,15 @@ func (s ChangeGroup) calculatePerformableChanges(
 
 	// schedule for deletion as many pods as we can
 	for _, pod := range s.Changes.ToDelete {
-		if _, ok := s.PodsState.Terminal[pod.Name]; ok {
+		if _, ok := s.PodsState.Terminal[pod.Pod.Name]; ok {
 			// removing terminal pods do not affect our availability budget, so we can always delete
 			result.ToDelete = append(result.ToDelete, pod)
 			continue
 		}
 
-		if err := podRestrictions.CanDelete(pod); err != nil {
+		if err := podRestrictions.CanDelete(pod.Pod); err != nil {
 			// cannot remove pod due to restrictions
-			result.RestrictedPods[pod.Name] = err
+			result.RestrictedPods[pod.Pod.Name] = err
 			continue
 		}
 
@@ -198,7 +200,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 			"change_stats", changeStats,
 		)
 
-		podRestrictions.Remove(pod)
+		podRestrictions.Remove(pod.Pod)
 		result.ToDelete = append(result.ToDelete, pod)
 	}
 
@@ -212,13 +214,13 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	// convert the scheduled for deletion pods to a map for faster lookup
 	toDeleteByName := make(map[string]struct{}, len(performableChanges.ToDelete))
 	for _, pod := range performableChanges.ToDelete {
-		toDeleteByName[pod.Name] = empty
+		toDeleteByName[pod.Pod.Name] = empty
 	}
 
 	// for each pod we intend to remove, simulate a deletion
 	for i := len(s.Changes.ToDelete) - 1; i >= 0; i-- {
 		podToDelete := s.Changes.ToDelete[i]
-		if _, ok := toDeleteByName[podToDelete.Name]; ok {
+		if _, ok := toDeleteByName[podToDelete.Pod.Name]; ok {
 			// pop from list of pods to delete
 			s.Changes.ToDelete = append(s.Changes.ToDelete[:i], s.Changes.ToDelete[i+1:]...)
 		}
@@ -239,7 +241,7 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 			// pretend we created it, which would move it to Pending
 			s.PodsState.Pending[podToCreate.Pod.Name] = podToCreate.Pod
 			// also pretend we're intending to keep it instead of creating it
-			s.Changes.ToKeep = append(s.Changes.ToKeep, podToCreate.Pod)
+			s.Changes.ToKeep = append(s.Changes.ToKeep, pod.PodWithConfig{Pod: podToCreate.Pod, Config: podToCreate.PodSpecCtx.Config})
 		}
 	}
 
@@ -256,7 +258,7 @@ func (s *ChangeGroup) simulatePerformableChangesApplied(
 	// deleted pods should eventually go into a Deleting state,
 	// simulate that for deleted pods to be counted as unavailable
 	for _, pod := range performableChanges.ToDelete {
-		s.PodsState.Deleting[pod.Name] = pod
+		s.PodsState.Deleting[pod.Pod.Name] = pod.Pod
 	}
 }
 

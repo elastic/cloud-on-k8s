@@ -13,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const defaultVersion = "6.6.1"
-
 var DefaultResources = common.ResourcesSpec{
 	Limits: map[corev1.ResourceName]resource.Quantity{
 		"memory": resource.MustParse("1G"),
@@ -24,8 +22,8 @@ var DefaultResources = common.ResourcesSpec{
 // -- Stack
 
 type Builder struct {
-	ApmServer apmtype.ApmServer
-	Association   assoctype.ApmServerElasticsearchAssociation
+	ApmServer   apmtype.ApmServer
+	Association assoctype.ApmServerElasticsearchAssociation
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {

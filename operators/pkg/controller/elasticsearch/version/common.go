@@ -37,7 +37,8 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore, extra volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -45,36 +46,38 @@ func NewExpectedPodSpecs(
 
 	for _, topoElem := range es.Spec.Topology {
 		for i := int32(0); i < topoElem.NodeCount; i++ {
-			podSpec, err := podSpec(
-				pod.NewPodSpecParams{
-					Version:         es.Spec.Version,
-					LicenseType:     es.Spec.GetLicenseType(),
-					CustomImageName: es.Spec.Image,
-					ClusterName:     es.Name,
-					DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-						es.Spec.Topology,
-					),
-					DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-					NodeTypes:            topoElem.NodeTypes,
-					Affinity:             topoElem.PodTemplate.Spec.Affinity,
-					SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-					Resources:            topoElem.Resources,
-					UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
-					ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
-					ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
-					KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
-					ProbeUser:            paramsTmpl.ProbeUser,
-					ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
-				},
+			params := pod.NewPodSpecParams{
+				Version:         es.Spec.Version,
+				LicenseType:     es.Spec.GetLicenseType(),
+				CustomImageName: es.Spec.Image,
+				ClusterName:     es.Name,
+				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
+					es.Spec.Topology,
+				),
+				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
+				NodeTypes:            topoElem.NodeTypes,
+				Affinity:             topoElem.PodTemplate.Spec.Affinity,
+				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
+				Resources:            topoElem.Resources,
+				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
+				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
+				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
+				KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
+				ProbeUser:            paramsTmpl.ProbeUser,
+				ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
+			}
+			podSpec, config, err := podSpec(
+				params,
 				operatorImage,
 				newEnvironmentVarsFn,
+				newESConfigFn,
 				newInitContainersFn,
 			)
 			if err != nil {
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologyElement: topoElem})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologyElement: topoElem, Config: config})
 		}
 	}
 
@@ -85,9 +88,11 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore, extra volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, error) {
+) (corev1.PodSpec, settings.FlatConfig, error) {
+
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
 		elasticsearchImage = p.CustomImageName
@@ -108,7 +113,7 @@ func podSpec(
 	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ExtraFilesRef.Name,
 		"extrafiles",
-		"/usr/share/elasticsearch/config/extrafiles",
+		volume.ExtraFilesSecretVolumeMountPath,
 	)
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
@@ -136,7 +141,7 @@ func podSpec(
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, reloadCredsSecret, keystoreVolume, extraFilesSecretVolume),
+			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, reloadCredsSecret, keystoreVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,
@@ -192,10 +197,15 @@ func podSpec(
 	// Setup init containers
 	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
 	if err != nil {
-		return corev1.PodSpec{}, err
+		return corev1.PodSpec{}, settings.FlatConfig{}, err
 	}
 	podSpec.InitContainers = initContainers
-	return podSpec, nil
+
+	// generate the configuration
+	// actual volumes to propagate it will be created later on
+	esConfig := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.NodeTypes, p.LicenseType)
+
+	return podSpec, esConfig, nil
 }
 
 // NewPod constructs a pod from the given parameters.

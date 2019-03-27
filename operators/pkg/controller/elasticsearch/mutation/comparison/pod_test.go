@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package mutation
+package comparison
 
 import (
 	"errors"
@@ -19,8 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func ESPod(image string, cpuLimit string) corev1.Pod {
-	return corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec}
+func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
+	return pod.PodWithConfig{
+		Pod:    corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
+		Config: settings.FlatConfig{},
+	}
 }
 
 func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
@@ -71,11 +74,35 @@ func withEnv(env []corev1.EnvVar, ps pod.PodSpecContext) pod.PodSpecContext {
 var defaultCPULimit = "800m"
 var defaultImage = "image"
 
-func Test_podMatchesSpec(t *testing.T) {
+// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and claim names.
+func withPVCs(p pod.PodWithConfig, nameAndClaimNames ...string) pod.PodWithConfig {
+	lenNameAndClaimNames := len(nameAndClaimNames)
+
+	if lenNameAndClaimNames%2 != 0 {
+		panic(fmt.Sprintf("odd number of arguments passed as key-value pairs to withPVCs"))
+	}
+
+	for i := 0; i < lenNameAndClaimNames; i += 2 {
+		volumeName := nameAndClaimNames[i]
+		claimName := nameAndClaimNames[i+1]
+
+		p.Pod.Spec.Volumes = append(p.Pod.Spec.Volumes, corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: claimName,
+				},
+			},
+		})
+	}
+	return p
+}
+
+func Test_PodMatchesSpec(t *testing.T) {
 	fs := corev1.PersistentVolumeFilesystem
 	block := corev1.PersistentVolumeBlock
 	type args struct {
-		pod   corev1.Pod
+		pod   pod.PodWithConfig
 		spec  pod.PodSpecContext
 		state reconcile.ResourcesState
 	}
@@ -90,7 +117,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Call with invalid specs should return an error",
 			args: args{
-				pod:  corev1.Pod{},
+				pod:  pod.PodWithConfig{},
 				spec: pod.PodSpecContext{PodSpec: corev1.PodSpec{}},
 			},
 			want:               false,
@@ -100,7 +127,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Matching pod should match",
 			args: args{
-				pod:  ESPod(defaultImage, defaultCPULimit),
+				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
 			},
 			want:               true,
@@ -110,7 +137,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Non-matching image should not match",
 			args: args{
-				pod:  ESPod(defaultImage, defaultCPULimit),
+				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: ESPodSpecContext("another-image", defaultCPULimit),
 			},
 			want:               false,
@@ -120,7 +147,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Spec has extra env var",
 			args: args{
-				pod: ESPod(defaultImage, defaultCPULimit),
+				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: withEnv(
 					[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 					ESPodSpecContext(defaultImage, defaultCPULimit),
@@ -133,11 +160,13 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has extra env var",
 			args: args{
-				pod: corev1.Pod{
-					Spec: withEnv(
-						[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
-						ESPodSpecContext(defaultImage, defaultCPULimit),
-					).PodSpec,
+				pod: pod.PodWithConfig{
+					Pod: corev1.Pod{
+						Spec: withEnv(
+							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+						).PodSpec,
+					},
 				},
 				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
 			},
@@ -148,11 +177,13 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod and Spec have different env var contents",
 			args: args{
-				pod: corev1.Pod{
-					Spec: withEnv(
-						[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
-						ESPodSpecContext(defaultImage, defaultCPULimit),
-					).PodSpec,
+				pod: pod.PodWithConfig{
+					Pod: corev1.Pod{
+						Spec: withEnv(
+							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+						).PodSpec,
+					},
 				},
 				spec: withEnv(
 					[]corev1.EnvVar{{Name: "foo", Value: "baz"}},
@@ -164,26 +195,9 @@ func Test_podMatchesSpec(t *testing.T) {
 			expectedMismatches: []string{"Environment variable foo mismatch: expected [baz], actual [bar]"},
 		},
 		{
-			name: "Pod and Spec have different ignored env vars",
-			args: args{
-				pod: corev1.Pod{
-					Spec: withEnv(
-						[]corev1.EnvVar{{Name: settings.EnvNodeName, Value: "foo"}},
-						ESPodSpecContext(defaultImage, defaultCPULimit),
-					).PodSpec,
-				},
-				spec: withEnv(
-					[]corev1.EnvVar{{Name: settings.EnvNodeName, Value: "bar"}},
-					ESPodSpecContext(defaultImage, defaultCPULimit),
-				),
-			},
-			want:    true,
-			wantErr: nil,
-		},
-		{
 			name: "Non-matching resources should match",
 			args: args{
-				pod:  ESPod(defaultImage, defaultCPULimit),
+				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: ESPodSpecContext(defaultImage, "600m"),
 			},
 			want:                      false,
@@ -193,7 +207,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod is missing a PVC",
 			args: args{
-				pod: ESPod(defaultImage, defaultCPULimit),
+				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -214,7 +228,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod is missing a PVC, but has another",
 			args: args{
-				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -242,7 +256,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with an empty VolumeMode",
 			args: args{
-				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -275,7 +289,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with a VolumeMode set to something else than default setting",
 			args: args{
-				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -308,7 +322,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has matching PVC",
 			args: args{
-				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -335,7 +349,7 @@ func Test_podMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has matching PVC, but spec does not match",
 			args: args{
-				pod: withPVCs(ESPod(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					TopologyElement: v1alpha1.TopologyElementSpec{
@@ -370,7 +384,7 @@ func Test_podMatchesSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match, mismatchReasons, err := podMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
+			match, mismatchReasons, err := PodMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
 			if tt.wantErr != nil {
 				assert.Error(t, err, tt.wantErr.Error())
 			} else {
@@ -383,266 +397,6 @@ func Test_podMatchesSpec(t *testing.T) {
 					assert.Contains(t, mismatchReasons[0], tt.expectedMismatchesContain)
 				}
 			}
-		})
-	}
-}
-
-// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and claim names.
-func withPVCs(pod corev1.Pod, nameAndClaimNames ...string) corev1.Pod {
-	lenNameAndClaimNames := len(nameAndClaimNames)
-
-	if lenNameAndClaimNames%2 != 0 {
-		panic(fmt.Sprintf("odd number of arguments passed as key-value pairs to withPVCs"))
-	}
-
-	for i := 0; i < lenNameAndClaimNames; i += 2 {
-		volumeName := nameAndClaimNames[i]
-		claimName := nameAndClaimNames[i+1]
-
-		pod.Spec.Volumes = append(pod.Spec.Volumes, corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: claimName,
-				},
-			},
-		})
-	}
-	return pod
-}
-
-func Test_compareResources(t *testing.T) {
-	type args struct {
-		actual   corev1.ResourceRequirements
-		expected corev1.ResourceRequirements
-	}
-	tests := []struct {
-		name      string
-		args      args
-		wantMatch bool
-	}{
-		{
-			name: "same memory",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi")},
-				},
-			},
-			wantMatch: true,
-		},
-		{
-			name: "different memory",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("2Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("2Gi")},
-				},
-			},
-			wantMatch: false,
-		},
-		{
-			name: "same memory expressed differently",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1024Mi"),
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1024Mi")},
-				},
-			},
-			wantMatch: true,
-		},
-		{
-			name: "same cpu",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu": resource.MustParse("500m"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu": resource.MustParse("500m"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu": resource.MustParse("500m"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu": resource.MustParse("500m")},
-				},
-			},
-			wantMatch: true,
-		},
-		{
-			name: "different cpu",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu": resource.MustParse("500m"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu": resource.MustParse("500m"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu": resource.MustParse("400m"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu": resource.MustParse("500m")},
-				},
-			},
-			wantMatch: false,
-		},
-		{
-			name: "same cpu, different memory",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu":    resource.MustParse("500m"),
-						"memory": resource.MustParse("1Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu":    resource.MustParse("500m"),
-						"memory": resource.MustParse("1Gi"),
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"cpu":    resource.MustParse("500m"),
-						"memory": resource.MustParse("2Gi"),
-					},
-					Requests: corev1.ResourceList{
-						"cpu":    resource.MustParse("500m"),
-						"memory": resource.MustParse("2Gi"),
-					},
-				},
-			},
-			wantMatch: false,
-		},
-		{
-			name: "defaulted memory",
-			args: args{
-				actual: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"), // defaulted
-					},
-					Requests: corev1.ResourceList{
-						"memory": resource.MustParse("1Gi"), // defaulted
-					},
-				},
-				expected: corev1.ResourceRequirements{
-					Limits:   corev1.ResourceList{}, // use default
-					Requests: corev1.ResourceList{}, // use default
-				},
-			},
-			wantMatch: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			res := compareResources(tt.args.actual, tt.args.expected)
-			assert.Equal(t, tt.wantMatch, res.Match)
-		})
-	}
-}
-
-func Test_equalResourceList(t *testing.T) {
-	type args struct {
-		resListA corev1.ResourceList
-		resListB corev1.ResourceList
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "same A and B",
-			args: args{
-				resListA: corev1.ResourceList{
-					"key": resource.MustParse("100m"),
-				},
-				resListB: corev1.ResourceList{
-					"key": resource.MustParse("100m"),
-				},
-			},
-			want: true,
-		},
-		{
-			name: "different A and B",
-			args: args{
-				resListA: corev1.ResourceList{
-					"key": resource.MustParse("100m"),
-				},
-				resListB: corev1.ResourceList{
-					"key": resource.MustParse("200m"),
-				},
-			},
-			want: false,
-		},
-		{
-			name: "more values in A",
-			args: args{
-				resListA: corev1.ResourceList{
-					"key":  resource.MustParse("100m"),
-					"key2": resource.MustParse("100m"),
-				},
-				resListB: corev1.ResourceList{
-					"key": resource.MustParse("100m"),
-				},
-			},
-			want: false,
-		},
-		{
-			name: "more values in B",
-			args: args{
-				resListA: corev1.ResourceList{
-					"key": resource.MustParse("100m"),
-				},
-				resListB: corev1.ResourceList{
-					"key":  resource.MustParse("100m"),
-					"key2": resource.MustParse("100m"),
-				},
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, equalResourceList(tt.args.resListA, tt.args.resListB))
 		})
 	}
 }
