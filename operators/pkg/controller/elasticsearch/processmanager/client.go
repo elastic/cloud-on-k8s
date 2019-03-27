@@ -52,11 +52,15 @@ func (c *Client) Start(ctx context.Context) (ProcessStatus, error) {
 	return status, err
 }
 
-func (c *Client) Stop(ctx context.Context, force bool) (ProcessStatus, error) {
+func (c *Client) Stop(ctx context.Context) (ProcessStatus, error) {
 	uri := "/es/stop"
-	if force {
-		uri += "?force=true"
-	}
+	var status ProcessStatus
+	err := c.doRequest(ctx, "GET", uri, &status)
+	return status, err
+}
+
+func (c *Client) Kill(ctx context.Context) (ProcessStatus, error) {
+	uri := "/es/kill"
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", uri, &status)
 	return status, err

@@ -18,18 +18,15 @@ import (
 )
 
 const (
-	defaultKillHardTimeout = 1 * time.Hour
-	killSoftSignal         = syscall.SIGTERM
-	killHardSignal         = syscall.SIGKILL
+	killSoftSignal = syscall.SIGTERM
+	killHardSignal = syscall.SIGKILL
+	noSignal       = syscall.Signal(0)
 
-	errNoChildProcesses = "waitid: no child processes"
-	ErrNoSuchProcess    = "no such process"
-	errSignalTerminated = "signal: terminated"
-	errSignalKilled     = "signal: killed"
+	ErrNoSuchProcess = "no such process"
 
 	stopAction  = "stop"
 	startAction = "start"
-	noSignal    = syscall.Signal(0)
+	waitAction  = "wait"
 
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
 )
@@ -47,18 +44,15 @@ type ProcessStatus struct {
 type ProcessState string
 
 const (
-	notInitialized ProcessState = "notInitialized"
-	noProcess      ProcessState = "noProcess"
-	unknown        ProcessState = "unknown"
-	starting       ProcessState = "starting"
-	started        ProcessState = "started"
-	stopping       ProcessState = "stopping"
-	stopped        ProcessState = "stopped"
-	killing        ProcessState = "killing"
-	killed         ProcessState = "killed"
-	startFailed    ProcessState = "startFailed"
-	stopFailed     ProcessState = "stopFailed"
-	killFailed     ProcessState = "killFailed"
+	started     ProcessState = "started"
+	stopping    ProcessState = "stopping"
+	stopped     ProcessState = "stopped"
+	killing     ProcessState = "killing"
+	killed      ProcessState = "killed"
+	startFailed ProcessState = "startFailed"
+	stopFailed  ProcessState = "stopFailed"
+	killFailed  ProcessState = "killFailed"
+	failed      ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -74,48 +68,40 @@ type Process struct {
 	name string
 	args []string
 
-	cmd        *exec.Cmd
+	pid        int
 	state      ProcessState
 	mutex      sync.RWMutex
 	lastUpdate time.Time
 }
 
+// NewProcess create a new process.
 func NewProcess(name string, cmd string) *Process {
 	args := strings.Split(strings.Trim(cmd, " "), " ")
 	return &Process{
 		id:    name,
 		name:  args[0],
 		args:  args[1:],
-		cmd:   nil,
-		state: notInitialized,
+		state: stopped,
 		mutex: sync.RWMutex{},
 	}
 }
 
-// Start starts a process in a non blocking way.
+// Start starts a process.
 // The process is started only if it's not starting, started or stopping.
-// It returns an error if the process is stopping.
+// It returns an error if the process is stopping or killing.
+// A goroutine is started to monitor the end of the process in the background.
 func (p *Process) Start() (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can start?
+	// Can start only if not started, stopping or killing
 	switch p.state {
-	case starting, started:
+	case started:
 		return p.state, nil
-	case stopping:
-		return p.state, p.state.Error()
-	default:
-		p.updateState(startAction, starting, 0, syscall.Signal(0), nil)
+	case stopping, killing:
+		return p.state, fmt.Errorf("error: cannot start process %s", p.state)
 	}
 
-	go p.exec()
-
-	return p.state, nil
-}
-
-// exec executes the process command and updates the process state.
-func (p *Process) exec() ProcessState {
 	cmd := exec.Command(p.name, p.args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -123,167 +109,110 @@ func (p *Process) exec() ProcessState {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	err := cmd.Start()
-	state := started
 	if err != nil {
-		state = startFailed
-		cmd = nil
+		return startFailed, err
 	}
 
-	p.mutex.Lock()
-	p.updateState(startAction, state, 0, syscall.Signal(0), err)
-	p.cmd = cmd
-	p.mutex.Unlock()
+	state := started
+	p.pid = cmd.Process.Pid
 
-	return state
+	p.updateState(startAction, state, p.pid, noSignal, err)
+
+	go func() {
+		_ = cmd.Wait()
+		p.isAlive(waitAction)
+	}()
+
+	return p.state, err
 }
 
 // Kill kills a process group by forwarding a signal.
-// Useful to stop the process when the program ends.
-func (p *Process) Kill(sig os.Signal) {
-	s, ok := sig.(syscall.Signal)
+// The process is stopped only if it's not stopping, killing, stopped or killed.
+func (p *Process) Kill(s os.Signal) (ProcessState, error) {
+	sig, ok := s.(syscall.Signal)
 	if !ok {
 		err := errors.New("os: unsupported signal type")
-		log.Error(err, "Fail to kill process")
-		return
+		return stopFailed, err
 	}
+	killHard := sig == killHardSignal
 
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	if ok := canStop(p.state, s == killHardSignal); !ok {
-		log.Info("Process not killed", "state", p.state)
-		return
-	}
-
-	err := killProcessGroup(p.cmd.Process.Pid, s)
-	if err != nil {
-		if err.Error() != ErrNoSuchProcess {
-			log.Error(err, "Fail to kill process", "state", p.state)
-			return
-		}
-	}
-
-	log.Info("Process killed", "signal", sig)
-}
-
-func canStop(state ProcessState, killHard bool) bool {
-	switch state {
-	case stopping:
-		return killHard
-	case stopped, killing, killed, noProcess, notInitialized, startFailed:
-		return false
-	default:
-		return true
-	}
-}
-
-// Stop stops a process in a non blocking way.
-// The process is stopped only if it's not stopped, killing, killed, not found or not initialized.
-// An error is returned if the process is starting or being killed.
-func (p *Process) Stop(killHard bool, killHardTimeout time.Duration) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	prevState := p.state
-
-	ok := canStop(prevState, killHard)
-	if !ok {
-		return prevState, nil
-	}
-	pid := p.cmd.Process.Pid
-
-	// Get the pgid to kill the process group.
-	// This allows to check that the process is still alive.
-	pgid, err := syscall.Getpgid(pid)
-	if err != nil {
-		p.updateState(stopAction, noProcess, pid, noSignal, err)
-		p.cmd = nil
-		return noProcess, err
+	// Can kill?
+	switch p.state {
+	case stopping:
+		if !killHard {
+			return p.state, nil
+		}
+	case killing:
+		if killHard {
+			return p.state, nil
+		}
+	case stopped, killed:
+		return p.state, nil
 	}
 
 	state := stopping
-	signal := killSoftSignal
+	errState := stopFailed
 	if killHard {
-		signal = killHardSignal
 		state = killing
+		errState = killFailed
 	}
 
-	p.updateState(stopAction, state, pid, signal, nil)
-
-	err = killProcessGroup(pgid, signal)
+	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
-		state = killFailed
-		p.updateState(stopAction, state, pgid, signal, err)
-		p.cmd = nil
-		return state, err
+		if p.state == started && err.Error() == ErrNoSuchProcess {
+			// Should not happen
+			exitOnEsFailure(stopAction, err)
+		}
+		state = errState
 	}
 
-	if prevState != stopping {
-		go p.wait(pgid, signal, killHard, killHardTimeout)
-	}
+	p.updateState(stopAction, state, p.pid, sig, err)
 
-	return state, nil
+	return p.state, err
 }
 
-// wait waits for a process to complete with a timeout to trigger a kill hard.
-func (p *Process) wait(pgid int, signal syscall.Signal, hard bool, killHardTimeout time.Duration) {
-	if killHardTimeout == 0 {
-		killHardTimeout = defaultKillHardTimeout
-	}
+// Status returns the status of the process.
+func (p *Process) Status() ProcessStatus {
+	cfgChecksum, _ := computeConfigChecksum()
 
-	killTimer := time.AfterFunc(killHardTimeout, func() {
-		log.Info("Killing process as timeout is reached", "timeout", killHardTimeout)
-		err := killProcessGroup(pgid, killHardSignal)
-		state := killed
-		if err != nil {
-			state = killFailed
-		}
-
-		p.mutex.Lock()
-		p.updateState(stopAction, state, pgid, signal, err)
-		p.cmd = nil
-		p.mutex.Unlock()
-	})
-
-	err := p.cmd.Wait()
-	killTimer.Stop()
-
-	// Read again the process state
 	p.mutex.RLock()
-	prevState := p.state
-	p.mutex.RUnlock()
+	defer p.mutex.RUnlock()
 
-	// Should be stopping or killing
-	state := unknown
-	switch prevState {
-	case stopping:
-		state = stopped
-	case killing:
-		state = killed
+	return ProcessStatus{
+		p.state,
+		time.Since(p.lastUpdate).String(),
+		cfgChecksum,
 	}
+}
 
-	if err != nil {
-		switch err.Error() {
-		// No more children, we are done
-		case errNoChildProcesses:
-			err = nil
-		// Normal stop signal
-		case errSignalTerminated, errSignalKilled:
-			err = nil
-		// An error occurred
-		default:
-			switch state {
-			case stopping:
-				state = stopFailed
-			case killing:
-				state = killFailed
-			}
+// isAlive returns if the process is alive by trying to get the process group id.
+// The process is state is updated if the process is not alive.
+func (p *Process) isAlive(action string) bool {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	_, err := syscall.Getpgid(p.pid)
+	alive := err == nil
+
+	// Update the state if the process is dead
+	state := failed
+	if !alive {
+		switch p.state {
+		case stopping:
+			state = stopped
+		case killing:
+			state = killed
+		case started:
+			exitOnEsFailure(waitAction, err)
 		}
 	}
 
-	p.mutex.Lock()
-	p.updateState(stopAction, state, pgid, signal, err)
-	p.cmd = nil
-	p.mutex.Unlock()
+	p.updateState(action, state, p.pid, noSignal, err)
+
+	return alive
 }
 
 // updateState updates the process state and the last update time.
@@ -291,39 +220,14 @@ func (p *Process) updateState(action string, state ProcessState, pid int, signal
 	p.state = state
 	p.lastUpdate = time.Now()
 
-	kv := []interface{}{"action", action, "id", p.id, "state", state}
+	kv := []interface{}{"action", action, "id", p.id, "state", state, "pid", pid}
 	if signal != noSignal {
-		kv = append(kv, "pid", pid, "signal", signal)
+		kv = append(kv, "signal", signal)
 	}
 	if err != nil {
-		log.Error(err, "Update process state", kv...)
-	} else {
-		log.Info("Update process state", kv...)
+		kv = append(kv, "err", err)
 	}
-}
-
-// Status returns the status of the process.
-func (p *Process) Status() ProcessStatus {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	// Check that the process is still alive
-	if p.state == started {
-		pid := p.cmd.Process.Pid
-		_, err := syscall.Getpgid(pid)
-		if err != nil {
-			p.updateState(stopAction, noProcess, pid, noSignal, err)
-			p.cmd = nil
-		}
-	}
-
-	cfgChecksum, _ := computeConfigChecksum()
-
-	return ProcessStatus{
-		p.state,
-		time.Since(p.lastUpdate).String(),
-		cfgChecksum,
-	}
+	log.Info("Update process state", kv...)
 }
 
 func computeConfigChecksum() (string, error) {
@@ -335,11 +239,7 @@ func computeConfigChecksum() (string, error) {
 	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
 }
 
-func killProcessGroup(pgid int, signal syscall.Signal) error {
-	err := syscall.Kill(-(pgid), signal)
-	if err != nil && err.Error() != errNoChildProcesses {
-		return err
-	}
-
-	return nil
+func exitOnEsFailure(action string, err error) {
+	log.Info("Fatal error: process es failed", "action", action, "err", err)
+	os.Exit(1)
 }

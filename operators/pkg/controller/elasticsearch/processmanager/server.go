@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
@@ -47,6 +46,7 @@ func NewProcessServer(cfg Config, process *Process, updater *keystore.Updater) *
 	mux.HandleFunc("/health", s.Health)
 	mux.HandleFunc("/es/start", s.EsStart)
 	mux.HandleFunc("/es/stop", s.EsStop)
+	mux.HandleFunc("/es/kill", s.EsKill)
 	mux.HandleFunc("/es/status", s.EsStatus)
 
 	if cfg.EnableKeystoreUpdater {
@@ -113,54 +113,29 @@ func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-	} else if state == starting {
+	} /*else if state == starting {
+		w.WriteHeader(http.StatusAccepted)
+	}*/
+
+	writeJson(w, s.esProcess.Status())
+}
+
+func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
+	state, err := s.esProcess.Kill(killSoftSignal)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else if state == stopping {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
 	writeJson(w, s.esProcess.Status())
 }
 
-func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
-	var err error
-
-	killHard := false
-	forceParam := req.URL.Query().Get("force")
-	if forceParam != "" {
-		killHard, err = strconv.ParseBool(forceParam)
-		if err != nil {
-			log.Error(err, "Fail to stop es process")
-			ko(w, "Invalid `force` query parameter")
-			return
-		}
-	}
-
-	killHardTimeout := 0
-	timeoutParam := req.URL.Query().Get("timeout")
-	if timeoutParam != "" {
-		killHardTimeoutSeconds, err := strconv.Atoi(timeoutParam)
-		if err != nil {
-			log.Error(err, "Fail to stop es process")
-			ko(w, "Invalid `timeout` query parameter")
-			return
-		}
-		if killHardTimeoutSeconds < 0 {
-			log.Error(err, "Fail to stop es process")
-			ko(w, "Invalid `timeout` query parameter, must be greater than 0.")
-			return
-		}
-		killHardTimeout = killHardTimeoutSeconds
-	}
-
-	state, err := s.esProcess.Stop(killHard, time.Duration(killHardTimeout)*time.Second)
-	if err != nil {
-		log.Error(err, "Failed to stop es process", "state", state)
-		ko(w, state.String())
-		return
-	}
-
+func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
+	state, err := s.esProcess.Kill(killHardSignal)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-	} else if state == stopping || state == killing {
+	} else if state == killing {
 		w.WriteHeader(http.StatusAccepted)
 	}
 

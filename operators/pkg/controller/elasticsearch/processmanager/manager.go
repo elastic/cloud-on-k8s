@@ -78,12 +78,12 @@ func (pm ProcessManager) Start() error {
 // Stop stops all processes, the process reaper and the HTTP server in a blocking way.
 func (pm ProcessManager) Stop(sig os.Signal) error {
 	pm.server.Stop()
-	pm.process.Kill(sig)
+	_, err := pm.process.Kill(sig)
 
 	if pm.enableReaper {
 		pm.reaper.Stop()
 	}
 
 	log.Info("Process manager stopped")
-	return nil
+	return err
 }

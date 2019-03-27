@@ -22,7 +22,7 @@ func Test_Simple_Script(t *testing.T) {
 		assertState(t, client, started)
 
 		// stopping
-		status, err := client.Stop(context.Background(), false)
+		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -32,13 +32,13 @@ func Test_Simple_Script(t *testing.T) {
 		// starting
 		status, err = client.Start(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, starting, status.State)
+		assertEqual(t, started, status.State)
 		time.Sleep(10 * time.Millisecond)
 
 		assertState(t, client, started)
 
 		// stopping
-		status, err = client.Stop(context.Background(), false)
+		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -52,7 +52,7 @@ func Test_Zombies_Script(t *testing.T) {
 		assertState(t, client, started)
 
 		// stopping
-		status, err := client.Stop(context.Background(), false)
+		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -62,13 +62,13 @@ func Test_Zombies_Script(t *testing.T) {
 		// starting
 		status, err = client.Start(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, starting, status.State)
+		assertEqual(t, started, status.State)
 		time.Sleep(10 * time.Millisecond)
 
 		assertState(t, client, started)
 
 		// stopping
-		status, err = client.Stop(context.Background(), false)
+		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -82,7 +82,7 @@ func Test_ZombiesAndTrap_Script(t *testing.T) {
 		assertState(t, client, started)
 
 		// stopping
-		status, err := client.Stop(context.Background(), false)
+		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -95,15 +95,15 @@ func Test_ZombiesAndTrap_Script(t *testing.T) {
 		assertState(t, client, stopping)
 
 		// stopping
-		status, err = client.Stop(context.Background(), false)
+		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
 		assertState(t, client, stopping)
 
-		// Force stop
-		status, err = client.Stop(context.Background(), true)
+		// killing
+		status, err = client.Kill(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, killing, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -117,7 +117,7 @@ func Test_Recursive_Script(t *testing.T) {
 		assertState(t, client, started)
 
 		// stopping
-		status, err := client.Stop(context.Background(), false)
+		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -130,15 +130,15 @@ func Test_Recursive_Script(t *testing.T) {
 		assertState(t, client, stopping)
 
 		// stopping
-		status, err = client.Stop(context.Background(), false)
+		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
 		assertState(t, client, stopping)
 
-		// Force stop
-		status, err = client.Stop(context.Background(), true)
+		// killing
+		status, err = client.Kill(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, killing, status.State)
 		time.Sleep(10 * time.Millisecond)
@@ -148,12 +148,14 @@ func Test_Recursive_Script(t *testing.T) {
 }
 
 func Test_Invalid_Command(t *testing.T) {
-	runTest(t, "invalid_command", func(client *Client) {
-		assertState(t, client, startFailed)
-	})
+	setupEnv(t, "invalid_command")
+	procMgr, err := NewProcessManager()
+	assert.NoError(t, err)
+	err = procMgr.Start()
+	assert.Error(t, err)
 }
 
-func runTest(t *testing.T, cmd string, do func(client *Client)) {
+func setupEnv(t *testing.T, cmd string) string {
 	port, err := net.GetRandomPort()
 	assert.NoError(t, err)
 	err = os.Setenv(EnvHTTPPort, port)
@@ -164,10 +166,13 @@ func runTest(t *testing.T, cmd string, do func(client *Client)) {
 	assert.NoError(t, err)
 	err = os.Setenv(EnvKeystoreUpdater, "false")
 	assert.NoError(t, err)
-
 	err = BindFlagsToEnv(&cobra.Command{})
 	assert.NoError(t, err)
+	return port
+}
 
+func runTest(t *testing.T, cmd string, do func(client *Client)) {
+	port := setupEnv(t, cmd)
 	procMgr, err := NewProcessManager()
 	assert.NoError(t, err)
 	err = procMgr.Start()
