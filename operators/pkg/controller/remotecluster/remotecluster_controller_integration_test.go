@@ -49,6 +49,10 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, addWatches(controller, rec))
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
+	defer func() {
+		close(stopMgr)
+		mgrStopped.Wait()
+	}()
 
 	instance := newRemoteInCluster(
 		"remotecluster-sample-1-2",
@@ -60,11 +64,6 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Create(ca1))
 	ca2 := newCASecret("default", "trust-two-es-ca", ca2)
 	assert.NoError(t, c.Create(ca2))
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
 
 	// Create the RemoteCluster object and expect the Reconcile and Deployment to be created
 	err = c.Create(instance)

@@ -10,6 +10,7 @@ import (
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,7 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// addWatches set watched on objects needed to manage the association between a local and a remote cluster.
+// addWatches set watches on objects needed to manage the association between a local and a remote cluster.
 func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 	// Watch for changes to RemoteCluster
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.RemoteCluster{}}, &handler.EnqueueRequestForObject{}); err != nil {
@@ -81,7 +82,7 @@ func addCertificatesAuthorityWatches(
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
 	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    watchName(clusterAssociation, cluster),
-		Watched: getCASecretNamespacedName(cluster.NamespacedName()),
+		Watched: nodecerts.GetCASecretNamespacedName(cluster.NamespacedName()),
 		Watcher: k8s.ExtractNamespacedName(&clusterAssociation),
 	})
 	if err != nil {

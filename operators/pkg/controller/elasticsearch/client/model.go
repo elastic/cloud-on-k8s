@@ -332,16 +332,15 @@ type LicenseResponse struct {
 
 // Settings is the root element of settings.
 type Settings struct {
-	PersistentSettings interface{} `json:"persistent,omitempty"`
-	TransientSettings  interface{} `json:"transient,omitempty"`
+	PersistentSettings SettingGroup `json:"persistent,omitempty"`
+	TransientSettings  SettingGroup `json:"transient,omitempty"`
 }
 
-// RemoteCluster is the content of a request to update remote cluster settings.
-type RemoteCluster struct {
-	Seeds map[string]RemoteClusterSeeds `json:"cluster.remote"`
+type SettingGroup struct {
+	RemoteClusters map[string]RemoteCluster `json:"cluster.remote,omitempty"`
 }
 
 // RemoteClusterSeeds is the set of seeds to use in a remote cluster setting.
-type RemoteClusterSeeds struct {
-	Seeds *[]string `json:"seeds"`
+type RemoteCluster struct {
+	Seeds []string `json:"seeds"`
 }

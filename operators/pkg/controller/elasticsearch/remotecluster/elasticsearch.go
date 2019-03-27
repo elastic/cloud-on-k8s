@@ -33,19 +33,19 @@ func UpdateRemoteCluster(
 	if currentRemoteClusters == nil {
 		currentRemoteClusters = make(map[string]string)
 	}
-	remoteClusters, err := loadRemoteClusters(c, es.Name, es.Namespace)
+	expectedRemoteClusters, err := getRemoteClusters(c, es.Name, es.Namespace)
 	if err != nil {
 		return err
 	}
 
 	// RemoteClusters to add
-	for name, remoteCluster := range remoteClusters {
+	for name, remoteCluster := range expectedRemoteClusters {
 		if version, ok := currentRemoteClusters[name]; !ok || remoteCluster.ResourceVersion != version {
 			// Make a copy of the array
 			seedHosts := make([]string, len(remoteCluster.Status.SeedHosts))
 			copy(seedHosts, remoteCluster.Status.SeedHosts)
 			// Declare remote cluster in ES
-			persistentSettings := newRemoteClusterSetting(name, &seedHosts)
+			persistentSettings := newRemoteClusterSetting(name, seedHosts)
 			log.V(1).Info("Add new remote cluster",
 				"localCluster", es.Name,
 				"remoteCluster", remoteCluster.Name,
@@ -61,7 +61,7 @@ func UpdateRemoteCluster(
 
 	// RemoteClusters to remove
 	for name := range currentRemoteClusters {
-		if _, ok := remoteClusters[name]; !ok {
+		if _, ok := expectedRemoteClusters[name]; !ok {
 			persistentSettings := newRemoteClusterSetting(name, nil)
 			log.V(1).Info("Remove remote cluster",
 				"localCluster", es.Name,
@@ -79,8 +79,8 @@ func UpdateRemoteCluster(
 	return nil
 }
 
-// LoadTrustRelationships loads the trust relationships from the API.
-func loadRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string]v1alpha1.RemoteCluster, error) {
+// getRemoteClusters loads the trust relationships from the API.
+func getRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string]v1alpha1.RemoteCluster, error) {
 	var remoteClusterList v1alpha1.RemoteClusterList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: labels.SelectorFromSet(map[string]string{label.ClusterNameLabelName: clusterName}),
@@ -103,10 +103,10 @@ func loadRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string
 }
 
 // newRemoteClusterSetting creates a persistent setting to add or remove a remote cluster.
-func newRemoteClusterSetting(name string, seedHosts *[]string) esclient.Settings {
+func newRemoteClusterSetting(name string, seedHosts []string) esclient.Settings {
 	return esclient.Settings{
-		PersistentSettings: esclient.RemoteCluster{
-			Seeds: map[string]esclient.RemoteClusterSeeds{
+		PersistentSettings: esclient.SettingGroup{
+			RemoteClusters: map[string]esclient.RemoteCluster{
 				name: {
 					Seeds: seedHosts,
 				},

@@ -15,14 +15,14 @@ const (
 	// RemoteClusterDynamicWatchesFinalizer designates a finalizer to clean up unused watches.
 	RemoteClusterDynamicWatchesFinalizer = "dynamic-watches.remotecluster.k8s.elastic.co"
 	// RemoteClusterNamespaceLabelName used to represent the name of a local cluster in a relationship.
-	RemoteClusterNamespaceLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-name"
+	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/remote-cluster-namespace"
 	// RemoteClusterNameLabelName used to represent the namespace of a local cluster in a relationship.
-	RemoteClusterNameLabelName = "elasticsearch.k8s.elastic.co/remote-cluster-namespace"
+	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/remote-cluster-name"
 )
 
 func trustRelationshipObjectMeta(
 	name string,
-	owner *v1alpha1.RemoteCluster,
+	owner v1alpha1.RemoteCluster,
 	local assoctype.ObjectSelector,
 ) metav1.ObjectMeta {
 	return metav1.ObjectMeta{

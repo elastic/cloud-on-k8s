@@ -5,7 +5,6 @@
 package remotecluster
 
 import (
-	"fmt"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -26,16 +25,17 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var (
-	log            = logf.Log.WithName("remotecontroller-controller")
-	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
-
-	EventReasonConfigurationError = "ConfigurationError"
-	ClusterNameLabelMissing       = fmt.Sprintf("label %s is missing", label.ClusterNameLabelName)
-
+const (
 	EventReasonLocalCaCertNotFound = "LocalClusterCaNotFound"
 	EventReasonRemoteCACertMissing = "RemoteClusterCaNotFound"
 	CaCertMissingError             = "Cannot find CA certificate for %s cluster %s/%s"
+	EventReasonConfigurationError  = "ConfigurationError"
+	ClusterNameLabelMissing        = "label " + label.ClusterNameLabelName + " is missing"
+)
+
+var (
+	log            = logf.Log.WithName("remotecluster-controller")
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
 // Add creates a new RemoteCluster Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
@@ -111,7 +111,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	// Use the driver to create the remote cluster
-	status, err := apply(r, instance)
+	status, err := doReconcile(r, instance)
 	if err != nil {
 		// Driver reported an error, try to update the status as a best effort
 		r.silentUpdateStatus(instance, status)
@@ -127,9 +127,6 @@ func (r *ReconcileRemoteCluster) silentUpdateStatus(
 	instance v1alpha1.RemoteCluster,
 	status v1alpha1.RemoteClusterStatus,
 ) {
-	if reflect.DeepEqual(instance.Status, status) {
-		return
-	}
 	if err := r.updateStatus(instance, status); err != nil {
 		log.Error(err, "Error while updating status")
 	}
