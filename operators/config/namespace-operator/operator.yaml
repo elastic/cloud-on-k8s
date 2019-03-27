@@ -1,20 +1,5 @@
 # Very similar to global_operator.yaml, but with
 # a different service account and different run arguments
-apiVersion: v1
-kind: Service
-metadata:
-  name: elastic-namespace-operator
-  namespace: $NAMESPACE_OPERATOR_NAMESPACE
-  labels:
-    control-plane: elastic-namespace-operator
-    controller-tools.k8s.io: "1.0"
-spec:
-  selector:
-    control-plane: elastic-namespace-operator
-    controller-tools.k8s.io: "1.0"
-  ports:
-  - port: 443
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -71,9 +56,3 @@ spec:
         secret:
           defaultMode: 420
           secretName: webhook-server-secret
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: webhook-server-secret
-  namespace: $NAMESPACE_OPERATOR_NAMESPACE

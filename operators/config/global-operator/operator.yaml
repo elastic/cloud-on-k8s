@@ -1,19 +1,5 @@
 # Very similar to namespace_operator.yaml, but with
 # a different service account and different run arguments
-apiVersion: v1
-kind: Service
-metadata:
-  name: elastic-global-operator
-  labels:
-    control-plane: elastic-global-operator
-    controller-tools.k8s.io: "1.0"
-spec:
-  selector:
-    control-plane: elastic-global-operator
-    controller-tools.k8s.io: "1.0"
-  ports:
-  - port: 443
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -40,12 +26,14 @@ spec:
         name: manager
         args: ["manager", "--development", "--operator-role", "global"]
         env:
-          - name: POD_NAMESPACE
+          - name: OPERATOR_NAMESPACE
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
-          - name: SECRET_NAME
+          - name: WEBHOOK_SECRET
             value: webhook-server-secret
+          - name: CONTROL_PLANE_LABEL
+            value: elastic-global-operator
           - name: OPERATOR_IMAGE
             value: $OPERATOR_IMAGE
         resources:
