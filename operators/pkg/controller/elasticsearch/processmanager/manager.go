@@ -5,6 +5,7 @@
 package processmanager
 
 import (
+	"github.com/hashicorp/go-reap"
 	"os"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
@@ -20,7 +21,6 @@ var (
 type ProcessManager struct {
 	server          *ProcessServer
 	process         *Process
-	reaper          *ProcessReaper
 	enableReaper    bool
 	keystoreUpdater *keystore.Updater
 }
@@ -48,7 +48,6 @@ func NewProcessManager() (ProcessManager, error) {
 	return ProcessManager{
 		NewProcessServer(cfg, process, ksu),
 		process,
-		NewProcessReaper(),
 		cfg.EnableReaper,
 		ksu,
 	}, nil
@@ -57,7 +56,7 @@ func NewProcessManager() (ProcessManager, error) {
 // Start starts all processes, the process reaper and the HTTP server in a non-blocking way.
 func (pm ProcessManager) Start() error {
 	if pm.enableReaper {
-		pm.reaper.Start()
+		go reap.ReapChildren(nil, nil, nil, nil)
 	}
 
 	_, err := pm.process.Start()
@@ -79,10 +78,6 @@ func (pm ProcessManager) Start() error {
 func (pm ProcessManager) Stop(sig os.Signal) error {
 	pm.server.Stop()
 	_, err := pm.process.Kill(sig)
-
-	if pm.enableReaper {
-		pm.reaper.Stop()
-	}
 
 	log.Info("Process manager stopped")
 	return err
