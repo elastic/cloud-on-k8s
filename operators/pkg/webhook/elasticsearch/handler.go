@@ -31,7 +31,11 @@ func (v *Validation) Handle(ctx context.Context, r types.Request) types.Response
 		return admission.ValidationResponse(true, "allowing all deletes")
 	}
 	esCluster := v1alpha1.Elasticsearch{}
-	log.Info("Validation handler called", "name", r.AdmissionRequest.Name, "namespace", r.AdmissionRequest.Namespace)
+	log.Info("Validation handler called",
+		"operation", r.AdmissionRequest.Operation,
+		"name", r.AdmissionRequest.Name,
+		"namespace", r.AdmissionRequest.Namespace,
+	)
 	err := v.decoder.Decode(r, &esCluster)
 	if err != nil {
 		return admission.ErrorResponse(http.StatusBadRequest, err)
