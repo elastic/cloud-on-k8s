@@ -20,12 +20,17 @@ type InClusterSpec struct {
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.
 type RemoteClusterStatus struct {
-	State                                string                   `json:"state,omitempty"`
-	ClusterName                          string                   `json:"cluster-name,omitempty"`
-	LocalTrustRelationshipName           string                   `json:"localTrustRelationshipName,omitempty"`
-	InClusterRemoteSelector              assoctype.ObjectSelector `json:"inClusterRemoteSelector,omitempty"`
-	InClusterRemoteTrustRelationshipName string                   `json:"inClusterRemoteTrustRelationshipName,omitempty"`
-	SeedHosts                            []string                 `json:"seedHosts,omitempty"`
+	State                  string          `json:"state,omitempty"`
+	ClusterName            string          `json:"clusterName,omitempty"`
+	LocalTrustRelationship string          `json:"localTrustRelationship,omitempty"`
+	SeedHosts              []string        `json:"seedHosts,omitempty"`
+	InClusterStatus        InClusterStatus `json:"inCluster,omitempty"`
+}
+
+// InClusterStatus defines the state of the inCluster driver state.
+type InClusterStatus struct {
+	RemoteSelector          assoctype.ObjectSelector `json:"remoteSelector,omitempty"`
+	RemoteTrustRelationship string                   `json:"remoteTrustRelationship,omitempty"`
 }
 
 const (

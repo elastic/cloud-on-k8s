@@ -142,15 +142,17 @@ func Test_apply(t *testing.T) {
 				),
 			},
 			want: v1alpha1.RemoteClusterStatus{
-				State:                      v1alpha1.RemoteClusterPropagated,
-				ClusterName:                "trust-one-es",
-				LocalTrustRelationshipName: "rc-remotecluster-sample-1-2",
-				InClusterRemoteSelector: assoctype.ObjectSelector{
-					Name:      "trust-two-es",
-					Namespace: "default",
+				State:                  v1alpha1.RemoteClusterPropagated,
+				ClusterName:            "trust-one-es",
+				LocalTrustRelationship: "rc-remotecluster-sample-1-2",
+				InClusterStatus: v1alpha1.InClusterStatus{
+					RemoteSelector: assoctype.ObjectSelector{
+						Name:      "trust-two-es",
+						Namespace: "default",
+					},
+					RemoteTrustRelationship: "rcr-remotecluster-sample-1-2-default",
 				},
-				InClusterRemoteTrustRelationshipName: "rcr-remotecluster-sample-1-2-default",
-				SeedHosts:                            []string{"trust-two-es-es-discovery.default.svc.cluster.local:9300"},
+				SeedHosts: []string{"trust-two-es-es-discovery.default.svc.cluster.local:9300"},
 			},
 		},
 	}

@@ -50,19 +50,24 @@ spec:
           type: object
         status:
           properties:
-            inClusterRemoteSelector:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
-              type: object
-            inClusterRemoteTrustRelationshipName:
+            clusterName:
               type: string
-            localTrustRelationshipName:
+            inCluster:
+              properties:
+                remoteSelector:
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                  - name
+                  - namespace
+                  type: object
+                remoteTrustRelationship:
+                  type: string
+              type: object
+            localTrustRelationship:
               type: string
             seedHosts:
               items:

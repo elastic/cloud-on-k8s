@@ -28,10 +28,10 @@ func apply(
 
 	// Get the previous remote associated cluster, if the remote namespace has been updated by the user we must
 	// delete the remote relationship from the old namespace and recreate it in the new namespace.
-	if len(remoteCluster.Status.InClusterRemoteSelector.Namespace) > 0 &&
-		remoteCluster.Spec.Remote.InRemoteCluster.Namespace != remoteCluster.Status.InClusterRemoteSelector.Namespace {
+	if len(remoteCluster.Status.InClusterStatus.RemoteSelector.Namespace) > 0 &&
+		remoteCluster.Spec.Remote.InRemoteCluster.Namespace != remoteCluster.Status.InClusterStatus.RemoteSelector.Namespace {
 		log.V(1).Info("Remote cluster namespaced updated",
-			"old", remoteCluster.Status.InClusterRemoteSelector.Namespace,
+			"old", remoteCluster.Status.InClusterStatus.RemoteSelector.Namespace,
 			"new", remoteCluster.Spec.Remote.InRemoteCluster.Namespace)
 		previousRemoteRelationshipName := fmt.Sprintf(
 			"%s-%s-%s",
@@ -43,7 +43,7 @@ func apply(
 			rca.Client,
 			previousRemoteRelationshipName,
 			&remoteCluster,
-			remoteCluster.Status.InClusterRemoteSelector); err != nil {
+			remoteCluster.Status.InClusterStatus.RemoteSelector); err != nil {
 			return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterRemovalFailed), err
 		}
 	}
@@ -154,12 +154,14 @@ func apply(
 
 	// Build status
 	status := v1alpha1.RemoteClusterStatus{
-		State:                                v1alpha1.RemoteClusterPropagated,
-		ClusterName:                          localClusterSelector.Name,
-		LocalTrustRelationshipName:           localRelationshipName,
-		InClusterRemoteSelector:              remote.Selector,
-		InClusterRemoteTrustRelationshipName: remoteRelationshipName,
-		SeedHosts:                            []string{services.ExternalDiscoveryServiceHostname(remote.Selector.NamespacedName())},
+		State:                  v1alpha1.RemoteClusterPropagated,
+		ClusterName:            localClusterSelector.Name,
+		LocalTrustRelationship: localRelationshipName,
+		SeedHosts:              []string{services.ExternalDiscoveryServiceHostname(remote.Selector.NamespacedName())},
+		InClusterStatus: v1alpha1.InClusterStatus{
+			RemoteSelector:          remote.Selector,
+			RemoteTrustRelationship: remoteRelationshipName,
+		},
 	}
 	return status, nil
 }
