@@ -1,3 +1,5 @@
+# This sample sets up a an Elasticsearch cluster along with a Kibana instance
+# and an APM server, configured to be able to communicate with each other
 apiVersion: associations.k8s.elastic.co/v1alpha1
 kind: ApmServerElasticsearchAssociation
 metadata:
