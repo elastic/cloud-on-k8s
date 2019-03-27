@@ -43,7 +43,7 @@ func NewPodsState(
 
 	// pending Pods are pods that have been created in the API but are not scheduled or running yet.
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodPending] {
-		podsState.Pending[pod.Name] = pod
+		podsState.Pending[pod.Pod.Name] = pod.Pod
 	}
 
 	if observedState.ClusterState != nil {
@@ -53,40 +53,40 @@ func NewPodsState(
 		masterNodeName := observedState.ClusterState.MasterNodeName()
 
 		for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			if _, ok := nodesByName[pod.Name]; ok {
+			if _, ok := nodesByName[pod.Pod.Name]; ok {
 				// the pod is found in the cluster state, so count it as ready
-				podsState.RunningReady[pod.Name] = pod
+				podsState.RunningReady[pod.Pod.Name] = pod.Pod
 			} else {
 				// if the pod is not found in the cluster state, we assume it's supposed to join
-				podsState.RunningJoining[pod.Name] = pod
+				podsState.RunningJoining[pod.Pod.Name] = pod.Pod
 			}
 
-			if pod.Name == masterNodeName {
+			if pod.Pod.Name == masterNodeName {
 				// create a new reference here, otherwise we would be setting the master node pod to the iterator
 				masterNodePod := pod
-				podsState.MasterNodePod = &masterNodePod
+				podsState.MasterNodePod = &masterNodePod.Pod
 			}
 		}
 	} else {
 		// no cluster state was available, so all the pods go into the RunningUnknown state
 		for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodRunning] {
-			podsState.RunningUnknown[pod.Name] = pod
+			podsState.RunningUnknown[pod.Pod.Name] = pod.Pod
 		}
 	}
 
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodSucceeded] {
-		podsState.Terminal[pod.Name] = pod
+		podsState.Terminal[pod.Pod.Name] = pod.Pod
 	}
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodFailed] {
-		podsState.Terminal[pod.Name] = pod
+		podsState.Terminal[pod.Pod.Name] = pod.Pod
 	}
 	for _, pod := range resourcesState.CurrentPodsByPhase[corev1.PodUnknown] {
-		podsState.Unknown[pod.Name] = pod
+		podsState.Unknown[pod.Pod.Name] = pod.Pod
 	}
 
 	// deletingPods are pods we have issued a delete request for, but haven't disappeared from the API yet
 	for _, pod := range resourcesState.DeletingPods {
-		podsState.Deleting[pod.Name] = pod
+		podsState.Deleting[pod.Pod.Name] = pod.Pod
 	}
 
 	return podsState
@@ -142,9 +142,9 @@ func (s PodsState) Partition(changes Changes) (PodsState, PodsState) {
 	remaining := s
 
 	// no need to consider changes.ToCreate here, as they will not exist in a PodsState
-	for _, pods := range [][]corev1.Pod{changes.ToDelete, changes.ToKeep} {
+	for _, pods := range []pod.PodsWithConfig{changes.ToDelete, changes.ToKeep} {
 		var partialState PodsState
-		partialState, remaining = remaining.partitionByPods(pods)
+		partialState, remaining = remaining.partitionByPods(pods.Pods())
 		selected.mergeFrom(partialState)
 	}
 	return selected, remaining

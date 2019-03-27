@@ -61,7 +61,7 @@ func (s *State) updateWithPhase(
 		s.status.MasterNode = observedState.ClusterState.MasterNodeName()
 	}
 
-	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods))
+	s.status.AvailableNodes = len(AvailableElasticsearchNodes(resourcesState.CurrentPods.Pods()))
 	s.status.Phase = phase
 	s.status.ExternalService = resourcesState.ExternalService.Name
 

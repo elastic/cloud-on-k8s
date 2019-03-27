@@ -7,6 +7,8 @@ package mutation
 import (
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -30,64 +32,64 @@ func TestNewPodsState(t *testing.T) {
 			name: "should bucket pods into the expected states",
 			args: args{
 				resourcesState: reconcile.ResourcesState{
-					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
+					CurrentPodsByPhase: map[corev1.PodPhase]pod.PodsWithConfig{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
 						corev1.PodUnknown:   {namedPod("5")},
 						corev1.PodFailed:    {namedPod("6")},
 						corev1.PodSucceeded: {namedPod("7")},
 					},
-					DeletingPods: []corev1.Pod{namedPod("8")},
+					DeletingPods: pod.PodsWithConfig{namedPod("8")},
 				},
 				observedState: observer.State{
 					ClusterState: &client.ClusterState{
 						MasterNode: "master-node-id",
 						Nodes: map[string]client.ClusterStateNode{
-							"master-node-id": {Name: exampleMasterNodePod.Name},
+							"master-node-id": {Name: exampleMasterNodePod.Pod.Name},
 							"a":              {Name: "3"},
 						},
 					},
 				},
 			},
 			want: PodsState{
-				Pending:        map[string]corev1.Pod{"1": namedPod("1")},
-				RunningJoining: map[string]corev1.Pod{"2": namedPod("2")},
-				RunningReady:   map[string]corev1.Pod{"master": exampleMasterNodePod, "3": namedPod("3")},
+				Pending:        map[string]corev1.Pod{"1": namedPod("1").Pod},
+				RunningJoining: map[string]corev1.Pod{"2": namedPod("2").Pod},
+				RunningReady:   map[string]corev1.Pod{"master": exampleMasterNodePod.Pod, "3": namedPod("3").Pod},
 				RunningUnknown: map[string]corev1.Pod{},
-				Unknown:        map[string]corev1.Pod{"5": namedPod("5")},
-				Terminal:       map[string]corev1.Pod{"6": namedPod("6"), "7": namedPod("7")},
-				Deleting:       map[string]corev1.Pod{"8": namedPod("8")},
+				Unknown:        map[string]corev1.Pod{"5": namedPod("5").Pod},
+				Terminal:       map[string]corev1.Pod{"6": namedPod("6").Pod, "7": namedPod("7").Pod},
+				Deleting:       map[string]corev1.Pod{"8": namedPod("8").Pod},
 
-				MasterNodePod: &exampleMasterNodePod,
+				MasterNodePod: &exampleMasterNodePod.Pod,
 			},
 		},
 		{
 			name: "should bucket pods into the expected states when no cluster state is available",
 			args: args{
 				resourcesState: reconcile.ResourcesState{
-					CurrentPodsByPhase: map[corev1.PodPhase][]corev1.Pod{
+					CurrentPodsByPhase: map[corev1.PodPhase]pod.PodsWithConfig{
 						corev1.PodPending:   {namedPod("1")},
 						corev1.PodRunning:   {exampleMasterNodePod, namedPod("2"), namedPod("3")},
 						corev1.PodUnknown:   {namedPod("5")},
 						corev1.PodFailed:    {namedPod("6")},
 						corev1.PodSucceeded: {namedPod("7")},
 					},
-					DeletingPods: []corev1.Pod{namedPod("8")},
+					DeletingPods: pod.PodsWithConfig{namedPod("8")},
 				},
 				observedState: observer.State{},
 			},
 			want: PodsState{
-				Pending:        map[string]corev1.Pod{"1": namedPod("1")},
+				Pending:        map[string]corev1.Pod{"1": namedPod("1").Pod},
 				RunningJoining: map[string]corev1.Pod{},
 				RunningReady:   map[string]corev1.Pod{},
 				RunningUnknown: map[string]corev1.Pod{
-					"2":      namedPod("2"),
-					"master": exampleMasterNodePod,
-					"3":      namedPod("3"),
+					"2":      namedPod("2").Pod,
+					"master": exampleMasterNodePod.Pod,
+					"3":      namedPod("3").Pod,
 				},
-				Unknown:  map[string]corev1.Pod{"5": namedPod("5")},
-				Terminal: map[string]corev1.Pod{"6": namedPod("6"), "7": namedPod("7")},
-				Deleting: map[string]corev1.Pod{"8": namedPod("8")},
+				Unknown:  map[string]corev1.Pod{"5": namedPod("5").Pod},
+				Terminal: map[string]corev1.Pod{"6": namedPod("6").Pod, "7": namedPod("7").Pod},
+				Deleting: map[string]corev1.Pod{"8": namedPod("8").Pod},
 
 				MasterNodePod: nil,
 			},
@@ -160,32 +162,32 @@ func TestPodsState_Partition(t *testing.T) {
 		{
 			name: "a sample set",
 			podsState: PodsState{
-				Pending:        map[string]corev1.Pod{"1": namedPod("1")},
-				RunningJoining: map[string]corev1.Pod{"2": namedPod("2")},
-				RunningReady:   map[string]corev1.Pod{"3": namedPod("3")},
-				RunningUnknown: map[string]corev1.Pod{"4": namedPod("4")},
-				Unknown:        map[string]corev1.Pod{"5": namedPod("5")},
-				Terminal:       map[string]corev1.Pod{"6": namedPod("6")},
-				Deleting:       map[string]corev1.Pod{"7": namedPod("7")},
+				Pending:        map[string]corev1.Pod{"1": namedPod("1").Pod},
+				RunningJoining: map[string]corev1.Pod{"2": namedPod("2").Pod},
+				RunningReady:   map[string]corev1.Pod{"3": namedPod("3").Pod},
+				RunningUnknown: map[string]corev1.Pod{"4": namedPod("4").Pod},
+				Unknown:        map[string]corev1.Pod{"5": namedPod("5").Pod},
+				Terminal:       map[string]corev1.Pod{"6": namedPod("6").Pod},
+				Deleting:       map[string]corev1.Pod{"7": namedPod("7").Pod},
 			},
 			args: args{
 				changes: Changes{
-					ToDelete: []corev1.Pod{namedPod("2")},
-					ToKeep:   []corev1.Pod{namedPod("3")},
+					ToDelete: pod.PodsWithConfig{namedPod("2")},
+					ToKeep:   pod.PodsWithConfig{namedPod("3")},
 					// expecting this to be ignored, and just kept in the remainder.
-					ToCreate: []PodToCreate{{Pod: namedPod("4")}},
+					ToCreate: []PodToCreate{{Pod: namedPod("4").Pod}},
 				},
 			},
 			want: initializePodsState(PodsState{
-				RunningJoining: map[string]corev1.Pod{"2": namedPod("2")},
-				RunningReady:   map[string]corev1.Pod{"3": namedPod("3")},
+				RunningJoining: map[string]corev1.Pod{"2": namedPod("2").Pod},
+				RunningReady:   map[string]corev1.Pod{"3": namedPod("3").Pod},
 			}),
 			want1: initializePodsState(PodsState{
-				Pending:        map[string]corev1.Pod{"1": namedPod("1")},
-				RunningUnknown: map[string]corev1.Pod{"4": namedPod("4")},
-				Unknown:        map[string]corev1.Pod{"5": namedPod("5")},
-				Terminal:       map[string]corev1.Pod{"6": namedPod("6")},
-				Deleting:       map[string]corev1.Pod{"7": namedPod("7")},
+				Pending:        map[string]corev1.Pod{"1": namedPod("1").Pod},
+				RunningUnknown: map[string]corev1.Pod{"4": namedPod("4").Pod},
+				Unknown:        map[string]corev1.Pod{"5": namedPod("5").Pod},
+				Terminal:       map[string]corev1.Pod{"6": namedPod("6").Pod},
+				Deleting:       map[string]corev1.Pod{"7": namedPod("7").Pod},
 			}),
 		},
 	}

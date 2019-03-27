@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -19,26 +21,26 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 
 	type args struct {
 		terminal   map[string]corev1.Pod
-		masterNode *corev1.Pod
-		pods       []corev1.Pod
+		masterNode *pod.PodWithConfig
+		pods       pod.PodsWithConfig
 	}
 	tests := []struct {
 		name string
 		args args
-		want []corev1.Pod
+		want pod.PodsWithConfig
 	}{
 		{
 			name: "sample",
 			args: args{
 				masterNode: &masterNode,
-				pods: []corev1.Pod{
+				pods: pod.PodsWithConfig{
 					masterNode,
 					namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
 					namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
 					namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
 				},
 			},
-			want: []corev1.Pod{
+			want: pod.PodsWithConfig{
 				namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
 				namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
 				namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
@@ -49,15 +51,15 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 			name: "terminal pods first",
 			args: args{
 				masterNode: &masterNode,
-				pods: []corev1.Pod{
+				pods: pod.PodsWithConfig{
 					masterNode,
 					namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
 					namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
 					namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
 				},
-				terminal: map[string]corev1.Pod{"6": namedPod("6")},
+				terminal: map[string]corev1.Pod{"6": namedPod("6").Pod},
 			},
-			want: []corev1.Pod{
+			want: pod.PodsWithConfig{
 				namedPodWithCreationTimestamp("6", time.Unix(6, 0)),
 				namedPodWithCreationTimestamp("3", time.Unix(3, 0)),
 				namedPodWithCreationTimestamp("4", time.Unix(4, 0)),
@@ -71,7 +73,7 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 				tt.args.pods,
 				sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 					tt.args.terminal,
-					tt.args.masterNode,
+					&tt.args.masterNode.Pod,
 					tt.args.pods,
 				),
 			)
@@ -82,9 +84,9 @@ func Test_sortPodsByMasterNodeLastAndCreationTimestampAsc(t *testing.T) {
 }
 
 func Test_sortPodsToCreateByMasterNodesFirstThenNameAsc(t *testing.T) {
-	masterNode5 := PodToCreate{Pod: namedPodWithCreationTimestamp("master5", time.Unix(5, 0))}
+	masterNode5 := PodToCreate{Pod: namedPodWithCreationTimestamp("master5", time.Unix(5, 0)).Pod}
 	masterNode5.Pod.Labels = label.NodeTypesMasterLabelName.AsMap(true)
-	masterNode6 := PodToCreate{Pod: namedPodWithCreationTimestamp("master6", time.Unix(6, 0))}
+	masterNode6 := PodToCreate{Pod: namedPodWithCreationTimestamp("master6", time.Unix(6, 0)).Pod}
 	masterNode6.Pod.Labels = label.NodeTypesMasterLabelName.AsMap(true)
 
 	type args struct {
@@ -99,19 +101,19 @@ func Test_sortPodsToCreateByMasterNodesFirstThenNameAsc(t *testing.T) {
 			name: "sample",
 			args: args{
 				pods: []PodToCreate{
-					PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0))},
+					PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
 					masterNode6,
-					PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0))},
+					PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
 					masterNode5,
-					PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0))},
+					PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
 				},
 			},
 			want: []PodToCreate{
 				masterNode5,
 				masterNode6,
-				PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0))},
-				PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0))},
-				PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0))},
+				PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
+				PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
+				PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
 			},
 		},
 	}

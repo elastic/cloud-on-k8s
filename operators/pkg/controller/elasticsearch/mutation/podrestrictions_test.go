@@ -22,8 +22,8 @@ func podListToSetLike(pods []corev1.Pod) map[string]struct{} {
 }
 
 func TestNewPodRestrictions(t *testing.T) {
-	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true))
-	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true))
+	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true)).Pod
+	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true)).Pod
 
 	type args struct {
 		podsState PodsState
@@ -38,7 +38,7 @@ func TestNewPodRestrictions(t *testing.T) {
 			args: args{
 				podsState: initializePodsState(PodsState{
 					RunningReady: podListToMap([]corev1.Pod{
-						namedPod("foo"),
+						namedPod("foo").Pod,
 						masterPod,
 						dataPod,
 					}),
@@ -60,8 +60,8 @@ func TestNewPodRestrictions(t *testing.T) {
 }
 
 func TestPodRestrictions_CanDelete(t *testing.T) {
-	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true))
-	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true))
+	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true)).Pod
+	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true)).Pod
 
 	type args struct {
 		pod corev1.Pod
@@ -85,7 +85,7 @@ func TestPodRestrictions_CanDelete(t *testing.T) {
 		{
 			name: "can delete non-last master node",
 			podRestrictions: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod, namedPod("bar")}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod, namedPod("bar").Pod}),
 			},
 			args: args{
 				pod: masterPod,
@@ -104,7 +104,7 @@ func TestPodRestrictions_CanDelete(t *testing.T) {
 		{
 			name: "can delete non-last data node",
 			podRestrictions: PodRestrictions{
-				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod, namedPod("bar")}),
+				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod, namedPod("bar").Pod}),
 			},
 			args: args{
 				pod: dataPod,
@@ -137,21 +137,21 @@ func TestPodRestrictions_Remove(t *testing.T) {
 		{
 			name: "can delete",
 			podRestrictions: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
-				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("foo").Pod, namedPod("bar").Pod}),
+				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("foo").Pod, namedPod("bar").Pod}),
 			},
 			args: args{
-				pod: namedPod("foo"),
+				pod: namedPod("foo").Pod,
 			},
 			want: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("bar")}),
-				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("bar")}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("bar").Pod}),
+				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("bar").Pod}),
 			},
 		},
 		{
 			name: "can delete nonexistent without failing",
 			args: args{
-				pod: namedPod("foo"),
+				pod: namedPod("foo").Pod,
 			},
 		},
 	}

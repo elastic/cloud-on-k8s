@@ -18,6 +18,7 @@ const (
 	ReloadCredsUserVolumeName             = "reload-creds-user"
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
+	ExtraFilesSecretVolumeMountPath       = "/usr/share/elasticsearch/config/extrafiles"
 )
 
 var (
