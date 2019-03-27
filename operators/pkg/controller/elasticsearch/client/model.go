@@ -330,7 +330,7 @@ type LicenseResponse struct {
 	License License `json:"license"`
 }
 
-// PersistentSettings is the root element of persistent settings.
+// Settings is the root element of settings.
 type Settings struct {
 	PersistentSettings interface{} `json:"persistent,omitempty"`
 	TransientSettings  interface{} `json:"transient,omitempty"`
