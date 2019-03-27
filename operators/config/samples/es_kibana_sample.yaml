@@ -19,7 +19,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
-  version: "7.0.0-beta1"
+  version: "6.7.0"
   licenseType: trial # can be "basic", "trial", "gold", "platinum"
   setVmMaxMapCount: true
   updateStrategy:
@@ -100,6 +100,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "7.0.0-beta1"
+  version: "6.7.0"
   nodeCount: 1
   expose: LoadBalancer
