@@ -19,6 +19,7 @@ const (
 	svcName             = "elastic-global-operator"
 )
 
+// NewBootstrapOptions are options for the webhook bootstrap process.
 func NewBootstrapOptions(ns string, secretName, svcSelector *string) webhook.BootstrapOptions {
 	var secret *types.NamespacedName
 	if secretName != nil {
@@ -43,6 +44,7 @@ func NewBootstrapOptions(ns string, secretName, svcSelector *string) webhook.Boo
 	}
 }
 
+// RegisterValidations registers validating webhooks and a new webhook server with the given manager.
 func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	wh, err := builder.NewWebhookBuilder().
 		Validating().
