@@ -234,18 +234,9 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
 
 	}
-	var svcSelector *string
-	lbl := viper.GetString(ControlPlaneLabelFlag)
-	if lbl != "" {
-		// if not set operator will not attempt to create a webhook service and assume service is provided by user
-		svcSelector = &lbl
-	}
-	var sec *string
-	s := viper.GetString(WebhookSecretFlag)
-	if s != "" {
-		// if not set will webhook secrets will be written to disk
-		sec = &s
-	}
+
+	svcSelector := viper.GetString(ControlPlaneLabelFlag)
+	sec := viper.GetString(WebhookSecretFlag)
 	return &webhook.Parameters{
 		Namespace:   ns,
 		Bootstrap:   webhook.NewBootstrapOptions(ns, sec, svcSelector),

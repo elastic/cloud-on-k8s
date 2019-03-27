@@ -20,21 +20,21 @@ const (
 )
 
 // NewBootstrapOptions are options for the webhook bootstrap process.
-func NewBootstrapOptions(ns string, secretName, svcSelector *string) webhook.BootstrapOptions {
+func NewBootstrapOptions(ns string, secretName, svcSelector string) webhook.BootstrapOptions {
 	var secret *types.NamespacedName
-	if secretName != nil {
+	if secretName != "" {
 		secret = &types.NamespacedName{
 			Namespace: ns,
-			Name:      *secretName,
+			Name:      secretName,
 		}
 	}
 	var svc *webhook.Service
-	if svcSelector != nil {
+	if svcSelector != "" {
 		svc = &webhook.Service{
 			Namespace: ns,
 			Name:      svcName,
 			Selectors: map[string]string{
-				"control-plane": *svcSelector,
+				"control-plane": svcSelector,
 			},
 		}
 	}
