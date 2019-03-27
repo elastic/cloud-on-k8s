@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-// GenericEventHandler returns an EventHandler that enqueues a reconciliation loop
+// GenericEventHandler returns an EventHandler that enqueues a reconciliation request
 // from the generic event NamespacedName.
 func GenericEventHandler() handler.EventHandler {
 	return handler.Funcs{

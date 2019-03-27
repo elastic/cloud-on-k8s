@@ -182,7 +182,7 @@ func TestManager_AddObservationListener(t *testing.T) {
 		}
 	})
 
-	// add a 2nd listener that is only interested in clusterE
+	// add a 2nd listener that is only interested in cluster2
 	eventsCluster2 := make(chan types.NamespacedName)
 	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
 		if cluster.Name == "cluster2" {

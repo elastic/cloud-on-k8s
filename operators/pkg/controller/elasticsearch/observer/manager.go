@@ -98,7 +98,7 @@ func (m *Manager) AddObservationListener(listener OnObservation) {
 	m.listeners = append(m.listeners, listener)
 }
 
-// onObservation notifies all listeners that an observation occurred.
+// notifyListeners notifies all listeners that an observation occurred.
 func (m *Manager) notifyListeners(cluster types.NamespacedName, previousState State, newState State) {
 	wg := sync.WaitGroup{}
 	m.lock.Lock()
