@@ -18,7 +18,7 @@ import (
 // Re-use the sample stack for e2e tests.
 // This is a way to make sure both the sample and the e2e tests are always up-to-date.
 // Path is relative to the e2e directory.
-const sampleEsApmFile = "../../config/samples/apm/association.yaml"
+const sampleEsApmFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
 // TestEsApmServerSample runs a test suite using the sample es + apm server resources
 func TestEsApmServerSample(t *testing.T) {
