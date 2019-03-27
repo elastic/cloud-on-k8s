@@ -19,7 +19,6 @@ Reusing pods may also be useful in other situations, where simply restarting Ela
 
 * It must be possible to perform a "full cluster restart" and reuse existing pods.
 * Configuration changes should be propagated through a volume mount, not through the pod spec.
-* It must be eventually consistent. For example, it should not end up leaving a pod in a "stopped" state forever.
 * Operator client cache inconsistencies must be taken into consideration (eg. don't restart a pod 3 times because of a stale cache).
 * Volume propagation time must be taken into consideration (it can take more than 1 minute, the ES restart must not happen before the new configuration is there).
 * It should be resilient to operator restart.
