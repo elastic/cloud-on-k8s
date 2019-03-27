@@ -20,6 +20,7 @@ const (
 	controlPlane        = "control-plane"
 )
 
+// BootstrapOptionsParams are params to create webhook BootstrapOptions.
 type BootstrapOptionsParams struct {
 	Namespace       string
 	SecretName      string
