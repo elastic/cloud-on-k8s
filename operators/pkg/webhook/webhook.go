@@ -26,7 +26,7 @@ func AddToManager(m manager.Manager, role string, paramsFn func() (*Parameters, 
 	for k, fs := range AddToManagerFuncs {
 		if role == operator.All || k == role {
 			if params == nil {
-				// lazily initialize params
+				// lazily initialize params so that errors happen only if we actually want to use a webhook
 				params, err = paramsFn()
 				if err != nil {
 					return err
