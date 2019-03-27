@@ -35,8 +35,8 @@ func UpdateZen2Settings(
 
 	leavingMasters := make([]string, 0)
 	for _, pod := range performableChanges.ToDelete {
-		if label.IsMasterNode(pod) {
-			leavingMasters = append(leavingMasters, pod.Name)
+		if label.IsMasterNode(pod.Pod) {
+			leavingMasters = append(leavingMasters, pod.Pod.Name)
 		}
 	}
 	if len(leavingMasters) != 0 {

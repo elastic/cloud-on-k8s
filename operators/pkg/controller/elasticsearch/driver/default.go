@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -140,6 +141,11 @@ func (d *defaultDriver) Reconcile(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
+	// garbage collect secrets attached to this cluster that we don't need anymore
+	if err := cleanup.DeleteOrphanedSecrets(d.Client, es); err != nil {
+		return results.WithError(err)
+	}
+
 	genericResources, err := d.genericResourcesReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -179,7 +185,7 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := esversion.MinVersion(resourcesState.CurrentPods)
+	min, err := esversion.MinVersion(resourcesState.CurrentPods.Pods())
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -203,7 +209,7 @@ func (d *defaultDriver) Reconcile(
 
 	podsState := mutation.NewPodsState(*resourcesState, observedState)
 
-	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods.Pods()); err != nil {
 		return results.WithError(err)
 	}
 
@@ -330,7 +336,7 @@ func (d *defaultDriver) Reconcile(
 		// Let's retry in a while.
 		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.")
 
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
+		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
 
 		return results.WithResult(defaultRequeue)
 	}
@@ -353,7 +359,7 @@ func (d *defaultDriver) Reconcile(
 		if d.zen1SettingsUpdater != nil {
 			if err := d.zen1SettingsUpdater(
 				esClient,
-				reconcile.AvailableElasticsearchNodes(resourcesState.CurrentPods),
+				reconcile.AvailableElasticsearchNodes(resourcesState.CurrentPods.Pods()),
 			); err != nil {
 				// TODO: reconsider whether this error should be propagated with results instead?
 				log.Error(err, "Error during update discovery after having no changes, requeuing.")
@@ -366,14 +372,14 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete)
+	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete.Pods())
 	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
 		return results.WithError(errors.Wrap(err, "error during migrate data"))
 	}
 
 	// Shrink clusters by deleting deprecated pods
 	if err = d.attemptPodsDeletion(
-		performableChanges.ToDelete,
+		performableChanges.ToDelete.Pods(),
 		reconcileState,
 		resourcesState,
 		observedState,
@@ -406,7 +412,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 	namespacedName types.NamespacedName,
 ) error {
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
-	copy(newState, resourcesState.CurrentPods)
+	copy(newState, resourcesState.CurrentPods.Pods())
 	for _, pod := range ToDelete {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {

@@ -5,14 +5,18 @@
 package reconcile
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,11 +28,11 @@ type ResourcesState struct {
 	// DeletionTimestamp tombstone set.
 	AllPods []corev1.Pod
 	// CurrentPods are all non-deleted Elasticsearch pods.
-	CurrentPods []corev1.Pod
+	CurrentPods pod.PodsWithConfig
 	// CurrentPodsByPhase are all non-deleted Elasticsearch indexed by their PodPhase
-	CurrentPodsByPhase map[corev1.PodPhase][]corev1.Pod
+	CurrentPodsByPhase map[corev1.PodPhase]pod.PodsWithConfig
 	// DeletingPods are all deleted Elasticsearch pods.
-	DeletingPods []corev1.Pod
+	DeletingPods pod.PodsWithConfig
 	// PVCs are all the PVCs related to this deployment.
 	PVCs []corev1.PersistentVolumeClaim
 	// ExternalService is the user-facing service related to the Elasticsearch cluster.
@@ -44,22 +48,59 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 		return nil, err
 	}
 
-	deletingPods := make([]corev1.Pod, 0)
-	currentPods := make([]corev1.Pod, 0, len(allPods))
-	currentPodsByPhase := make(map[corev1.PodPhase][]corev1.Pod, 0)
+	deletingPods := make(pod.PodsWithConfig, 0)
+	currentPods := make(pod.PodsWithConfig, 0, len(allPods))
+	currentPodsByPhase := make(map[corev1.PodPhase]pod.PodsWithConfig, 0)
 	// filter out pods scheduled for deletion
 	for _, p := range allPods {
+		// retrieve es configuration
+		config, err := settings.GetESConfigContent(c, k8s.ExtractNamespacedName(&p))
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				// We have an ES pod for which no configuration secret can be found.
+				// This is rather unfortunate, since the config secret is supposed to
+				// be created before the pod, and we cannot take any decision if the pod
+				// does not have any config attached.
+				//
+				// 3 possibilities here:
+				if p.DeletionTimestamp != nil {
+					// 1. the pod was recently deleted along with its config.
+					// The pod is not terminated yet, but the config isn't there anymore.
+					// That's ok: just give it a dummy config, it will be deleted anyway.
+					config = settings.FlatConfig{"pod.deletion": "in.progress"}
+				} else if cleanup.IsTooYoungForGC(&p) {
+					// 2. the pod was created recently and the config is not there yet
+					// in our client cache: let's just requeue.
+					return nil, fmt.Errorf("configuration secret for pod %s not yet in the cache, re-queueing", p.Name)
+				} else {
+					// 3. the pod was created a while ago, and its config was deleted.
+					// There is no point in keeping that pod around in an inconsistent state.
+					// Let's return it with a dummy configuration: it should then be safely
+					// replaced since it will not match any expected pod.
+					errMsg := "no configuration secret volume found for that pod, scheduling it for deletion"
+					log.Error(errors.New(errMsg), "Missing secret, replacing pod", "pod", p.Name)
+					config = settings.FlatConfig{
+						"error.pod.to.replace": errMsg,
+					}
+				}
+			} else {
+				return nil, err
+			}
+		}
+		podWithConfig := pod.PodWithConfig{Pod: p, Config: config}
+
 		if p.DeletionTimestamp != nil {
-			deletingPods = append(deletingPods, p)
+			deletingPods = append(deletingPods, podWithConfig)
 			continue
 		}
-		currentPods = append(currentPods, p)
+
+		currentPods = append(currentPods, podWithConfig)
 
 		podsInPhase, ok := currentPodsByPhase[p.Status.Phase]
 		if !ok {
-			podsInPhase = []corev1.Pod{p}
+			podsInPhase = pod.PodsWithConfig{podWithConfig}
 		} else {
-			podsInPhase = append(podsInPhase, p)
+			podsInPhase = append(podsInPhase, podWithConfig)
 		}
 		currentPodsByPhase[p.Status.Phase] = podsInPhase
 	}
