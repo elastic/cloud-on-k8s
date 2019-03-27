@@ -30,7 +30,6 @@ type ApmClient struct {
 	client                   *http.Client
 	endpoint                 string
 	authorizationHeaderValue string
-	timeout                  time.Duration
 }
 
 func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) {
