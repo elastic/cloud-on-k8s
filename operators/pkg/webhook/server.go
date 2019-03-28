@@ -17,7 +17,7 @@ import (
 
 const (
 	admissionServerName = "elastic-admission-server"
-	svcName             = "elastic-global-operator"
+	svcName             = "elastic-webhook-service"
 	controlPlane        = "control-plane"
 )
 
