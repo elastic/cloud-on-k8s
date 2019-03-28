@@ -11,20 +11,21 @@ import (
 )
 
 func Test_hasMaster(t *testing.T) {
+	failedValidation := ValidationResult{Allowed: false, Reason: masterRequiredMsg}
 	type args struct {
 		esCluster v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want ValidationResult
 	}{
 		{
 			name: "no topology",
 			args: args{
 				esCluster: v1alpha1.Elasticsearch{},
 			},
-			want: false,
+			want: failedValidation,
 		},
 		{
 			name: "topology but no master",
@@ -44,7 +45,7 @@ func Test_hasMaster(t *testing.T) {
 					},
 				},
 			},
-			want: false,
+			want: failedValidation,
 		},
 		{
 			name: "master but zero sized",
@@ -64,7 +65,7 @@ func Test_hasMaster(t *testing.T) {
 					},
 				},
 			},
-			want: false,
+			want: failedValidation,
 		},
 		{
 			name: "has master",
@@ -85,7 +86,7 @@ func Test_hasMaster(t *testing.T) {
 					},
 				},
 			},
-			want: true,
+			want: ValidationResult{Allowed: true},
 		},
 	}
 	for _, tt := range tests {

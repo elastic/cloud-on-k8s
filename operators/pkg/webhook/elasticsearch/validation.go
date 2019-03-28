@@ -6,11 +6,16 @@ package elasticsearch
 
 import "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 
+const masterRequiredMsg = "Elasticsearch needs to have at least one master node"
+
 // HasMaster checks if the given Elasticsearch cluster has at least one master node.
-func HasMaster(esCluster v1alpha1.Elasticsearch) bool {
+func HasMaster(esCluster v1alpha1.Elasticsearch) ValidationResult {
 	var hasMaster bool
 	for _, t := range esCluster.Spec.Topology {
 		hasMaster = hasMaster || (t.NodeTypes.Master && t.NodeCount > 0)
 	}
-	return hasMaster
+	if hasMaster {
+		return ValidationResult{Allowed: true}
+	}
+	return ValidationResult{Reason: masterRequiredMsg}
 }

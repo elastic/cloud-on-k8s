@@ -8,7 +8,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 
 	"k8s.io/api/admission/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,11 +26,17 @@ type Validation struct {
 	decoder types.Decoder
 }
 
+type ValidationResult struct {
+	Error   error
+	Allowed bool
+	Reason  string
+}
+
 func (v *Validation) Handle(ctx context.Context, r types.Request) types.Response {
 	if r.AdmissionRequest.Operation == v1beta1.Delete {
 		return admission.ValidationResponse(true, "allowing all deletes")
 	}
-	esCluster := v1alpha1.Elasticsearch{}
+	esCluster := estype.Elasticsearch{}
 	log.Info("Validation handler called",
 		"operation", r.AdmissionRequest.Operation,
 		"name", r.AdmissionRequest.Name,
@@ -41,12 +47,36 @@ func (v *Validation) Handle(ctx context.Context, r types.Request) types.Response
 		return admission.ErrorResponse(http.StatusBadRequest, err)
 	}
 
-	if !HasMaster(esCluster) {
-		log.V(1).Info("Denying admission request")
-		return admission.ValidationResponse(false, "Elasticsearch needs at least one master node")
+	validations := []func(context.Context, estype.Elasticsearch) ValidationResult{
+		func(_ context.Context, es estype.Elasticsearch) ValidationResult {
+			return HasMaster(es)
+		},
+		v.canUpgrade,
 	}
-	log.V(1).Info("Allowing admission request")
-	return admission.ValidationResponse(true, "")
+	var results []ValidationResult
+	for _, v := range validations {
+		results = append(results, v(ctx, esCluster))
+	}
+	return aggregate(results)
+}
+
+func aggregate(results []ValidationResult) types.Response {
+	response := ValidationResult{Allowed: true}
+	for _, r := range results {
+		if !r.Allowed {
+			response.Allowed = false
+			if r.Error != nil {
+				log.Error(r.Error, r.Reason)
+			}
+			if response.Reason == "" {
+				response.Reason = r.Reason
+				continue
+			}
+			response.Reason = response.Reason + ". " + r.Reason
+		}
+	}
+	log.V(1).Info("Admission validation response", "allowed", response.Allowed, "reason", response.Reason)
+	return admission.ValidationResponse(response.Allowed, response.Reason)
 }
 
 var _ admission.Handler = &Validation{}
