@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 )
 
-func compareConfigs(actual settings.FlatConfig, expected settings.FlatConfig) Comparison {
+func CompareConfigs(actual settings.FlatConfig, expected settings.FlatConfig) Comparison {
 	// check for settings in actual that do not match expected
 	for k, v := range actual {
 		if ignoreFieldDuringComparison(k) {

@@ -107,7 +107,7 @@ func Test_compareConfigs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := compareConfigs(tt.actual, tt.expected); !reflect.DeepEqual(got, tt.want) {
+			if got := CompareConfigs(tt.actual, tt.expected); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("compareConfigs() = %v, want %v", got, tt.want)
 			}
 		})

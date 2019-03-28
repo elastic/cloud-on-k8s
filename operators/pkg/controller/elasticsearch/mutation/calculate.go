@@ -102,22 +102,30 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.P
 	for i, podWithConfig := range podsWithConfig {
 		pod := podWithConfig.Pod
 
-		isMatch, mismatchReasons, err := comparison.PodMatchesSpec(podWithConfig, podSpecCtx, state)
-		if err != nil {
-			return PodComparisonResult{}, err
+		// check if the pod matches the expected spec
+		isMatch, mismatchReasons := comparison.PodMatchesSpec(podWithConfig, podSpecCtx, state)
+		if !isMatch {
+			mismatchReasonsPerPod[pod.Name] = mismatchReasons
+			continue
 		}
-		if isMatch {
-			// matching pod found
-			// remove it from the remaining pods
-			return PodComparisonResult{
-				IsMatch:               true,
-				MatchingPod:           podWithConfig,
-				MismatchReasonsPerPod: mismatchReasonsPerPod,
-				RemainingPods:         append(podsWithConfig[:i], podsWithConfig[i+1:]...),
-			}, nil
+
+		// check if the pod config matches the expected config
+		cfgComparison := comparison.CompareConfigs(podWithConfig.Config, podSpecCtx.Config)
+		if !cfgComparison.Match {
+			mismatchReasonsPerPod[pod.Name] = cfgComparison.MismatchReasons
+			continue
 		}
-		mismatchReasonsPerPod[pod.Name] = mismatchReasons
+
+		// match found
+		return PodComparisonResult{
+			IsMatch:               true,
+			MatchingPod:           podWithConfig,
+			MismatchReasonsPerPod: mismatchReasonsPerPod,
+			// remove the matching pod from the remaining pods
+			RemainingPods: append(podsWithConfig[:i], podsWithConfig[i+1:]...),
+		}, nil
 	}
+
 	// no matching pod found
 	return PodComparisonResult{
 		IsMatch:               false,

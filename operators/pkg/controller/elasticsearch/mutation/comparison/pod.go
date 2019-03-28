@@ -27,8 +27,7 @@ func PodMatchesSpec(actualPod pod.PodWithConfig, spec pod.PodSpecContext, state 
 		NewStringComparison(expectedContainer.Name, actualContainer.Name, "Container name"),
 		compareEnvironmentVariables(actualContainer.Env, expectedContainer.Env),
 		compareResources(actualContainer.Resources, expectedContainer.Resources),
-		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.TopologyElement.VolumeClaimTemplates, state),
-		compareConfigs(config, spec.Config),
+		comparePersistentVolumeClaims(actualPod.Pod.Spec.Volumes, spec.TopologyElement.VolumeClaimTemplates, state),
 		// Non-exhaustive list of ignored stuff:
 		// - pod labels
 		// - probe password
