@@ -11,24 +11,25 @@ import (
 
 // RemoteClusterSpec defines the desired state of RemoteCluster.
 type RemoteClusterSpec struct {
-	Remote InClusterSpec `json:"remote"`
+	Remote K8SLocalClusterSpec `json:"remote"`
 }
 
-type InClusterSpec struct {
-	InRemoteCluster assoctype.ObjectSelector `json:"inCluster"`
+// K8SLocalClusterSpec defines a Elasticsearch cluster that is hosted in the same K8S cluster.
+type K8SLocalClusterSpec struct {
+	ClusterRef assoctype.ObjectSelector `json:"k8sLocalRef"`
 }
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.
 type RemoteClusterStatus struct {
-	State                  string          `json:"state,omitempty"`
-	ClusterName            string          `json:"clusterName,omitempty"`
-	LocalTrustRelationship string          `json:"localTrustRelationship,omitempty"`
-	SeedHosts              []string        `json:"seedHosts,omitempty"`
-	InClusterStatus        InClusterStatus `json:"inCluster,omitempty"`
+	State                  string         `json:"state,omitempty"`
+	ClusterName            string         `json:"clusterName,omitempty"`
+	LocalTrustRelationship string         `json:"localTrustRelationship,omitempty"`
+	SeedHosts              []string       `json:"seedHosts,omitempty"`
+	K8SLocalStatus         LocalRefStatus `json:"k8sLocal,omitempty"`
 }
 
-// InClusterStatus defines the state of the inCluster driver state.
-type InClusterStatus struct {
+// LocalRefStatus defines the state of the K8S local driver state.
+type LocalRefStatus struct {
 	RemoteSelector          assoctype.ObjectSelector `json:"remoteSelector,omitempty"`
 	RemoteTrustRelationship string                   `json:"remoteTrustRelationship,omitempty"`
 }

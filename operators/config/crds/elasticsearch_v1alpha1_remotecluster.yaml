@@ -31,19 +31,6 @@ spec:
         spec:
           properties:
             remote:
-              properties:
-                inCluster:
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  required:
-                  - name
-                  - namespace
-                  type: object
-              required:
-              - inCluster
               type: object
           required:
           - remote
@@ -52,21 +39,6 @@ spec:
           properties:
             clusterName:
               type: string
-            inCluster:
-              properties:
-                remoteSelector:
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  required:
-                  - name
-                  - namespace
-                  type: object
-                remoteTrustRelationship:
-                  type: string
-              type: object
             localTrustRelationship:
               type: string
             seedHosts:

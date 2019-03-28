@@ -98,8 +98,8 @@ func newRemoteInCluster(
 			Labels:    map[string]string{label.ClusterNameLabelName: localName},
 		},
 		Spec: v1alpha1.RemoteClusterSpec{
-			Remote: v1alpha1.InClusterSpec{
-				InRemoteCluster: assoctype.ObjectSelector{
+			Remote: v1alpha1.K8SLocalClusterSpec{
+				ClusterRef: assoctype.ObjectSelector{
 					Name:      remoteName,
 					Namespace: remoteNamespace,
 				},
@@ -145,7 +145,7 @@ func Test_apply(t *testing.T) {
 				State:                  v1alpha1.RemoteClusterPropagated,
 				ClusterName:            "trust-one-es",
 				LocalTrustRelationship: "rc-remotecluster-sample-1-2",
-				InClusterStatus: v1alpha1.InClusterStatus{
+				K8SLocalStatus: v1alpha1.LocalRefStatus{
 					RemoteSelector: assoctype.ObjectSelector{
 						Name:      "trust-two-es",
 						Namespace: "default",

@@ -14,9 +14,9 @@ import (
 const (
 	// RemoteClusterDynamicWatchesFinalizer designates a finalizer to clean up unused watches.
 	RemoteClusterDynamicWatchesFinalizer = "dynamic-watches.remotecluster.k8s.elastic.co"
-	// RemoteClusterNamespaceLabelName used to represent the name of a local cluster in a relationship.
+	// RemoteClusterNamespaceLabelName used to represent the namespace of a local cluster in a relationship.
 	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/remote-cluster-namespace"
-	// RemoteClusterNameLabelName used to represent the namespace of a local cluster in a relationship.
+	// RemoteClusterNameLabelName used to represent the name of a local cluster in a relationship.
 	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/remote-cluster-name"
 )
 
