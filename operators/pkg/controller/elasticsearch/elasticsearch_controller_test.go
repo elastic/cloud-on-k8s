@@ -7,14 +7,21 @@
 package elasticsearch
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"testing"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -113,6 +120,38 @@ func TestReconcile(t *testing.T) {
 	test.RetryUntilSuccess(t, func() error { return c.Get(discoveryServiceKey, discoveryService) })
 	externalService := &corev1.Service{}
 	test.RetryUntilSuccess(t, func() error { return c.Get(externalServiceKey, externalService) })
+
+	// simulate a cluster observed by observers
+	observedCluster := types.NamespacedName{
+		Namespace: "ns",
+		Name:      "observedCluster",
+	}
+	esclientGreen := esclient.NewMockClientWithUser(version.MustParse("6.7.0"),
+		esclient.UserAuth{},
+		func(req *http.Request) *http.Response {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       ioutil.NopCloser(bytes.NewBufferString(`{"status": "green"}`)),
+				Header:     make(http.Header),
+				Request:    req,
+			}
+		})
+	r.esObservers.Observe(observedCluster, esclientGreen)
+	// cluster health should have gone from none to green,
+	// check reconciliation was called for the observed cluster
+	expectedReq := reconcile.Request{NamespacedName: observedCluster}
+	test.RetryUntilSuccess(t, func() error {
+		select {
+		case evt := <-requests:
+			if evt != expectedReq {
+				return errors.New("not the expected reconciliation")
+			}
+			// we got one reconciliation!
+			return nil
+		case <-time.After(test.Timeout):
+			return errors.New("no reconciliation after timeout")
+		}
+	})
 
 	// Delete resources and expect Reconcile to be called and eventually recreate them
 	// ES pod

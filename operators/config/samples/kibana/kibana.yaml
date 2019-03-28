@@ -1,0 +1,22 @@
+# This sample sets up a single Kibana instance pointing to a remote Elasticsearch cluster
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibana-sample
+spec:
+  version: "6.4.2"
+  Elasticsearch:
+    url: https://url.to.elasticsearch:9200
+    auth:
+      # reference to a secret containing credentials in the given key
+      secret:
+        name: secret-name
+        key: user # key is the user, value is the password for that user
+    caCertSecret: my-ca-cert # reference to a secret containing a pem certificate at key "ca.pem"
+  featureFlags:
+    nodeCertificates:
+      enabled: true
+  nodeCount: 1
+  expose: LoadBalancer

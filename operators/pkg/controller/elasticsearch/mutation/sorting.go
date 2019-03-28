@@ -6,6 +6,7 @@ package mutation
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -16,11 +17,11 @@ import (
 func sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 	terminalPods map[string]corev1.Pod,
 	masterNode *corev1.Pod,
-	pods []corev1.Pod,
+	pods pod.PodsWithConfig,
 ) func(i, j int) bool {
 	return func(i, j int) bool {
-		iPod := pods[i]
-		jPod := pods[j]
+		iPod := pods[i].Pod
+		jPod := pods[j].Pod
 
 		_, iIsTerminal := terminalPods[iPod.Name]
 		_, jIsTerminal := terminalPods[jPod.Name]
@@ -68,6 +69,6 @@ func sortPodsToCreateByMasterNodesFirstThenNameAsc(podsToCreate []PodToCreate) f
 }
 
 // sortPodByCreationTimestampAsc is a sort function for a list of pods
-func sortPodByCreationTimestampAsc(pods []corev1.Pod) func(i, j int) bool {
-	return func(i, j int) bool { return pods[i].CreationTimestamp.Before(&pods[j].CreationTimestamp) }
+func sortPodByCreationTimestampAsc(pods pod.PodsWithConfig) func(i, j int) bool {
+	return func(i, j int) bool { return pods[i].Pod.CreationTimestamp.Before(&pods[j].Pod.CreationTimestamp) }
 }
