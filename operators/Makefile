@@ -111,6 +111,13 @@ deploy: install-crds docker-build docker-push
 		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
 	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
 
+# Deploy an all in one operator against the current k8s cluster
+deploy-all-in-one: install-crds docker-build docker-push
+	kustomize build config/all-in-one-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
+		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
+	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
+
+
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
 
