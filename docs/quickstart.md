@@ -49,8 +49,6 @@ kubectl --namespace=elastic-system logs -f statefulset.apps/elastic-global-opera
 
 ## Deploy Elasticsearch
 
-### 1-node cluster sample
-
 Let's apply a simple Elasticsearch cluster specification, with one node:
 
 ```bash
