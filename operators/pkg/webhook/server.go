@@ -7,6 +7,7 @@ package webhook
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/webhook/elasticsearch"
+	admission "k8s.io/api/admissionregistration/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -22,24 +23,31 @@ const (
 
 // BootstrapOptionsParams are params to create webhook BootstrapOptions.
 type BootstrapOptionsParams struct {
-	Namespace       string
-	SecretName      string
-	ServiceSelector string
+	Namespace        string
+	ManagedNamespace string
+	SecretName       string
+	ServiceSelector  string
 }
 
 // NewBootstrapOptions are options for the webhook bootstrap process.
 func NewBootstrapOptions(params BootstrapOptionsParams) webhook.BootstrapOptions {
 	var secret *types.NamespacedName
+	ns := params.Namespace
+	if params.ManagedNamespace != "" {
+		// if we are restricting the operator to a single namespace we have to create the webhook resources in the
+		// the managed namespace due to restrictions in the controller runtime (would not be able to list the resources)
+		ns = params.ManagedNamespace
+	}
 	if params.SecretName != "" {
 		secret = &types.NamespacedName{
-			Namespace: params.Namespace,
+			Namespace: ns,
 			Name:      params.SecretName,
 		}
 	}
 	var svc *webhook.Service
 	if params.ServiceSelector != "" {
 		svc = &webhook.Service{
-			Namespace: params.Namespace,
+			Namespace: ns,
 			Name:      svcName,
 			Selectors: map[string]string{
 				controlPlane: params.ServiceSelector,
@@ -55,7 +63,9 @@ func NewBootstrapOptions(params BootstrapOptionsParams) webhook.BootstrapOptions
 // RegisterValidations registers validating webhooks and a new webhook server with the given manager.
 func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	wh, err := builder.NewWebhookBuilder().
+		Name("validation.elasticsearch.elastic.co").
 		Validating().
+		FailurePolicy(admission.Fail).
 		ForType(&v1alpha1.Elasticsearch{}).
 		Handlers(&elasticsearch.Validation{}).
 		WithManager(mgr).

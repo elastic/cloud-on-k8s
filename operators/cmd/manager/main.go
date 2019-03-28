@@ -237,9 +237,10 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 	sec := viper.GetString(WebhookSecretFlag)
 	return &webhook.Parameters{
 		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
-			Namespace:       ns,
-			SecretName:      sec,
-			ServiceSelector: svcSelector,
+			Namespace:        ns,
+			ManagedNamespace: viper.GetString(NamespaceFlagName),
+			SecretName:       sec,
+			ServiceSelector:  svcSelector,
 		}),
 		AutoInstall: autoInstall,
 	}, nil

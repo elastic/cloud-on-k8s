@@ -97,11 +97,12 @@ install-crds: generate
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds
-	# Run the operator locally with role All, with sidecar image set to latest
+	# Run the operator locally with role All, with sidecar image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run ./cmd/main.go manager \
 			--development --operator-role=all \
-			--ca-cert-validity=10h --ca-cert-rotate-before=1h
+			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
+			--operator-namespace=elastic-system
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
