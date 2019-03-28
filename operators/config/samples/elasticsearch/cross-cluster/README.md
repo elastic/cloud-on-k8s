@@ -1,10 +1,8 @@
 # CCR/CCS Samples
-The files in this directory contain the resources needed to test cross-cluster replication or cross-cluster search.
-
-1 . Create two Elasticsearch clusters
+The file `remote.yml` contain the resources needed to test cross-cluster replication or cross-cluster search.
 
 ```bash
-$ kubectl apply -f clusters.yml
+$ kubectl apply -f remote.yml
 elasticsearch.elasticsearch.k8s.elastic.co/trust-one configured
 elasticsearch.elasticsearch.k8s.elastic.co/trust-two configured
 ```
@@ -20,13 +18,6 @@ elasticsearch.elasticsearch.k8s.elastic.co/trust-two   unknown   1       6.6.2  
 NAME                          READY   STATUS    RESTARTS   AGE
 pod/trust-one-es-stc4kcmpp2   2/2     Running   0          2m
 pod/trust-two-es-bldzf4wwpg   2/2     Running   0          2m
-```
-
-2 . Declare `trust-two` as a remote cluster of `trust-one` 
-
-```bash
-$ kubectl apply -f remote.yaml
-remotecluster.elasticsearch.k8s.elastic.co/remotecluster-sample-1-2 created
 ```
 
 Check the status of the `RemoteCluster`:
