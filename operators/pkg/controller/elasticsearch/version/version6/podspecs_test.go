@@ -33,6 +33,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
 		nodeCertificatesVolume volume.SecretVolume
+		privateKeyVolume       volume.SecretVolume
 		reloadCredsUserVolume  volume.SecretVolume
 		keystoreVolume         volume.SecretVolume
 	}
@@ -50,6 +51,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 					Version:         "6",
 				},
 				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
+				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
 				keystoreVolume:         volume.NewSecretVolumeWithMountPath("keystore", "/keystore", "/keystore"),
 			},
@@ -66,6 +68,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, "username1")},
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
+				{Name: processmanager.EnvTLS, Value: "true"},
+				{Name: processmanager.EnvCertPath, Value: "/certs/cert.pem"},
+				{Name: processmanager.EnvKeyPath, Value: "/key/node.key"},
 				{Name: keystore.EnvSourceDir, Value: "/keystore"},
 				{Name: keystore.EnvReloadCredentials, Value: "true"},
 				{Name: keystore.EnvEsUsername, Value: "username2"},
@@ -78,8 +83,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p,
-				tt.args.nodeCertificatesVolume, tt.args.reloadCredsUserVolume, tt.args.keystoreVolume)
+			got := newEnvironmentVars(tt.args.p, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
+				tt.args.reloadCredsUserVolume, tt.args.keystoreVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
