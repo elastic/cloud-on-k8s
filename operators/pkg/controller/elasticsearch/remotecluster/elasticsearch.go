@@ -105,10 +105,12 @@ func getRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string]
 // newRemoteClusterSetting creates a persistent setting to add or remove a remote cluster.
 func newRemoteClusterSetting(name string, seedHosts []string) esclient.Settings {
 	return esclient.Settings{
-		PersistentSettings: esclient.SettingGroup{
-			RemoteClusters: map[string]esclient.RemoteCluster{
-				name: {
-					Seeds: seedHosts,
+		PersistentSettings: &esclient.SettingGroup{
+			Cluster: esclient.Cluster{
+				RemoteClusters: map[string]esclient.RemoteCluster{
+					name: {
+						Seeds: seedHosts,
+					},
 				},
 			},
 		},

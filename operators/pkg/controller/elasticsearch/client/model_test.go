@@ -60,28 +60,32 @@ func TestModel_RemoteCluster(t *testing.T) {
 		{
 			name: "Simple remote cluster",
 			arg: Settings{
-				PersistentSettings: SettingGroup{
-					RemoteClusters: map[string]RemoteCluster{
-						"leader": {
-							Seeds: []string{"127.0.0.1:9300"},
+				PersistentSettings: &SettingGroup{
+					Cluster: Cluster{
+						RemoteClusters: map[string]RemoteCluster{
+							"leader": {
+								Seeds: []string{"127.0.0.1:9300"},
+							},
 						},
 					},
 				},
 			},
-			want: `{"persistent":{"cluster.remote":{"leader":{"seeds":["127.0.0.1:9300"]}}},"transient":{}}`,
+			want: `{"persistent":{"cluster":{"remote":{"leader":{"seeds":["127.0.0.1:9300"]}}}}}`,
 		},
 		{
 			name: "Deleted remote cluster",
 			arg: Settings{
-				PersistentSettings: SettingGroup{
-					RemoteClusters: map[string]RemoteCluster{
-						"leader": {
-							Seeds: nil,
+				PersistentSettings: &SettingGroup{
+					Cluster: Cluster{
+						RemoteClusters: map[string]RemoteCluster{
+							"leader": {
+								Seeds: nil,
+							},
 						},
 					},
 				},
 			},
-			want: `{"persistent":{"cluster.remote":{"leader":{"seeds":null}}},"transient":{}}`,
+			want: `{"persistent":{"cluster":{"remote":{"leader":{"seeds":null}}}}}`,
 		},
 	}
 	for _, tt := range tests {
