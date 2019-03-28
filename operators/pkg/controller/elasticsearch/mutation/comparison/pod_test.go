@@ -5,7 +5,6 @@
 package comparison
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
@@ -110,19 +109,17 @@ func Test_PodMatchesSpec(t *testing.T) {
 		name                      string
 		args                      args
 		want                      bool
-		wantErr                   error
 		expectedMismatches        []string
 		expectedMismatchesContain string
 	}{
 		{
-			name: "Call with invalid specs should return an error",
+			name: "No ES container should not match",
 			args: args{
 				pod:  pod.PodWithConfig{},
 				spec: pod.PodSpecContext{PodSpec: corev1.PodSpec{}},
 			},
 			want:               false,
-			wantErr:            errors.New("No container named elasticsearch in the given pod"),
-			expectedMismatches: nil,
+			expectedMismatches: []string{"no container named elasticsearch in the actual pod"},
 		},
 		{
 			name: "Matching pod should match",
@@ -131,7 +128,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
 			},
 			want:               true,
-			wantErr:            nil,
 			expectedMismatches: nil,
 		},
 		{
@@ -141,7 +137,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				spec: ESPodSpecContext("another-image", defaultCPULimit),
 			},
 			want:               false,
-			wantErr:            nil,
 			expectedMismatches: []string{"Docker image mismatch: expected another-image, actual image"},
 		},
 		{
@@ -154,7 +149,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				),
 			},
 			want:               false,
-			wantErr:            nil,
 			expectedMismatches: []string{"Environment variable foo mismatch: expected [bar], actual []"},
 		},
 		{
@@ -171,7 +165,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
 			},
 			want:               false,
-			wantErr:            nil,
 			expectedMismatches: []string{"Actual has additional env variables: map[foo:{foo bar nil}]"},
 		},
 		{
@@ -191,7 +184,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				),
 			},
 			want:               false,
-			wantErr:            nil,
 			expectedMismatches: []string{"Environment variable foo mismatch: expected [baz], actual [bar]"},
 		},
 		{
@@ -201,7 +193,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				spec: ESPodSpecContext(defaultImage, "600m"),
 			},
 			want:                      false,
-			wantErr:                   nil,
 			expectedMismatchesContain: "Different resource limits: expected ",
 		},
 		{
@@ -222,7 +213,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				},
 			},
 			want:                      false,
-			wantErr:                   nil,
 			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes []",
 		},
 		{
@@ -250,7 +240,6 @@ func Test_PodMatchesSpec(t *testing.T) {
 				},
 			},
 			want:                      false,
-			wantErr:                   nil,
 			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes [ foo]",
 		},
 		{
@@ -283,8 +272,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 					},
 				},
 			},
-			want:    true,
-			wantErr: nil,
+			want: true,
 		},
 		{
 			name: "Pod has a PVC with a VolumeMode set to something else than default setting",
@@ -316,8 +304,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 					},
 				},
 			},
-			want:    true,
-			wantErr: nil,
+			want: true,
 		},
 		{
 			name: "Pod has matching PVC",
@@ -343,8 +330,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 					},
 				},
 			},
-			want:    true,
-			wantErr: nil,
+			want: true,
 		},
 		{
 			name: "Pod has matching PVC, but spec does not match",
@@ -378,24 +364,18 @@ func Test_PodMatchesSpec(t *testing.T) {
 				},
 			},
 			want:                      false,
-			wantErr:                   nil,
 			expectedMismatchesContain: "Unmatched volumeClaimTemplate: foo has no match in volumes [ foo]",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match, mismatchReasons, err := PodMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
-			if tt.wantErr != nil {
-				assert.Error(t, err, tt.wantErr.Error())
-			} else {
-				assert.NoError(t, err, "No container named elasticsearch in the given pod")
-				assert.Equal(t, tt.want, match)
-				if tt.expectedMismatches != nil {
-					assert.EqualValues(t, tt.expectedMismatches, mismatchReasons)
-				}
-				if tt.expectedMismatchesContain != "" {
-					assert.Contains(t, mismatchReasons[0], tt.expectedMismatchesContain)
-				}
+			match, mismatchReasons := PodMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
+			assert.Equal(t, tt.want, match)
+			if tt.expectedMismatches != nil {
+				assert.EqualValues(t, tt.expectedMismatches, mismatchReasons)
+			}
+			if tt.expectedMismatchesContain != "" {
+				assert.Contains(t, mismatchReasons[0], tt.expectedMismatchesContain)
 			}
 		})
 	}

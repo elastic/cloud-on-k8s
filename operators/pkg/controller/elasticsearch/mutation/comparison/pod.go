@@ -12,17 +12,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func PodMatchesSpec(podWithConfig pod.PodWithConfig, spec pod.PodSpecContext, state reconcile.ResourcesState) (bool, []string, error) {
-	pod := podWithConfig.Pod
-	config := podWithConfig.Config
-
-	actualContainer, err := getEsContainer(pod.Spec.Containers)
-	if err != nil {
-		return false, nil, err
+func PodMatchesSpec(actualPod pod.PodWithConfig, spec pod.PodSpecContext, state reconcile.ResourcesState) (bool, []string) {
+	actualContainer, found := getEsContainer(actualPod.Pod.Spec.Containers)
+	if !found {
+		return false, []string{fmt.Sprintf("no container named %s in the actual pod", pod.DefaultContainerName)}
 	}
-	expectedContainer, err := getEsContainer(spec.PodSpec.Containers)
-	if err != nil {
-		return false, nil, err
+	expectedContainer, found := getEsContainer(spec.PodSpec.Containers)
+	if !found {
+		return false, []string{fmt.Sprintf("no container named %s in the expected pod", pod.DefaultContainerName)}
 	}
 
 	comparisons := []Comparison{
@@ -44,19 +41,19 @@ func PodMatchesSpec(podWithConfig pod.PodWithConfig, spec pod.PodSpecContext, st
 
 	for _, c := range comparisons {
 		if !c.Match {
-			return false, c.MismatchReasons, nil
+			return false, c.MismatchReasons
 		}
 	}
 
-	return true, nil, nil
+	return true, nil
 }
 
 // getEsContainer returns the elasticsearch container in the given pod
-func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
+func getEsContainer(containers []corev1.Container) (corev1.Container, bool) {
 	for _, c := range containers {
 		if c.Name == pod.DefaultContainerName {
-			return c, nil
+			return c, true
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", pod.DefaultContainerName)
+	return corev1.Container{}, false
 }
