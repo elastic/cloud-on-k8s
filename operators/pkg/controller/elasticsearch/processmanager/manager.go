@@ -5,11 +5,11 @@
 package processmanager
 
 import (
-	"github.com/hashicorp/go-reap"
 	"os"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/hashicorp/go-reap"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

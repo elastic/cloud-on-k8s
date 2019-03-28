@@ -6,20 +6,18 @@ package version6
 
 import (
 	"fmt"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"path"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

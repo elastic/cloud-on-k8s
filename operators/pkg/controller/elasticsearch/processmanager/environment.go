@@ -5,11 +5,12 @@
 package processmanager
 
 import (
+	"path"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	"path"
 )
 
 const (
