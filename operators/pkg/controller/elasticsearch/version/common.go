@@ -37,7 +37,7 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
@@ -88,7 +88,7 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.FlatConfig, error) {
@@ -124,6 +124,11 @@ func podSpec(
 		volume.NodeCertificatesSecretVolumeMountPath,
 	)
 
+	privateKeyVolume := volume.NewSecretVolumeWithMountPath(
+		initcontainer.PrivateKeySharedVolume.Name,
+		initcontainer.PrivateKeySharedVolume.Volume().Name,
+		initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount().MountPath)
+
 	keystoreVolume := volume.NewSecretVolumeWithMountPath(
 		p.KeystoreSecretRef.Name,
 		keystore.SecretVolumeName,
@@ -141,7 +146,7 @@ func podSpec(
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, reloadCredsSecret, keystoreVolume),
+			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, keystoreVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,

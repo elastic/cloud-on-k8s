@@ -90,6 +90,7 @@ func newInitContainers(
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
 	nodeCertificatesVolume volume.SecretVolume,
+	privateKeySecretVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
 	keystoreSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
@@ -113,7 +114,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
 
-	vars = append(vars, processmanager.NewEnvVars()...)
+	vars = append(vars, processmanager.NewEnvVars(nodeCertificatesVolume, privateKeySecretVolume)...)
 	vars = append(vars, keystore.NewEnvVars(p, nodeCertificatesVolume, reloadCredsUserSecretVolume, keystoreSecretVolume)...)
 
 	return vars

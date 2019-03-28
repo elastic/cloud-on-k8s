@@ -5,8 +5,11 @@
 package processmanager
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
+	"path"
 )
 
 const (
@@ -21,14 +24,16 @@ const (
 	EnvExpVars         = "PM_EXP_VARS"
 	EnvProfiler        = "PM_PROFILER"
 
-	BinaryName          = "process-manager"
-	CommandPath         = volume.ExtraBinariesPath + "/" + BinaryName
-	ElastisearchCommand = "/usr/local/bin/docker-entrypoint.sh"
+	CommandPath          = volume.ExtraBinariesPath + "/process-manager"
+	ElasticsearchCommand = "/usr/local/bin/docker-entrypoint.sh"
 )
 
-func NewEnvVars() []corev1.EnvVar {
+func NewEnvVars(nodeCertsSecretVolume, privateKeySecretVolume volume.VolumeLike) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: EnvProcName, Value: "es"},
-		{Name: EnvProcCmd, Value: ElastisearchCommand},
+		{Name: EnvProcCmd, Value: ElasticsearchCommand},
+		{Name: EnvTLS, Value: "true"},
+		{Name: EnvCertPath, Value: path.Join(nodeCertsSecretVolume.VolumeMount().MountPath, nodecerts.CertFileName)},
+		{Name: EnvKeyPath, Value: path.Join(privateKeySecretVolume.VolumeMount().MountPath, initcontainer.PrivateKeyFileName)},
 	}
 }
