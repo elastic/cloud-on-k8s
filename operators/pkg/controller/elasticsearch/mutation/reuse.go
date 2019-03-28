@@ -25,3 +25,52 @@ type ReuseOptions struct {
 func (o ReuseOptions) CanReuse() bool {
 	return o.ReusePods || o.ReusePVCs
 }
+
+// withReusablePods checks if some pods to delete can be reused for pods to create.
+// Matching pods can keep running with the same spec, but we'll restart
+// the inner ES process with a different configuration.
+func withReusablePods(changes Changes, options ReuseOptions) Changes {
+	// The given changes are kept unmodified, a new object is returned.
+	result := changes.Copy()
+
+	if !options.CanReuse() {
+		return result
+	}
+
+	for _, toCreate := range changes.ToCreate {
+		canReuse, matchingPod, remainingToDelete := findReusablePod(toCreate, result.ToDelete)
+		if canReuse {
+			result.ToReuse = append(result.ToReuse, PodToReuse{
+				Initial: matchingPod,
+				Target:  toCreate,
+			})
+			result.ToDelete = remainingToDelete
+		} else {
+			// cannot reuse, keep it to create
+			result.ToCreate = append(result.ToCreate, toCreate)
+		}
+	}
+	return result
+}
+
+func findReusablePod(
+	toCreate PodToCreate,
+	toDelete pod.PodsWithConfig,
+) (
+	isMatch bool,
+	matchingPod pod.PodWithConfig,
+	remainingToDelete pod.PodsWithConfig,
+) {
+
+	for i, candidate := range toDelete {
+		// the pod spec must be a match, but it's ok for the config to be different
+		match, _ := comparison.PodMatchesSpec(candidate, toCreate.PodSpecCtx, reconcile.ResourcesState{})
+		if match {
+			// we found a pod we can reuse, no need to delete it anymore
+			remainingToDelete = append(toDelete[:i], toDelete[i+1:]...)
+			return true, candidate, remainingToDelete
+		}
+	}
+	// cannot find a pod to reuse
+	return false, pod.PodWithConfig{}, toDelete
+}

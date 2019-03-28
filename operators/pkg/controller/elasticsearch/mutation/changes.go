@@ -17,6 +17,7 @@ type Changes struct {
 	ToCreate []PodToCreate
 	ToKeep   pod.PodsWithConfig
 	ToDelete pod.PodsWithConfig
+	ToReuse  []PodToReuse
 }
 
 // PodToCreate defines a pod to be created, along with
@@ -27,12 +28,23 @@ type PodToCreate struct {
 	MismatchReasons map[string][]string
 }
 
+// PodToReuse defines an existing pod that we'll
+// reuse for a different spec, by restarting the process
+// running in the pod without restarting the pod itself
+type PodToReuse struct {
+	// Initial (current) pod with its config
+	Initial pod.PodWithConfig
+	// Target pod after the pod reuse process
+	Target PodToCreate
+}
+
 // EmptyChanges creates an empty Changes with empty arrays (not nil)
 func EmptyChanges() Changes {
 	return Changes{
 		ToCreate: []PodToCreate{},
 		ToKeep:   pod.PodsWithConfig{},
 		ToDelete: pod.PodsWithConfig{},
+		ToReuse:  []PodToReuse{},
 	}
 }
 
@@ -52,6 +64,7 @@ func (c Changes) Copy() Changes {
 		ToCreate: append([]PodToCreate{}, c.ToCreate...),
 		ToKeep:   append(pod.PodsWithConfig{}, c.ToKeep...),
 		ToDelete: append(pod.PodsWithConfig{}, c.ToDelete...),
+		ToReuse:  append([]PodToReuse{}, c.ToReuse...),
 	}
 	return res
 }
@@ -107,6 +120,13 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 			matchingChanges.ToCreate = append(matchingChanges.ToCreate, toCreate)
 		} else {
 			remainingChanges.ToCreate = append(remainingChanges.ToCreate, toCreate)
+		}
+	}
+	for _, toReuse := range c.ToReuse {
+		if selector.Matches(labels.Set(toReuse.Initial.Pod.Labels)) {
+			matchingChanges.ToReuse = append(matchingChanges.ToReuse, toReuse)
+		} else {
+			remainingChanges.ToReuse = append(remainingChanges.ToReuse, toReuse)
 		}
 	}
 

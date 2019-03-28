@@ -220,6 +220,7 @@ func TestChanges_Group(t *testing.T) {
 						ToKeep:   pod.PodsWithConfig{namedPod("1")},
 						ToCreate: []PodToCreate{},
 						ToDelete: pod.PodsWithConfig{},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -241,6 +242,7 @@ func TestChanges_Group(t *testing.T) {
 						ToKeep:   pod.PodsWithConfig{namedPod("1")},
 						ToCreate: []PodToCreate{},
 						ToDelete: pod.PodsWithConfig{},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -269,6 +271,7 @@ func TestChanges_Group(t *testing.T) {
 						ToCreate: []PodToCreate{},
 						ToKeep:   pod.PodsWithConfig{fooPod},
 						ToDelete: pod.PodsWithConfig{},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
@@ -280,6 +283,7 @@ func TestChanges_Group(t *testing.T) {
 						ToKeep:   pod.PodsWithConfig{},
 						ToDelete: pod.PodsWithConfig{barPod},
 						ToCreate: []PodToCreate{bazPodToCreate},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{barPod.Pod.Name: barPod.Pod},
@@ -317,6 +321,7 @@ func TestChanges_Group(t *testing.T) {
 						ToCreate: []PodToCreate{},
 						ToKeep:   pod.PodsWithConfig{},
 						ToDelete: pod.PodsWithConfig{foobarPod},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{foobarPod.Pod.Name: foobarPod.Pod},
@@ -328,6 +333,7 @@ func TestChanges_Group(t *testing.T) {
 						ToKeep:   pod.PodsWithConfig{fooPod},
 						ToDelete: pod.PodsWithConfig{},
 						ToCreate: []PodToCreate{bazPodToCreate},
+						ToReuse:  []PodToReuse{},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},

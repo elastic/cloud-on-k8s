@@ -99,6 +99,10 @@ func mutableCalculateChanges(
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
 	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
 
+	// attempt to reuse some pods to delete for pods to create
+	changes = withReusablePods(changes, reuseOptions)
+	// TODO: sort pods to reuse?
+
 	return changes, nil
 }
 
