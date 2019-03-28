@@ -7,6 +7,6 @@ metadata:
   name: remotecluster-sample-1-2
 spec:
   remote:
-    inCluster:
+    k8sLocalRef:
       name: trust-two
       namespace: default

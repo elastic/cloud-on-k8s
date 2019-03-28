@@ -4,7 +4,7 @@ The files in this directory contain the resources needed to test cross-cluster r
 1 . Create two Elasticsearch clusters
 
 ```bash
-$ kubectl apply -f elasticsearch_v1alpha1_elasticsearchcluster_nodes.yml
+$ kubectl apply -f clusters.yml
 elasticsearch.elasticsearch.k8s.elastic.co/trust-one configured
 elasticsearch.elasticsearch.k8s.elastic.co/trust-two configured
 ```
@@ -25,7 +25,7 @@ pod/trust-two-es-bldzf4wwpg   2/2     Running   0          2m
 2 . Declare `trust-two` as a remote cluster of `trust-one` 
 
 ```bash
-$ kubectl apply -f elasticsearch_v1alpha1_remotecluster-1-2.yaml
+$ kubectl apply -f remote.yaml
 remotecluster.elasticsearch.k8s.elastic.co/remotecluster-sample-1-2 created
 ```
 
@@ -48,16 +48,17 @@ metadata:
 [...]
 spec:
   remote:
-    inCluster:
+    k8sLocalRef:
       name: trust-two
       namespace: default
 status:
   cluster-name: trust-one
-  inClusterRemoteSelector:
-    name: trust-two
-    namespace: default
-  inClusterRemoteTrustRelationshipName: rcr-remotecluster-sample-1-2-default
-  localTrustRelationshipName: rc-remotecluster-sample-1-2
+  k8sLocal:
+    remoteSelector:
+      name: trust-two
+      namespace: default
+    remoteTrustRelationship: rcr-remotecluster-sample-1-2-default
+  localTrustRelationship: rc-remotecluster-sample-1-2
   seedHosts:
   - trust-two-es-discovery.default.svc.cluster.local:9300
   state: Propagated
