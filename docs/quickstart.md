@@ -7,7 +7,11 @@ This quickstart tutorial will guide you through:
 * Deploying the operator in your Kubernetes cluster
 * Deploying an Elasticsearch cluster
 * Deploying a Kibana instance
-* Upgrading your deployment
+* Accessing Elasticsearch and Kibana
+* Going further
+    * Securing your cluster
+    * Using persistent storage
+    * Additional features
 
 ## Requirements
 
@@ -20,7 +24,7 @@ This quickstart tutorial will guide you through:
 
 Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
-```
+```bash
 kubectl apply -f config/crds
 ```
 
@@ -30,7 +34,7 @@ TODO: use the official operator image once built, and get rid of kustomize.
 
 To install the operator along with its RBAC rules, run:
 
-```
+```bash
 export OPERATOR_IMAGE=TODOFIXME
 kustomize build config/global-operator | sed -e "s|\$OPERATOR_IMAGE|$OPERATOR_IMAGE|g" | kubectl apply -f -
 ```
@@ -39,81 +43,219 @@ kustomize build config/global-operator | sed -e "s|\$OPERATOR_IMAGE|$OPERATOR_IM
 
 To get some insights about current reconciliation loop iterations, run:
 
-```
+```bash
 kubectl --namespace=elastic-system logs -f statefulset.apps/elastic-global-operator
 ```
 
-## Deploy Elasticsearch and Kibana
+## Deploy Elasticsearch
 
-### 3-nodes cluster sample
+### 1-node cluster sample
 
-A sample cluster definition [is provided](../../operators/config/samples/es_kibana_sample.yaml) in the samples directory. It describes a 3 nodes cluster, associated to a Kibana instance. The cluster endpoint is exposed through a LoadBalancer.
+Let's apply a simple Elasticsearch cluster specification, with one node:
 
-*Important:* this sample cluster does not rely on PersistentVolumes. Consider it for demonstration purpose only. For more details on setting-up production grade clusters with reliable storage, see TODO: doc on storage here.
-
-Let's deploy it:
-
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: sample
+spec:
+  version: 6.4.2
+  setVmMaxMapCount: true
+  topology:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    nodeCount: 1
+EOF
 ```
-kubectl apply -f config/samples/es_kibana_sample.yaml
-```
 
-The operator will take care of managing a set of pods and resources corresponding to the desired cluster. Deployment to a running state can take up to a few minutes.
+The operator will automatically take care of managing pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
-### Retrieve cluster details
+### Monitor cluster health and creation progress
 
 Get an overview of current Elasticsearch clusters in the Kubernetes cluster, including their health, version and number of nodes:
 
-```
+```bash
 kubectl get elasticsearch
 ```
 
-The same command is available for Kibana:
+While the cluster is being created, you might notice there is no "health" yet and the phase is still "Pending". After a while the cluster should appear as "Running", with a green health.
 
-````
+You should notice one Pod in the process of being started:
+
+```bash
+kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=sample'
+```
+
+### Access Elasticsearch
+
+A `ClusterIP` Service is automatically created for your cluster:
+
+```
+kubectl get service sample-es
+```
+
+You can use it to reach Elasticsearch from within the Kubernetes cluster, using the URL `http://sample-es:9200`.
+
+Let's use `kubectl port-forward` to access it from our local workstation:
+
+```bash
+kubectl port-forward service/sample-es 9200
+```
+
+Then in another shell:
+
+```bash
+curl "localhost:9200/_cat/health?v"
+```
+
+## Deploy Kibana
+
+### Target our sample Elasticsearch cluster
+
+Let's specify a Kibana instance and associate it with our sample Elasticsearch cluster:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  name: sample
+spec:
+  version: 6.4.2
+  nodeCount: 1
+---
+apiVersion: associations.k8s.elastic.co/v1alpha1
+kind: KibanaElasticsearchAssociation
+metadata:
+  name: kibana-es-sample
+spec:
+  elasticsearch:
+    name: sample
+    namespace: default
+  kibana:
+    name: sample
+    namespace: default
+EOF
+```
+
+### Monitor Kibana health and creation progress
+
+Similar to Elasticsearch, you can retrieve some details about Kibana instances:
+
+```bash
 kubectl get kibana
-````
-
-### Access the Elasticsearch endpoint
-
-Once the cluster is ready, you can access it through its public endpoint, as created by the LoadBalancer service.
-
-```
-kubectl get service elasticsearch-sample-es
 ```
 
-Notice the `external-ip` column, corresponding to the public endpoint. You can retrieve the IP only:
+And the associated Pods:
 
-```
-export PUBLIC_IP=$(kubectl get service elasticsearch-sample-es -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-```
-
-Since the sample is using a `Trial` license configured with XPack security, the cluster is using TLS and user authentication.
-
-A sample user `elastic` was created automatically. To retrieve its password:
-
-```
-export PASSWORD=$(kubectl get secret elasticsearch-sample-elastic-user -o jsonpath='{.data.elastic}' | base64 -D)
-```
-
-You can then attempt a request to the Elasticsearch endpoint:
-
-```
-curl -k -u elastic:$PASSWORD https://$PUBLIC_IP:9200
-```
-
-Notice how the request above is ignoring TLS certificates (`-k`).
-A Certificate Authority was setup for this cluster, that you can retrieve and use to validate the server identity:
-
-```
-kubectl get secret elasticsearch-sample-ca
+```bash
+kubectl get pod --selector='kibana.k8s.elastic.co/name=sample'
 ```
 
 ### Access Kibana
 
-Retrieve Kibana public IP:
+A`ClusterIP` Service was automatically created for Kibana:
 
 ```
-kubectl get service kibana-sample-kibana
+kubectl get service sample-kibana
 ```
 
-You can then access it from your browser, by using port 5601.
+Let's use `kubectl port-forward` to access it from our local workstation:
+
+```bash
+kubectl port-forward service/sample-kibana 5601
+```
+
+You can then open http://localhost:5601 in your browser.
+
+## Upgrade your deployment
+
+We can easily apply any modification to the original cluster specification. The operator will ensure changes are applied to the existing cluster while avoiding downtime.
+
+Let's grow the cluster to 3 nodes:
+
+```bash
+cat <<EOF | kubectl apply -f -
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: sample
+spec:
+  version: 6.4.2
+  setVmMaxMapCount: true
+  topology:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    nodeCount: 3
+EOF
+```
+
+## Going further
+
+### Securing your cluster
+
+Any production-grade Elasticsearch deployment should be setup with security. There are several ways to achieve that goal. We recommend:
+
+* Using XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
+* Setting up an ingress proxy layer (TODO: link here to the nginx ingress sample)
+
+### Using persistent storage
+
+The sample cluster we just deployed is using an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which, due to its limitations, is not intended for stateful workloads. 
+
+You can request a PersistentVolumeClaim in the cluster specification, to target any PersistentVolume class available in your Kubernetes cluster:
+
+```yaml
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: my-cluster
+spec:
+  version: "6.4.2"
+  setVmMaxMapCount: true
+  topology:
+  - nodeTypes:
+      master: true
+      data: true
+      ingest: true
+    nodeCount: 3
+    volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100GB
+        storageClassName: gcePersistentDisk # can be any available storage class
+```
+
+To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
+ 
+ * [elastic local volume dynamic provisioner](https://github.com/elastic/k8s-operators/tree/master/local-volume) to setup dynamic local volumes based on LVM
+ * [kubernetes-sigs local volume static provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to setup static local volumes
+ 
+### Additional features
+
+Several features are supported by the operator:
+
+* Node-to-node TLS encryption
+* User management
+* Automated snapshots
+* Nodes resources limitations (CPU, RAM, disk)
+* Cluster update strategies
+* Version upgrades
+* Node attributes
+* Cross-cluster search and replication
+* Licensing
+* Operator namespace management
+* APM server deployments
+* Pausing reconciliations
+
+TODO: add a link to the homepage of all features documentation.
