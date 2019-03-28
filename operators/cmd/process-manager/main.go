@@ -35,8 +35,8 @@ func main() {
 			exitOnErr(err)
 
 			sig := waitForStop()
-			log.Info("Forward signal", "sig", sig)
 
+			log.Info("Forward signal", "sig", sig)
 			err = procMgr.Stop(sig)
 			if err != nil {
 				exitOnErr(err)

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/pprof"
-	"os"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
@@ -83,8 +82,7 @@ func (s *ProcessServer) Start() {
 			if err == http.ErrServerClosed {
 				log.Info("HTTP server closed")
 			} else {
-				log.Error(err, "Could not start HTTP server")
-				os.Exit(1)
+				s.esProcess.GracefulExit("could not start http server", err)
 			}
 		}
 	}()

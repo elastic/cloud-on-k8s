@@ -7,6 +7,7 @@ package processmanager
 import (
 	"github.com/hashicorp/go-reap"
 	"os"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -59,12 +60,12 @@ func (pm ProcessManager) Start() error {
 		go reap.ReapChildren(nil, nil, nil, nil)
 	}
 
+	pm.server.Start()
+
 	_, err := pm.process.Start()
 	if err != nil {
 		return err
 	}
-
-	pm.server.Start()
 
 	if pm.keystoreUpdater != nil {
 		pm.keystoreUpdater.Start()
@@ -74,10 +75,16 @@ func (pm ProcessManager) Start() error {
 	return nil
 }
 
-// Stop stops all processes, the process reaper and the HTTP server in a blocking way.
+// Stop stops the HTTP server, forwards a given signal to the process and wait for its termination.
 func (pm ProcessManager) Stop(sig os.Signal) error {
 	pm.server.Stop()
+
 	_, err := pm.process.Kill(sig)
+
+	// Wait for the process to die
+	for pm.process.isAlive("process manager signal forwarding") {
+		time.Sleep(1 * time.Second)
+	}
 
 	log.Info("Process manager stopped")
 	return err

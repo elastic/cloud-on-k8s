@@ -52,7 +52,6 @@ const (
 	startFailed ProcessState = "startFailed"
 	stopFailed  ProcessState = "stopFailed"
 	killFailed  ProcessState = "killFailed"
-	failed      ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -160,11 +159,13 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 		errState = killFailed
 	}
 
+	// Send signal to the whole process group
 	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
 		if p.state == started && err.Error() == ErrNoSuchProcess {
-			// Should not happen
-			exitOnEsFailure(stopAction, err)
+			// No process but still marked started? This should not happen.
+			// Normally the termination of the process is intercepted to update the process state.
+			p.GracefulExit("unexpected state: no process to kill, but process still marked started", err)
 		}
 		state = errState
 	}
@@ -198,19 +199,23 @@ func (p *Process) isAlive(action string) bool {
 	alive := err == nil
 
 	// Update the state if the process is dead
-	state := failed
 	if !alive {
-		switch p.state {
+		state := p.state
+		log.Info("isAlive", "action", action, "state", p.state)
+		switch state {
 		case stopping:
 			state = stopped
+			p.updateState(action, state, p.pid, noSignal, err)
 		case killing:
 			state = killed
+			p.updateState(action, state, p.pid, noSignal, err)
 		case started:
-			exitOnEsFailure(waitAction, err)
+			// No process but still marked started. Something unexpected happened to the process!
+			// The process is terminated without the process manager schedules a stop or a kill.
+			// Exit the program hoping to be restarted by something (as a kubelet?).
+			p.GracefulExit("unexpected state: process terminated without stop/kill", err)
 		}
 	}
-
-	p.updateState(action, state, p.pid, noSignal, err)
 
 	return alive
 }
@@ -239,7 +244,32 @@ func computeConfigChecksum() (string, error) {
 	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
 }
 
-func exitOnEsFailure(action string, err error) {
-	log.Info("Fatal error: process es failed", "action", action, "err", err)
+// GracefulExit exits the program after sending a soft kill to the process with a timeout for a hard kill.
+func (p *Process) GracefulExit(reason string, err error) {
+	log.Info("Graceful exit", "reason", reason, "err", err)
+
+	// Timeout to kill hard if kill soft is not enough
+	time.AfterFunc(10*time.Second, func() {
+		log.Info("Graceful exit, kill hard")
+		_, _ = p.Kill(killHardSignal)
+	})
+
+	// Timeout to exit if the process is still alive after the kill(s)
+	time.AfterFunc(10*time.Second, func() {
+		log.Info("Graceful exit, exit timeout")
+		os.Exit(1)
+	})
+
+	// Kill soft
+	log.Info("Graceful exit, kill soft")
+	_, _ = p.Kill(killSoftSignal)
+
+	// Wait for the process to die
+	for p.isAlive("graceful exit") {
+		time.Sleep(1 * time.Second)
+	}
+
+	// Bye!
+	log.Info("Exited")
 	os.Exit(1)
 }
