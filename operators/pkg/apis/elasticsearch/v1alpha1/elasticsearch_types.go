@@ -155,6 +155,9 @@ type UpdateStrategy struct {
 
 	// ChangeBudget is the change budget that should be used when performing mutations to the cluster.
 	ChangeBudget *ChangeBudget `json:"changeBudget,omitempty"`
+
+	ReusePods              bool `json:"reusePods,omitempty"`
+	ReusePersistentVolumes bool `json:"reusePersistentVolumes,omitempty"`
 }
 
 // ResolveChangeBudget resolves the optional ChangeBudget into the user-provided one or a defaulted one.

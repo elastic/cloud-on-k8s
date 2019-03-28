@@ -498,6 +498,10 @@ func (d *defaultDriver) calculateChanges(
 		func(ctx pod.PodSpecContext) (corev1.Pod, error) {
 			return esversion.NewPod(d.Version, es, ctx)
 		},
+		mutation.ReuseOptions{
+			ReusePods: es.Spec.UpdateStrategy.ReusePods,
+			ReusePVCs: es.Spec.UpdateStrategy.ReusePersistentVolumes,
+		},
 	)
 	if err != nil {
 		return nil, err

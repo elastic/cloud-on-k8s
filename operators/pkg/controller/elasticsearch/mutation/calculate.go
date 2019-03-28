@@ -26,7 +26,12 @@ type PodComparisonResult struct {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.ResourcesState, podBuilder PodBuilder) (Changes, error) {
+func CalculateChanges(
+	expectedPodSpecCtxs []pod.PodSpecContext,
+	state reconcile.ResourcesState,
+	podBuilder PodBuilder,
+	reuseOptions ReuseOptions,
+) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
@@ -35,7 +40,7 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.
 	deletingCopy := make(pod.PodsWithConfig, len(state.DeletingPods))
 	copy(deletingCopy, state.DeletingPods)
 
-	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder, deletingCopy)
+	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder, deletingCopy, reuseOptions)
 }
 
 func mutableCalculateChanges(
@@ -44,6 +49,7 @@ func mutableCalculateChanges(
 	state reconcile.ResourcesState,
 	podBuilder PodBuilder,
 	deletingPods pod.PodsWithConfig,
+	reuseOptions ReuseOptions,
 ) (Changes, error) {
 	changes := EmptyChanges()
 

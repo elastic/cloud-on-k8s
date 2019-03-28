@@ -141,9 +141,18 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
-				return corev1.Pod{}, nil // TODO: fix
-			})
+			reuseOptions := ReuseOptions{
+				ReusePVCs: false,
+				ReusePods: false,
+			}
+			got, err := CalculateChanges(
+				tt.args.expected,
+				tt.args.state,
+				func(ctx pod.PodSpecContext) (corev1.Pod, error) {
+					return corev1.Pod{}, nil // TODO: fix
+				},
+				reuseOptions,
+			)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToCreate), len(got.ToCreate))
