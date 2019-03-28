@@ -155,7 +155,7 @@ kubectl get pod --selector='kibana.k8s.elastic.co/name=sample'
 
 ### Access Kibana
 
-A`ClusterIP` Service was automatically created for Kibana:
+A `ClusterIP` Service was automatically created for Kibana:
 
 ```
 kubectl get service sample-kibana
