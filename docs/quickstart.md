@@ -206,7 +206,7 @@ Any production-grade Elasticsearch deployment should be setup with security. The
 
 ### Using persistent storage
 
-The sample cluster we just deployed is using an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which, due to its limitations, is not intended for stateful workloads. 
+The sample cluster we just deployed is using an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which, due to its limitations, may not qualify for production workloads. 
 
 You can request a PersistentVolumeClaim in the cluster specification, to target any PersistentVolume class available in your Kubernetes cluster:
 
