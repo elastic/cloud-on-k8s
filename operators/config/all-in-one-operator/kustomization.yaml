@@ -1,6 +1,9 @@
+# namespace to be applied to all resources
+namespace: elastic-system
+
 resources:
 - namespace.yaml
-- role_bindings.yaml
-- role.yaml
+- cluster_role_bindings.yaml
+- cluster_role.yaml
 - service_account.yaml
 - operator.yaml

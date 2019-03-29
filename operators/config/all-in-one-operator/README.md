@@ -1,4 +1,6 @@
-# Single namespace operator resources
+# All-in-one operator resources
+
+This operator deployment combines all roles in a single process.
 
 The following yaml files can be customized as required:
 
