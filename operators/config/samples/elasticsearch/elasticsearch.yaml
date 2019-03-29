@@ -7,7 +7,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
-  version: "6.4.2"
+  version: "6.7.0"
   licenseType: trial # can be "basic", "trial", "gold", "platinum"
   setVmMaxMapCount: true
   topology:
