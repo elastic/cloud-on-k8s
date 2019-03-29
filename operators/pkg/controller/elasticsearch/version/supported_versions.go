@@ -13,11 +13,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// LowestHighestSupportedVersions expresses the wire-format compatibility range for a version.
 type LowestHighestSupportedVersions struct {
 	LowestSupportedVersion  version.Version
 	HighestSupportedVersion version.Version
 }
 
+// VerifySupportsExistingPods checks the given pods against the supported version range in lh.
 func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 	pods []corev1.Pod,
 ) error {
@@ -26,23 +28,29 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 		if err != nil {
 			return err
 		}
-		if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
-			return fmt.Errorf(
-				"pod %s has version %v, which is older than the lowest supported version %s",
-				pod.Name,
-				v,
-				lh.LowestSupportedVersion,
-			)
-		}
+		return lh.VerifySupportsExistingVersion(*v, fmt.Sprintf("pod %s", pod.Name))
+	}
+	return nil
+}
 
-		if !lh.HighestSupportedVersion.IsSameOrAfter(*v) {
-			return fmt.Errorf(
-				"pod %s has version %v, which is newer than the highest supported version %s",
-				pod.Name,
-				v,
-				lh.HighestSupportedVersion,
-			)
-		}
+// VerifySupportsExistingVersion compares a given with the supported version range and returns an error if out of bounds.
+func (lh LowestHighestSupportedVersions) VerifySupportsExistingVersion(v version.Version, errPrefix string) error {
+	if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
+		return fmt.Errorf(
+			"%s has version %v, which is older than the lowest supported version %s",
+			errPrefix,
+			v,
+			lh.LowestSupportedVersion,
+		)
+	}
+
+	if !lh.HighestSupportedVersion.IsSameOrAfter(v) {
+		return fmt.Errorf(
+			"%s has version %v, which is newer than the highest supported version %s",
+			errPrefix,
+			v,
+			lh.HighestSupportedVersion,
+		)
 	}
 	return nil
 }

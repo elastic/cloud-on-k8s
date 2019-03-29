@@ -9,6 +9,8 @@ import (
 	"net/http"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
@@ -34,10 +36,25 @@ type ValidationResult struct {
 	Reason  string
 }
 
+var OK = ValidationResult{Allowed: true}
+
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
 	hasMaster,
+	supportedVersion,
 	noDowngrades,
+	validUpgradePath,
+}
+
+func supportedVersion(_, esCluster *estype.Elasticsearch) ValidationResult {
+	proposedVersion, err := version.Parse(esCluster.Spec.Version)
+	if err != nil {
+		return ValidationResult{Allowed: false, Reason: parseVersionErrMsg}
+	}
+	if v := driver.SupportedVersions(*proposedVersion); v == nil {
+		return ValidationResult{Allowed: false, Reason: unsupportedVersion(proposedVersion)}
+	}
+	return OK
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
@@ -47,7 +64,7 @@ func hasMaster(_, esCluster *estype.Elasticsearch) ValidationResult {
 		hasMaster = hasMaster || (t.NodeTypes.Master && t.NodeCount > 0)
 	}
 	if hasMaster {
-		return ValidationResult{Allowed: true}
+		return OK
 	}
 	return ValidationResult{Reason: masterRequiredMsg}
 }

@@ -63,6 +63,10 @@ type Options struct {
 
 // NewDriver returns a Driver that can operate the provided version
 func NewDriver(opts Options) (Driver, error) {
+	supported := SupportedVersions(opts.Version)
+	if supported == nil {
+		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
+	}
 	driver := &defaultDriver{
 		Options: opts,
 
@@ -74,6 +78,7 @@ func NewDriver(opts Options) (Driver, error) {
 		observedStateResolver:  opts.Observers.ObservedStateResolver,
 		resourcesStateResolver: esreconcile.NewResourcesStateFromAPI,
 		usersReconciler:        user.ReconcileUsers,
+		supportedVersions:      *supported,
 	}
 
 	switch opts.Version.Major {
@@ -88,26 +93,33 @@ func NewDriver(opts Options) (Driver, error) {
 		// we approximate this by also handling zen 1, even in 7
 		// TODO: only do this if there's 6.x masters in the cluster.
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
-
-		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
-			// 6.7.0 is the lowest wire compatibility version for 7.x
-			LowestSupportedVersion: version.MustParse("6.7.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("7.0.99"),
-		}
-
 	case 6:
 		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
-		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
-			// 5.6.0 is the lowest wire compatibility version for 6.x
-			LowestSupportedVersion: version.MustParse("5.6.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.7.99"),
-		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
 	}
 
 	return driver, nil
+}
+
+func SupportedVersions(v version.Version) *esversion.LowestHighestSupportedVersions {
+	var res *esversion.LowestHighestSupportedVersions
+	switch v.Major {
+	case 6:
+		res = &esversion.LowestHighestSupportedVersions{
+			// 5.6.0 is the lowest wire compatibility version for 6.x
+			LowestSupportedVersion: version.MustParse("5.6.0"),
+			// higher may be possible, but not proven yet, lower may also be a requirement...
+			HighestSupportedVersion: version.MustParse("6.7.99"),
+		}
+	case 7:
+		res = &esversion.LowestHighestSupportedVersions{
+			// 6.7.0 is the lowest wire compatibility version for 7.x
+			LowestSupportedVersion: version.MustParse("6.7.0"),
+			// higher may be possible, but not proven yet, lower may also be a requirement...
+			HighestSupportedVersion: version.MustParse("7.0.99"),
+		}
+	}
+	return res
 }

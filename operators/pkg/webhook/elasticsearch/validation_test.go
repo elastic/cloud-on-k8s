@@ -5,9 +5,12 @@
 package elasticsearch
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 )
 
 func Test_hasMaster(t *testing.T) {
@@ -93,6 +96,44 @@ func Test_hasMaster(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := hasMaster(nil, &tt.args.esCluster); got != tt.want {
 				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_supportedVersion(t *testing.T) {
+	type args struct {
+		esCluster *estype.Elasticsearch
+	}
+	tests := []struct {
+		name string
+		args args
+		want ValidationResult
+	}{
+		{
+			name: "unsupported FAIL",
+			args: args{
+				esCluster: es("1.0.0"),
+			},
+			want: ValidationResult{Allowed: false, Reason: unsupportedVersion(&version.Version{
+				Major: 1,
+				Minor: 0,
+				Patch: 0,
+				Label: "",
+			})},
+		},
+		{
+			name: "supported OK",
+			args: args{
+				esCluster: es("6.7.0"),
+			},
+			want: OK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := supportedVersion(nil, tt.args.esCluster); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
 			}
 		})
 	}
