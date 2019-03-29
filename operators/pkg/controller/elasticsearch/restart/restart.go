@@ -12,7 +12,7 @@ var log = logf.Log.WithName("mutation")
 func HandlePodsReuse(client k8s.Client, changes mutation.Changes) (bool, error) {
 	if changes.RequireFullClusterRestart {
 		log.V(1).Info("changes requiring full cluster restart")
-		// Schedule a full cluster restart before doing any other changes
+		// Schedule a coordinated restart on all pods to reuse
 		if err := scheduleCoordinatedRestart(client, changes.ToReuse); err != nil {
 			return false, err
 		}
@@ -27,33 +27,42 @@ func HandlePodsReuse(client k8s.Client, changes mutation.Changes) (bool, error) 
 			pod.PodWithConfig{Pod: p.Initial.Pod, Config: p.Target.PodSpecCtx.Config},
 		)
 	}
-	// and pods to keep (already have the correct config)
+	// and pods to keep: they already have the correct config but
+	// may still be in the restart process
 	for _, p := range changes.ToKeep {
 		pods = append(pods, p)
 	}
 
-	return processPods(client, pods)
+	// go through the restart state machine for each pod
+	done, err := processPods(client, pods)
+	if err != nil {
+		return false, err
+	}
+
+	// consider done if no full cluster restart is required anymore,
+	// and all pods have finished their restart process
+	return !changes.RequireFullClusterRestart && done, nil
 }
 
 func processPods(client k8s.Client, pods pod.PodsWithConfig) (bool, error) {
-	countDone := 0
+	allDone := true
 	for _, p := range pods {
-		log.V(1).Info("Processing pod for reuse", "pod", p.Pod.Name)
 		currentPhase, isSet := getPhase(p.Pod)
 		if !isSet {
-			// nothing to do (yet) for this pod, first annotation isn't yet propagated
+			// nothing to do: either not scheduled for restart or annotation not propagated yet
 			continue
 		}
+		log.V(1).Info("Processing pod for reuse", "pod", p.Pod.Name)
 		done, err := ExecutePhase(client, p, currentPhase, pods)
 		if err != nil {
 			return false, err
 		}
-		if done {
-			countDone++
+		if !done {
+			allDone = false
 		}
 	}
 
-	return countDone == len(pods), nil
+	return allDone, nil
 }
 
 func scheduleCoordinatedRestart(c k8s.Client, toReuse []mutation.PodToReuse) error {

@@ -288,6 +288,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 	if !done {
+		log.V(1).Info("Pods reuse is not over yet")
 		return results.WithResult(defaultRequeue)
 	}
 
@@ -530,9 +531,13 @@ func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.S
 // protocolForESPods inspects the given pods to return the protocol (http or https)
 // that should be used to request the cluster.
 // It does account for transient ongoing full cluster restarts where the cluster is
-// migrating from TLS to non-TLS, during which we still need to reach the cluster.
-// Otherwise, it's usually sufficient to use `network.ProtocolForCluster()` to target the
-// expected protocol.
+// migrating from TLS to non-TLS (or the other way around), during which we still need to
+// reach the cluster with the protocol pods are using, not the "expected" one.
+//
+// Outside the reconciliation loop, it's usually sufficient to use `network.ProtocolForCluster()`
+// to target the expected protocol (does not require the state of all pods).
+// `network.ProtocolForCluster()` would not work during TLS to non-TLS migration,
+// but a downtime is expected in such situation anyway.
 func protocolForESPods(pods pod.PodsWithConfig) string {
 	// default to https, unless at least one pod is configured for http
 	for _, p := range pods {
