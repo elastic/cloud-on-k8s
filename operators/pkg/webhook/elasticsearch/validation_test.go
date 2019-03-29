@@ -91,7 +91,7 @@ func Test_hasMaster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hasMaster(tt.args.esCluster); got != tt.want {
+			if got := hasMaster(nil, &tt.args.esCluster); got != tt.want {
 				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
 			}
 		})
