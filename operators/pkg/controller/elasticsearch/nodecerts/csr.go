@@ -30,7 +30,7 @@ func maybeRequestCSR(pod corev1.Pod, csrClient certificates.CSRClient, lastCSRUp
 	if err != nil {
 		log.V(1).Info("lastCSRUpdate time cannot be parsed, probably because not set yet. Ignoring.", "pod", pod.Name)
 	} else {
-		delay := time.Now().Sub(lastUpdate)
+		delay := time.Since(lastUpdate)
 		if delay > 0 && delay < CSRRequestDelay {
 			log.V(1).Info("CSR was already updated recently, let's wait before requesting a new one", "pod", pod.Name)
 			return nil, nil

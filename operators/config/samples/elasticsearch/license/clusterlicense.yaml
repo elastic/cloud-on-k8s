@@ -1,9 +1,11 @@
+# This sample demonstrates how to create a cluster license that will be
+# automatically applied to a running Elasticsearch cluster with the same name.
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: ClusterLicense
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-  name: clusterlicense-sample
+  name: mycluster # same name as the cluster
 spec:
   startDateInMillis: 1548115200000
   issuer: "John Doe"
@@ -15,12 +17,12 @@ spec:
   uid: "893361dc-9749-4997-93cb-802e3d7fa4xx"
   signatureRef:
     namespace: "default"
-    name: "stack-sample-license"
+    name: "mycluster-license"
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: "stack-sample-license"
+  name: "mycluster-license"
 type: Opaque
 data:
   sig: "not-a-valid-signature"

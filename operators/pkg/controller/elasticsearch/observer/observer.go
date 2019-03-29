@@ -36,6 +36,9 @@ var DefaultSettings = Settings{
 	RequestTimeout:      DefaultRequestTimeout,
 }
 
+// OnObservation is a function that gets executed when a new state is observed
+type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
+
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
@@ -49,21 +52,23 @@ type Observer struct {
 	stopChan chan struct{}
 	stopOnce sync.Once
 
-	lastObservationTime time.Time
-	lastState           State
-	mutex               sync.RWMutex
+	onObservation OnObservation
+
+	lastState State
+	mutex     sync.RWMutex
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
 	observer := Observer{
-		cluster:      cluster,
-		esClient:     esClient,
-		creationTime: time.Now(),
-		settings:     settings,
-		stopChan:     make(chan struct{}),
-		stopOnce:     sync.Once{},
-		mutex:        sync.RWMutex{},
+		cluster:       cluster,
+		esClient:      esClient,
+		creationTime:  time.Now(),
+		settings:      settings,
+		stopChan:      make(chan struct{}),
+		stopOnce:      sync.Once{},
+		onObservation: onObservation,
+		mutex:         sync.RWMutex{},
 	}
 	log.Info("Creating observer", "cluster", cluster)
 	return &observer
@@ -89,13 +94,6 @@ func (o *Observer) LastState() State {
 	o.mutex.RLock()
 	defer o.mutex.RUnlock()
 	return o.lastState
-}
-
-// LastObservationTime returns the time of the last observation
-func (o *Observer) LastObservationTime() time.Time {
-	o.mutex.RLock()
-	defer o.mutex.RUnlock()
-	return o.lastObservationTime
 }
 
 // run the observer main loop, until stopped
@@ -124,14 +122,20 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 	}
 }
 
-// retrieveState retrieves the current ES state and stores it in lastState
+// retrieveState retrieves the current ES state, executes onObservation,
+// and stores the new state
 func (o *Observer) retrieveState(ctx context.Context) {
 	log.V(4).Info("Retrieving state", "cluster", o.cluster)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
-	state := RetrieveState(timeoutCtx, o.esClient)
+
+	newState := RetrieveState(timeoutCtx, o.esClient)
+
+	if o.onObservation != nil {
+		o.onObservation(o.cluster, o.LastState(), newState)
+	}
+
 	o.mutex.Lock()
-	o.lastState = state
-	o.lastObservationTime = time.Now()
+	o.lastState = newState
 	o.mutex.Unlock()
 }

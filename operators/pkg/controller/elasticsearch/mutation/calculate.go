@@ -7,6 +7,7 @@ package mutation
 import (
 	"sort"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation/comparison"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
@@ -19,9 +20,9 @@ type PodBuilder func(ctx pod.PodSpecContext) (corev1.Pod, error)
 // PodComparisonResult holds information about pod comparison result
 type PodComparisonResult struct {
 	IsMatch               bool
-	MatchingPod           corev1.Pod
+	MatchingPod           pod.PodWithConfig
 	MismatchReasonsPerPod map[string][]string
-	RemainingPods         []corev1.Pod
+	RemainingPods         pod.PodsWithConfig
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
@@ -29,9 +30,9 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
-	actualCopy := make([]corev1.Pod, len(state.CurrentPods))
+	actualCopy := make(pod.PodsWithConfig, len(state.CurrentPods))
 	copy(actualCopy, state.CurrentPods)
-	deletingCopy := make([]corev1.Pod, len(state.DeletingPods))
+	deletingCopy := make(pod.PodsWithConfig, len(state.DeletingPods))
 	copy(deletingCopy, state.DeletingPods)
 
 	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder, deletingCopy)
@@ -39,10 +40,10 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.
 
 func mutableCalculateChanges(
 	expectedPodSpecCtxs []pod.PodSpecContext,
-	actualPods []corev1.Pod,
+	actualPods pod.PodsWithConfig,
 	state reconcile.ResourcesState,
 	podBuilder PodBuilder,
-	deletingPods []corev1.Pod,
+	deletingPods pod.PodsWithConfig,
 ) (Changes, error) {
 	changes := EmptyChanges()
 
@@ -95,16 +96,13 @@ func mutableCalculateChanges(
 	return changes, nil
 }
 
-func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, state reconcile.ResourcesState) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.PodsWithConfig, state reconcile.ResourcesState) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
-	for i, pod := range pods {
-		if IsTainted(pod) {
-			mismatchReasonsPerPod[pod.Name] = []string{TaintedReason}
-			continue
-		}
+	for i, podWithConfig := range podsWithConfig {
+		pod := podWithConfig.Pod
 
-		isMatch, mismatchReasons, err := podMatchesSpec(pod, podSpecCtx, state)
+		isMatch, mismatchReasons, err := comparison.PodMatchesSpec(podWithConfig, podSpecCtx, state)
 		if err != nil {
 			return PodComparisonResult{}, err
 		}
@@ -113,9 +111,9 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, s
 			// remove it from the remaining pods
 			return PodComparisonResult{
 				IsMatch:               true,
-				MatchingPod:           pod,
+				MatchingPod:           podWithConfig,
 				MismatchReasonsPerPod: mismatchReasonsPerPod,
-				RemainingPods:         append(pods[:i], pods[i+1:]...),
+				RemainingPods:         append(podsWithConfig[:i], podsWithConfig[i+1:]...),
 			}, nil
 		}
 		mismatchReasonsPerPod[pod.Name] = mismatchReasons
@@ -124,6 +122,6 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, pods []corev1.Pod, s
 	return PodComparisonResult{
 		IsMatch:               false,
 		MismatchReasonsPerPod: mismatchReasonsPerPod,
-		RemainingPods:         pods,
+		RemainingPods:         podsWithConfig,
 	}, nil
 }

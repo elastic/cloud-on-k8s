@@ -10,8 +10,10 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	espod "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
@@ -111,6 +113,19 @@ func createElasticsearchPod(
 	)
 	// add the node certificates volume to volumes
 	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
+
+	// create the config volume for this pod, now that we have a proper name for the pod
+	if err := settings.ReconcileConfig(c, es, pod, podSpecCtx.Config); err != nil {
+		return err
+	}
+	configSecretVolume := settings.ConfigSecretVolume(pod.Name)
+	// inject both volume and volume mount
+	pod.Spec.Volumes = append(pod.Spec.Volumes, configSecretVolume.Volume())
+	for i, c := range pod.Spec.Containers {
+		if c.Name == espod.DefaultContainerName {
+			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, configSecretVolume.VolumeMount())
+		}
+	}
 
 	if err := controllerutil.SetControllerReference(&es, &pod, scheme); err != nil {
 		return err
@@ -216,6 +231,15 @@ func deleteElasticsearchPod(
 		corev1.EventTypeNormal, events.EventReasonDeleted, stringsutil.Concat("Deleted pod ", pod.Name),
 	)
 	log.Info("Deleted pod", "name", pod.Name, "namespace", pod.Namespace)
+
+	// delete configuration for that pod (would be garbage collected otherwise)
+	secret, err := settings.GetESConfigSecret(c, k8s.ExtractNamespacedName(&pod))
+	if err != nil && !apierrors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
+	if err = c.Delete(&secret); err != nil && !apierrors.IsNotFound(err) {
+		return reconcile.Result{}, err
+	}
 
 	return reconcile.Result{}, nil
 }

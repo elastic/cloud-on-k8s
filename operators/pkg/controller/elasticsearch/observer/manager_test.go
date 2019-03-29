@@ -66,14 +66,14 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:                   "Observe a second cluster",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster2"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster"), cluster("cluster2")},
 		},
 		{
 			name:                   "Observe twice the same cluster (idempotent)",
-			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
@@ -81,7 +81,7 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:              "Observe twice the same cluster with a different client",
-			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings)},
+			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:  cluster("cluster"),
 			// more client comparison tests in client_test.go
 			clusterToObserveClient: fakeClientWithDifferentUser,
@@ -102,6 +102,7 @@ func TestManager_Observe(t *testing.T) {
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
 			require.ElementsMatch(t, tt.expectedObservers, m.List())
+
 			if !initialCreationTime.IsZero() {
 				// observer may have been replaced
 				require.Equal(t, tt.expectNewObserver, !initialCreationTime.Equal(observer.creationTime))
@@ -159,4 +160,39 @@ func TestManager_StopObserving(t *testing.T) {
 			require.ElementsMatch(t, tt.expectedAfterStopObserving, m.List())
 		})
 	}
+}
+
+func TestManager_AddObservationListener(t *testing.T) {
+	m := NewManager(Settings{
+		ObservationInterval: 1 * time.Microsecond,
+		RequestTimeout:      1 * time.Second,
+	})
+
+	// observe 2 clusters
+	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.UserAuth{}))
+	defer obs1.Stop()
+	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}))
+	defer obs2.Stop()
+
+	// add a listener that is only interested in cluster1
+	eventsCluster1 := make(chan types.NamespacedName)
+	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
+		if cluster.Name == "cluster1" {
+			eventsCluster1 <- cluster
+		}
+	})
+
+	// add a 2nd listener that is only interested in cluster2
+	eventsCluster2 := make(chan types.NamespacedName)
+	m.AddObservationListener(func(cluster types.NamespacedName, previousState State, newState State) {
+		if cluster.Name == "cluster2" {
+			eventsCluster2 <- cluster
+		}
+	})
+
+	// events should be propagated by both listeners
+	<-eventsCluster1
+	<-eventsCluster2
+	<-eventsCluster1
+	<-eventsCluster2
 }

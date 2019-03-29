@@ -15,8 +15,8 @@ import (
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
 	ToCreate []PodToCreate
-	ToKeep   []corev1.Pod
-	ToDelete []corev1.Pod
+	ToKeep   pod.PodsWithConfig
+	ToDelete pod.PodsWithConfig
 }
 
 // PodToCreate defines a pod to be created, along with
@@ -31,8 +31,8 @@ type PodToCreate struct {
 func EmptyChanges() Changes {
 	return Changes{
 		ToCreate: []PodToCreate{},
-		ToKeep:   []corev1.Pod{},
-		ToDelete: []corev1.Pod{},
+		ToKeep:   pod.PodsWithConfig{},
+		ToDelete: pod.PodsWithConfig{},
 	}
 }
 
@@ -50,8 +50,8 @@ func (c Changes) IsEmpty() bool {
 func (c Changes) Copy() Changes {
 	res := Changes{
 		ToCreate: append([]PodToCreate{}, c.ToCreate...),
-		ToKeep:   append([]corev1.Pod{}, c.ToKeep...),
-		ToDelete: append([]corev1.Pod{}, c.ToDelete...),
+		ToKeep:   append(pod.PodsWithConfig{}, c.ToKeep...),
+		ToDelete: append(pod.PodsWithConfig{}, c.ToDelete...),
 	}
 	return res
 }
@@ -115,14 +115,14 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 
 // partitionPodsBySelector partitions pods into two sets: one for pods matching the selector and one for the rest. it
 // guarantees that the order of the pods are not changed.
-func partitionPodsBySelector(selector labels.Selector, pods []corev1.Pod) ([]corev1.Pod, []corev1.Pod) {
-	matchingPods := make([]corev1.Pod, 0, len(pods))
-	remainingPods := make([]corev1.Pod, 0, len(pods))
-	for _, pod := range pods {
-		if selector.Matches(labels.Set(pod.Labels)) {
-			matchingPods = append(matchingPods, pod)
+func partitionPodsBySelector(selector labels.Selector, pods pod.PodsWithConfig) (pod.PodsWithConfig, pod.PodsWithConfig) {
+	matchingPods := make(pod.PodsWithConfig, 0, len(pods))
+	remainingPods := make(pod.PodsWithConfig, 0, len(pods))
+	for _, p := range pods {
+		if selector.Matches(labels.Set(p.Pod.Labels)) {
+			matchingPods = append(matchingPods, p)
 		} else {
-			remainingPods = append(remainingPods, pod)
+			remainingPods = append(remainingPods, p)
 		}
 	}
 	return matchingPods, remainingPods
