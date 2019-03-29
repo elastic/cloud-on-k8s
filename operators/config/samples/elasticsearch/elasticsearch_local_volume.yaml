@@ -7,7 +7,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: stack-local-volume-sample
 spec:
-  version: "6.4.2"
+  version: "6.7.0"
   setVmMaxMapCount: true
   topology:
   - nodeTypes:
