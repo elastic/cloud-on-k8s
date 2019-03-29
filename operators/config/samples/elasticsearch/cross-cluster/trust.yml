@@ -5,7 +5,7 @@ kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
-  version: "6.5.4"
+  version: "6.7.0"
   setVmMaxMapCount: true
   topologies:
     - nodeTypes:
@@ -24,7 +24,7 @@ kind: Elasticsearch
 metadata:
   name: trust-two
 spec:
-  version: "6.5.4"
+  version: "6.7.0"
   setVmMaxMapCount: true
   topologies:
     - nodeTypes:
