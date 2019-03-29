@@ -65,16 +65,25 @@ func nodeTypesConfig(nodeTypes v1alpha1.NodeTypesSpec) FlatConfig {
 
 // xpackConfig returns the configuration bit related to XPack settings
 func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
+	cfg := FlatConfig{}
+
+	// maybe auto-generate a license
+	switch licenseType {
+	case v1alpha1.LicenseTypeBasic:
+		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeBasic)})
+	case v1alpha1.LicenseTypeTrial:
+		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeTrial)})
+	}
 
 	// disable x-pack security if using basic
 	if licenseType == v1alpha1.LicenseTypeBasic {
-		return FlatConfig{
+		return cfg.MergeWith(FlatConfig{
 			XPackSecurityEnabled: "false",
-		}
+		})
 	}
 
 	// enable x-pack security, including TLS
-	cfg := FlatConfig{
+	cfg.MergeWith(FlatConfig{
 		// x-pack security general settings
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
@@ -104,12 +113,7 @@ func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 			volume.ExtraFilesSecretVolumeMountPath,
 			nodecerts.TrustRestrictionsFilename,
 		),
-	}
-
-	if licenseType == v1alpha1.LicenseTypeTrial {
-		// auto-generate a trial license
-		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: "trial"})
-	}
+	})
 
 	return cfg
 }
