@@ -27,7 +27,7 @@ func Test_hasMaster(t *testing.T) {
 		{
 			name: "no topology",
 			args: args{
-				esCluster: v1alpha1.Elasticsearch{},
+				esCluster: *es("6.7.0"),
 			},
 			want: failedValidation,
 		},
@@ -36,6 +36,7 @@ func Test_hasMaster(t *testing.T) {
 			args: args{
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
+						Version: "7.0.0",
 						Topology: []v1alpha1.TopologyElementSpec{
 							{
 								NodeTypes: v1alpha1.NodeTypesSpec{
@@ -56,6 +57,7 @@ func Test_hasMaster(t *testing.T) {
 			args: args{
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
+						Version: "7.0.0",
 						Topology: []v1alpha1.TopologyElementSpec{
 							{
 								NodeTypes: v1alpha1.NodeTypesSpec{
@@ -76,6 +78,7 @@ func Test_hasMaster(t *testing.T) {
 			args: args{
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
+						Version: "7.0.0",
 						Topology: []v1alpha1.TopologyElementSpec{
 							{
 								NodeTypes: v1alpha1.NodeTypesSpec{
