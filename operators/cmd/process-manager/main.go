@@ -56,8 +56,7 @@ func main() {
 
 func waitForStop() os.Signal {
 	stop := make(chan os.Signal)
-	signal.Notify(stop)
-	signal.Ignore(syscall.SIGCHLD)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGKILL)
 	sig := <-stop
 	return sig
 }
