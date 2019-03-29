@@ -7,12 +7,9 @@ package elasticsearch
 import (
 	"fmt"
 
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-	_ "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version/version6"
-	_ "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version/version7"
-	"github.com/pkg/errors"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
 const (
@@ -21,63 +18,33 @@ const (
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
 )
 
-func nilChecks(current, proposed *estype.Elasticsearch) *ValidationResult {
-	if proposed == nil {
-		return &ValidationResult{Allowed: false, Error: errors.New("nothing to validate")}
-	}
-	if current == nil {
-		// newly created cluster
-		return &ValidationResult{Allowed: true}
-	}
-	return nil
-}
-
 func unsupportedVersion(v *version.Version) string {
 	return fmt.Sprintf("unsupported version: %v", v)
 }
 
-func parseVersion(current, proposed *estype.Elasticsearch) (*version.Version, *version.Version, *ValidationResult) {
-	proposedVersion, err := version.Parse(proposed.Spec.Version)
-	if err != nil {
-		return nil, nil, &ValidationResult{Error: err, Reason: parseVersionErrMsg}
+func noDowngrades(ctx ValidationContext) ValidationResult {
+	if ctx.isCreate() {
+		return OK
 	}
-	currentVersion, err := version.Parse(current.Spec.Version)
-	if err != nil {
-		return nil, nil, &ValidationResult{Error: err, Reason: parseStoredVersionErrMsg}
-	}
-	return currentVersion, proposedVersion, nil
-}
-
-func noDowngrades(current, proposed *estype.Elasticsearch) ValidationResult {
-	if result := nilChecks(current, proposed); result != nil {
-		return *result
-	}
-	currentVersion, proposedVersion, invalid := parseVersion(current, proposed)
-	if invalid != nil {
-		return *invalid
-	}
-
-	if !proposedVersion.IsSameOrAfter(*currentVersion) {
+	if !ctx.Proposed.Version.IsSameOrAfter(ctx.Current.Version) {
 		return ValidationResult{Allowed: false, Reason: noDowngradesMsg}
 	}
 	return OK
-
 }
 
-func validUpgradePath(current, proposed *estype.Elasticsearch) ValidationResult {
-	if result := nilChecks(current, proposed); result != nil {
-		return *result
-	}
-	currentVersion, proposedVersion, invalid := parseVersion(current, proposed)
-	if invalid != nil {
-		return *invalid
+func validUpgradePath(ctx ValidationContext) ValidationResult {
+	if ctx.isCreate() {
+		return OK
 	}
 
-	v := driver.SupportedVersions(*proposedVersion)
+	v := driver.SupportedVersions(ctx.Proposed.Version)
 	if v == nil {
-		return ValidationResult{Allowed: false, Reason: unsupportedVersion(proposedVersion)}
+		return ValidationResult{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
-	err := v.VerifySupportsExistingVersion(*currentVersion, fmt.Sprintf("%s/%s", current.Namespace, current.Name))
+	err := v.VerifySupportsExistingVersion(
+		ctx.Current.Version,
+		k8s.ExtractNamespacedName(&ctx.Current.Elasticsearch).String(),
+	)
 	if err != nil {
 		return ValidationResult{Allowed: false, Reason: err.Error()}
 	}

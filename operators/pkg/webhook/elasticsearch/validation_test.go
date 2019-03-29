@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_hasMaster(t *testing.T) {
@@ -94,7 +95,9 @@ func Test_hasMaster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hasMaster(nil, &tt.args.esCluster); got != tt.want {
+			ctx, err := NewValidationContext(nil, tt.args.esCluster)
+			require.NoError(t, err)
+			if got := hasMaster(*ctx); got != tt.want {
 				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
 			}
 		})
@@ -103,7 +106,7 @@ func Test_hasMaster(t *testing.T) {
 
 func Test_supportedVersion(t *testing.T) {
 	type args struct {
-		esCluster *estype.Elasticsearch
+		esCluster estype.Elasticsearch
 	}
 	tests := []struct {
 		name string
@@ -113,7 +116,7 @@ func Test_supportedVersion(t *testing.T) {
 		{
 			name: "unsupported FAIL",
 			args: args{
-				esCluster: es("1.0.0"),
+				esCluster: *es("1.0.0"),
 			},
 			want: ValidationResult{Allowed: false, Reason: unsupportedVersion(&version.Version{
 				Major: 1,
@@ -125,15 +128,91 @@ func Test_supportedVersion(t *testing.T) {
 		{
 			name: "supported OK",
 			args: args{
-				esCluster: es("6.7.0"),
+				esCluster: *es("6.7.0"),
 			},
 			want: OK,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := supportedVersion(nil, tt.args.esCluster); !reflect.DeepEqual(got, tt.want) {
+			ctx, err := NewValidationContext(nil, tt.args.esCluster)
+			require.NoError(t, err)
+			if got := supportedVersion(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewValidationContext(t *testing.T) {
+	type args struct {
+		current  *estype.Elasticsearch
+		proposed estype.Elasticsearch
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *ValidationContext
+		wantErr bool
+	}{
+		{
+			name: "garbage version FAIL",
+			args: args{
+				current:  nil,
+				proposed: *es("garbage"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "current version garbage SHOULD NEVER HAPPEN",
+			args: args{
+				current:  es("garbage"),
+				proposed: *es("6.0.0"),
+			},
+			wantErr: true,
+		},
+		{
+			name: "create current is nil OK",
+			args: args{
+				current:  nil,
+				proposed: *es("7.0.0"),
+			},
+			want: &ValidationContext{
+				Proposed: ElasticsearchVersion{
+					Elasticsearch: *es("7.0.0"),
+					Version:       version.MustParse("7.0.0"),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "update both OK",
+			args: args{
+				current:  es("6.5.0"),
+				proposed: *es("7.0.0"),
+			},
+			want: &ValidationContext{
+				Current: &ElasticsearchVersion{
+					Elasticsearch: *es("6.5.0"),
+					Version:       version.MustParse("6.5.0"),
+				},
+				Proposed: ElasticsearchVersion{
+					Elasticsearch: *es("7.0.0"),
+					Version:       version.MustParse("7.0.0"),
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewValidationContext(tt.args.current, tt.args.proposed)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewValidationContext() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewValidationContext() = %v, want %v", got, tt.want)
 			}
 		})
 	}

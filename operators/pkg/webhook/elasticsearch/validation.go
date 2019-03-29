@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	gherror "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
@@ -27,13 +28,54 @@ const masterRequiredMsg = "Elasticsearch needs to have at least one master node"
 var log = logf.Log.WithName("es-validation")
 
 // Validation is a function from a currently stored Elasticsearch spec and proposed new spec to a ValidationResult.
-type Validation func(current, proposed *estype.Elasticsearch) ValidationResult
+type Validation func(ctx ValidationContext) ValidationResult
 
 // ValidationResult contains validation results.
 type ValidationResult struct {
 	Error   error
 	Allowed bool
 	Reason  string
+}
+
+// ElasticsearchVersion groups an ES resource and its parsed version.
+type ElasticsearchVersion struct {
+	Elasticsearch estype.Elasticsearch
+	Version       version.Version
+}
+
+// ValidationContext is structured input for validation functions.
+type ValidationContext struct {
+	Current  *ElasticsearchVersion
+	Proposed ElasticsearchVersion
+}
+
+// NewValidationContext constructs a new ValidationContext.
+func NewValidationContext(current *estype.Elasticsearch, proposed estype.Elasticsearch) (*ValidationContext, error) {
+	proposedVersion, err := version.Parse(proposed.Spec.Version)
+	if err != nil {
+		return nil, gherror.Wrap(err, parseVersionErrMsg)
+	}
+	ctx := ValidationContext{
+		Proposed: ElasticsearchVersion{
+			Elasticsearch: proposed,
+			Version:       *proposedVersion,
+		},
+	}
+	if current != nil {
+		currentVersion, err := version.Parse(current.Spec.Version)
+		if err != nil {
+			return nil, gherror.Wrap(err, parseStoredVersionErrMsg)
+		}
+		ctx.Current = &ElasticsearchVersion{
+			Elasticsearch: *current,
+			Version:       *currentVersion,
+		}
+	}
+	return &ctx, nil
+}
+
+func (v ValidationContext) isCreate() bool {
+	return v.Current == nil
 }
 
 var OK = ValidationResult{Allowed: true}
@@ -46,21 +88,17 @@ var Validations = []Validation{
 	validUpgradePath,
 }
 
-func supportedVersion(_, esCluster *estype.Elasticsearch) ValidationResult {
-	proposedVersion, err := version.Parse(esCluster.Spec.Version)
-	if err != nil {
-		return ValidationResult{Allowed: false, Reason: parseVersionErrMsg}
-	}
-	if v := driver.SupportedVersions(*proposedVersion); v == nil {
-		return ValidationResult{Allowed: false, Reason: unsupportedVersion(proposedVersion)}
+func supportedVersion(ctx ValidationContext) ValidationResult {
+	if v := driver.SupportedVersions(ctx.Proposed.Version); v == nil {
+		return ValidationResult{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
 	return OK
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
-func hasMaster(_, esCluster *estype.Elasticsearch) ValidationResult {
+func hasMaster(ctx ValidationContext) ValidationResult {
 	var hasMaster bool
-	for _, t := range esCluster.Spec.Topology {
+	for _, t := range ctx.Proposed.Elasticsearch.Spec.Topology {
 		hasMaster = hasMaster || (t.NodeTypes.Master && t.NodeCount > 0)
 	}
 	if hasMaster {
@@ -100,8 +138,13 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	var results []ValidationResult
+	validationCtx, err := NewValidationContext(current, esCluster)
+	if err != nil {
+		log.Error(err, "while creating validation context")
+		return admission.ValidationResponse(false, err.Error())
+	}
 	for _, v := range Validations {
-		results = append(results, v(current, &esCluster))
+		results = append(results, v(*validationCtx))
 	}
 	return aggregate(results)
 }
