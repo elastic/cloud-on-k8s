@@ -132,14 +132,18 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	)
 	err := v.decoder.Decode(r, &esCluster)
 	if err != nil {
+		log.Error(err, "Failed to decode request")
 		return admission.ErrorResponse(http.StatusBadRequest, err)
 	}
-	var current *estype.Elasticsearch
-	err = v.client.Get(ctx, k8s.ExtractNamespacedName(&esCluster), current)
-	if errors.IsNotFound(err) {
-		current = nil
-	} else if err != nil {
+	var onServer estype.Elasticsearch
+	err = v.client.Get(ctx, k8s.ExtractNamespacedName(&esCluster), &onServer)
+	if err != nil && !errors.IsNotFound(err) {
+		log.Error(err, "Failed to retrieve existing cluster")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
+	}
+	var current *estype.Elasticsearch
+	if err == nil {
+		current = &onServer
 	}
 	var results []ValidationResult
 	validationCtx, err := NewValidationContext(current, esCluster)
