@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/restart"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
@@ -277,7 +279,16 @@ func (d *defaultDriver) Reconcile(
 		"to_create:", len(changes.ToCreate),
 		"to_keep:", len(changes.ToKeep),
 		"to_delete:", len(changes.ToDelete),
+		"to_reuse", len(changes.ToReuse),
 	)
+
+	done, err := restart.HandlePodsReuse(d.Client, *changes)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !done {
+		return results.WithResult(defaultRequeue)
+	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)

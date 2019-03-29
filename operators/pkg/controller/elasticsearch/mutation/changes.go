@@ -52,10 +52,11 @@ func (c Changes) IsEmpty() bool {
 // Copy copies this Changes. It copies the underlying slices and maps, but not their contents
 func (c Changes) Copy() Changes {
 	res := Changes{
-		ToCreate: append([]PodToCreate{}, c.ToCreate...),
-		ToKeep:   append(pod.PodsWithConfig{}, c.ToKeep...),
-		ToDelete: append(pod.PodsWithConfig{}, c.ToDelete...),
-		ToReuse:  append([]PodToReuse{}, c.ToReuse...),
+		ToCreate:                  append([]PodToCreate{}, c.ToCreate...),
+		ToKeep:                    append(pod.PodsWithConfig{}, c.ToKeep...),
+		ToDelete:                  append(pod.PodsWithConfig{}, c.ToDelete...),
+		ToReuse:                   append([]PodToReuse{}, c.ToReuse...),
+		RequireFullClusterRestart: c.RequireFullClusterRestart,
 	}
 	return res
 }
