@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	noDowngradesMsg          = "Downgrades are not supported"
-	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
-	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
+	noDowngradesMsg = "Downgrades are not supported"
 )
 
 func unsupportedVersion(v *version.Version) string {

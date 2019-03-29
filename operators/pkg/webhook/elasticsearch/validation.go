@@ -23,7 +23,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
-const masterRequiredMsg = "Elasticsearch needs to have at least one master node"
+const (
+	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
+	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
+	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
+)
 
 var log = logf.Log.WithName("es-validation")
 
