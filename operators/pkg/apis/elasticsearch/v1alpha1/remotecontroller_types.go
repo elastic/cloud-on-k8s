@@ -11,12 +11,12 @@ import (
 
 // RemoteClusterSpec defines the desired state of RemoteCluster.
 type RemoteClusterSpec struct {
-	Remote K8SLocalClusterSpec `json:"remote"`
+	Remote RemoteClusterRef `json:"remote"`
 }
 
-// K8SLocalClusterSpec defines a Elasticsearch cluster that is hosted in the same K8S cluster.
-type K8SLocalClusterSpec struct {
-	ClusterRef assoctype.ObjectSelector `json:"k8sLocalRef"`
+// RemoteClusterRef defines a Elasticsearch cluster that is hosted in the same K8S cluster.
+type RemoteClusterRef struct {
+	K8sLocalRef assoctype.ObjectSelector `json:"k8sLocalRef"`
 }
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.

@@ -29,10 +29,10 @@ func doReconcile(
 	// Get the previous remote associated cluster, if the remote namespace has been updated by the user we must
 	// delete the remote relationship from the old namespace and recreate it in the new namespace.
 	if len(remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace) > 0 &&
-		remoteCluster.Spec.Remote.ClusterRef.Namespace != remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace {
+		remoteCluster.Spec.Remote.K8sLocalRef.Namespace != remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace {
 		log.V(1).Info("Remote cluster namespaced updated",
 			"old", remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace,
-			"new", remoteCluster.Spec.Remote.ClusterRef.Namespace)
+			"new", remoteCluster.Spec.Remote.K8sLocalRef.Namespace)
 		previousRemoteRelationshipName := fmt.Sprintf(
 			"%s-%s-%s",
 			RemoteTrustRelationshipPrefix,
@@ -71,7 +71,7 @@ func doReconcile(
 	watchFinalizer := watchFinalizer(
 		remoteCluster,
 		localClusterSelector,
-		remoteCluster.Spec.Remote.ClusterRef,
+		remoteCluster.Spec.Remote.K8sLocalRef,
 		r.watches)
 	err := h.Handle(&remoteCluster, watchFinalizer)
 	if err != nil {
@@ -84,7 +84,7 @@ func doReconcile(
 	}
 
 	// Add watches on the CA secret of the remote cluster.
-	if err := addCertificatesAuthorityWatches(r, remoteCluster, remoteCluster.Spec.Remote.ClusterRef); err != nil {
+	if err := addCertificatesAuthorityWatches(r, remoteCluster, remoteCluster.Spec.Remote.K8sLocalRef); err != nil {
 		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
@@ -92,8 +92,8 @@ func doReconcile(
 		"Setting up remote cluster",
 		"local_namespace", localClusterSelector.Namespace,
 		"local_name", localClusterSelector.Namespace,
-		"remote_namespace", remoteCluster.Spec.Remote.ClusterRef.Namespace,
-		"remote_name", remoteCluster.Spec.Remote.ClusterRef.Name,
+		"remote_namespace", remoteCluster.Spec.Remote.K8sLocalRef.Namespace,
+		"remote_name", remoteCluster.Spec.Remote.K8sLocalRef.Name,
 	)
 
 	local, err := newAssociatedCluster(r.Client, localClusterSelector)
@@ -101,7 +101,7 @@ func doReconcile(
 		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
-	remote, err := newAssociatedCluster(r.Client, remoteCluster.Spec.Remote.ClusterRef)
+	remote, err := newAssociatedCluster(r.Client, remoteCluster.Spec.Remote.K8sLocalRef)
 	if err != nil {
 		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
@@ -123,7 +123,7 @@ func doReconcile(
 
 	// Check if remote CA exists
 	if remote.CA == nil {
-		message := caCertMissingError("remote", remoteCluster.Spec.Remote.ClusterRef)
+		message := caCertMissingError("remote", remoteCluster.Spec.Remote.K8sLocalRef)
 		log.Error(fmt.Errorf("cannot find remote Ca cert"), message)
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonRemoteCACertMissing, message)
 		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterPending), nil

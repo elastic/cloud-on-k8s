@@ -60,7 +60,7 @@ func TestModel_RemoteCluster(t *testing.T) {
 		{
 			name: "Simple remote cluster",
 			arg: Settings{
-				PersistentSettings: &SettingGroup{
+				PersistentSettings: &SettingsGroup{
 					Cluster: Cluster{
 						RemoteClusters: map[string]RemoteCluster{
 							"leader": {
@@ -75,7 +75,7 @@ func TestModel_RemoteCluster(t *testing.T) {
 		{
 			name: "Deleted remote cluster",
 			arg: Settings{
-				PersistentSettings: &SettingGroup{
+				PersistentSettings: &SettingsGroup{
 					Cluster: Cluster{
 						RemoteClusters: map[string]RemoteCluster{
 							"leader": {

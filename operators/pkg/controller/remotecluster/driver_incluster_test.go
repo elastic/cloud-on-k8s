@@ -98,8 +98,8 @@ func newRemoteInCluster(
 			Labels:    map[string]string{label.ClusterNameLabelName: localName},
 		},
 		Spec: v1alpha1.RemoteClusterSpec{
-			Remote: v1alpha1.K8SLocalClusterSpec{
-				ClusterRef: assoctype.ObjectSelector{
+			Remote: v1alpha1.RemoteClusterRef{
+				K8sLocalRef: assoctype.ObjectSelector{
 					Name:      remoteName,
 					Namespace: remoteNamespace,
 				},

@@ -332,12 +332,12 @@ type LicenseResponse struct {
 
 // Settings is the root element of settings.
 type Settings struct {
-	PersistentSettings *SettingGroup `json:"persistent,omitempty"`
-	TransientSettings  *SettingGroup `json:"transient,omitempty"`
+	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`
+	TransientSettings  *SettingsGroup `json:"transient,omitempty"`
 }
 
-// SettingGroup is a group of settings, either to transient or persistent.
-type SettingGroup struct {
+// SettingsGroup is a group of settings, either to transient or persistent.
+type SettingsGroup struct {
 	Cluster Cluster `json:"cluster,omitempty"`
 }
 

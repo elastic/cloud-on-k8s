@@ -14,10 +14,10 @@ import (
 const (
 	// RemoteClusterDynamicWatchesFinalizer designates a finalizer to clean up unused watches.
 	RemoteClusterDynamicWatchesFinalizer = "dynamic-watches.remotecluster.k8s.elastic.co"
-	// RemoteClusterNamespaceLabelName used to represent the namespace of a local cluster in a relationship.
-	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/remote-cluster-namespace"
-	// RemoteClusterNameLabelName used to represent the name of a local cluster in a relationship.
-	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/remote-cluster-name"
+	// RemoteClusterNamespaceLabelName used to represent the namespace of the RemoteCluster in a TrustRelationship.
+	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/namespace"
+	// RemoteClusterNameLabelName used to represent the name of the RemoteCluster in a TrustRelationship.
+	RemoteClusterNameLabelName = "remotecluster.k8s.elastic.co/name"
 )
 
 func trustRelationshipObjectMeta(
