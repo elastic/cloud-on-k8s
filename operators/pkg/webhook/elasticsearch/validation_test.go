@@ -1,6 +1,8 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
 package elasticsearch
 
@@ -91,8 +93,8 @@ func Test_hasMaster(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HasMaster(tt.args.esCluster); got != tt.want {
-				t.Errorf("HasMaster() = %v, want %v", got, tt.want)
+			if got := hasMaster(tt.args.esCluster); got != tt.want {
+				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
 			}
 		})
 	}

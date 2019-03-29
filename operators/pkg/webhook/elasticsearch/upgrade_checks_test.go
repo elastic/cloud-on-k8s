@@ -1,18 +1,17 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
 package elasticsearch
 
 import (
-	"context"
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestValidation_canUpgrade(t *testing.T) {
@@ -21,19 +20,19 @@ func TestValidation_canUpgrade(t *testing.T) {
 		toValidate estype.Elasticsearch
 	}
 	tests := []struct {
-		name           string
-		args           args
-		initialObjects []runtime.Object
-		want           ValidationResult
-		wantErr        bool
+		name    string
+		args    args
+		current *estype.Elasticsearch
+		want    ValidationResult
+		wantErr bool
 	}{
 		{
 			name: "no validation on create",
 			args: args{
 				toValidate: estype.Elasticsearch{},
 			},
-			initialObjects: nil,
-			want:           ValidationResult{Allowed: true},
+			current: nil,
+			want:    ValidationResult{Allowed: true},
 		},
 		{
 			name: "prevent downgrade",
@@ -42,8 +41,8 @@ func TestValidation_canUpgrade(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "1.0.0"},
 				},
 			},
-			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "2.0.0"}}},
-			want:           ValidationResult{Allowed: false, Reason: noDowngradesMsg},
+			current: &estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "2.0.0"}},
+			want:    ValidationResult{Allowed: false, Reason: noDowngradesMsg},
 		},
 		{
 			name: "allow upgrades",
@@ -52,8 +51,8 @@ func TestValidation_canUpgrade(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "1.2.0"},
 				},
 			},
-			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.0.0"}}},
-			want:           ValidationResult{Allowed: true},
+			current: &estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.0.0"}},
+			want:    ValidationResult{Allowed: true},
 		},
 		{
 			name: "handle corrupt version",
@@ -62,7 +61,7 @@ func TestValidation_canUpgrade(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "garbage"},
 				},
 			},
-			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.2.0"}}},
+			current: &estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.2.0"}},
 			want: ValidationResult{
 				Allowed: false,
 				Reason:  parseVersionErrMsg,
@@ -72,13 +71,9 @@ func TestValidation_canUpgrade(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := fake.NewFakeClient(tt.initialObjects...)
-			v := &Validation{
-				client: client,
-			}
-			got := v.noDowngrades(context.TODO(), tt.args.toValidate)
+			got := noDowngrades(tt.current, &tt.args.toValidate)
 			if got.Allowed != tt.want.Allowed || got.Reason != tt.want.Reason || got.Error != nil != tt.wantErr {
-				t.Errorf("Validation.noDowngrades() = %+v, want %+v", got, tt.want)
+				t.Errorf("ValidationHandler.noDowngrades() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}

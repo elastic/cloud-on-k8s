@@ -67,7 +67,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		Validating().
 		FailurePolicy(admission.Fail).
 		ForType(&v1alpha1.Elasticsearch{}).
-		Handlers(&elasticsearch.Validation{}).
+		Handlers(&elasticsearch.ValidationHandler{}).
 		WithManager(mgr).
 		Build()
 	if err != nil {

@@ -1,16 +1,15 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
 package elasticsearch
 
 import (
-	"context"
-
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -19,14 +18,13 @@ const (
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
 )
 
-func (v *Validation) noDowngrades(ctx context.Context, proposed estype.Elasticsearch) ValidationResult {
-	var current estype.Elasticsearch
-	err := v.client.Get(ctx, k8s.ExtractNamespacedName(&proposed), &current)
-	if errors.IsNotFound(err) {
-		return ValidationResult{Allowed: true} // not created yet
+func noDowngrades(current, proposed *estype.Elasticsearch) ValidationResult {
+	if proposed == nil {
+		return ValidationResult{Allowed: false, Error: errors.New("nothing to validate")}
 	}
-	if err != nil {
-		return ValidationResult{Error: err, Reason: "Cannot load current version of Elasticsearch resource"}
+	if current == nil {
+		// newly created cluster
+		return ValidationResult{Allowed: true}
 	}
 	proposedVersion, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
@@ -40,4 +38,5 @@ func (v *Validation) noDowngrades(ctx context.Context, proposed estype.Elasticse
 		return ValidationResult{Allowed: false, Reason: noDowngradesMsg}
 	}
 	return ValidationResult{Allowed: true}
+
 }
