@@ -90,8 +90,8 @@ func NewDriver(opts Options) (Driver, error) {
 		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
 
 		driver.supportedVersions = esversion.LowestHighestSupportedVersions{
-			// 6.6.0 is the lowest wire compatibility version for 7.x
-			LowestSupportedVersion: version.MustParse("6.6.0"),
+			// 6.7.0 is the lowest wire compatibility version for 7.x
+			LowestSupportedVersion: version.MustParse("6.7.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("7.0.99"),
 		}
@@ -103,7 +103,7 @@ func NewDriver(opts Options) (Driver, error) {
 			// 5.6.0 is the lowest wire compatibility version for 6.x
 			LowestSupportedVersion: version.MustParse("5.6.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.6.99"),
+			HighestSupportedVersion: version.MustParse("6.7.99"),
 		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
