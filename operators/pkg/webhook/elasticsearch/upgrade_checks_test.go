@@ -36,23 +36,23 @@ func TestValidation_canUpgrade(t *testing.T) {
 			want:           ValidationResult{Allowed: true},
 		},
 		{
-			name: "prevent major upgrades",
+			name: "prevent downgrade",
 			args: args{
 				toValidate: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{Version: "1.0.0"},
 				},
 			},
 			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "2.0.0"}}},
-			want:           ValidationResult{Allowed: false, Reason: notMajorVersionUpgradeMsg},
+			want:           ValidationResult{Allowed: false, Reason: noDowngradesMsg},
 		},
 		{
-			name: "allow minor upgrades",
+			name: "allow upgrades",
 			args: args{
 				toValidate: estype.Elasticsearch{
-					Spec: estype.ElasticsearchSpec{Version: "1.0.0"},
+					Spec: estype.ElasticsearchSpec{Version: "1.2.0"},
 				},
 			},
-			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.2.0"}}},
+			initialObjects: []runtime.Object{&estype.Elasticsearch{Spec: estype.ElasticsearchSpec{Version: "1.0.0"}}},
 			want:           ValidationResult{Allowed: true},
 		},
 		{
@@ -76,9 +76,9 @@ func TestValidation_canUpgrade(t *testing.T) {
 			v := &Validation{
 				client: client,
 			}
-			got := v.canUpgrade(context.TODO(), tt.args.toValidate)
+			got := v.noDowngrades(context.TODO(), tt.args.toValidate)
 			if got.Allowed != tt.want.Allowed || got.Reason != tt.want.Reason || got.Error != nil != tt.wantErr {
-				t.Errorf("Validation.canUpgrade() = %+v, want %+v", got, tt.want)
+				t.Errorf("Validation.noDowngrades() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}

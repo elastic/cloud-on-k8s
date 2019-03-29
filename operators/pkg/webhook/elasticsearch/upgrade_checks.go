@@ -14,12 +14,12 @@ import (
 )
 
 const (
-	notMajorVersionUpgradeMsg = "Major version upgrades are currently not supported"
-	parseVersionErrMsg        = "Cannot parse Elasticsearch version"
-	parseStoredVersionErrMsg  = "Cannot parse current Elasticsearch version"
+	noDowngradesMsg          = "Downgrades are not supported"
+	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
+	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
 )
 
-func (v *Validation) canUpgrade(ctx context.Context, proposed estype.Elasticsearch) ValidationResult {
+func (v *Validation) noDowngrades(ctx context.Context, proposed estype.Elasticsearch) ValidationResult {
 	var current estype.Elasticsearch
 	err := v.client.Get(ctx, k8s.ExtractNamespacedName(&proposed), &current)
 	if errors.IsNotFound(err) {
@@ -36,8 +36,8 @@ func (v *Validation) canUpgrade(ctx context.Context, proposed estype.Elasticsear
 	if err != nil {
 		return ValidationResult{Error: err, Reason: parseStoredVersionErrMsg}
 	}
-	if currentVersion.Major != proposedVersion.Major {
-		return ValidationResult{Allowed: false, Reason: notMajorVersionUpgradeMsg}
+	if !proposedVersion.IsSameOrAfter(*currentVersion) {
+		return ValidationResult{Allowed: false, Reason: noDowngradesMsg}
 	}
 	return ValidationResult{Allowed: true}
 }

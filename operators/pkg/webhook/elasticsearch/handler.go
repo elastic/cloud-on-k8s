@@ -51,7 +51,7 @@ func (v *Validation) Handle(ctx context.Context, r types.Request) types.Response
 		func(_ context.Context, es estype.Elasticsearch) ValidationResult {
 			return HasMaster(es)
 		},
-		v.canUpgrade,
+		v.noDowngrades,
 	}
 	var results []ValidationResult
 	for _, v := range validations {
