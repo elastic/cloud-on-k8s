@@ -52,6 +52,7 @@ const (
 	startFailed ProcessState = "startFailed"
 	stopFailed  ProcessState = "stopFailed"
 	killFailed  ProcessState = "killFailed"
+	failed      ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -118,8 +119,8 @@ func (p *Process) Start() (ProcessState, error) {
 	p.updateState(startAction, state, p.pid, noSignal, err)
 
 	go func() {
-		_ = cmd.Wait()
-		p.isAlive(waitAction)
+		err := cmd.Wait()
+		p.terminate(waitAction, err)
 	}()
 
 	return p.state, err
@@ -148,7 +149,7 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 		if killHard {
 			return p.state, nil
 		}
-	case stopped, killed:
+	case stopped, killed, failed:
 		return p.state, nil
 	}
 
@@ -165,6 +166,7 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 		if p.state == started && err.Error() == ErrNoSuchProcess {
 			// No process but still marked started? This should not happen.
 			// Normally the termination of the process is intercepted to update the process state.
+			p.mutex.Unlock()
 			p.GracefulExit("unexpected state: no process to kill, but process still marked started", err)
 		}
 		state = errState
@@ -190,26 +192,36 @@ func (p *Process) Status() ProcessStatus {
 }
 
 // isAlive returns if the process is alive by trying to get the process group id.
-// The process state is updated if the process is not alive.
 func (p *Process) isAlive(action string) bool {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
 
 	_, err := syscall.Getpgid(p.pid)
 	alive := err == nil
 
-	// Update the state if the process is dead
+	log.Info("Process liveness check", "action", action, "state", p.state, "alive", alive, "err", err)
+	return alive
+}
+
+// terminate updates the process state if the process is not alive.
+func (p *Process) terminate(action string, err error) {
+	alive := p.isAlive(action)
+	log.Info("Process terminated", "action", action, "state", p.state, "alive", alive, "err", err)
+
 	if !alive {
-		state := p.state
-		log.Info("isAlive", "action", action, "state", p.state)
-		switch state {
+		switch p.state {
 		case stopping:
-			state = stopped
-			p.updateState(action, state, p.pid, noSignal, err)
+			p.mutex.Lock()
+			p.updateState(action, stopped, p.pid, noSignal, err)
+			p.mutex.Unlock()
 		case killing:
-			state = killed
-			p.updateState(action, state, p.pid, noSignal, err)
+			p.mutex.Lock()
+			p.updateState(action, killed, p.pid, noSignal, err)
+			p.mutex.Unlock()
 		case started:
+			p.mutex.Lock()
+			p.updateState(action, failed, p.pid, noSignal, err)
+			p.mutex.Unlock()
 			// No process but still marked started. Something unexpected happened to the process!
 			// The process is terminated without the process manager schedules a stop or a kill.
 			// Exit the program hoping to be restarted by something (as a kubelet?).
@@ -217,7 +229,7 @@ func (p *Process) isAlive(action string) bool {
 		}
 	}
 
-	return alive
+	return
 }
 
 // updateState updates the process state and the last update time.
@@ -248,6 +260,12 @@ func computeConfigChecksum() (string, error) {
 func (p *Process) GracefulExit(reason string, err error) {
 	log.Info("Graceful exit", "reason", reason, "err", err)
 
+	// Try to exit early
+	if !p.isAlive("graceful exit") {
+		log.Info("Exited")
+		os.Exit(1)
+	}
+
 	// Timeout to kill hard if kill soft is not enough
 	time.AfterFunc(10*time.Second, func() {
 		log.Info("Graceful exit, kill hard")
@@ -265,7 +283,7 @@ func (p *Process) GracefulExit(reason string, err error) {
 	_, _ = p.Kill(killSoftSignal)
 
 	// Wait for the process to die
-	for p.isAlive("graceful exit") {
+	for p.isAlive("graceful exit kill") {
 		time.Sleep(1 * time.Second)
 	}
 
