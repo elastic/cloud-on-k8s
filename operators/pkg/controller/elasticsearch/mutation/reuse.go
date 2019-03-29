@@ -5,10 +5,8 @@
 package mutation
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation/comparison"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 )
@@ -36,24 +34,6 @@ type PodToReuse struct {
 	Initial pod.PodWithConfig
 	// Target pod after the pod reuse process
 	Target PodToCreate
-}
-
-// RequiresFullClusterRestart returns true if reusing this pod
-// means a full cluster restart would be required.
-func (p PodToReuse) RequiresFullClusterRestart() bool {
-	// Switching from TLS to non-TLS requires a full cluster restart.
-	// That's actually switching from a basic license to a non-basic license,
-	// or the other way around.
-	basic := v1alpha1.LicenseTypeBasic.String()
-	initialLicense := p.Initial.Config[settings.XPackLicenseSelfGeneratedType]
-	targetLicense := p.Initial.Config[settings.XPackLicenseSelfGeneratedType]
-
-	if (initialLicense == basic && targetLicense != basic) ||
-		(initialLicense != basic && targetLicense == basic) {
-		return true
-	}
-
-	return false
 }
 
 // withReusablePods checks if some pods to delete can be reused for pods to create.

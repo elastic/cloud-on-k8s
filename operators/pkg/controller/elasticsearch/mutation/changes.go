@@ -14,10 +14,11 @@ import (
 
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
-	ToCreate []PodToCreate
-	ToKeep   pod.PodsWithConfig
-	ToDelete pod.PodsWithConfig
-	ToReuse  []PodToReuse
+	ToCreate                  []PodToCreate
+	ToKeep                    pod.PodsWithConfig
+	ToDelete                  pod.PodsWithConfig
+	ToReuse                   []PodToReuse
+	RequireFullClusterRestart bool
 }
 
 // PodToCreate defines a pod to be created, along with

@@ -7,9 +7,11 @@ package mutation
 import (
 	"sort"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation/comparison"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -51,7 +53,7 @@ func mutableCalculateChanges(
 	deletingPods pod.PodsWithConfig,
 	reuseOptions ReuseOptions,
 ) (Changes, error) {
-	changes := EmptyChanges()
+	changes := EmptyChanges() // resulting changes
 
 	for _, expectedPodSpecCtx := range expectedPodSpecCtxs {
 
@@ -100,10 +102,53 @@ func mutableCalculateChanges(
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
 	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
 
-	// attempt to reuse some pods to delete for pods to create
-	changes = withReusablePods(changes, reuseOptions)
+	targetLicense, requiresFullRestart := licenseChangeRequiresFullClusterRestart(actualPods, expectedPodSpecCtxs)
+	if requiresFullRestart {
+		changes.RequireFullClusterRestart = true
 
-	// and sort for idempotent processing
+		// Actual pods will need a restart with the new license before
+		// we can progress on making any more changes.
+
+		// Let's return changes for this first, marking pods to be "reused"
+		// with the new configuration. If more changes remain to be done,
+		// they will be done in a subsequent reconciliation iteration.
+
+		// Attempt to reuse some pods to delete for pods to create,
+		// including the license changes and maybe other configuration changes
+		// at the same time if eligible.
+		changes = withReusablePods(changes, reuseOptions)
+
+		// Remaining pods may not be eligible for reuse (eg. user requested
+		// change from a 1x2GB basic to 2x4GB trial cluster). In such case,
+		// we still need to restart the current nodes with the new license first
+		// (move to 1x2GB trial, the move to 2x4GB trial will be done through
+		// another changes computation).
+
+		// Don't delete pods yet: instead, reuse them with a different config including the new license.
+		for _, toDelete := range changes.ToDelete {
+			newConfig := toDelete.Config
+			newConfig[settings.XPackLicenseSelfGeneratedType] = targetLicense
+			changes.ToReuse = append(changes.ToReuse, PodToReuse{
+				Initial: toDelete,
+				Target: PodToCreate{
+					Pod: toDelete.Pod,
+					PodSpecCtx: pod.PodSpecContext{
+						Config:  newConfig,
+						PodSpec: toDelete.Pod.Spec,
+						// TODO do we need the TopologyElement?
+						// TopologyElement:v1alpha1.TopologyElementSpec{}
+					},
+				},
+			})
+		}
+		changes.ToDelete = []pod.PodWithConfig{}
+
+		// Don't create any new pod yet, we'll do the full restart first.
+		changes.ToCreate = []PodToCreate{}
+	}
+
+	// sort for idempotent processing
+	// TODO: podsWithConfig.Sort() ?
 	toReuse := make([]pod.PodWithConfig, len(changes.ToReuse))
 	for i, p := range changes.ToReuse {
 		toReuse[i] = p.Initial
@@ -150,4 +195,37 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.P
 		MismatchReasonsPerPod: mismatchReasonsPerPod,
 		RemainingPods:         podsWithConfig,
 	}, nil
+}
+
+// licenseChangeRequiresFullClusterRestart returns true if mutation from actual to expected pods
+// requires to restart actual pods with a different config first.
+func licenseChangeRequiresFullClusterRestart(actualPods pod.PodsWithConfig, expectedPodSpecCtxs []pod.PodSpecContext) (string, bool) {
+	if len(actualPods) == 0 || len(expectedPodSpecCtxs) == 0 {
+		return "", false
+	}
+
+	// Switching from TLS to non-TLS requires a full cluster restart.
+	// That's actually switching from a self-gen basic license to a non-basic license,
+	// or the other way around.
+
+	// all expected pods have the same self-gen license, grab it from the first one
+	targetSelfGenLicense := expectedPodSpecCtxs[0].Config[settings.XPackLicenseSelfGeneratedType] // can be empty
+
+	// actual pods normally all have the same license, unless a migration is already in progress
+	// return true if there is at least one mismatch
+	currentSelfGenLicenses := make([]string, len(actualPods))
+	for i, p := range actualPods {
+		currentSelfGenLicenses[i] = p.Config[settings.XPackLicenseSelfGeneratedType] // can be empty
+	}
+
+	// detect a migration towards or away from basic
+	basic := v1alpha1.LicenseTypeBasic.String()
+	for _, currentSelfGenLicense := range currentSelfGenLicenses {
+		if (currentSelfGenLicense == basic && targetSelfGenLicense != basic) ||
+			(currentSelfGenLicense != basic && targetSelfGenLicense == basic) {
+			return targetSelfGenLicense, true
+		}
+	}
+
+	return "", false
 }
