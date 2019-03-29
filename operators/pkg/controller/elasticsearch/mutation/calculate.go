@@ -95,13 +95,21 @@ func mutableCalculateChanges(
 	// remaining actual pods should be deleted
 	changes.ToDelete = actualPods
 
+	// TODO: also sort changes.ToCreate since used for reuse computation?
 	// sort changes for idempotent processing
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
 	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
 
 	// attempt to reuse some pods to delete for pods to create
 	changes = withReusablePods(changes, reuseOptions)
-	// TODO: sort pods to reuse?
+
+	// and sort for idempotent processing
+	toReuse := make([]pod.PodWithConfig, len(changes.ToReuse))
+	for i, p := range changes.ToReuse {
+		toReuse[i] = p.Initial
+	}
+	// TODO: unit test this, not sure it works
+	sort.SliceStable(changes.ToReuse, sortPodByCreationTimestampAsc(toReuse))
 
 	return changes, nil
 }

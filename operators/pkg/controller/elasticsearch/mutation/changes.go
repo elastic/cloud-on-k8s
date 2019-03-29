@@ -28,16 +28,6 @@ type PodToCreate struct {
 	MismatchReasons map[string][]string
 }
 
-// PodToReuse defines an existing pod that we'll
-// reuse for a different spec, by restarting the process
-// running in the pod without restarting the pod itself
-type PodToReuse struct {
-	// Initial (current) pod with its config
-	Initial pod.PodWithConfig
-	// Target pod after the pod reuse process
-	Target PodToCreate
-}
-
 // EmptyChanges creates an empty Changes with empty arrays (not nil)
 func EmptyChanges() Changes {
 	return Changes{
