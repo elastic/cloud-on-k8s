@@ -194,8 +194,9 @@ func (d *defaultDriver) Reconcile(
 	if min == nil {
 		min = &d.Version
 	}
+
 	esClient := d.newElasticsearchClient(
-		network.ProtocolForCluster(es),
+		network.ProtocolForESPods(resourcesState.CurrentPods),
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
