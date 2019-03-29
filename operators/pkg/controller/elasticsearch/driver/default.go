@@ -196,7 +196,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	esClient := d.newElasticsearchClient(
-		network.ProtocolForESPods(resourcesState.CurrentPods),
+		protocolForESPods(resourcesState.CurrentPods),
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
@@ -525,4 +525,21 @@ func (d *defaultDriver) calculateChanges(
 func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", protocol, service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, []*x509.Certificate{caCert})
+}
+
+// protocolForESPods inspects the given pods to return the protocol (http or https)
+// that should be used to request the cluster.
+// It does account for transient ongoing full cluster restarts where the cluster is
+// migrating from TLS to non-TLS, during which we still need to reach the cluster.
+// Otherwise, it's usually sufficient to use `network.ProtocolForCluster()` to target the
+// expected protocol.
+func protocolForESPods(pods pod.PodsWithConfig) string {
+	// default to https, unless at least one pod is configured for http
+	for _, p := range pods {
+		license := v1alpha1.LicenseType(p.Config[settings.XPackLicenseSelfGeneratedType])
+		if network.ProtocolForLicense(license) == "http" {
+			return "http"
+		}
+	}
+	return "https"
 }
