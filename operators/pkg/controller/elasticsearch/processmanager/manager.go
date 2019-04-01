@@ -54,7 +54,7 @@ func NewProcessManager() (ProcessManager, error) {
 	}, nil
 }
 
-// Start starts all processes, the process reaper and the HTTP server in a non-blocking way.
+// Start all processes, the process reaper and the HTTP server in a non-blocking way.
 func (pm ProcessManager) Start() error {
 	if pm.enableReaper {
 		go reap.ReapChildren(nil, nil, nil, nil)
@@ -75,7 +75,7 @@ func (pm ProcessManager) Start() error {
 	return nil
 }
 
-// Stop stops the HTTP server, forwards a given signal to the process and wait for its termination.
+// Stop the HTTP server, forwards a given signal to the process and wait for its termination.
 func (pm ProcessManager) Stop(sig os.Signal) error {
 	pm.server.Stop()
 
