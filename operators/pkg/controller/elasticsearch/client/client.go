@@ -68,6 +68,13 @@ type Client interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation excludes for the given nodes.
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
+	// DisableShardAllocation disables shards allocation on the cluster.
+	DisableShardAllocation(ctx context.Context) error
+	// EnableShardAllocation enables shards allocation on the cluster.
+	EnableShardAllocation(ctx context.Context) error
+	// SyncedFlush requests a synced flush on the cluster.
+	// This is "best-effort", see https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-synced-flush.html.
+	SyncedFlush(ctx context.Context) error
 	// GetClusterHealth calls the _cluster/health api.
 	GetClusterHealth(ctx context.Context) (Health, error)
 	// GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.

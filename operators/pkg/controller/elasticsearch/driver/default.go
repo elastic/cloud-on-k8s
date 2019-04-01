@@ -288,7 +288,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 	if !done {
-		log.V(1).Info("Pods reuse is not over yet")
+		log.V(1).Info("Pods reuse is not over yet, re-queueing.")
 		return results.WithResult(defaultRequeue)
 	}
 
