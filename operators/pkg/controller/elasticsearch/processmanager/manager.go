@@ -85,5 +85,5 @@ func (pm ProcessManager) Stop(sig os.Signal) error {
 	}
 
 	log.Info("Process manager stopped")
-	return err
+	return nil
 }

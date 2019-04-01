@@ -40,7 +40,6 @@ func main() {
 
 			log.Info("Forward signal", "sig", sig)
 			err = procMgr.Stop(sig)
-
 			if err != nil {
 				exitOnErr(err)
 			}
@@ -59,7 +58,7 @@ func main() {
 
 func waitForStop() os.Signal {
 	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGTERM, syscall.SIGKILL)
+	signal.Notify(stop, syscall.SIGTERM)
 	sig := <-stop
 	return sig
 }
