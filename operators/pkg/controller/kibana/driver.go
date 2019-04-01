@@ -182,8 +182,8 @@ func newDriver(
 	switch version.Major {
 	case 6:
 		switch {
-		case version.Minor >= 7:
-			// 6.7 docker container already defaults to v7 settings
+		case version.Minor >= 6:
+			// 6.6 docker container already defaults to v7 settings
 			d.newPodSpec = version7.NewPodSpec
 		default:
 			d.newPodSpec = version6.NewPodSpec

@@ -236,7 +236,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			args: args{
 				kb: func() *kbtype.Kibana {
 					kb := kibanaFixture
-					kb.Spec.Version = "6.6.0"
+					kb.Spec.Version = "6.5.0"
 					return &kb
 				}(),
 				initialObjects: defaultInitialObjs,
@@ -249,11 +249,11 @@ func Test_driver_deploymentParams(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "6.7 docker container already defaults elasticsearch.hosts",
+			name: "6.6 docker container already defaults elasticsearch.hosts",
 			args: args{
 				kb: func() *kbtype.Kibana {
 					kb := kibanaFixture
-					kb.Spec.Version = "6.7.0"
+					kb.Spec.Version = "6.6.0"
 					return &kb
 				}(),
 				initialObjects: defaultInitialObjs,
