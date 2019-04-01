@@ -8,12 +8,13 @@ package processmanager
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -147,38 +148,37 @@ func TestRecursiveScript(t *testing.T) {
 	})
 }
 
-func Test_Invalid_Command(t *testing.T) {
-	setupEnv(t, "invalid_command")
-	procMgr, err := NewProcessManager()
+func TestInvalidCommand(t *testing.T) {
+	cfg := newConfig(t, "invalid_command")
+	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
 	err = procMgr.Start()
 	assert.Error(t, err)
 }
 
-func setupEnv(t *testing.T, cmd string) string {
+func newConfig(t *testing.T, cmd string) *Config {
 	port, err := net.GetRandomPort()
 	assert.NoError(t, err)
-	err = os.Setenv(EnvHTTPPort, port)
+
+	HTTPPort, err := strconv.Atoi(port)
 	assert.NoError(t, err)
-	err = os.Setenv(EnvProcName, "test")
-	assert.NoError(t, err)
-	err = os.Setenv(EnvProcCmd, cmd)
-	assert.NoError(t, err)
-	err = os.Setenv(EnvKeystoreUpdater, "false")
-	assert.NoError(t, err)
-	err = BindFlagsToEnv(&cobra.Command{})
-	assert.NoError(t, err)
-	return port
+
+	return &Config{
+		ProcessName:           "test",
+		ProcessCmd:            cmd,
+		HTTPPort:              HTTPPort,
+		EnableKeystoreUpdater: false,
+	}
 }
 
 func runTest(t *testing.T, cmd string, do func(client *Client)) {
-	port := setupEnv(t, cmd)
-	procMgr, err := NewProcessManager()
+	cfg := newConfig(t, cmd)
+	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
 	err = procMgr.Start()
 	assert.NoError(t, err)
 
-	client := NewClient("http://localhost:"+port, nil)
+	client := NewClient(fmt.Sprintf("http://localhost:%d", cfg.HTTPPort), nil)
 
 	time.Sleep(3 * time.Second)
 	do(client)

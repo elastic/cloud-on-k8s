@@ -27,7 +27,10 @@ func main() {
 		Use: name,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			procMgr, err := pm.NewProcessManager()
+			cfg, err := NewConfigFromFlags()
+			exitOnErr(err)
+
+			procMgr, err := pm.NewProcessManager(cfg)
 			exitOnErr(err)
 
 			err = procMgr.Start()
@@ -37,6 +40,7 @@ func main() {
 
 			log.Info("Forward signal", "sig", sig)
 			err = procMgr.Stop(sig)
+
 			if err != nil {
 				exitOnErr(err)
 			}
@@ -46,7 +50,7 @@ func main() {
 	err := keystore.BindEnvToFlags(cmd)
 	exitOnErr(err)
 
-	err = pm.BindFlagsToEnv(cmd)
+	err = BindFlagsToEnv(cmd)
 	exitOnErr(err)
 
 	err = cmd.Execute()

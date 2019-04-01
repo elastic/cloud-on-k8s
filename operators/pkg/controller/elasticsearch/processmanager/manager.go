@@ -27,18 +27,13 @@ type ProcessManager struct {
 }
 
 // NewProcessManager creates a new process manager.
-func NewProcessManager() (ProcessManager, error) {
-	cfg, err := NewConfigFromFlags()
-	if err != nil {
-		return ProcessManager{}, err
-	}
-
+func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 	var ksu *keystore.Updater
 	if cfg.EnableKeystoreUpdater {
 		keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
 		if err != nil {
 			log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
-			return ProcessManager{}, err
+			return nil, err
 		}
 
 		ksu = keystore.NewUpdater(keystoreUpdaterCfg)
@@ -46,7 +41,7 @@ func NewProcessManager() (ProcessManager, error) {
 
 	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
 
-	return ProcessManager{
+	return &ProcessManager{
 		NewProcessServer(cfg, process, ksu),
 		process,
 		cfg.EnableReaper,

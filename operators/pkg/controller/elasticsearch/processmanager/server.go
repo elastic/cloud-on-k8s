@@ -24,13 +24,13 @@ const (
 type ProcessServer struct {
 	*http.Server
 
-	cfg       Config
+	cfg       *Config
 	esProcess *Process
 	ksUpdater *keystore.Updater
 }
 
 // NewServer creates a new ProcessServer.
-func NewProcessServer(cfg Config, process *Process, updater *keystore.Updater) *ProcessServer {
+func NewProcessServer(cfg *Config, process *Process, updater *keystore.Updater) *ProcessServer {
 	mux := http.NewServeMux()
 	s := ProcessServer{
 		&http.Server{
