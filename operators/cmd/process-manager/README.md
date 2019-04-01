@@ -43,7 +43,7 @@ Exposes the control of the Elasticsearch process over HTTP or HTTPS.
 
 ```
 GET     /health                         =>  200 || 500
-POST    /es/start                       =>  202, starting || 200, started || 500
+POST    /es/start                       =>  200, started  || 500
 POST    /es/stop                        =>  202, stopping || 200, stopped || 500
 POST    /es/kill                        =>  202, killing  || 200, killed  || 500
 GET     /es/status                      =>  200 || 500
