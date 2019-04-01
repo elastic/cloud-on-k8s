@@ -228,13 +228,7 @@ func execute() {
 }
 
 func newWebhookParameters() (*webhook.Parameters, error) {
-	// we will not install the webhook if we run in dev mode with autoport forwarding enabled because the webhook won't
-	// be reachable from inside the k8s cluster.
-	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
 	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
-	if autoPortForward && autoInstall {
-		log.Info("webhook auto-install disabled because operator seems to run in development mode outside of k8s cluster")
-	}
 	ns := viper.GetString(OperatorNamespaceFlag)
 	if ns == "" && autoInstall {
 		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
@@ -248,7 +242,7 @@ func newWebhookParameters() (*webhook.Parameters, error) {
 			SecretName:       sec,
 			ServiceSelector:  svcSelector,
 		}),
-		AutoInstall: !autoPortForward && autoInstall,
+		AutoInstall: autoInstall,
 	}, nil
 }
 

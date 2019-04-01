@@ -250,7 +250,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	err = elasticsearch.Validate(es, *ver)
+	err = elasticsearch.Validate(es)
 	if err != nil {
 		return results.WithError(err)
 	}

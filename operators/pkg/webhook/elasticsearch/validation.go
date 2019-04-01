@@ -12,9 +12,9 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	gherror "github.com/pkg/errors"
-	apierror "k8s.io/apimachinery/pkg/api/errors"
-	utilerror "k8s.io/apimachinery/pkg/util/errors"
+	pkgerrors "github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 
 	"k8s.io/api/admission/v1beta1"
@@ -53,7 +53,9 @@ type ElasticsearchVersion struct {
 
 // ValidationContext is structured input for validation functions.
 type ValidationContext struct {
-	Current  *ElasticsearchVersion
+	// Current is the Elasticsearch spec/version currently stored in the api server. Can be nil on new clusters.
+	Current *ElasticsearchVersion
+	// Proposed is the Elasticsearch spec/version submitted for validation.
 	Proposed ElasticsearchVersion
 }
 
@@ -61,7 +63,7 @@ type ValidationContext struct {
 func NewValidationContext(current *estype.Elasticsearch, proposed estype.Elasticsearch) (*ValidationContext, error) {
 	proposedVersion, err := version.Parse(proposed.Spec.Version)
 	if err != nil {
-		return nil, gherror.Wrap(err, parseVersionErrMsg)
+		return nil, pkgerrors.Wrap(err, parseVersionErrMsg)
 	}
 	ctx := ValidationContext{
 		Proposed: ElasticsearchVersion{
@@ -72,7 +74,7 @@ func NewValidationContext(current *estype.Elasticsearch, proposed estype.Elastic
 	if current != nil {
 		currentVersion, err := version.Parse(current.Spec.Version)
 		if err != nil {
-			return nil, gherror.Wrap(err, parseStoredVersionErrMsg)
+			return nil, pkgerrors.Wrap(err, parseStoredVersionErrMsg)
 		}
 		ctx.Current = &ElasticsearchVersion{
 			Elasticsearch: *current,
@@ -87,12 +89,17 @@ func (v ValidationContext) isCreate() bool {
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed Elasticsearch versions.
-func Validate(es estype.Elasticsearch, v version.Version) error {
+func Validate(es estype.Elasticsearch) error {
+	v, err := version.Parse(es.Spec.Version)
+	if err != nil {
+		return err
+	}
+
 	vCtx := ValidationContext{
 		Current: nil,
 		Proposed: ElasticsearchVersion{
 			Elasticsearch: es,
-			Version:       v,
+			Version:       *v,
 		},
 	}
 	var errs []error
@@ -103,7 +110,7 @@ func Validate(es estype.Elasticsearch, v version.Version) error {
 		}
 		errs = append(errs, errors.New(r.Reason))
 	}
-	return utilerror.NewAggregate(errs)
+	return utilerrors.NewAggregate(errs)
 }
 
 // ValidationHandler exposes Elasticsearch validations as an admission.Handler.
@@ -132,7 +139,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	}
 	var onServer estype.Elasticsearch
 	err = v.client.Get(ctx, k8s.ExtractNamespacedName(&esCluster), &onServer)
-	if err != nil && !apierror.IsNotFound(err) {
+	if err != nil && !apierrors.IsNotFound(err) {
 		log.Error(err, "Failed to retrieve existing cluster")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}

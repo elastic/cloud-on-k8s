@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/pkg/errors"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
@@ -28,17 +29,16 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 		if err != nil {
 			return err
 		}
-		return lh.VerifySupportsExistingVersion(*v, fmt.Sprintf("pod %s", pod.Name))
+		return errors.Wrap(lh.Supports(*v), fmt.Sprintf("%s has incompatible version", pod.Name))
 	}
 	return nil
 }
 
-// VerifySupportsExistingVersion compares a given with the supported version range and returns an error if out of bounds.
-func (lh LowestHighestSupportedVersions) VerifySupportsExistingVersion(v version.Version, errPrefix string) error {
+// Supports compares a given with the supported version range and returns an error if out of bounds.
+func (lh LowestHighestSupportedVersions) Supports(v version.Version) error {
 	if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
 		return fmt.Errorf(
-			"%s has version %v, which is older than the lowest supported version %s",
-			errPrefix,
+			"%s is unsupported, it is older than the oldest supported version %s",
 			v,
 			lh.LowestSupportedVersion,
 		)
@@ -46,8 +46,7 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingVersion(v version
 
 	if !lh.HighestSupportedVersion.IsSameOrAfter(v) {
 		return fmt.Errorf(
-			"%s has version %v, which is newer than the highest supported version %s",
-			errPrefix,
+			"%s is unsupported, it is newer than the newest supported version %s",
 			v,
 			lh.HighestSupportedVersion,
 		)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
 const (
@@ -39,10 +38,7 @@ func validUpgradePath(ctx ValidationContext) ValidationResult {
 	if v == nil {
 		return ValidationResult{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
-	err := v.VerifySupportsExistingVersion(
-		ctx.Current.Version,
-		k8s.ExtractNamespacedName(&ctx.Current.Elasticsearch).String(),
-	)
+	err := v.Supports(ctx.Current.Version)
 	if err != nil {
 		return ValidationResult{Allowed: false, Reason: err.Error()}
 	}

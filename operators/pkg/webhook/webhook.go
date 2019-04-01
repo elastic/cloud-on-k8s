@@ -9,17 +9,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
-// AddToManagerFuncs is a list of functions to add all Controllers to the Manager
+// AddToManagerFuncs is a list of functions to add all webhooks to the Manager
 var AddToManagerFuncs = make(map[string][]func(manager.Manager, Parameters) error)
 
-// Register a controller for a specific manager role.
+// Register a webhook for a specific manager role.
 func Register(role string, add func(manager.Manager, Parameters) error) {
 	fns := AddToManagerFuncs[role]
 	AddToManagerFuncs[role] = append(fns, add)
 
 }
 
-// AddToManager adds all Controllers to the Manager
+// AddToManager adds all webhooks to the Manager
 func AddToManager(m manager.Manager, role string, paramsFn func() (*Parameters, error)) error {
 	var params *Parameters
 	var err error

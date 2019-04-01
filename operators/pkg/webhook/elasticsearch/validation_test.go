@@ -90,7 +90,6 @@ func TestNewValidationContext(t *testing.T) {
 func TestValidate(t *testing.T) {
 	type args struct {
 		es estype.Elasticsearch
-		v  version.Version
 	}
 	tests := []struct {
 		name        string
@@ -116,15 +115,15 @@ func TestValidate(t *testing.T) {
 							}},
 					},
 				},
-				v: version.MustParse("7.0.0"),
 			},
 			wantErr: false,
 		},
 		{
 			name: "single failure",
 			args: args{
-				es: estype.Elasticsearch{},
-				v:  version.MustParse("7.0.0"),
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{Version: "7.0.0"},
+				},
 			},
 			wantErr: true,
 			errContains: []string{
@@ -132,8 +131,14 @@ func TestValidate(t *testing.T) {
 			},
 		},
 		{
-			name:    "multiple failures",
-			args:    args{},
+			name: "multiple failures",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "1.0.0",
+					},
+				},
+			},
 			wantErr: true,
 			errContains: []string{
 				masterRequiredMsg,
@@ -143,7 +148,7 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Validate(tt.args.es, tt.args.v)
+			err := Validate(tt.args.es)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}

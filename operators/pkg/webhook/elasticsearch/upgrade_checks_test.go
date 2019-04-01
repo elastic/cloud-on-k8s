@@ -25,7 +25,7 @@ func es(v string) *estype.Elasticsearch {
 	}
 }
 
-func TestValidation_canUpgrade(t *testing.T) {
+func TestValidation_noDowngrades(t *testing.T) {
 	assert.NoError(t, estype.SchemeBuilder.AddToScheme(scheme.Scheme))
 	type args struct {
 		toValidate estype.Elasticsearch
@@ -106,7 +106,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: "default/foo has version 6.5.0, which is older than the lowest supported version 6.7.0"},
+			want: ValidationResult{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
 		},
 		{
 			name: "too new FAIL",
@@ -114,7 +114,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("7.0.0"),
 				proposed: *es("6.5.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: "default/foo has version 7.0.0, which is newer than the highest supported version 6.7.99"},
+			want: ValidationResult{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
 		},
 		{
 			name: "in range OK",

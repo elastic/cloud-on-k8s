@@ -102,7 +102,8 @@ run: install-crds
 		go run ./cmd/main.go manager \
 			--development --operator-role=all \
 			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-			--operator-namespace=elastic-system
+			--operator-namespace=elastic-system \
+			--auto-install-webhooks=false
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
