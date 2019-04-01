@@ -25,6 +25,10 @@ func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
 	return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
 }
 
+func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error {
+	return c.put(ctx, "/_cluster/settings", &settings, nil)
+}
+
 func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)

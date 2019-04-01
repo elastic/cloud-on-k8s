@@ -329,3 +329,24 @@ func (lr LicenseUpdateResponse) IsSuccess() bool {
 type LicenseResponse struct {
 	License License `json:"license"`
 }
+
+// Settings is the root element of settings.
+type Settings struct {
+	PersistentSettings *SettingsGroup `json:"persistent,omitempty"`
+	TransientSettings  *SettingsGroup `json:"transient,omitempty"`
+}
+
+// SettingsGroup is a group of settings, either to transient or persistent.
+type SettingsGroup struct {
+	Cluster Cluster `json:"cluster,omitempty"`
+}
+
+// Cluster models the configuration of the cluster.
+type Cluster struct {
+	RemoteClusters map[string]RemoteCluster `json:"remote,omitempty"`
+}
+
+// RemoteClusterSeeds is the set of seeds to use in a remote cluster setting.
+type RemoteCluster struct {
+	Seeds []string `json:"seeds"`
+}

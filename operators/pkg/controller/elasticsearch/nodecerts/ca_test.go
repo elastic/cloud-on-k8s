@@ -10,6 +10,7 @@ import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"reflect"
 	"testing"
 	"time"
 
@@ -290,6 +291,59 @@ func TestReconcileCAForCluster(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, ca)
 			checkCASecrets(t, tt.cl, cluster, *ca, tt.shouldReuseCa, tt.shouldNotReuseCa, tt.caCertValidity)
+		})
+	}
+}
+
+func Test_getCA(t *testing.T) {
+	cluster := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: testNamespace,
+			Name:      testName,
+		},
+	}
+	validCa, err := certificates.NewSelfSignedCA(certificates.CABuilderOptions{})
+	require.NoError(t, err)
+	_, certSecret := secretsForCA(*validCa, k8s.ExtractNamespacedName(&cluster))
+	type args struct {
+		c  k8s.Client
+		es types.NamespacedName
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name: "CA cert does not exist",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(&certSecret)),
+				es: types.NamespacedName{
+					Namespace: "default",
+					Name:      "foo",
+				},
+			},
+			want: nil,
+		}, {
+			name: "CA cert does exist",
+			args: args{
+				c:  k8s.WrapClient(fake.NewFakeClient(&certSecret)),
+				es: k8s.ExtractNamespacedName(&cluster),
+			},
+			want: certificates.EncodePEMCert(validCa.Cert.Raw),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GetCA(tt.args.c, tt.args.es)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getCA() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getCA() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
