@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Simple_Script(t *testing.T) {
+func TestSimpleScript(t *testing.T) {
 	runTest(t, "fixtures/script", func(client *Client) {
 		assertState(t, client, started)
 
@@ -47,7 +47,7 @@ func Test_Simple_Script(t *testing.T) {
 	})
 }
 
-func Test_Zombies_Script(t *testing.T) {
+func TestZombiesScript(t *testing.T) {
 	runTest(t, "fixtures/script zombies", func(client *Client) {
 		assertState(t, client, started)
 
@@ -77,7 +77,7 @@ func Test_Zombies_Script(t *testing.T) {
 	})
 }
 
-func Test_ZombiesAndTrap_Script(t *testing.T) {
+func TestZombiesAndTrapScript(t *testing.T) {
 	runTest(t, "fixtures/script zombies trap", func(client *Client) {
 		assertState(t, client, started)
 
@@ -112,7 +112,7 @@ func Test_ZombiesAndTrap_Script(t *testing.T) {
 	})
 }
 
-func Test_Recursive_Script(t *testing.T) {
+func TestRecursiveScript(t *testing.T) {
 	runTest(t, "fixtures/script zombies trap recursive", func(client *Client) {
 		assertState(t, client, started)
 
