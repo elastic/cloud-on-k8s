@@ -94,19 +94,6 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
   - apm.k8s.elastic.co
   resources:
   - apmservers
