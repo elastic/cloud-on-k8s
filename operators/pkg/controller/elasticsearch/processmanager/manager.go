@@ -80,6 +80,9 @@ func (pm ProcessManager) Stop(sig os.Signal) error {
 	pm.server.Stop()
 
 	_, err := pm.process.Kill(sig)
+	if err != nil {
+		return err
+	}
 
 	// Wait for the process to die
 	for pm.process.isAlive("process manager signal forwarding") {
