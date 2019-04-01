@@ -27,18 +27,28 @@ var (
 
 // Config contains configuration parameters for the process manager.
 type Config struct {
-	ProcessName  string
-	ProcessCmd   string
+	// Process name to manage (used only for display)
+	ProcessName string
+	// Process command to manage
+	ProcessCmd string
+	// Boolean to enable/disable the child processes reaper
 	EnableReaper bool
 
-	HTTPPort  int
+	// Port of the HTTP server
+	HTTPPort int
+	// Boolean to enable/disable TLS for the HTTP server
 	EnableTLS bool
-	CertPath  string
-	KeyPath   string
+	// Path to the certificate file used to secure the HTTP server
+	CertPath string
+	// Path to the private key file used to secure the HTTP server
+	KeyPath string
 
+	// Boolean to enable/disable the keystore updater
 	EnableKeystoreUpdater bool
 
-	EnableExpVars  bool
+	// Boolean to enable/disable the basic memory metrics endpoint (/debug/vars)
+	EnableExpVars bool
+	// Boolean to enable/disable the runtime profiling data endpoint (/debug/pprof/)
 	EnableProfiler bool
 }
 
