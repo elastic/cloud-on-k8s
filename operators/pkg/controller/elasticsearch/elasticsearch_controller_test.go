@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -61,13 +61,16 @@ func checkNumberOfPods(t *testing.T, expected int) {
 }
 
 func TestReconcile(t *testing.T) {
-	instance := &elasticsearchv1alpha1.Elasticsearch{
+	instance := &estype.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
-		Spec: elasticsearchv1alpha1.ElasticsearchSpec{
+		Spec: estype.ElasticsearchSpec{
 			Version:          "7.0.0",
 			SetVMMaxMapCount: false,
 			Topology: []v1alpha1.TopologyElementSpec{
 				{
+					NodeTypes: estype.NodeTypesSpec{
+						Master: true,
+					},
 					NodeCount: 3,
 				},
 			},

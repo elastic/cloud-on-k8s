@@ -24,6 +24,7 @@ import (
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/webhook/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -238,6 +239,11 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	ver, err := commonversion.Parse(es.Spec.Version)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	err = elasticsearch.Validate(es, *ver)
 	if err != nil {
 		return results.WithError(err)
 	}

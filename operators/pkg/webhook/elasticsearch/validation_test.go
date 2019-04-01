@@ -8,144 +8,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
-
-func Test_hasMaster(t *testing.T) {
-	failedValidation := ValidationResult{Allowed: false, Reason: masterRequiredMsg}
-	type args struct {
-		esCluster v1alpha1.Elasticsearch
-	}
-	tests := []struct {
-		name string
-		args args
-		want ValidationResult
-	}{
-		{
-			name: "no topology",
-			args: args{
-				esCluster: *es("6.7.0"),
-			},
-			want: failedValidation,
-		},
-		{
-			name: "topology but no master",
-			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
-						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
-							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: false,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
-								},
-							},
-						},
-					},
-				},
-			},
-			want: failedValidation,
-		},
-		{
-			name: "master but zero sized",
-			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
-						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
-							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: true,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
-								},
-							},
-						},
-					},
-				},
-			},
-			want: failedValidation,
-		},
-		{
-			name: "has master",
-			args: args{
-				esCluster: v1alpha1.Elasticsearch{
-					Spec: v1alpha1.ElasticsearchSpec{
-						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
-							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: true,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
-								},
-								NodeCount: 1,
-							},
-						},
-					},
-				},
-			},
-			want: ValidationResult{Allowed: true},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(nil, tt.args.esCluster)
-			require.NoError(t, err)
-			if got := hasMaster(*ctx); got != tt.want {
-				t.Errorf("hasMaster() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_supportedVersion(t *testing.T) {
-	type args struct {
-		esCluster estype.Elasticsearch
-	}
-	tests := []struct {
-		name string
-		args args
-		want ValidationResult
-	}{
-		{
-			name: "unsupported FAIL",
-			args: args{
-				esCluster: *es("1.0.0"),
-			},
-			want: ValidationResult{Allowed: false, Reason: unsupportedVersion(&version.Version{
-				Major: 1,
-				Minor: 0,
-				Patch: 0,
-				Label: "",
-			})},
-		},
-		{
-			name: "supported OK",
-			args: args{
-				esCluster: *es("6.7.0"),
-			},
-			want: OK,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, err := NewValidationContext(nil, tt.args.esCluster)
-			require.NoError(t, err)
-			if got := supportedVersion(*ctx); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestNewValidationContext(t *testing.T) {
 	type args struct {
@@ -218,5 +84,73 @@ func TestNewValidationContext(t *testing.T) {
 				t.Errorf("NewValidationContext() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidate(t *testing.T) {
+	type args struct {
+		es estype.Elasticsearch
+		v  version.Version
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantErr     bool
+		errContains []string
+	}{
+		{
+			name: "happy path",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Topology: []estype.TopologyElementSpec{
+							{
+								NodeTypes: estype.NodeTypesSpec{
+									Master: true,
+									Data:   false,
+									Ingest: false,
+									ML:     false,
+								},
+								NodeCount: 1,
+							}},
+					},
+				},
+				v: version.MustParse("7.0.0"),
+			},
+			wantErr: false,
+		},
+		{
+			name: "single failure",
+			args: args{
+				es: estype.Elasticsearch{},
+				v:  version.MustParse("7.0.0"),
+			},
+			wantErr: true,
+			errContains: []string{
+				masterRequiredMsg,
+			},
+		},
+		{
+			name:    "multiple failures",
+			args:    args{},
+			wantErr: true,
+			errContains: []string{
+				masterRequiredMsg,
+				"unsupported version",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Validate(tt.args.es, tt.args.v)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			for _, errStr := range tt.errContains {
+				assert.Contains(t, err.Error(), errStr)
+			}
+		})
+
 	}
 }
