@@ -18,8 +18,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const testCmd = "fixtures/simulate-child-processes.sh"
+
 func TestSimpleScript(t *testing.T) {
-	runTest(t, "fixtures/script", func(client *Client) {
+	runTest(t, testCmd, func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -49,7 +51,7 @@ func TestSimpleScript(t *testing.T) {
 }
 
 func TestZombiesScript(t *testing.T) {
-	runTest(t, "fixtures/script zombies", func(client *Client) {
+	runTest(t, testCmd+" zombies", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
@@ -79,42 +81,7 @@ func TestZombiesScript(t *testing.T) {
 }
 
 func TestZombiesAndTrapScript(t *testing.T) {
-	runTest(t, "fixtures/script zombies trap", func(client *Client) {
-		assertState(t, client, started)
-
-		// stopping
-		status, err := client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		// starting should fail because the stop is still in progress
-		status, err = client.Start(context.Background())
-		assert.Error(t, err)
-		assertEqual(t, stopping, status.State)
-
-		assertState(t, client, stopping)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopping)
-
-		// killing
-		status, err = client.Kill(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, killing, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, killed)
-	})
-}
-
-func TestRecursiveScript(t *testing.T) {
-	runTest(t, "fixtures/script zombies trap recursive", func(client *Client) {
+	runTest(t, testCmd+" zombies enableTrap", func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
