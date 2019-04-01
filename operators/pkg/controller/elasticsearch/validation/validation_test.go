@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package elasticsearch
+package validation
 
 import (
 	"reflect"
@@ -21,7 +23,7 @@ func TestNewValidationContext(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *ValidationContext
+		want    *Context
 		wantErr bool
 	}{
 		{
@@ -46,7 +48,7 @@ func TestNewValidationContext(t *testing.T) {
 				current:  nil,
 				proposed: *es("7.0.0"),
 			},
-			want: &ValidationContext{
+			want: &Context{
 				Proposed: ElasticsearchVersion{
 					Elasticsearch: *es("7.0.0"),
 					Version:       version.MustParse("7.0.0"),
@@ -60,7 +62,7 @@ func TestNewValidationContext(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: &ValidationContext{
+			want: &Context{
 				Current: &ElasticsearchVersion{
 					Elasticsearch: *es("6.5.0"),
 					Version:       version.MustParse("6.5.0"),

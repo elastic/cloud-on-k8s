@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package elasticsearch
+package validation
 
 import (
 	"reflect"
@@ -34,7 +36,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 		name    string
 		args    args
 		current *estype.Elasticsearch
-		want    ValidationResult
+		want    Result
 		wantErr bool
 	}{
 		{
@@ -51,7 +53,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("1.0.0"),
 			},
 			current: es("2.0.0"),
-			want:    ValidationResult{Allowed: false, Reason: noDowngradesMsg},
+			want:    Result{Allowed: false, Reason: noDowngradesMsg},
 		},
 		{
 			name: "allow upgrades",
@@ -82,7 +84,7 @@ func Test_validUpgradePath(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want ValidationResult
+		want Result
 	}{
 		{
 			name: "new cluster OK",
@@ -98,7 +100,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("1.0.0"),
 				proposed: *es("2.0.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: "unsupported version: 2.0.0"},
+			want: Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
 		},
 		{
 			name: "too old FAIL",
@@ -106,7 +108,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
+			want: Result{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
 		},
 		{
 			name: "too new FAIL",
@@ -114,7 +116,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("7.0.0"),
 				proposed: *es("6.5.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
+			want: Result{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
 		},
 		{
 			name: "in range OK",

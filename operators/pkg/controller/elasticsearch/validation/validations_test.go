@@ -1,8 +1,10 @@
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
-// or more contributor license agreements. Licensed under the Elastic License;
-// you may not use this file except in compliance with the Elastic License.
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License;
+ * you may not use this file except in compliance with the Elastic License.
+ */
 
-package elasticsearch
+package validation
 
 import (
 	"reflect"
@@ -15,14 +17,14 @@ import (
 )
 
 func Test_hasMaster(t *testing.T) {
-	failedValidation := ValidationResult{Allowed: false, Reason: masterRequiredMsg}
+	failedValidation := Result{Allowed: false, Reason: masterRequiredMsg}
 	type args struct {
 		esCluster v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name string
 		args args
-		want ValidationResult
+		want Result
 	}{
 		{
 			name: "no topology",
@@ -93,7 +95,7 @@ func Test_hasMaster(t *testing.T) {
 					},
 				},
 			},
-			want: ValidationResult{Allowed: true},
+			want: Result{Allowed: true},
 		},
 	}
 	for _, tt := range tests {
@@ -114,14 +116,14 @@ func Test_supportedVersion(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want ValidationResult
+		want Result
 	}{
 		{
 			name: "unsupported FAIL",
 			args: args{
 				esCluster: *es("1.0.0"),
 			},
-			want: ValidationResult{Allowed: false, Reason: unsupportedVersion(&version.Version{
+			want: Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
 				Major: 1,
 				Minor: 0,
 				Patch: 0,
