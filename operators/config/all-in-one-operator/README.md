@@ -18,10 +18,6 @@ Describes the operator stateful set and service.
 Namespace can be changed according to what is set in `namespace.yaml`.
 Service accounts can be changed according to what is set in `service_account.yaml`.
 
-Namespace operator args can be customized:
-
-* `--namespace`: namespace in which resources should be watched (defaults to "default")
-
 ## role.yaml
 
 Describes permissions for several api calls the operator needs to perform.
