@@ -24,7 +24,7 @@ spec:
       - image: $OPERATOR_IMAGE
         imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--operator-role", "global,webhook"]
+        args: ["manager", "--development", "--operator-roles", "global,webhook"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:

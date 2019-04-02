@@ -4,6 +4,8 @@
 
 package operator
 
+import "fmt"
+
 // Roles that an operator can assume
 const (
 	// NamespaceOperator manages applications in a single namespace
@@ -16,9 +18,24 @@ const (
 	All = "all"
 )
 
-var Roles = map[string]struct{}{
+var allRoles = map[string]struct{}{
 	NamespaceOperator: {},
 	GlobalOperator:    {},
 	WebhookServer:     {},
 	All:               {},
+}
+
+// ValidateRoles checks roles against the set of valid roles.
+func ValidateRoles(roles []string) error {
+	var invalid []string
+	for _, r := range roles {
+		_, ok := allRoles[r]
+		if !ok {
+			invalid = append(invalid, r)
+		}
+	}
+	if len(invalid) > 0 {
+		return fmt.Errorf("invalid roles %v", invalid)
+	}
+	return nil
 }

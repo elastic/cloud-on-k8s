@@ -2,15 +2,13 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package manager
+package operator
 
 import (
 	"testing"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 )
 
-func Test_validateRoles(t *testing.T) {
+func Test_ValidateRoles(t *testing.T) {
 	type args struct {
 		roles []string
 	}
@@ -29,14 +27,14 @@ func Test_validateRoles(t *testing.T) {
 		{
 			name: "valid roles: OK",
 			args: args{
-				roles: []string{operator.All, operator.WebhookServer, operator.NamespaceOperator, operator.GlobalOperator},
+				roles: []string{All, WebhookServer, NamespaceOperator, GlobalOperator},
 			},
 			wantErr: false,
 		},
 		{
 			name: "invalid role: FAIL",
 			args: args{
-				roles: []string{operator.GlobalOperator, "blah"},
+				roles: []string{GlobalOperator, "blah"},
 			},
 			wantErr: true,
 		},
@@ -50,7 +48,7 @@ func Test_validateRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateRoles(tt.args.roles); (err != nil) != tt.wantErr {
+			if err := ValidateRoles(tt.args.roles); (err != nil) != tt.wantErr {
 				t.Errorf("validateRoles() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

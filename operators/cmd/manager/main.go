@@ -200,7 +200,7 @@ func execute() {
 	nodeCertValidity, nodeCertRotateBefore := ValidateCertExpirationFlags(NodeCertValidityFlag, NodeCertRotateBeforeFlag)
 	// Setup all Controllers
 	roles := viper.GetStringSlice(operator.RoleFlag)
-	err = validateRoles(roles)
+	err = operator.ValidateRoles(roles)
 	if err != nil {
 		log.Error(err, "invalid roles specified")
 		os.Exit(1)
@@ -230,20 +230,6 @@ func execute() {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
-}
-
-func validateRoles(roles []string) error {
-	var invalid []string
-	for _, r := range roles {
-		_, ok := operator.Roles[r]
-		if !ok {
-			invalid = append(invalid, r)
-		}
-	}
-	if len(invalid) > 0 {
-		return fmt.Errorf("Invalid roles %v", invalid)
-	}
-	return nil
 }
 
 func newWebhookParameters() (*webhook.Parameters, error) {
