@@ -86,7 +86,7 @@ func init() {
 	Cmd.Flags().StringSlice(
 		operator.RoleFlag,
 		[]string{operator.All},
-		"Role this operator should assume (either namespace, global or all)",
+		"Roles this operator should assume (either namespace, global, webhook or all)",
 	)
 	Cmd.Flags().Duration(
 		CACertValidityFlag,
