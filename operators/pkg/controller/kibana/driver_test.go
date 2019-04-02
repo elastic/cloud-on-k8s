@@ -22,44 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_driver_deploymentParams(t *testing.T) {
-	s := scheme.Scheme
-	if err := kbtype.SchemeBuilder.AddToScheme(s); err != nil {
-		assert.Fail(t, "failed to build custom scheme")
-	}
-
+func expectedDeploymentParams() *DeploymentParams {
 	false := false
-	caSecret := "es-ca-secret"
-	kibanaFixture := kbtype.Kibana{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb",
-			Namespace: "default",
-		},
-		Spec: kbtype.KibanaSpec{
-			Version:   "7.0.0",
-			Image:     "my-image",
-			NodeCount: 1,
-			Elasticsearch: kbtype.BackendElasticsearch{
-				URL: "https://localhost:9200",
-				Auth: kbtype.ElasticsearchAuth{
-					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "kb-auth",
-						},
-						Key: "kibana-user",
-					},
-				},
-				CaCertSecret: &caSecret,
-			},
-			Expose: "LoadBalancer",
-		},
-	}
-
-	type args struct {
-		kb             *kbtype.Kibana
-		initialObjects []runtime.Object
-	}
-	expectedParams := DeploymentParams{
+	return &DeploymentParams{
 		Name:      "kb-kibana",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
@@ -145,6 +110,67 @@ func Test_driver_deploymentParams(t *testing.T) {
 			AutomountServiceAccountToken: &false,
 		},
 	}
+
+}
+
+func Test_driver_deploymentParams(t *testing.T) {
+	s := scheme.Scheme
+	if err := kbtype.SchemeBuilder.AddToScheme(s); err != nil {
+		assert.Fail(t, "failed to build custom scheme")
+	}
+
+	caSecret := "es-ca-secret"
+	kibanaFixture := kbtype.Kibana{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kb",
+			Namespace: "default",
+		},
+		Spec: kbtype.KibanaSpec{
+			Version:   "7.0.0",
+			Image:     "my-image",
+			NodeCount: 1,
+			Elasticsearch: kbtype.BackendElasticsearch{
+				URL: "https://localhost:9200",
+				Auth: kbtype.ElasticsearchAuth{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "kb-auth",
+						},
+						Key: "kibana-user",
+					},
+				},
+				CaCertSecret: &caSecret,
+			},
+			Expose: "LoadBalancer",
+		},
+	}
+
+	var defaultInitialObjs = []runtime.Object{
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      caSecret,
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"ca.pem": nil,
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "kb-auth",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"kibana-user": nil,
+			},
+		},
+	}
+
+	type args struct {
+		kb             *kbtype.Kibana
+		initialObjects []runtime.Object
+	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -163,29 +189,10 @@ func Test_driver_deploymentParams(t *testing.T) {
 		{
 			name: "with required remote objects",
 			args: args{
-				kb: &kibanaFixture,
-				initialObjects: []runtime.Object{
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      caSecret,
-							Namespace: "default",
-						},
-						Data: map[string][]byte{
-							"ca.pem": nil,
-						},
-					},
-					&corev1.Secret{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "kb-auth",
-							Namespace: "default",
-						},
-						Data: map[string][]byte{
-							"kibana-user": nil,
-						},
-					},
-				},
+				kb:             &kibanaFixture,
+				initialObjects: defaultInitialObjs,
 			},
-			want:    &expectedParams,
+			want:    expectedDeploymentParams(),
 			wantErr: false,
 		},
 		{
@@ -214,14 +221,44 @@ func Test_driver_deploymentParams(t *testing.T) {
 				},
 			},
 			want: func() *DeploymentParams {
-				p := expectedParams
+				p := expectedDeploymentParams()
 				p.PodLabels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "kb",
 					"kibana.k8s.elastic.co/config-checksum": "5d26adcdb6e5e6be930802dc6639233ece8c2a3bc2cf8b8dffa69602",
 				}
-				return &p
+				return p
 			}(),
+			wantErr: false,
+		},
+		{
+			name: "6.x is supported",
+			args: args{
+				kb: func() *kbtype.Kibana {
+					kb := kibanaFixture
+					kb.Spec.Version = "6.5.0"
+					return &kb
+				}(),
+				initialObjects: defaultInitialObjs,
+			},
+			want: func() *DeploymentParams {
+				p := expectedDeploymentParams()
+				p.PodSpec.Containers[0].Env[0].Name = "ELASTICSEARCH_URL"
+				return p
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "6.6 docker container already defaults elasticsearch.hosts",
+			args: args{
+				kb: func() *kbtype.Kibana {
+					kb := kibanaFixture
+					kb.Spec.Version = "6.6.0"
+					return &kb
+				}(),
+				initialObjects: defaultInitialObjs,
+			},
+			want:    expectedDeploymentParams(),
 			wantErr: false,
 		},
 	}
