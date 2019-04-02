@@ -283,7 +283,7 @@ func (d *defaultDriver) Reconcile(
 		"to_reuse", len(changes.ToReuse),
 	)
 
-	done, err := restart.HandlePodsReuse(d.Client, *changes)
+	done, err := restart.HandlePodsReuse(d.Client, esClient, es, *changes)
 	if err != nil {
 		return results.WithError(err)
 	}
