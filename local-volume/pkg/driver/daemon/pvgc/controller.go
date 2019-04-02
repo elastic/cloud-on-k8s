@@ -7,7 +7,6 @@ package pvgc
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
@@ -60,13 +59,6 @@ type ControllerParams struct {
 }
 
 func NewController(p ControllerParams) (*Controller, error) {
-
-	// Get the name of the current node
-	nodeName, ok := os.LookupEnv("NODE_NAME")
-	if !ok {
-		return nil, fmt.Errorf("missing environment variable : %s", "NODE_NAME")
-	}
-
 	var watcher = p.testWatcher
 	if watcher == nil {
 		// persistent volume watcher
@@ -75,7 +67,7 @@ func NewController(p ControllerParams) (*Controller, error) {
 			"persistentvolumes",
 			corev1.NamespaceAll,
 			func(options *metav1.ListOptions) {
-				options.LabelSelector = fmt.Sprintf("%s=%s", provider.NodeAffinityLabel, nodeName)
+				options.LabelSelector = fmt.Sprintf("%s=%s", provider.NodeAffinityLabel, p.NodeName)
 			},
 		)
 	}

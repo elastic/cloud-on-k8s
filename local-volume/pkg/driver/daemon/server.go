@@ -84,7 +84,7 @@ func (s *Server) Start() error {
 	}()
 
 	// start persistent volume garbage collection
-	if err := s.StartPVGC(ctx); err != nil {
+	if err := s.StartPVGC(s.nodeName, ctx); err != nil {
 		return err
 	}
 
@@ -96,12 +96,14 @@ func (s *Server) Start() error {
 }
 
 // StartPVGC starts the persistent volume garbage collection in a goroutine
-func (s *Server) StartPVGC(ctx context.Context) error {
+func (s *Server) StartPVGC(nodeName string, ctx context.Context) error {
 
-	log.Info("Starting PV GC controller")
+	log.Infof("Starting PV GC controller for node %s", nodeName)
 
 	controller, err := pvgc.NewController(pvgc.ControllerParams{
-		Client: s.k8sClient.ClientSet, Driver: s.driver,
+		Client:   s.k8sClient.ClientSet,
+		Driver:   s.driver,
+		NodeName: nodeName,
 	})
 	if err != nil {
 		return err
