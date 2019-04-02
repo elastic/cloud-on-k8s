@@ -12,12 +12,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/pvgc"
-
-	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
-
 	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/pvgc"
 	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
 	log "github.com/sirupsen/logrus"
 )
 
