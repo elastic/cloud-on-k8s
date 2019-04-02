@@ -23,6 +23,9 @@ type kbChecks struct {
 // Kibana checks returns all test steps to verify the given stack's Kibana
 // deployment is running as expected.
 func KibanaChecks(kb kbtype.Kibana, licenseType estype.LicenseType) helpers.TestStepList {
+	if kb.Spec.NodeCount == 0 {
+		return helpers.TestStepList{}
+	}
 	checks := kbChecks{
 		client: helpers.NewHTTPClient(),
 	}
