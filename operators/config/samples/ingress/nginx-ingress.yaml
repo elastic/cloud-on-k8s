@@ -7,7 +7,7 @@
 # - (optional) deploy the cert-manager to auto-generate Let's encrypt certificates: https://docs.cert-manager.io/en/latest/getting-started/install.html
 #
 # Optional:
-# - setup basic auth (see annotations
+# - setup basic auth (see annotations)
 # - setup TLS termination from a TLS certificate (see tls spec)
 # - setup TLS termination from a Let's Encrypt auto-generated TLS certificate (see annotations)
 # - use https to communicate from NGINX to Elasticsearch (see annotations)
