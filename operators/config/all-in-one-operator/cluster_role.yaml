@@ -60,6 +60,8 @@ rules:
   - trustrelationships
   - users
   - users/status
+  - remoteclusters
+  - remoteclusters/status
   verbs:
   - get
   - list
