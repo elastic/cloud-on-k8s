@@ -41,7 +41,14 @@ type PodToReuse struct {
 // the inner ES process with a different configuration.
 func withReusablePods(changes Changes, options ReuseOptions) Changes {
 	// The given changes are kept unmodified, a new object is returned.
-	result := changes.Copy()
+	changesCopy := changes.Copy()
+	result := Changes{
+		ToKeep:                    changesCopy.ToKeep,
+		ToCreate:                  []PodToCreate{},
+		ToReuse:                   []PodToReuse{},
+		ToDelete:                  changes.ToDelete,
+		RequireFullClusterRestart: changes.RequireFullClusterRestart,
+	}
 
 	if !options.CanReuse() {
 		return result
@@ -54,9 +61,10 @@ func withReusablePods(changes Changes, options ReuseOptions) Changes {
 				Initial: matchingPod,
 				Target:  toCreate,
 			})
+			// update list of pods to delete to remove the matching one
 			result.ToDelete = remainingToDelete
 		} else {
-			// cannot reuse, keep it to create
+			// cannot reuse, should be created
 			result.ToCreate = append(result.ToCreate, toCreate)
 		}
 	}

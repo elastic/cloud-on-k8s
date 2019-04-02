@@ -127,7 +127,7 @@ func mutableCalculateChanges(
 		// Don't delete pods yet: instead, reuse them with a different config including the new license.
 		for _, toDelete := range changes.ToDelete {
 			newConfig := toDelete.Config
-			newConfig[settings.XPackLicenseSelfGeneratedType] = targetLicense
+			newConfig.MergeWith(settings.XPackConfig(v1alpha1.LicenseType(targetLicense)))
 			changes.ToReuse = append(changes.ToReuse, PodToReuse{
 				Initial: toDelete,
 				Target: PodToCreate{

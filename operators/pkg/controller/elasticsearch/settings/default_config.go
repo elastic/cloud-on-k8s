@@ -30,7 +30,7 @@ func NewDefaultESConfig(
 ) FlatConfig {
 	return baseConfig(clusterName, zenMinMasterNodes).
 		MergeWith(nodeTypesConfig(nodeTypes)).
-		MergeWith(xpackConfig(licenseType))
+		MergeWith(XPackConfig(licenseType))
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
@@ -63,8 +63,8 @@ func nodeTypesConfig(nodeTypes v1alpha1.NodeTypesSpec) FlatConfig {
 	}
 }
 
-// xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
+// XPackConfig returns the configuration bit related to XPack settings
+func XPackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 	cfg := FlatConfig{}
 
 	// maybe auto-generate a license
