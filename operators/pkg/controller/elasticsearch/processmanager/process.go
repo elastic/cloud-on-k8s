@@ -44,15 +44,15 @@ type ProcessStatus struct {
 type ProcessState string
 
 const (
-	started     ProcessState = "started"
-	stopping    ProcessState = "stopping"
-	stopped     ProcessState = "stopped"
-	killing     ProcessState = "killing"
-	killed      ProcessState = "killed"
-	startFailed ProcessState = "startFailed"
-	stopFailed  ProcessState = "stopFailed"
-	killFailed  ProcessState = "killFailed"
-	failed      ProcessState = "failed"
+	Started     ProcessState = "started"
+	Stopping    ProcessState = "stopping"
+	Stopped     ProcessState = "stopped"
+	Killing     ProcessState = "killing"
+	Killed      ProcessState = "killed"
+	StartFailed ProcessState = "startFailed"
+	StopFailed  ProcessState = "stopFailed"
+	KillFailed  ProcessState = "killFailed"
+	Failed      ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -81,24 +81,24 @@ func NewProcess(name string, cmd string) *Process {
 		id:    name,
 		name:  args[0],
 		args:  args[1:],
-		state: stopped,
+		state: Stopped,
 		mutex: sync.RWMutex{},
 	}
 }
 
 // Start starts a process.
-// The process is started only if it's not starting, started or stopping.
-// It returns an error if the process is stopping or killing.
-// A goroutine is started to monitor the end of the process in the background.
+// The process is Started only if it's not starting, Started or Stopping.
+// It returns an error if the process is Stopping or Killing.
+// A goroutine is Started to monitor the end of the process in the background.
 func (p *Process) Start() (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can start only if not started, stopping or killing
+	// Can start only if not Started, Stopping or Killing
 	switch p.state {
-	case started:
+	case Started:
 		return p.state, nil
-	case stopping, killing:
+	case Stopping, Killing:
 		return p.state, fmt.Errorf("error: cannot start process %s", p.state)
 	}
 
@@ -110,10 +110,10 @@ func (p *Process) Start() (ProcessState, error) {
 
 	err := cmd.Start()
 	if err != nil {
-		return startFailed, err
+		return StartFailed, err
 	}
 
-	state := started
+	state := Started
 	p.pid = cmd.Process.Pid
 
 	p.updateState(startAction, state, p.pid, noSignal, err)
@@ -127,12 +127,12 @@ func (p *Process) Start() (ProcessState, error) {
 }
 
 // Kill kills a process group by forwarding a signal.
-// The process is stopped only if it's not stopping, killing, stopped or killed.
+// The process is Stopped only if it's not Stopping, Killing, Stopped or Killed.
 func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 	sig, ok := s.(syscall.Signal)
 	if !ok {
 		err := errors.New("os: unsupported signal type")
-		return stopFailed, err
+		return StopFailed, err
 	}
 	killHard := sig == killHardSignal
 
@@ -141,33 +141,33 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 
 	// Can kill?
 	switch p.state {
-	case stopping:
+	case Stopping:
 		if !killHard {
 			return p.state, nil
 		}
-	case killing:
+	case Killing:
 		if killHard {
 			return p.state, nil
 		}
-	case stopped, killed, failed:
+	case Stopped, Killed, Failed:
 		return p.state, nil
 	}
 
-	state := stopping
-	errState := stopFailed
+	state := Stopping
+	errState := StopFailed
 	if killHard {
-		state = killing
-		errState = killFailed
+		state = Killing
+		errState = KillFailed
 	}
 
 	// Send signal to the whole process group
 	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
-		if p.state == started && err.Error() == ErrNoSuchProcess {
-			// No process but still marked started? This should not happen.
+		if p.state == Started && err.Error() == ErrNoSuchProcess {
+			// No process but still marked Started? This should not happen.
 			// Normally the termination of the process is intercepted to update the process state.
 			p.mutex.Unlock()
-			p.GracefulExit("unexpected state: no process to kill, but process still marked started", err)
+			p.GracefulExit("unexpected state: no process to kill, but process still marked Started", err)
 		}
 		state = errState
 	}
@@ -210,19 +210,19 @@ func (p *Process) terminate(action string, err error) {
 
 	if !alive {
 		switch p.state {
-		case stopping:
+		case Stopping:
 			p.mutex.Lock()
-			p.updateState(action, stopped, p.pid, noSignal, err)
+			p.updateState(action, Stopped, p.pid, noSignal, err)
 			p.mutex.Unlock()
-		case killing:
+		case Killing:
 			p.mutex.Lock()
-			p.updateState(action, killed, p.pid, noSignal, err)
+			p.updateState(action, Killed, p.pid, noSignal, err)
 			p.mutex.Unlock()
-		case started:
+		case Started:
 			p.mutex.Lock()
-			p.updateState(action, failed, p.pid, noSignal, err)
+			p.updateState(action, Failed, p.pid, noSignal, err)
 			p.mutex.Unlock()
-			// No process but still marked started. Something unexpected happened to the process!
+			// No process but still marked Started. Something unexpected happened to the process!
 			// The process is terminated without the process manager schedules a stop or a kill.
 			// Exit the program hoping to be restarted by something (as a kubelet?).
 			p.GracefulExit("unexpected state: process terminated without stop/kill", err)

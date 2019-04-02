@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	pm "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -31,7 +32,7 @@ func BindFlagsToEnv(cmd *cobra.Command) error {
 	cmd.Flags().StringP(procNameFlag, "", "", "process name to manage")
 	cmd.Flags().StringP(procCmdFlag, "", "", "process command to manage")
 	cmd.Flags().BoolP(reaperFlag, "", true, "enable the child processes reaper")
-	cmd.Flags().IntP(HTTPPortFlag, "", 8080, "HTTP server port")
+	cmd.Flags().IntP(HTTPPortFlag, "", processmanager.DefaultPort, "HTTP server port")
 	cmd.Flags().BoolP(tlsFlag, "", false, "secure the HTTP server using TLS")
 	cmd.Flags().StringP(certPathFlag, "", "", "path to the certificate file used to secure the HTTP server")
 	cmd.Flags().StringP(keyPathFlag, "", "", "path to the private key file used to secure the HTTP server")

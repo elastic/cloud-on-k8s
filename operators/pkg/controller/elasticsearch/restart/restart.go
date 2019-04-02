@@ -10,12 +10,13 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("mutation")
 
-func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
+func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, dialer net.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
 	annotatedCount, err := annotateForRestart(k8sClient, changes)
 	if err != nil {
 		return false, err
@@ -27,7 +28,7 @@ func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, cluster v1alp
 	}
 
 	// no more pods to annotate, let's process annotated ones
-	return processRestarts(k8sClient, esClient, cluster, changes)
+	return processRestarts(k8sClient, esClient, dialer, cluster, changes)
 }
 
 func annotateForRestart(client k8s.Client, changes mutation.Changes) (count int, err error) {
@@ -40,7 +41,7 @@ func annotateForRestart(client k8s.Client, changes mutation.Changes) (count int,
 	return 0, nil
 }
 
-func processRestarts(k8sClient k8s.Client, esClient client.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
+func processRestarts(k8sClient k8s.Client, esClient client.Client, dialer net.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
 	// both pods to keep and pods to reuse may be annotated for restart
 	podsToLookAt := make(pod.PodsWithConfig, 0, len(changes.ToReuse)+len(changes.ToKeep))
 	copy(podsToLookAt, changes.ToKeep)
@@ -72,6 +73,7 @@ func processRestarts(k8sClient k8s.Client, esClient client.Client, cluster v1alp
 	coordinated := CoordinatedRestart{
 		k8sClient: k8sClient,
 		esClient:  esClient,
+		dialer:    dialer,
 		cluster:   cluster,
 		pods:      annotatedPods[StrategyCoordinated],
 	}

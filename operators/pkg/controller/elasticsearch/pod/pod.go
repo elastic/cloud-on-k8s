@@ -8,7 +8,6 @@ import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -24,15 +23,6 @@ const (
 
 	// DefaultContainerName is the name of the elasticsearch container
 	DefaultContainerName = "elasticsearch"
-)
-
-var (
-	// DefaultContainerPorts are the default Elasticsearch port mappings
-	DefaultContainerPorts = []corev1.ContainerPort{
-		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
-		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
-	}
 )
 
 // PodWithConfig contains a pod and its configuration

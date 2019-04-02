@@ -4,6 +4,11 @@
 
 package processmanager
 
+const (
+	// DefaultPort used by the process-manager HTTP api
+	DefaultPort = 8080
+)
+
 // Config contains configuration parameters for the process manager.
 type Config struct {
 	// Process name to manage (used only for display)

@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -33,7 +34,7 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 				Image:           image,
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				Name:            "elasticsearch",
-				Ports:           pod.DefaultContainerPorts,
+				Ports:           version.DefaultContainerPorts,
 				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{

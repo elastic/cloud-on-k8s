@@ -6,16 +6,21 @@ package restart
 
 import (
 	"context"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"fmt"
+	"hash/crc32"
+	"net"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	netutils "github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func scheduleCoordinatedRestart(c k8s.Client, toReuse []mutation.PodToReuse) (int, error) {
@@ -40,6 +45,7 @@ func scheduleCoordinatedRestart(c k8s.Client, toReuse []mutation.PodToReuse) (in
 type CoordinatedRestart struct {
 	k8sClient k8s.Client
 	esClient  client.Client
+	dialer    netutils.Dialer
 	cluster   v1alpha1.Elasticsearch
 	pods      pod.PodsWithConfig
 }
@@ -58,7 +64,6 @@ func (c *CoordinatedRestart) Exec() (bool, error) {
 		c.scheduleStop(),
 		c.stop(),
 		c.start(),
-		c.finalizeRestart(),
 	} {
 		pods := filterPodsInPhase(c.pods, step.startPhase)
 		if len(pods) == 0 {
@@ -89,6 +94,9 @@ func (c *CoordinatedRestart) scheduleStop() Step {
 		startPhase: PhaseSchedule,
 		endPhase:   PhaseStop,
 		do: func(pods pod.PodsWithConfig) (bool, error) {
+			if err := c.prepareClusterForStop(); err != nil {
+				return false, err
+			}
 			if err := c.setPhase(pods, PhaseStop); err != nil {
 				return false, err
 			}
@@ -102,10 +110,6 @@ func (c *CoordinatedRestart) stop() Step {
 		startPhase: PhaseStop,
 		endPhase:   PhaseStart,
 		do: func(pods pod.PodsWithConfig) (bool, error) {
-			if err := c.prepareClusterForStop(); err != nil {
-				return false, err
-			}
-
 			allStopped, err := c.ensureESProcessStopped(pods)
 			if err != nil {
 				return false, err
@@ -125,8 +129,8 @@ func (c *CoordinatedRestart) stop() Step {
 
 func (c *CoordinatedRestart) start() Step {
 	return Step{
-		startPhase: PhaseStop,
-		endPhase:   PhaseStart,
+		startPhase: PhaseStart,
+		endPhase:   "",
 		do: func(pods pod.PodsWithConfig) (bool, error) {
 			podsDone := 0
 			for _, p := range pods {
@@ -141,8 +145,13 @@ func (c *CoordinatedRestart) start() Step {
 
 				// - Update pod labels?
 				// - ensure es process started
-				c.ensureESProcessStarted(p)
-				podsDone += 1
+				started, err := c.ensureESProcessStarted(p)
+				if err != nil {
+					return false, err
+				}
+				if started {
+					podsDone++
+				}
 			}
 
 			if podsDone != len(pods) {
@@ -150,27 +159,20 @@ func (c *CoordinatedRestart) start() Step {
 			}
 
 			// re-enable shard allocation
+			log.V(1).Info("Enabling shards allocation")
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
 			if err := c.esClient.EnableShardAllocation(ctx); err != nil {
 				return false, err
 			}
 
-			return true, nil
-		},
-	}
-}
-
-func (c *CoordinatedRestart) finalizeRestart() Step {
-	return Step{
-		startPhase: PhaseStart,
-		endPhase:   "",
-		do: func(pods pod.PodsWithConfig) (bool, error) {
+			// restart over, remove all annotations
 			for _, p := range pods {
 				if err := removeAnnotations(c.k8sClient, p.Pod); err != nil {
 					return false, err
 				}
 			}
+
 			return true, nil
 		},
 	}
@@ -188,6 +190,7 @@ func (c *CoordinatedRestart) setPhase(pods pod.PodsWithConfig, phase RestartPhas
 func (c *CoordinatedRestart) prepareClusterForStop() error {
 	// disable shard allocation to ensure shards from the restarted node
 	// won't be moved around
+	log.V(1).Info("Disabling shards allocation for coordinated restart")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
 	if err := c.esClient.DisableShardAllocation(ctx); err != nil {
@@ -204,13 +207,55 @@ func (c *CoordinatedRestart) prepareClusterForStop() error {
 	return nil
 }
 
-func (c *CoordinatedRestart) ensureESProcessStopped(p pod.PodsWithConfig) (bool, error) {
-	// TODO
-	return true, nil
+func (c *CoordinatedRestart) ensureESProcessStopped(pods pod.PodsWithConfig) (bool, error) {
+	stoppedCount := 0
+	// TODO: parallel requests
+	for _, p := range pods {
+		// request ES process stop through the pod's process manager (idempotent)
+		pmClient, err := c.processManagerClient(p.Pod)
+		if err != nil {
+			return false, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+		defer cancel()
+		log.V(1).Info("Requesting ES process stop", "pod", p.Pod.Name)
+		status, err := pmClient.Stop(ctx)
+		if err != nil {
+			return false, err
+		}
+		// we got the current status back, check if the process is stopped
+		if status.State == processmanager.Stopped {
+			log.V(1).Info("ES process successfully stopped", "pod", p.Pod.Name)
+			stoppedCount++
+		} else {
+			log.V(1).Info("ES process is not stopped yet", "pod", p.Pod.Name, "state", status.State)
+		}
+	}
+	return stoppedCount == len(pods), nil
 }
 
 func (c *CoordinatedRestart) ensureESProcessStarted(p pod.PodWithConfig) (bool, error) {
-	// TODO
+	// request ES process stop through the pod's process manager (idempotent)
+	pmClient, err := c.processManagerClient(p.Pod)
+	if err != nil {
+		return false, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+	defer cancel()
+	status, err := pmClient.Start(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// check the returned process status
+	if status.State != processmanager.Started {
+		log.V(1).Info("ES process is not started yet", "pod", p.Pod.Name, "state", status.State)
+		// not started yet, requeue
+		return false, nil
+	}
+
+	log.V(1).Info("ES process successfully started", "pod", p.Pod.Name)
 	return true, nil
 }
 
@@ -218,14 +263,60 @@ func (c *CoordinatedRestart) ensureConfigurationUpdated(p pod.PodWithConfig) (bo
 	if err := settings.ReconcileConfig(c.k8sClient, c.cluster, p.Pod, p.Config); err != nil {
 		return false, err
 	}
-	// TODO
-	// compute config checksum
 
 	// retrieve config as seen by the process manager
+	pmcClient, err := c.processManagerClient(p.Pod)
+	if err != nil {
+		return false, err
+	}
 
-	// requeue if not equal
+	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+	defer cancel()
+	status, err := pmcClient.Status(ctx)
+	if err != nil {
+		return false, err
+	}
 
+	expectedConfigChecksum := fmt.Sprint(crc32.ChecksumIEEE(p.Config.Render()))
+
+	// compare expected config with config as seen from the process manager
+	if status.ConfigChecksum != expectedConfigChecksum {
+		log.V(1).Info("Configuration is not propagated yet, checksum mismatch", "pod", p.Pod.Name)
+		return false, nil
+	}
+
+	log.V(1).Info("Configuration is correctly propagated to the pod", "pod", p.Pod.Name)
 	return true, nil
+}
+
+func (c *CoordinatedRestart) getESStatus(p corev1.Pod) (processmanager.ProcessState, error) {
+	pmClient, err := c.processManagerClient(p)
+	if err != nil {
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+	defer cancel()
+	status, err := pmClient.Status(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return status.State, nil
+}
+
+func (c *CoordinatedRestart) processManagerClient(pod corev1.Pod) (*processmanager.Client, error) {
+	podIP := net.ParseIP(pod.Status.PodIP)
+	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
+	rawCA, err := nodecerts.GetCA(c.k8sClient, k8s.ExtractNamespacedName(&c.cluster.ObjectMeta))
+	if err != nil {
+		return nil, err
+	}
+	certs, err := certificates.ParsePEMCerts(rawCA)
+	if err != nil {
+		return nil, err
+	}
+	return processmanager.NewClient(url, certs, c.dialer), nil
 }
 
 func filterPodsInPhase(pods pod.PodsWithConfig, phase RestartPhase) pod.PodsWithConfig {

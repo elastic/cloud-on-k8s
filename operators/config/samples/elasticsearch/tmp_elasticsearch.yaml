@@ -18,5 +18,5 @@ spec:
     resources:
       limits:
         memory: 1Gi
-        cpu: 500m
+        cpu: 1
     nodeCount: 1

@@ -22,96 +22,96 @@ const testCmd = "fixtures/simulate-child-processes.sh"
 
 func TestSimpleScript(t *testing.T) {
 	runTest(t, testCmd, func(client *Client) {
-		assertState(t, client, started)
+		assertState(t, client, Started)
 
-		// stopping
+		// Stopping
 		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, stopped)
+		assertState(t, client, Stopped)
 
 		// starting
 		status, err = client.Start(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
+		assertEqual(t, Started, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, started)
+		assertState(t, client, Started)
 
-		// stopping
+		// Stopping
 		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, stopped)
+		assertState(t, client, Stopped)
 	})
 }
 
 func TestZombiesScript(t *testing.T) {
 	runTest(t, testCmd+" zombies", func(client *Client) {
-		assertState(t, client, started)
+		assertState(t, client, Started)
 
-		// stopping
+		// Stopping
 		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, stopped)
+		assertState(t, client, Stopped)
 
 		// starting
 		status, err = client.Start(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
+		assertEqual(t, Started, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, started)
+		assertState(t, client, Started)
 
-		// stopping
+		// Stopping
 		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, stopped)
+		assertState(t, client, Stopped)
 	})
 }
 
 func TestZombiesAndTrapScript(t *testing.T) {
 	runTest(t, testCmd+" zombies enableTrap", func(client *Client) {
-		assertState(t, client, started)
+		assertState(t, client, Started)
 
-		// stopping
+		// Stopping
 		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
 		// starting should fail because the stop is still in progress
 		status, err = client.Start(context.Background())
 		assert.Error(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 
-		assertState(t, client, stopping)
+		assertState(t, client, Stopping)
 
-		// stopping
+		// Stopping
 		status, err = client.Stop(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
+		assertEqual(t, Stopping, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, stopping)
+		assertState(t, client, Stopping)
 
-		// killing
+		// Killing
 		status, err = client.Kill(context.Background())
 		assert.NoError(t, err)
-		assertEqual(t, killing, status.State)
+		assertEqual(t, Killing, status.State)
 		time.Sleep(10 * time.Millisecond)
 
-		assertState(t, client, killed)
+		assertState(t, client, Killed)
 	})
 }
 

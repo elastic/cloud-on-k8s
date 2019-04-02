@@ -96,7 +96,7 @@ func (s *ProcessServer) Stop() {
 		log.Error(err, "Fail to stop HTTP server")
 		return
 	}
-	log.Info("HTTP server stopped")
+	log.Info("HTTP server Stopped")
 }
 
 func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
@@ -118,7 +118,7 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Error(err, "Failed to stop es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
-	} else if state == stopping {
+	} else if state == Stopping {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
@@ -130,7 +130,7 @@ func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Error(err, "Failed to kill es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
-	} else if state == killing {
+	} else if state == Killing {
 		w.WriteHeader(http.StatusAccepted)
 	}
 

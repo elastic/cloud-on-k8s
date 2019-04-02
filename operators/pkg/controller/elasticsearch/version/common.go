@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"path"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -31,6 +33,14 @@ import (
 var (
 	defaultMemoryLimits = resource.MustParse("1Gi")
 	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
+
+	// DefaultContainerPorts are the default Elasticsearch port mappings
+	DefaultContainerPorts = []corev1.ContainerPort{
+		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
+		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
+	}
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -150,7 +160,7 @@ func podSpec(
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,
-			Ports:           pod.DefaultContainerPorts,
+			Ports:           DefaultContainerPorts,
 			Resources: corev1.ResourceRequirements{
 				Limits: resourceLimits,
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.

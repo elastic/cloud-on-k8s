@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/hashicorp/go-reap"
+	reap "github.com/hashicorp/go-reap"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -66,7 +66,7 @@ func (pm ProcessManager) Start() error {
 		pm.keystoreUpdater.Start()
 	}
 
-	log.Info("Process manager started")
+	log.Info("Process manager Started")
 	return nil
 }
 
@@ -84,6 +84,6 @@ func (pm ProcessManager) Stop(sig os.Signal) error {
 		time.Sleep(1 * time.Second)
 	}
 
-	log.Info("Process manager stopped")
+	log.Info("Process manager Stopped")
 	return nil
 }

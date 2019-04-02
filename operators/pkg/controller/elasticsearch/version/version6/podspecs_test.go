@@ -176,7 +176,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
-	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
+	assert.ElementsMatch(t, version.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
 	assert.Equal(t, 14, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)

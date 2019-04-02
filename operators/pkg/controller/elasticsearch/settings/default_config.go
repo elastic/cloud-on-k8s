@@ -83,7 +83,7 @@ func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 	}
 
 	// enable x-pack security, including TLS
-	cfg.MergeWith(FlatConfig{
+	cfg = cfg.MergeWith(FlatConfig{
 		// x-pack security general settings
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",

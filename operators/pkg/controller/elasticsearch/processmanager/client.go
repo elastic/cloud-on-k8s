@@ -12,6 +12,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+)
+
+const (
+	DefaultReqTimeout = 30 * time.Second
 )
 
 type Client struct {
@@ -20,7 +27,7 @@ type Client struct {
 	HTTP     *http.Client
 }
 
-func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
+func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) *Client {
 	client := http.DefaultClient
 	if len(caCerts) > 0 {
 		certPool := x509.NewCertPool()
@@ -32,6 +39,11 @@ func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
 			TLSClientConfig: &tls.Config{
 				RootCAs: certPool,
 			},
+		}
+
+		// use the custom dialer if provided
+		if dialer != nil {
+			transportConfig.DialContext = dialer.DialContext
 		}
 
 		client = &http.Client{
@@ -97,7 +109,7 @@ func (c *Client) doRequest(ctx context.Context, method string, uri string, respB
 		// Try to unmarshal the response anyway
 		_ = json.Unmarshal(body, respBody)
 
-		return fmt.Errorf("%s %s failed, status: %d, body: %s", method, url, resp.StatusCode, string(body))
+		return fmt.Errorf("%s %s Failed, status: %d, body: %s", method, url, resp.StatusCode, string(body))
 	}
 
 	err = json.Unmarshal(body, respBody)
