@@ -5,11 +5,12 @@
 package provisioner
 
 import (
+	"testing"
+
 	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
 	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"testing"
 
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	"k8s.io/api/core/v1"
@@ -22,7 +23,6 @@ func Test_flexProvisioner_Provision(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		p    flexProvisioner
 		args args
 		want *v1.PersistentVolume
 		err  error

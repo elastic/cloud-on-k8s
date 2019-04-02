@@ -49,17 +49,13 @@ func updatePVNodeAffinity(pv *v1.PersistentVolume, nodeName string) bool {
 	// many things can be nil, so this does not look very beautiful :)
 	if na := pv.Spec.NodeAffinity; na != nil {
 		if required := na.Required; required != nil {
-			if terms := required.NodeSelectorTerms; terms != nil {
-				for _, t := range terms {
-					if req := t.MatchExpressions; req != nil {
-						for _, r := range req {
-							if r.Key == expected.Key &&
-								r.Operator == expected.Operator &&
-								len(r.Values) == 1 && r.Values[0] == expected.Values[0] {
-								// value already updated, nothing to do here
-								return false
-							}
-						}
+			for _, t := range required.NodeSelectorTerms {
+				for _, r := range t.MatchExpressions {
+					if r.Key == expected.Key &&
+						r.Operator == expected.Operator &&
+						len(r.Values) == 1 && r.Values[0] == expected.Values[0] {
+						// value already updated, nothing to do here
+						return false
 					}
 				}
 			}
