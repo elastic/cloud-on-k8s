@@ -169,7 +169,7 @@ func apmServerWatchName(assocKey types.NamespacedName) string {
 // because the assocation has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches",
+		Name: "dynamic-watches.finalizers.apm.k8s.elastic.co",
 		Execute: func() error {
 			w.ApmServers.RemoveHandlerForKey(apmServerWatchName(assocKey))
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
