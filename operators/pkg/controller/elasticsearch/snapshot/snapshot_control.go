@@ -29,7 +29,7 @@ import (
 
 const (
 	// ExternalSecretFinalizer designates a finalizer to clean up owner references in secrets not controlled by this operator.
-	ExternalSecretFinalizer = "external-secret.elasticsearch.k8s.elastic.co"
+	ExternalSecretFinalizer = "external-secret.finalizers.elasticsearch.k8s.elastic.co"
 )
 
 func reconcileUserCreatedSecret(
