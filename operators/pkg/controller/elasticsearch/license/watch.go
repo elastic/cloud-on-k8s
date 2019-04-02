@@ -10,9 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// FinalizerName for the dynamic license watch
-const FinalizerName = "licenses.finalizers.elasticsearch.k8s.elastic.co"
-
 // watchName names the license watch for a specific ES cluster.
 func watchName(esName types.NamespacedName) string {
 	return esName.Name + "-license-watch"
@@ -30,7 +27,7 @@ func ensureLicenseWatch(esName types.NamespacedName, w watches.DynamicWatches) e
 // Finalizer ensures any registered license watches are removed on cluster deletion.
 func Finalizer(esName types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: FinalizerName,
+		Name: "licenses.finalizers.elasticsearch.k8s.elastic.co",
 		Execute: func() error {
 			w.ClusterLicense.RemoveHandlerForKey(watchName(esName))
 			return nil
