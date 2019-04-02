@@ -33,7 +33,7 @@ func TestNewInitContainers(t *testing.T) {
 				SetVMMaxMapCount:   true,
 				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 3,
+			expectedNumberOfContainers: 4,
 		},
 		{
 			name: "with SetVMMaxMapCount disabled",
@@ -44,7 +44,7 @@ func TestNewInitContainers(t *testing.T) {
 				SetVMMaxMapCount:   false,
 				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 2,
+			expectedNumberOfContainers: 3,
 		},
 	}
 	for _, tt := range tests {

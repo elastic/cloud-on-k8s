@@ -215,9 +215,12 @@ func Test_watchForCertUpdate(t *testing.T) {
 	config := tmpConfig()
 	defer cleanTmpConfig(config)
 	done := make(chan struct{})
+
+	certInit := NewCertInitializer(config)
+
 	// watch in background
 	go func() {
-		err := watchForCertUpdate(config)
+		err := certInit.watchForCertUpdate()
 		require.NoError(t, err)
 		close(done)
 	}()

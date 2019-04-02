@@ -121,7 +121,7 @@ func (b Builder) withESTopologyElement(topologyElement estype.TopologyElementSpe
 // -- Kibana
 
 func (b Builder) WithKibana(count int) Builder {
-	b.Kibana.Spec.NodeCount = 1
+	b.Kibana.Spec.NodeCount = int32(count)
 	return b
 }
 
