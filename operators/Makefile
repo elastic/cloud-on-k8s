@@ -97,11 +97,13 @@ install-crds: generate
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds
-	# Run the operator locally with role All, with the operator image set to latest
+    # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run ./cmd/main.go manager \
 			--development --operator-role=all \
-			--ca-cert-validity=10h --ca-cert-rotate-before=1h
+			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
+			--operator-namespace=elastic-system \
+			--auto-install-webhooks=false
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: install-crds docker-build docker-push
@@ -109,6 +111,10 @@ deploy: install-crds docker-build docker-push
 	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
 		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
 	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
+
+# Deploy an all in one operator against the current k8s cluster
+deploy-all-in-one: install-crds docker-build docker-push
+	kustomize build config/all-in-one-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator

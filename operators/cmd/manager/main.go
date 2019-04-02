@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/dev"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/dev"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis"
 	"github.com/elastic/k8s-operators/operators/pkg/controller"
@@ -39,6 +38,11 @@ const (
 	CACertRotateBeforeFlag   = "ca-cert-rotate-before"
 	NodeCertValidityFlag     = "node-cert-validity"
 	NodeCertRotateBeforeFlag = "node-cert-rotate-before"
+
+	AutoInstallWebhooksFlag = "auto-install-webhooks"
+	OperatorNamespaceFlag   = "operator-namespace"
+	WebhookSecretFlag       = "webhook-secret"
+	WebhookPodsLabelFlag    = "webhook-pods-label"
 )
 
 var (
@@ -103,6 +107,26 @@ func init() {
 		NodeCertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
 		"Duration representing how long before expiration nodes certificates should be reissued",
+	)
+	Cmd.Flags().Bool(
+		AutoInstallWebhooksFlag,
+		true,
+		"enables automatic webhook installation (RBAC permission for service, secret and validatingwebhookconfigurations needed)",
+	)
+	Cmd.Flags().String(
+		OperatorNamespaceFlag,
+		"",
+		"k8s namespace the operator runs in",
+	)
+	Cmd.Flags().String(
+		WebhookPodsLabelFlag,
+		"",
+		"k8s label to select pods running the operator",
+	)
+	Cmd.Flags().String(
+		WebhookSecretFlag,
+		"",
+		"k8s secret mounted into /tmp/cert to be used for webhook certificates",
 	)
 
 	viper.BindPFlags(Cmd.Flags())
@@ -175,8 +199,9 @@ func execute() {
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
 	nodeCertValidity, nodeCertRotateBefore := ValidateCertExpirationFlags(NodeCertValidityFlag, NodeCertRotateBeforeFlag)
 	// Setup all Controllers
-	log.Info("Setting up controller")
-	if err := controller.AddToManager(mgr, viper.GetString(operator.RoleFlag), operator.Parameters{
+	role := viper.GetString(operator.RoleFlag)
+	log.Info("Setting up controller", "role", role)
+	if err := controller.AddToManager(mgr, role, operator.Parameters{
 		Dialer:               dialer,
 		OperatorImage:        operatorImage,
 		CACertValidity:       caCertValidity,
@@ -189,7 +214,7 @@ func execute() {
 	}
 
 	log.Info("setting up webhooks")
-	if err := webhook.AddToManager(mgr); err != nil {
+	if err := webhook.AddToManager(mgr, role, newWebhookParameters); err != nil {
 		log.Error(err, "unable to register webhooks to the manager")
 		os.Exit(1)
 	}
@@ -200,6 +225,25 @@ func execute() {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
+}
+
+func newWebhookParameters() (*webhook.Parameters, error) {
+	autoInstall := viper.GetBool(AutoInstallWebhooksFlag)
+	ns := viper.GetString(OperatorNamespaceFlag)
+	if ns == "" && autoInstall {
+		return nil, fmt.Errorf("%s needs to be set for webhook auto installation", OperatorNamespaceFlag)
+	}
+	svcSelector := viper.GetString(WebhookPodsLabelFlag)
+	sec := viper.GetString(WebhookSecretFlag)
+	return &webhook.Parameters{
+		Bootstrap: webhook.NewBootstrapOptions(webhook.BootstrapOptionsParams{
+			Namespace:        ns,
+			ManagedNamespace: viper.GetString(NamespaceFlagName),
+			SecretName:       sec,
+			ServiceSelector:  svcSelector,
+		}),
+		AutoInstall: autoInstall,
+	}, nil
 }
 
 func ValidateCertExpirationFlags(validityFlag string, rotateBeforeFlag string) (time.Duration, time.Duration) {

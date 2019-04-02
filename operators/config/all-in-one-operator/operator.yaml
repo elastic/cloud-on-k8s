@@ -1,4 +1,4 @@
-# Very similar to namespace_operator.yaml, but with
+# Very similar to a global operator, but with
 # a different service account and different run arguments
 apiVersion: apps/v1
 kind: StatefulSet
@@ -24,7 +24,7 @@ spec:
       - image: $OPERATOR_IMAGE
         imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--operator-role", "global"]
+        args: ["manager", "--development", "--operator-role", "all"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
