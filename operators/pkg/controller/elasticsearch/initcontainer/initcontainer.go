@@ -34,11 +34,18 @@ func NewInitContainers(
 	if err != nil {
 		return nil, err
 	}
+
 	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, nodeCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, prepareFsContainer, certInitializerContainer)
+
+	injectProcessManager, err := NewInjectProcessManagerInitContainer(operatorImage)
+	if err != nil {
+		return nil, err
+	}
+
+	containers = append(containers, prepareFsContainer, injectProcessManager, certInitializerContainer)
 	containers = append(containers, additional...)
 	return containers, nil
 }

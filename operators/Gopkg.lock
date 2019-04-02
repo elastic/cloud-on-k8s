@@ -192,6 +192,14 @@
   revision = "c63ab54fda8f77302f8d414e19933f2b6026a089"
 
 [[projects]]
+  branch = "master"
+  digest = "1:93cde32e6a4f5911b86cdc7a0092f9a775fa228d6afce033b5cb575700cdca19"
+  name = "github.com/hashicorp/go-reap"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "bf58d8a43e7b6bf026d99d6295c4de703b67b374"
+
+[[projects]]
   digest = "1:8ec8d88c248041a6df5f6574b87bc00e7e0b493881dad2e7ef47b11dc69093b5"
   name = "github.com/hashicorp/golang-lru"
   packages = [
@@ -1072,6 +1080,7 @@
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
+    "github.com/hashicorp/go-reap",
     "github.com/magiconair/properties/assert",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
@@ -1103,6 +1112,7 @@
     "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/client-go/rest",
+    "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/transport/spdy",
@@ -1110,6 +1120,7 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "sigs.k8s.io/controller-runtime/pkg/client",
+    "sigs.k8s.io/controller-runtime/pkg/client/apiutil",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
     "sigs.k8s.io/controller-runtime/pkg/controller",

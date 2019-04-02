@@ -51,6 +51,10 @@ func Test_serveCSR(t *testing.T) {
 	port := l.Addr().(*net.TCPAddr).Port
 	l.Close()
 
+	config := tmpConfig()
+	config.Port = port
+	certInit := NewCertInitializer(config)
+
 	// start the server in a goroutine
 	privateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 	require.NoError(t, err)
@@ -59,7 +63,7 @@ func Test_serveCSR(t *testing.T) {
 	stopChan := make(chan struct{})
 	isStopped := make(chan struct{})
 	go func() {
-		err := serveCSR(port, csr, stopChan)
+		err := certInit.serveCSR(stopChan, csr)
 		require.NoError(t, err)
 		close(isStopped)
 	}()
