@@ -70,15 +70,23 @@ func (s *Server) Start() error {
 	// properly close socket on process termination
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, os.Kill, syscall.SIGINT, syscall.SIGTERM)
+	// create a context to stop the PV controller when needed
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	go func() {
 		sig := <-sigs
 		log.Printf("Caught signal %s: shutting down.", sig)
-		unixListener.Close()
+		cancel()
+		if err := unixListener.Close(); err != nil {
+			// We are leaving, nothing can be done with the err but log it and return with rc != 0
+			log.Error(err)
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}()
 
 	// start persistent volume garbage collection
-	if err := s.StartPVGC(); err != nil {
+	if err := s.StartPVGC(ctx); err != nil {
 		return err
 	}
 
@@ -86,12 +94,11 @@ func (s *Server) Start() error {
 	if err := s.httpServer.Serve(unixListener); err != nil {
 		return err
 	}
-	unixListener.Close()
-	return nil
+	return unixListener.Close()
 }
 
 // StartPVGC starts the persistent volume garbage collection in a goroutine
-func (s *Server) StartPVGC() error {
+func (s *Server) StartPVGC(ctx context.Context) error {
 
 	log.Info("Starting PV GC controller")
 
@@ -102,8 +109,6 @@ func (s *Server) StartPVGC() error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	go func() {
 		if err := controller.Run(ctx); err != nil {
 			if ctx.Err() == context.Canceled {
