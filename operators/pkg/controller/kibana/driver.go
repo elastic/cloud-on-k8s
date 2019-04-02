@@ -40,7 +40,7 @@ func secretWatchKey(kibana kbtype.Kibana) string {
 
 func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "es-auth-secret.kibana.k8s.elastic.co",
+		Name: "es-auth-secret.finalizers.kibana.k8s.elastic.co",
 		Execute: func() error {
 			watches.Secrets.RemoveHandlerForKey(secretWatchKey(kibana))
 			return nil
@@ -181,7 +181,13 @@ func newDriver(
 	}
 	switch version.Major {
 	case 6:
-		d.newPodSpec = version6.NewPodSpec
+		switch {
+		case version.Minor >= 6:
+			// 6.6 docker container already defaults to v7 settings
+			d.newPodSpec = version7.NewPodSpec
+		default:
+			d.newPodSpec = version6.NewPodSpec
+		}
 	case 7:
 		d.newPodSpec = version7.NewPodSpec
 	default:

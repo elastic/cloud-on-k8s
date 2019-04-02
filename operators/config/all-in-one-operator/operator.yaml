@@ -1,0 +1,64 @@
+# Very similar to a global operator, but with
+# a different service account and different run arguments
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elastic-global-operator
+  labels:
+    control-plane: elastic-global-operator
+    controller-tools.k8s.io: "1.0"
+spec:
+  selector:
+    matchLabels:
+      control-plane: elastic-global-operator
+      controller-tools.k8s.io: "1.0"
+  serviceName: elastic-global-operator
+  template:
+    metadata:
+      labels:
+        control-plane: elastic-global-operator
+        controller-tools.k8s.io: "1.0"
+    spec:
+      serviceAccountName: elastic-global-operator
+      containers:
+      - image: $OPERATOR_IMAGE
+        imagePullPolicy: Always
+        name: manager
+        args: ["manager", "--development", "--operator-role", "all"]
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: WEBHOOK_SECRET
+            value: webhook-server-secret
+          - name: WEBHOOK_PODS_LABEL
+            value: elastic-global-operator
+          - name: OPERATOR_IMAGE
+            value: $OPERATOR_IMAGE
+        resources:
+          limits:
+            cpu: 100m
+            memory: 30Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        ports:
+        - containerPort: 9876
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-server-secret

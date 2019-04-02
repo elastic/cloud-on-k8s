@@ -27,7 +27,7 @@ func ensureLicenseWatch(esName types.NamespacedName, w watches.DynamicWatches) e
 // Finalizer ensures any registered license watches are removed on cluster deletion.
 func Finalizer(esName types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "license-watch-finalizer",
+		Name: "licenses.finalizers.elasticsearch.k8s.elastic.co",
 		Execute: func() error {
 			w.ClusterLicense.RemoveHandlerForKey(watchName(esName))
 			return nil
