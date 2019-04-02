@@ -10,6 +10,15 @@ const (
 	NamespaceOperator = "namespace"
 	// GlobalOperator manages cross-namespace resources (licensing, CCS, CCR, etc.)
 	GlobalOperator = "global"
-	// All acts as both global and namespace operators
+	// WebhookServer runs validation and mutation webhooks for the operator.
+	WebhookServer = "webhook"
+	// All combines all roles
 	All = "all"
 )
+
+var Roles = map[string]struct{}{
+	NamespaceOperator: {},
+	GlobalOperator:    {},
+	WebhookServer:     {},
+	All:               {},
+}

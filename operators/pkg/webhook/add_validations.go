@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	Register(operator.GlobalOperator, func(mgr manager.Manager, params Parameters) error {
+	Register(operator.WebhookServer, func(mgr manager.Manager, params Parameters) error {
 		return RegisterValidations(mgr, params)
 	})
 }

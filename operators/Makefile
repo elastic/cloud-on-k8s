@@ -100,7 +100,7 @@ run: install-crds
     # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run ./cmd/main.go manager \
-			--development --operator-role=all \
+			--development --operator-role=global,namespace \
 			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 			--operator-namespace=elastic-system \
 			--auto-install-webhooks=false

@@ -6,6 +6,7 @@ package webhook
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -20,11 +21,11 @@ func Register(role string, add func(manager.Manager, Parameters) error) {
 }
 
 // AddToManager adds all webhooks to the Manager
-func AddToManager(m manager.Manager, role string, paramsFn func() (*Parameters, error)) error {
+func AddToManager(m manager.Manager, roles []string, paramsFn func() (*Parameters, error)) error {
 	var params *Parameters
 	var err error
 	for k, fs := range AddToManagerFuncs {
-		if role == operator.All || k == role {
+		if stringsutil.StringInSlice(operator.All, roles) || stringsutil.StringInSlice(k, roles) {
 			if params == nil {
 				// lazily initialize params so that errors happen only if we actually want to use a webhook
 				params, err = paramsFn()

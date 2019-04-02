@@ -83,9 +83,9 @@ func init() {
 		DefaultMetricPort,
 		"Port to use for exposing metrics in the Prometheus format (set 0 to disable)",
 	)
-	Cmd.Flags().String(
+	Cmd.Flags().StringSlice(
 		operator.RoleFlag,
-		operator.All,
+		[]string{operator.All},
 		"Role this operator should assume (either namespace, global or all)",
 	)
 	Cmd.Flags().Duration(
@@ -199,9 +199,14 @@ func execute() {
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
 	nodeCertValidity, nodeCertRotateBefore := ValidateCertExpirationFlags(NodeCertValidityFlag, NodeCertRotateBeforeFlag)
 	// Setup all Controllers
-	role := viper.GetString(operator.RoleFlag)
-	log.Info("Setting up controller", "role", role)
-	if err := controller.AddToManager(mgr, role, operator.Parameters{
+	roles := viper.GetStringSlice(operator.RoleFlag)
+	err = validateRoles(roles)
+	if err != nil {
+		log.Error(err, "invalid roles specified")
+		os.Exit(1)
+	}
+	log.Info("Setting up controller", "roles", roles)
+	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:               dialer,
 		OperatorImage:        operatorImage,
 		CACertValidity:       caCertValidity,
@@ -214,7 +219,7 @@ func execute() {
 	}
 
 	log.Info("setting up webhooks")
-	if err := webhook.AddToManager(mgr, role, newWebhookParameters); err != nil {
+	if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
 		log.Error(err, "unable to register webhooks to the manager")
 		os.Exit(1)
 	}
@@ -225,6 +230,20 @@ func execute() {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
 	}
+}
+
+func validateRoles(roles []string) error {
+	var invalid []string
+	for _, r := range roles {
+		_, ok := operator.Roles[r]
+		if !ok {
+			invalid = append(invalid, r)
+		}
+	}
+	if len(invalid) > 0 {
+		return fmt.Errorf("Invalid roles %v", invalid)
+	}
+	return nil
 }
 
 func newWebhookParameters() (*webhook.Parameters, error) {
