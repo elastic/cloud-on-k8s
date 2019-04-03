@@ -104,7 +104,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
-	mutation.StartTrial(&l)
+	mutation.StartTrial(&l, time.Now())
 	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
 	rnd := rand.Reader
 	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)

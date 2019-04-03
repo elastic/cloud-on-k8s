@@ -25,7 +25,7 @@ type EulaState struct {
 // EnterpriseLicenseSpec defines the desired state of EnterpriseLicense
 type EnterpriseLicenseSpec struct {
 	LicenseMeta  `json:",inline"`
-	Type         string                   `json:"type"`
+	Type         EnterpriseLicenseType    `json:"type"`
 	MaxInstances int                      `json:"maxInstances,omitempty"`
 	SignatureRef corev1.SecretKeySelector `json:"signatureRef,omitempty"`
 	// +optional
@@ -68,7 +68,7 @@ func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 }
 
 func (l EnterpriseLicense) IsTrial() bool {
-	return EnterpriseLicenseType(l.Spec.Type) == LicenseTypeEnterpriseTrial
+	return l.Spec.Type == LicenseTypeEnterpriseTrial
 }
 
 var _ License = &EnterpriseLicense{}
