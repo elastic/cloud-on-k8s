@@ -225,10 +225,6 @@ spec:
                         type: object
                     type: object
                   type: array
-                reusePersistentVolumes:
-                  type: boolean
-                reusePods:
-                  type: boolean
               type: object
             version:
               description: Version represents the version of the stack
