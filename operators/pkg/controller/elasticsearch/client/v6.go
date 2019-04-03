@@ -107,6 +107,14 @@ func (c *clientV6) UpdateLicense(ctx context.Context, licenses LicenseUpdateRequ
 	return response, c.post(ctx, "/_xpack/license", licenses, &response)
 }
 
+func (c *clientV6) StartTrialLicense(ctx context.Context) error {
+	return c.post(ctx, "/_xpack/license/start_trial?acknowledge=true", nil, nil)
+}
+
+func (c *clientV6) StartBasicLicense(ctx context.Context) error {
+	return c.post(ctx, "/_xpack/license/start_basic?acknowledge=true", nil, nil)
+}
+
 func (c *clientV6) AddVotingConfigExclusions(ctx context.Context, nodeNames []string, timeout string) error {
 	return errors.New("Not supported in Elasticsearch 6.x")
 }

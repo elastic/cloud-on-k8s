@@ -100,6 +100,10 @@ type Client interface {
 	GetLicense(ctx context.Context) (License, error)
 	// UpdateLicense attempts to update cluster license with the given licenses.
 	UpdateLicense(ctx context.Context, licenses LicenseUpdateRequest) (LicenseUpdateResponse, error)
+	// StartTrialLicense starts a trial license on the cluster.
+	StartTrialLicense(ctx context.Context) error
+	// StartBasicLicense starts a basic license on the cluster.
+	StartBasicLicense(ctx context.Context) error
 	// AddVotingConfigExclusions sets the transient and persistent setting of the same name in cluster settings.
 	//
 	// If timeout is the empty string, the default is used.
