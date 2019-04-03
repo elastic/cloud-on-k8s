@@ -31,13 +31,18 @@ func PopulateTrialLicense(l *v1alpha1.EnterpriseLicense) error {
 		l.Spec.Issuer = "Elastic k8s operator"
 		l.Spec.IssuedTo = "Unknown"
 		l.Spec.UID = string(l.UID)
-		now := time.Now()
-		l.Spec.StartDateInMillis = toMillis(now)
-		l.Spec.IssueDateInMillis = l.Spec.StartDateInMillis
-		l.Spec.ExpiryDateInMillis = toMillis(now.Add(30 * time.Hour * 24 * 30))
+		StartTrial(l) // pre-populating these here for completeness will be overridden on actual trial start
 	}
 	return nil
 
+}
+
+// StartTrial sets the issue, start and end dates for a trial.
+func StartTrial(l *v1alpha1.EnterpriseLicense) {
+	now := time.Now()
+	l.Spec.StartDateInMillis = toMillis(now)
+	l.Spec.IssueDateInMillis = l.Spec.StartDateInMillis
+	l.Spec.ExpiryDateInMillis = toMillis(now.Add(24 * time.Hour * 30))
 }
 
 func requiredFieldsMissing(l *v1alpha1.EnterpriseLicense) bool {

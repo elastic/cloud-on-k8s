@@ -104,7 +104,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
-	log.Info("Starting enterprise trial")
+	mutation.StartTrial(&l)
+	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
 	rnd := rand.Reader
 	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
@@ -137,6 +138,12 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 		return pkgerrors.Wrap(err, "Failed to created trial status")
 	}
 	l.Finalizers = append(l.Finalizers, finalizerName)
+	l.Spec.SignatureRef = corev1.SecretKeySelector{
+		LocalObjectReference: corev1.LocalObjectReference{
+			Name: trialStatusSecretKey,
+		},
+		Key: signatureKey,
+	}
 	l.Status.LicenseStatus = v1alpha1.LicenseStatusValid
 	return pkgerrors.Wrap(r.Update(&l), "Failed to update trial license")
 }
