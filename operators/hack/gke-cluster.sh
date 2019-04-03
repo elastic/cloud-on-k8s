@@ -13,7 +13,7 @@
 
 set -eu
 
-: "${GCLOUD_PROJECT:=elastic-cloud-dev}"
+: "${GCLOUD_PROJECT}"
 : "${GKE_CLUSTER_NAME:=${USER//_}-dev-cluster}"
 : "${GKE_CLUSTER_REGION:=europe-west3}"
 : "${GKE_ADMIN_USERNAME:=admin}"
