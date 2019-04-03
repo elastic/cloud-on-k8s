@@ -42,8 +42,9 @@ func annotateForRestart(client k8s.Client, changes mutation.Changes) (count int,
 }
 
 func processRestarts(k8sClient k8s.Client, esClient client.Client, dialer net.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
+
 	// both pods to keep and pods to reuse may be annotated for restart
-	podsToLookAt := make(pod.PodsWithConfig, 0, len(changes.ToReuse)+len(changes.ToKeep))
+	podsToLookAt := make(pod.PodsWithConfig, len(changes.ToKeep)+len(changes.ToReuse))
 	copy(podsToLookAt, changes.ToKeep)
 	for _, p := range changes.ToReuse {
 		podsToLookAt = append(
@@ -64,6 +65,8 @@ func processRestarts(k8sClient k8s.Client, esClient client.Client, dialer net.Di
 			annotatedPods[strategy] = append(annotatedPods[strategy], p)
 		}
 	}
+
+	log.V(1).Info("Pods annotated for restart", "count", len(annotatedPods))
 
 	if len(annotatedPods) == 0 {
 		return true, nil
