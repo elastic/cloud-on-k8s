@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 
@@ -30,7 +31,8 @@ func NewDefaultESConfig(
 ) FlatConfig {
 	return baseConfig(clusterName, zenMinMasterNodes).
 		MergeWith(nodeTypesConfig(nodeTypes)).
-		MergeWith(XPackConfig(licenseType))
+		MergeWith(SelfGenLicenseConfig(licenseType)).
+		MergeWith(XPackSecurityConfig(licenseType))
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
@@ -63,27 +65,15 @@ func nodeTypesConfig(nodeTypes v1alpha1.NodeTypesSpec) FlatConfig {
 	}
 }
 
-// XPackConfig returns the configuration bit related to XPack settings
-func XPackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
-	cfg := FlatConfig{}
-
-	// maybe auto-generate a license
-	switch licenseType {
-	case v1alpha1.LicenseTypeBasic:
-		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeBasic)})
-	case v1alpha1.LicenseTypeTrial:
-		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeTrial)})
-	}
-
-	// disable x-pack security if using basic
+func XPackSecurityConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 	if licenseType == v1alpha1.LicenseTypeBasic {
-		return cfg.MergeWith(FlatConfig{
+		// disable XPack security for basic licenses
+		return FlatConfig{
 			XPackSecurityEnabled: "false",
-		})
+		}
 	}
 
-	// enable x-pack security, including TLS
-	cfg = cfg.MergeWith(FlatConfig{
+	return FlatConfig{
 		// x-pack security general settings
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
@@ -113,7 +103,33 @@ func XPackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 			volume.ExtraFilesSecretVolumeMountPath,
 			nodecerts.TrustRestrictionsFilename,
 		),
-	})
+	}
+}
 
-	return cfg
+func DisableXPackSecurity(config FlatConfig) FlatConfig {
+	configCopy := FlatConfig{}.MergeWith(config)
+	for field := range configCopy {
+		if strings.HasPrefix("xpack.security", field) {
+			delete(configCopy, field)
+		}
+	}
+	configCopy[XPackSecurityEnabled] = "false"
+	return configCopy
+}
+
+func SelfGenLicenseConfig(licenseType v1alpha1.LicenseType) FlatConfig {
+	switch licenseType {
+	case v1alpha1.LicenseTypeBasic:
+		return FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeBasic)}
+	case v1alpha1.LicenseTypeTrial:
+		return FlatConfig{XPackLicenseSelfGeneratedType: string(v1alpha1.LicenseTypeTrial)}
+	default:
+		return FlatConfig{}
+	}
+}
+
+func DisableSelfGenLicense(config FlatConfig) FlatConfig {
+	configCopy := FlatConfig{}.MergeWith(config)
+	delete(configCopy, XPackLicenseSelfGeneratedType)
+	return configCopy
 }

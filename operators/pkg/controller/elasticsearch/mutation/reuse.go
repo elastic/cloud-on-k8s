@@ -39,7 +39,7 @@ type PodToReuse struct {
 // withReusablePods checks if some pods to delete can be reused for pods to create.
 // Matching pods can keep running with the same spec, but we'll restart
 // the inner ES process with a different configuration.
-func withReusablePods(changes Changes, options ReuseOptions) Changes {
+func withReusablePods(changes Changes) Changes {
 	// The given changes are kept unmodified, a new object is returned.
 	changesCopy := changes.Copy()
 	result := Changes{
@@ -48,10 +48,6 @@ func withReusablePods(changes Changes, options ReuseOptions) Changes {
 		ToReuse:                   []PodToReuse{},
 		ToDelete:                  changes.ToDelete,
 		RequireFullClusterRestart: changes.RequireFullClusterRestart,
-	}
-
-	if !options.CanReuse() {
-		return result
 	}
 
 	for _, toCreate := range changes.ToCreate {

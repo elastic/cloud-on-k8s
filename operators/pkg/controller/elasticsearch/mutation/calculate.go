@@ -116,7 +116,9 @@ func mutableCalculateChanges(
 		// Attempt to reuse some pods to delete for pods to create,
 		// including the license changes and maybe other configuration changes
 		// at the same time if eligible.
-		changes = withReusablePods(changes, reuseOptions)
+		changes = withReusablePods(changes)
+
+		log.Info("Reusable pods", "count", len(changes.ToReuse))
 
 		// Remaining pods may not be eligible for reuse (eg. user requested
 		// change from a 1x2GB basic to 2x4GB trial cluster). In such case,
@@ -126,8 +128,17 @@ func mutableCalculateChanges(
 
 		// Don't delete pods yet: instead, reuse them with a different config including the new license.
 		for _, toDelete := range changes.ToDelete {
-			newConfig := toDelete.Config
-			newConfig.MergeWith(settings.XPackConfig(v1alpha1.LicenseType(targetLicense)))
+			log.Info("Moving pod to delete to pod to reuse", "pod", toDelete.Pod.Name)
+			// remove any XPack security config
+			newConfig := settings.DisableXPackSecurity(toDelete.Config)
+			// and any self-gen license
+			newConfig = settings.DisableSelfGenLicense(toDelete.Config)
+			// apply the correct settings for the new license
+			license := v1alpha1.LicenseType(targetLicense)
+			newConfig = newConfig.
+				MergeWith(settings.XPackSecurityConfig(license)).
+				MergeWith(settings.SelfGenLicenseConfig(license))
+
 			changes.ToReuse = append(changes.ToReuse, PodToReuse{
 				Initial: toDelete,
 				Target: PodToCreate{
