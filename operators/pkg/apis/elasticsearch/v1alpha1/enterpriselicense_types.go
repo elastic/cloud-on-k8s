@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// EnterpriseLicenseType is the type of enterprise license a resource is describing.
 type EnterpriseLicenseType string
 
 const (
@@ -19,6 +20,7 @@ const (
 	LicenseTypeEnterpriseTrial EnterpriseLicenseType = "enterprise-trial"
 )
 
+// EulaState defines whether or not a user has accepted the end user license agreement.
 type EulaState struct {
 	Accepted bool `json:"accepted"`
 }
@@ -34,6 +36,7 @@ type EnterpriseLicenseSpec struct {
 	Eula                EulaState            `json:"eula"`
 }
 
+// EnterpriseLicenseStatus defines the current status of the license. Informational only, maybe empty.
 type EnterpriseLicenseStatus struct {
 	LicenseStatus LicenseStatus `json:"status,omitempty"`
 }
@@ -44,6 +47,7 @@ type EnterpriseLicenseStatus struct {
 // EnterpriseLicense is the Schema for the enterpriselicenses API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.status"
 // +kubebuilder:resource:shortName=el
 type EnterpriseLicense struct {
 	metav1.TypeMeta   `json:",inline"`

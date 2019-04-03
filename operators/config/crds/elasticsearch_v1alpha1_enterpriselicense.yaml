@@ -6,6 +6,10 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: enterpriselicenses.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.status
+    name: status
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
     kind: EnterpriseLicense
