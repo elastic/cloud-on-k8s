@@ -34,6 +34,7 @@ func ReconcileService(
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
+
 			// ClusterIP might not exist in the expected service,
 			// but might have been set after creation by k8s on the actual resource.
 			// In such case, we want to use these values for comparison.
@@ -46,7 +47,8 @@ func ReconcileService(
 					if expected.Spec.Ports[i].TargetPort.IntValue() == 0 {
 						expected.Spec.Ports[i].TargetPort = reconciled.Spec.Ports[i].TargetPort
 					}
-					if expected.Spec.Ports[i].NodePort == 0 {
+					// check if NodePort makes sense for this service type
+					if hasNodePort(expected.Spec.Type) && expected.Spec.Ports[i].NodePort == 0 {
 						expected.Spec.Ports[i].NodePort = reconciled.Spec.Ports[i].NodePort
 					}
 				}
