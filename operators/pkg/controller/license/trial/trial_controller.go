@@ -65,6 +65,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to get EnterpriseLicense")
 	}
 
+	// TODO turn this into a full blown enterprise license controller and verify regular licenses as well
 	if !license.DeletionTimestamp.IsZero() || !license.IsTrial() {
 		// license is not a trial or  being deleted nothing to do
 		return reconcile.Result{}, nil
