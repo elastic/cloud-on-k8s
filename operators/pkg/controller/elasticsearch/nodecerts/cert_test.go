@@ -355,10 +355,16 @@ func Test_doReconcile(t *testing.T) {
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
 				if tt.wantCertUpdateAnnotationUpdated {
+					// check that the CSR annotation has been updated
 					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-					lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[k8s.UpdateAnnotation])
+					lastCertUpdate, err := time.Parse(time.RFC3339, updatedSecret.Annotations[LastCSRUpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
+					// also check that the pod annotation has been updated too
+					assert.NotEmpty(t, updatedPod.Annotations[k8s.UpdateAnnotation])
+					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedSecret.Annotations[LastCSRUpdateAnnotation])
+					require.NoError(t, err)
+					assert.True(t, lastPodUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}
 			}
 		})
