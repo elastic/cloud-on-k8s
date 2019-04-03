@@ -29,7 +29,7 @@ func PopulateTrialLicense(l *v1alpha1.EnterpriseLicense) error {
 	if !l.IsTrial() {
 		return fmt.Errorf("%v is not a trial license", k8s.ExtractNamespacedName(l))
 	}
-	if requiredFieldsMissing(l) {
+	if err := l.IsMissingFields(); err != nil {
 		l.Spec.Issuer = "Elastic k8s operator"
 		l.Spec.IssuedTo = "Unknown"
 		l.Spec.UID = string(uuid.NewUUID())
@@ -44,13 +44,4 @@ func StartTrial(l *v1alpha1.EnterpriseLicense, from time.Time) {
 	l.Spec.StartDateInMillis = toMillis(from)
 	l.Spec.IssueDateInMillis = l.Spec.StartDateInMillis
 	l.Spec.ExpiryDateInMillis = toMillis(from.Add(24 * time.Hour * 30))
-}
-
-func requiredFieldsMissing(l *v1alpha1.EnterpriseLicense) bool {
-	return l.Spec.Issuer == "" ||
-		l.Spec.ExpiryDateInMillis == 0 ||
-		l.Spec.StartDateInMillis == 0 ||
-		l.Spec.IssueDateInMillis == 0 ||
-		l.Spec.IssuedTo == "" ||
-		l.Spec.UID == ""
 }

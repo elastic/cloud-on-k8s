@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"fmt"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -60,6 +61,33 @@ func (l *EnterpriseLicense) StartDate() time.Time {
 // ExpiryDate is the date as of which the license is no longer valid.
 func (l *EnterpriseLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
+}
+
+// IsMissingFields returns an error if any of the required fields are missing. Expected state on trial licenses.
+func (l EnterpriseLicense) IsMissingFields() error {
+	var missing []string
+	if l.Spec.Issuer == "" {
+		missing = append(missing, "spec.issuer")
+	}
+	if l.Spec.IssuedTo == "" {
+		missing = append(missing, "spec.issued_to")
+	}
+	if l.Spec.ExpiryDateInMillis == 0 {
+		missing = append(missing, "spec.expiry_date_in_millis")
+	}
+	if l.Spec.StartDateInMillis == 0 {
+		missing = append(missing, "spec.start_date_in_millis")
+	}
+	if l.Spec.IssueDateInMillis == 0 {
+		missing = append(missing, "spec.issue_date_in_millis")
+	}
+	if l.Spec.UID == "" {
+		missing = append(missing, "spec.uid")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("required fields are missing: %v", missing)
+	}
+	return nil
 }
 
 // IsValid returns true if the license is still valid at the given point in time.

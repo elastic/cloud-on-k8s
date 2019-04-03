@@ -17,11 +17,22 @@ var log = logf.Log.WithName("es-validation")
 
 var Validations = []Validation{
 	eulaAccepted,
+	requiredFields,
 }
 
 func eulaAccepted(ctx Context) validation.Result {
 	if ctx.Proposed.Spec.Eula.Accepted != true {
 		return validation.Result{Allowed: false, Reason: "Please set the field eula.accepted to true to accept the EULA"}
+	}
+	return validation.OK
+}
+
+func requiredFields(ctx Context) validation.Result {
+	if !ctx.Proposed.IsTrial() {
+		err := ctx.Proposed.IsMissingFields()
+		if err != nil {
+			return validation.Result{Allowed: false, Reason: err.Error()}
+		}
 	}
 	return validation.OK
 }
