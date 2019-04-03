@@ -26,13 +26,13 @@ func eulaAccepted(ctx Context) validation.Result {
 	return validation.OK
 }
 
-// Validation is a function from a currently stored Elasticsearch spec and proposed new spec
+// Validation is a function from a currently stored Enterprise license spec and proposed new spec
 // (both inside a Context struct) to a Result.
 type Validation func(ctx Context) validation.Result
 
 // Context is structured input for validation functions.
 type Context struct {
-	// Current is the EnterpriseLicense  stored in the api server. Can be nil on new clusters.
+	// Current is the EnterpriseLicense  stored in the api server. Can be nil on create.
 	Current *estype.EnterpriseLicense
 	// Proposed is the EnterpriseLicense submitted for validation.
 	Proposed estype.EnterpriseLicense
@@ -54,7 +54,7 @@ func (v Context) isCreate() bool {
 	return v.Current == nil
 }
 
-// Validate runs validation logic in contexts where we don't have current and proposed Elasticsearch versions.
+// Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.
 func Validate(es estype.EnterpriseLicense) error {
 
 	vCtx := Context{

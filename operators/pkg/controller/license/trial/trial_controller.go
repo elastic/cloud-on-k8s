@@ -43,10 +43,9 @@ const (
 	finalizerName        = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
-// Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
-// If there is none it assigns a new one.
-// In any case it schedules a new reconcile request to be processed when the license is about to expire.
-// This happens independently from any watch triggered reconcile request.
+// Reconcile watches enterprise trial licenses. If it finds a trial license it checks whether a trial has been started.
+// If not it starts the trial period.
+// If a trial is already running it validates the trial license and updates its status.
 func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
@@ -105,7 +104,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
-	log.Info("starting enterprise trial")
+	log.Info("Starting enterprise trial")
 	rnd := rand.Reader
 	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
@@ -158,7 +157,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 		return err
 	}
 
-	// Watch for changes to Elasticsearch clusters.
+	// Watch for changes to Enterprise licenses.
 	if err := c.Watch(
 		&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
@@ -169,7 +168,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 
 var _ reconcile.Reconciler = &ReconcileTrials{}
 
-// ReconcileLicenses reconciles EnterpriseLicenses with existing Elasticsearch clusters and creates ClusterLicenses for them.
+// ReconcileTrials reconciles Enterprise trial licenses.
 type ReconcileTrials struct {
 	k8s.Client
 	scheme *runtime.Scheme

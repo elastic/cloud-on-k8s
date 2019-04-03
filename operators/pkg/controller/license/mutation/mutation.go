@@ -19,6 +19,7 @@ func toMillis(t time.Time) int64 {
 	return t.UnixNano() / int64(time.Millisecond)
 }
 
+// PopulateTrialLicense adds missing fields to a trial license.
 func PopulateTrialLicense(l *v1alpha1.EnterpriseLicense) error {
 	if l == nil {
 		return errors.New("license is nil")
