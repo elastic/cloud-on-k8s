@@ -11,14 +11,30 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type EnterpriseLicenseType string
+
+const (
+	LicenseTypeEnterprise      EnterpriseLicenseType = "enterprise"
+	LicenseTypeEnterpriseTrial EnterpriseLicenseType = "enterprise-trial"
+)
+
+type EulaState struct {
+	Accepted bool `json:"accepted"`
+}
+
 // EnterpriseLicenseSpec defines the desired state of EnterpriseLicense
 type EnterpriseLicenseSpec struct {
 	LicenseMeta  `json:",inline"`
 	Type         string                   `json:"type"`
-	MaxInstances int                      `json:"maxInstances"`
-	SignatureRef corev1.SecretKeySelector `json:"signatureRef"`
+	MaxInstances int                      `json:"maxInstances,omitempty"`
+	SignatureRef corev1.SecretKeySelector `json:"signatureRef,omitempty"`
 	// +optional
 	ClusterLicenseSpecs []ClusterLicenseSpec `json:"clusterLicenses,omitempty"`
+	Eula                EulaState            `json:"eula"`
+}
+
+type EnterpriseLicenseStatus struct {
+	LicenseStatus LicenseStatus `json:"status,omitempty"`
 }
 
 // +genclient
@@ -26,12 +42,14 @@ type EnterpriseLicenseSpec struct {
 
 // EnterpriseLicense is the Schema for the enterpriselicenses API
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=el
 type EnterpriseLicense struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec EnterpriseLicenseSpec `json:"spec,omitempty"`
+	Spec   EnterpriseLicenseSpec   `json:"spec,omitempty"`
+	Status EnterpriseLicenseStatus `json:"status,omitempty"`
 }
 
 // StartDate is the date as of which this license is valid.
@@ -47,6 +65,10 @@ func (l *EnterpriseLicense) ExpiryDate() time.Time {
 // IsValid returns true if the license is still valid at the given point in time.
 func (l EnterpriseLicense) IsValid(instant time.Time) bool {
 	return l.Spec.IsValid(instant)
+}
+
+func (l EnterpriseLicense) IsTrial() bool {
+	return EnterpriseLicenseType(l.Spec.Type) == LicenseTypeEnterpriseTrial
 }
 
 var _ License = &EnterpriseLicense{}

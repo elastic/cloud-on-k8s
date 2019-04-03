@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	pkgerrors "github.com/pkg/errors"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -23,18 +24,8 @@ const (
 var log = logf.Log.WithName("es-validation")
 
 // Validation is a function from a currently stored Elasticsearch spec and proposed new spec
-// (both inside a Context struct) to a Result.
-type Validation func(ctx Context) Result
-
-// Result contains validation results.
-type Result struct {
-	Error   error
-	Allowed bool
-	Reason  string
-}
-
-// OK is a successfull validation result.
-var OK = Result{Allowed: true}
+// (both inside a Context struct) to a validation.Result.
+type Validation func(ctx Context) validation.Result
 
 // ElasticsearchVersion groups an ES resource and its parsed version.
 type ElasticsearchVersion struct {

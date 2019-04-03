@@ -7,6 +7,7 @@ package license
 import (
 	"bytes"
 	"crypto"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
@@ -99,6 +100,81 @@ func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 	return &Verifier{
 		publicKey: pubKey,
 	}, nil
+}
+
+// signer signs Enterprise licenses.
+type signer struct {
+	Verifier
+	privateKey *rsa.PrivateKey
+}
+
+// NewSigner creates a new license signer from a private key.
+func NewSigner(privKey *rsa.PrivateKey) *signer {
+	return &signer{
+		Verifier: Verifier{
+			publicKey: &privKey.PublicKey,
+		},
+		privateKey: privKey,
+	}
+}
+
+// Sign signs the given Enterprise license.
+func (s *signer) Sign(l v1alpha1.EnterpriseLicense) ([]byte, error) {
+	spec := toVerifiableSpec(l)
+	toSign, err := json.Marshal(spec)
+	if err != nil {
+		return nil, err
+	}
+	rng := rand.Reader
+	hashed := sha512.Sum512(toSign)
+
+	publicKeyBytes := x509.MarshalPKCS1PublicKey(s.publicKey)
+	rsaSig, err := rsa.SignPKCS1v15(rng, s.privateKey, crypto.SHA512, hashed[:])
+	if err != nil {
+		return nil, err
+	}
+	const magicLen = 13
+	magic := make([]byte, magicLen)
+	_, err = rand.Read(magic)
+	if err != nil {
+		return nil, err
+	}
+	hash := make([]byte, base64.StdEncoding.EncodedLen(len(publicKeyBytes)))
+	base64.StdEncoding.Encode(hash, publicKeyBytes)
+	// version (uint32) + magic length (uint32) + magic + hash length (uint32) + hash + sig length (uint32) + sig
+	sig := make([]byte, 0, 4+4+magicLen+4+len(hash)+4+len(rsaSig))
+
+	buf := bytes.NewBuffer(sig)
+
+	// we only support version 3 for now
+	if err := writeInt(buf, 3); err != nil {
+		return nil, err
+	}
+	if err := writeInt(buf, len(magic)); err != nil {
+		return nil, err
+	}
+	_, err = buf.Write(magic)
+	if err != nil {
+		return nil, err
+	}
+	if err := writeInt(buf, len(hash)); err != nil {
+		return nil, err
+	}
+	_, err = buf.Write(hash)
+	if err != nil {
+		return nil, err
+	}
+	if err := writeInt(buf, len(rsaSig)); err != nil {
+		return nil, err
+	}
+	_, err = buf.Write(rsaSig)
+	if err != nil {
+		return nil, err
+	}
+	sigBytes := buf.Bytes()
+	out := make([]byte, base64.StdEncoding.EncodedLen(len(sigBytes)))
+	base64.StdEncoding.Encode(out, sigBytes)
+	return out, nil
 }
 
 type licenseSpec struct {
