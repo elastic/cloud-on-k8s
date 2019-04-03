@@ -194,7 +194,7 @@ type licenseSpec struct {
 func toVerifiableSpec(l v1alpha1.EnterpriseLicense) licenseSpec {
 	return licenseSpec{
 		Uid:                l.Spec.UID,
-		LicenseType:        l.Spec.Type,
+		LicenseType:        string(l.Spec.Type),
 		IssueDateInMillis:  l.Spec.IssueDateInMillis,
 		StartDateInMillis:  l.Spec.StartDateInMillis,
 		ExpiryDateInMillis: l.Spec.ExpiryDateInMillis,
