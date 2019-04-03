@@ -40,11 +40,11 @@ type Params struct {
 	NeedsUpdate func() bool
 	// UpdateReconciled modifies the resource pointed to by Reconciled to reflect the state of Expected
 	UpdateReconciled func()
-	// PreCreate allows for side-effects (logging) when a new resource will be created.
+	// PreCreate is called just before the creation of the resource.
 	PreCreate func()
-	// PreUpdate allows for side-effects (logging) when a resources will be updated.
+	// PreUpdate is called just before the update of the resource.
 	PreUpdate func()
-	// PostUpdate allows for side-effects after a resource is successfully updated.
+	// PostUpdate is called immediately after the resource is successfully updated.
 	PostUpdate func()
 }
 
