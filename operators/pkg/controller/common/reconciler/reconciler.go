@@ -40,10 +40,12 @@ type Params struct {
 	NeedsUpdate func() bool
 	// UpdateReconciled modifies the resource pointed to by Reconciled to reflect the state of Expected
 	UpdateReconciled func()
-	// OnCreate allows for side-effects (logging) when a new resource will be created.
-	OnCreate func()
-	// OnUpdate allows for side-effects (logging) when a resources will be updated.
-	OnUpdate func()
+	// PreCreate allows for side-effects (logging) when a new resource will be created.
+	PreCreate func()
+	// PreUpdate allows for side-effects (logging) when a resources will be updated.
+	PreUpdate func()
+	// PostUpdate allows for side-effects after a resource is successfully updated.
+	PostUpdate func()
 }
 
 func (p Params) CheckNilValues() error {
@@ -91,8 +93,8 @@ func ReconcileResource(params Params) error {
 	if err != nil && apierrors.IsNotFound(err) {
 		// Create if needed
 		log.Info(fmt.Sprintf("Creating %s %s/%s", kind, namespace, name))
-		if params.OnCreate != nil {
-			params.OnCreate()
+		if params.PreCreate != nil {
+			params.PreCreate()
 		}
 
 		// Copy the content of params.Expected into params.Reconciled.
@@ -115,13 +117,16 @@ func ReconcileResource(params Params) error {
 	// Update if needed
 	if params.NeedsUpdate() {
 		log.Info(fmt.Sprintf("Updating %s %s/%s ", kind, namespace, name))
-		if params.OnUpdate != nil {
-			params.OnUpdate()
+		if params.PreUpdate != nil {
+			params.PreUpdate()
 		}
 		params.UpdateReconciled()
 		err := params.Client.Update(params.Reconciled)
 		if err != nil {
 			return err
+		}
+		if params.PostUpdate != nil {
+			params.PostUpdate()
 		}
 	}
 	return nil

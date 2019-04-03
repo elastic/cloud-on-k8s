@@ -356,7 +356,7 @@ func Test_doReconcile(t *testing.T) {
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
 				if tt.wantCertUpdateAnnotationUpdated {
 					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-					lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[lastCertUpdateAnnotation])
+					lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[k8s.UpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}
