@@ -8,9 +8,8 @@ package settings
 const (
 	EnvEsJavaOpts = "ES_JAVA_OPTS"
 
-	EnvProbePasswordFile      = "PROBE_PASSWORD_FILE"
-	EnvProbeUsername          = "PROBE_USERNAME"
-	EnvReadinessProbeProtocol = "READINESS_PROBE_PROTOCOL"
+	EnvProbePasswordFile = "PROBE_PASSWORD_FILE"
+	EnvProbeUsername     = "PROBE_USERNAME"
 
 	// EnvPodName and EnvPodIP are injected as env var into the ES pod at runtime,
 	// to be referenced in ES configuration file

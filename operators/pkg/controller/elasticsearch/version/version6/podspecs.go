@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -109,7 +108,6 @@ func newEnvironmentVars(
 		// TODO: the JVM options are hardcoded, but should be configurable
 		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
-		{Name: settings.EnvReadinessProbeProtocol, Value: network.ProtocolForLicense(p.LicenseType)},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
