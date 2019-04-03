@@ -362,7 +362,7 @@ func Test_doReconcile(t *testing.T) {
 					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
 					// also check that the pod annotation has been updated too
 					assert.NotEmpty(t, updatedPod.Annotations[k8s.UpdateAnnotation])
-					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedSecret.Annotations[LastCSRUpdateAnnotation])
+					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedPod.Annotations[k8s.UpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastPodUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}
