@@ -66,11 +66,11 @@ func processRestarts(k8sClient k8s.Client, esClient client.Client, dialer net.Di
 		}
 	}
 
-	log.V(1).Info("Pods annotated for restart", "count", len(annotatedPods))
-
 	if len(annotatedPods) == 0 {
 		return true, nil
 	}
+
+	log.V(1).Info("Pods annotated for restart", "count", len(annotatedPods))
 
 	// run the restarts
 	coordinated := CoordinatedRestart{
