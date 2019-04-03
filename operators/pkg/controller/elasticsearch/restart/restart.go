@@ -11,13 +11,14 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("mutation")
 
 func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, dialer net.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
-	annotatedCount, err := annotateForRestart(k8sClient, changes)
+	annotatedCount, err := annotateForRestart(k8sClient, cluster, changes)
 	if err != nil {
 		return false, err
 	}
@@ -31,11 +32,38 @@ func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, dialer net.Di
 	return processRestarts(k8sClient, esClient, dialer, cluster, changes)
 }
 
-func annotateForRestart(client k8s.Client, changes mutation.Changes) (count int, err error) {
+func annotateForRestart(client k8s.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (count int, err error) {
 	if changes.RequireFullClusterRestart {
-		log.V(1).Info("changes requiring full cluster restart")
 		// Schedule a coordinated restart on all pods to reuse
-		return scheduleCoordinatedRestart(client, changes.ToReuse)
+		log.V(1).Info("Changes requiring full cluster restart")
+		pods := make([]corev1.Pod, len(changes.ToReuse))
+		for _, p := range changes.ToReuse {
+			pods = append(pods, p.Initial.Pod)
+		}
+		return scheduleCoordinatedRestart(client, pods)
+	}
+
+	if getClusterRestartAnnotation(cluster) == StrategyCoordinated {
+		// Schedule a coordinated restart on all pods of the cluster (to keep + to reuse)
+		pods := make([]corev1.Pod, 0, len(changes.ToReuse)+len(changes.ToKeep))
+		for _, p := range changes.ToKeep {
+			pods = append(pods, p.Pod)
+		}
+		for _, p := range changes.ToReuse {
+			pods = append(pods, p.Initial.Pod)
+		}
+
+		// annotate all pods
+		count, err := scheduleCoordinatedRestart(client, pods)
+		if err != nil {
+			return 0, err
+		}
+		// remove annotation from the cluster, to avoid restarting over and over again
+		if err := deleteClusterRestartAnnotation(client, cluster); err != nil {
+			return 0, err
+		}
+
+		return count, nil
 	}
 
 	return 0, nil

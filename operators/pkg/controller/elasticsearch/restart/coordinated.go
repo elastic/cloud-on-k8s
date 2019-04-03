@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
@@ -23,10 +22,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func scheduleCoordinatedRestart(c k8s.Client, toReuse []mutation.PodToReuse) (int, error) {
+func scheduleCoordinatedRestart(c k8s.Client, pods []corev1.Pod) (int, error) {
 	count := 0
-	for _, p := range toReuse {
-		pod := p.Initial.Pod
+	for _, pod := range pods {
 		if isAnnotatedForRestart(pod) {
 			log.V(1).Info(
 				"Pod already in a restart phase",
