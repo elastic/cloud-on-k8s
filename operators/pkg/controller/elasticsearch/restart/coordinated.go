@@ -51,21 +51,22 @@ type CoordinatedRestart struct {
 }
 
 type Step struct {
-	startPhase RestartPhase
-	endPhase   RestartPhase
-	do         func(pods pod.PodsWithConfig) (bool, error)
+	initPhase RestartPhase
+	endPhase  RestartPhase
+	do        func(pods pod.PodsWithConfig) (bool, error)
 }
 
 func (c *CoordinatedRestart) Exec() (bool, error) {
 	if len(c.pods) == 0 {
 		return true, nil
 	}
+	log.Info("Handling coordinated restart", "count", len(c.pods))
 	for _, step := range []Step{
 		c.scheduleStop(),
 		c.stop(),
 		c.start(),
 	} {
-		pods := filterPodsInPhase(c.pods, step.startPhase)
+		pods := filterPodsInPhase(c.pods, step.initPhase)
 		if len(pods) == 0 {
 			continue // all pods are past this step
 		}
@@ -91,8 +92,8 @@ func (c *CoordinatedRestart) Exec() (bool, error) {
 // scheduleStop annotates all pods in the "stop" phase.
 func (c *CoordinatedRestart) scheduleStop() Step {
 	return Step{
-		startPhase: PhaseSchedule,
-		endPhase:   PhaseStop,
+		initPhase: PhaseSchedule,
+		endPhase:  PhaseStop,
 		do: func(pods pod.PodsWithConfig) (bool, error) {
 			if err := c.prepareClusterForStop(); err != nil {
 				return false, err
@@ -107,8 +108,8 @@ func (c *CoordinatedRestart) scheduleStop() Step {
 
 func (c *CoordinatedRestart) stop() Step {
 	return Step{
-		startPhase: PhaseStop,
-		endPhase:   PhaseStart,
+		initPhase: PhaseStop,
+		endPhase:  PhaseStart,
 		do: func(pods pod.PodsWithConfig) (bool, error) {
 			allStopped, err := c.ensureESProcessStopped(pods)
 			if err != nil {
@@ -129,8 +130,8 @@ func (c *CoordinatedRestart) stop() Step {
 
 func (c *CoordinatedRestart) start() Step {
 	return Step{
-		startPhase: PhaseStart,
-		endPhase:   "",
+		initPhase: PhaseStart,
+		endPhase:  "",
 		do: func(pods pod.PodsWithConfig) (bool, error) {
 			podsDone := 0
 			for _, p := range pods {
