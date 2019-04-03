@@ -30,7 +30,9 @@ const (
 
 // NewEnvVars returns the environments variables required by the keystore updater.
 func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUserSecretVolume, keystoreVolume volume.VolumeLike) []corev1.EnvVar {
-	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", network.ProtocolForLicense(spec.LicenseType), network.HTTPPort)
+	// use the HTTPS protocol by default
+	// TODO: handle this differently (see https to http fallback in the keystore updater)
+	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", "https", network.HTTPPort)
 	return []corev1.EnvVar{
 		{Name: EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
 		{Name: EnvReloadCredentials, Value: "true"},

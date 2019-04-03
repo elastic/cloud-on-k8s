@@ -113,7 +113,22 @@ func (u Updater) reloadCredentials() (error, string) {
 	// on each node which is redundant and might be problematic as well.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return api.ReloadSecureSettings(ctx), "Error reloading credentials"
+	err = api.ReloadSecureSettings(ctx)
+	if err != nil && strings.Contains(err.Error(), "http: server gave HTTP response to HTTPS client") {
+		// es is configured to use HTTP, not HTTPS
+		// TODO: fix this by properly retrieving the correct protocol to use
+		endpoint := u.config.EsEndpoint
+		if strings.HasPrefix(endpoint, "https") {
+			endpoint = "http" + strings.TrimPrefix(endpoint, "https")
+			log.Info("Performing request using the HTTP protocol")
+		}
+		api = client.NewElasticsearchClient(nil, endpoint, u.config.EsUser, u.config.EsVersion, nil)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return api.ReloadSecureSettings(ctx), "Error reloading credentials"
+	}
+
+	return err, "Error reloading credentials"
 }
 
 // loadCerts returns the certificates given a certificates path.
