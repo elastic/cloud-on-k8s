@@ -9,17 +9,19 @@
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
-KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
+KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
 ## -- Docker image
 
-# default to local registry
-REGISTRY ?= localhost:5000
 REPOSITORY ?= elastic-dev
-# if the current k8s cluster is on GKE, use GCR registry and GCLOUD_PROJECT
+# on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
-	REGISTRY   = eu.gcr.io
+	REGISTRY ?= eu.gcr.io
 	REPOSITORY = ${GCLOUD_PROJECT}
+endif
+# default to local registry
+ifeq ($(REGISTRY),)
+	REGISTRY ?= localhost:5000
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
@@ -163,7 +165,7 @@ set-context-minikube:
 	kubectl config use-context "minikube"
 	$(eval KUBECTL_CLUSTER="minikube")
 
-bootstrap-minikube: 
+bootstrap-minikube:
 	hack/minikube-cluster.sh
 	$(MAKE) set-context-minikube registry lazy-push-latest-operator-image-in-local-registry cluster-bootstrap
 
