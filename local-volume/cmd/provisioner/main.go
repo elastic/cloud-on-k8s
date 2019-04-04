@@ -5,6 +5,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -23,6 +24,7 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	flag.Parse() // avoid glog complaining about "logging before flag.Parse'
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)

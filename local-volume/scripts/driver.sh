@@ -19,4 +19,4 @@ cp "$IN_CONTAINER_PATH" "$MOUNT_DIR/$STORAGE_CLASS"
 echo "Success."
 
 echo "Starting $STORAGE_CLASS driver daemon..."
-./driverdaemon
+exec ./driverdaemon

@@ -7,24 +7,26 @@ package pvgc
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"time"
 )
 
 // reconcileVolumeArgs captures arguments and some state from the reconcile part of the controller
 type reconcileVolumeArgs struct {
-	key string
+	key    string
 	exists bool
-	err error
+	err    error
 }
 
 // onReconcileHandler is a method used to verify reconcile arguments
@@ -43,13 +45,13 @@ type Controller struct {
 }
 
 type ControllerParams struct {
-	Client kubernetes.Interface
+	Client   kubernetes.Interface
 	NodeName string
-	Driver drivers.Driver
+	Driver   drivers.Driver
 
 	// testWatcher is used instead of using the client, which is useful for the tests because the fake client
 	// implementation does not work for watchers.
-	testWatcher     cache.ListerWatcher
+	testWatcher cache.ListerWatcher
 
 	// testOnReconcile is a method that if set, will be called on every internal reconcile, used in tests to verify
 	// that specific keys are being reconciled.
@@ -57,21 +59,16 @@ type ControllerParams struct {
 }
 
 func NewController(p ControllerParams) (*Controller, error) {
-	// TODO: selector that selects PVs for this node (probably by label) should go here
-	//var selector fields.Selector
-	//selector, err := fields.ParseSelector("")
-	//if err != nil {
-	//	return nil, err
-	//}
-
 	var watcher = p.testWatcher
 	if watcher == nil {
 		// persistent volume watcher
-		watcher = cache.NewListWatchFromClient(
+		watcher = cache.NewFilteredListWatchFromClient(
 			p.Client.CoreV1().RESTClient(),
 			"persistentvolumes",
-			"",
-			fields.Everything(),
+			corev1.NamespaceAll,
+			func(options *metav1.ListOptions) {
+				options.LabelSelector = fmt.Sprintf("%s=%s", provider.NodeAffinityLabel, p.NodeName)
+			},
 		)
 	}
 
@@ -116,19 +113,21 @@ func NewController(p ControllerParams) (*Controller, error) {
 	}
 	for _, volumeName := range currentVolumeNames {
 		log.Infof("Warming cache for known PV: %s", volumeName)
-		indexer.Add(&v1.PersistentVolume{
+		if err := indexer.Add(&v1.PersistentVolume{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: volumeName,
 			},
-		})
+		}); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Controller{
 		driver: p.Driver,
 
-		indexer: indexer,
+		indexer:  indexer,
 		informer: informer,
-		queue: queue,
+		queue:    queue,
 
 		testOnReconcile: p.testOnReconcile,
 	}, nil
@@ -150,17 +149,17 @@ func (c *Controller) Run(ctx context.Context) error {
 	go wait.Until(c.runWorker, time.Second, ctx.Done())
 
 	// wait until our context is done
-	<- ctx.Done()
+	<-ctx.Done()
 
 	log.Info("Stopping PV Controller")
 
 	return nil
 }
 
-
 // runWorker processes all remaining items in the queue before returning.
 func (c *Controller) runWorker() {
-	for c.processNextItem() {}
+	for c.processNextItem() {
+	}
 }
 
 // processNextItem processes a single work item from the queue
