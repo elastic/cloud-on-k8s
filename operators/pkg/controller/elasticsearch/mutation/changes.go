@@ -17,7 +17,7 @@ type Changes struct {
 	ToCreate                  []PodToCreate
 	ToKeep                    pod.PodsWithConfig
 	ToDelete                  pod.PodsWithConfig
-	ToReuse                   []PodToReuse
+	ToReuse                   pod.PodsWithConfig
 	RequireFullClusterRestart bool
 }
 
@@ -35,7 +35,7 @@ func EmptyChanges() Changes {
 		ToCreate: []PodToCreate{},
 		ToKeep:   pod.PodsWithConfig{},
 		ToDelete: pod.PodsWithConfig{},
-		ToReuse:  []PodToReuse{},
+		ToReuse:  pod.PodsWithConfig{},
 	}
 }
 
@@ -55,7 +55,7 @@ func (c Changes) Copy() Changes {
 		ToCreate:                  append([]PodToCreate{}, c.ToCreate...),
 		ToKeep:                    append(pod.PodsWithConfig{}, c.ToKeep...),
 		ToDelete:                  append(pod.PodsWithConfig{}, c.ToDelete...),
-		ToReuse:                   append([]PodToReuse{}, c.ToReuse...),
+		ToReuse:                   append(pod.PodsWithConfig{}, c.ToReuse...),
 		RequireFullClusterRestart: c.RequireFullClusterRestart,
 	}
 	return res
@@ -115,7 +115,7 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 		}
 	}
 	for _, toReuse := range c.ToReuse {
-		if selector.Matches(labels.Set(toReuse.Initial.Pod.Labels)) {
+		if selector.Matches(labels.Set(toReuse.Pod.Labels)) {
 			matchingChanges.ToReuse = append(matchingChanges.ToReuse, toReuse)
 		} else {
 			remainingChanges.ToReuse = append(remainingChanges.ToReuse, toReuse)

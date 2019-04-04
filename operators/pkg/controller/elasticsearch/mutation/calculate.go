@@ -95,75 +95,14 @@ func mutableCalculateChanges(
 	// remaining actual pods should be deleted
 	changes.ToDelete = actualPods
 
-	// TODO: also sort changes.ToCreate since used for reuse computation?
 	// sort changes for idempotent processing
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
 	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
 
 	targetLicense, requiresFullRestart := licenseChangeRequiresFullClusterRestart(actualPods, expectedPodSpecCtxs)
 	if requiresFullRestart {
-		changes.RequireFullClusterRestart = true
-
-		// Actual pods will need a restart with the new license before
-		// we can progress on making any more changes.
-
-		// Let's return changes for this first, marking pods to be "reused"
-		// with the new configuration. If more changes remain to be done,
-		// they will be done in a subsequent reconciliation iteration.
-
-		// Attempt to reuse some pods to delete for pods to create,
-		// including the license changes and maybe other configuration changes
-		// at the same time if eligible.
-		changes = withReusablePods(changes)
-
-		log.Info("Reusable pods", "count", len(changes.ToReuse))
-
-		// Remaining pods may not be eligible for reuse (eg. user requested
-		// change from a 1x2GB basic to 2x4GB trial cluster). In such case,
-		// we still need to restart the current nodes with the new license first
-		// (move to 1x2GB trial, the move to 2x4GB trial will be done through
-		// another changes computation).
-
-		// Don't delete pods yet: instead, reuse them with a different config including the new license.
-		for _, toDelete := range changes.ToDelete {
-			log.Info("Moving pod to delete to pod to reuse", "pod", toDelete.Pod.Name)
-			// remove any XPack security config
-			newConfig := settings.DisableXPackSecurity(toDelete.Config)
-			// and any self-gen license
-			newConfig = settings.DisableSelfGenLicense(toDelete.Config)
-			// apply the correct settings for the new license
-			license := v1alpha1.LicenseType(targetLicense)
-			newConfig = newConfig.
-				MergeWith(settings.XPackSecurityConfig(license)).
-				MergeWith(settings.SelfGenLicenseConfig(license))
-
-			changes.ToReuse = append(changes.ToReuse, PodToReuse{
-				Initial: toDelete,
-				Target: PodToCreate{
-					Pod: toDelete.Pod,
-					PodSpecCtx: pod.PodSpecContext{
-						Config:  newConfig,
-						PodSpec: toDelete.Pod.Spec,
-						// TODO do we need the TopologyElement?
-						// TopologyElement:v1alpha1.TopologyElementSpec{}
-					},
-				},
-			})
-		}
-		changes.ToDelete = []pod.PodWithConfig{}
-
-		// Don't create any new pod yet, we'll do the full restart first.
-		changes.ToCreate = []PodToCreate{}
+		changes = adaptChangesForFullClusterRestart(changes, targetLicense)
 	}
-
-	// sort for idempotent processing
-	// TODO: podsWithConfig.Sort() ?
-	toReuse := make([]pod.PodWithConfig, len(changes.ToReuse))
-	for i, p := range changes.ToReuse {
-		toReuse[i] = p.Initial
-	}
-	// TODO: unit test this, not sure it works
-	sort.SliceStable(changes.ToReuse, sortPodByCreationTimestampAsc(toReuse))
 
 	return changes, nil
 }
@@ -208,9 +147,9 @@ func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.P
 
 // licenseChangeRequiresFullClusterRestart returns true if mutation from actual to expected pods
 // requires to restart actual pods with a different config first.
-func licenseChangeRequiresFullClusterRestart(actualPods pod.PodsWithConfig, expectedPodSpecCtxs []pod.PodSpecContext) (string, bool) {
+func licenseChangeRequiresFullClusterRestart(actualPods pod.PodsWithConfig, expectedPodSpecCtxs []pod.PodSpecContext) (v1alpha1.LicenseType, bool) {
 	if len(actualPods) == 0 || len(expectedPodSpecCtxs) == 0 {
-		return "", false
+		return v1alpha1.LicenseType(""), false
 	}
 
 	// Switching from TLS to non-TLS requires a full cluster restart.
@@ -232,7 +171,7 @@ func licenseChangeRequiresFullClusterRestart(actualPods pod.PodsWithConfig, expe
 	for _, currentSelfGenLicense := range currentSelfGenLicenses {
 		if (currentSelfGenLicense == basic && targetSelfGenLicense != basic) ||
 			(currentSelfGenLicense != basic && targetSelfGenLicense == basic) {
-			return targetSelfGenLicense, true
+			return v1alpha1.LicenseType(targetSelfGenLicense), true
 		}
 	}
 

@@ -22,17 +22,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func scheduleCoordinatedRestart(c k8s.Client, pods []corev1.Pod) (int, error) {
+func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, error) {
 	count := 0
-	for _, pod := range pods {
-		if isAnnotatedForRestart(pod) {
+	for _, p := range pods {
+		if isAnnotatedForRestart(p.Pod) {
 			log.V(1).Info(
 				"Pod already in a restart phase",
-				"pod", pod.Name,
+				"pod", p.Pod.Name,
 			)
 			continue
 		}
-		if err := setPhaseAndStrategy(c, pod, PhaseSchedule, StrategyCoordinated); err != nil {
+		if err := setPhaseAndStrategy(c, p.Pod, PhaseSchedule, StrategyCoordinated); err != nil {
 			return count, err
 		}
 		count++

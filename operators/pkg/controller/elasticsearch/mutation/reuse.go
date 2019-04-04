@@ -11,47 +11,41 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 )
 
-// PodToReuse defines an existing pod that we'll
-// reuse for a different spec, by restarting the process
-// running in the pod without restarting the pod itself
-type PodToReuse struct {
-	// Initial (current) pod with its config
-	Initial pod.PodWithConfig
-	// Target pod after the pod reuse process
-	Target PodToCreate
-}
-
-// withReusablePods checks if some pods to delete can be reused for pods to create.
+// optimizeForPodReuse checks if some pods to delete can be reused for pods to create.
 // Matching pods can keep running with the same spec, but we'll restart
 // the inner ES process with a different configuration.
-func withReusablePods(changes Changes) Changes {
+func optimizeForPodReuse(changes Changes) Changes {
 	// The given changes are kept unmodified, a new object is returned.
-	changesCopy := changes.Copy()
 	result := Changes{
-		ToKeep:                    changesCopy.ToKeep,
-		ToCreate:                  []PodToCreate{},
-		ToReuse:                   []PodToReuse{},
-		ToDelete:                  changes.ToDelete,
+		ToKeep:                    changes.ToKeep,       // keep the same pods
+		ToCreate:                  []PodToCreate{},      // will be filled by new pods that cannot leverage reuse
+		ToReuse:                   pod.PodsWithConfig{}, // will be filled with pods to delete than we can reuse (maybe with a different config)
+		ToDelete:                  changes.ToDelete,     // will be shrunk to pods to delete that cannot be reused
 		RequireFullClusterRestart: changes.RequireFullClusterRestart,
 	}
 
 	for _, toCreate := range changes.ToCreate {
 		canReuse, matchingPod, remainingToDelete := findReusablePod(toCreate, result.ToDelete)
 		if canReuse {
-			result.ToReuse = append(result.ToReuse, PodToReuse{
-				Initial: matchingPod,
-				Target:  toCreate,
+			result.ToReuse = append(result.ToReuse, pod.PodWithConfig{
+				// use the pod that would have been deleted
+				Pod: matchingPod.Pod,
+				// with the config of the pod that would have been created
+				Config: toCreate.PodSpecCtx.Config,
 			})
-			// update list of pods to delete to remove the matching one
+			// one more pod to delete
 			result.ToDelete = remainingToDelete
 		} else {
 			// cannot reuse, should be created
 			result.ToCreate = append(result.ToCreate, toCreate)
 		}
 	}
+
 	return result
 }
 
+// findReusablePod looks for a matching pod spec in the pods to delete for the pod to create.
+// It returns the matching pod along with the remaining pods to delete, without the matching one.
 func findReusablePod(
 	toCreate PodToCreate,
 	toDelete pod.PodsWithConfig,

@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
-	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -32,29 +31,16 @@ func HandlePodsReuse(k8sClient k8s.Client, esClient client.Client, dialer net.Di
 	return processRestarts(k8sClient, esClient, dialer, cluster, changes)
 }
 
-func annotateForRestart(client k8s.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (count int, err error) {
+func annotateForRestart(client k8s.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (int, error) {
 	if changes.RequireFullClusterRestart {
 		// Schedule a coordinated restart on all pods to reuse
 		log.V(1).Info("Changes requiring full cluster restart")
-		pods := make([]corev1.Pod, 0, len(changes.ToReuse))
-		for _, p := range changes.ToReuse {
-			pods = append(pods, p.Initial.Pod)
-		}
-		return scheduleCoordinatedRestart(client, pods)
+		return scheduleCoordinatedRestart(client, changes.ToReuse)
 	}
 
 	if getClusterRestartAnnotation(cluster) == StrategyCoordinated {
-		// Schedule a coordinated restart on all pods of the cluster (to keep + to reuse)
-		pods := make([]corev1.Pod, 0, len(changes.ToReuse)+len(changes.ToKeep))
-		for _, p := range changes.ToKeep {
-			pods = append(pods, p.Pod)
-		}
-		for _, p := range changes.ToReuse {
-			pods = append(pods, p.Initial.Pod)
-		}
-
-		// annotate all pods
-		count, err := scheduleCoordinatedRestart(client, pods)
+		// annotate all current pods of the cluster (toKeep + toReuse)
+		count, err := scheduleCoordinatedRestart(client, append(changes.ToKeep, changes.ToReuse...))
 		if err != nil {
 			return 0, err
 		}
@@ -70,17 +56,8 @@ func annotateForRestart(client k8s.Client, cluster v1alpha1.Elasticsearch, chang
 }
 
 func processRestarts(k8sClient k8s.Client, esClient client.Client, dialer net.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
-
 	// both pods to keep and pods to reuse may be annotated for restart
-	podsToLookAt := make(pod.PodsWithConfig, len(changes.ToKeep)+len(changes.ToReuse))
-	copy(podsToLookAt, changes.ToKeep)
-	for _, p := range changes.ToReuse {
-		podsToLookAt = append(
-			podsToLookAt,
-			// for pods reuse include the target config, not the initial one
-			pod.PodWithConfig{Pod: p.Initial.Pod, Config: p.Target.PodSpecCtx.Config},
-		)
-	}
+	podsToLookAt := append(changes.ToKeep, changes.ToReuse...)
 
 	// group them by restart strategy
 	annotatedPods := map[RestartStrategy]pod.PodsWithConfig{}
