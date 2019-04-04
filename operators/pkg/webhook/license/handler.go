@@ -60,7 +60,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 		current = &onServer
 	}
 	var results []commonvalidation.Result
-	validationCtx, err := validation.NewValidationContext(current, license)
+	validationCtx := &validation.Context{Current: current, Proposed: license}
 	if err != nil {
 		log.Error(err, "while creating validation context")
 		return admission.ValidationResponse(false, err.Error())

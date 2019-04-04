@@ -49,25 +49,12 @@ type Context struct {
 	Proposed estype.EnterpriseLicense
 }
 
-// NewValidationContext constructs a new Context.
-func NewValidationContext(current *estype.EnterpriseLicense, proposed estype.EnterpriseLicense) (*Context, error) {
-
-	ctx := Context{
-		Proposed: proposed,
-	}
-	if current != nil {
-		ctx.Current = current
-	}
-	return &ctx, nil
-}
-
 func (v Context) isCreate() bool {
 	return v.Current == nil
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.
 func Validate(es estype.EnterpriseLicense) error {
-
 	vCtx := Context{
 		Current:  nil,
 		Proposed: es,

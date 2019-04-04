@@ -81,7 +81,7 @@ func TestPopulateTrialLicense(t *testing.T) {
 				},
 			},
 			assertions: func(l v1alpha1.EnterpriseLicense) {
-				require.False(t, requiredFieldsMissing(&l))
+				require.NoError(t, l.IsMissingFields())
 			},
 			wantErr: false,
 		},
