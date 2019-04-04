@@ -36,7 +36,7 @@ func annotateForRestart(client k8s.Client, cluster v1alpha1.Elasticsearch, chang
 	if changes.RequireFullClusterRestart {
 		// Schedule a coordinated restart on all pods to reuse
 		log.V(1).Info("Changes requiring full cluster restart")
-		pods := make([]corev1.Pod, len(changes.ToReuse))
+		pods := make([]corev1.Pod, 0, len(changes.ToReuse))
 		for _, p := range changes.ToReuse {
 			pods = append(pods, p.Initial.Pod)
 		}
