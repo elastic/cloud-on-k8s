@@ -8,9 +8,11 @@ package processmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"os"
 	"strconv"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -20,98 +22,71 @@ import (
 
 const testCmd = "fixtures/simulate-child-processes.sh"
 
-func TestSimpleScript(t *testing.T) {
-	runTest(t, testCmd, func(client *Client) {
-		assertState(t, client, started)
-
-		// stopping
-		status, err := client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-
-		// starting
-		status, err = client.Start(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, started)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
+func TestScriptDieAlone(t *testing.T) {
+	runTest(t, testCmd, ExitStatus{"completed", 0, nil}, func(client *Client) {
+		time.Sleep(4 * time.Second)
+		// should die alone after a few seconds
 	})
 }
 
-func TestZombiesScript(t *testing.T) {
-	runTest(t, testCmd+" zombies", func(client *Client) {
-		assertState(t, client, started)
-
+func TestStopScriptForever(t *testing.T) {
+	runTest(t, testCmd+" forever", ExitStatus{"exited", -1, nil}, func(client *Client) {
 		// stopping
 		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-
-		// starting
-		status, err = client.Start(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, started)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
 	})
 }
 
-func TestZombiesAndTrapScript(t *testing.T) {
-	runTest(t, testCmd+" zombies enableTrap", func(client *Client) {
+func TestKillScriptForever(t *testing.T) {
+	runTest(t, testCmd+" forever", ExitStatus{"killed", -1, nil}, func(client *Client) {
+		// killing
+		status, err := client.Kill(context.Background())
+		assert.NoError(t, err)
+		assertEqual(t, killing, status.State)
+	})
+}
+
+func TestStopScriptForeverWithTrap(t *testing.T) {
+	runTest(t, testCmd+" forever enableTrap", ExitStatus{"exited", 143, nil}, func(client *Client) {
 		assertState(t, client, started)
 
 		// stopping
 		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
 
-		// starting should fail because the stop is still in progress
-		status, err = client.Start(context.Background())
-		assert.Error(t, err)
-		assertEqual(t, stopping, status.State)
+		time.Sleep(4 * time.Second)
+		// should die alone after a few seconds
+	})
+}
 
-		assertState(t, client, stopping)
+func TestKillScriptForeverWithTrap(t *testing.T) {
+	runTest(t, testCmd+" forever enableTrap", ExitStatus{"killed", -1, nil}, func(client *Client) {
+		assertState(t, client, started)
 
+		// killing
+		status, err := client.Kill(context.Background())
+		assert.NoError(t, err)
+		assertEqual(t, killing, status.State)
+	})
+}
+
+func TestStopAndKillScriptForeverWithTrapForever(t *testing.T) {
+	runTest(t, testCmd+" forever enableTrap forever", ExitStatus{"killed", -1, nil}, func(client *Client) {
 		// stopping
-		status, err = client.Stop(context.Background())
+		status, err := client.Stop(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
 
+		// still stopping
+		time.Sleep(3 * time.Second)
 		assertState(t, client, stopping)
 
 		// killing
 		status, err = client.Kill(context.Background())
 		assert.NoError(t, err)
 		assertEqual(t, killing, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, killed)
 	})
 }
 
@@ -119,7 +94,9 @@ func TestInvalidCommand(t *testing.T) {
 	cfg := newConfig(t, "invalid_command")
 	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
-	err = procMgr.Start()
+
+	done := make(chan ExitStatus)
+	err = procMgr.Start(done)
 	assert.Error(t, err)
 }
 
@@ -138,20 +115,55 @@ func newConfig(t *testing.T, cmd string) *Config {
 	}
 }
 
-func runTest(t *testing.T, cmd string, do func(client *Client)) {
+func runTest(t *testing.T, cmd string, expected ExitStatus, do func(client *Client)) {
 	cfg := newConfig(t, cmd)
 	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
-	err = procMgr.Start()
+
+	done := make(chan ExitStatus)
+	err = procMgr.Start(done)
 	assert.NoError(t, err)
 
+	time.Sleep(1 * time.Second)
 	client := NewClient(fmt.Sprintf("http://localhost:%d", cfg.HTTPPort), nil)
+	assertState(t, client, started)
 
-	time.Sleep(3 * time.Second)
-	do(client)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		for {
+			select {
+			case <-ctx.Done():
+				err := procMgr.Forward(killHardSignal)
+				assert.NoError(t, err)
+				assert.Error(t, errors.New("process manager not stopped"))
+				wg.Done()
+				return
+			case current := <-done:
+				cancel()
+				close(done)
+				assert.Equal(t, expected.exitCode, current.exitCode)
+				assert.Equal(t, expected.processStatus, current.processStatus)
 
-	err = procMgr.Stop(os.Kill)
-	assert.NoError(t, err)
+				wg.Done()
+				return
+			}
+		}
+	}()
+
+	go do(client)
+
+	wg.Wait()
+
+	_, err = syscall.Getpgid(procMgr.process.pid)
+	assert.Error(t, err)
+	assert.Error(t, err)
+
+	procMgr.server.Exit()
+
+	_, err = client.Status(context.Background())
+	assert.Error(t, err)
 }
 
 func assertState(t *testing.T, client *Client, expectedState ProcessState) {

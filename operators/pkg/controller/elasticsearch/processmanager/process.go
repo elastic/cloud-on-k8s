@@ -24,11 +24,14 @@ const (
 
 	ErrNoSuchProcess = "no such process"
 
-	stopAction  = "stop"
-	startAction = "start"
-	waitAction  = "wait"
+	startAction     = "start"
+	stopAction      = "stop"
+	killAction      = "kill"
+	terminateAction = "terminate"
 
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
+	// File to persist the state of the process between restart
+	processStateFile = "/tmp/process.state"
 )
 
 // ProcessStatus represents the status of a process with its state,
@@ -44,19 +47,35 @@ type ProcessStatus struct {
 type ProcessState string
 
 const (
-	started     ProcessState = "started"
-	stopping    ProcessState = "stopping"
-	stopped     ProcessState = "stopped"
-	killing     ProcessState = "killing"
-	killed      ProcessState = "killed"
-	startFailed ProcessState = "startFailed"
-	stopFailed  ProcessState = "stopFailed"
-	killFailed  ProcessState = "killFailed"
-	failed      ProcessState = "failed"
+	notInitialized ProcessState = "notInitialized"
+	started        ProcessState = "started"
+	startFailed    ProcessState = "startFailed"
+	failed         ProcessState = "failed"
+	stopping       ProcessState = "stopping"
+	stopped        ProcessState = "stopped"
+	stopFailed     ProcessState = "stopFailed"
+	killing        ProcessState = "killing"
+	killed         ProcessState = "killed"
+	killFailed     ProcessState = "killFailed"
 )
 
 func (s ProcessState) String() string {
 	return string(s)
+}
+
+// ReadProcessState reads the process state in the processStateFile.
+// The state is notInitialized if the file does not exist.
+func ReadProcessState() ProcessState {
+	data, err := ioutil.ReadFile(processStateFile)
+	if err != nil {
+		return notInitialized
+	}
+	return ProcessState(string(data))
+}
+
+// Write the process state in the processStateFile.
+func (s ProcessState) Write() error {
+	return ioutil.WriteFile(processStateFile, []byte(s), 0644)
 }
 
 func (s ProcessState) Error() error {
@@ -77,29 +96,45 @@ type Process struct {
 // NewProcess create a new process.
 func NewProcess(name string, cmd string) *Process {
 	args := strings.Split(strings.Trim(cmd, " "), " ")
-	return &Process{
+
+	state := ReadProcessState()
+	// If the state is still started, the process must have been killed
+	if state == started {
+		log.Info("Process marked 'started' must have been 'killed'")
+		state = killed
+		_ = state.Write()
+	}
+
+	p := Process{
 		id:    name,
 		name:  args[0],
 		args:  args[1:],
-		state: stopped,
+		state: state,
 		mutex: sync.RWMutex{},
 	}
+
+	return &p
 }
 
-// Start starts a process.
-// The process is started only if it's not starting, started or stopping.
-// It returns an error if the process is stopping or killing.
-// A goroutine is started to monitor the end of the process in the background.
-func (p *Process) Start() (ProcessState, error) {
+// Start a process.
+// A goroutine is started to monitor the end of the process in the background and
+// to report the status resulting from the execution to a given ExitStatus channel done.
+func (p *Process) Start(done chan ExitStatus, strict bool) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can start only if not started, stopping or killing
+	// Can start only if not started, stopping or killing,
+	// and stopped or killed in non strict mode.
 	switch p.state {
 	case started:
 		return p.state, nil
 	case stopping, killing:
 		return p.state, fmt.Errorf("error: cannot start process %s", p.state)
+	case stopped, killed:
+		if strict {
+			log.Info("Strict mode, process stopped is not restarted")
+			return p.state, nil
+		}
 	}
 
 	cmd := exec.Command(p.name, p.args...)
@@ -110,6 +145,7 @@ func (p *Process) Start() (ProcessState, error) {
 
 	err := cmd.Start()
 	if err != nil {
+		p.updateState(startAction, startFailed, p.pid, noSignal, err)
 		return startFailed, err
 	}
 
@@ -118,16 +154,53 @@ func (p *Process) Start() (ProcessState, error) {
 
 	p.updateState(startAction, state, p.pid, noSignal, err)
 
+	// Waiting for the process to terminate
 	go func() {
 		err := cmd.Wait()
-		p.terminate(waitAction, err)
+
+		processStatus := "completed"
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				processStatus = "exited"
+				if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+					if waitStatus.Signal() == os.Kill {
+						processStatus = "killed"
+					}
+					exitCode = waitStatus.ExitStatus()
+				}
+			} else {
+				log.Info("Failed to terminate process", "err", err.Error())
+				processStatus = "failed"
+				exitCode = 1
+			}
+		}
+
+		// Update the state depending the previous state
+		p.mutex.Lock()
+		switch p.state {
+		case stopping:
+			state = stopped
+		case killing:
+			state = killed
+		case started:
+			state = failed
+		}
+		p.updateState(terminateAction, state, p.pid, noSignal, nil)
+		p.mutex.Unlock()
+
+		// If the done channel is defined, then send the exit status, else exit the program
+		if done != nil {
+			done <- ExitStatus{processStatus, exitCode, err}
+		} else {
+			Exit("process "+processStatus, exitCode)
+		}
 	}()
 
-	return p.state, err
+	return p.state, nil
 }
 
-// Kill kills a process group by forwarding a signal.
-// The process is stopped only if it's not stopping, killing, stopped or killed.
+// Kill a process group by sending a signal.
 func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 	sig, ok := s.(syscall.Signal)
 	if !ok {
@@ -139,23 +212,21 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can kill?
+	// Can stop or kill?
 	switch p.state {
 	case stopping:
 		if !killHard {
 			return p.state, nil
 		}
-	case killing:
-		if killHard {
-			return p.state, nil
-		}
-	case stopped, killed, failed:
+	case stopped, killing, killed, failed:
 		return p.state, nil
 	}
 
+	action := stopAction
 	state := stopping
 	errState := stopFailed
 	if killHard {
+		action = killAction
 		state = killing
 		errState = killFailed
 	}
@@ -163,16 +234,16 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 	// Send signal to the whole process group
 	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
-		if p.state == started && err.Error() == ErrNoSuchProcess {
-			// No process but still marked started? This should not happen.
-			// Normally the termination of the process is intercepted to update the process state.
-			p.mutex.Unlock()
-			p.GracefulExit("unexpected state: no process to kill, but process still marked started", err)
-		}
 		state = errState
+		if err.Error() == ErrNoSuchProcess {
+			p.updateState(action, state, p.pid, sig, err)
+			// Looks like the process is already dead. This should not happen.
+			// Normally the end of the process should have been intercepted and the program exited.
+			Exit("failed to kill process already dead", 1)
+		}
 	}
 
-	p.updateState(stopAction, state, p.pid, sig, err)
+	p.updateState(action, state, p.pid, sig, err)
 
 	return p.state, err
 }
@@ -191,51 +262,15 @@ func (p *Process) Status() ProcessStatus {
 	}
 }
 
-// isAlive returns if the process is alive by trying to get the process group id.
-func (p *Process) isAlive(action string) bool {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	_, err := syscall.Getpgid(p.pid)
-	alive := err == nil
-
-	log.Info("Process liveness check", "action", action, "state", p.state, "alive", alive, "err", err)
-	return alive
-}
-
-// terminate updates the process state if the process is not alive.
-func (p *Process) terminate(action string, err error) {
-	alive := p.isAlive(action)
-	log.Info("Process terminated", "action", action, "state", p.state, "alive", alive, "err", err)
-
-	if !alive {
-		switch p.state {
-		case stopping:
-			p.mutex.Lock()
-			p.updateState(action, stopped, p.pid, noSignal, err)
-			p.mutex.Unlock()
-		case killing:
-			p.mutex.Lock()
-			p.updateState(action, killed, p.pid, noSignal, err)
-			p.mutex.Unlock()
-		case started:
-			p.mutex.Lock()
-			p.updateState(action, failed, p.pid, noSignal, err)
-			p.mutex.Unlock()
-			// No process but still marked started. Something unexpected happened to the process!
-			// The process is terminated without the process manager schedules a stop or a kill.
-			// Exit the program hoping to be restarted by something (as a kubelet?).
-			p.GracefulExit("unexpected state: process terminated without stop/kill", err)
-		}
-	}
-
-	return
-}
-
 // updateState updates the process state and the last update time.
 func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, err error) {
 	p.state = state
 	p.lastUpdate = time.Now()
+
+	err2 := p.state.Write()
+	if err2 != nil {
+		log.Error(err2, "Fail to write process state")
+	}
 
 	kv := []interface{}{"action", action, "id", p.id, "state", state, "pid", pid}
 	if signal != noSignal {
@@ -254,40 +289,4 @@ func computeConfigChecksum() (string, error) {
 	}
 
 	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
-}
-
-// GracefulExit exits the program after sending a soft kill to the process with a timeout for a hard kill.
-func (p *Process) GracefulExit(reason string, err error) {
-	log.Info("Graceful exit", "reason", reason, "err", err)
-
-	// Try to exit early
-	if !p.isAlive("graceful exit") {
-		log.Info("Exited")
-		os.Exit(1)
-	}
-
-	// Timeout to kill hard if kill soft is not enough
-	time.AfterFunc(10*time.Second, func() {
-		log.Info("Graceful exit, kill hard")
-		_, _ = p.Kill(killHardSignal)
-	})
-
-	// Timeout to exit if the process is still alive after the kill(s)
-	time.AfterFunc(10*time.Second, func() {
-		log.Info("Graceful exit, exit timeout")
-		os.Exit(1)
-	})
-
-	// Kill soft
-	log.Info("Graceful exit, kill soft")
-	_, _ = p.Kill(killSoftSignal)
-
-	// Wait for the process to die
-	for p.isAlive("graceful exit kill") {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Bye!
-	log.Info("Exited")
-	os.Exit(1)
 }

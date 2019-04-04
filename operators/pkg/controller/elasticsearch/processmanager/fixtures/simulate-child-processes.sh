@@ -11,8 +11,9 @@
 #    ./simulate-child-processes.sh zombies enableTrap                Run the script, create zombies processes and trap stop signals
 
 
-withZombies=${1:-""}
+forever=${1:-""}
 enableTrap=${2:-""}
+foreverAfterTrap=${3:-""}
 
 sub_processes() {
     while true; do
@@ -20,20 +21,26 @@ sub_processes() {
         sleep 3
     done
 }
+
 create_zombie() {
-    if [[ "$withZombies" != "" ]]; then
-        echo "Creating a zombie..."
-        (sleep 1 & exec /bin/sleep 600) &
-    fi
+    echo "Creating a zombie..."
+    (sleep 1 & exec /bin/sleep 600) &
 }
 
 on_trap() {
     echo "Signal trapped"
-    while true; do
-        create_zombie
-        echo "main/trap > sleep 4s... ($(date +%s))"
-        sleep 4
-    done
+    if [[ "$foreverAfterTrap" != "" ]]; then
+       # Never stops
+       while true; do
+            create_zombie
+            echo "trap/forever > sleep 2s... ($(date +%s))"
+            sleep 2
+       done
+    else
+        #create_zombie
+        echo "trap/once > sleep 2s... ($(date +%s))"
+        sleep 2
+    fi
 }
 
 main() {
@@ -41,13 +48,21 @@ main() {
         trap on_trap EXIT SIGHUP SIGINT SIGQUIT SIGABRT SIGTERM
     fi
 
-    sub_processes &
+    #sub_processes &
 
-    while true; do
-        create_zombie
-        echo "main > sleep 3s... ($(date +%s))"
+    if [[ "$forever" != "" ]]; then
+        while true; do
+            create_zombie
+            echo "forever > sleep 3s... ($(date +%s))"
+            sleep 3
+        done
+    else
+        #create_zombie
+        echo "once > sleep 3s... ($(date +%s))"
         sleep 3
-    done
+    fi
+
+    echo "End of execution"
 }
 
 main

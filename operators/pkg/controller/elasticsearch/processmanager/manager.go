@@ -5,11 +5,9 @@
 package processmanager
 
 import (
-	"os"
-	"time"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/hashicorp/go-reap"
+	"os"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -49,15 +47,17 @@ func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 	}, nil
 }
 
-// Start all processes, the process reaper and the HTTP server in a non-blocking way.
-func (pm ProcessManager) Start() error {
+// Start the process reaper, the HTTP server, the managed process and the keystore updater.
+func (pm ProcessManager) Start(done chan ExitStatus) error {
+	log.Info("Starting...")
+
 	if pm.enableReaper {
 		go reap.ReapChildren(nil, nil, nil, nil)
 	}
 
 	pm.server.Start()
 
-	_, err := pm.process.Start()
+	_, err := pm.process.Start(done, true)
 	if err != nil {
 		return err
 	}
@@ -66,24 +66,38 @@ func (pm ProcessManager) Start() error {
 		pm.keystoreUpdater.Start()
 	}
 
-	log.Info("Process manager started")
+	log.Info("Started")
 	return nil
 }
 
-// Stop the HTTP server, forwards a given signal to the process and wait for its termination.
-func (pm ProcessManager) Stop(sig os.Signal) error {
-	pm.server.Stop()
-
+// Forward a given signal to the process.
+func (pm ProcessManager) Forward(sig os.Signal) error {
+	log.Info("Forwarding signal", "sig", sig)
 	_, err := pm.process.Kill(sig)
 	if err != nil {
 		return err
 	}
 
-	// Wait for the process to die
-	for pm.process.isAlive("process manager signal forwarding") {
-		time.Sleep(1 * time.Second)
-	}
-
-	log.Info("Process manager stopped")
 	return nil
+}
+
+type ExitStatus struct {
+	processStatus string
+	exitCode      int
+	err           error
+}
+
+// WaitToExit waits to exit the HTTP server and the program.
+func (pm ProcessManager) WaitToExit(done chan ExitStatus) {
+	for {
+		s := <-done
+		pm.server.Exit()
+		Exit("process "+s.processStatus, s.exitCode)
+	}
+}
+
+// Exit the program.
+func Exit(reason string, code int) {
+	log.Info("Exit", "reason", reason, "code", code)
+	os.Exit(code)
 }
