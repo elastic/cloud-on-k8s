@@ -56,7 +56,7 @@ kubectl create secret generic gcs-repo-account --from-file service-account.json
 * Specify in your stack resource that you want to use a repository like so:
 
 ```yaml
- snapshotRepository:
+snapshotRepository:
   type: "gcs"
   settings:
     bucketName: "stack-sample-snapshot-repo"
