@@ -45,7 +45,7 @@ To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e test
 ### Using snapshot repositories
 
 * Restrictions:
-    * Currently only gcs is supported
+    * Currently only [GCS](https://cloud.google.com/storage/) is supported
 * Either create a new bucket/service account or reuse our dev bucket (see Keybase)
 * Create a secret with your [service account bucket credentials](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html#repository-gcs-using-service-account)
 
