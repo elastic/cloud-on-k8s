@@ -259,7 +259,6 @@ func (c *CoordinatedRestart) ensureESProcessStarted(p pod.PodWithConfig) (bool, 
 }
 
 func (c *CoordinatedRestart) ensureConfigurationUpdated(p pod.PodWithConfig) (bool, error) {
-	log.Info(fmt.Sprintf("config to reconcile: %s", p.Config.Render()))
 	if err := settings.ReconcileConfig(c.k8sClient, c.cluster, p.Pod, p.Config); err != nil {
 		return false, err
 	}

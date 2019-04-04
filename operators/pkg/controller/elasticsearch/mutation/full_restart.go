@@ -42,6 +42,10 @@ func adaptChangesForFullClusterRestart(originalChanges Changes, targetLicense v1
 	log.V(1).Info("Reusable pods with a different configuration", "count", len(changes.ToReuse))
 
 	// don't create any new pod yet, we'll do the full restart first.
+	log.V(1).Info(
+		"Delaying pods creation until full cluster restart is over",
+		"count", len(originalChanges.ToCreate)-len(changes.ToReuse),
+	)
 	changes.ToCreate = []PodToCreate{}
 
 	// don't delete any pod yet: they should be restarted first with the new target license.
