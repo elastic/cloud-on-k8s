@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -361,8 +362,8 @@ func Test_doReconcile(t *testing.T) {
 					require.NoError(t, err)
 					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
 					// also check that the pod annotation has been updated too
-					assert.NotEmpty(t, updatedPod.Annotations[k8s.UpdateAnnotation])
-					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedPod.Annotations[k8s.UpdateAnnotation])
+					assert.NotEmpty(t, updatedPod.Annotations[annotation.UpdateAnnotation])
+					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedPod.Annotations[annotation.UpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastPodUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}

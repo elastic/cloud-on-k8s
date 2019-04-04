@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -208,7 +209,7 @@ func doReconcile(
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
 		}
-		k8s.MarkPodAsUpdated(c, pod)
+		annotation.MarkPodAsUpdated(c, pod)
 	}
 
 	return reconcile.Result{}, nil

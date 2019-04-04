@@ -6,6 +6,7 @@ package driver
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
@@ -260,7 +261,7 @@ func markPodsAsUpdated(
 	if err != nil {
 		log.Error(
 			err,
-			"fail to list pods for annotation update",
+			"failed to list pods for annotation update",
 			"namespace", es.Namespace,
 			"name", es.Name,
 		)
@@ -268,6 +269,6 @@ func markPodsAsUpdated(
 	}
 	// Update annotation
 	for _, pod := range podList.Items {
-		k8s.MarkPodAsUpdated(c, pod)
+		annotation.MarkPodAsUpdated(c, pod)
 	}
 }
