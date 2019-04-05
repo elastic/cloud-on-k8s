@@ -94,6 +94,9 @@ func reconcileVersionWideResources(
 		UpdateReconciled: func() {
 			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
 		},
+		PostUpdate: func() {
+			markPodsAsUpdated(c, es)
+		},
 	}); err != nil {
 		return nil, err
 	}
