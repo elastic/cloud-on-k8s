@@ -10,6 +10,8 @@ import (
 	"hash/crc32"
 	"net"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -142,7 +144,6 @@ func (c *CoordinatedRestart) start() Step {
 					continue
 				}
 
-				// - Update pod labels?
 				// - ensure es process started
 				started, err := c.ensureESProcessStarted(p)
 				if err != nil {
@@ -154,6 +155,20 @@ func (c *CoordinatedRestart) start() Step {
 			}
 
 			if podsDone != len(pods) {
+				log.V(1).Info("Some pods are not started yet", "expected", len(pods), "actual", podsDone)
+				return false, nil // requeue
+			}
+
+			externalService, err := services.GetExternalService(c.k8sClient, c.cluster)
+			if err != nil {
+				return false, err
+			}
+			esReachable, err := services.IsServiceReady(c.k8sClient, externalService)
+			if err != nil {
+				return false, err
+			}
+			if !esReachable {
+				log.V(1).Info("Cluster is not ready to receive requests yet")
 				return false, nil // requeue
 			}
 
