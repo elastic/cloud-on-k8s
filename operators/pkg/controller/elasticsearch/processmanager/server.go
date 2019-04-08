@@ -82,7 +82,9 @@ func (s *ProcessServer) Start() {
 			if err == http.ErrServerClosed {
 				log.Info("HTTP server closed")
 			} else {
-				Exit("failed to start the HTTP server", 1)
+				errMsg := "failed to start the HTTP server"
+				log.Error(err, errMsg)
+				Exit(errMsg, 1)
 			}
 		}
 
