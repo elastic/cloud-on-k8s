@@ -83,7 +83,7 @@ func startContainer(t *testing.T, cmd string) *Client {
 	assert.NoError(t, err)
 	fmt.Println("docker ps:", string(out))
 
-	client := NewClient(fmt.Sprintf("http://localhost:%s", port), nil)
+	client := NewClient(fmt.Sprintf("http://%s:%s", containerName, port), nil)
 	assertProcessStatus(t, client, started)
 
 	return client
