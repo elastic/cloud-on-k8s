@@ -75,6 +75,14 @@ func startContainer(t *testing.T, cmd string) *Client {
 	assert.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
+	out, err := bash("docker logs %s", containerName).Output()
+	assert.NoError(t, err)
+	fmt.Println("docker logs:", string(out))
+
+	out, err = bash("docker ps | grep %s", containerName).Output()
+	assert.NoError(t, err)
+	fmt.Println("docker ps:", string(out))
+
 	client := NewClient(fmt.Sprintf("http://localhost:%s", port), nil)
 	assertProcessStatus(t, client, started)
 
