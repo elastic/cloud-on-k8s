@@ -40,7 +40,7 @@ private/public key pair.
 The public key CAN be shared with the namespace operator at
 installation time. The individual controllers that are interested in
 license checks will then verify any `ControllerLicenses` appearing in
-their namespace using that key and MUST toggle commercial features only if valid license 
+their namespace using that key and MUST toggle commercial features only if a valid license 
 is present.
 
 The license controller MUST create controller licenses only when either a valid 
@@ -86,7 +86,7 @@ secret would need to be deployed into the managed namespace not into
 the control plane namespace. Unless of course we run everything in one
 namespace anyway or we implement a custom client
 that has access to the control plane namespace of the namespace
-operator (the latter is underlying assumption for the graph above).
+operator (the latter is the underlying assumption for the graph above).
 
 ### Positive Consequences 
 
@@ -113,7 +113,7 @@ operator (the latter is underlying assumption for the graph above).
 * Good, because it is independent of the deployment scenario chosen for the operator.
 * Bad, because it does not solve the burden of proof for commercial feature enablement.
   We would still need a copy of the actual license in all namespaces that have controllers with commericial features (currently only the global one).
-* Bad, because it does not solve the problem of trial expiry checks. We would still need to share additional trial or license expiry information between all parties. 
+* Bad, because it would require an operator restart to update license information.   
 
 ### Dynamically configured license and admission controller
 
