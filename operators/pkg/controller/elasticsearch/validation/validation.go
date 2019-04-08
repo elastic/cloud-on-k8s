@@ -5,12 +5,10 @@
 package validation
 
 import (
-	"errors"
-
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	pkgerrors "github.com/pkg/errors"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -23,18 +21,8 @@ const (
 var log = logf.Log.WithName("es-validation")
 
 // Validation is a function from a currently stored Elasticsearch spec and proposed new spec
-// (both inside a Context struct) to a Result.
-type Validation func(ctx Context) Result
-
-// Result contains validation results.
-type Result struct {
-	Error   error
-	Allowed bool
-	Reason  string
-}
-
-// OK is a successfull validation result.
-var OK = Result{Allowed: true}
+// (both inside a Context struct) to a validation.Result.
+type Validation func(ctx Context) validation.Result
 
 // ElasticsearchVersion groups an ES resource and its parsed version.
 type ElasticsearchVersion struct {
@@ -80,10 +68,10 @@ func (v Context) isCreate() bool {
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed Elasticsearch versions.
-func Validate(es estype.Elasticsearch) error {
+func Validate(es estype.Elasticsearch) ([]validation.Result, error) {
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	vCtx := Context{
@@ -93,13 +81,13 @@ func Validate(es estype.Elasticsearch) error {
 			Version:       *v,
 		},
 	}
-	var errs []error
+	var errs []validation.Result
 	for _, v := range Validations {
 		r := v(vCtx)
 		if r.Allowed {
 			continue
 		}
-		errs = append(errs, errors.New(r.Reason))
+		errs = append(errs, r)
 	}
-	return utilerrors.NewAggregate(errs)
+	return errs, nil
 }

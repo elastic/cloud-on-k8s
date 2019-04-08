@@ -4,7 +4,10 @@
 
 package validation
 
-import "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+import (
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+)
 
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
@@ -14,21 +17,21 @@ var Validations = []Validation{
 	validUpgradePath,
 }
 
-func supportedVersion(ctx Context) Result {
+func supportedVersion(ctx Context) validation.Result {
 	if v := driver.SupportedVersions(ctx.Proposed.Version); v == nil {
-		return Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
+		return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
-	return OK
+	return validation.OK
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
-func hasMaster(ctx Context) Result {
+func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Topology {
 		hasMaster = hasMaster || (t.NodeTypes.Master && t.NodeCount > 0)
 	}
 	if hasMaster {
-		return OK
+		return validation.OK
 	}
-	return Result{Reason: masterRequiredMsg}
+	return validation.Result{Reason: masterRequiredMsg}
 }
