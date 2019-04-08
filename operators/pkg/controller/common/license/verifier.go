@@ -23,7 +23,7 @@ import (
 
 // Verifier verifies Enterprise licenses.
 type Verifier struct {
-	publicKey *rsa.PublicKey
+	PublicKey *rsa.PublicKey
 }
 
 // Valid checks the validity of the given Enterprise license. Returns nil if valid.
@@ -84,7 +84,7 @@ func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte) error {
 	}
 	//TODO optional pubkey fingerprint check
 	hashed := sha512.Sum512(contentBytes)
-	return rsa.VerifyPKCS1v15(v.publicKey, crypto.SHA512, hashed[:], signedContentSig)
+	return rsa.VerifyPKCS1v15(v.PublicKey, crypto.SHA512, hashed[:], signedContentSig)
 }
 
 // NewVerifier creates a new license verifier from a DER encoded public key.
@@ -98,7 +98,7 @@ func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 		return nil, errors.New("public key is not an RSA key")
 	}
 	return &Verifier{
-		publicKey: pubKey,
+		PublicKey: pubKey,
 	}, nil
 }
 
@@ -112,7 +112,7 @@ type signer struct {
 func NewSigner(privKey *rsa.PrivateKey) *signer {
 	return &signer{
 		Verifier: Verifier{
-			publicKey: &privKey.PublicKey,
+			PublicKey: &privKey.PublicKey,
 		},
 		privateKey: privKey,
 	}
@@ -128,7 +128,7 @@ func (s *signer) Sign(l v1alpha1.EnterpriseLicense) ([]byte, error) {
 	rng := rand.Reader
 	hashed := sha512.Sum512(toSign)
 
-	publicKeyBytes := x509.MarshalPKCS1PublicKey(s.publicKey)
+	publicKeyBytes := x509.MarshalPKCS1PublicKey(s.PublicKey)
 	rsaSig, err := rsa.SignPKCS1v15(rng, s.privateKey, crypto.SHA512, hashed[:])
 	if err != nil {
 		return nil, err

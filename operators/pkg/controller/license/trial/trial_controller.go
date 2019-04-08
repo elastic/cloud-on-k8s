@@ -90,7 +90,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to retrieve trial status")
 	}
 	// 3. if present check still valid
-	verifier, err := licensing.NewVerifier(trialStatus.Data[pubkeyKey])
+	verifier, err := r.trialVerifier(trialStatus)
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to initialise license verifier")
 	}
@@ -105,6 +105,11 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 }
 
 func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
+	if r.trialPubKey != nil {
+		// restarting a trial or trial status reset
+		return r.updateStatus(l, v1alpha1.LicenseStatusInvalid)
+	}
+
 	mutation.StartTrial(&l, time.Now())
 	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
 	rnd := rand.Reader
@@ -112,6 +117,9 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 	if err != nil {
 		return err
 	}
+	// retain pub key in memory for later iterations
+	r.trialPubKey = &tmpPrivKey.PublicKey
+	// sign trial license
 	signer := licensing.NewSigner(tmpPrivKey)
 	sig, err := signer.Sign(l)
 	if err != nil {
@@ -149,6 +157,17 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 	return pkgerrors.Wrap(r.Update(&l), "Failed to update trial license")
 }
 
+func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.Verifier, error) {
+	if r.trialPubKey == nil {
+		// after operator restart fall back to trial status
+		return licensing.NewVerifier(trialStatus.Data[pubkeyKey])
+	}
+	// prefer in memory version of the public key
+	return &licensing.Verifier{
+		PublicKey: r.trialPubKey,
+	}, nil
+}
+
 func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
 	log.Info("trial status update", "status", status)
 	l.Status.LicenseStatus = status
@@ -181,5 +200,6 @@ type ReconcileTrials struct {
 	k8s.Client
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
-	iteration int64
+	iteration   int64
+	trialPubKey *rsa.PublicKey
 }
