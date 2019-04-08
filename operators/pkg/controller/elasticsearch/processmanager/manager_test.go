@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"sync"
 	"syscall"
@@ -91,6 +92,7 @@ func TestStopAndKillScriptForeverWithTrapForever(t *testing.T) {
 }
 
 func TestInvalidCommand(t *testing.T) {
+	resetProcessStateFile(t)
 	cfg := newConfig(t, "invalid_command")
 	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
@@ -116,6 +118,8 @@ func newConfig(t *testing.T, cmd string) *Config {
 }
 
 func runTest(t *testing.T, cmd string, expected ExitStatus, do func(client *Client)) {
+	resetProcessStateFile(t)
+
 	cfg := newConfig(t, cmd)
 	procMgr, err := NewProcessManager(cfg)
 	assert.NoError(t, err)
@@ -164,6 +168,10 @@ func runTest(t *testing.T, cmd string, expected ExitStatus, do func(client *Clie
 
 	_, err = client.Status(context.Background())
 	assert.Error(t, err)
+}
+
+func resetProcessStateFile(t *testing.T) {
+	_ = os.Remove(processStateFile)
 }
 
 func assertState(t *testing.T, client *Client, expectedState ProcessState) {
