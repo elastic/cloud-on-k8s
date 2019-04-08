@@ -174,10 +174,11 @@ func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1al
 	return r.Status().Update(&l)
 }
 
-// Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	r := &ReconcileTrials{Client: k8s.WrapClient(mgr.GetClient()), scheme: mgr.GetScheme()}
+func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	return &ReconcileTrials{Client: k8s.WrapClient(mgr.GetClient()), scheme: mgr.GetScheme()}
+}
+
+func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
 	c, err := controller.New("trial-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -191,6 +192,13 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 		return err
 	}
 	return nil
+}
+
+// Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
+// and Start it when the Manager is Started.
+func Add(mgr manager.Manager, _ operator.Parameters) error {
+	r := newReconciler(mgr)
+	return add(mgr, r)
 }
 
 var _ reconcile.Reconciler = &ReconcileTrials{}
