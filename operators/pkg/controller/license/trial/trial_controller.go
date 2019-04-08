@@ -7,6 +7,7 @@
 package trial
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,6 +17,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	licensing "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/license/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
@@ -89,6 +91,10 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to retrieve trial status")
 	}
+	// 2.a. reconcile trial status
+	if err := r.reconcileTrialStatus(trialStatus); err != nil {
+		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to reconcile trial status")
+	}
 	// 3. if present check still valid
 	verifier, err := r.trialVerifier(trialStatus)
 	if err != nil {
@@ -133,6 +139,9 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: l.Namespace,
 			Name:      trialStatusSecretKey,
+			Labels: map[string]string{
+				license.EnterpriseLicenseLabelName: l.Name,
+			},
 			Finalizers: []string{
 				finalizerName,
 			},
@@ -169,9 +178,29 @@ func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.V
 }
 
 func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
+	if l.Status.LicenseStatus == status {
+		// nothing to do
+		return nil
+	}
 	log.Info("trial status update", "status", status)
 	l.Status.LicenseStatus = status
 	return r.Status().Update(&l)
+}
+
+func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
+	if r.trialPubKey == nil {
+		return nil
+	}
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialPubKey)
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(trialStatus.Data[pubkeyKey], pubkeyBytes) {
+		return nil
+	}
+	trialStatus.Data[pubkeyKey] = pubkeyBytes
+	return r.Update(&trialStatus)
+
 }
 
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
@@ -189,6 +218,29 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err := c.Watch(
 		&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestForObject{},
 	); err != nil {
+		return err
+	}
+	// Watch the trial status secret as well
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+			if obj.Meta.GetName() != trialStatusSecretKey {
+				return nil
+			}
+			labels := obj.Meta.GetLabels()
+			licenseName, ok := labels[license.EnterpriseLicenseLabelName]
+			if !ok {
+				return nil
+			}
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Namespace: obj.Meta.GetNamespace(),
+						Name:      licenseName,
+					},
+				},
+			}
+		}),
+	}); err != nil {
 		return err
 	}
 	return nil

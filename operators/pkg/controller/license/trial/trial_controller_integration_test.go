@@ -7,6 +7,7 @@
 package trial
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 	"time"
@@ -14,8 +15,10 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -54,13 +57,17 @@ func validateTrialDuration(t *testing.T, license v1alpha1.EnterpriseLicense, now
 	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)
 }
 
-func deleteTrial(c k8s.Client, trialLicense *v1alpha1.EnterpriseLicense) error {
-	// Delete the trial license
-	trialLicense.Finalizers = nil
-	if err := c.Update(trialLicense); err != nil {
+func deleteTrial() error {
+	var trialLicense v1alpha1.EnterpriseLicense
+	if err := c.Get(licenseKey, &trialLicense); err != nil {
 		return err
 	}
-	return c.Delete(trialLicense)
+	// Delete the trial license
+	trialLicense.Finalizers = nil
+	if err := c.Update(&trialLicense); err != nil {
+		return err
+	}
+	return c.Delete(&trialLicense)
 }
 
 func TestReconcile(t *testing.T) {
@@ -90,15 +97,34 @@ func TestReconcile(t *testing.T) {
 	}()
 	// Create the EnterpriseLicense object
 	assert.NoError(t, c.Create(trialLicense.DeepCopy()))
-	test.CheckReconcileCalled(t, requests, expectedRequest)
+	// expecting 3 cycles: create, status update, noop because controller updates spec
+	test.CheckReconcileCalledIn(t, requests, expectedRequest, 3, 3)
 
 	var createdLicense v1alpha1.EnterpriseLicense
 	// test trial initialisation on create
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
 	validateTrialDuration(t, createdLicense, now, time.Second)
 
+	// tamper with the trial status
+	var trialStatus corev1.Secret
+	trialStatusKey := types.NamespacedName{
+		Namespace: "elastic-system",
+		Name:      trialStatusSecretKey,
+	}
+	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+	trialStatus.Data[pubkeyKey] = []byte("foobar")
+	require.NoError(t, c.Update(&trialStatus))
+	test.CheckReconcileCalled(t, requests, expectedRequest)
+	test.RetryUntilSuccess(t, func() error {
+		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
+		if bytes.Equal(trialStatus.Data[pubkeyKey], []byte("foobar")) {
+			return errors.New("Manipulated secret has not been corrected")
+		}
+		return nil
+	})
+
 	// Delete the trial license
-	require.NoError(t, deleteTrial(c, &createdLicense))
+	require.NoError(t, deleteTrial())
 	// recreate it
 	require.NoError(t, c.Create(trialLicense))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
