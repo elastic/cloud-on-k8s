@@ -21,7 +21,7 @@ Service accounts can be changed according to what is set in `service_account.yam
 
 Global operator args can be customized:
 
-* `--operator-role`: either "global" or "all"
+* `--operator-roles`: should be `global` and/or `webhook` if the webhook server should be deployed as well
 * `--namespace`: namespace in which resources should be watched (defaults to all namespaces)
 
 ## cluster_role.yaml

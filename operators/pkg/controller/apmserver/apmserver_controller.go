@@ -218,10 +218,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledApmServerSecret.Labels = expectedApmServerSecret.Labels
 				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
-			OnCreate: func() {
+			PreCreate: func() {
 				log.Info("Creating apm server secret", "name", expectedApmServerSecret.Name)
 			},
-			OnUpdate: func() {
+			PreUpdate: func() {
 				log.Info("Updating apm server secret", "name", expectedApmServerSecret.Name)
 			},
 		},
@@ -267,10 +267,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledConfigSecret.Labels = expectedConfigSecret.Labels
 				reconciledConfigSecret.Data = expectedConfigSecret.Data
 			},
-			OnCreate: func() {
+			PreCreate: func() {
 				log.Info("Creating config secret", "name", expectedConfigSecret.Name)
 			},
-			OnUpdate: func() {
+			PreUpdate: func() {
 				log.Info("Updating config secret", "name", expectedConfigSecret.Name)
 			},
 		},

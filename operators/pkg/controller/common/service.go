@@ -25,3 +25,8 @@ func GetServiceType(s string) corev1.ServiceType {
 		return DefaultServiceType
 	}
 }
+
+// hasNodePort returns for a given service type, if the service ports have a NodePort or not.
+func hasNodePort(svcType corev1.ServiceType) bool {
+	return svcType == corev1.ServiceTypeNodePort || svcType == corev1.ServiceTypeLoadBalancer
+}

@@ -224,10 +224,10 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		UpdateReconciled: func() {
 			reconciled.Spec = toAssign.Spec
 		},
-		OnCreate: func() {
+		PreCreate: func() {
 			log.Info("Assigning license", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
 		},
-		OnUpdate: func() {
+		PreUpdate: func() {
 			log.Info("Updating license to", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
 		},
 	})
