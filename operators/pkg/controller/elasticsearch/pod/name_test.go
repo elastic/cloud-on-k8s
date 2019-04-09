@@ -5,8 +5,10 @@
 package pod
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,8 +39,9 @@ func TestNewNodeName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewNodeName(tt.args.clusterName)
-			if len(tt.args.clusterName) > maxPrefixLength {
-				assert.Len(t, got, 63, got, "should be maximum 63 characters long")
+			if len(got) > name.MaxLabelLength {
+				assert.Len(t, got, name.MaxLabelLength,
+					got, fmt.Sprintf("should be maximum %d characters long", name.MaxLabelLength))
 			}
 
 			assert.Regexp(t, tt.want, got)

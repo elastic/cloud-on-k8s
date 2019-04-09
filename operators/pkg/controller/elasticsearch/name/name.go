@@ -38,13 +38,16 @@ const (
 )
 
 // Suffix the Elasticsearch name.
-// Panic if the name or the suffix exceeds the limits below.
+// Panic if the suffix exceeds the limits below.
+// Trim the name if it exceeds the limits below.
 func Suffix(name string, suffix string) string {
 	if len(suffix) > MaxSuffixLength {
 		panic(fmt.Errorf("suffix should not exceed %d characters: %s", MaxSuffixLength, suffix))
 	}
 	if len(name) > MaxNameLength {
-		panic(fmt.Errorf("name should not exceed %d characters: %s", MaxNameLength, name))
+		name = name[:MaxLabelLength-len(suffix)]
+		log.Error(fmt.Errorf("name should not exceed %d characters: %s", MaxNameLength, name),
+			"Failed to suffix resource")
 	}
 	return stringsutil.Concat(name, suffix)
 }
