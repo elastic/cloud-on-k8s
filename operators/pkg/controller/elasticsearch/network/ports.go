@@ -7,8 +7,6 @@ package network
 const (
 	// HTTPPort used by Elasticsearch for the REST API
 	HTTPPort = 9200
-	// TransportPort used by Elasticsearch for the Transport protocol
+	// TransportPort used by Elasticsearch for the Transport protocol in node to node communication
 	TransportPort = 9300
-	// TransportClientPort used by Elasticsearch for the Transport protocol for client-only connections
-	TransportClientPort = 9400
 )

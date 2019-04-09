@@ -31,7 +31,6 @@ var (
 	DefaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 
