@@ -169,7 +169,7 @@ func Test_nameLength(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
 				},
 			},
-			want: Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, maxNameLength)},
+			want: Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, MaxNameLength)},
 		},
 		{
 			name: "name length OK",

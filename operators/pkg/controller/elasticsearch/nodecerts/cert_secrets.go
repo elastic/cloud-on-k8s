@@ -66,7 +66,7 @@ func findNodeCertificateSecrets(
 // NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
 // a given pod.
 func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
-	// TODO: trim and suffix?
+	// At this point, Pod name is already trimmed and suffixed. So it's safe to reuse it for the secret name.
 	return k8s.ExtractNamespacedName(&pod)
 }
 

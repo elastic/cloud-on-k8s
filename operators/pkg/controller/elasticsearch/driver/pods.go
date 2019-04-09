@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	espod "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
@@ -181,9 +182,9 @@ func getOrCreatePVC(pod *corev1.Pod,
 
 func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
 	pvc := claimTemplate.DeepCopy()
-	// generate unique name for this pvc.
-	// TODO: this may become too long?
-	pvc.Name = pod.Name + "-" + claimTemplate.Name
+	// unique name for this pvc is guaranteed by the pod name that contains a random id.
+	// the claim name is trimmed to not exceed the max length for a label
+	pvc.Name = name.Suffix(pod.Name, claimTemplate.Name[:name.MaxLabelLength-len(pod.Name)])
 	pvc.Namespace = pod.Namespace
 	// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
 	// reflecting state from K8s.

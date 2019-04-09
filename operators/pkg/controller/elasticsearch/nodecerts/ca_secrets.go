@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,12 +21,12 @@ const (
 
 // CACertSecretName returns the name of the CA cert secret for the given cluster.
 func CACertSecretName(clusterName string) string {
-	return clusterName + "-ca"
+	return name.Suffix(clusterName, name.CASecretSuffix)
 }
 
 // caPrivateKeySecretName returns the name of the CA private key secret for the given cluster.
 func caPrivateKeySecretName(clusterName string) string {
-	return clusterName + "-ca-private-key"
+	return name.Suffix(clusterName, name.CAPrivateKeySecretSuffix)
 }
 
 // caFromSecrets parses the given secrets into a CA.

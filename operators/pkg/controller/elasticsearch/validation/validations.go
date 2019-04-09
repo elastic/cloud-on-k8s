@@ -6,10 +6,10 @@ package validation
 
 import (
 	"fmt"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-)
 
-const maxNameLength = 36
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+)
 
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
@@ -22,8 +22,8 @@ var Validations = []Validation{
 
 // nameLength checks the length of the Elasticsearch name.
 func nameLength(ctx Context) Result {
-	if len(ctx.Proposed.Elasticsearch.Name) > maxNameLength {
-		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, maxNameLength)}
+	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxNameLength {
+		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxNameLength)}
 	}
 	return OK
 }

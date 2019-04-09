@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -28,7 +29,7 @@ const (
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given pod.
 func ConfigSecretName(podName string) string {
-	return podName + "-config"
+	return name.Suffix(podName, name.ConfigSecretSuffix)
 }
 
 // ConfigSecretVolume returns a SecretVolume to hold the config of the given pod.
