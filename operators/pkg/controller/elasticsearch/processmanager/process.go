@@ -11,10 +11,13 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 )
 
 const (
@@ -30,9 +33,10 @@ const (
 	terminateAction = "terminate"
 
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
-	// File to persist the state of the process between restart
-	processStateFile = "/tmp/process.state"
 )
+
+// File to persist the state of the process between restart
+var processStateFile = filepath.Join(volume.ExtraBinariesPath, "process.state")
 
 // ProcessStatus represents the status of a process with its state,
 // the duration since when it is in this state and the checksum of
