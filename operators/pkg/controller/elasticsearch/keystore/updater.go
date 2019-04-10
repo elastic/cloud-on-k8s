@@ -57,11 +57,32 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
+	u.waitForElasticsearchReady()
+
 	if u.config.ReloadCredentials {
 		go u.coalescingRetry()
 	}
 
 	go u.watchForUpdate()
+}
+
+func (u *Updater) waitForElasticsearchReady() {
+	caCerts, err := loadCerts(u.config.EsCACertsPath)
+	if err != nil {
+		log.Error(err, "Cannot create Elasticsearch client with CA certs")
+		return
+	}
+	esClient := client.NewElasticsearchClient(nil, u.config.EsEndpoint, u.config.EsUser, u.config.EsVersion, caCerts)
+
+	u.updateStatus(waitingEsState, "Waiting for Elasticsearch to be ready", nil)
+	for {
+		_, err := esClient.GetClusterInfo(context.Background())
+		if err == nil {
+			break
+		}
+		log.Info("Waiting for Elasticsearch to be ready")
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func (u *Updater) watchForUpdate() {
