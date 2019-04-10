@@ -66,7 +66,7 @@ func reconcileVersionWideResources(
 	expectedExtraFilesSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      name.Suffix(es.Name, name.ExtraFilesSecretSuffix),
+			Name:      name.ExtraFilesSecret(es.Name),
 		},
 		Data: map[string][]byte{
 			nodecerts.TrustRestrictionsFilename: trustRootCfgData,

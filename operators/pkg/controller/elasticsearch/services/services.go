@@ -26,7 +26,7 @@ const (
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(esName string) string {
-	return name.Suffix(esName, name.DiscoveryServiceSuffix)
+	return name.DiscoveryService(esName)
 }
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
@@ -61,7 +61,7 @@ func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return name.Suffix(esName, name.ServiceSuffix)
+	return name.Service(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint

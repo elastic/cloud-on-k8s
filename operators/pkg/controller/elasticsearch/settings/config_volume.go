@@ -29,7 +29,7 @@ const (
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given pod.
 func ConfigSecretName(podName string) string {
-	return name.Suffix(podName, name.ConfigSecretSuffix)
+	return name.ConfigSecret(podName)
 }
 
 // ConfigSecretVolume returns a SecretVolume to hold the config of the given pod.

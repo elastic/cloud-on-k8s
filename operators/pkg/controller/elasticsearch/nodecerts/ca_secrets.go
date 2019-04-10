@@ -21,12 +21,12 @@ const (
 
 // CACertSecretName returns the name of the CA cert secret for the given cluster.
 func CACertSecretName(clusterName string) string {
-	return name.Suffix(clusterName, name.CASecretSuffix)
+	return name.CASecret(clusterName)
 }
 
 // caPrivateKeySecretName returns the name of the CA private key secret for the given cluster.
 func caPrivateKeySecretName(clusterName string) string {
-	return name.Suffix(clusterName, name.CAPrivateKeySecretSuffix)
+	return name.CAPrivateKeySecret(clusterName)
 }
 
 // caFromSecrets parses the given secrets into a CA.

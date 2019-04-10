@@ -31,17 +31,17 @@ const (
 
 // ElasticUsersRolesSecretName is the name of the secret containing all users and roles information in ES format.
 func ElasticUsersRolesSecretName(ownerName string) string {
-	return name.Suffix(ownerName, name.EsRolesUsersSecretSuffix)
+	return name.EsRolesUsersSecret(ownerName)
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials.
 func ElasticInternalUsersSecretName(ownerName string) string {
-	return name.Suffix(ownerName, name.InternalUsersSecretSuffix)
+	return name.InternalUsersSecret(ownerName)
 }
 
 // ElasticExternalUsersSecretName is the name of the secret containing the external users' credentials.
 func ElasticExternalUsersSecretName(ownerName string) string {
-	return name.Suffix(ownerName, name.ElasticUserSecretSuffix)
+	return name.ElasticUserSecret(ownerName)
 }
 
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.

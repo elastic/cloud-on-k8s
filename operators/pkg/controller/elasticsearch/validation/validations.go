@@ -22,8 +22,8 @@ var Validations = []Validation{
 
 // nameLength checks the length of the Elasticsearch name.
 func nameLength(ctx Context) Result {
-	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxNameLength {
-		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxNameLength)}
+	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxElasticsearchNameLength {
+		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)}
 	}
 	return OK
 }

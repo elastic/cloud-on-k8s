@@ -14,6 +14,6 @@ const (
 )
 
 // ManagedSecretName returns the name of the operator managed secret containing Elasticsearch keystore data.
-func ManagedSecretName(clusterName string) string {
-	return name.Suffix(clusterName, name.KeystoreSuffix)
+func ManagedSecretName(esName string) string {
+	return name.KeystoreSecret(esName)
 }
