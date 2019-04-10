@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -169,7 +170,7 @@ func Test_nameLength(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
 				},
 			},
-			want: Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, MaxNameLength)},
+			want: Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxNameLength)},
 		},
 		{
 			name: "name length OK",
