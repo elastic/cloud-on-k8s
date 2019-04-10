@@ -24,8 +24,8 @@ func supportedVersion(ctx Context) Result {
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
 func hasMaster(ctx Context) Result {
 	var hasMaster bool
-	for _, t := range ctx.Proposed.Elasticsearch.Spec.Topology {
-		hasMaster = hasMaster || (t.NodeTypes.Master && t.NodeCount > 0)
+	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		hasMaster = hasMaster || (t.Config.IsMaster() && t.NodeCount > 0)
 	}
 	if hasMaster {
 		return OK

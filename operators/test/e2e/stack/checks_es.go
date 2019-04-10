@@ -118,8 +118,8 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 
 			// flatten the topology
-			var expectedTopology []estype.TopologyElementSpec
-			for _, topoElem := range es.Spec.Topology {
+			var expectedTopology []estype.NodeSpec
+			for _, topoElem := range es.Spec.Nodes {
 				for i := 0; i < int(topoElem.NodeCount); i++ {
 					expectedTopology = append(expectedTopology, topoElem)
 				}
@@ -128,7 +128,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			for _, node := range nodes.Nodes {
 				nodeTypes := rolesToNodeTypes(node.Roles)
 				for i, topoElem := range expectedTopology {
-					if topoElem.NodeTypes == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
+					if topoElem.Config == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// it's a match! #tinder
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
@@ -159,7 +159,7 @@ func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
 	return nt
 }
 
-func compareMemoryLimit(topologyElement estype.TopologyElementSpec, heapMaxBytes int) bool {
+func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
 	if topologyElement.Resources.Limits.Memory() == nil {
 		// no expected memory, consider it's ok
 		return true

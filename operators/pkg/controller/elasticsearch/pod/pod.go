@@ -67,8 +67,8 @@ type NewPodSpecParams struct {
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
-	// NodeTypes defines the types (master/data/ingest) associated to the ES node
-	NodeTypes v1alpha1.NodeTypesSpec
+	// Config is the user provided Elasticsearch configuration.
+	Config v1alpha1.Config
 
 	// Affinity is the pod's scheduling constraints
 	Affinity *corev1.Affinity
@@ -99,9 +99,9 @@ type NewPodSpecParams struct {
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
 type PodSpecContext struct {
-	PodSpec         corev1.PodSpec
-	TopologyElement v1alpha1.TopologyElementSpec
-	Config          settings.FlatConfig
+	PodSpec corev1.PodSpec
+	Node    v1alpha1.NodeSpec
+	Config  settings.FlatConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

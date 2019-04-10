@@ -37,13 +37,13 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
+						Nodes: []v1alpha1.NodeSpec{
 							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: false,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
+								Config: v1alpha1.Config{
+									v1alpha1.NodeMaster: "false",
+									v1alpha1.NodeData:   "false",
+									v1alpha1.NodeIngest: "false",
+									v1alpha1.NodeML:     "false",
 								},
 							},
 						},
@@ -58,13 +58,13 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
+						Nodes: []v1alpha1.NodeSpec{
 							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: true,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
+								Config: v1alpha1.Config{
+									v1alpha1.NodeMaster: "true",
+									v1alpha1.NodeData:   "false",
+									v1alpha1.NodeIngest: "false",
+									v1alpha1.NodeML:     "false",
 								},
 							},
 						},
@@ -79,13 +79,13 @@ func Test_hasMaster(t *testing.T) {
 				esCluster: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
 						Version: "7.0.0",
-						Topology: []v1alpha1.TopologyElementSpec{
+						Nodes: []v1alpha1.NodeSpec{
 							{
-								NodeTypes: v1alpha1.NodeTypesSpec{
-									Master: true,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
+								Config: v1alpha1.Config{
+									v1alpha1.NodeMaster: "true",
+									v1alpha1.NodeData:   "false",
+									v1alpha1.NodeIngest: "false",
+									v1alpha1.NodeML:     "false",
 								},
 								NodeCount: 1,
 							},

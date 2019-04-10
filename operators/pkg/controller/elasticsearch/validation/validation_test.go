@@ -103,13 +103,13 @@ func TestValidate(t *testing.T) {
 				es: estype.Elasticsearch{
 					Spec: estype.ElasticsearchSpec{
 						Version: "7.0.0",
-						Topology: []estype.TopologyElementSpec{
+						Nodes: []estype.NodeSpec{
 							{
-								NodeTypes: estype.NodeTypesSpec{
-									Master: true,
-									Data:   false,
-									Ingest: false,
-									ML:     false,
+								Config: estype.Config{
+									estype.NodeMaster: "true",
+									estype.NodeData:   "false",
+									estype.NodeIngest: "false",
+									estype.NodeML:     "false",
 								},
 								NodeCount: 1,
 							}},

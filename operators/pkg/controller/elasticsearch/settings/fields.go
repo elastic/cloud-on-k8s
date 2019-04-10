@@ -14,11 +14,6 @@ const (
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
 
-	NodeData   = "node.data"
-	NodeIngest = "node.ingest"
-	NodeMaster = "node.master"
-	NodeML     = "node.ml"
-
 	NodeName = "node.name"
 
 	PathData = "path.data"

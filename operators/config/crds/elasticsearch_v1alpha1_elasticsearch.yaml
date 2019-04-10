@@ -76,63 +76,18 @@ spec:
               - gold
               - platinum
               type: string
-            setVmMaxMapCount:
-              description: SetVMMaxMapCount indicates whether a init container should
-                be used to ensure that the `vm.max_map_count` is set according to
-                https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-                Setting this to true requires the kubelet to allow running privileged
-                containers.
-              type: boolean
-            snapshotRepository:
-              description: SnapshotRepository defines a snapshot repository to be
-                used for automatic snapshots.
-              properties:
-                settings:
-                  description: Settings are provider specific repository settings
-                  properties:
-                    bucketName:
-                      description: BucketName is the name of the provider specific
-                        storage bucket to use.
-                      type: string
-                    credentials:
-                      description: Credentials is a reference to a secret containing
-                        credentials for the storage provider.
-                      type: object
-                  type: object
-                type:
-                  description: Type of repository
-                  enum:
-                  - gcs
-                  type: string
-              required:
-              - type
-              - settings
-              type: object
-            topology:
-              description: Topology represents a list of topology elements to be part
+            nodes:
+              description: Nodes represents a list of topology elements to be part
                 of the cluster
               items:
                 properties:
+                  config:
+                    description: Config represents the node types
+                    type: object
                   nodeCount:
                     description: NodeCount defines how many nodes have this topology
                     format: int32
                     type: integer
-                  nodeTypes:
-                    description: NodeTypes represents the node types
-                    properties:
-                      data:
-                        description: Data represents a data node
-                        type: boolean
-                      ingest:
-                        description: Ingest represents an ingest node
-                        type: boolean
-                      master:
-                        description: Master represents a master node
-                        type: boolean
-                      ml:
-                        description: ML represents a machine learning node
-                        type: boolean
-                    type: object
                   resources:
                     description: Resources to be allocated for this topology
                     properties:
@@ -171,6 +126,38 @@ spec:
                     type: array
                 type: object
               type: array
+            setVmMaxMapCount:
+              description: SetVMMaxMapCount indicates whether a init container should
+                be used to ensure that the `vm.max_map_count` is set according to
+                https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+                Setting this to true requires the kubelet to allow running privileged
+                containers.
+              type: boolean
+            snapshotRepository:
+              description: SnapshotRepository defines a snapshot repository to be
+                used for automatic snapshots.
+              properties:
+                settings:
+                  description: Settings are provider specific repository settings
+                  properties:
+                    bucketName:
+                      description: BucketName is the name of the provider specific
+                        storage bucket to use.
+                      type: string
+                    credentials:
+                      description: Credentials is a reference to a secret containing
+                        credentials for the storage provider.
+                      type: object
+                  type: object
+                type:
+                  description: Type of repository
+                  enum:
+                  - gcs
+                  type: string
+              required:
+              - type
+              - settings
+              type: object
             updateStrategy:
               description: UpdateStrategy specifies how updates to the cluster should
                 be performed.

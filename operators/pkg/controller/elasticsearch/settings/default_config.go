@@ -25,11 +25,11 @@ import (
 func NewDefaultESConfig(
 	clusterName string,
 	zenMinMasterNodes int,
-	nodeTypes v1alpha1.NodeTypesSpec,
+	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
 ) FlatConfig {
-	return baseConfig(clusterName, zenMinMasterNodes).
-		MergeWith(nodeTypesConfig(nodeTypes)).
+	return FlatConfig(userConfig).
+		MergeWith(baseConfig(clusterName, zenMinMasterNodes)).
 		MergeWith(xpackConfig(licenseType))
 }
 
@@ -50,16 +50,6 @@ func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
-	}
-}
-
-// nodeTypesConfig returns configuration bit related to nodes types
-func nodeTypesConfig(nodeTypes v1alpha1.NodeTypesSpec) FlatConfig {
-	return FlatConfig{
-		NodeMaster: fmt.Sprintf("%t", nodeTypes.Master),
-		NodeData:   fmt.Sprintf("%t", nodeTypes.Data),
-		NodeIngest: fmt.Sprintf("%t", nodeTypes.Ingest),
-		NodeML:     fmt.Sprintf("%t", nodeTypes.ML),
 	}
 }
 
