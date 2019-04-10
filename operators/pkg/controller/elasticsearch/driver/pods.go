@@ -184,7 +184,11 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	pvc := claimTemplate.DeepCopy()
 	// unique name for this pvc is guaranteed by the pod name that contains a random id.
 	// the claim name is trimmed to not exceed the max length for a label
-	pvc.Name = name.Suffix(pod.Name, claimTemplate.Name[:name.MaxLabelLength-len(pod.Name)])
+	suffix := stringsutil.Concat("-", claimTemplate.Name)
+	if len(suffix) > name.MaxSuffixLength {
+		suffix = claimTemplate.Name[:name.MaxLabelLength-len(pod.Name)]
+	}
+	pvc.Name = name.Suffix(pod.Name, suffix)
 	pvc.Namespace = pod.Namespace
 	// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
 	// reflecting state from K8s.
