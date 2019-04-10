@@ -92,11 +92,6 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 					Protocol: corev1.ProtocolTCP,
 					Port:     network.HTTPPort,
 				},
-				corev1.ServicePort{
-					Name:     "transport",
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.TransportClientPort,
-				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
 			Type:            common.GetServiceType(es.Spec.Expose),
