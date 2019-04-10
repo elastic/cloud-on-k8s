@@ -37,3 +37,28 @@ const (
 	XPackSecurityTransportSslTrustRestrictionsPath  = "xpack.security.transport.ssl.trust_restrictions.path"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
+
+var Blacklist = []string{
+	ClusterName,
+	DiscoveryZenMinimumMasterNodes,
+	DiscoveryZenPingUnicastHosts,
+	ClusterInitialMasterNodes,
+	NetworkHost,
+	NetworkPublishHost,
+	NodeName,
+	PathData,
+	PathLogs,
+	XPackLicenseSelfGeneratedType,
+	XPackSecurityAuthcReservedRealmEnabled,
+	XPackSecurityEnabled,
+	XPackSecurityHttpSslCertificate,
+	XPackSecurityHttpSslCertificateAuthorities,
+	XPackSecurityHttpSslEnabled,
+	XPackSecurityHttpSslKey,
+	XPackSecurityTransportSslCertificate,
+	XPackSecurityTransportSslCertificateAuthorities,
+	XPackSecurityTransportSslEnabled,
+	XPackSecurityTransportSslKey,
+	XPackSecurityTransportSslTrustRestrictionsPath,
+	XPackSecurityTransportSslVerificationMode,
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/require"
 )
 
@@ -142,6 +143,97 @@ func Test_supportedVersion(t *testing.T) {
 			require.NoError(t, err)
 			if got := supportedVersion(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_noBlacklistedSettings(t *testing.T) {
+	type args struct {
+		es estype.Elasticsearch
+	}
+	tests := []struct {
+		name string
+		args args
+		want Result
+	}{
+		{
+			name: "no settings OK",
+			args: args{
+				es: *es("7.0.0"),
+			},
+			want: OK,
+		},
+		{
+			name: "enforce blacklist FAIL",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								Config: estype.Config{
+									settings.ClusterInitialMasterNodes: "foo",
+								},
+								NodeCount: 1,
+							},
+						},
+					},
+				},
+			},
+			want: Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
+		},
+		{
+			name: "enforce blacklist in multiple nodes FAIL",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								Config: estype.Config{
+									settings.ClusterInitialMasterNodes: "foo",
+								},
+							},
+							{
+								Config: estype.Config{
+									settings.XPackSecurityTransportSslVerificationMode: "bar",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: Result{
+				Allowed: false,
+				Reason:  "node[0]: cluster.initial_master_nodes, node[1]: xpack.security.transport.ssl.verification_mode is not user configurable",
+			},
+		},
+		{
+			name: "non blacklisted setting OK",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								Config: estype.Config{
+									"node.attr.box_type": "foo",
+								},
+							},
+						},
+					},
+				},
+			},
+			want: OK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.args.es)
+			require.NoError(t, err)
+			if got := noBlacklistedSettings(*ctx); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("noBlacklistedSettings() = %v, want %v", got, tt.want)
 			}
 		})
 	}

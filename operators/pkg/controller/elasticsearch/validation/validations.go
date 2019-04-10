@@ -4,7 +4,13 @@
 
 package validation
 
-import "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+import (
+	"strconv"
+	"strings"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+)
 
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
@@ -31,4 +37,34 @@ func hasMaster(ctx Context) Result {
 		return OK
 	}
 	return Result{Reason: masterRequiredMsg}
+}
+
+func noBlacklistedSettings(ctx Context) Result {
+	violations := make(map[int]string)
+	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		for _, s := range settings.Blacklist {
+			_, set := n.Config[s]
+			if set {
+				violations[i] = s
+			}
+		}
+	}
+	if len(violations) == 0 {
+		return OK
+	}
+	var sb strings.Builder
+	var sep string
+	for n, v := range violations {
+		sb.WriteString(sep)
+		sb.WriteString("node[")
+		sb.WriteString(strconv.FormatInt(int64(n), 10))
+		sb.WriteString("]: ")
+		sb.WriteString(v)
+		sep = ", "
+	}
+	sb.WriteString(" is not user configurable")
+	return Result{
+		Allowed: false,
+		Reason:  sb.String(),
+	}
 }
