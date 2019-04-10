@@ -18,7 +18,8 @@ type Config map[string]string
 func (c Config) is(key string) bool {
 	v, ok := c[key]
 	if !ok {
-		return false
+		// all roles are on by default
+		return true
 	}
 	b, err := strconv.ParseBool(v)
 	if err != nil {

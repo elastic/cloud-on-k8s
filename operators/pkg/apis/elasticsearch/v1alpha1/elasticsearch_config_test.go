@@ -17,25 +17,25 @@ func TestConfig_is(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "default to false",
+			name: "default to true",
 			c:    nil,
-			args: args{
-				key: NodeMaster,
-			},
-			want: false,
-		},
-		{
-			name: "detect true",
-			c: Config{
-				NodeMaster: "true",
-			},
 			args: args{
 				key: NodeMaster,
 			},
 			want: true,
 		},
 		{
-			name: "ignore garbage",
+			name: "detect false",
+			c: Config{
+				NodeMaster: "false",
+			},
+			args: args{
+				key: NodeMaster,
+			},
+			want: false,
+		},
+		{
+			name: "garbage is false",
 			c: Config{
 				NodeMaster: "lskdfj",
 			},
@@ -83,7 +83,7 @@ func TestConfig_EqualRoles(t *testing.T) {
 		{
 			name: "detect differences",
 			c: Config{
-				NodeMaster: "true",
+				NodeMaster: "false",
 				NodeData:   "true",
 			},
 			args: args{

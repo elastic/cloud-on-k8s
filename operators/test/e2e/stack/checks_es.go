@@ -119,9 +119,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 
 			// flatten the topology
 			var expectedTopology []estype.NodeSpec
-			for _, topoElem := range es.Spec.Nodes {
-				for i := 0; i < int(topoElem.NodeCount); i++ {
-					expectedTopology = append(expectedTopology, topoElem)
+			for _, node := range es.Spec.Nodes {
+				for i := 0; i < int(node.NodeCount); i++ {
+					expectedTopology = append(expectedTopology, node)
 				}
 			}
 			// match each actual node to an expected node
@@ -142,20 +142,20 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 }
 
 func rolesToConfig(roles []string) estype.Config {
-	nt := estype.Config{}
+	cfg := estype.Config{}
 	for _, r := range roles {
 		switch r {
 		case "master":
-			nt[estype.NodeMaster] = "true"
+			cfg[estype.NodeMaster] = "true"
 		case "data":
-			nt[estype.NodeData] = "true"
+			cfg[estype.NodeData] = "true"
 		case "ingest":
-			nt[estype.NodeIngest] = "true"
+			cfg[estype.NodeIngest] = "true"
 		case "ml":
-			nt[estype.NodeML] = "true"
+			cfg[estype.NodeML] = "true"
 		}
 	}
-	return nt
+	return cfg
 }
 
 func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
