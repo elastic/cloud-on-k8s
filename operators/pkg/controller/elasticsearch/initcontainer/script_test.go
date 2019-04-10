@@ -29,9 +29,8 @@ func TestRenderScriptTemplate(t *testing.T) {
 							Target: "/usr/share/elasticsearch/users"}}},
 			},
 			wantSubstr: []string{
-				// TODO: re-enable when these are used
-				// "$PLUGIN_BIN install --batch repository-s3",
-				// "$PLUGIN_BIN install --batch repository-gcs",
+				"$PLUGIN_BIN install --batch repository-s3",
+				"$PLUGIN_BIN install --batch repository-gcs",
 				"mv /usr/share/elasticsearch/config/* /volume/config/",
 				"mv /usr/share/elasticsearch/bin/* /volume/bin/",
 				"mv /usr/share/elasticsearch/plugins/* /volume/plugins/",
