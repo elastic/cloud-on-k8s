@@ -42,3 +42,10 @@ func (c Config) IsIngest() bool {
 func (c Config) IsML() bool {
 	return c.is(NodeML)
 }
+
+func (c Config) EqualRoles(c2 Config) bool {
+	return c.IsMaster() == c2.IsMaster() &&
+		c.IsData() == c2.IsData() &&
+		c.IsIngest() == c2.IsIngest() &&
+		c.IsML() == c2.IsML()
+}

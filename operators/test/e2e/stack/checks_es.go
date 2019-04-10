@@ -126,10 +126,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			}
 			// match each actual node to an expected node
 			for _, node := range nodes.Nodes {
-				nodeTypes := rolesToNodeTypes(node.Roles)
+				nodeRoles := rolesToConfig(node.Roles)
 				for i, topoElem := range expectedTopology {
-					if topoElem.Config == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
-						// it's a match! #tinder
+					if topoElem.Config.EqualRoles(nodeRoles) && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
@@ -142,18 +141,18 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 	}
 }
 
-func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
-	nt := estype.NodeTypesSpec{}
+func rolesToConfig(roles []string) estype.Config {
+	nt := estype.Config{}
 	for _, r := range roles {
 		switch r {
 		case "master":
-			nt.Master = true
+			nt[estype.NodeMaster] = "true"
 		case "data":
-			nt.Data = true
+			nt[estype.NodeData] = "true"
 		case "ingest":
-			nt.Ingest = true
+			nt[estype.NodeIngest] = "true"
 		case "ml":
-			nt.ML = true
+			nt[estype.NodeML] = "true"
 		}
 	}
 	return nt
