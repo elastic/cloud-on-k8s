@@ -90,11 +90,9 @@ type ExitStatus struct {
 
 // WaitToExit waits to exit the HTTP server and the program.
 func (pm ProcessManager) WaitToExit(done chan ExitStatus) {
-	for {
-		s := <-done
-		pm.server.Exit()
-		Exit("process "+s.processStatus, s.exitCode)
-	}
+	s := <-done
+	pm.server.Exit()
+	Exit("process "+s.processStatus, s.exitCode)
 }
 
 // Exit the program.
