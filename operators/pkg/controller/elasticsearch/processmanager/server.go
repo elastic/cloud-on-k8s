@@ -106,7 +106,7 @@ func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Start(nil, false)
+	state, err := s.esProcess.Start(nil)
 	if err != nil {
 		log.Error(err, "Failed to start es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)

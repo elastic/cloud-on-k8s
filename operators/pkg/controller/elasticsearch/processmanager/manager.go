@@ -58,9 +58,13 @@ func (pm ProcessManager) Start(done chan ExitStatus) error {
 
 	pm.server.Start()
 
-	_, err := pm.process.Start(done, true)
-	if err != nil {
-		return err
+	if pm.process.ShouldBeStarted() {
+		_, err := pm.process.Start(done)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Info("Process not restarted")
 	}
 
 	if pm.keystoreUpdater != nil {
@@ -83,16 +87,16 @@ func (pm ProcessManager) Forward(sig os.Signal) error {
 }
 
 type ExitStatus struct {
-	processStatus string
-	exitCode      int
-	err           error
+	processState ProcessState
+	exitCode     int
+	err          error
 }
 
 // WaitToExit waits to exit the HTTP server and the program.
 func (pm ProcessManager) WaitToExit(done chan ExitStatus) {
 	s := <-done
 	pm.server.Exit()
-	Exit("process "+s.processStatus, s.exitCode)
+	Exit("process "+s.processState.String(), s.exitCode)
 }
 
 // Exit the program.

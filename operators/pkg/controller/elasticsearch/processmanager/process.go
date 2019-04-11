@@ -54,13 +54,13 @@ const (
 	notInitialized ProcessState = "notInitialized"
 	started        ProcessState = "started"
 	startFailed    ProcessState = "startFailed"
-	failed         ProcessState = "failed"
 	stopping       ProcessState = "stopping"
 	stopped        ProcessState = "stopped"
 	stopFailed     ProcessState = "stopFailed"
 	killing        ProcessState = "killing"
 	killed         ProcessState = "killed"
 	killFailed     ProcessState = "killFailed"
+	failed         ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -102,6 +102,7 @@ func NewProcess(name string, cmd string) *Process {
 	args := strings.Split(strings.Trim(cmd, " "), " ")
 
 	state := ReadProcessState()
+
 	// If the state is still started, the process must have been killed
 	if state == started {
 		log.Info("Process marked 'started' must have been 'killed'")
@@ -123,7 +124,7 @@ func NewProcess(name string, cmd string) *Process {
 // Start a process.
 // A goroutine is started to monitor the end of the process in the background and
 // to report the status resulting from the execution to a given ExitStatus channel done.
-func (p *Process) Start(done chan ExitStatus, strict bool) (ProcessState, error) {
+func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -134,11 +135,6 @@ func (p *Process) Start(done chan ExitStatus, strict bool) (ProcessState, error)
 		return p.state, nil
 	case stopping, killing:
 		return p.state, fmt.Errorf("error: cannot start process %s", p.state)
-	case stopped, killed:
-		if strict {
-			log.Info("Strict mode, process stopped is not restarted")
-			return p.state, nil
-		}
 	}
 
 	cmd := exec.Command(p.name, p.args...)
@@ -162,24 +158,6 @@ func (p *Process) Start(done chan ExitStatus, strict bool) (ProcessState, error)
 	go func() {
 		err := cmd.Wait()
 
-		processStatus := "completed"
-		exitCode := 0
-		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				processStatus = "exited"
-				if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-					if waitStatus.Signal() == os.Kill {
-						processStatus = "killed"
-					}
-					exitCode = waitStatus.ExitStatus()
-				}
-			} else {
-				log.Info("Failed to terminate process", "err", err.Error())
-				processStatus = "failed"
-				exitCode = 1
-			}
-		}
-
 		// Update the state depending the previous state
 		p.mutex.Lock()
 		switch p.state {
@@ -193,11 +171,24 @@ func (p *Process) Start(done chan ExitStatus, strict bool) (ProcessState, error)
 		p.updateState(terminateAction, state, p.pid, noSignal, nil)
 		p.mutex.Unlock()
 
+		// Extract the exit code from the error
+		exitCode := 0
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+					exitCode = waitStatus.ExitStatus()
+				}
+			} else {
+				log.Info("Failed to terminate process", "err", err.Error())
+				exitCode = 1
+			}
+		}
+
 		// If the done channel is defined, then send the exit status, else exit the program
 		if done != nil {
-			done <- ExitStatus{processStatus, exitCode, err}
+			done <- ExitStatus{state, exitCode, err}
 		} else {
-			Exit("process "+processStatus, exitCode)
+			Exit(fmt.Sprintf("process %s", state.String()), exitCode)
 		}
 	}()
 
@@ -250,6 +241,14 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 	p.updateState(action, state, p.pid, sig, err)
 
 	return p.state, err
+}
+
+// ShouldBeStarted returns if the process should be started regarding its actual state.
+func (p *Process) ShouldBeStarted() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	return p.state != stopped && p.state != killed
 }
 
 // Status returns the status of the process.
