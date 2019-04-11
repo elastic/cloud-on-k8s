@@ -5,6 +5,7 @@
 package processmanager
 
 import (
+	"github.com/pkg/errors"
 	"os"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
@@ -78,9 +79,14 @@ func (pm ProcessManager) Start(done chan ExitStatus) error {
 // Forward a given signal to the process.
 func (pm ProcessManager) Forward(sig os.Signal) error {
 	log.Info("Forwarding signal", "sig", sig)
-	_, err := pm.process.Kill(sig)
-	if err != nil {
-		return err
+
+	if pm.process.ShouldBeStarted() {
+		_, err := pm.process.Kill(sig)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("process not started to forward signal")
 	}
 
 	return nil
