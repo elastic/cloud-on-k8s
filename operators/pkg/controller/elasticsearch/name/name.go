@@ -25,40 +25,37 @@ const (
 	MaxSuffixLength = MaxLabelLength - MaxElasticsearchNameLength
 	// podRandomSuffixLength represents the length of the random suffix that is appended in NewNodeName.
 	podRandomSuffixLength = 10
-)
 
-// Marker for resource name suffixes
-type Suffix string
-
-const (
-	podSuffix                 Suffix = "-es"
-	configSecretSuffix        Suffix = "-config"
-	serviceSuffix             Suffix = "-es"
-	discoveryServiceSuffix    Suffix = "-es-discovery"
-	cASecretSuffix            Suffix = "-ca"
-	cAPrivateKeySecretSuffix  Suffix = "-ca-private-key"
-	elasticUserSecretSuffix   Suffix = "-elastic-user"
-	esRolesUsersSecretSuffix  Suffix = "-es-roles-users"
-	extraFilesSecretSuffix    Suffix = "-extrafiles"
-	internalUsersSecretSuffix Suffix = "-internal-users"
-	keystoreSecretSuffix      Suffix = "-keystore"
+	podSuffix                 = "-es"
+	configSecretSuffix        = "-config"
+	serviceSuffix             = "-es"
+	discoveryServiceSuffix    = "-es-discovery"
+	cASecretSuffix            = "-ca"
+	cAPrivateKeySecretSuffix  = "-ca-private-key"
+	elasticUserSecretSuffix   = "-elastic-user"
+	esRolesUsersSecretSuffix  = "-es-roles-users"
+	extraFilesSecretSuffix    = "-extrafiles"
+	internalUsersSecretSuffix = "-internal-users"
+	keystoreSecretSuffix      = "-keystore"
 )
 
 // Suffix a resource name.
 // Panic if the suffix exceeds the limits below.
 // Trim the name if it exceeds the limits below.
-func suffix(name string, suffix Suffix) string {
-	// This should never happen because we control all the suffixes
-	if len(suffix) > MaxSuffixLength {
-		panic(fmt.Errorf("suffix should not exceed %d characters: %s", MaxSuffixLength, suffix))
+func suffix(name string, sfx string) string {
+	// This should never happen because we control all the suffixes!
+	if len(sfx) > MaxSuffixLength {
+		panic(fmt.Errorf("suffix should not exceed %d characters: %s", MaxSuffixLength, sfx))
 	}
-	// This should never happen. Trim the name as fallback.
-	if len(name) > MaxLabelLength {
-		name = name[:MaxElasticsearchNameLength]
-		log.Error(fmt.Errorf("name should not exceed %d characters: %s", MaxElasticsearchNameLength, name),
+	// This should never happen because the name length should have been validated.
+	// Trim the name and log an error as fallback.
+	maxPrefixLength := MaxLabelLength - len(sfx)
+	if len(name) > maxPrefixLength {
+		name = name[:maxPrefixLength]
+		log.Error(fmt.Errorf("name should not exceed %d characters: %s", maxPrefixLength, name),
 			"Failed to suffix resource")
 	}
-	return stringsutil.Concat(name, string(suffix))
+	return stringsutil.Concat(name, sfx)
 }
 
 // NewNodeName returns a unique node name to be used for the pod name
@@ -69,11 +66,7 @@ func NewNodeName(esName string) string {
 		"-",
 		rand.String(podRandomSuffixLength),
 	)
-	maxPrefixLength := MaxLabelLength - podRandomSuffixLength - 1 - len(podSuffix)
-	if len(esName) > maxPrefixLength {
-		esName = esName[:maxPrefixLength]
-	}
-	return suffix(esName, Suffix(sfx))
+	return suffix(esName, sfx)
 }
 
 // NewPVCName returns a unique PVC name given a pod name and a PVC template name.
@@ -85,7 +78,7 @@ func NewPVCName(podName string, pvcTemplateName string) string {
 	if len(sfx) > MaxSuffixLength {
 		sfx = sfx[:MaxSuffixLength]
 	}
-	return suffix(podName, Suffix(sfx))
+	return suffix(podName, sfx)
 }
 
 func ConfigSecret(podName string) string {
@@ -123,6 +116,7 @@ func ExtraFilesSecret(esName string) string {
 func InternalUsersSecret(esName string) string {
 	return suffix(esName, internalUsersSecretSuffix)
 }
+
 func KeystoreSecret(esName string) string {
 	return suffix(esName, keystoreSecretSuffix)
 }

@@ -67,12 +67,12 @@ func TestNewPVCName(t *testing.T) {
 			want: "some-es-name-xxxxxxxxx-es-2qnjmqsv4s-a-pvc-name",
 		},
 		{
-			name: "Generates a random name from a long pod name",
+			name: "Generates a random name from a long pod name (should not happen)",
 			args: args{
 				podName:         "some-es-name-that-is-quite-long-and-will-be-trimmed-es-2qnjmqsv4s",
 				pvcTemplateName: "a-pvc-name",
 			},
-			want: "some-es-name-that-is-quite-long-and--a-pvc-name",
+			want: "some-es-name-that-is-quite-long-and-will-be-trimmed--a-pvc-name",
 		},
 		{
 			name: "Generates a random name from a long pvc template name",
@@ -83,7 +83,7 @@ func TestNewPVCName(t *testing.T) {
 			want: "some-es-name-xxxxxxxxx-es-2qnjmqsv4s-some-pvc-name-that-is-quit",
 		},
 		{
-			name: "Generates a random name from a long pod name",
+			name: "Generates a random name from a long pod name (should not happen) and a long pvc template name",
 			args: args{
 				podName:         "some-es-name-that-is-quite-long-and-will-be-trimmed-es-2qnjmqsv4s",
 				pvcTemplateName: "some-pvc-name-that-is-quite-loooooong",
