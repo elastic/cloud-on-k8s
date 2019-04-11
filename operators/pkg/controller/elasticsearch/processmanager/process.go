@@ -11,13 +11,10 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 )
 
 const (
@@ -27,6 +24,7 @@ const (
 
 	ErrNoSuchProcess = "no such process"
 
+	initAction      = "initialization"
 	startAction     = "start"
 	stopAction      = "stop"
 	killAction      = "kill"
@@ -35,9 +33,6 @@ const (
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
 )
 
-// File to persist the state of the process between restarts
-var processStateFile = filepath.Join(volume.ProcessManagerEmptyDirMountPath, "process.state")
-
 // ProcessStatus represents the status of a process with its state,
 // the duration since when it is in this state and the checksum of
 // the Elasticsearch configuration.
@@ -45,45 +40,6 @@ type ProcessStatus struct {
 	State          ProcessState `json:"state"`
 	Since          string       `json:"since"`
 	ConfigChecksum string       `json:"config_checksum"`
-}
-
-// ProcessState represents the state of a process.
-type ProcessState string
-
-const (
-	notInitialized ProcessState = "notInitialized"
-	started        ProcessState = "started"
-	startFailed    ProcessState = "startFailed"
-	stopping       ProcessState = "stopping"
-	stopped        ProcessState = "stopped"
-	stopFailed     ProcessState = "stopFailed"
-	killing        ProcessState = "killing"
-	killed         ProcessState = "killed"
-	killFailed     ProcessState = "killFailed"
-	failed         ProcessState = "failed"
-)
-
-func (s ProcessState) String() string {
-	return string(s)
-}
-
-// ReadProcessState reads the process state in the processStateFile.
-// The state is notInitialized if the file does not exist.
-func ReadProcessState() ProcessState {
-	data, err := ioutil.ReadFile(processStateFile)
-	if err != nil {
-		return notInitialized
-	}
-	return ProcessState(string(data))
-}
-
-// Write the process state in the processStateFile.
-func (s ProcessState) Write() error {
-	return ioutil.WriteFile(processStateFile, []byte(s), 0644)
-}
-
-func (s ProcessState) Error() error {
-	return fmt.Errorf("error: process %s", s)
 }
 
 type Process struct {
@@ -103,13 +59,6 @@ func NewProcess(name string, cmd string) *Process {
 
 	state := ReadProcessState()
 
-	// If the state is still started, the process must have been killed
-	if state == started {
-		log.Info("Process marked 'started' must have been 'killed'")
-		state = killed
-		_ = state.Write()
-	}
-
 	p := Process{
 		id:    name,
 		name:  args[0],
@@ -117,6 +66,8 @@ func NewProcess(name string, cmd string) *Process {
 		state: state,
 		mutex: sync.RWMutex{},
 	}
+
+	p.updateState(initAction, noSignal, nil)
 
 	return &p
 }
@@ -145,14 +96,13 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 
 	err := cmd.Start()
 	if err != nil {
-		p.updateState(startAction, startFailed, p.pid, noSignal, err)
-		return startFailed, err
+		p.updateState(startAction, noSignal, err)
+		return p.state, err
 	}
 
-	state := started
 	p.pid = cmd.Process.Pid
 
-	p.updateState(startAction, state, p.pid, noSignal, err)
+	p.updateState(startAction, noSignal, err)
 
 	// Waiting for the process to terminate
 	go func() {
@@ -160,15 +110,7 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 
 		// Update the state depending the previous state
 		p.mutex.Lock()
-		switch p.state {
-		case stopping:
-			state = stopped
-		case killing:
-			state = killed
-		case started:
-			state = failed
-		}
-		p.updateState(terminateAction, state, p.pid, noSignal, nil)
+		state := p.updateState(terminateAction, noSignal, nil)
 		p.mutex.Unlock()
 
 		code := exitCode(err)
@@ -206,38 +148,27 @@ func (p *Process) Kill(s os.Signal) (ProcessState, error) {
 		return p.state, nil
 	}
 
-	action := stopAction
-	state := stopping
-	errState := stopFailed
+	var action string
 	if killHard {
 		action = killAction
-		state = killing
-		errState = killFailed
+	} else {
+		action = stopAction
 	}
 
 	// Send signal to the whole process group
 	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
-		state = errState
 		if err.Error() == ErrNoSuchProcess {
-			p.updateState(action, state, p.pid, sig, err)
+			p.updateState(action, sig, err)
 			// Looks like the process is already dead. This should not happen.
 			// Normally the end of the process should have been intercepted and the program exited.
 			Exit("failed to kill process already dead", 1)
 		}
 	}
 
-	p.updateState(action, state, p.pid, sig, err)
+	p.updateState(action, sig, err)
 
 	return p.state, err
-}
-
-// ShouldBeStarted returns if the process should be started regarding its actual state.
-func (p *Process) ShouldBeStarted() bool {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	return p.state != stopped && p.state != killed
 }
 
 // Status returns the status of the process.
@@ -252,26 +183,6 @@ func (p *Process) Status() ProcessStatus {
 		time.Since(p.lastUpdate).String(),
 		cfgChecksum,
 	}
-}
-
-// updateState updates the process state and the last update time.
-func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, lastErr error) {
-	p.state = state
-	p.lastUpdate = time.Now()
-
-	err := p.state.Write()
-	if err != nil {
-		Exit("Failed to write process state", 1)
-	}
-
-	kv := []interface{}{"action", action, "id", p.id, "state", state, "pid", pid}
-	if signal != noSignal {
-		kv = append(kv, "signal", signal)
-	}
-	if lastErr != nil {
-		kv = append(kv, "err", lastErr)
-	}
-	log.Info("Update process state", kv...)
 }
 
 func computeConfigChecksum() (string, error) {
