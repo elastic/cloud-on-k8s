@@ -37,7 +37,7 @@ func TestNewNodeName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewNodeName(tt.args.clusterName)
+			got := NewPodName(tt.args.clusterName)
 			if len(got) > MaxLabelLength {
 				assert.Len(t, got, MaxLabelLength,
 					got, fmt.Sprintf("should be maximum %d characters long", MaxLabelLength))

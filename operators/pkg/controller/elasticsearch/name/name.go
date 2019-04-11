@@ -58,9 +58,9 @@ func suffix(name string, sfx string) string {
 	return stringsutil.Concat(name, sfx)
 }
 
-// NewNodeName returns a unique node name to be used for the pod name
-// and the Elasticsearch cluster node.
-func NewNodeName(esName string) string {
+// NewPodName returns a unique name to be used for the pod name and the
+// Elasticsearch cluster node name.
+func NewPodName(esName string) string {
 	sfx := stringsutil.Concat(
 		string(podSuffix),
 		"-",
