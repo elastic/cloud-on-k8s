@@ -37,18 +37,17 @@ func main() {
 			err = procMgr.Start(done)
 			exitOnErr(err)
 
-			// Waiting for the end of the process to exit the program in background
-			go procMgr.WaitToExit(done)
+			// forward signals to the process
+			go func() {
+				sig := waitForSignal()
+				err = procMgr.Forward(sig)
+				if err != nil {
+					exitOnErr(err)
+				}
+			}()
 
-			// Waiting for a signal to forward to the process
-			sig := waitForSignal()
-			err = procMgr.Forward(sig)
-			if err != nil {
-				exitOnErr(err)
-			}
-
-			// Waiting for the process to terminate
-			select {}
+			// wait for the process to exit, then exit as well
+			procMgr.WaitToExit(done)
 		},
 	}
 
