@@ -266,21 +266,21 @@ func (p *Process) Status() ProcessStatus {
 }
 
 // updateState updates the process state and the last update time.
-func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, err error) {
+func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, lastErr error) {
 	p.state = state
 	p.lastUpdate = time.Now()
 
-	err2 := p.state.Write()
-	if err2 != nil {
-		log.Error(err2, "Fail to write process state")
+	err := p.state.Write()
+	if err != nil {
+		Exit("Failed to write process state", 1)
 	}
 
 	kv := []interface{}{"action", action, "id", p.id, "state", state, "pid", pid}
 	if signal != noSignal {
 		kv = append(kv, "signal", signal)
 	}
-	if err != nil {
-		kv = append(kv, "err", err)
+	if lastErr != nil {
+		kv = append(kv, "err", lastErr)
 	}
 	log.Info("Update process state", kv...)
 }
