@@ -19,7 +19,7 @@ const (
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
 	ExtraFilesSecretVolumeMountPath       = "/usr/share/elasticsearch/config/extrafiles"
-	ExtraBinariesPath                     = "/mnt/elastic/bin"
+	ProcessManagerEmptyDirMountPath       = "/mnt/elastic/process-manager"
 )
 
 var (

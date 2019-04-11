@@ -13,7 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o process-manager github.
 # Copy the controller-manager into a thin image
 FROM docker.elastic.co/elasticsearch/elasticsearch:6.7.0
 
-VOLUME ["/mnt/elastic/bin"]
+VOLUME ["/mnt/elastic/process-manager"]
 
 COPY --from=builder /go/src/github.com/elastic/k8s-operators/operators/process-manager /process-manager
 ENTRYPOINT ["/process-manager"]

@@ -35,8 +35,8 @@ const (
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
 )
 
-// File to persist the state of the process between restart
-var processStateFile = filepath.Join(volume.ExtraBinariesPath, "process.state")
+// File to persist the state of the process between restarts
+var processStateFile = filepath.Join(volume.ProcessManagerEmptyDirMountPath, "process.state")
 
 // ProcessStatus represents the status of a process with its state,
 // the duration since when it is in this state and the checksum of
