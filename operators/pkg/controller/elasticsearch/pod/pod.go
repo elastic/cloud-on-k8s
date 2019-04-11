@@ -75,7 +75,8 @@ type NewPodSpecParams struct {
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVMMaxMapCount bool
+	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
+	SetVMMaxMapCount *bool
 
 	// Resources is the memory/cpu resources the pod wants
 	Resources commonv1alpha1.ResourcesSpec

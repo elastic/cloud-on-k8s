@@ -61,11 +61,12 @@ func checkNumberOfPods(t *testing.T, expected int) {
 }
 
 func TestReconcile(t *testing.T) {
+	varFalse := false
 	instance := &estype.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"},
 		Spec: estype.ElasticsearchSpec{
 			Version:          "7.0.0",
-			SetVMMaxMapCount: false,
+			SetVMMaxMapCount: &varFalse,
 			Topology: []v1alpha1.TopologyElementSpec{
 				{
 					NodeTypes: estype.NodeTypesSpec{
