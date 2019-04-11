@@ -4,25 +4,42 @@
 
 package pod
 
-// DefaultReadinessProbeScript is the verbatim shell script that acts as a readiness probe
-const DefaultReadinessProbeScript string = `
+import (
+	corev1 "k8s.io/api/core/v1"
+)
+
+func NewReadinessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		FailureThreshold:    3,
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    3,
+		TimeoutSeconds:      5,
+		Handler: corev1.Handler{
+			Exec: &corev1.ExecAction{
+				Command: []string{"bash", "-c", ReadinessProbeScript},
+			},
+		},
+	}
+}
+
+const ReadinessProbeScript string = `
 #!/usr/bin/env bash
-# Consider a node to be healthy if it has a master registered
+# Consider a node to be healthy if it responds to a simple GET on "/"
 CURL_TIMEOUT=3
 
-http_status_code () {
-local path="${1}"
+# setup basic auth if credentials are available
 if [ -n "${PROBE_USERNAME}" ] && [ -f "${PROBE_PASSWORD_FILE}" ]; then
   PROBE_PASSWORD=$(<$PROBE_PASSWORD_FILE)
   BASIC_AUTH="-u ${PROBE_USERNAME}:${PROBE_PASSWORD}"
 else
   BASIC_AUTH=''
 fi
-curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-http}://127.0.0.1:9200${path}
-}
 
-status=$(http_status_code "/_cat/master")
-echo "status $status"
+# request Elasticsearch
+status=$(curl -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT -XGET -s -k ${BASIC_AUTH} ${READINESS_PROBE_PROTOCOL:-https}://127.0.0.1:9200)
+
+# ready if status code 200
 if [[ $status == "200" ]]; then
 	exit 0
 else
