@@ -21,14 +21,20 @@ func createNode(count int, nodeTypes v1alpha1.Config) v1alpha1.NodeSpec {
 func TopologyWith(nMasters, nData, nMasterData int) []v1alpha1.NodeSpec {
 	var topology []v1alpha1.NodeSpec
 	topology = append(topology, createNode(nMasters, v1alpha1.Config{
-		v1alpha1.NodeMaster: "true",
+		Data: map[string]interface{}{
+			v1alpha1.NodeMaster: "true",
+		},
 	}))
 	topology = append(topology, createNode(nData, v1alpha1.Config{
-		v1alpha1.NodeData: "true",
+		Data: map[string]interface{}{
+			v1alpha1.NodeData: "true",
+		},
 	}))
 	topology = append(topology, createNode(nMasterData, v1alpha1.Config{
-		v1alpha1.NodeMaster: "true",
-		v1alpha1.NodeData:   "true",
+		Data: map[string]interface{}{
+			v1alpha1.NodeMaster: "true",
+			v1alpha1.NodeData:   "true",
+		},
 	}))
 	return topology
 }

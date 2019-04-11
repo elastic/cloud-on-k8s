@@ -32,12 +32,12 @@ func newPod(name string, master bool) pod.PodWithConfig {
 
 	label.NodeTypesMasterLabelName.Set(master, p.Labels)
 
-	return pod.PodWithConfig{Pod: p, Config: settings.FlatConfig{}}
+	return pod.PodWithConfig{Pod: p}
 }
 
 func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
 	for _, change := range changes.ToCreate {
-		nodes, isSet := change.PodSpecCtx.Config[settings.ClusterInitialMasterNodes]
+		nodes, isSet := change.PodSpecCtx.Config.[settings.ClusterInitialMasterNodes]
 		if !label.IsMasterNode(change.Pod) {
 			require.False(t, isSet)
 		} else if !shouldBeSet {

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/go-ucfg"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 )
@@ -42,10 +43,17 @@ func hasMaster(ctx Context) Result {
 func noBlacklistedSettings(ctx Context) Result {
 	violations := make(map[int]string)
 	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		config, err := n.Config.Canonicalize()
+		if err != nil {
+			violations[i] = "[config invalid]"
+			continue
+		}
+		keys := config.FlattenedKeys(ucfg.PathSep("."))
 		for _, s := range settings.Blacklist {
-			_, set := n.Config[s]
-			if set {
-				violations[i] = s
+			for _, k := range keys {
+				if strings.HasPrefix(k, s) {
+					violations[i] = s
+				}
 			}
 		}
 	}

@@ -106,10 +106,12 @@ func TestValidate(t *testing.T) {
 						Nodes: []estype.NodeSpec{
 							{
 								Config: estype.Config{
-									estype.NodeMaster: "true",
-									estype.NodeData:   "false",
-									estype.NodeIngest: "false",
-									estype.NodeML:     "false",
+									Data: map[string]interface{}{
+										estype.NodeMaster: "true",
+										estype.NodeData:   "false",
+										estype.NodeIngest: "false",
+										estype.NodeML:     "false",
+									},
 								},
 								NodeCount: 1,
 							}},

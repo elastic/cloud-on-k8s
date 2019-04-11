@@ -41,10 +41,12 @@ func Test_hasMaster(t *testing.T) {
 						Nodes: []v1alpha1.NodeSpec{
 							{
 								Config: v1alpha1.Config{
-									v1alpha1.NodeMaster: "false",
-									v1alpha1.NodeData:   "false",
-									v1alpha1.NodeIngest: "false",
-									v1alpha1.NodeML:     "false",
+									Data: map[string]interface{}{
+										v1alpha1.NodeMaster: "false",
+										v1alpha1.NodeData:   "false",
+										v1alpha1.NodeIngest: "false",
+										v1alpha1.NodeML:     "false",
+									},
 								},
 							},
 						},
@@ -62,10 +64,12 @@ func Test_hasMaster(t *testing.T) {
 						Nodes: []v1alpha1.NodeSpec{
 							{
 								Config: v1alpha1.Config{
-									v1alpha1.NodeMaster: "true",
-									v1alpha1.NodeData:   "false",
-									v1alpha1.NodeIngest: "false",
-									v1alpha1.NodeML:     "false",
+									Data: map[string]interface{}{
+										v1alpha1.NodeMaster: "true",
+										v1alpha1.NodeData:   "false",
+										v1alpha1.NodeIngest: "false",
+										v1alpha1.NodeML:     "false",
+									},
 								},
 							},
 						},
@@ -83,10 +87,12 @@ func Test_hasMaster(t *testing.T) {
 						Nodes: []v1alpha1.NodeSpec{
 							{
 								Config: v1alpha1.Config{
-									v1alpha1.NodeMaster: "true",
-									v1alpha1.NodeData:   "false",
-									v1alpha1.NodeIngest: "false",
-									v1alpha1.NodeML:     "false",
+									Data: map[string]interface{}{
+										v1alpha1.NodeMaster: "true",
+										v1alpha1.NodeData:   "false",
+										v1alpha1.NodeIngest: "false",
+										v1alpha1.NodeML:     "false",
+									},
 								},
 								NodeCount: 1,
 							},
@@ -173,7 +179,9 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Nodes: []estype.NodeSpec{
 							{
 								Config: estype.Config{
-									settings.ClusterInitialMasterNodes: "foo",
+									Data: map[string]interface{}{
+										settings.ClusterInitialMasterNodes: "foo",
+									},
 								},
 								NodeCount: 1,
 							},
@@ -192,12 +200,16 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Nodes: []estype.NodeSpec{
 							{
 								Config: estype.Config{
-									settings.ClusterInitialMasterNodes: "foo",
+									Data: map[string]interface{}{
+										settings.ClusterInitialMasterNodes: "foo",
+									},
 								},
 							},
 							{
 								Config: estype.Config{
-									settings.XPackSecurityTransportSslVerificationMode: "bar",
+									Data: map[string]interface{}{
+										settings.XPackSecurityTransportSslVerificationMode: "bar",
+									},
 								},
 							},
 						},
@@ -218,7 +230,9 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Nodes: []estype.NodeSpec{
 							{
 								Config: estype.Config{
-									"node.attr.box_type": "foo",
+									Data: map[string]interface{}{
+										"node.attr.box_type": "foo",
+									},
 								},
 							},
 						},
@@ -226,6 +240,29 @@ func Test_noBlacklistedSettings(t *testing.T) {
 				},
 			},
 			want: OK,
+		},
+		{
+			name: "settings are canonicalized before validation",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								Config: estype.Config{
+									Data: map[string]interface{}{
+										"cluster": map[string]interface{}{
+											"initial_master_nodes": []string{"foo", "bar"},
+										},
+										"node.attr.box_type": "foo",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
 		},
 	}
 	for _, tt := range tests {

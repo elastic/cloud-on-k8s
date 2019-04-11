@@ -38,7 +38,7 @@ func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) settings.FlatConfig,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.FlatConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -89,9 +89,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) settings.FlatConfig,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.FlatConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, settings.FlatConfig, error) {
+) (corev1.PodSpec, *settings.FlatConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -204,13 +204,16 @@ func podSpec(
 	// Setup init containers
 	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
 	if err != nil {
-		return corev1.PodSpec{}, settings.FlatConfig{}, err
+		return corev1.PodSpec{}, nil, err
 	}
 	podSpec.InitContainers = initContainers
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
-	esConfig := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.Config, p.LicenseType)
+	esConfig, err := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.Config, p.LicenseType)
+	if err != nil {
+		return corev1.PodSpec{}, nil, err
+	}
 
 	return podSpec, esConfig, nil
 }

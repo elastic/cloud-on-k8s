@@ -38,16 +38,16 @@ spec:
     changeBudget:
       # this is the equivalent of the default change budget
       maxSurge: 1
-      maxUnavailable: 0
-  topology:
-  - nodeTypes:
-      master: true
-      data: true
-      ingest: true
+      maxUnavailable: 1
+  nodes:
+  - config:
+      node.master: true
+      node.attr.box_type: hot
+      node.data: true
     resources:
       limits:
         memory: 1Gi
-        cpu: 500m
+        cpu: 1000m
     nodeCount: 3
     ## this shows how to add a custom label to all pods created for this topology element
     #template:
@@ -65,20 +65,20 @@ spec:
     #      requests:
     #        storage: 2Gi
   # dedicated masters:
-  - nodeTypes:
-      master: true
-      data: false
-      ingest: false
+  - config:
+      node.master: true
+      node.data: false
+      node.ingest: false
     resources:
       limits:
         memory: 1Gi
         cpu: 800m
     nodeCount: 0
   # dedicated data nodes
-  - nodeTypes:
-      master: false
-      data: true
-      ingest: false
+  - config:
+      node.master: false
+      node.data: true
+      node.ingest: false
     resources:
       limits:
         memory: 1Gi

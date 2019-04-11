@@ -45,6 +45,17 @@
   revision = "6480d4af844c189cf5dd913db24ddd339d3a4f85"
 
 [[projects]]
+  digest = "1:ae22b31cc4eccb85d5a53fdaa3f189071e21cb14ee78e05c24f4dc3d49560253"
+  name = "github.com/elastic/go-ucfg"
+  packages = [
+    ".",
+    "internal/parse",
+  ]
+  pruneopts = "T"
+  revision = "0539807037ce820e147797f051ff32b05f4f9288"
+  version = "v0.7.0"
+
+[[projects]]
   digest = "1:0ffd93121f3971aea43f6a26b3eaaa64c8af20fb0ff0731087d8dab7164af5a8"
   name = "github.com/emicklei/go-restful"
   packages = [
@@ -1078,6 +1089,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/elastic/go-ucfg",
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",

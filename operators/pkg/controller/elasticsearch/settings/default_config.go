@@ -27,15 +27,24 @@ func NewDefaultESConfig(
 	zenMinMasterNodes int,
 	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
-) FlatConfig {
-	return FlatConfig(userConfig).
-		MergeWith(baseConfig(clusterName, zenMinMasterNodes)).
-		MergeWith(xpackConfig(licenseType))
+) (*FlatConfig, error) {
+	flatConfig, err := NewFlatConfigFrom(userConfig)
+	if err != nil {
+		return nil, err
+	}
+	err = flatConfig.MergeWith(
+		baseConfig(clusterName, zenMinMasterNodes),
+		xpackConfig(licenseType),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return flatConfig, nil
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
-	return FlatConfig{
+func baseConfig(clusterName string, minMasterNodes int) *FlatConfig {
+	return MustFlatConfig(map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -50,21 +59,21 @@ func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
-	}
+	})
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
+func xpackConfig(licenseType v1alpha1.LicenseType) *FlatConfig {
 
 	// disable x-pack security if using basic
 	if licenseType == v1alpha1.LicenseTypeBasic {
-		return FlatConfig{
+		return MustFlatConfig(map[string]interface{}{
 			XPackSecurityEnabled: "false",
-		}
+		})
 	}
 
 	// enable x-pack security, including TLS
-	cfg := FlatConfig{
+	cfg := map[string]interface{}{
 		// x-pack security general settings
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
@@ -98,8 +107,8 @@ func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 
 	if licenseType == v1alpha1.LicenseTypeTrial {
 		// auto-generate a trial license
-		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: "trial"})
+		cfg[XPackLicenseSelfGeneratedType] = "trial"
 	}
 
-	return cfg
+	return MustFlatConfig(cfg)
 }

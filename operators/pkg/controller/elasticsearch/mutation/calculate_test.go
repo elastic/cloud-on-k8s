@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,8 +20,7 @@ var defaultPodSpecCtxV2 = ESPodSpecContext(defaultImage, "1000m")
 
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
 	return pod.PodWithConfig{
-		Pod:    corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
-		Config: settings.FlatConfig{},
+		Pod: corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
 	}
 }
 

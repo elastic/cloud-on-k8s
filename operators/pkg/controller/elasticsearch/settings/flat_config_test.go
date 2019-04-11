@@ -11,49 +11,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFlatConfig_Sorted(t *testing.T) {
-	tests := []struct {
-		name string
-		c    FlatConfig
-		want []KeyValue
-	}{
-		{
-			name: "no settings",
-			c:    FlatConfig{},
-			want: []KeyValue{},
-		},
-		{
-			name: "settings should be sorted alphabetically",
-			c: FlatConfig{
-				"c": "aaa",
-				"b": "aaa",
-				"z": "aaa",
-			},
-			want: []KeyValue{
-				{"b", "aaa"},
-				{"c", "aaa"},
-				{"z", "aaa"},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.c.Sorted(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FlatConfig.Sorted() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestFlatConfig_Render(t *testing.T) {
-	config := FlatConfig{
+	config := MustFlatConfig(map[string]string{
 		"aaa":        "aa  a",
 		"bbb":        "b  bb",
 		"aab":        "a a a",
 		"withquotes": "aa\"bb\"aa",
 		"zz":         "zzz  z z z",
-	}
-	output := config.Render()
+	})
+	output, err := config.Render()
+	require.NoError(t, err)
 	expected := []byte(`# --- auto-generated ---
 aaa: aa  a
 aab: a a a
@@ -68,51 +35,47 @@ zz: zzz  z z z
 func TestFlatConfig_MergeWith(t *testing.T) {
 	tests := []struct {
 		name string
-		c    FlatConfig
-		c2   FlatConfig
-		want FlatConfig
+		c    *FlatConfig
+		c2   *FlatConfig
+		want *FlatConfig
 	}{
 		{
 			name: "both empty",
-			c:    FlatConfig{},
-			c2:   FlatConfig{},
-			want: FlatConfig{},
+			c:    NewFlatConfig(),
+			c2:   NewFlatConfig(),
+			want: NewFlatConfig(),
 		},
 		{
 			name: "both nil",
 			c:    nil,
 			c2:   nil,
-			want: FlatConfig{},
+			want: NewFlatConfig(),
 		},
 		{
 			name: "c2 nil",
-			c:    FlatConfig{"a": "b"},
+			c:    MustNewSingleValue("a", "b"),
 			c2:   nil,
-			want: FlatConfig{"a": "b"},
+			want: MustNewSingleValue("a", "b"),
 		},
 		{
 			name: "different values",
-			c:    FlatConfig{"a": "b"},
-			c2:   FlatConfig{"c": "d"},
-			want: FlatConfig{"a": "b", "c": "d"},
+			c:    MustNewSingleValue("a", "b"),
+			c2:   MustNewSingleValue("c", "d"),
+			want: MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 		},
 		{
 			name: "conflict: c2 has precedence",
-			c:    FlatConfig{"a": "b"},
-			c2:   FlatConfig{"c": "d", "a": "e"},
-			want: FlatConfig{"a": "e", "c": "d"},
+			c:    MustNewSingleValue("a", "b"),
+			c2:   MustFlatConfig(map[string]string{"c": "d", "a": "e"}),
+			want: MustFlatConfig(map[string]string{"a": "e", "c": "d"}),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// c and c2 should remain unmodified
-			lenC := len(tt.c)
-			lenC2 := len(tt.c2)
 			if got := tt.c.MergeWith(tt.c2); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("FlatConfig.MergeWith() = %v, want %v", got, tt.want)
 			}
-			require.Equal(t, lenC, len(tt.c))
-			require.Equal(t, lenC2, len(tt.c2))
 		})
 	}
 }
@@ -121,85 +84,85 @@ func TestParseConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    FlatConfig
+		want    *FlatConfig
 		wantErr bool
 	}{
 		{
 			name:    "no input",
 			input:   "",
-			want:    FlatConfig{},
+			want:    &FlatConfig{},
 			wantErr: false,
 		},
 		{
 			name:    "simple input",
 			input:   "a: b\nc:d",
-			want:    FlatConfig{"a": "b", "c": "d"},
+			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim whitespaces",
 			input:   "      a: b   \n    c:d     ",
-			want:    FlatConfig{"a": "b", "c": "d"},
+			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim tabs",
 			input:   "\ta: b   \n    c:d     ",
-			want:    FlatConfig{"a": "b", "c": "d"},
+			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim whitespaces between key and value",
 			input:   "a  :     b",
-			want:    FlatConfig{"a": "b"},
+			want:    MustFlatConfig(map[string]string{"a": "b"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim newlines",
 			input:   "  \n    a: b   \n\n    c:d    \n\n ",
-			want:    FlatConfig{"a": "b", "c": "d"},
+			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "ignore comments",
 			input:   "a: b\n #this is a comment\n c: d",
-			want:    FlatConfig{"a": "b", "c": "d"},
+			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "support quotes",
 			input:   `a: "string in quotes"`,
-			want:    FlatConfig{"a": `"string in quotes"`},
+			want:    MustFlatConfig(map[string]string{"a": `"string in quotes"`}),
 			wantErr: false,
 		},
 		{
 			name:    "support special characters",
 			input:   `a: %.:=+è! /\$`,
-			want:    FlatConfig{"a": `%.:=+è! /\$`},
+			want:    MustFlatConfig(map[string]string{"a": `%.:=+è! /\$`}),
 			wantErr: false,
 		},
 		{
 			name:    "stop at first :",
 			input:   "a: b: c: d: e",
-			want:    FlatConfig{"a": "b: c: d: e"},
+			want:    MustFlatConfig(map[string]string{"a": "b: c: d: e"}),
 			wantErr: false,
 		},
 		{
 			name:    "invalid entry",
 			input:   "not key value",
-			want:    FlatConfig{},
+			want:    nil,
 			wantErr: true,
 		},
 		{
 			name:    "invalid entry among valid entries",
 			input:   "a: b\n  not key value \n c:d",
-			want:    FlatConfig{},
+			want:    nil,
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseConfig(tt.input)
+			got, err := ParseConfig([]byte(tt.input))
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return

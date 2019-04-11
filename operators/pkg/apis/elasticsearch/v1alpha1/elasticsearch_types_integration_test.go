@@ -9,6 +9,7 @@ package v1alpha1
 import (
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +26,21 @@ func TestStorageElasticsearch(t *testing.T) {
 			Name:      "foo",
 			Namespace: "default",
 		},
-		Spec: ElasticsearchSpec{},
+		Spec: ElasticsearchSpec{
+
+			Nodes: []NodeSpec{
+				{
+					Config: Config{
+						"a": map[string]string{
+							"b": "c",
+						},
+					},
+				},
+			},
+			SnapshotRepository: nil,
+			FeatureFlags:       nil,
+			UpdateStrategy:     UpdateStrategy{},
+		},
 	}
 	g := gomega.NewGomegaWithT(t)
 
@@ -34,7 +49,10 @@ func TestStorageElasticsearch(t *testing.T) {
 	g.Expect(c.Create(context.Background(), created)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(created))
+
+	if diff := deep.Equal(fetched, created); diff != nil {
+		t.Error(diff)
+	}
 
 	// Test Updating the Labels
 	updated := fetched.DeepCopy()
@@ -42,7 +60,9 @@ func TestStorageElasticsearch(t *testing.T) {
 	g.Expect(c.Update(context.Background(), updated)).NotTo(gomega.HaveOccurred())
 
 	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(fetched).To(gomega.Equal(updated))
+	if diff := deep.Equal(fetched, updated); diff != nil {
+		t.Error(diff)
+	}
 
 	// Test Delete
 	g.Expect(c.Delete(context.Background(), fetched)).NotTo(gomega.HaveOccurred())

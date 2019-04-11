@@ -10,43 +10,23 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 )
 
-func compareConfigs(actual settings.FlatConfig, expected settings.FlatConfig) Comparison {
+func compareConfigs(actual *settings.FlatConfig, expected *settings.FlatConfig) Comparison {
 	// check for settings in actual that do not match expected
-	for k, v := range actual {
-		if ignoreFieldDuringComparison(k) {
-			continue
-		}
-		expectedValue, exists := expected[k]
-		if !exists || (expectedValue != v) {
-			return ComparisonMismatch(fmt.Sprintf("Configuration setting mismatch: %s.", k))
-		}
+	diff := actual.Diff(expected, toIgnore)
+	if len(diff) == 0 {
+		return ComparisonMatch
 	}
-	// check for settings in expected that don't exist in actual
-	for k := range expected {
-		if ignoreFieldDuringComparison(k) {
-			continue
-		}
-		_, exists := actual[k]
-		if !exists {
-			return ComparisonMismatch(fmt.Sprintf("Configuration setting mismatch: %s.", k))
-		}
+
+	var reasons []string
+	for _, mismatch := range diff {
+		reasons = append(reasons, fmt.Sprintf("Configuration setting mismatch: %s.", mismatch))
 	}
-	return ComparisonMatch
+	return ComparisonMismatch(reasons...)
 }
 
-// ignoreFieldDuringComparison returns true if the given configuration field should be
-// ignored when pods are compared to expected pod specs
-func ignoreFieldDuringComparison(field string) bool {
-	switch field {
-	case
-		settings.NodeName,
-		settings.DiscoveryZenMinimumMasterNodes,
-		settings.ClusterInitialMasterNodes,
-		settings.NetworkPublishHost:
-
-		return true
-
-	default:
-		return false
-	}
+var toIgnore = []string{
+	settings.NodeName,
+	settings.DiscoveryZenMinimumMasterNodes,
+	settings.ClusterInitialMasterNodes,
+	settings.NetworkPublishHost,
 }

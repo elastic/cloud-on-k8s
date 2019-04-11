@@ -81,9 +81,6 @@ spec:
                 of the cluster
               items:
                 properties:
-                  config:
-                    description: Config represents the node types
-                    type: object
                   nodeCount:
                     description: NodeCount defines how many nodes have this topology
                     format: int32

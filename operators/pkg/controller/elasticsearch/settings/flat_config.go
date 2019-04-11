@@ -5,10 +5,13 @@
 package settings
 
 import (
-	"bytes"
-	"fmt"
-	"sort"
-	"strings"
+	"reflect"
+
+	"github.com/elastic/go-ucfg"
+	yaml2 "github.com/elastic/go-ucfg/yaml"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 )
 
 // FlatConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
@@ -18,77 +21,117 @@ import (
 // * `path.data: /path/to/data` is supported
 // * `path:
 //       data: /path/to/data` is not supported
-type FlatConfig map[string]string
+type FlatConfig ucfg.Config
+
+var options = []ucfg.Option{ucfg.PathSep(".")}
+
+func NewFlatConfig() *FlatConfig {
+	return fromConfig(ucfg.New())
+}
+
+func NewFlatConfigFrom(cfg v1alpha1.Config) (*FlatConfig, error) {
+	config, err := cfg.Canonicalize()
+	if err != nil {
+		return nil, err
+	}
+	return fromConfig(config), nil
+}
+
+func MustFlatConfig(cfg interface{}) *FlatConfig {
+	config, err := ucfg.NewFrom(cfg, options...)
+	if err != nil {
+		panic(err)
+	}
+	return fromConfig(config)
+}
+
+func MustNewSingleValue(k string, v ...string) *FlatConfig {
+	cfg := fromConfig(ucfg.New())
+	err := cfg.Set(k, v...)
+	if err != nil {
+		panic(err)
+	}
+	return cfg
+}
 
 // ParseConfig parses the given configuration content into a FlatConfig.
 // Only supports `flat.key: my value` format with one entry per line.
-func ParseConfig(content string) (FlatConfig, error) {
-	cfg := FlatConfig{}
-	for _, line := range strings.Split(content, "\n") {
-		// remove spaces (whitespace, tabs, etc.) before and after the setting
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) == 0 {
-			continue // ignore empty lines
-		}
-		if strings.HasPrefix(trimmed, "#") {
-			continue // ignore comments
-		}
-		// split setting name and value
-		keyValue := strings.SplitN(trimmed, ":", 2)
-		if len(keyValue) != 2 {
-			return FlatConfig{}, fmt.Errorf("invalid setting: %s", line)
-		}
-		// trim key and value
-		key := strings.Trim(keyValue[0], " ")
-		value := strings.Trim(keyValue[1], " ")
-		cfg[key] = value
+func ParseConfig(content []byte) (*FlatConfig, error) {
+	config, err := yaml2.NewConfig(content, options...)
+	if err != nil {
+		return nil, err
 	}
-	return cfg, nil
+	return fromConfig(config), nil
+
+}
+
+func (c *FlatConfig) Set(key string, vals ...string) error {
+	switch len(vals) {
+	case 0:
+		return errors.New("Nothing to set")
+	case 1:
+		return c.access().SetString(key, -1, vals[0])
+	default:
+		for i, v := range vals {
+			err := c.access().SetString(key, i, v)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // MergeWith returns a new flat config with the content of c and c2.
 // In case of conflict, c2 is taking precedence.
-func (c FlatConfig) MergeWith(c2 FlatConfig) FlatConfig {
-	newConfig := make(map[string]string, len(c))
-	for k, v := range c {
-		newConfig[k] = v
+func (c *FlatConfig) MergeWith(cfgs ...*FlatConfig) error {
+	for _, c2 := range cfgs {
+		err := c.access().Merge(c2.access(), options...)
+		if err != nil {
+			return err
+		}
 	}
-	for k, v := range c2 {
-		newConfig[k] = v
-	}
-	return newConfig
+	return nil
 }
 
 // Render returns the content of the `elasticsearch.yml` file,
 // with fields sorted alphabetically
-func (c FlatConfig) Render() []byte {
-	var b bytes.Buffer
-	b.WriteString("# --- auto-generated ---\n")
-	for _, item := range c.Sorted() {
-		b.WriteString(item.Key)
-		b.WriteString(": ")
-		b.WriteString(item.Value)
-		b.WriteString("\n")
+func (c *FlatConfig) Render() ([]byte, error) {
+	var out map[string]interface{}
+	err := c.access().Unpack(&out)
+	if err != nil {
+		return []byte{}, err
 	}
-	b.WriteString("# --- end auto-generated ---\n")
-	return b.Bytes()
+	return yaml.Marshal(out)
 }
 
-// KeyValue stores a key and a value.
-type KeyValue struct {
-	Key   string
-	Value string
+func (c *FlatConfig) access() *ucfg.Config {
+	return (*ucfg.Config)(c)
 }
 
-// Sorted returns a list of KeyValue for this config,
-// sorted alphabetically.
-func (c FlatConfig) Sorted() []KeyValue {
-	kv := make([]KeyValue, 0, len(c))
-	for k, v := range c {
-		kv = append(kv, KeyValue{Key: k, Value: v})
+func (c *FlatConfig) Diff(config *FlatConfig, ignore []string) []string {
+	var diff []string
+	if c == nil && config != nil {
+		return config.access().FlattenedKeys(options...)
 	}
-	sort.Slice(kv, func(i, j int) bool {
-		return kv[i].Key < kv[j].Key
-	})
-	return kv
+	if c != nil && config == nil {
+		return config.access().FlattenedKeys(options...)
+	}
+	var l, r = ucfg.MustNewFrom(c.access(), options...), ucfg.MustNewFrom(config.access(), options...)
+	for _, i := range ignore {
+		_, _ = l.Remove(i, -1, options...)
+		_, _ = r.Remove(i, -1, options...)
+	}
+	var lUnpacked map[string]interface{}
+	var rUnpacked map[string]interface{}
+	_ = l.Unpack(&lUnpacked, options...)
+	_ = r.Unpack(&rUnpacked, options...)
+	if reflect.DeepEqual(lUnpacked, rUnpacked) {
+		return diff
+	}
+	return []string{"implement me properly"}
+}
+
+func fromConfig(in *ucfg.Config) *FlatConfig {
+	return (*FlatConfig)(in)
 }

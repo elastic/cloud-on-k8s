@@ -38,7 +38,7 @@ var (
 // PodWithConfig contains a pod and its configuration
 type PodWithConfig struct {
 	Pod    corev1.Pod
-	Config settings.FlatConfig
+	Config *settings.FlatConfig
 }
 
 // PodsWithConfig is simply a list of PodWithConfig
@@ -101,7 +101,7 @@ type NewPodSpecParams struct {
 type PodSpecContext struct {
 	PodSpec corev1.PodSpec
 	Node    v1alpha1.NodeSpec
-	Config  settings.FlatConfig
+	Config  *settings.FlatConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.
