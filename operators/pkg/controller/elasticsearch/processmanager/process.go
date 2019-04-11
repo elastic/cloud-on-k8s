@@ -171,24 +171,13 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 		p.updateState(terminateAction, state, p.pid, noSignal, nil)
 		p.mutex.Unlock()
 
-		// Extract the exit code from the error
-		exitCode := 0
-		if err != nil {
-			if exitErr, ok := err.(*exec.ExitError); ok {
-				if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
-					exitCode = waitStatus.ExitStatus()
-				}
-			} else {
-				log.Info("Failed to terminate process", "err", err.Error())
-				exitCode = 1
-			}
-		}
+		code := exitCode(err)
 
 		// If the done channel is defined, then send the exit status, else exit the program
 		if done != nil {
-			done <- ExitStatus{state, exitCode, err}
+			done <- ExitStatus{state, code, err}
 		} else {
-			Exit(fmt.Sprintf("process %s", state.String()), exitCode)
+			Exit(fmt.Sprintf("process %s", state), code)
 		}
 	}()
 
@@ -292,4 +281,21 @@ func computeConfigChecksum() (string, error) {
 	}
 
 	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
+}
+
+// exitCode tries to extract the exit code from an error
+func exitCode(err error) int {
+	exitCode := 0
+	if err != nil {
+		exitCode = 1
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				exitCode = waitStatus.ExitStatus()
+			}
+		} else {
+			log.Info("Failed to terminate process", "err", err.Error())
+			exitCode = 1
+		}
+	}
+	return exitCode
 }
