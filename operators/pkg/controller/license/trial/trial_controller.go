@@ -45,6 +45,15 @@ const (
 	finalizerName        = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
+// ReconcileTrials reconciles Enterprise trial licenses.
+type ReconcileTrials struct {
+	k8s.Client
+	scheme *runtime.Scheme
+	// iteration is the number of times this controller has run its Reconcile method
+	iteration   int64
+	trialPubKey *rsa.PublicKey
+}
+
 // Reconcile watches enterprise trial licenses. If it finds a trial license it checks whether a trial has been started.
 // If not it starts the trial period.
 // If a trial is already running it validates the trial license and updates its status.
@@ -69,7 +78,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 
 	// TODO turn this into a full blown enterprise license controller and verify regular licenses as well
 	if !license.DeletionTimestamp.IsZero() || !license.IsTrial() {
-		// license is not a trial or  being deleted nothing to do
+		// license is not a trial or being deleted nothing to do
 		return reconcile.Result{}, nil
 	}
 
@@ -77,7 +86,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to populate trial license")
 	}
-	// 1. fetch trial state secret
+	// 1. fetch trial status secret
 	var trialStatus corev1.Secret
 	err = r.Get(types.NamespacedName{Namespace: license.Namespace, Name: trialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
@@ -91,11 +100,11 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to retrieve trial status")
 	}
-	// 2.a. reconcile trial status
+	// 3. reconcile trial status
 	if err := r.reconcileTrialStatus(trialStatus); err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to reconcile trial status")
 	}
-	// 3. if present check still valid
+	// 4. check license still valid
 	verifier, err := r.trialVerifier(trialStatus)
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to initialise license verifier")
@@ -153,7 +162,7 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 	}
 	err = r.Create(&trialStatus)
 	if err != nil {
-		return pkgerrors.Wrap(err, "Failed to created trial status")
+		return pkgerrors.Wrap(err, "Failed to create trial status")
 	}
 	l.Finalizers = append(l.Finalizers, finalizerName)
 	l.Spec.SignatureRef = corev1.SecretKeySelector{
@@ -254,12 +263,3 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 var _ reconcile.Reconciler = &ReconcileTrials{}
-
-// ReconcileTrials reconciles Enterprise trial licenses.
-type ReconcileTrials struct {
-	k8s.Client
-	scheme *runtime.Scheme
-	// iteration is the number of times this controller has run its Reconcile method
-	iteration   int64
-	trialPubKey *rsa.PublicKey
-}

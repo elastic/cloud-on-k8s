@@ -13,7 +13,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("es-validation")
+var log = logf.Log.WithName("license-validation")
 
 var Validations = []Validation{
 	eulaAccepted,
@@ -21,18 +21,19 @@ var Validations = []Validation{
 }
 
 func eulaAccepted(ctx Context) validation.Result {
-	if ctx.Proposed.Spec.Eula.Accepted != true {
+	if !ctx.Proposed.Spec.Eula.Accepted {
 		return validation.Result{Allowed: false, Reason: "Please set the field eula.accepted to true to accept the EULA"}
 	}
 	return validation.OK
 }
 
 func requiredFields(ctx Context) validation.Result {
-	if !ctx.Proposed.IsTrial() {
-		err := ctx.Proposed.IsMissingFields()
-		if err != nil {
-			return validation.Result{Allowed: false, Reason: err.Error()}
-		}
+	if ctx.Proposed.IsTrial() {
+		return validation.OK
+	}
+	err := ctx.Proposed.IsMissingFields()
+	if err != nil {
+		return validation.Result{Allowed: false, Reason: err.Error()}
 	}
 	return validation.OK
 }
