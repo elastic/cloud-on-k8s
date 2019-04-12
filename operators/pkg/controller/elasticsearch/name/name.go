@@ -23,7 +23,7 @@ const (
 	MaxElasticsearchNameLength = 36
 	// so it leaves 27 characters for a suffix.
 	MaxSuffixLength = MaxLabelLength - MaxElasticsearchNameLength
-	// podRandomSuffixLength represents the length of the random suffix that is appended in NewNodeName.
+	// podRandomSuffixLength represents the length of the random suffix that is appended in NewPodName.
 	podRandomSuffixLength = 10
 
 	podSuffix                 = "-es"
