@@ -49,7 +49,7 @@ var DefaultCfg = ElasticsearchSettings{
 // CfgOptions are config options for elasticsearch.yml. Currently only the support for dotted keys.
 var CfgOptions = []ucfg.Option{ucfg.PathSep(".")}
 
-// Config represents untyped elasticseach.yml configuration inside the Elasticseach spec.
+// Config represents untyped elasticsearch.yml configuration inside the Elasticsearch spec.
 type Config struct {
 	// This field exists to work around https://github.com/kubernetes-sigs/kubebuilder/issues/528
 	Data map[string]interface{}
