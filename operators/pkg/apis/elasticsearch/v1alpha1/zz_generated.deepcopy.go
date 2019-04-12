@@ -236,6 +236,11 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 		}
 	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
+	if in.SecureSettings != nil {
+		in, out := &in.SecureSettings, &out.SecureSettings
+		*out = new(v1.SecretReference)
+		**out = **in
+	}
 	return
 }
 

@@ -45,6 +45,10 @@ type ElasticsearchSpec struct {
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// SecureSettings reference a secret containing secure settings to be injected
+	// into Elasticsearch keystore on each node.
+	SecureSettings *corev1.SecretReference `json:"secureSettings,omitempty"`
 }
 
 // SnapshotRepositoryType as in gcs, AWS s3, file etc.
