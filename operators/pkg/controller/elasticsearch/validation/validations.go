@@ -46,7 +46,6 @@ func hasMaster(ctx Context) Result {
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		cfg, err := t.Config.Unpack()
 		if err != nil {
-
 			return Result{Reason: cfgInvalidMsg}
 		}
 		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
@@ -67,7 +66,7 @@ func noBlacklistedSettings(ctx Context) Result {
 			}
 			continue
 		}
-		forbidden := config.Has(settings.Blacklist)
+		forbidden := config.HasPrefix(settings.Blacklist)
 		// remove duplicates
 		set := make(map[string]struct{})
 		for _, k := range forbidden {

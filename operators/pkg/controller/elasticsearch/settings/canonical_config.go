@@ -10,7 +10,7 @@ import (
 
 	"github.com/elastic/go-ucfg"
 	udiff "github.com/elastic/go-ucfg/diff"
-	yaml2 "github.com/elastic/go-ucfg/yaml"
+	uyaml "github.com/elastic/go-ucfg/yaml"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -59,9 +59,9 @@ func MustNewSingleValue(k string, v ...string) *CanonicalConfig {
 }
 
 // ParseConfig parses the given configuration content into a CanonicalConfig.
-// Only supports `flat.key: my value` format with one entry per line.
-func ParseConfig(content []byte) (*CanonicalConfig, error) {
-	config, err := yaml2.NewConfig(content, options...)
+// Expects content to be in YAML format.
+func ParseConfig(yml []byte) (*CanonicalConfig, error) {
+	config, err := uyaml.NewConfig(yml, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,9 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	return nil
 }
 
-func (c *CanonicalConfig) Has(keys []string) []string {
+// HasPrefix returns all keys in c that have one of the given prefix keys.
+// Keys are expected in dotted form.
+func (c *CanonicalConfig) HasPrefix(keys []string) []string {
 	var has []string
 	flatKeys := c.access().FlattenedKeys(options...)
 	for _, s := range keys {
@@ -197,7 +199,7 @@ func canIgnore(diff string, toIgnore []string) bool {
 
 func diffMap(c1, c2 untypedDict, key string) []string {
 	// invariant: keys match
-	// invariant: json-style map
+	// invariant: json-style map i.e no structs no pointers
 	var diff []string
 	for k, v := range c1 {
 		newKey := k
@@ -220,6 +222,8 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 }
 
 func diffSlice(s, s2 []interface{}, key string) []string {
+	// invariant: keys match
+	// invariant: s,s2 are json-style arrays/slices i.e no structs no pointers
 	if len(s) != len(s2) {
 		return []string{key}
 	}

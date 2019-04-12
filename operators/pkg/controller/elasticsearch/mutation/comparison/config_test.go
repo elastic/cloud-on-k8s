@@ -14,8 +14,8 @@ import (
 )
 
 func Test_compareConfigs(t *testing.T) {
-	var subCfg map[string]interface{}
-	require.NoError(t, json.Unmarshal([]byte(`{"b": [1, 2, 3]}`), &subCfg))
+	var intSlice map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(`{"b": [1, 2, 3]}`), &intSlice))
 	tests := []struct {
 		name     string
 		expected *settings.CanonicalConfig
@@ -109,13 +109,13 @@ func Test_compareConfigs(t *testing.T) {
 			want: ComparisonMismatch("Configuration setting mismatch: a."),
 		},
 		{
-			name: "pure int config",
+			name: "int config",
 			expected: settings.MustCanonicalConfig(map[string]interface{}{
-				"a": subCfg,
+				"a": intSlice,
 				"b": 2,
 			}),
 			actual: settings.MustCanonicalConfig(map[string]interface{}{
-				"a": subCfg,
+				"a": intSlice,
 				"b": 3,
 			}),
 			want: ComparisonMismatch("Configuration setting mismatch: b."),

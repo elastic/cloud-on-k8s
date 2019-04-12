@@ -66,7 +66,8 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 		},
 	}
 	config := settings.MustNewSingleValue("a", "b")
-	rendered, _ := config.Render()
+	rendered, err := config.Render()
+	require.NoError(t, err)
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",

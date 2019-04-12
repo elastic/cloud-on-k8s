@@ -106,7 +106,8 @@ func TestReconcileConfig(t *testing.T) {
 		},
 	}
 	config := MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})
-	rendered, _ := config.Render()
+	rendered, err := config.Render()
+	require.NoError(t, err)
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pod.Namespace,
