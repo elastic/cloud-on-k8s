@@ -128,7 +128,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			for _, node := range nodes.Nodes {
 				nodeRoles := rolesToConfig(node.Roles)
 				for i, topoElem := range expectedTopology {
-					if topoElem.Config.EqualRoles(nodeRoles) && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
+					cfg, err := topoElem.Config.Unpack()
+					require.NoError(t, err)
+					if cfg.Node == nodeRoles && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
@@ -141,21 +143,21 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 	}
 }
 
-func rolesToConfig(roles []string) estype.Config {
-	cfg := estype.Config{}
+func rolesToConfig(roles []string) estype.Node {
+	node := estype.Node{
+		ML: true, // ML is not reported in roles array, we assume true
+	}
 	for _, r := range roles {
 		switch r {
 		case "master":
-			cfg[estype.NodeMaster] = "true"
+			node.Master = true
 		case "data":
-			cfg[estype.NodeData] = "true"
+			node.Data = true
 		case "ingest":
-			cfg[estype.NodeIngest] = "true"
-		case "ml":
-			cfg[estype.NodeML] = "true"
+			node.Ingest = true
 		}
 	}
-	return cfg
+	return node
 }
 
 func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
