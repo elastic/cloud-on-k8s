@@ -12,7 +12,6 @@ import (
 	udiff "github.com/elastic/go-ucfg/diff"
 	yaml2 "github.com/elastic/go-ucfg/yaml"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -156,7 +155,7 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	diff = append(diff, keyDiff[udiff.Add]...)
 	diff = append(diff, keyDiff[udiff.Remove]...)
 	if len(diff) > 0 {
-		return diff
+		return removeIgnored(diff, ignore)
 	}
 	// at this point both configs should contain the same keys but may have different values
 	var cUntyped untypedDict
@@ -171,10 +170,27 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	}
 
 	diff = diffMap(cUntyped, c2Untyped, "")
-	for _, s := range ignore {
-		diff = stringsutil.RemoveStringInSlice(s, diff)
+	return removeIgnored(diff, ignore)
+}
+
+func removeIgnored(diff, toIgnore []string) []string {
+	var result []string
+	for _, d := range diff {
+		if canIgnore(d, toIgnore) {
+			continue
+		}
+		result = append(result, d)
 	}
-	return diff
+	return result
+}
+
+func canIgnore(diff string, toIgnore []string) bool {
+	for _, prefix := range toIgnore {
+		if strings.HasPrefix(diff, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func diffMap(c1, c2 untypedDict, key string) []string {

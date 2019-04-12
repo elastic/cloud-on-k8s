@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -174,6 +175,136 @@ func TestParseConfig(t *testing.T) {
 				wantRendered, err := tt.want.Render()
 				require.NoError(t, err)
 				t.Errorf("ParseConfig(), want: %s, got: %s", wantRendered, gotRendered)
+			}
+		})
+	}
+}
+
+func TestCanonicalConfig_Diff(t *testing.T) {
+	type args struct {
+		c2     *CanonicalConfig
+		ignore []string
+	}
+	tests := []struct {
+		name string
+		c    *CanonicalConfig
+		args args
+		want []string
+	}{
+		{
+			name: "nil diff",
+			c:    nil,
+			args: args{},
+			want: nil,
+		},
+		{
+			name: "lhs nil",
+			c:    nil,
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": 1,
+				}),
+				ignore: nil,
+			},
+			want: []string{"a"},
+		},
+		{
+			name: "rhs nil",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": 2,
+			}),
+			args: args{},
+			want: []string{"a"},
+		},
+		{
+			name: "flags up key difference",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": map[string]string{
+					"b": "foo",
+				},
+			}),
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": map[string]string{
+						"b": "foo",
+						"c": "bar",
+					},
+				}),
+			},
+			want: []string{"a.c"},
+		},
+		{
+			name: "flags up value difference",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": map[string]string{
+					"b": "foo",
+				},
+			}),
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": map[string]int{
+						"b": 1,
+					},
+				}),
+			},
+			want: []string{"a.b"},
+		},
+		{
+			name: "respects ignore list",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": "foo",
+					"c": []int{1, 2, 3},
+				},
+			}),
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": 1,
+						"c": []int{1, 24},
+					},
+				}),
+				ignore: []string{"a.b", "a.c"},
+			},
+			want: nil,
+		},
+		{
+			name: "respects list order",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": map[string]interface{}{
+					"b": []int{1, 2, 3},
+				},
+			}),
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": map[string]interface{}{
+						"b": []int{1, 3, 2},
+					},
+				}),
+			},
+			want: []string{"a.b.1", "a.b.2"},
+		},
+		{
+			name: "respects primitive types",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": 1,
+				"b": 1.0,
+				"c": "true",
+			}),
+			args: args{
+				c2: MustCanonicalConfig(map[string]interface{}{
+					"a": 1.0,
+					"b": 1.0,
+					"c": true,
+				}),
+			},
+			want: []string{"c", "a"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.c.Diff(tt.args.c2, tt.args.ignore); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("CanonicalConfig.Diff() = %v, want %v", got, tt.want)
 			}
 		})
 	}
