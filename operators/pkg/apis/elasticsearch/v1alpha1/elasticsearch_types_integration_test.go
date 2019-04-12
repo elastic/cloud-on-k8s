@@ -27,14 +27,9 @@ func TestStorageElasticsearch(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: ElasticsearchSpec{
-
 			Nodes: []NodeSpec{
 				{
-					Config: Config{
-						"a": map[string]string{
-							"b": "c",
-						},
-					},
+					Config: Config{},
 				},
 			},
 			SnapshotRepository: nil,

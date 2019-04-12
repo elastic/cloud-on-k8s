@@ -69,7 +69,9 @@ func TestReconcile(t *testing.T) {
 			Nodes: []v1alpha1.NodeSpec{
 				{
 					Config: estype.Config{
-						estype.NodeMaster: "true",
+						Data: map[string]interface{}{
+							estype.NodeMaster: true,
+						},
 					},
 					NodeCount: 3,
 				},
