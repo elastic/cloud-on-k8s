@@ -24,7 +24,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-const attemptReload = "attempt-reload"
+const (
+	attemptReload         = "attempt-reload"
+	waitEsReadinessPeriod = 10 * time.Second
+)
 
 var (
 	log = logf.Log.WithName("keystore-updater")
@@ -83,7 +86,7 @@ func (u *Updater) waitForElasticsearchReady() {
 			break
 		}
 		log.Info("Waiting for Elasticsearch to be ready")
-		time.Sleep(10 * time.Second)
+		time.Sleep(waitEsReadinessPeriod)
 	}
 }
 
