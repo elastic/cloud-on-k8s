@@ -16,22 +16,17 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// FlatConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
-// as a flat key-value configuration.
-// It does not support hierarchical configuration format.
-// For instance:
-// * `path.data: /path/to/data` is supported
-// * `path:
-//       data: /path/to/data` is not supported
-type FlatConfig ucfg.Config
+// CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
+// as a hierarchical key-value configuration.
+type CanonicalConfig ucfg.Config
 
 var options = []ucfg.Option{ucfg.PathSep(".")}
 
-func NewFlatConfig() *FlatConfig {
+func NewCanonicalConfig() *CanonicalConfig {
 	return fromConfig(ucfg.New())
 }
 
-func NewFlatConfigFrom(cfg v1alpha1.Config) (*FlatConfig, error) {
+func NewCanonicalConfigFrom(cfg v1alpha1.Config) (*CanonicalConfig, error) {
 	config, err := cfg.Canonicalize()
 	if err != nil {
 		return nil, err
@@ -39,7 +34,7 @@ func NewFlatConfigFrom(cfg v1alpha1.Config) (*FlatConfig, error) {
 	return fromConfig(config), nil
 }
 
-func MustFlatConfig(cfg interface{}) *FlatConfig {
+func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 	config, err := ucfg.NewFrom(cfg, options...)
 	if err != nil {
 		panic(err)
@@ -47,7 +42,7 @@ func MustFlatConfig(cfg interface{}) *FlatConfig {
 	return fromConfig(config)
 }
 
-func MustNewSingleValue(k string, v ...string) *FlatConfig {
+func MustNewSingleValue(k string, v ...string) *CanonicalConfig {
 	cfg := fromConfig(ucfg.New())
 	err := cfg.Set(k, v...)
 	if err != nil {
@@ -56,9 +51,9 @@ func MustNewSingleValue(k string, v ...string) *FlatConfig {
 	return cfg
 }
 
-// ParseConfig parses the given configuration content into a FlatConfig.
+// ParseConfig parses the given configuration content into a CanonicalConfig.
 // Only supports `flat.key: my value` format with one entry per line.
-func ParseConfig(content []byte) (*FlatConfig, error) {
+func ParseConfig(content []byte) (*CanonicalConfig, error) {
 	config, err := yaml2.NewConfig(content, options...)
 	if err != nil {
 		return nil, err
@@ -67,7 +62,7 @@ func ParseConfig(content []byte) (*FlatConfig, error) {
 
 }
 
-func (c *FlatConfig) Set(key string, vals ...string) error {
+func (c *CanonicalConfig) Set(key string, vals ...string) error {
 	if c == nil {
 		return errors.New("config is nil")
 	}
@@ -87,14 +82,14 @@ func (c *FlatConfig) Set(key string, vals ...string) error {
 	return nil
 }
 
-func (c *FlatConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
+func (c *CanonicalConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
 	var cfg v1alpha1.ElasticsearchSettings
 	return cfg, c.access().Unpack(&cfg, options...)
 }
 
 // MergeWith returns a new flat config with the content of c and c2.
 // In case of conflict, c2 is taking precedence.
-func (c *FlatConfig) MergeWith(cfgs ...*FlatConfig) error {
+func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	for _, c2 := range cfgs {
 		if c2 == nil {
 			continue
@@ -109,11 +104,11 @@ func (c *FlatConfig) MergeWith(cfgs ...*FlatConfig) error {
 
 // Render returns the content of the `elasticsearch.yml` file,
 // with fields sorted alphabetically
-func (c *FlatConfig) Render() ([]byte, error) {
+func (c *CanonicalConfig) Render() ([]byte, error) {
 	if c == nil {
 		return []byte{}, nil
 	}
-	var out map[string]interface{}
+	var out untypedDict
 	err := c.access().Unpack(&out)
 	if err != nil {
 		return []byte{}, err
@@ -121,11 +116,9 @@ func (c *FlatConfig) Render() ([]byte, error) {
 	return yaml.Marshal(out)
 }
 
-func (c *FlatConfig) access() *ucfg.Config {
-	return (*ucfg.Config)(c)
-}
+type untypedDict = map[string]interface{}
 
-func (c *FlatConfig) Diff(c2 *FlatConfig, ignore []string) []string {
+func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	var diff []string
 	if c == c2 {
 		return diff
@@ -143,25 +136,29 @@ func (c *FlatConfig) Diff(c2 *FlatConfig, ignore []string) []string {
 		return diff
 	}
 	// at this point both configs should contain the same keys but may have different values
-	var lUnpacked map[string]interface{}
-	var rUnpacked map[string]interface{}
-	err := c.access().Unpack(&lUnpacked, options...)
+	var cUntyped untypedDict
+	var c2Untyped untypedDict
+	err := c.access().Unpack(&cUntyped, options...)
 	if err != nil {
 		return []string{err.Error()}
 	}
-	err = c2.access().Unpack(&rUnpacked, options...)
+	err = c2.access().Unpack(&c2Untyped, options...)
 	if err != nil {
 		return []string{err.Error()}
 	}
 
-	diff = diffMap(lUnpacked, rUnpacked, "")
+	diff = diffMap(cUntyped, c2Untyped, "")
 	for _, s := range ignore {
 		diff = stringsutil.RemoveStringInSlice(s, diff)
 	}
 	return diff
 }
 
-func diffMap(c1, c2 map[string]interface{}, key string) []string {
+func (c *CanonicalConfig) access() *ucfg.Config {
+	return (*ucfg.Config)(c)
+}
+
+func diffMap(c1, c2 untypedDict, key string) []string {
 	// invariant: keys match
 	// invariant: json-style map
 	var diff []string
@@ -172,8 +169,8 @@ func diffMap(c1, c2 map[string]interface{}, key string) []string {
 		}
 		v2 := c2[k]
 		switch v.(type) {
-		case map[string]interface{}:
-			diff = append(diff, diffMap(v.(map[string]interface{}), v2.(map[string]interface{}), newKey)...)
+		case untypedDict:
+			diff = append(diff, diffMap(v.(untypedDict), v2.(untypedDict), newKey)...)
 		case []interface{}:
 			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
 		default:
@@ -194,8 +191,8 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 		v2 := s2[i]
 		newKey := key + "." + strconv.Itoa(i)
 		switch v.(type) {
-		case map[string]interface{}:
-			diff = append(diff, diffMap(v.(map[string]interface{}), v2.(map[string]interface{}), newKey)...)
+		case untypedDict:
+			diff = append(diff, diffMap(v.(untypedDict), v2.(untypedDict), newKey)...)
 		case []interface{}:
 			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
 		default:
@@ -207,6 +204,6 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 	return diff
 }
 
-func fromConfig(in *ucfg.Config) *FlatConfig {
-	return (*FlatConfig)(in)
+func fromConfig(in *ucfg.Config) *CanonicalConfig {
+	return (*CanonicalConfig)(in)
 }

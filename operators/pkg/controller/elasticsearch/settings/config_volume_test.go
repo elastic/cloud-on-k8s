@@ -52,14 +52,14 @@ func TestGetESConfigContent(t *testing.T) {
 		name    string
 		client  k8s.Client
 		esPod   types.NamespacedName
-		want    *FlatConfig
+		want    *CanonicalConfig
 		wantErr bool
 	}{
 		{
 			name:    "valid config exists",
 			client:  k8s.WrapClient(fake.NewFakeClient(&secret)),
 			esPod:   pod,
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
@@ -105,7 +105,7 @@ func TestReconcileConfig(t *testing.T) {
 			Name:      "pod",
 		},
 	}
-	config := MustFlatConfig(map[string]string{"a": "b", "c": "d"})
+	config := MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})
 	rendered, _ := config.Render()
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -125,7 +125,7 @@ func TestReconcileConfig(t *testing.T) {
 		client  k8s.Client
 		cluster v1alpha1.Elasticsearch
 		pod     corev1.Pod
-		config  *FlatConfig
+		config  *CanonicalConfig
 		wantErr bool
 	}{
 		{
@@ -149,7 +149,7 @@ func TestReconcileConfig(t *testing.T) {
 			client:  k8s.WrapClient(fake.NewFakeClient(&configSecret)),
 			cluster: cluster,
 			pod:     pod,
-			config:  MustFlatConfig(map[string]string{"a": "b", "c": "different"}),
+			config:  MustCanonicalConfig(map[string]string{"a": "b", "c": "different"}),
 			wantErr: false,
 		},
 	}

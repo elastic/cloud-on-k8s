@@ -38,7 +38,7 @@ func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.FlatConfig, error),
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -77,7 +77,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, Node: node, Config: config})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, NodeSpec: node, Config: config})
 		}
 	}
 
@@ -89,9 +89,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.FlatConfig, error),
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, *settings.FlatConfig, error) {
+) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -240,7 +240,7 @@ func NewPod(
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior
-	for k, v := range podSpecCtx.Node.PodTemplate.Labels {
+	for k, v := range podSpecCtx.NodeSpec.PodTemplate.Labels {
 		if _, ok := labels[k]; !ok {
 			labels[k] = v
 		}
@@ -251,7 +251,7 @@ func NewPod(
 			Name:        pod.NewNodeName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
-			Annotations: podSpecCtx.Node.PodTemplate.Annotations,
+			Annotations: podSpecCtx.NodeSpec.PodTemplate.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
 	}

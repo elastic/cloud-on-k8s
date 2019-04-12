@@ -208,7 +208,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -229,7 +229,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -257,7 +257,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -290,7 +290,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -323,7 +323,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -350,7 +350,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					Node: v1alpha1.NodeSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{

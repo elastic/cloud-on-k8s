@@ -18,17 +18,17 @@ func Test_compareConfigs(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"b": [1, 2, 3]}`), &subCfg))
 	tests := []struct {
 		name     string
-		expected *settings.FlatConfig
-		actual   *settings.FlatConfig
+		expected *settings.CanonicalConfig
+		actual   *settings.CanonicalConfig
 		want     Comparison
 	}{
 		{
 			name: "same config",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
@@ -36,11 +36,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "different config item",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "eee",
 			}),
@@ -48,12 +48,12 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "one more item in expected",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 				"e": "f",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
@@ -61,11 +61,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "one more item in actual",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 				"e": "f",
@@ -74,14 +74,14 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "some fields should be ignored",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "expected-node",
 				settings.DiscoveryZenMinimumMasterNodes: 1,
 				settings.ClusterInitialMasterNodes:      "1",
 				settings.NetworkPublishHost:             "1.2.3.4",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "actual-node",
 				settings.DiscoveryZenMinimumMasterNodes: 12,
@@ -92,14 +92,14 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "some fields should be ignored but should not prevent mismatch",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "expected-node",
 				settings.DiscoveryZenMinimumMasterNodes: "1",
 				settings.ClusterInitialMasterNodes:      "1",
 				settings.NetworkPublishHost:             "1.2.3.4",
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "mismatch",
 				settings.NodeName:                       "actual-node",
 				settings.DiscoveryZenMinimumMasterNodes: "12",
@@ -110,11 +110,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "pure int config",
-			expected: settings.MustFlatConfig(map[string]interface{}{
+			expected: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": subCfg,
 				"b": 2,
 			}),
-			actual: settings.MustFlatConfig(map[string]interface{}{
+			actual: settings.MustCanonicalConfig(map[string]interface{}{
 				"a": subCfg,
 				"b": 3,
 			}),

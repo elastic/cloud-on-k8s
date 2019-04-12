@@ -30,7 +30,7 @@ func PodMatchesSpec(podWithConfig pod.PodWithConfig, spec pod.PodSpecContext, st
 		NewStringComparison(expectedContainer.Name, actualContainer.Name, "Container name"),
 		compareEnvironmentVariables(actualContainer.Env, expectedContainer.Env),
 		compareResources(actualContainer.Resources, expectedContainer.Resources),
-		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.Node.VolumeClaimTemplates, state),
+		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.NodeSpec.VolumeClaimTemplates, state),
 		compareConfigs(config, spec.Config),
 		// Non-exhaustive list of ignored stuff:
 		// - pod labels

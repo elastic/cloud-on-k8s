@@ -61,7 +61,7 @@ func createElasticsearchPod(
 	// - Re-use the same name for the PVC.
 	//   - E.g, List PVCs, if a PVC we want to use exist
 
-	for _, claimTemplate := range podSpecCtx.Node.VolumeClaimTemplates {
+	for _, claimTemplate := range podSpecCtx.NodeSpec.VolumeClaimTemplates {
 		// TODO : we are creating PVC way too far in the process, it's almost too late to compare them with existing ones
 		pvc, err := getOrCreatePVC(&pod, claimTemplate, orphanedPVCs, c, scheme, es)
 		if err != nil {

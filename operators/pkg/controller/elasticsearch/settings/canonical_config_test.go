@@ -11,7 +11,7 @@ import (
 )
 
 func TestFlatConfig_Render(t *testing.T) {
-	config := MustFlatConfig(map[string]string{
+	config := MustCanonicalConfig(map[string]string{
 		"aaa":        "aa  a",
 		"bbb":        "b  bb",
 		"aab":        "a a a",
@@ -32,15 +32,15 @@ zz: zzz  z z z
 func TestFlatConfig_MergeWith(t *testing.T) {
 	tests := []struct {
 		name string
-		c    *FlatConfig
-		c2   *FlatConfig
-		want *FlatConfig
+		c    *CanonicalConfig
+		c2   *CanonicalConfig
+		want *CanonicalConfig
 	}{
 		{
 			name: "both empty",
-			c:    NewFlatConfig(),
-			c2:   NewFlatConfig(),
-			want: NewFlatConfig(),
+			c:    NewCanonicalConfig(),
+			c2:   NewCanonicalConfig(),
+			want: NewCanonicalConfig(),
 		},
 		{
 			name: "both nil",
@@ -58,13 +58,13 @@ func TestFlatConfig_MergeWith(t *testing.T) {
 			name: "different values",
 			c:    MustNewSingleValue("a", "b"),
 			c2:   MustNewSingleValue("c", "d"),
-			want: MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want: MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 		},
 		{
 			name: "conflict: c2 has precedence",
 			c:    MustNewSingleValue("a", "b"),
-			c2:   MustFlatConfig(map[string]string{"c": "d", "a": "e"}),
-			want: MustFlatConfig(map[string]string{"a": "e", "c": "d"}),
+			c2:   MustCanonicalConfig(map[string]string{"c": "d", "a": "e"}),
+			want: MustCanonicalConfig(map[string]string{"a": "e", "c": "d"}),
 		},
 	}
 	for _, tt := range tests {
@@ -72,7 +72,7 @@ func TestFlatConfig_MergeWith(t *testing.T) {
 			// Merge mutates c
 			require.NoError(t, tt.c.MergeWith(tt.c2))
 			if diff := tt.c.Diff(tt.want, nil); diff != nil {
-				t.Errorf("FlatConfig.MergeWith() = %v, want %v", diff, tt.want)
+				t.Errorf("CanonicalConfig.MergeWith() = %v, want %v", diff, tt.want)
 			}
 		})
 	}
@@ -82,25 +82,25 @@ func TestParseConfig(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    *FlatConfig
+		want    *CanonicalConfig
 		wantErr bool
 	}{
 		{
 			name:    "no input",
 			input:   "",
-			want:    NewFlatConfig(),
+			want:    NewCanonicalConfig(),
 			wantErr: false,
 		},
 		{
 			name:    "simple input",
 			input:   "a: b\nc: d",
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim whitespaces",
 			input:   "      a: b   \n      c: d     ",
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
@@ -111,31 +111,31 @@ func TestParseConfig(t *testing.T) {
 		{
 			name:    "trim whitespaces between key and value",
 			input:   "a  :     b",
-			want:    MustFlatConfig(map[string]string{"a": "b"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim newlines",
 			input:   "  \n    a: b   \n\n    c: d   \n\n ",
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "ignore comments",
 			input:   "a: b\n#this is a comment\nc: d",
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "support quotes",
 			input:   `a: "string in quotes"`,
-			want:    MustFlatConfig(map[string]string{"a": `string in quotes`}),
+			want:    MustCanonicalConfig(map[string]string{"a": `string in quotes`}),
 			wantErr: false,
 		},
 		{
 			name:    "support special characters",
 			input:   `a: "${node.ip}%.:=+è! /"`,
-			want:    MustFlatConfig(map[string]string{"a": `${node.ip}%.:=+è! /`}),
+			want:    MustCanonicalConfig(map[string]string{"a": `${node.ip}%.:=+è! /`}),
 			wantErr: false,
 		},
 		{
@@ -152,7 +152,7 @@ func TestParseConfig(t *testing.T) {
 		{
 			name:    "invalid entry among valid entries (is valid YAML)",
 			input:   "a: b\n  not key value \n c:d",
-			want:    MustFlatConfig(map[string]interface{}{"a": "b not key value c:d"}),
+			want:    MustCanonicalConfig(map[string]interface{}{"a": "b not key value c:d"}),
 			wantErr: false,
 		},
 	}

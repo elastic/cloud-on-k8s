@@ -27,8 +27,8 @@ func NewDefaultESConfig(
 	zenMinMasterNodes int,
 	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
-) (*FlatConfig, error) {
-	flatConfig, err := NewFlatConfigFrom(userConfig)
+) (*CanonicalConfig, error) {
+	flatConfig, err := NewCanonicalConfigFrom(userConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +43,8 @@ func NewDefaultESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, minMasterNodes int) *FlatConfig {
-	return MustFlatConfig(map[string]interface{}{
+func baseConfig(clusterName string, minMasterNodes int) *CanonicalConfig {
+	return MustCanonicalConfig(map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -63,11 +63,11 @@ func baseConfig(clusterName string, minMasterNodes int) *FlatConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(licenseType v1alpha1.LicenseType) *FlatConfig {
+func xpackConfig(licenseType v1alpha1.LicenseType) *CanonicalConfig {
 
 	// disable x-pack security if using basic
 	if licenseType == v1alpha1.LicenseTypeBasic {
-		return MustFlatConfig(map[string]interface{}{
+		return MustCanonicalConfig(map[string]interface{}{
 			XPackSecurityEnabled: "false",
 		})
 	}
@@ -110,5 +110,5 @@ func xpackConfig(licenseType v1alpha1.LicenseType) *FlatConfig {
 		cfg[XPackLicenseSelfGeneratedType] = "trial"
 	}
 
-	return MustFlatConfig(cfg)
+	return MustCanonicalConfig(cfg)
 }

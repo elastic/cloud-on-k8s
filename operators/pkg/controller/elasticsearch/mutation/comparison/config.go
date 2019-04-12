@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 )
 
-func compareConfigs(actual *settings.FlatConfig, expected *settings.FlatConfig) Comparison {
+func compareConfigs(actual *settings.CanonicalConfig, expected *settings.CanonicalConfig) Comparison {
 	// check for settings in actual that do not match expected
 	diff := actual.Diff(expected, toIgnore)
 	if len(diff) == 0 {
