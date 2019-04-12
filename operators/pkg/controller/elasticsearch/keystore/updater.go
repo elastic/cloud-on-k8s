@@ -76,10 +76,10 @@ func (u Updater) watchForUpdate() {
 		return
 	}
 	// // execute at least once with the initial fs content
-	// err, msg := u.updateKeystore()
-	// if err != nil {
-	// 	log.Error(err, "Cannot update keystore", "msg", msg)
-	// }
+	err, msg := u.updateKeystore()
+	if err != nil {
+		log.Error(err, "Cannot update keystore", "msg", msg)
+	}
 	// then run on files change
 	if err := watcher.Run(); err != nil {
 		log.Error(err, "Cannot watch filesystem", "path", u.config.SecretsSourceDir)
