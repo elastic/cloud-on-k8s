@@ -156,22 +156,7 @@ func podSpec(
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
 				// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 			},
-			ReadinessProbe: &corev1.Probe{
-				FailureThreshold:    3,
-				InitialDelaySeconds: 10,
-				PeriodSeconds:       10,
-				SuccessThreshold:    3,
-				TimeoutSeconds:      5,
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							pod.DefaultReadinessProbeScript,
-						},
-					},
-				},
-			},
+			ReadinessProbe: pod.NewReadinessProbe(),
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
