@@ -49,6 +49,7 @@
   name = "github.com/elastic/go-ucfg"
   packages = [
     ".",
+    "diff",
     "internal/parse",
     "yaml",
   ]
@@ -1091,6 +1092,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/elastic/go-ucfg",
+    "github.com/elastic/go-ucfg/diff",
     "github.com/elastic/go-ucfg/yaml",
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
