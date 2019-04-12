@@ -26,17 +26,18 @@ const (
 	// podRandomSuffixLength represents the length of the random suffix that is appended in NewPodName.
 	podRandomSuffixLength = 10
 
-	podSuffix                 = "-es"
-	configSecretSuffix        = "-config"
-	serviceSuffix             = "-es"
-	discoveryServiceSuffix    = "-es-discovery"
-	cASecretSuffix            = "-ca"
-	cAPrivateKeySecretSuffix  = "-ca-private-key"
-	elasticUserSecretSuffix   = "-elastic-user"
-	esRolesUsersSecretSuffix  = "-es-roles-users"
-	extraFilesSecretSuffix    = "-extrafiles"
-	internalUsersSecretSuffix = "-internal-users"
-	keystoreSecretSuffix      = "-keystore"
+	podSuffix                  = "-es"
+	configSecretSuffix         = "-config"
+	secureSettingsSecretSuffix = "-secure-settings"
+	serviceSuffix              = "-es"
+	discoveryServiceSuffix     = "-es-discovery"
+	cASecretSuffix             = "-ca"
+	cAPrivateKeySecretSuffix   = "-ca-private-key"
+	elasticUserSecretSuffix    = "-elastic-user"
+	esRolesUsersSecretSuffix   = "-es-roles-users"
+	extraFilesSecretSuffix     = "-extrafiles"
+	internalUsersSecretSuffix  = "-internal-users"
+	keystoreSecretSuffix       = "-keystore"
 )
 
 // Suffix a resource name.
@@ -83,6 +84,10 @@ func NewPVCName(podName string, pvcTemplateName string) string {
 
 func ConfigSecret(podName string) string {
 	return suffix(podName, configSecretSuffix)
+}
+
+func SecureSettingsSecret(esName string) string {
+	return suffix(esName, secureSettingsSecretSuffix)
 }
 
 func Service(esName string) string {
