@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	cfgInvalidMsg            = "[config invalid]"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"

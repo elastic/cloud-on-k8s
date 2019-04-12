@@ -18,7 +18,7 @@ type ElasticsearchSpec struct {
 	// Image represents the docker image that will be used.
 	Image string `json:"image,omitempty"`
 
-	// LicenseType represents the expectedJsonized license type for this cluster.
+	// LicenseType represents the expected license type for this cluster.
 	// Will default to "basic" if not set.
 	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
 	LicenseType string `json:"licenseType,omitempty"`
@@ -80,7 +80,7 @@ func (es ElasticsearchSpec) NodeCount() int32 {
 	return count
 }
 
-// GetLicenseType returns the type of license expectedJsonized for this cluster.
+// GetLicenseType returns the type of license expected for this cluster.
 // If not provided, default to "basic".
 func (es ElasticsearchSpec) GetLicenseType() LicenseType {
 	licenseType, err := LicenseTypeFromString(es.LicenseType)
@@ -92,7 +92,7 @@ func (es ElasticsearchSpec) GetLicenseType() LicenseType {
 
 // NodeSpec defines a common topology for a set of Elasticsearch nodes
 type NodeSpec struct {
-	// Config represents the node types
+	// Config represents Elasticsearch configuration.
 	Config Config
 
 	// Resources to be allocated for this topology

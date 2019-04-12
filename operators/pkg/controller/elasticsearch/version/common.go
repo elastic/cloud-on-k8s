@@ -227,12 +227,16 @@ func NewPod(
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	// add labels from the version
 	labels[label.VersionLabelName] = version.String()
+	cfg, err := podSpecCtx.Config.Unpack()
+	if err != nil {
+		return corev1.Pod{}, err
+	}
 
 	// add labels for node types
-	label.NodeTypesMasterLabelName.Set(podSpecCtx.Node.Config.IsMaster(), labels)
-	label.NodeTypesDataLabelName.Set(podSpecCtx.Node.Config.IsData(), labels)
-	label.NodeTypesIngestLabelName.Set(podSpecCtx.Node.Config.IsIngest(), labels)
-	label.NodeTypesMLLabelName.Set(podSpecCtx.Node.Config.IsML(), labels)
+	label.NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
+	label.NodeTypesDataLabelName.Set(cfg.Node.Data, labels)
+	label.NodeTypesIngestLabelName.Set(cfg.Node.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(cfg.Node.ML, labels)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior

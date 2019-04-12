@@ -5,13 +5,17 @@
 package comparison
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_compareConfigs(t *testing.T) {
+	var subCfg map[string]interface{}
+	require.NoError(t, json.Unmarshal([]byte(`{"b": [1, 2, 3]}`), &subCfg))
 	tests := []struct {
 		name     string
 		expected *settings.FlatConfig
@@ -73,14 +77,14 @@ func Test_compareConfigs(t *testing.T) {
 			expected: settings.MustFlatConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "expected-node",
-				settings.DiscoveryZenMinimumMasterNodes: "1",
+				settings.DiscoveryZenMinimumMasterNodes: 1,
 				settings.ClusterInitialMasterNodes:      "1",
 				settings.NetworkPublishHost:             "1.2.3.4",
 			}),
 			actual: settings.MustFlatConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "actual-node",
-				settings.DiscoveryZenMinimumMasterNodes: "12",
+				settings.DiscoveryZenMinimumMasterNodes: 12,
 				settings.ClusterInitialMasterNodes:      "3",
 				settings.NetworkPublishHost:             "1.2.3.45",
 			}),
@@ -103,6 +107,18 @@ func Test_compareConfigs(t *testing.T) {
 				settings.NetworkPublishHost:             "1.2.3.45",
 			}),
 			want: ComparisonMismatch("Configuration setting mismatch: a."),
+		},
+		{
+			name: "pure int config",
+			expected: settings.MustFlatConfig(map[string]interface{}{
+				"a": subCfg,
+				"b": 2,
+			}),
+			actual: settings.MustFlatConfig(map[string]interface{}{
+				"a": subCfg,
+				"b": 3,
+			}),
+			want: ComparisonMismatch("Configuration setting mismatch: b."),
 		},
 	}
 	for _, tt := range tests {

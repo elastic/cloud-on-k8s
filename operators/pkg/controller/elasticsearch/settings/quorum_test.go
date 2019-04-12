@@ -27,7 +27,8 @@ func TopologyWith(nMasters, nData, nMasterData int) []v1alpha1.NodeSpec {
 	}))
 	topology = append(topology, createNode(nData, v1alpha1.Config{
 		Data: map[string]interface{}{
-			v1alpha1.NodeData: "true",
+			v1alpha1.NodeData:   "true",
+			v1alpha1.NodeMaster: "false",
 		},
 	}))
 	topology = append(topology, createNode(nMasterData, v1alpha1.Config{
@@ -63,7 +64,10 @@ func TestComputeMinimumMasterNodes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			topology := TopologyWith(tt.args.nMasters, tt.args.nData, tt.args.nMasterData)
 			mmn := ComputeMinimumMasterNodes(topology)
-			assert.Equal(t, tt.want, mmn, "Unmatching minimum master nodes")
+			assert.Equal(t, tt.want, mmn,
+				"Mismatch in minimum master nodes: masters %d, data %d, master/data %d",
+				tt.args.nMasters, tt.args.nData, tt.args.nMasterData,
+			)
 		})
 	}
 }

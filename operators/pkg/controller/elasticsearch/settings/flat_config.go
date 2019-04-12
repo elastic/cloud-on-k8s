@@ -5,11 +5,13 @@
 package settings
 
 import (
-	"reflect"
+	"strconv"
 
 	"github.com/elastic/go-ucfg"
+	udiff "github.com/elastic/go-ucfg/diff"
 	yaml2 "github.com/elastic/go-ucfg/yaml"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
@@ -66,14 +68,17 @@ func ParseConfig(content []byte) (*FlatConfig, error) {
 }
 
 func (c *FlatConfig) Set(key string, vals ...string) error {
+	if c == nil {
+		return errors.New("config is nil")
+	}
 	switch len(vals) {
 	case 0:
 		return errors.New("Nothing to set")
 	case 1:
-		return c.access().SetString(key, -1, vals[0])
+		return c.access().SetString(key, -1, vals[0], options...)
 	default:
 		for i, v := range vals {
-			err := c.access().SetString(key, i, v)
+			err := c.access().SetString(key, i, v, options...)
 			if err != nil {
 				return err
 			}
@@ -82,10 +87,18 @@ func (c *FlatConfig) Set(key string, vals ...string) error {
 	return nil
 }
 
+func (c *FlatConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
+	var cfg v1alpha1.ElasticsearchSettings
+	return cfg, c.access().Unpack(&cfg, options...)
+}
+
 // MergeWith returns a new flat config with the content of c and c2.
 // In case of conflict, c2 is taking precedence.
 func (c *FlatConfig) MergeWith(cfgs ...*FlatConfig) error {
 	for _, c2 := range cfgs {
+		if c2 == nil {
+			continue
+		}
 		err := c.access().Merge(c2.access(), options...)
 		if err != nil {
 			return err
@@ -97,6 +110,9 @@ func (c *FlatConfig) MergeWith(cfgs ...*FlatConfig) error {
 // Render returns the content of the `elasticsearch.yml` file,
 // with fields sorted alphabetically
 func (c *FlatConfig) Render() ([]byte, error) {
+	if c == nil {
+		return []byte{}, nil
+	}
 	var out map[string]interface{}
 	err := c.access().Unpack(&out)
 	if err != nil {
@@ -109,27 +125,86 @@ func (c *FlatConfig) access() *ucfg.Config {
 	return (*ucfg.Config)(c)
 }
 
-func (c *FlatConfig) Diff(config *FlatConfig, ignore []string) []string {
+func (c *FlatConfig) Diff(c2 *FlatConfig, ignore []string) []string {
 	var diff []string
-	if c == nil && config != nil {
-		return config.access().FlattenedKeys(options...)
-	}
-	if c != nil && config == nil {
-		return config.access().FlattenedKeys(options...)
-	}
-	var l, r = ucfg.MustNewFrom(c.access(), options...), ucfg.MustNewFrom(config.access(), options...)
-	for _, i := range ignore {
-		_, _ = l.Remove(i, -1, options...)
-		_, _ = r.Remove(i, -1, options...)
-	}
-	var lUnpacked map[string]interface{}
-	var rUnpacked map[string]interface{}
-	_ = l.Unpack(&lUnpacked, options...)
-	_ = r.Unpack(&rUnpacked, options...)
-	if reflect.DeepEqual(lUnpacked, rUnpacked) {
+	if c == c2 {
 		return diff
 	}
-	return []string{"implement me properly"}
+	if c == nil && c2 != nil {
+		return c2.access().FlattenedKeys(options...)
+	}
+	if c != nil && c2 == nil {
+		return c.access().FlattenedKeys(options...)
+	}
+	keyDiff := udiff.CompareConfigs(c.access(), c2.access(), options...)
+	diff = append(diff, keyDiff[udiff.Add]...)
+	diff = append(diff, keyDiff[udiff.Remove]...)
+	if len(diff) > 0 {
+		return diff
+	}
+	// at this point both configs should contain the same keys but may have different values
+	var lUnpacked map[string]interface{}
+	var rUnpacked map[string]interface{}
+	err := c.access().Unpack(&lUnpacked, options...)
+	if err != nil {
+		return []string{err.Error()}
+	}
+	err = c2.access().Unpack(&rUnpacked, options...)
+	if err != nil {
+		return []string{err.Error()}
+	}
+
+	diff = diffMap(lUnpacked, rUnpacked, "")
+	for _, s := range ignore {
+		diff = stringsutil.RemoveStringInSlice(s, diff)
+	}
+	return diff
+}
+
+func diffMap(c1, c2 map[string]interface{}, key string) []string {
+	// invariant: keys match
+	// invariant: json-style map
+	var diff []string
+	for k, v := range c1 {
+		newKey := k
+		if len(key) != 0 {
+			newKey = key + "." + k
+		}
+		v2 := c2[k]
+		switch v.(type) {
+		case map[string]interface{}:
+			diff = append(diff, diffMap(v.(map[string]interface{}), v2.(map[string]interface{}), newKey)...)
+		case []interface{}:
+			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
+		default:
+			if v != v2 {
+				diff = append(diff, newKey)
+			}
+		}
+	}
+	return diff
+}
+
+func diffSlice(s, s2 []interface{}, key string) []string {
+	if len(s) != len(s2) {
+		return []string{key}
+	}
+	var diff []string
+	for i, v := range s {
+		v2 := s2[i]
+		newKey := key + "." + strconv.Itoa(i)
+		switch v.(type) {
+		case map[string]interface{}:
+			diff = append(diff, diffMap(v.(map[string]interface{}), v2.(map[string]interface{}), newKey)...)
+		case []interface{}:
+			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
+		default:
+			if v != v2 {
+				diff = append(diff, newKey)
+			}
+		}
+	}
+	return diff
 }
 
 func fromConfig(in *ucfg.Config) *FlatConfig {

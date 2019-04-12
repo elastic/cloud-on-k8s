@@ -32,7 +32,12 @@ func supportedVersion(ctx Context) Result {
 func hasMaster(ctx Context) Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		hasMaster = hasMaster || (t.Config.IsMaster() && t.NodeCount > 0)
+		cfg, err := t.Config.Unpacked()
+		if err != nil {
+
+			return Result{Reason: cfgInvalidMsg}
+		}
+		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
 	}
 	if hasMaster {
 		return OK
@@ -45,7 +50,7 @@ func noBlacklistedSettings(ctx Context) Result {
 	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		config, err := n.Config.Canonicalize()
 		if err != nil {
-			violations[i] = "[config invalid]"
+			violations[i] = cfgInvalidMsg
 			continue
 		}
 		keys := config.FlattenedKeys(ucfg.PathSep("."))

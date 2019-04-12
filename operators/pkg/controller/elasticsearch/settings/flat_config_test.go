@@ -5,7 +5,6 @@
 package settings
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,13 +20,11 @@ func TestFlatConfig_Render(t *testing.T) {
 	})
 	output, err := config.Render()
 	require.NoError(t, err)
-	expected := []byte(`# --- auto-generated ---
-aaa: aa  a
+	expected := []byte(`aaa: aa  a
 aab: a a a
 bbb: b  bb
 withquotes: aa"bb"aa
 zz: zzz  z z z
-# --- end auto-generated ---
 `)
 	require.Equal(t, expected, output)
 }
@@ -49,7 +46,7 @@ func TestFlatConfig_MergeWith(t *testing.T) {
 			name: "both nil",
 			c:    nil,
 			c2:   nil,
-			want: NewFlatConfig(),
+			want: nil,
 		},
 		{
 			name: "c2 nil",
@@ -72,9 +69,10 @@ func TestFlatConfig_MergeWith(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// c and c2 should remain unmodified
-			if got := tt.c.MergeWith(tt.c2); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FlatConfig.MergeWith() = %v, want %v", got, tt.want)
+			// Merge mutates c
+			require.NoError(t, tt.c.MergeWith(tt.c2))
+			if diff := tt.c.Diff(tt.want, nil); diff != nil {
+				t.Errorf("FlatConfig.MergeWith() = %v, want %v", diff, tt.want)
 			}
 		})
 	}
@@ -90,26 +88,25 @@ func TestParseConfig(t *testing.T) {
 		{
 			name:    "no input",
 			input:   "",
-			want:    &FlatConfig{},
+			want:    NewFlatConfig(),
 			wantErr: false,
 		},
 		{
 			name:    "simple input",
-			input:   "a: b\nc:d",
+			input:   "a: b\nc: d",
 			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "trim whitespaces",
-			input:   "      a: b   \n    c:d     ",
+			input:   "      a: b   \n      c: d     ",
 			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
-			name:    "trim tabs",
+			name:    "tabs are invalid in YAML",
 			input:   "\ta: b   \n    c:d     ",
-			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "trim whitespaces between key and value",
@@ -119,33 +116,32 @@ func TestParseConfig(t *testing.T) {
 		},
 		{
 			name:    "trim newlines",
-			input:   "  \n    a: b   \n\n    c:d    \n\n ",
+			input:   "  \n    a: b   \n\n    c: d   \n\n ",
 			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "ignore comments",
-			input:   "a: b\n #this is a comment\n c: d",
+			input:   "a: b\n#this is a comment\nc: d",
 			want:    MustFlatConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
 			name:    "support quotes",
 			input:   `a: "string in quotes"`,
-			want:    MustFlatConfig(map[string]string{"a": `"string in quotes"`}),
+			want:    MustFlatConfig(map[string]string{"a": `string in quotes`}),
 			wantErr: false,
 		},
 		{
 			name:    "support special characters",
-			input:   `a: %.:=+è! /\$`,
-			want:    MustFlatConfig(map[string]string{"a": `%.:=+è! /\$`}),
+			input:   `a: "${node.ip}%.:=+è! /"`,
+			want:    MustFlatConfig(map[string]string{"a": `${node.ip}%.:=+è! /`}),
 			wantErr: false,
 		},
 		{
 			name:    "stop at first :",
 			input:   "a: b: c: d: e",
-			want:    MustFlatConfig(map[string]string{"a": "b: c: d: e"}),
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name:    "invalid entry",
@@ -154,10 +150,10 @@ func TestParseConfig(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "invalid entry among valid entries",
+			name:    "invalid entry among valid entries (is valid YAML)",
 			input:   "a: b\n  not key value \n c:d",
-			want:    nil,
-			wantErr: true,
+			want:    MustFlatConfig(map[string]interface{}{"a": "b not key value c:d"}),
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -167,8 +163,17 @@ func TestParseConfig(t *testing.T) {
 				t.Errorf("ParseConfig() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseConfig() = %v, want %v", got, tt.want)
+
+			if got == tt.want {
+				return
+			}
+
+			if diff := got.Diff(tt.want, nil); diff != nil {
+				gotRendered, err := got.Render()
+				require.NoError(t, err)
+				wantRendered, err := tt.want.Render()
+				require.NoError(t, err)
+				t.Errorf("ParseConfig(), want: %s, got: %s", wantRendered, gotRendered)
 			}
 		})
 	}

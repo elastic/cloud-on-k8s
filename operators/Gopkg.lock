@@ -50,6 +50,7 @@
   packages = [
     ".",
     "internal/parse",
+    "yaml",
   ]
   pruneopts = "T"
   revision = "0539807037ce820e147797f051ff32b05f4f9288"
@@ -1090,6 +1091,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/elastic/go-ucfg",
+    "github.com/elastic/go-ucfg/yaml",
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
@@ -1103,6 +1105,7 @@
     "github.com/stretchr/testify/require",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/net/context",
+    "gopkg.in/yaml.v2",
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",

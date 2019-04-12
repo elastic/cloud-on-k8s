@@ -8,59 +8,8 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
+	"github.com/stretchr/testify/require"
 )
-
-func TestConfig_is(t *testing.T) {
-	type args struct {
-		key string
-	}
-	tests := []struct {
-		name string
-		c    Config
-		args args
-		want bool
-	}{
-		{
-			name: "default to true",
-			c:    Config{},
-			args: args{
-				key: NodeMaster,
-			},
-			want: true,
-		},
-		{
-			name: "detect false",
-			c: Config{
-				Data: map[string]interface{}{
-					NodeMaster: "false",
-				},
-			},
-			args: args{
-				key: NodeMaster,
-			},
-			want: false,
-		},
-		{
-			name: "garbage is false",
-			c: Config{
-				Data: map[string]interface{}{
-					NodeMaster: "lskdfj",
-				},
-			},
-			args: args{
-				key: NodeMaster,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.c.is(tt.args.key); got != tt.want {
-				t.Errorf("Config.is() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestConfig_EqualRoles(t *testing.T) {
 	type args struct {
@@ -82,14 +31,14 @@ func TestConfig_EqualRoles(t *testing.T) {
 			name: "same is equal",
 			c: Config{
 				Data: map[string]interface{}{
-
 					NodeMaster: "true",
 				},
 			},
 			args: args{
 				c2: Config{
 					Data: map[string]interface{}{
-						NodeMaster: "true"},
+						NodeMaster: "true",
+					},
 				},
 			},
 			want: true,
@@ -105,7 +54,8 @@ func TestConfig_EqualRoles(t *testing.T) {
 			args: args{
 				c2: Config{
 					Data: map[string]interface{}{
-						NodeData: "true"},
+						NodeData: "true",
+					},
 				},
 			},
 			want: false,
@@ -113,7 +63,11 @@ func TestConfig_EqualRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.c.EqualRoles(tt.args.c2); got != tt.want {
+			c1, err := tt.c.Unpacked()
+			require.NoError(t, err)
+			c2, err := tt.args.c2.Unpacked()
+			require.NoError(t, err)
+			if got := c1.EqualRoles(c2); got != tt.want {
 				t.Errorf("Config.EqualRoles() = %v, want %v", got, tt.want)
 			}
 		})
