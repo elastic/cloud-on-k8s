@@ -79,8 +79,7 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can start only if not started, stopping or killing,
-	// and stopped or killed in non strict mode.
+	// Can start only if not started, stopping or killing
 	switch p.state {
 	case started:
 		return p.state, nil

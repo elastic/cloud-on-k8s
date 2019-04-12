@@ -64,13 +64,34 @@ func (s ProcessState) Error() error {
 }
 
 // ShouldBeStarted returns if the process should be started regarding its actual state.
-// It should be started if it's not stopped or killed. Used when the process manager must
-// decide whether to start the process.
+// It should be started if it's not stopping, stopped, killing or killed.
+// Used when the process manager must decide whether to start the process.
 func (p *Process) ShouldBeStarted() bool {
 	p.mutex.RLock()
 	defer p.mutex.RUnlock()
 
-	return p.state != stopped && p.state != killed
+	switch p.state {
+	case stopping, stopped, killing, killed:
+		return false
+	}
+
+	return true
+}
+
+// CanBeStopped returns if the process can be stopped regarding its actual state.
+// It can be stopped only if it's not stopped or killed.
+// Used when the process manager must decide whether to stop the process by forwarding
+// a signal.
+func (p *Process) CanBeStopped() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
+	switch p.state {
+	case stopped, killed:
+		return false
+	}
+
+	return true
 }
 
 // updateState updates the process state to the next state given an action and an error.

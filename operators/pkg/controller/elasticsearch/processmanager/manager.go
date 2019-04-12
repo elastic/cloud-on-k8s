@@ -80,7 +80,7 @@ func (pm ProcessManager) Start(done chan ExitStatus) error {
 func (pm ProcessManager) Forward(sig os.Signal) error {
 	log.Info("Forwarding signal", "sig", sig)
 
-	if pm.process.ShouldBeStarted() {
+	if pm.process.CanBeStopped() {
 		_, err := pm.process.Kill(sig)
 		if err != nil {
 			return err
