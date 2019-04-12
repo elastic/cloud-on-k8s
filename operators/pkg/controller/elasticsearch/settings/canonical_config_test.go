@@ -298,7 +298,7 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 					"c": true,
 				}),
 			},
-			want: []string{"c", "a"},
+			want: []string{"a", "c"},
 		},
 	}
 	for _, tt := range tests {

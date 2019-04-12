@@ -14,6 +14,7 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
+	"k8s.io/kubernetes/pkg/util/slice"
 )
 
 // CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
@@ -181,6 +182,7 @@ func removeIgnored(diff, toIgnore []string) []string {
 		}
 		result = append(result, d)
 	}
+	slice.SortStrings(result)
 	return result
 }
 
