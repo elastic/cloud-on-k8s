@@ -6,7 +6,6 @@ metadata:
   name: trust-one
 spec:
   version: "6.7.0"
-  setVmMaxMapCount: true
   topologies:
     - nodeTypes:
         master: true
@@ -25,7 +24,6 @@ metadata:
   name: trust-two
 spec:
   version: "6.7.0"
-  setVmMaxMapCount: true
   topologies:
     - nodeTypes:
         master: true

@@ -22,7 +22,6 @@ metadata:
 spec:
   version: "6.7.0"
   licenseType: trial # can be "basic", "trial", "gold", "platinum"
-  setVmMaxMapCount: true
   updateStrategy:
     groups:
     # give each failure domain a chance to reconcile failures before regular changes:

@@ -122,6 +122,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Create(controllerSecret))
 	defer c.Delete(controllerSecret)
 
+	varFalse := false
 	cluster := &v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -130,7 +131,7 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
 			LicenseType:      "platinum",
-			SetVMMaxMapCount: false,
+			SetVMMaxMapCount: &varFalse,
 			Topology: []v1alpha1.TopologyElementSpec{
 				{
 					NodeCount: 3,

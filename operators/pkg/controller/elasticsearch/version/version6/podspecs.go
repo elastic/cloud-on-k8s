@@ -74,7 +74,7 @@ func ExpectedPodSpecs(
 func newInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
-	setVMMaxMapCount bool,
+	setVMMaxMapCount *bool,
 	nodeCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
