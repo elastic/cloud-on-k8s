@@ -7,6 +7,7 @@ package processmanager
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -38,12 +39,18 @@ func (s ProcessState) String() string {
 }
 
 // ReadProcessState reads the process state in the processStateFile.
-// The state is notInitialized if the file does not exist.
+// The state is notInitialized if the file does not exist or an IO error occurs.
 func ReadProcessState() ProcessState {
-	data, err := ioutil.ReadFile(processStateFile)
-	if err != nil {
+	if _, err := os.Stat(processStateFile); os.IsNotExist(err) {
 		return notInitialized
 	}
+
+	data, err := ioutil.ReadFile(processStateFile)
+	if err != nil {
+		log.Error(err, "Failed to read process state file")
+		return notInitialized
+	}
+
 	return ProcessState(string(data))
 }
 
