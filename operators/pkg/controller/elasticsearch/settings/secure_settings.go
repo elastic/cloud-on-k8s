@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
@@ -114,4 +115,15 @@ func watchUserSecret(watched watches.DynamicWatches, userSecret *corev1.SecretRe
 		},
 		Watcher: cluster,
 	})
+}
+
+// SecureSettingsFinalizer removes any dynamic watches on external user created secret.
+func SecureSettingsFinalizer(cluster types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
+	return finalizer.Finalizer{
+		Name: "secure-settings.finalizers.elasticsearch.k8s.elastic.co",
+		Execute: func() error {
+			watched.Secrets.RemoveHandlerForKey(userSecretWatchName(cluster))
+			return nil
+		},
+	}
 }
