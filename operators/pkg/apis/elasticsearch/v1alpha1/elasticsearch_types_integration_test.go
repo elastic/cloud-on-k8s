@@ -29,12 +29,13 @@ func TestStorageElasticsearch(t *testing.T) {
 		Spec: ElasticsearchSpec{
 			Nodes: []NodeSpec{
 				{
-					Config: Config{},
+					Config: Config{
+						Data: map[string]interface{}{
+							NodeMaster: false,
+						},
+					},
 				},
 			},
-			SnapshotRepository: nil,
-			FeatureFlags:       nil,
-			UpdateStrategy:     UpdateStrategy{},
 		},
 	}
 	g := gomega.NewGomegaWithT(t)
