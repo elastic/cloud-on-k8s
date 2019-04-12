@@ -11,8 +11,6 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
@@ -53,9 +51,8 @@ func baseConfig(clusterName string, minMasterNodes int) *CanonicalConfig {
 		DiscoveryZenMinimumMasterNodes: strconv.Itoa(minMasterNodes),
 
 		// derive IP dynamically from the pod IP, injected as env var
-		NetworkPublishHost:          "${" + EnvPodIP + "}",
-		NetworkHost:                 "0.0.0.0",
-		TransportProfilesClientPort: strconv.Itoa(network.TransportClientPort),
+		NetworkPublishHost: "${" + EnvPodIP + "}",
+		NetworkHost:        "0.0.0.0",
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
@@ -78,10 +75,6 @@ func xpackConfig(licenseType v1alpha1.LicenseType) *CanonicalConfig {
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
 		XPackSecurityTransportSslVerificationMode: "certificate",
-
-		// client profiles
-		TransportProfilesClientXPackSecurityType:                    "client",
-		TransportProfilesClientXPackSecuritySslClientAuthentication: "none",
 
 		// x-pack security http settings
 		XPackSecurityHttpSslEnabled:                "true",

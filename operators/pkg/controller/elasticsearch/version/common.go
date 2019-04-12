@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
@@ -39,7 +40,7 @@ func NewExpectedPodSpecs(
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -90,7 +91,7 @@ func podSpec(
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
@@ -156,22 +157,7 @@ func podSpec(
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
 				// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 			},
-			ReadinessProbe: &corev1.Probe{
-				FailureThreshold:    3,
-				InitialDelaySeconds: 10,
-				PeriodSeconds:       10,
-				SuccessThreshold:    3,
-				TimeoutSeconds:      5,
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							pod.DefaultReadinessProbeScript,
-						},
-					},
-				},
-			},
+			ReadinessProbe: pod.NewReadinessProbe(),
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
@@ -248,7 +234,7 @@ func NewPod(
 
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        pod.NewNodeName(es.Name),
+			Name:        name.NewPodName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
 			Annotations: podSpecCtx.NodeSpec.PodTemplate.Annotations,

@@ -23,10 +23,11 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
 	LicenseType string `json:"licenseType,omitempty"`
 
-	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// SetVMMaxMapCount indicates whether an init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVMMaxMapCount bool `json:"setVmMaxMapCount,omitempty"`
+	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
+	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
 	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.

@@ -4,9 +4,25 @@
 
 export SHELL := /bin/bash
 DEP := $(shell command -v dep)
+KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
+
+## -- Docker image
+
+NAME = elastic-local
+REPOSITORY ?= elastic-dev
+# on GKE, use GCR and GCLOUD_PROJECT
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+	REGISTRY ?= eu.gcr.io
+	REPOSITORY = ${GCLOUD_PROJECT}
+endif
+# default to local registry
+ifeq ($(REGISTRY),)
+	REGISTRY ?= localhost:5000
+endif
+
+IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG_TAG ?= latest
-IMG_MINIKUBE = localhost:5000/elastic-cloud-dev/elastic-local
-IMG_GKE ?= eu.gcr.io/elastic-cloud-dev/elastic-local/$(subst _,,$(USER))
+IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX):$(IMG_TAG)
 
 ##
 ## Go stuff
@@ -42,46 +58,44 @@ check-license-header:
 ## Docker stuff
 ## ------------
 
-docker-minikube:
-	eval $$(minikube docker-env) ;\
-	docker build -t $(IMG_MINIKUBE):$(IMG_TAG) . && \
-	docker push $(IMG_MINIKUBE):$(IMG_TAG)
+# if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
+check-gke:
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set while GKE detected)
+endif
+endif
 
-docker-gke:
-	docker build -t $(IMG_GKE):$(IMG_TAG) .
-	docker push $(IMG_GKE):$(IMG_TAG)
+docker-build-push: check-gke
+ifeq ($(KUBECTL_CLUSTER),minikube)
+	eval $$(minikube docker-env) ;\
+	docker build -t $(IMG) . && \
+    docker push $(IMG)
+else
+	docker build -t $(IMG) . && \
+	docker push $(IMG)
+endif
 
 ##
 ## Deployment stuff
 ## ----------------
 
-# deploy everything to the minikube environment
-deploy-minikube: deploy-base deploy-provisioner-minikube deploy-driver-minikube
-
-# deploy everything to the gke environment
-deploy-gke: deploy-base deploy-provisioner-gke deploy-driver-gke
+# deploy everything to the current k8s cluster
+deploy: deploy-base deploy-provisioner deploy-driver
 
 deploy-base:
 	kubectl apply -f config/rbac.yaml -f config/storageclass.yaml
 
-deploy-provisioner-minikube:
-	cat config/provisioner.yaml | sed "s;\$$IMG;$(IMG_MINIKUBE):$(IMG_TAG);g" | kubectl apply -f -
+deploy-provisioner:
+	cat config/provisioner.yaml | sed "s;\$$IMG;$(IMG);g" | kubectl apply -f -
 
-deploy-provisioner-gke:
-	cat config/provisioner.yaml | sed "s;\$$IMG;$(IMG_GKE):$(IMG_TAG);g" | kubectl apply -f -
-
-deploy-driver-minikube:
-	cat config/driver.yaml | sed "s;\$$IMG;$(IMG_MINIKUBE):$(IMG_TAG);g" | kubectl apply -f -
-
-deploy-driver-gke:
-	cat config/driver-gke.yaml | sed "s;\$$IMG;$(IMG_GKE):$(IMG_TAG);g" | kubectl apply -f -
+deploy-driver:
+	cat config/driver.yaml | sed "s;\$$IMG;$(IMG);g" | kubectl apply -f -
 
 delete-provisioner-driver:
 	kubectl delete --ignore-not-found -f config/provisioner.yaml -f config/driver.yaml
 
-redeploy-provisioner-driver-gke: delete-provisioner-driver deploy-provisioner-gke deploy-driver-gke
-
-redeploy-provisioner-driver-minikube: delete-provisioner-driver deploy-provisioner-minikube deploy-driver-minikube
+redeploy-provisioner-driver: delete-provisioner-driver deploy-provisioner deploy-driver
 
 redeploy-samples:
 	kubectl delete --ignore-not-found -f config/pvc-sample.yaml -f config/pod-sample.yaml
@@ -96,11 +110,6 @@ provisioner-logs:
 ##
 ## Minikube stuff
 ## --------------
-
-# run a docker registry in the minikube VM
-minikube-registry:
-	eval $$(minikube docker-env) ;\
-	docker run -d -p 5000:5000 --restart=always --name registry registry:2
 
 # create a new disk and attach it to minikube as /dev/sdb
 MINIKUBE_EXTRA_DISK_FILE = ${HOME}/.minikube/machines/minikube/extra-disk.vmdk

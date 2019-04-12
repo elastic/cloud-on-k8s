@@ -9,7 +9,6 @@ metadata:
 spec:
   version: "6.7.0"
   licenseType: trial # can be "basic", "trial", "gold", "platinum"
-  setVmMaxMapCount: true
   topology:
   - nodeTypes:
       master: true

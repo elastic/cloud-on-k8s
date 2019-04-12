@@ -155,9 +155,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	es := v1alpha1.Elasticsearch{
 		ObjectMeta: testObjectMeta,
 		Spec: v1alpha1.ElasticsearchSpec{
-			Version:          "1.2.3",
-			Image:            "custom-image",
-			SetVMMaxMapCount: true,
+			Version: "1.2.3",
+			Image:   "custom-image",
 			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 1,

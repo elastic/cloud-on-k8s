@@ -102,20 +102,6 @@ var expectedJSONized = Config{
 	},
 }
 
-var expectedUnpacked = Config{
-	Data: map[string]interface{}{
-		"a": map[string]interface{}{
-			"b": map[string]interface{}{
-				"c":   1.0,
-				"foo": "bar",
-			},
-			"d": uint64(1),
-		},
-		"e": []interface{}{uint64(1), uint64(2), uint64(3)},
-		"f": true,
-	},
-}
-
 func TestConfig_DeepCopyInto(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -160,31 +146,48 @@ func TestConfig_DeepCopy(t *testing.T) {
 	}
 }
 
-func TestConfig_Canonicalize(t *testing.T) {
+func TestConfig_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Config
+		want    ElasticsearchSettings
 		wantErr bool
 	}{
 		{
-			name:    "happy path",
-			args:    testFixture,
+			name: "happy path",
+			args: Config{
+				Data: map[string]interface{}{
+					"node": map[string]interface{}{
+						"master": false,
+						"data":   true,
+					},
+					"cluster": map[string]interface{}{
+						"initial_master_nodes": []string{"a", "b"},
+					},
+				},
+			},
+			want: ElasticsearchSettings{
+				Node: Node{
+					Master: false,
+					Data:   true,
+					Ingest: true,
+					ML:     true,
+				},
+				Cluster: ClusterSettings{
+					InitialMasterNodes: []string{"a", "b"},
+				},
+			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.Canonicalize()
+			got, err := tt.args.Unpack()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Config.Canonicalize() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Config.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			var out map[string]interface{}
-			err = got.Unpack(&out)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ucfg.Config.Unpack error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if diff := deep.Equal(expectedUnpacked.Data, out); diff != nil {
+			if diff := deep.Equal(tt.want, got); diff != nil {
 				t.Error(diff)
 			}
 		})

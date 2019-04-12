@@ -23,7 +23,6 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: "6.6.1"
-  setVmMaxMapCount: true
   topology:
     - nodeTypes:
         master: true

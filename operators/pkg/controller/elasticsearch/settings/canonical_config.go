@@ -6,6 +6,7 @@ package settings
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/elastic/go-ucfg"
 	udiff "github.com/elastic/go-ucfg/diff"
@@ -108,6 +109,19 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 		}
 	}
 	return nil
+}
+
+func (c *CanonicalConfig) Has(keys []string) []string {
+	var has []string
+	flatKeys := c.access().FlattenedKeys(options...)
+	for _, s := range keys {
+		for _, k := range flatKeys {
+			if strings.HasPrefix(k, s) {
+				has = append(has, s)
+			}
+		}
+	}
+	return has
 }
 
 // Render returns the content of the `elasticsearch.yml` file,
