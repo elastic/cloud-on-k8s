@@ -77,7 +77,8 @@ func (u *Updater) waitForElasticsearchReady() {
 	}
 	esClient := client.NewElasticsearchClient(nil, u.config.EsEndpoint, u.config.EsUser, u.config.EsVersion, caCerts)
 
-	u.updateStatus(waitingEsState, "Waiting for Elasticsearch to be ready", nil)
+	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
+
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 		_, err := esClient.GetClusterInfo(ctx)
