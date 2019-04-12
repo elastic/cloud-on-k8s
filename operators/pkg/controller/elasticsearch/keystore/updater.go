@@ -76,7 +76,9 @@ func (u *Updater) waitForElasticsearchReady() {
 
 	u.updateStatus(waitingEsState, "Waiting for Elasticsearch to be ready", nil)
 	for {
-		_, err := esClient.GetClusterInfo(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+		_, err := esClient.GetClusterInfo(ctx)
+		cancel()
 		if err == nil {
 			break
 		}
