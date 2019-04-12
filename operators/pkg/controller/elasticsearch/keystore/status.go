@@ -21,10 +21,3 @@ type Status struct {
 	Reason string
 	At     time.Time
 }
-
-// Status returns the Keystore updater status
-func (u *Updater) Status() (Status, error) {
-	u.lock.RLock()
-	defer u.lock.RUnlock()
-	return u.status, nil
-}
