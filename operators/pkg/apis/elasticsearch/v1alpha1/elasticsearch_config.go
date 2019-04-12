@@ -81,11 +81,14 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 func (c *Config) DeepCopyInto(out *Config) {
 	bytes, err := json.Marshal(c.Data)
 	if err != nil {
+		// we assume that it marshals cleanly because otherwise the resource would not have been
+		// created in the API server
 		panic(err)
 	}
 	var copy map[string]interface{}
 	err = json.Unmarshal(bytes, &copy)
 	if err != nil {
+		// we assume again optimistically that because we just marshalled that the round trip works as well
 		panic(err)
 	}
 	out.Data = copy
