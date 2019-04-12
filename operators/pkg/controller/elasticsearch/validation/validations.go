@@ -32,7 +32,7 @@ func supportedVersion(ctx Context) Result {
 func hasMaster(ctx Context) Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		cfg, err := t.Config.Unpacked()
+		cfg, err := t.Config.Unpack()
 		if err != nil {
 
 			return Result{Reason: cfgInvalidMsg}

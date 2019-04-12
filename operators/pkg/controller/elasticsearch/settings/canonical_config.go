@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/go-ucfg"
 	udiff "github.com/elastic/go-ucfg/diff"
 	yaml2 "github.com/elastic/go-ucfg/yaml"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -20,20 +20,24 @@ import (
 // as a hierarchical key-value configuration.
 type CanonicalConfig ucfg.Config
 
-var options = []ucfg.Option{ucfg.PathSep(".")}
+var options = estype.CfgOptions
 
+// NewCanonicalConfig creates a new empty config.
 func NewCanonicalConfig() *CanonicalConfig {
 	return fromConfig(ucfg.New())
 }
 
-func NewCanonicalConfigFrom(cfg v1alpha1.Config) (*CanonicalConfig, error) {
-	config, err := cfg.Canonicalize()
+// NewCanonicalConfigFrom creates a new config from the API type.
+func NewCanonicalConfigFrom(cfg estype.Config) (*CanonicalConfig, error) {
+	config, err := ucfg.NewFrom(cfg.Data, options...)
 	if err != nil {
 		return nil, err
 	}
 	return fromConfig(config), nil
 }
 
+// MustCanonicalConfig creates a new config and panics on errors.
+// Use for testing only.
 func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 	config, err := ucfg.NewFrom(cfg, options...)
 	if err != nil {
@@ -42,6 +46,8 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 	return fromConfig(config)
 }
 
+// MustNewSingleValue creates a new config holding a single string value.
+// Convenience constructor, will panic in the unlikely event of errors.
 func MustNewSingleValue(k string, v ...string) *CanonicalConfig {
 	cfg := fromConfig(ucfg.New())
 	err := cfg.Set(k, v...)
@@ -62,6 +68,7 @@ func ParseConfig(content []byte) (*CanonicalConfig, error) {
 
 }
 
+// Set set key to string vals in c.  An error is returned if key is invalid.
 func (c *CanonicalConfig) Set(key string, vals ...string) error {
 	if c == nil {
 		return errors.New("config is nil")
@@ -82,8 +89,9 @@ func (c *CanonicalConfig) Set(key string, vals ...string) error {
 	return nil
 }
 
-func (c *CanonicalConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
-	var cfg v1alpha1.ElasticsearchSettings
+// Unpack returns a typed subset of Elasticsearch settings.
+func (c *CanonicalConfig) Unpack() (estype.ElasticsearchSettings, error) {
+	cfg := estype.DefaultCfg
 	return cfg, c.access().Unpack(&cfg, options...)
 }
 
@@ -118,6 +126,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 
 type untypedDict = map[string]interface{}
 
+// Diff returns the flattened keys whre c and c2 differ.
 func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	var diff []string
 	if c == c2 {
@@ -152,10 +161,6 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 		diff = stringsutil.RemoveStringInSlice(s, diff)
 	}
 	return diff
-}
-
-func (c *CanonicalConfig) access() *ucfg.Config {
-	return (*ucfg.Config)(c)
 }
 
 func diffMap(c1, c2 untypedDict, key string) []string {
@@ -202,6 +207,10 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 		}
 	}
 	return diff
+}
+
+func (c *CanonicalConfig) access() *ucfg.Config {
+	return (*ucfg.Config)(c)
 }
 
 func fromConfig(in *ucfg.Config) *CanonicalConfig {

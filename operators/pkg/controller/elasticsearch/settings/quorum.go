@@ -22,10 +22,7 @@ func quorum(nMasters int) int {
 func ComputeMinimumMasterNodes(topology []v1alpha1.NodeSpec) int {
 	nMasters := 0
 	for _, t := range topology {
-		cfg, err := t.Config.Unpacked()
-		if err != nil {
-			return nMasters // TODO
-		}
+		cfg := t.Config.MustUnpack() // we assume resource has passed validation at this point
 		if cfg.Node.Master {
 			nMasters += int(t.NodeCount)
 		}

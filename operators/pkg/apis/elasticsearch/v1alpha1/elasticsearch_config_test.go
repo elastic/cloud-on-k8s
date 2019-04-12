@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig_EqualRoles(t *testing.T) {
+func TestConfig_RoleDefaults(t *testing.T) {
 	type args struct {
 		c2 Config
 	}
@@ -63,11 +63,11 @@ func TestConfig_EqualRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c1, err := tt.c.Unpacked()
+			c1, err := tt.c.Unpack()
 			require.NoError(t, err)
-			c2, err := tt.args.c2.Unpacked()
+			c2, err := tt.args.c2.Unpack()
 			require.NoError(t, err)
-			if got := c1.EqualRoles(c2); got != tt.want {
+			if got := c1.Node == c2.Node; got != tt.want {
 				t.Errorf("Config.EqualRoles() = %v, want %v", got, tt.want)
 			}
 		})
@@ -167,7 +167,7 @@ func TestConfig_Canonicalize(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "simple test",
+			name:    "happy path",
 			args:    testFixture,
 			wantErr: false,
 		},
