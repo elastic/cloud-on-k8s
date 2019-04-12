@@ -4,16 +4,31 @@
 
 package validation
 
-import "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+import (
+	"fmt"
+
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+)
 
 // Validations are all registered Elasticsearch validations.
 var Validations = []Validation{
+	nameLength,
 	hasMaster,
 	supportedVersion,
 	noDowngrades,
 	validUpgradePath,
 }
 
+// nameLength checks the length of the Elasticsearch name.
+func nameLength(ctx Context) Result {
+	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxElasticsearchNameLength {
+		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)}
+	}
+	return OK
+}
+
+// supportedVersion checks if the version is supported.
 func supportedVersion(ctx Context) Result {
 	if v := driver.SupportedVersions(ctx.Proposed.Version); v == nil {
 		return Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
