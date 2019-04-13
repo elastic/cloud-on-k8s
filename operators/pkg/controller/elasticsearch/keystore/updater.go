@@ -26,8 +26,7 @@ import (
 const attemptReload = "attempt-reload"
 
 var (
-	name = "keystore-updater"
-	log  = logf.Log.WithName(name)
+	log = logf.Log.WithName("keystore-updater")
 )
 
 // Updater updates the keystore

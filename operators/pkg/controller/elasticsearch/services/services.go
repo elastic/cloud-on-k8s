@@ -7,11 +7,11 @@ package services
 import (
 	"strconv"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +26,7 @@ const (
 // DiscoveryServiceName returns the name for the discovery service
 // associated to this cluster
 func DiscoveryServiceName(esName string) string {
-	return stringsutil.Concat(esName, "-es-discovery")
+	return name.DiscoveryService(esName)
 }
 
 // NewDiscoveryService returns the discovery service associated to the given cluster
@@ -61,7 +61,7 @@ func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return stringsutil.Concat(esName, "-es")
+	return name.Service(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
@@ -91,11 +91,6 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 					Name:     network.ProtocolForCluster(es),
 					Protocol: corev1.ProtocolTCP,
 					Port:     network.HTTPPort,
-				},
-				corev1.ServicePort{
-					Name:     "transport",
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.TransportClientPort,
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,

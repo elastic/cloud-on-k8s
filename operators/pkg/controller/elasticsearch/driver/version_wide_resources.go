@@ -7,12 +7,12 @@ package driver
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
@@ -66,8 +66,7 @@ func reconcileVersionWideResources(
 	expectedExtraFilesSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			// TODO: suffix and trim
-			Name: fmt.Sprintf("%s-extrafiles", es.Name),
+			Name:      name.ExtraFilesSecret(es.Name),
 		},
 		Data: map[string][]byte{
 			nodecerts.TrustRestrictionsFilename: trustRootCfgData,

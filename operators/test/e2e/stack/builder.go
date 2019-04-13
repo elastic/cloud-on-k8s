@@ -47,8 +47,7 @@ func NewStackBuilder(name string) Builder {
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				SetVMMaxMapCount: true,
-				Version:          defaultVersion,
+				Version: defaultVersion,
 			},
 		},
 		Kibana: kbtype.Kibana{
