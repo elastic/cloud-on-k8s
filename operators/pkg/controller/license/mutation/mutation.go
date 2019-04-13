@@ -11,15 +11,12 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/chrono"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	"github.com/pkg/errors"
 )
-
-func toMillis(t time.Time) int64 {
-	return t.UnixNano() / int64(time.Millisecond)
-}
 
 // PopulateTrialLicense adds missing fields to a trial license.
 func PopulateTrialLicense(l *v1alpha1.EnterpriseLicense) error {
@@ -41,7 +38,7 @@ func PopulateTrialLicense(l *v1alpha1.EnterpriseLicense) error {
 
 // StartTrial sets the issue, start and end dates for a trial.
 func StartTrial(l *v1alpha1.EnterpriseLicense, from time.Time) {
-	l.Spec.StartDateInMillis = toMillis(from)
+	l.Spec.StartDateInMillis = chrono.ToMillis(from)
 	l.Spec.IssueDateInMillis = l.Spec.StartDateInMillis
-	l.Spec.ExpiryDateInMillis = toMillis(from.Add(24 * time.Hour * 30))
+	l.Spec.ExpiryDateInMillis = chrono.ToMillis(from.Add(24 * time.Hour * 30))
 }
