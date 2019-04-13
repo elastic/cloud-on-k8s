@@ -18,6 +18,7 @@ REPOSITORY ?= elastic-dev
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
 	REPOSITORY = ${GCLOUD_PROJECT}
+	echo "Setting for GKE"
 endif
 # default to local registry
 ifeq ($(REGISTRY),)
@@ -27,8 +28,8 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
 # use git sha1 as the default image tag
-GIT_SHA1 = $(shell git rev-parse --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(GIT_SHA1)
+TAG ?= $(shell git rev-parse --verify HEAD)
+OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
 ## -- Namespaces
@@ -241,7 +242,7 @@ e2e-setup:
 	kubectl apply -f config/e2e/rbac.yaml
 
 # Run e2e tests as a k8s batch job
-E2E_IMG ?= $(IMG)-e2e-tests:$(GIT_SHA1)
+E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 e2e: e2e-setup
 	# push the e2e tests docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
@@ -274,6 +275,10 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # that we delete if everything went fine
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
+
+ci-release:
+	@ hack/gke-cluster.sh registry
+	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 
 
 ##########################

@@ -1,1 +1,19 @@
-# TODO.
+pipeline {
+
+    agent {
+        label 'swarm'
+    }
+
+    environment {
+        REGISTRY = 'eu.gcr.io'
+    }
+
+    stages {
+        stage('Build and push release image') {
+            steps {
+                sh 'make -C build/ci ci-release'
+            }
+        }
+    }
+
+}

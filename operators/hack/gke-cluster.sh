@@ -8,7 +8,7 @@
 # of the necessary default settings so that no environment variable has to
 # be specified.
 #
-# Usage: gke-cluster.sh (create|delete|name)
+# Usage: gke-cluster.sh (create|delete|name|registry)
 #
 
 set -eu
@@ -81,8 +81,12 @@ main() {
     name)
       cluster_fullname
     ;;
+    registry)
+      auth_service_account
+      setup_registry_credentials
+    ;;
     *)
-      echo "Usage: gke-cluster.sh (create|delete|name)"; exit 1
+      echo "Usage: gke-cluster.sh (create|delete|name|registry)"; exit 1
     ;;
   esac
 }
