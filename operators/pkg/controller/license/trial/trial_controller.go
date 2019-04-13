@@ -119,9 +119,13 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusValid)
 }
 
+func (r *ReconcileTrials) isTrialRunning() bool {
+	return r.trialPubKey != nil
+}
+
 func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
-	if r.trialPubKey != nil {
-		// restarting a trial or trial status reset
+	if r.isTrialRunning() {
+		// restarting a trial or trial status reset is not allowed
 		return r.updateStatus(l, v1alpha1.LicenseStatusInvalid)
 	}
 
@@ -176,14 +180,14 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 }
 
 func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.Verifier, error) {
-	if r.trialPubKey == nil {
-		// after operator restart fall back to trial status
-		return licensing.NewVerifier(trialStatus.Data[pubkeyKey])
+	if r.isTrialRunning() {
+		// prefer in memory version of the public key
+		return &licensing.Verifier{
+			PublicKey: r.trialPubKey,
+		}, nil
 	}
-	// prefer in memory version of the public key
-	return &licensing.Verifier{
-		PublicKey: r.trialPubKey,
-	}, nil
+	// after operator restart fall back to persisted trial status
+	return licensing.NewVerifier(trialStatus.Data[pubkeyKey])
 }
 
 func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
@@ -197,7 +201,7 @@ func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1al
 }
 
 func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
-	if r.trialPubKey == nil {
+	if !r.isTrialRunning() {
 		return nil
 	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(r.trialPubKey)
