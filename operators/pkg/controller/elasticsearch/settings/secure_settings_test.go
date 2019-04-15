@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -269,7 +270,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.NoError(t, tt.watches.InjectScheme(scheme.Scheme))
-			err := ReconcileSecureSettings(tt.c, scheme.Scheme, tt.watches, tt.es)
+			eventsRecorder := events.NewRecorder()
+			err := ReconcileSecureSettings(tt.c, eventsRecorder, scheme.Scheme, tt.watches, tt.es)
 			require.NoError(t, err)
 			// managed secret should have been updated to match user secret
 			actual := corev1.Secret{}
@@ -303,6 +305,7 @@ func Test_retrieveUserSecret(t *testing.T) {
 		ref              corev1.SecretReference
 		defaultNamespace string
 		want             *corev1.Secret
+		wantEvents       []events.Event
 	}{
 		{
 			name:             "secret exists",
@@ -310,6 +313,7 @@ func Test_retrieveUserSecret(t *testing.T) {
 			ref:              ref,
 			defaultNamespace: "default-ns",
 			want:             &secret,
+			wantEvents:       []events.Event{},
 		},
 		{
 			name:             "secret does not exist",
@@ -317,6 +321,13 @@ func Test_retrieveUserSecret(t *testing.T) {
 			ref:              ref,
 			defaultNamespace: "default-ns",
 			want:             &corev1.Secret{},
+			wantEvents: []events.Event{
+				{
+					EventType: corev1.EventTypeWarning,
+					Reason:    events.EventReasonUnexpected,
+					Message:   "Secure settings secret not found: user-secret-name",
+				},
+			},
 		},
 		{
 			name:             "no namespace provided, use default one",
@@ -324,13 +335,16 @@ func Test_retrieveUserSecret(t *testing.T) {
 			ref:              corev1.SecretReference{Name: secretName},
 			defaultNamespace: secretNs,
 			want:             &secret,
+			wantEvents:       []events.Event{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := retrieveUserSecret(tt.c, tt.ref, tt.defaultNamespace)
+			eventsRecorder := events.NewRecorder()
+			got, err := retrieveUserSecret(tt.c, eventsRecorder, tt.ref, tt.defaultNamespace)
 			require.NoError(t, err)
 			require.Equal(t, tt.want.Data, got.Data)
+			require.EqualValues(t, tt.wantEvents, eventsRecorder.Events())
 		})
 	}
 }

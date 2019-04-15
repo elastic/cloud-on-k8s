@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
@@ -30,6 +31,7 @@ import (
 // We watch the user-provided secret, in order to copy over any change done by the user to our managed secret.
 func ReconcileSecureSettings(
 	c k8s.Client,
+	eventsRecorder *events.Recorder,
 	scheme *runtime.Scheme,
 	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
@@ -44,7 +46,7 @@ func ReconcileSecureSettings(
 	// retrieve the secret referenced by the user
 	userSecret := &corev1.Secret{}
 	if userSecretRef != nil {
-		userSecret, err = retrieveUserSecret(c, *userSecretRef, es.Namespace)
+		userSecret, err = retrieveUserSecret(c, eventsRecorder, *userSecretRef, es.Namespace)
 		if err != nil {
 			return err
 		}
@@ -74,7 +76,7 @@ func ReconcileSecureSettings(
 	})
 }
 
-func retrieveUserSecret(c k8s.Client, ref corev1.SecretReference, defaultNamespace string) (*corev1.Secret, error) {
+func retrieveUserSecret(c k8s.Client, eventsRecorder *events.Recorder, ref corev1.SecretReference, defaultNamespace string) (*corev1.Secret, error) {
 	// if the namespace is not set, default to the Elasticsearch namespace
 	namespace := ref.Namespace
 	if namespace == "" {
@@ -83,7 +85,9 @@ func retrieveUserSecret(c k8s.Client, ref corev1.SecretReference, defaultNamespa
 	userSecret := corev1.Secret{}
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: ref.Name}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
-		log.Info("Secure settings secret not found, ignoring", "ref", ref)
+		msg := "Secure settings secret not found"
+		log.Info(msg, "ref", ref)
+		eventsRecorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+ref.Name)
 	} else if err != nil {
 		return nil, err
 	}

@@ -176,7 +176,7 @@ func (d *defaultDriver) Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
 	})
 
-	if err := settings.ReconcileSecureSettings(d.Client, d.Scheme, d.DynamicWatches, es); err != nil {
+	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
 		return results.WithError(err)
 	}
 
