@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/chrono"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,24 +32,24 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "valid license - starts now",
 			fields: fields{
-				startMillis:  test.Millis("2019-01-31"),
-				expiryMillis: test.Millis("2019-12-31"),
+				startMillis:  chrono.MustMillis("2019-01-31"),
+				expiryMillis: chrono.MustMillis("2019-12-31"),
 			},
 			want: true,
 		},
 		{
 			name: "valid license - no offset",
 			fields: fields{
-				startMillis:  test.Millis("2019-01-01"),
-				expiryMillis: test.Millis("2019-12-31"),
+				startMillis:  chrono.MustMillis("2019-01-01"),
+				expiryMillis: chrono.MustMillis("2019-12-31"),
 			},
 			want: true,
 		},
 		{
 			name: "valid license - with offset",
 			fields: fields{
-				startMillis:  test.Millis("2019-01-01"),
-				expiryMillis: test.Millis("2019-12-31"),
+				startMillis:  chrono.MustMillis("2019-01-01"),
+				expiryMillis: chrono.MustMillis("2019-12-31"),
 			},
 			args: args{
 				offset: 30 * 24 * time.Hour,
@@ -59,8 +59,8 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "invalid license - because of offset",
 			fields: fields{
-				startMillis:  test.Millis("2019-01-30"),
-				expiryMillis: test.Millis("2019-02-28"),
+				startMillis:  chrono.MustMillis("2019-01-30"),
+				expiryMillis: chrono.MustMillis("2019-02-28"),
 			},
 			args: args{
 				offset: 90 * 24 * time.Hour,
@@ -70,8 +70,8 @@ func TestClusterLicense_IsValidAt(t *testing.T) {
 		{
 			name: "invalid license - expired",
 			fields: fields{
-				startMillis:  test.Millis("2018-01-01"),
-				expiryMillis: test.Millis("2019-01-01"),
+				startMillis:  chrono.MustMillis("2018-01-01"),
+				expiryMillis: chrono.MustMillis("2019-01-01"),
 			},
 			want: false,
 		},

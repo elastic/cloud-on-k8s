@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 
@@ -25,38 +26,38 @@ var Validations = []Validation{
 }
 
 // nameLength checks the length of the Elasticsearch name.
-func nameLength(ctx Context) Result {
+func nameLength(ctx Context) validation.Result {
 	if len(ctx.Proposed.Elasticsearch.Name) > name.MaxElasticsearchNameLength {
-		return Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)}
+		return validation.Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)}
 	}
-	return OK
+	return validation.OK
 }
 
 // supportedVersion checks if the version is supported.
-func supportedVersion(ctx Context) Result {
+func supportedVersion(ctx Context) validation.Result {
 	if v := driver.SupportedVersions(ctx.Proposed.Version); v == nil {
-		return Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
+		return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
-	return OK
+	return validation.OK
 }
 
 // hasMaster checks if the given Elasticsearch cluster has at least one master node.
-func hasMaster(ctx Context) Result {
+func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		cfg, err := t.Config.Unpack()
 		if err != nil {
-			return Result{Reason: cfgInvalidMsg}
+			return validation.Result{Reason: cfgInvalidMsg}
 		}
 		hasMaster = hasMaster || (cfg.Node.Master && t.NodeCount > 0)
 	}
 	if hasMaster {
-		return OK
+		return validation.OK
 	}
-	return Result{Reason: masterRequiredMsg}
+	return validation.Result{Reason: masterRequiredMsg}
 }
 
-func noBlacklistedSettings(ctx Context) Result {
+func noBlacklistedSettings(ctx Context) validation.Result {
 	violations := make(map[int]map[string]struct{})
 	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		config, err := settings.NewCanonicalConfigFrom(n.Config)
@@ -77,7 +78,7 @@ func noBlacklistedSettings(ctx Context) Result {
 		}
 	}
 	if len(violations) == 0 {
-		return OK
+		return validation.OK
 	}
 	var sb strings.Builder
 	var sep string
@@ -87,7 +88,7 @@ func noBlacklistedSettings(ctx Context) Result {
 		sb.WriteString(strconv.FormatInt(int64(n), 10))
 		sb.WriteString("]: ")
 		var sep2 string
-		for k, _ := range v {
+		for k := range v {
 			sb.WriteString(sep2)
 			sb.WriteString(k)
 			sep2 = ", "
@@ -95,7 +96,7 @@ func noBlacklistedSettings(ctx Context) Result {
 		sep = "; "
 	}
 	sb.WriteString(" is not user configurable")
-	return Result{
+	return validation.Result{
 		Allowed: false,
 		Reason:  sb.String(),
 	}

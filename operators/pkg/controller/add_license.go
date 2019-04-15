@@ -7,8 +7,10 @@ package controller
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/license"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/license/trial"
 )
 
 func init() {
 	Register(operator.GlobalOperator, license.Add)
+	Register(operator.GlobalOperator, trial.Add)
 }

@@ -28,6 +28,7 @@ const (
 
 	podSuffix                 = "-es"
 	configSecretSuffix        = "-config"
+	certsSecretSuffix         = "-certs"
 	serviceSuffix             = "-es"
 	discoveryServiceSuffix    = "-es-discovery"
 	cASecretSuffix            = "-ca"
@@ -83,6 +84,10 @@ func NewPVCName(podName string, pvcTemplateName string) string {
 
 func ConfigSecret(podName string) string {
 	return suffix(podName, configSecretSuffix)
+}
+
+func CertsSecret(podName string) string {
+	return suffix(podName, certsSecretSuffix)
 }
 
 func Service(esName string) string {

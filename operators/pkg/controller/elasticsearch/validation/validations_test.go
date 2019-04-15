@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -19,14 +20,14 @@ import (
 )
 
 func Test_hasMaster(t *testing.T) {
-	failedValidation := Result{Allowed: false, Reason: masterRequiredMsg}
+	failedValidation := validation.Result{Allowed: false, Reason: masterRequiredMsg}
 	type args struct {
 		esCluster v1alpha1.Elasticsearch
 	}
 	tests := []struct {
 		name string
 		args args
-		want Result
+		want validation.Result
 	}{
 		{
 			name: "no topology",
@@ -103,7 +104,7 @@ func Test_hasMaster(t *testing.T) {
 					},
 				},
 			},
-			want: Result{Allowed: true},
+			want: validation.Result{Allowed: true},
 		},
 	}
 	for _, tt := range tests {
@@ -124,14 +125,14 @@ func Test_supportedVersion(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Result
+		want validation.Result
 	}{
 		{
 			name: "unsupported FAIL",
 			args: args{
 				esCluster: *es("1.0.0"),
 			},
-			want: Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
+			want: validation.Result{Allowed: false, Reason: unsupportedVersion(&version.Version{
 				Major: 1,
 				Minor: 0,
 				Patch: 0,
@@ -143,7 +144,7 @@ func Test_supportedVersion(t *testing.T) {
 			args: args{
 				esCluster: *es("6.7.0"),
 			},
-			want: OK,
+			want: validation.OK,
 		},
 	}
 	for _, tt := range tests {
@@ -164,14 +165,14 @@ func Test_noBlacklistedSettings(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Result
+		want validation.Result
 	}{
 		{
 			name: "no settings OK",
 			args: args{
 				es: *es("7.0.0"),
 			},
-			want: OK,
+			want: validation.OK,
 		},
 		{
 			name: "enforce blacklist FAIL",
@@ -192,7 +193,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 					},
 				},
 			},
-			want: Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
+			want: validation.Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
 		},
 		{
 			name: "enforce blacklist in multiple nodes FAIL",
@@ -219,7 +220,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 					},
 				},
 			},
-			want: Result{
+			want: validation.Result{
 				Allowed: false,
 				Reason:  "node[0]: cluster.initial_master_nodes; node[1]: xpack.security.transport.ssl.verification_mode is not user configurable",
 			},
@@ -242,7 +243,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 					},
 				},
 			},
-			want: OK,
+			want: validation.OK,
 		},
 
 		{
@@ -266,7 +267,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 					},
 				},
 			},
-			want: Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
+			want: validation.Result{Allowed: false, Reason: "node[0]: cluster.initial_master_nodes is not user configurable"},
 		},
 	}
 	for _, tt := range tests {
@@ -287,7 +288,7 @@ func Test_nameLength(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Result
+		want validation.Result
 	}{
 		{
 			name: "name length too long",
@@ -300,7 +301,7 @@ func Test_nameLength(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
 				},
 			},
-			want: Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)},
+			want: validation.Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)},
 		},
 		{
 			name: "name length OK",
@@ -313,7 +314,7 @@ func Test_nameLength(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
 				},
 			},
-			want: OK,
+			want: validation.OK,
 		},
 	}
 	for _, tt := range tests {
