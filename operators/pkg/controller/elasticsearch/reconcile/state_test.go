@@ -191,7 +191,7 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
-			wantEvents: []events.Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
+			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnhealthy, Message: "Elasticsearch cluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -218,7 +218,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: []events.Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
+			wantEvents: []events.Event{{EventType: corev1.EventTypeWarning, Reason: events.EventReasonUnexpected, Message: "Cluster UUID changed (was: old, is: new)"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -305,7 +305,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: []events.Event{{corev1.EventTypeNormal, events.EventReasonStateChange, "Master node is now new"}},
+			wantEvents: []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonStateChange, Message: "Master node is now new"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -440,7 +440,7 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
-				assert.Equal(t, []events.Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.Recorder.Events())
+				assert.Equal(t, []events.Event{{EventType: corev1.EventTypeNormal, Reason: events.EventReasonDelayed, Message: "Requested topology change delayed by data migration"}}, s.Recorder.Events())
 			},
 		},
 	}
