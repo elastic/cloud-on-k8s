@@ -42,29 +42,6 @@ Then, use either `make run` to run the operator locally, or `make deploy` to dep
 E2E tests will run in the `e2e` namespace. An operator needs to be running and managing resources in the `e2e` namespace.
 To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e tests in a separate shell `make e2e-local`.
 
-### Using snapshot repositories
-
-* Restrictions:
-    * Currently only [GCS](https://cloud.google.com/storage/) is supported
-* Either create a new bucket/service account or reuse our dev bucket (see Keybase)
-* Create a secret with your [service account bucket credentials](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html#repository-gcs-using-service-account)
-
-```bash
-kubectl create secret generic gcs-repo-account --from-file service-account.json
-```
-
-* Specify in your stack resource that you want to use a repository like so:
-
-```yaml
-snapshotRepository:
-  type: "gcs"
-  settings:
-    bucketName: "stack-sample-snapshot-repo"
-    credentials:
-      namespace: "default"
-      name: "gcs-repo-account"
-```
-
 ## Recommended reading
 
 * [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)
