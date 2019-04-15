@@ -7,6 +7,7 @@ package driver
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
@@ -15,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,13 +40,34 @@ func reconcileVersionWideResources(
 	trustRelationships []v1alpha1.TrustRelationship,
 	w watches.DynamicWatches,
 ) (*VersionWideResources, error) {
-	keystoreConfig, err := snapshot.ReconcileSnapshotCredentials(c, scheme, es, es.Spec.SnapshotRepository, w)
-	if err != nil {
+
+	// TODO: this will be replaced by the proper secure settings configuration
+	// it's just an empty placeholder for now (empty volume mounted)
+	expectedKeystoreSecret := corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: es.Namespace,
+			Name:      name.KeystoreSecret(es.Name),
+		},
+	}
+	reconciledKeystoreSecret := corev1.Secret{}
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:     c,
+		Scheme:     scheme,
+		Owner:      &es,
+		Expected:   &expectedKeystoreSecret,
+		Reconciled: &reconciledKeystoreSecret,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(expectedKeystoreSecret.Data, reconciledKeystoreSecret.Data)
+		},
+		UpdateReconciled: func() {
+			reconciledKeystoreSecret.Data = expectedKeystoreSecret.Data
+		},
+	}); err != nil {
 		return nil, err
 	}
 
 	expectedConfigMap := configmap.NewConfigMapWithData(k8s.ExtractNamespacedName(&es), settings.DefaultConfigMapData)
-	err = configmap.ReconcileConfigMap(c, scheme, es, expectedConfigMap)
+	err := configmap.ReconcileConfigMap(c, scheme, es, expectedConfigMap)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +122,7 @@ func reconcileVersionWideResources(
 	}
 
 	return &VersionWideResources{
-		KeyStoreConfig:                      keystoreConfig,
+		KeyStoreConfig:                      reconciledKeystoreSecret,
 		GenericUnecryptedConfigurationFiles: expectedConfigMap,
 		ExtraFilesSecret:                    reconciledExtraFilesSecret,
 	}, nil

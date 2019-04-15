@@ -16,6 +16,8 @@ const (
 	EventReasonUnhealthy = "Unhealthy"
 	// EventReasonUnexpected describes events that were not anticipated or happened at an unexpected time.
 	EventReasonUnexpected = "Unexpected"
+	// EventReasonValidation describes events that were due to an invalid resource being submitted by the user.
+	EventReasonValidation = "Validation"
 	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
 	EventReasonStateChange = "StateChange"
 )

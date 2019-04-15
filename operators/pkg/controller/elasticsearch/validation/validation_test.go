@@ -6,6 +6,7 @@ package validation
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -125,7 +126,7 @@ func TestValidate(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{Version: "7.0.0"},
 				},
 			},
-			wantErr: true,
+			wantErr: false,
 			errContains: []string{
 				masterRequiredMsg,
 			},
@@ -139,7 +140,7 @@ func TestValidate(t *testing.T) {
 					},
 				},
 			},
-			wantErr: true,
+			wantErr: false,
 			errContains: []string{
 				masterRequiredMsg,
 				"unsupported version",
@@ -148,13 +149,21 @@ func TestValidate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Validate(tt.args.es)
+			validations, err := Validate(tt.args.es)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			for _, errStr := range tt.errContains {
-				assert.Contains(t, err.Error(), errStr)
+				found := false
+				for _, v := range validations {
+					if strings.Contains(v.Reason, errStr) {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "wanted %v, but not found", errStr)
 			}
+
 		})
 
 	}

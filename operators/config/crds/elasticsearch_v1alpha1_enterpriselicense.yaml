@@ -6,6 +6,10 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: enterpriselicenses.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status
+    name: status
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
     kind: EnterpriseLicense
@@ -13,6 +17,8 @@ spec:
     shortNames:
     - el
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:
@@ -57,17 +63,18 @@ spec:
                     description: UID is the license UID not the k8s API UID (!)
                     type: string
                 required:
-                - uid
-                - issueDateInMillis
-                - expiryDateInMillis
-                - issuedTo
-                - issuer
-                - startDateInMillis
                 - maxNodes
                 - type
                 - signatureRef
                 type: object
               type: array
+            eula:
+              properties:
+                accepted:
+                  type: boolean
+              required:
+              - accepted
+              type: object
             expiryDateInMillis:
               format: int64
               type: integer
@@ -92,16 +99,11 @@ spec:
               description: UID is the license UID not the k8s API UID (!)
               type: string
           required:
-          - uid
-          - issueDateInMillis
-          - expiryDateInMillis
-          - issuedTo
-          - issuer
-          - startDateInMillis
           - type
-          - maxInstances
-          - signatureRef
+          - eula
           type: object
+        status:
+          type: string
   version: v1alpha1
 status:
   acceptedNames:

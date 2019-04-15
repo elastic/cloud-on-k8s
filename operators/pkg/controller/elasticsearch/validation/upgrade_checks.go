@@ -7,6 +7,7 @@ package validation
 import (
 	"fmt"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 )
@@ -19,28 +20,28 @@ func unsupportedVersion(v *version.Version) string {
 	return fmt.Sprintf("unsupported version: %v", v)
 }
 
-func noDowngrades(ctx Context) Result {
+func noDowngrades(ctx Context) validation.Result {
 	if ctx.isCreate() {
-		return OK
+		return validation.OK
 	}
 	if !ctx.Proposed.Version.IsSameOrAfter(ctx.Current.Version) {
-		return Result{Allowed: false, Reason: noDowngradesMsg}
+		return validation.Result{Allowed: false, Reason: noDowngradesMsg}
 	}
-	return OK
+	return validation.OK
 }
 
-func validUpgradePath(ctx Context) Result {
+func validUpgradePath(ctx Context) validation.Result {
 	if ctx.isCreate() {
-		return OK
+		return validation.OK
 	}
 
 	v := driver.SupportedVersions(ctx.Proposed.Version)
 	if v == nil {
-		return Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
+		return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}
 	err := v.Supports(ctx.Current.Version)
 	if err != nil {
-		return Result{Allowed: false, Reason: err.Error()}
+		return validation.Result{Allowed: false, Reason: err.Error()}
 	}
-	return OK
+	return validation.OK
 }

@@ -9,6 +9,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -23,19 +31,11 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var (
@@ -201,9 +201,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "request", request)
 	}()
 
 	// Fetch the Elasticsearch instance
@@ -251,9 +251,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	err = validation.Validate(es)
+	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
+	}
+	if len(violations) > 0 {
+		reconcileState.UpdateElasticsearchInvalid(violations)
+		return results
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
@@ -300,7 +304,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
-		snapshot.Finalizer(clusterName, watched),
 		settings.SecureSettingsFinalizer(clusterName, watched),
 		license.Finalizer(clusterName, watched),
 	}

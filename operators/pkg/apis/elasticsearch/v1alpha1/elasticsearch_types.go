@@ -37,9 +37,6 @@ type ElasticsearchSpec struct {
 	// Topology represents a list of topology elements to be part of the cluster
 	Topology []TopologyElementSpec `json:"topology,omitempty"`
 
-	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
-	SnapshotRepository *SnapshotRepository `json:"snapshotRepository,omitempty"`
-
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 
@@ -50,31 +47,6 @@ type ElasticsearchSpec struct {
 	// to be injected into Elasticsearch keystore on each node. It must exist in the
 	// same namespace as the Elasticsearch resource.
 	SecureSettings *commonv1alpha1.ResourceNameReference `json:"secureSettings,omitempty"`
-}
-
-// SnapshotRepositoryType as in gcs, AWS s3, file etc.
-type SnapshotRepositoryType string
-
-// Supported repository types
-const (
-	SnapshotRepositoryTypeGCS SnapshotRepositoryType = "gcs"
-)
-
-// SnapshotRepositorySettings specify a storage location for snapshots.
-type SnapshotRepositorySettings struct {
-	// BucketName is the name of the provider specific storage bucket to use.
-	BucketName string `json:"bucketName,omitempty"`
-	// Credentials is a reference to a secret containing credentials for the storage provider.
-	Credentials corev1.SecretReference `json:"credentials,omitempty"`
-}
-
-// SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
-type SnapshotRepository struct {
-	// Type of repository
-	// +kubebuilder:validation:Enum=gcs
-	Type SnapshotRepositoryType `json:"type"`
-	// Settings are provider specific repository settings
-	Settings SnapshotRepositorySettings `json:"settings"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -257,6 +229,8 @@ const (
 	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
+	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
+	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
 
 // ElasticsearchStatus defines the observed state of Elasticsearch

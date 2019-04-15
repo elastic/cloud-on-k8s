@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -151,4 +152,11 @@ func (s *State) Apply() ([]events.Event, *v1alpha1.Elasticsearch) {
 	}
 	s.cluster.Status = current
 	return s.Events(), &s.cluster
+}
+
+func (s *State) UpdateElasticsearchInvalid(results []validation.Result) {
+	s.status.Phase = v1alpha1.ElasticsearchResourceInvalid
+	for _, r := range results {
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, r.Reason)
+	}
 }

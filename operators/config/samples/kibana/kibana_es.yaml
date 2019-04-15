@@ -83,14 +83,6 @@ spec:
         memory: 1Gi
         cpu: 800m
     nodeCount: 0
-  ## See the following as an example of how to configure a snapshot repository
-  #snapshotRepository:
-  #  type: "gcs"
-  #  settings:
-  #    bucketName: "stack-sample-snapshot-repo"
-  #    credentials:
-  #      namespace: "default"
-  #      name: "gcs-repo-account"
   expose: LoadBalancer
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1

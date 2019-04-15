@@ -34,16 +34,8 @@ spec:
     #    resources:
     #      requests:
     #        storage: 2Gi
-  ## See the following as an example of how to configure a snapshot repository
-  #snapshotRepository:
-  #  type: "gcs"
-  #  settings:
-  #    bucketName: "stack-sample-snapshot-repo"
-  #    credentials:
-  #      namespace: "default"
-  #      name: "gcs-repo-account"
-  ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
-  # secureSettings:
-  #   namespace: "default"
-  #   name: "ref-to-secret"
+    ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
+    # secureSettings:
+    #   namespace: "default"
+    #   name: "ref-to-secret"
   expose: LoadBalancer
