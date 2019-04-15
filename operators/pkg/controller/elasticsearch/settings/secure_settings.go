@@ -107,17 +107,17 @@ func userSecretWatchName(cluster types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchUserSecret(watched watches.DynamicWatches, userSecret *corev1.SecretReference, cluster types.NamespacedName) error {
+func watchUserSecret(watched watches.DynamicWatches, userSecretRef *corev1.SecretReference, cluster types.NamespacedName) error {
 	watchName := userSecretWatchName(cluster)
-	if userSecret == nil {
+	if userSecretRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
 		return nil
 	}
 	return watched.Secrets.AddHandler(watches.NamedWatch{
 		Name: watchName,
 		Watched: types.NamespacedName{
-			Namespace: userSecret.Namespace,
-			Name:      userSecret.Name,
+			Namespace: userSecretRef.Namespace,
+			Name:      userSecretRef.Name,
 		},
 		Watcher: cluster,
 	})
