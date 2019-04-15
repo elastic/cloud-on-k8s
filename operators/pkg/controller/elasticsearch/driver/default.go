@@ -304,11 +304,10 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	// Call Zen1 setting updater to prepare new masters that will join the cluster.
-	// This is done before new masters are created to ensure that they immediately start with the
-	// right value for minimum_master_node.
-	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy is applied
-	// then the new master must be started with a minimum_master_nodes increased from 2 to 3.
+	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
+	// correct value for minimum_master_nodes.
+	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy is applied then
+	// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
 	if d.zen1SettingsUpdater != nil {
 		requeue, err := d.zen1SettingsUpdater(
 			es,

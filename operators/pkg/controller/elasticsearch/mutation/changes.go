@@ -14,7 +14,7 @@ import (
 
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
-	ToCreate []PodToCreate
+	ToCreate PodsToCreate
 	ToKeep   pod.PodsWithConfig
 	ToDelete pod.PodsWithConfig
 }
@@ -27,9 +27,13 @@ type PodToCreate struct {
 	MismatchReasons map[string][]string
 }
 
-func (c Changes) PodsToCreate() []corev1.Pod {
-	pods := make([]corev1.Pod, len(c.ToCreate))
-	for i, pod := range c.ToCreate {
+// PodsToCreate is simply a list of PodToCreate
+type PodsToCreate []PodToCreate
+
+// Pods is a helper method to retrieve pods only (no spec context or mismatch reasons)
+func (p PodsToCreate) Pods() []corev1.Pod {
+	pods := make([]corev1.Pod, len(p))
+	for i, pod := range p {
 		pods[i] = pod.Pod
 	}
 	return pods

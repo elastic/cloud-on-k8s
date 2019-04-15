@@ -50,7 +50,7 @@ func UpdateZen1Discovery(
 
 	nextMasterCount := currentMasterCount
 	// Add masters that must be created by this reconciliation loop
-	for _, pod := range performableChanges.PodsToCreate() {
+	for _, pod := range performableChanges.ToCreate.Pods() {
 		if label.IsMasterNode(pod) {
 			nextMasterCount++
 		}
