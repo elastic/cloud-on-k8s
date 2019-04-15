@@ -252,6 +252,8 @@ const (
 	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
+	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
+	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
