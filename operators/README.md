@@ -12,6 +12,7 @@ Managed Elastic products and services in Kubernetes.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [docker](https://docs.docker.com/)
 * [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (for Mac `brew install md5sha1sum`)
 
@@ -21,18 +22,13 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 To start, get a working development Kubernetes cluster using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube) or [GKE](https://cloud.google.com/kubernetes-engine/):
 
-```bash
-make bootstrap-minikube
-# or
-GCLOUD_PROJECT=my-project-id make bootstrap-gke
-```
+* `make bootstrap-minikube`: Sets up a Minikube cluster with required resources
+or
+* `make bootstrap-gke`: Sets up a GKE cluster with required resources
 
-Then, use either `make run` to run the operator locally, or `make deploy` to deploy the operators on the cluster.
+Then, proceed as follows:
 
-### Useful development targets
-
-* `make bootstrap-minikube`: Sets up a Minikube cluster with required resources.
-* `make bootstrap-gke`: Sets up a Minikube cluster with required resources.
+* `make dep-vendor-only`: Downloads extra GO libraries needed to compile the project and stores them in the vendor directory.
 * `make run`: Run the operator locally.
 * `make deploy`: Deploy the operators into the configured k8s cluster.
 * `make samples`: Apply a sample stack resource.
