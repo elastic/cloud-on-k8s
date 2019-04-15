@@ -5,13 +5,10 @@
 package version
 
 import (
-	"context"
-	"fmt"
 	"path"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
@@ -48,13 +45,10 @@ func NewExpectedPodSpecs(
 	for _, topoElem := range es.Spec.Topology {
 		for i := int32(0); i < topoElem.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
-				Version:         es.Spec.Version,
-				LicenseType:     es.Spec.GetLicenseType(),
-				CustomImageName: es.Spec.Image,
-				ClusterName:     es.Name,
-				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-					es.Spec.Topology,
-				),
+				Version:              es.Spec.Version,
+				LicenseType:          es.Spec.GetLicenseType(),
+				CustomImageName:      es.Spec.Image,
+				ClusterName:          es.Name,
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
 				NodeTypes:            topoElem.NodeTypes,
 				Affinity:             topoElem.PodTemplate.Spec.Affinity,
@@ -236,14 +230,6 @@ func NewPod(
 	}
 
 	return pod, nil
-}
-
-func UpdateZen1Discovery(esClient client.Client, allPods []corev1.Pod) error {
-	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
-	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-	defer cancel()
-	return esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
 }
 
 // MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
