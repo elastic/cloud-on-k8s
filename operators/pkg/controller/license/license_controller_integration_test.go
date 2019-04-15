@@ -135,6 +135,9 @@ func TestReconcile(t *testing.T) {
 			SetVMMaxMapCount: &varFalse,
 			Nodes: []v1alpha1.NodeSpec{
 				{
+					Config: v1alpha1.Config{
+						Data: map[string]interface{}{},
+					},
 					NodeCount: 3,
 				},
 			},
