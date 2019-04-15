@@ -17,14 +17,14 @@ import (
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type State struct {
+	*events.Recorder
 	cluster v1alpha1.Elasticsearch
 	status  v1alpha1.ElasticsearchStatus
-	events  []Event
 }
 
 // NewState creates a new reconcile state based on the given cluster
 func NewState(c v1alpha1.Elasticsearch) *State {
-	return &State{cluster: c, status: *c.Status.DeepCopy()}
+	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy()}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
@@ -111,16 +111,6 @@ func (s *State) UpdateRemoteClusters(remoteCluster map[string]string) {
 // GetRemoteClusters returns the remote clusters that have been set in the cluster.
 func (s *State) GetRemoteClusters() map[string]string {
 	return s.status.RemoteClusters
-}
-
-// AddEvent records the intent to emit a k8s event with the given attributes.
-func (s *State) AddEvent(eventType, reason, message string) *State {
-	s.events = append(s.events, Event{
-		eventType,
-		reason,
-		message,
-	})
-	return s
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
