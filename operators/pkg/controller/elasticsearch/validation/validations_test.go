@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -12,7 +13,9 @@ import (
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_hasMaster(t *testing.T) {
@@ -142,6 +145,53 @@ func Test_supportedVersion(t *testing.T) {
 			ctx, err := NewValidationContext(nil, tt.args.esCluster)
 			require.NoError(t, err)
 			if got := supportedVersion(*ctx); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_nameLength(t *testing.T) {
+	type args struct {
+		esCluster estype.Elasticsearch
+	}
+	tests := []struct {
+		name string
+		args args
+		want validation.Result
+	}{
+		{
+			name: "name length too long",
+			args: args{
+				esCluster: estype.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "that-is-a-very-long-name-with-37chars",
+					},
+					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+				},
+			},
+			want: validation.Result{Allowed: false, Reason: fmt.Sprintf(nameTooLongErrMsg, name.MaxElasticsearchNameLength)},
+		},
+		{
+			name: "name length OK",
+			args: args{
+				esCluster: estype.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "default",
+						Name:      "that-is-a-very-long-name-with-36char",
+					},
+					Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+				},
+			},
+			want: validation.OK,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.args.esCluster)
+			require.NoError(t, err)
+			if got := nameLength(*ctx); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("supportedVersion() = %v, want %v", got, tt.want)
 			}
 		})

@@ -11,8 +11,7 @@ import (
 
 // List of plugins to be installed on the ES instance
 var defaultInstalledPlugins = []string{
-	// TODO: enable when useful :)
-	// "repository-s3",  // S3 snapshots
+	"repository-s3",  // S3 snapshots
 	"repository-gcs", // gcp snapshots
 }
 

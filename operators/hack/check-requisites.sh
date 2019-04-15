@@ -24,14 +24,14 @@ function check {
 
 check go
 check goimports
-check minikube
+check dep
+check golangci-lint
+check kustomize
 check kubectl
 check kubebuilder
-check kustomize
-check sha1sum
-check dep
+check minikube
 check gcloud
-check golangci-lint
+check sha1sum
 
 echo
 if [[ "$all_found" != "true" ]]; then

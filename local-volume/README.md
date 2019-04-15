@@ -12,15 +12,17 @@ This project is composed of 3 main components:
 * The driver client: binary deployed on k8s nodes that respects k8s flex interface. Called by kubelet when a scheduled pod needs a local persistent volume to be mounted. Contacts the driver daemon through a unix socket.
 * The driver daemon: daemonset with one pod per k8s node. Listens to calls from the client. Creates a logical volume for the pod on the underlying host (eg. /mnt/storage/my-pvc), and bind mount it within the pod directory on the underlying host (eg. /var/lib/kubelet/pods/pod-id/volumes/elastic-local/my-pvc).
 
-## Requirements
+## Development
 
-To start, get a working Kubernetes cluster:
+To start, get a working development Kubernetes cluster using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube) or [GKE](https://cloud.google.com/kubernetes-engine/):
 
 ```bash
-make -C ../operators bootstrap-minikube # or bootstrap-gke
+make -C ../operators bootstrap-minikube
+# or
+GCLOUD_PROJECT=my-project-id make -C ../operators bootstrap-gke
 ```
 
-If you chose minikube then attach a new disk to the virtual machine:
+If you chose Minikube then attach a new disk to the virtual machine:
 
 ```bash
 make minikube-attach-disk
@@ -33,30 +35,30 @@ make minikube-create-vg # or gke-create-vg
 ```
 
 ## Usage
-Build docker image:
+
+Build and push the Docker image:
 
 ```bash
-make docker-minikube # or docker-gke
+make docker-build-push
 ```
 
 Deploy on Kubernetes:
 
 ```bash
-make deploy-minikube # or deploy-gke
+make deploy
 ```
 
-Then you can create any PVC matching the `elastic-local` storage class and POD using this PVC. Example:
+Then you can create any PVC matching the `elastic-local` storage class and Pod using this PVC. Example:
 
 ```bash
-kubectl apply -f config/pvc-sample.yaml
-kubectl apply -f config/pod-sample.yaml
+kubectl apply -f config/pvc-sample.yaml -f config/pod-sample.yaml
 ```
 
 ## Architecture
 
 ![architecture](https://github.com/elastic/k8s-operators/blob/master/local-volume/architecture.svg)
 
-The provisioner only interacts with the APIServer: it watches any new PVC matching our storageclass provisioner, and dynamically creates a matching PV.
+The provisioner only interacts with the APIServer: it watches any new PVC matching our StorageClass provisioner, and dynamically creates a matching PV.
 
 When the pod gets scheduled on a host, the kubelet calls our driver binary in order to mount a volume in the given pod directory. In turn, our driver binary calls our driver daemon (HTTP through a unix domain socket). The driver daemons is responsible for creating the volume, creating an actual directory mount for it on the file system, then bind-mounting this directory into the given pod directory.
 
