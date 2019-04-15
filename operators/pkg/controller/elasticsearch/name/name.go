@@ -29,6 +29,7 @@ const (
 	podSuffix                  = "-es"
 	configSecretSuffix         = "-config"
 	secureSettingsSecretSuffix = "-secure-settings"
+	certsSecretSuffix          = "-certs"
 	serviceSuffix              = "-es"
 	discoveryServiceSuffix     = "-es-discovery"
 	cASecretSuffix             = "-ca"
@@ -88,6 +89,10 @@ func ConfigSecret(podName string) string {
 
 func SecureSettingsSecret(esName string) string {
 	return suffix(esName, secureSettingsSecretSuffix)
+}
+
+func CertsSecret(podName string) string {
+	return suffix(podName, certsSecretSuffix)
 }
 
 func Service(esName string) string {
