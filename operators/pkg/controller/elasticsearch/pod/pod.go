@@ -89,8 +89,6 @@ type NewPodSpecParams struct {
 	ConfigMapVolume volume.ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
-	// KeystoreSecretRef is configuration for the Elasticsearch keystore setup
-	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
