@@ -5,11 +5,8 @@
 package validation
 
 import (
-	"errors"
-
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -55,18 +52,18 @@ func (v Context) isCreate() bool {
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.
-func Validate(es estype.EnterpriseLicense) error {
+func Validate(es estype.EnterpriseLicense) []validation.Result {
 	vCtx := Context{
 		Current:  nil,
 		Proposed: es,
 	}
-	var errs []error
+	var errs []validation.Result
 	for _, v := range Validations {
 		r := v(vCtx)
 		if r.Allowed {
 			continue
 		}
-		errs = append(errs, errors.New(r.Reason))
+		errs = append(errs, r)
 	}
-	return utilerrors.NewAggregate(errs)
+	return errs
 }

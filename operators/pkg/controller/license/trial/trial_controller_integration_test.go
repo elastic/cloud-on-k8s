@@ -43,8 +43,8 @@ func validateStatus(
 		if err != nil {
 			return err
 		}
-		if createdLicense.Status.LicenseStatus != expected {
-			return fmt.Errorf("expected %v license but was %v", expected, createdLicense.Status.LicenseStatus)
+		if createdLicense.Status != expected {
+			return fmt.Errorf("expected %v license but was %v", expected, createdLicense.Status)
 		}
 		return nil
 	})
@@ -97,10 +97,17 @@ func TestReconcile(t *testing.T) {
 	}()
 	// Create the EnterpriseLicense object
 	assert.NoError(t, c.Create(trialLicense.DeepCopy()))
-	// expecting 3 cycles: create, status update, noop because controller updates spec
+	// license is invalid because we did not ack the Eula
+	test.CheckReconcileCalled(t, requests, expectedRequest)
+	var createdLicense v1alpha1.EnterpriseLicense
+	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
+	// accept EULA and update
+	createdLicense.Spec.Eula.Accepted = true
+	assert.NoError(t, c.Update(&createdLicense))
+
+	// expecting 3 cycles: resource update, status update, noop because controller updates spec
 	test.CheckReconcileCalledIn(t, requests, expectedRequest, 3, 3)
 
-	var createdLicense v1alpha1.EnterpriseLicense
 	// test trial initialisation on create
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
 	validateTrialDuration(t, createdLicense, now, time.Second)

@@ -15,10 +15,13 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	licensing "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	commonvalidation "github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/license/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/license/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -26,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -48,7 +52,8 @@ const (
 // ReconcileTrials reconciles Enterprise trial licenses.
 type ReconcileTrials struct {
 	k8s.Client
-	scheme *runtime.Scheme
+	scheme   *runtime.Scheme
+	recorder record.EventRecorder
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration   int64
 	trialPubKey *rsa.PublicKey
@@ -80,6 +85,12 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if !license.DeletionTimestamp.IsZero() || !license.IsTrial() {
 		// license is not a trial or being deleted nothing to do
 		return reconcile.Result{}, nil
+	}
+
+	violations := validation.Validate(license)
+	if len(violations) > 0 {
+		r.record(license, violations)
+		return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusInvalid)
 	}
 
 	err = mutation.PopulateTrialLicense(&license)
@@ -175,7 +186,7 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 		},
 		Key: signatureKey,
 	}
-	l.Status.LicenseStatus = v1alpha1.LicenseStatusValid
+	l.Status = v1alpha1.LicenseStatusValid
 	return pkgerrors.Wrap(r.Update(&l), "Failed to update trial license")
 }
 
@@ -191,12 +202,12 @@ func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.V
 }
 
 func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
-	if l.Status.LicenseStatus == status {
+	if l.Status == status {
 		// nothing to do
 		return nil
 	}
 	log.Info("trial status update", "status", status)
-	l.Status.LicenseStatus = status
+	l.Status = status
 	return r.Status().Update(&l)
 }
 
@@ -216,8 +227,18 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
+func (r *ReconcileTrials) record(l v1alpha1.EnterpriseLicense, results []commonvalidation.Result) {
+	for _, v := range results {
+		r.recorder.Event(&l, corev1.EventTypeWarning, events.EventReasonValidation, v.Reason)
+	}
+}
+
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileTrials{Client: k8s.WrapClient(mgr.GetClient()), scheme: mgr.GetScheme()}
+	return &ReconcileTrials{
+		Client:   k8s.WrapClient(mgr.GetClient()),
+		scheme:   mgr.GetScheme(),
+		recorder: mgr.GetRecorder("license-controller"),
+	}
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {

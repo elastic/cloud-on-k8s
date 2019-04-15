@@ -36,25 +36,20 @@ type EnterpriseLicenseSpec struct {
 	Eula                EulaState            `json:"eula"`
 }
 
-// EnterpriseLicenseStatus defines the current status of the license. Informational only, maybe empty.
-type EnterpriseLicenseStatus struct {
-	LicenseStatus LicenseStatus `json:"status,omitempty"`
-}
-
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // EnterpriseLicense is the Schema for the enterpriselicenses API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.status"
+// +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status"
 // +kubebuilder:resource:shortName=el
 type EnterpriseLicense struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   EnterpriseLicenseSpec   `json:"spec,omitempty"`
-	Status EnterpriseLicenseStatus `json:"status,omitempty"`
+	Spec   EnterpriseLicenseSpec `json:"spec,omitempty"`
+	Status LicenseStatus         `json:"status,omitempty"`
 }
 
 // StartDate is the date as of which this license is valid.
