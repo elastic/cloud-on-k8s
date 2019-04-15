@@ -125,6 +125,18 @@ func (s *State) GetRemoteClusters() map[string]string {
 	return s.status.RemoteClusters
 }
 
+// UpdateZen1MinimumMasterNodes updates the current minimum master nodes in the state.
+func (s *State) UpdateZen1MinimumMasterNodes(value int) {
+	s.status.ZenDiscovery = v1alpha1.ZenDiscoveryStatus{
+		MinimumMasterNodes: value,
+	}
+}
+
+// UpdateZen1MinimumMasterNodes updates the current minimum master nodes in the state.
+func (s *State) GetZen1MinimumMasterNodes() int {
+	return s.status.ZenDiscovery.MinimumMasterNodes
+}
+
 // AddEvent records the intent to emit a k8s event with the given attributes.
 func (s *State) AddEvent(eventType, reason, message string) *State {
 	s.events = append(s.events, Event{

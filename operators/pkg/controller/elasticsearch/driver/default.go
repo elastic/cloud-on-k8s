@@ -118,6 +118,7 @@ type defaultDriver struct {
 		esClient esclient.Client,
 		allPods []corev1.Pod,
 		performableChanges *mutation.PerformableChanges,
+		reconcileState *reconcile.State,
 	) (bool, error)
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
@@ -313,6 +314,7 @@ func (d *defaultDriver) Reconcile(
 			esClient,
 			resourcesState.AllPods,
 			performableChanges,
+			reconcileState,
 		)
 
 		if err != nil {
@@ -421,7 +423,8 @@ func (d *defaultDriver) attemptPodsDeletion(
 					d.Client,
 					esClient,
 					newState,
-					changes)
+					changes,
+					reconcileState)
 
 				if err != nil {
 					return err

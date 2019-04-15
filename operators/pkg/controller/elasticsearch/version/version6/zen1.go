@@ -33,6 +33,7 @@ func UpdateZen1Discovery(
 	esClient client.Client,
 	allPods []corev1.Pod,
 	performableChanges *mutation.PerformableChanges,
+	reconcileState *reconcile.State,
 ) (bool, error) {
 	// Get current master nodes count
 	currentMasterCount := 0
@@ -57,20 +58,19 @@ func UpdateZen1Discovery(
 
 	minimumMasterNodes := settings.Quorum(nextMasterCount)
 	// Update the current value in the configuration of existing pods
+	log.V(1).Info("Set minimum master nodes",
+		"how", "configuration",
+		"operation", "update",
+		"currentMasterCount", currentMasterCount,
+		"nextMasterCount", nextMasterCount,
+		"minimum_master_nodes", minimumMasterNodes,
+	)
 	for _, p := range allPods {
 		config, err := settings.GetESConfigContent(c, k8s.ExtractNamespacedName(&p))
 		if err != nil {
 			return false, err
 		}
 		config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
-		log.V(1).Info("Set minimum master nodes",
-			"medium", "configuration",
-			"operation", "update",
-			"pod", p.Name,
-			"currentMasterCount", currentMasterCount,
-			"nextMasterCount", nextMasterCount,
-			"minimum_master_nodes", minimumMasterNodes,
-		)
 		err = settings.ReconcileConfig(c, cluster, p, config)
 		if err != nil {
 			return false, err
@@ -79,32 +79,38 @@ func UpdateZen1Discovery(
 
 	// Update the current value for each new pod that is about to be created
 	for _, change := range performableChanges.ToCreate {
-		log.V(1).Info("Set minimum master nodes",
-			"medium", "configuration",
-			"operation", "set",
-			"currentMasterCount", currentMasterCount,
-			"nextMasterCount", nextMasterCount,
-			"minimum_master_nodes", minimumMasterNodes,
-		)
 		// Update the minimum_master_nodes before pod creation in order to avoid split brain situation.
 		change.PodSpecCtx.Config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
 	}
 
+	// Check if we really need to update minimum_master_nodes with a API call
+	if minimumMasterNodes == reconcileState.GetZen1MinimumMasterNodes() {
+		return false, nil
+	}
+
 	// Do not attempt to make an API call if there is not enough available masters
 	if currentAvailableMasterCount < minimumMasterNodes {
-		// We can't update the minim master nodes right now, it is the case if a new master node is not created yet.
+		log.V(1).Info("Not enough masters to update the API",
+			"current", currentAvailableMasterCount,
+			"required", minimumMasterNodes)
+		// We can't update the minimum master nodes right now, it is the case if a new master node is not created yet.
 		// In that case we need to requeue later.
 		return true, nil
 	}
 
 	log.Info("Update minimum master nodes",
-		"medium", "api",
+		"how", "api",
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	return false, esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
-
+	err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
+	if err != nil {
+		return false, nil
+	}
+	// Save the current value in the status
+	reconcileState.UpdateZen1MinimumMasterNodes(minimumMasterNodes)
+	return false, nil
 }

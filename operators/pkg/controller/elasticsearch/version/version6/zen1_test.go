@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -94,12 +96,19 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 
 func TestUpdateZen1Discovery(t *testing.T) {
 	s := setupScheme(t)
+	cluster := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "es1",
+		},
+	}
 	type args struct {
 		cluster            v1alpha1.Elasticsearch
 		c                  k8s.Client
 		esClient           client.Client
 		allPods            []corev1.Pod
 		performableChanges *mutation.PerformableChanges
+		state              *reconcile.State
 	}
 	tests := []struct {
 		name                      string
@@ -128,6 +137,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 				allPods: []corev1.Pod{
 					newMasterPod("master1", "ns1"),
 				},
+				state: reconcile.NewState(cluster),
 			},
 			want:                      true,
 			wantErr:                   false,
@@ -163,6 +173,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 					newMasterPod("master3", "ns1"),
 					newMasterPod("master4", "ns1"),
 				},
+				state: reconcile.NewState(cluster),
 			},
 			want:                      false, // mmn should also be updated with the API
 			wantErr:                   false,
@@ -171,7 +182,14 @@ func TestUpdateZen1Discovery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := UpdateZen1Discovery(tt.args.cluster, tt.args.c, tt.args.esClient, tt.args.allPods, tt.args.performableChanges)
+			got, err := UpdateZen1Discovery(
+				tt.args.cluster,
+				tt.args.c,
+				tt.args.esClient,
+				tt.args.allPods,
+				tt.args.performableChanges,
+				tt.args.state,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateZen1Discovery() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -182,6 +200,9 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			// Check the mmn in the new pods
 			for _, newPod := range tt.args.performableChanges.ToCreate {
 				assert.Equal(t, tt.expectedMinimumMasterNode, newPod.PodSpecCtx.Config[settings.DiscoveryZenMinimumMasterNodes])
+			}
+			if !tt.want { // requeue not returned: it means that minimum_master_nodes should be saved in status
+				assert.Equal(t, tt.expectedMinimumMasterNode, strconv.Itoa(tt.args.state.GetZen1MinimumMasterNodes()))
 			}
 		})
 	}
