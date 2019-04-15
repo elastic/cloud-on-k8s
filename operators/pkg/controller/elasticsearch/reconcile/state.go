@@ -46,6 +46,7 @@ func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	return nodesAvailable
 }
 
+// IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
 func IsAvailable(pod corev1.Pod) bool {
 	conditionsTrue := 0
 	for _, cond := range pod.Status.Conditions {
