@@ -94,7 +94,7 @@ func (es ElasticsearchSpec) GetLicenseType() LicenseType {
 // NodeSpec defines a common topology for a set of Elasticsearch nodes
 type NodeSpec struct {
 	// Config represents Elasticsearch configuration.
-	Config Config
+	Config Config `json:"config,omitempty"`
 
 	// Resources to be allocated for this topology
 	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
