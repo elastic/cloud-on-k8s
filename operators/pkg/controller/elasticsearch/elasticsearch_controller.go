@@ -200,9 +200,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "request", request)
 	}()
 
 	// Fetch the Elasticsearch instance

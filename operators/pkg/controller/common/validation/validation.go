@@ -11,5 +11,5 @@ type Result struct {
 	Reason  string
 }
 
-// OK is a successfull validation result.
+// OK is a successful validation result.
 var OK = Result{Allowed: true}

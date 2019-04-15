@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
+
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 )
 
