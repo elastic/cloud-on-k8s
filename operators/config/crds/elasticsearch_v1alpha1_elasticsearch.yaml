@@ -134,31 +134,6 @@ spec:
                 containers. Defaults to true if not specified. To be disabled, it
                 must be explicitly set to false.
               type: boolean
-            snapshotRepository:
-              description: SnapshotRepository defines a snapshot repository to be
-                used for automatic snapshots.
-              properties:
-                settings:
-                  description: Settings are provider specific repository settings
-                  properties:
-                    bucketName:
-                      description: BucketName is the name of the provider specific
-                        storage bucket to use.
-                      type: string
-                    credentials:
-                      description: Credentials is a reference to a secret containing
-                        credentials for the storage provider.
-                      type: object
-                  type: object
-                type:
-                  description: Type of repository
-                  enum:
-                  - gcs
-                  type: string
-              required:
-              - type
-              - settings
-              type: object
             updateStrategy:
               description: UpdateStrategy specifies how updates to the cluster should
                 be performed.
