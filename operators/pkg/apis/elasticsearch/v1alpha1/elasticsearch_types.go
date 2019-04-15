@@ -241,7 +241,7 @@ type ElasticsearchStatus struct {
 }
 
 type ZenDiscoveryStatus struct {
-	MinimumMasterNodes int `json:"minimumMasterNode,omitempty"`
+	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

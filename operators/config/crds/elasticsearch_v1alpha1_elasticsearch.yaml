@@ -222,7 +222,7 @@ spec:
               type: string
             zenDiscovery:
               properties:
-                minimumMasterNode:
+                minimumMasterNodes:
                   format: int64
                   type: integer
               type: object
