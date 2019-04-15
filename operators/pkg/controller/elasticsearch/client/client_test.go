@@ -107,9 +107,6 @@ func TestClientErrorHandling(t *testing.T) {
 		func() (string, error) {
 			return "ExcludeFromShardAllocation", testClient.ExcludeFromShardAllocation(context.Background(), "")
 		},
-		func() (string, error) {
-			return "UpsertSnapshotRepository", testClient.UpsertSnapshotRepository(context.Background(), "test", SnapshotRepository{})
-		},
 	}
 
 	for range codes {
@@ -175,7 +172,6 @@ func TestClientSupportsBasicAuth(t *testing.T) {
 		_, err := testClient.GetClusterState(context.Background())
 		assert.NoError(t, err)
 		assert.NoError(t, testClient.ExcludeFromShardAllocation(context.Background(), ""))
-		assert.NoError(t, testClient.UpsertSnapshotRepository(context.Background(), "", SnapshotRepository{}))
 
 	}
 
