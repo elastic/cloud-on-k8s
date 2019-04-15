@@ -14,13 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Event is a k8s event that can be recorded via an event recorder.
-type Event struct {
-	EventType string
-	Reason    string
-	Message   string
-}
-
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type State struct {
@@ -133,11 +126,11 @@ func (s *State) AddEvent(eventType, reason, message string) *State {
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the Elasticsearch cluster resource with
 // the current status applied to its status sub-resource.
-func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
+func (s *State) Apply() ([]events.Event, *v1alpha1.Elasticsearch) {
 	previous := s.cluster.Status
 	current := s.status
 	if reflect.DeepEqual(previous, current) {
-		return s.events, nil
+		return s.Events(), nil
 	}
 	if current.IsDegraded(previous) {
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded")
@@ -167,5 +160,5 @@ func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
 		)
 	}
 	s.cluster.Status = current
-	return s.events, &s.cluster
+	return s.Events(), &s.cluster
 }

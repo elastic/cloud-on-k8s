@@ -135,13 +135,13 @@ func TestState_Apply(t *testing.T) {
 		name       string
 		cluster    v1alpha1.Elasticsearch
 		effects    func(s *State)
-		wantEvents []Event
+		wantEvents []events.Event
 		wantStatus *v1alpha1.ElasticsearchStatus
 	}{
 		{
 			name:       "defaults",
 			cluster:    v1alpha1.Elasticsearch{},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: nil,
 		},
 		{
@@ -150,7 +150,7 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -172,7 +172,7 @@ func TestState_Apply(t *testing.T) {
 					ClusterState:  nil,
 				})
 			},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -191,7 +191,7 @@ func TestState_Apply(t *testing.T) {
 			effects: func(s *State) {
 				s.UpdateElasticsearchPending([]corev1.Pod{})
 			},
-			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
+			wantEvents: []events.Event{{corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -218,7 +218,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: []Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
+			wantEvents: []events.Event{{corev1.EventTypeWarning, events.EventReasonUnexpected, "Cluster UUID changed (was: old, is: new)"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -245,7 +245,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -273,7 +273,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -305,7 +305,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: []Event{{corev1.EventTypeNormal, events.EventReasonStateChange, "Master node is now new"}},
+			wantEvents: []events.Event{{corev1.EventTypeNormal, events.EventReasonStateChange, "Master node is now new"}},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -334,7 +334,7 @@ func TestState_Apply(t *testing.T) {
 					},
 				})
 			},
-			wantEvents: nil,
+			wantEvents: []events.Event{},
 			wantStatus: &v1alpha1.ElasticsearchStatus{
 				ReconcilerStatus: v1alpha12.ReconcilerStatus{
 					AvailableNodes: 0,
@@ -354,7 +354,6 @@ func TestState_Apply(t *testing.T) {
 			events, cluster := s.Apply()
 			if !reflect.DeepEqual(events, tt.wantEvents) {
 				t.Errorf("State.Apply() events = %v, wantEvents %v", events, tt.wantEvents)
-
 			}
 			var actual *v1alpha1.ElasticsearchStatus
 			if cluster != nil {
@@ -441,7 +440,7 @@ func TestState_UpdateElasticsearchMigrating(t *testing.T) {
 			},
 			stateAssertions: func(s *State) {
 				assert.EqualValues(t, v1alpha1.ElasticsearchMigratingDataPhase, s.status.Phase)
-				assert.Equal(t, []Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.events)
+				assert.Equal(t, []events.Event{{corev1.EventTypeNormal, events.EventReasonDelayed, "Requested topology change delayed by data migration"}}, s.Recorder.Events())
 			},
 		},
 	}

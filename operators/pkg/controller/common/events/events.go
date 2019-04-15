@@ -19,3 +19,11 @@ const (
 	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
 	EventReasonStateChange = "StateChange"
 )
+
+// Event is a k8s event that can be recorded via an event recorder.
+type Event struct {
+	EventType string
+	Reason    string
+	Message   string
+}
+
