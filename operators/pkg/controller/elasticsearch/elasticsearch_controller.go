@@ -250,12 +250,12 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	invalid, err := validation.Validate(es)
+	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
 	}
-	if len(invalid) > 0 {
-		reconcileState.UpdateElasticsearchInvalid(invalid)
+	if len(violations) > 0 {
+		reconcileState.UpdateElasticsearchInvalid(violations)
 		return results
 	}
 
