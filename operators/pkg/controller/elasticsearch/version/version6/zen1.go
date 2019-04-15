@@ -106,9 +106,8 @@ func UpdateZen1Discovery(
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
-	if err != nil {
-		return false, nil
+	if err := esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes); err != nil {
+		return false, err
 	}
 	// Save the current value in the status
 	reconcileState.UpdateZen1MinimumMasterNodes(minimumMasterNodes)
