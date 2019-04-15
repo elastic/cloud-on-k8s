@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 	secureSettingsSecretMeta := metav1.ObjectMeta{
 		Namespace: clusterObjMeta.Namespace,
 		Name:      name.SecureSettingsSecret(clusterObjMeta.Name),
+		Labels:    label.NewLabels(k8s.ExtractNamespacedName(&clusterObjMeta)),
 	}
 
 	tests := []struct {
@@ -153,6 +155,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "ns",
 							Name:      name.SecureSettingsSecret(clusterObjMeta.Name),
+							Labels:    label.NewLabels(k8s.ExtractNamespacedName(&clusterObjMeta)),
 						},
 						Data: map[string][]byte{
 							"key1": []byte("value1"),
@@ -200,6 +203,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "ns",
 							Name:      name.SecureSettingsSecret(clusterObjMeta.Name),
+							Labels:    label.NewLabels(k8s.ExtractNamespacedName(&clusterObjMeta)),
 						},
 						Data: map[string][]byte{
 							"key1": []byte("value1-old"),
@@ -246,6 +250,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Namespace: "ns",
 							Name:      name.SecureSettingsSecret(clusterObjMeta.Name),
+							Labels:    label.NewLabels(k8s.ExtractNamespacedName(&clusterObjMeta)),
 						},
 						Data: map[string][]byte{
 							"key1": []byte("value1"),
@@ -278,6 +283,7 @@ func TestReconcileSecureSettings(t *testing.T) {
 			err = tt.c.Get(k8s.ExtractNamespacedName(&secureSettingsSecretMeta), &actual)
 			require.NoError(t, err)
 			require.Equal(t, tt.expected.Data, actual.Data)
+			require.Equal(t, tt.expected.Labels, actual.Labels)
 		})
 	}
 }

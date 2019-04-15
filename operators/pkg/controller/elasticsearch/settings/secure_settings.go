@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
@@ -57,6 +58,7 @@ func ReconcileSecureSettings(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name.SecureSettingsSecret(es.Name),
 			Namespace: es.Namespace,
+			Labels:    label.NewLabels(k8s.ExtractNamespacedName(&es)),
 		},
 		Data: userSecret.Data,
 	}
