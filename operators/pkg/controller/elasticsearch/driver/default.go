@@ -114,7 +114,13 @@ type defaultDriver struct {
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(esClient esclient.Client, allPods []corev1.Pod) error
+	zen1SettingsUpdater func(
+		cluster v1alpha1.Elasticsearch,
+		c k8s.Client,
+		esClient esclient.Client,
+		allPods []corev1.Pod,
+		performableChanges *mutation.PerformableChanges,
+	) (bool, error)
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
@@ -320,6 +326,29 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
+	// Update Zen1 to prepare new masters that will join the cluster.
+	// This is done before creating new nodes to ensure that they immediately start with the
+	// right value for minimum_master_node.
+	if d.zen1SettingsUpdater != nil {
+		requeue, err := d.zen1SettingsUpdater(
+			es,
+			d.Client,
+			esClient,
+			resourcesState.AllPods,
+			performableChanges,
+		)
+
+		if err != nil {
+			// TODO: reconsider whether this error should be propagated with results instead?
+			log.Error(err, "Error during update discovery, requeuing.")
+			return results.WithResult(defaultRequeue)
+		}
+
+		if requeue {
+			results.WithResult(defaultRequeue)
+		}
+	}
+
 	for _, change := range performableChanges.ToCreate {
 		d.PodsExpectations.ExpectCreation(namespacedName)
 		if err := createElasticsearchPod(
@@ -362,19 +391,6 @@ func (d *defaultDriver) Reconcile(
 
 	if !changes.HasChanges() {
 		// Current state matches expected state
-
-		// Update discovery for any previously created pods that have come up (see also below in create pod)
-		if d.zen1SettingsUpdater != nil {
-			if err := d.zen1SettingsUpdater(
-				esClient,
-				reconcile.AvailableElasticsearchNodes(resourcesState.CurrentPods.Pods()),
-			); err != nil {
-				// TODO: reconsider whether this error should be propagated with results instead?
-				log.Error(err, "Error during update discovery after having no changes, requeuing.")
-				return results.WithResult(defaultRequeue)
-			}
-		}
-
 		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
 		return results
 	}
@@ -387,13 +403,13 @@ func (d *defaultDriver) Reconcile(
 
 	// Shrink clusters by deleting deprecated pods
 	if err = d.attemptPodsDeletion(
-		performableChanges.ToDelete.Pods(),
+		performableChanges,
 		reconcileState,
 		resourcesState,
 		observedState,
 		results,
 		esClient,
-		namespacedName,
+		es,
 	); err != nil {
 		return results.WithError(err)
 	}
@@ -411,29 +427,40 @@ func (d *defaultDriver) Reconcile(
 
 // attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
 func (d *defaultDriver) attemptPodsDeletion(
-	ToDelete []corev1.Pod,
+	changes *mutation.PerformableChanges,
 	reconcileState *reconcile.State,
 	resourcesState *reconcile.ResourcesState,
 	observedState observer.State,
 	results *reconciler.Results,
 	esClient esclient.Client,
-	namespacedName types.NamespacedName,
+	elasticsearch v1alpha1.Elasticsearch,
 ) error {
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
 	copy(newState, resourcesState.CurrentPods.Pods())
-	for _, pod := range ToDelete {
+	for _, pod := range changes.ToDelete.Pods() {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {
 			if d.zen1SettingsUpdater != nil {
-				if err := d.zen1SettingsUpdater(esClient, newState); err != nil {
+				requeue, err := d.zen1SettingsUpdater(
+					elasticsearch,
+					d.Client,
+					esClient,
+					newState,
+					changes)
+
+				if err != nil {
 					return err
+				}
+
+				if requeue {
+					results.WithResult(defaultRequeue)
 				}
 			}
 			return nil
 		}
 
 		// do not delete a pod or expect a deletion if a data migration is in progress
-		isMigratingData := migration.IsMigratingData(observedState, pod, ToDelete)
+		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
 		if isMigratingData {
 			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
 			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
@@ -441,6 +468,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 			continue
 		}
 
+		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
 		d.PodsExpectations.ExpectDeletion(namespacedName)
 		result, err := deleteElasticsearchPod(
 			d.Client,

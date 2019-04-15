@@ -38,17 +38,21 @@ func NewState(c v1alpha1.Elasticsearch) *State {
 func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	var nodesAvailable []corev1.Pod
 	for _, pod := range pods {
-		conditionsTrue := 0
-		for _, cond := range pod.Status.Conditions {
-			if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
-				conditionsTrue++
-			}
-		}
-		if conditionsTrue == 2 {
+		if IsAvailable(pod) {
 			nodesAvailable = append(nodesAvailable, pod)
 		}
 	}
 	return nodesAvailable
+}
+
+func IsAvailable(pod corev1.Pod) bool {
+	conditionsTrue := 0
+	for _, cond := range pod.Status.Conditions {
+		if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
+			conditionsTrue++
+		}
+	}
+	return conditionsTrue == 2
 }
 
 func (s *State) updateWithPhase(

@@ -27,6 +27,14 @@ type PodToCreate struct {
 	MismatchReasons map[string][]string
 }
 
+func (c Changes) PodsToCreate() []corev1.Pod {
+	pods := make([]corev1.Pod, len(c.ToCreate))
+	for i, pod := range c.ToCreate {
+		pods[i] = pod.Pod
+	}
+	return pods
+}
+
 // EmptyChanges creates an empty Changes with empty arrays (not nil)
 func EmptyChanges() Changes {
 	return Changes{

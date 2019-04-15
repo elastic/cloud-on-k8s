@@ -10,7 +10,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func quorum(nMasters int) int {
+// Quorum computes the quorum of a cluster given the number of masters.
+func Quorum(nMasters int) int {
 	if nMasters == 0 {
 		return 0
 	}
@@ -26,7 +27,7 @@ func ComputeMinimumMasterNodes(topology []v1alpha1.TopologyElementSpec) int {
 			nMasters += int(t.NodeCount)
 		}
 	}
-	return quorum(nMasters)
+	return Quorum(nMasters)
 }
 
 // ComputeMinimumMasterNodesFromPods returns the minimum number of master nodes based on the
@@ -38,5 +39,5 @@ func ComputeMinimumMasterNodesFromPods(cluster []corev1.Pod) int {
 			nMasters++
 		}
 	}
-	return quorum(nMasters)
+	return Quorum(nMasters)
 }

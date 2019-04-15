@@ -1,0 +1,110 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
+package version6
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+)
+
+var (
+	log = logf.Log.WithName("version")
+)
+
+// UpdateZen1Discovery updates the secret that contains the configuration of the nodes with the expected value
+// of discovery.zen.minimum_master_nodes. It also attempts to update this specific setting for the already existing nodes
+// through the API. If an update can't be done immediately (e.g. because some master nodes are not created yet) then the
+// function returns true in order to notify the caller that a new reconciliation loop should be triggered to try again later.
+func UpdateZen1Discovery(
+	cluster v1alpha1.Elasticsearch,
+	c k8s.Client,
+	esClient client.Client,
+	allPods []corev1.Pod,
+	performableChanges *mutation.PerformableChanges,
+) (bool, error) {
+	// Get current master nodes count
+	currentMasterCount := 0
+	// Among them get the ones that are ready
+	currentAvailableMasterCount := 0
+	for _, p := range allPods {
+		if label.IsMasterNode(p) {
+			currentMasterCount++
+			if reconcile.IsAvailable(p) {
+				currentAvailableMasterCount++
+			}
+		}
+	}
+
+	nextMasterCount := currentMasterCount
+	// Add masters that must be created by this reconciliation loop
+	for _, pod := range performableChanges.PodsToCreate() {
+		if label.IsMasterNode(pod) {
+			nextMasterCount++
+		}
+	}
+
+	minimumMasterNodes := settings.Quorum(nextMasterCount)
+	// Update the current value in the configuration of existing pods
+	for _, p := range allPods {
+		config, err := settings.GetESConfigContent(c, k8s.ExtractNamespacedName(&p))
+		if err != nil {
+			return false, err
+		}
+		config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
+		log.V(1).Info("Set minimum master nodes",
+			"medium", "configuration",
+			"operation", "update",
+			"pod", p.Name,
+			"currentMasterCount", currentMasterCount,
+			"nextMasterCount", nextMasterCount,
+			"minimum_master_nodes", minimumMasterNodes,
+		)
+		err = settings.ReconcileConfig(c, cluster, p, config)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// Update the current value for each new pod that is about to be created
+	for _, change := range performableChanges.ToCreate {
+		log.V(1).Info("Set minimum master nodes",
+			"medium", "configuration",
+			"operation", "set",
+			"currentMasterCount", currentMasterCount,
+			"nextMasterCount", nextMasterCount,
+			"minimum_master_nodes", minimumMasterNodes,
+		)
+		// Update the minimum_master_nodes before pod creation in order to avoid split brain situation.
+		change.PodSpecCtx.Config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
+	}
+
+	// Do not attempt to make an API call if there is not enough available masters
+	if currentAvailableMasterCount < minimumMasterNodes {
+		// We can't update the minim master nodes right now, it is the case if a new master node is not created yet.
+		// In that case we need to requeue later.
+		return true, nil
+	}
+
+	log.Info("Update minimum master nodes",
+		"medium", "api",
+		"currentMasterCount", currentMasterCount,
+		"nextMasterCount", nextMasterCount,
+		"minimum_master_nodes", minimumMasterNodes,
+	)
+	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+	defer cancel()
+	return false, esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
+
+}

@@ -7,16 +7,13 @@ package settings
 import (
 	"fmt"
 	"path"
-	"strconv"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
 // NewDefaultESConfig builds the elasticsearch configuration file from the given parameters
@@ -38,8 +35,7 @@ func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
 
-		DiscoveryZenPingUnicastHosts:   services.DiscoveryServiceName(clusterName),
-		DiscoveryZenMinimumMasterNodes: strconv.Itoa(minMasterNodes),
+		DiscoveryZenPingUnicastHosts: services.DiscoveryServiceName(clusterName),
 
 		// derive IP dynamically from the pod IP, injected as env var
 		NetworkPublishHost: "${" + EnvPodIP + "}",
