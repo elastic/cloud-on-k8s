@@ -132,7 +132,7 @@ func (s *State) UpdateZen1MinimumMasterNodes(value int) {
 	}
 }
 
-// GetZen1MinimumMasterNodes return the current minimum master nodes as it is stored in the state.
+// GetZen1MinimumMasterNodes returns the current minimum master nodes as it is stored in the state.
 func (s *State) GetZen1MinimumMasterNodes() int {
 	return s.status.ZenDiscovery.MinimumMasterNodes
 }

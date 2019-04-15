@@ -60,7 +60,6 @@ func UpdateZen1Discovery(
 	// Update the current value in the configuration of existing pods
 	log.V(1).Info("Set minimum master nodes",
 		"how", "configuration",
-		"operation", "update",
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,
