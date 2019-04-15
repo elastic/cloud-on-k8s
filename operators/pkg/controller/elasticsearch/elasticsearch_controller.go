@@ -250,9 +250,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	err = validation.Validate(es)
+	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
+	}
+	if len(violations) > 0 {
+		reconcileState.UpdateElasticsearchInvalid(violations)
+		return results
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
