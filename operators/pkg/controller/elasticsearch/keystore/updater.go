@@ -48,6 +48,14 @@ func NewUpdater(cfg Config) *Updater {
 	}
 }
 
+// Status returns the Keystore updater status
+func (u *Updater) Status() (Status, error) {
+	u.lock.RLock()
+	defer u.lock.RUnlock()
+	return u.status, nil
+}
+
+// updateStatus updates the Keystore updater status
 func (u *Updater) updateStatus(s State, msg string, err error) {
 	u.lock.Lock()
 	defer u.lock.Unlock()
