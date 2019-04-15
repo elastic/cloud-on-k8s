@@ -21,7 +21,7 @@ func Test_toMillis(t *testing.T) {
 		want int64
 	}{
 		{
-			name: "turnes time into unix milliseconds",
+			name: "turns time into unix milliseconds",
 			args: args{
 				t: time.Date(2019, 01, 22, 0, 0, 0, 0, time.UTC),
 			},
