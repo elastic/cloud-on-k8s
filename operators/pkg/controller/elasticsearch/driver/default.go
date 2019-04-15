@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"time"
@@ -29,7 +28,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
@@ -226,33 +224,12 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	if err := snapshot.ReconcileSnapshotterCronJob(
-		d.Client,
-		d.Scheme,
-		es,
-		internalUsers.ControllerUser.Auth(),
-		d.OperatorImage,
-	); err != nil {
-		// it's ok to continue even if we cannot reconcile the cron job
-		results.WithError(err)
-	}
-
 	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	if esReachable {
-		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
-		if err != nil {
-			msg := "Could not reconcile snapshot repository"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
-			// requeue to retry but continue, as the failure might be caused by transient inconsistency between ES and
-			// operator e.g. after certificates have been rotated
-			results.WithResult(defaultRequeue)
-		}
-
 		err = remotecluster.UpdateRemoteCluster(d.Client, esClient, es, reconcileState)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"

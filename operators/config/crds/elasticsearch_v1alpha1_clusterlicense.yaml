@@ -54,12 +54,6 @@ spec:
               description: UID is the license UID not the k8s API UID (!)
               type: string
           required:
-          - uid
-          - issueDateInMillis
-          - expiryDateInMillis
-          - issuedTo
-          - issuer
-          - startDateInMillis
           - maxNodes
           - type
           - signatureRef

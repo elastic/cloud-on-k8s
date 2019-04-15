@@ -11,6 +11,7 @@ type State string
 
 const (
 	notInitializedState State = "notInitialized"
+	waitingState        State = "waiting"
 	runningState        State = "running"
 	failedState         State = "failed"
 )

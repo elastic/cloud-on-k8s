@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -34,7 +35,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 		name    string
 		args    args
 		current *estype.Elasticsearch
-		want    Result
+		want    validation.Result
 		wantErr bool
 	}{
 		{
@@ -43,7 +44,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("6.7.0"),
 			},
 			current: nil,
-			want:    OK,
+			want:    validation.OK,
 		},
 		{
 			name: "prevent downgrade",
@@ -51,7 +52,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("1.0.0"),
 			},
 			current: es("2.0.0"),
-			want:    Result{Allowed: false, Reason: noDowngradesMsg},
+			want:    validation.Result{Allowed: false, Reason: noDowngradesMsg},
 		},
 		{
 			name: "allow upgrades",
@@ -59,7 +60,7 @@ func TestValidation_noDowngrades(t *testing.T) {
 				toValidate: *es("1.2.0"),
 			},
 			current: es("1.0.0"),
-			want:    OK,
+			want:    validation.OK,
 		},
 	}
 	for _, tt := range tests {
@@ -82,15 +83,15 @@ func Test_validUpgradePath(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want Result
+		want validation.Result
 	}{
 		{
-			name: "new cluster OK",
+			name: "new cluster validation.OK",
 			args: args{
 				current:  nil,
 				proposed: *es("1.0.0"),
 			},
-			want: OK,
+			want: validation.OK,
 		},
 		{
 			name: "unsupported version FAIL",
@@ -98,7 +99,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("1.0.0"),
 				proposed: *es("2.0.0"),
 			},
-			want: Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
+			want: validation.Result{Allowed: false, Reason: "unsupported version: 2.0.0"},
 		},
 		{
 			name: "too old FAIL",
@@ -106,7 +107,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: Result{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
+			want: validation.Result{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
 		},
 		{
 			name: "too new FAIL",
@@ -114,15 +115,15 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("7.0.0"),
 				proposed: *es("6.5.0"),
 			},
-			want: Result{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
+			want: validation.Result{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
 		},
 		{
-			name: "in range OK",
+			name: "in range validation.OK",
 			args: args{
 				current:  es("6.7.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: OK,
+			want: validation.OK,
 		},
 	}
 	for _, tt := range tests {

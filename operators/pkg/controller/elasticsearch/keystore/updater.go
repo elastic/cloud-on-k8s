@@ -24,7 +24,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-const attemptReload = "attempt-reload"
+const (
+	attemptReload         = "attempt-reload"
+	waitEsReadinessPeriod = 10 * time.Second
+)
 
 var (
 	log = logf.Log.WithName("keystore-updater")
@@ -65,11 +68,35 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
+	u.waitForElasticsearchReady()
+
 	if u.config.ReloadCredentials {
 		go u.coalescingRetry()
 	}
 
 	go u.watchForUpdate()
+}
+
+func (u *Updater) waitForElasticsearchReady() {
+	caCerts, err := loadCerts(u.config.EsCACertsPath)
+	if err != nil {
+		log.Error(err, "Cannot create Elasticsearch client with CA certs")
+		return
+	}
+	esClient := client.NewElasticsearchClient(nil, u.config.EsEndpoint, u.config.EsUser, u.config.EsVersion, caCerts)
+
+	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
+
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
+		_, err := esClient.GetClusterInfo(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		log.Info("Waiting for Elasticsearch to be ready")
+		time.Sleep(waitEsReadinessPeriod)
+	}
 }
 
 func (u *Updater) watchForUpdate() {

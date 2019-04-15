@@ -57,6 +57,7 @@ rules:
   - elasticsearches/status
   - clusterlicenses
   - enterpriselicenses
+  - enterpriselicenses/status
   - trustrelationships
   - users
   - users/status

@@ -22,7 +22,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -200,9 +199,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "request", request)
 	}()
 
 	// Fetch the Elasticsearch instance
@@ -250,9 +249,13 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results.WithError(err)
 	}
 
-	err = validation.Validate(es)
+	violations, err := validation.Validate(es)
 	if err != nil {
 		return results.WithError(err)
+	}
+	if len(violations) > 0 {
+		reconcileState.UpdateElasticsearchInvalid(violations)
+		return results
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
@@ -299,7 +302,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
-		snapshot.Finalizer(clusterName, watched),
 		license.Finalizer(clusterName, watched),
 	}
 }

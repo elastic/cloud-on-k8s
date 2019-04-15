@@ -70,18 +70,6 @@ type Client interface {
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
 	// GetClusterHealth calls the _cluster/health api.
 	GetClusterHealth(ctx context.Context) (Health, error)
-	// GetSnapshotRepository retrieves the currently configured snapshot repository with the given name.
-	GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error)
-	// DeleteSnapshotRepository tries to delete the snapshot repository identified by name.
-	DeleteSnapshotRepository(ctx context.Context, name string) error
-	// UpsertSnapshotRepository inserts or updates the given snapshot repository
-	UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error
-	// GetAllSnapshots returns a list of all snapshots for the given repository.
-	GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error)
-	// TakeSnapshot takes a new cluster snapshot with the given name into the given repository.
-	TakeSnapshot(ctx context.Context, repo string, snapshot string) error
-	// DeleteSnapshot deletes the given snapshot from the given repository.
-	DeleteSnapshot(ctx context.Context, repo string, snapshot string) error
 	// SetMinimumMasterNodes sets the transient and persistent setting of the same name in cluster settings.
 	SetMinimumMasterNodes(ctx context.Context, n int) error
 	// ReloadSecureSettings will decrypt and re-read the entire keystore, on every cluster node,
