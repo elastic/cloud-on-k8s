@@ -327,7 +327,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Update Zen1 to prepare new masters that will join the cluster.
-	// This is done before creating new nodes to ensure that they immediately start with the
+	// This is done before new masters are created to ensure that they immediately start with the
 	// right value for minimum_master_node.
 	if d.zen1SettingsUpdater != nil {
 		requeue, err := d.zen1SettingsUpdater(
@@ -339,9 +339,7 @@ func (d *defaultDriver) Reconcile(
 		)
 
 		if err != nil {
-			// TODO: reconsider whether this error should be propagated with results instead?
-			log.Error(err, "Error during update discovery, requeuing.")
-			return results.WithResult(defaultRequeue)
+			return results.WithError(err)
 		}
 
 		if requeue {
