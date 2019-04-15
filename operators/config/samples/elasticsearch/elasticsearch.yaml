@@ -36,6 +36,5 @@ spec:
     #        storage: 2Gi
     ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
     # secureSettings:
-    #   namespace: "default"
     #   name: "ref-to-secret"
   expose: LoadBalancer
