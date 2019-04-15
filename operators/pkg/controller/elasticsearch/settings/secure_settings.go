@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
@@ -44,10 +45,10 @@ func ReconcileSecureSettings(
 		return err
 	}
 
-	// retrieve the secret referenced by the user
+	// retrieve the secret referenced by the user in the Elasticsearch namespace
 	userSecret := &corev1.Secret{}
 	if userSecretRef != nil {
-		userSecret, err = retrieveUserSecret(c, eventsRecorder, *userSecretRef, es.Namespace)
+		userSecret, err = retrieveUserSecret(c, eventsRecorder, es.Namespace, userSecretRef.Name)
 		if err != nil {
 			return err
 		}
@@ -78,18 +79,13 @@ func ReconcileSecureSettings(
 	})
 }
 
-func retrieveUserSecret(c k8s.Client, eventsRecorder *events.Recorder, ref corev1.SecretReference, defaultNamespace string) (*corev1.Secret, error) {
-	// if the namespace is not set, default to the Elasticsearch namespace
-	namespace := ref.Namespace
-	if namespace == "" {
-		namespace = defaultNamespace
-	}
+func retrieveUserSecret(c k8s.Client, eventsRecorder *events.Recorder, namespace string, name string) (*corev1.Secret, error) {
 	userSecret := corev1.Secret{}
-	err := c.Get(types.NamespacedName{Namespace: namespace, Name: ref.Name}, &userSecret)
+	err := c.Get(types.NamespacedName{Namespace: namespace, Name: name}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "ref", ref)
-		eventsRecorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+ref.Name)
+		log.Info(msg, "name", name)
+		eventsRecorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
 	} else if err != nil {
 		return nil, err
 	}
@@ -107,7 +103,7 @@ func userSecretWatchName(cluster types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchUserSecret(watched watches.DynamicWatches, userSecretRef *corev1.SecretReference, cluster types.NamespacedName) error {
+func watchUserSecret(watched watches.DynamicWatches, userSecretRef *commonv1alpha1.ResourceNameReference, cluster types.NamespacedName) error {
 	watchName := userSecretWatchName(cluster)
 	if userSecretRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
@@ -116,7 +112,7 @@ func watchUserSecret(watched watches.DynamicWatches, userSecretRef *corev1.Secre
 	return watched.Secrets.AddHandler(watches.NamedWatch{
 		Name: watchName,
 		Watched: types.NamespacedName{
-			Namespace: userSecretRef.Namespace,
+			Namespace: cluster.Namespace,
 			Name:      userSecretRef.Name,
 		},
 		Watcher: cluster,
