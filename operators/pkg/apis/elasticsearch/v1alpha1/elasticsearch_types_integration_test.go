@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/onsi/gomega"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,38 +29,31 @@ func TestStorageElasticsearch(t *testing.T) {
 		Spec: ElasticsearchSpec{
 			Nodes: []NodeSpec{
 				{
-					Config: Config{
-						Data: map[string]interface{}{
-							NodeMaster: false,
-						},
-					},
+					NodeCount: 3,
 				},
 			},
 		},
 	}
-	g := gomega.NewGomegaWithT(t)
-
 	// Test Create
 	fetched := &Elasticsearch{}
-	g.Expect(c.Create(context.Background(), created)).NotTo(gomega.HaveOccurred())
-
-	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
+	require.NoError(t, c.Create(context.Background(), created))
+	require.NoError(t, c.Get(context.Background(), key, fetched))
 
 	if diff := deep.Equal(fetched, created); diff != nil {
 		t.Error(diff)
 	}
 
-	// Test Updating the Labels
+	// Test updating the configuration
 	updated := fetched.DeepCopy()
-	updated.Labels = map[string]string{"hello": "world"}
-	g.Expect(c.Update(context.Background(), updated)).NotTo(gomega.HaveOccurred())
+	updated.Spec.Nodes[0].Config = &Config{Data: map[string]interface{}{"hello": "world"}}
+	require.NoError(t, c.Update(context.Background(), updated))
 
-	g.Expect(c.Get(context.Background(), key, fetched)).NotTo(gomega.HaveOccurred())
+	require.NoError(t, c.Get(context.Background(), key, fetched))
 	if diff := deep.Equal(fetched, updated); diff != nil {
 		t.Error(diff)
 	}
 
 	// Test Delete
-	g.Expect(c.Delete(context.Background(), fetched)).NotTo(gomega.HaveOccurred())
-	g.Expect(c.Get(context.Background(), key, fetched)).To(gomega.HaveOccurred())
+	require.NoError(t, c.Delete(context.Background(), fetched))
+	require.Error(t, c.Get(context.Background(), key, fetched))
 }
