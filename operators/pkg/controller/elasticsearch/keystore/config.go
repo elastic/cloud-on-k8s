@@ -5,6 +5,7 @@
 package keystore
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"k8s.io/client-go/util/workqueue"
 )
 
 var (
@@ -54,8 +54,6 @@ type Config struct {
 	EsCACertsPath string
 	// EsUser is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
 	EsUser client.UserAuth
-	// ReloadQueue is a channel to schedule config reload requests
-	ReloadQueue workqueue.DelayingInterface
 }
 
 // envToFlag reverses viper's autoenv so that we can specify ENV variables as constants and derive flags from them.
@@ -68,7 +66,7 @@ func BindEnvToFlags(cmd *cobra.Command) error {
 	cmd.Flags().StringP(sourceDirFlag, "s", "/volumes/secrets", "directory containing keystore settings source files")
 	cmd.Flags().StringP(keystoreBinaryFlag, "b", "/usr/share/elasticsearch/bin/elasticsearch-keystore", "path to keystore binary")
 	cmd.Flags().StringP(keystorePathFlag, "k", "/usr/share/elasticsearch/config/elasticsearch.keystore", "path to keystore file")
-	cmd.Flags().BoolP(reloadCredentialsFlag, "r", false, "whether or not to trigger a credential reload in Elasticsearch")
+	cmd.Flags().BoolP(reloadCredentialsFlag, "r", false, "whether or not to trigger a credentials reload in Elasticsearch")
 	cmd.Flags().StringP(esUsernameFlag, "u", "", "Elasticsearch username to reload credentials")
 	cmd.Flags().StringP(esPasswordFlag, "p", "", "Elasticsearch password to reload credentials")
 	cmd.Flags().StringP(esEndpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
@@ -91,6 +89,7 @@ func NewConfigFromFlags() (Config, error, string) {
 	if os.IsNotExist(err) {
 		return Config{}, err, "source directory does not exist"
 	}
+
 	keystoreBinary := viper.GetString(keystoreBinaryFlag)
 	_, err = os.Stat(keystoreBinary)
 	if os.IsNotExist(err) {
@@ -108,13 +107,16 @@ func NewConfigFromFlags() (Config, error, string) {
 		KeystoreBinary:    keystoreBinary,
 		KeystorePath:      viper.GetString(keystorePathFlag),
 		ReloadCredentials: shouldReload,
-		ReloadQueue:       workqueue.NewDelayingQueue(),
 		EsVersion:         *v,
 	}
 
 	if shouldReload {
 		user := viper.GetString(esUsernameFlag)
 		pass := viper.GetString(esPasswordFlag)
+
+		if user == "" {
+			return Config{}, errors.New("user is empty"), "invalid user"
+		}
 
 		if pass == "" {
 			passwordFile := viper.GetString(esPasswordFileFlag)
@@ -125,28 +127,20 @@ func NewConfigFromFlags() (Config, error, string) {
 			pass = string(bytes)
 		}
 
-		if user == "" || pass == "" {
-			passwordFeedback := pass
-			if pass != "" {
-				passwordFeedback = "REDACTED"
-			}
-			return Config{},
-				fmt.Errorf(
-					"user and password are required but found username:%s password:%s",
-					user,
-					passwordFeedback,
-				),
-				"Invalid config"
+		if pass == "" {
+			return Config{}, errors.New("password is empty"), "invalid password"
 		}
+
 		config.EsUser = client.UserAuth{Name: user, Password: pass}
 
 		caCerts := viper.GetString(esCaCertsPathFlag)
-		_, err := loadCerts(caCerts)
+		_, err = loadCerts(caCerts)
 		if err != nil {
 			return Config{}, err, "CA certificates are required when reloading credentials but could not be read"
 		}
 		config.EsCACertsPath = caCerts
 		config.EsEndpoint = viper.GetString(esEndpointFlag)
 	}
+
 	return config, nil, ""
 }
