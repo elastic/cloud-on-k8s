@@ -4,6 +4,8 @@ Managed Elastic products and services in Kubernetes.
 
 ## Requirements
 
+Before you start, install the following tools and packages:
+
 * [go](https://golang.org/dl/)
 * [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
@@ -20,29 +22,33 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 ## Development
 
-To start, get a working development Kubernetes cluster using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube) or [GKE](https://cloud.google.com/kubernetes-engine/):
+1. Get a working development Kubernetes cluster. You can either use:
 
-```bash
- make bootstrap-minikube
- # Sets up a Minikube cluster with required resources
- ```
- or
- ```bash
- GCLOUD_PROJECT=my-project-id make bootstrap-gke
- # Sets up GKE cluster with required resources		
- ```
+    [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
-Then, proceed as follows:
+  ```bash
+   make bootstrap-minikube
+   # Sets up a Minikube cluster with required resources
+   ```
+   or [GKE](https://cloud.google.com/kubernetes-engine/)
 
-* `make dep-vendor-only`: Downloads extra Go libraries needed to compile the project and stores them in the vendor directory.
-* `make run`: Run the operator locally.
-* `make deploy`: Deploy the operators into the configured k8s cluster.
-* `make samples`: Apply a sample stack resource.
+   ```bash
+   GCLOUD_PROJECT=my-project-id make bootstrap-gke
+   # Sets up GKE cluster with required resources		
+   ```
+2. Deploy the operator.
+
+   Use either `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
+
+3. Proceed with the following commands:
+
+   * `make dep-vendor-only`: Downloads extra Go libraries needed to compile the project and stores them in the vendor directory.
+   * `make samples`: Apply a sample stack resource.
 
 ### Running E2E tests
 
-E2E tests will run in the `e2e` namespace. An operator needs to be running and managing resources in the `e2e` namespace.
-To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e tests in a separate shell `make e2e-local`.
+E2E tests will run in the `e2e` namespace. An operator must run and manage resources in the `e2e` namespace.
+To do that, run `MANAGED_NAMESPACE=e2e make run`. Then you can run E2E tests in a separate shell `make e2e-local`.
 
 ## Recommended reading
 
