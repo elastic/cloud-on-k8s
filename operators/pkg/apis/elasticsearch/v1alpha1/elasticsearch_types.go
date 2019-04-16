@@ -42,6 +42,11 @@ type ElasticsearchSpec struct {
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// SecureSettings reference the name of a secret containing secure settings,
+	// to be injected into Elasticsearch keystore on each node. It must exist in the
+	// same namespace as the Elasticsearch resource.
+	SecureSettings *commonv1alpha1.ResourceNameReference `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster

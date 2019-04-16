@@ -139,6 +139,12 @@ func podSpec(
 		keystore.SecretVolumeName,
 		keystore.SecretMountPath)
 
+	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
+		name.SecureSettingsSecret(p.ClusterName),
+		volume.SecureSettingsVolumeName,
+		volume.SecureSettingsVolumeMountPath,
+	)
+
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
 	}
@@ -173,6 +179,7 @@ func podSpec(
 				nodeCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
 				keystoreVolume.VolumeMount(),
+				secureSettingsVolume.VolumeMount(),
 			),
 			Command: []string{processmanager.CommandPath},
 		}},
@@ -187,6 +194,7 @@ func podSpec(
 			extraFilesSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			keystoreVolume.Volume(),
+			secureSettingsVolume.Volume(),
 		),
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}

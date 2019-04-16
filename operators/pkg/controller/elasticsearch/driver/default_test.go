@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
@@ -263,7 +264,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{
@@ -293,7 +294,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{
