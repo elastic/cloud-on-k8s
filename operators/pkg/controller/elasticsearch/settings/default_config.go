@@ -26,18 +26,18 @@ func NewDefaultESConfig(
 	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
 ) (*CanonicalConfig, error) {
-	flatConfig, err := NewCanonicalConfigFrom(userConfig)
+	config, err := NewCanonicalConfigFrom(userConfig)
 	if err != nil {
 		return nil, err
 	}
-	err = flatConfig.MergeWith(
+	err = config.MergeWith(
 		baseConfig(clusterName, zenMinMasterNodes),
 		xpackConfig(licenseType),
 	)
 	if err != nil {
 		return nil, err
 	}
-	return flatConfig, nil
+	return config, nil
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster

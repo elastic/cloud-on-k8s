@@ -69,7 +69,7 @@ func TestReconcile(t *testing.T) {
 			SetVMMaxMapCount: &varFalse,
 			Nodes: []v1alpha1.NodeSpec{
 				{
-					Config: estype.Config{
+					Config: &estype.Config{
 						Data: map[string]interface{}{
 							estype.NodeMaster: true,
 						},
