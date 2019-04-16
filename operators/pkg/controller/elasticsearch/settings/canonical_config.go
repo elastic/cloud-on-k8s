@@ -111,9 +111,9 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	return nil
 }
 
-// HasPrefix returns all keys in c that have one of the given prefix keys.
+// HasPrefixes returns all keys in c that have one of the given prefix keys.
 // Keys are expected in dotted form.
-func (c *CanonicalConfig) HasPrefix(keys []string) []string {
+func (c *CanonicalConfig) HasPrefixes(keys []string) []string {
 	var has []string
 	flatKeys := c.access().FlattenedKeys(options...)
 	for _, s := range keys {

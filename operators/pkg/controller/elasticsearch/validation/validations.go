@@ -11,9 +11,9 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/set"
 )
 
 // Validations are all registered Elasticsearch validations.
@@ -58,7 +58,7 @@ func hasMaster(ctx Context) validation.Result {
 }
 
 func noBlacklistedSettings(ctx Context) validation.Result {
-	violations := make(map[int]map[string]struct{})
+	violations := make(map[int]set.StringSet)
 	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
 		config, err := settings.NewCanonicalConfigFrom(n.Config)
 		if err != nil {
@@ -67,13 +67,10 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 			}
 			continue
 		}
-		forbidden := config.HasPrefix(settings.Blacklist)
+		forbidden := config.HasPrefixes(settings.Blacklist)
 		// remove duplicates
-		set := make(map[string]struct{})
-		for _, k := range forbidden {
-			set[k] = struct{}{}
-		}
-		if len(forbidden) > 0 {
+		set := set.Make(forbidden...)
+		if set.Count() > 0 {
 			violations[i] = set
 		}
 	}
@@ -82,15 +79,22 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 	}
 	var sb strings.Builder
 	var sep string
-	for n, v := range violations {
+	// iterate again to build validation message in node order
+	for i := range ctx.Proposed.Elasticsearch.Spec.Nodes {
+		vs := violations[i]
+		if vs == nil {
+			continue
+		}
 		sb.WriteString(sep)
 		sb.WriteString("node[")
-		sb.WriteString(strconv.FormatInt(int64(n), 10))
+		sb.WriteString(strconv.FormatInt(int64(i), 10))
 		sb.WriteString("]: ")
 		var sep2 string
-		for k := range v {
+		list := vs.AsSlice()
+		list.Sort()
+		for _, msg := range list {
 			sb.WriteString(sep2)
-			sb.WriteString(k)
+			sb.WriteString(msg)
 			sep2 = ", "
 		}
 		sep = "; "
