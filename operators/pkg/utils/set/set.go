@@ -39,7 +39,11 @@ func (set StringSet) Has(s string) (exists bool) {
 }
 
 func (set StringSet) AsSlice() sort.StringSlice {
-	sl := make([]string, 0, set.Count())
+	count := set.Count()
+	if count == 0 {
+		return nil
+	}
+	sl := make([]string, 0, count)
 	for k := range set {
 		sl = append(sl, k)
 	}
