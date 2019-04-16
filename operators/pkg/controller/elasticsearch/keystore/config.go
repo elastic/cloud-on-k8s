@@ -19,6 +19,10 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+const (
+	KeystoreBinPath = "/usr/share/elasticsearch/bin/elasticsearch-keystore"
+)
+
 var (
 	sourceDirFlag         = envToFlag(EnvSourceDir)
 	keystoreBinaryFlag    = envToFlag(EnvKeystoreBinary)
@@ -66,7 +70,7 @@ func envToFlag(env string) string {
 // BindEnvToFlags binds flags to environment variables.
 func BindEnvToFlags(cmd *cobra.Command) error {
 	cmd.Flags().StringP(sourceDirFlag, "s", "/volumes/secrets", "directory containing keystore settings source files")
-	cmd.Flags().StringP(keystoreBinaryFlag, "b", "/usr/share/elasticsearch/bin/elasticsearch-keystore", "path to keystore binary")
+	cmd.Flags().StringP(keystoreBinaryFlag, "b", KeystoreBinPath, "path to keystore binary")
 	cmd.Flags().StringP(keystorePathFlag, "k", "/usr/share/elasticsearch/config/elasticsearch.keystore", "path to keystore file")
 	cmd.Flags().BoolP(reloadCredentialsFlag, "r", false, "whether or not to trigger a credential reload in Elasticsearch")
 	cmd.Flags().StringP(esUsernameFlag, "u", "", "Elasticsearch username to reload credentials")
