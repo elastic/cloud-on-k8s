@@ -26,18 +26,18 @@ const (
 	// podRandomSuffixLength represents the length of the random suffix that is appended in NewPodName.
 	podRandomSuffixLength = 10
 
-	podSuffix                 = "-es"
-	configSecretSuffix        = "-config"
-	certsSecretSuffix         = "-certs"
-	serviceSuffix             = "-es"
-	discoveryServiceSuffix    = "-es-discovery"
-	cASecretSuffix            = "-ca"
-	cAPrivateKeySecretSuffix  = "-ca-private-key"
-	elasticUserSecretSuffix   = "-elastic-user"
-	esRolesUsersSecretSuffix  = "-es-roles-users"
-	extraFilesSecretSuffix    = "-extrafiles"
-	internalUsersSecretSuffix = "-internal-users"
-	keystoreSecretSuffix      = "-keystore"
+	podSuffix                  = "-es"
+	configSecretSuffix         = "-config"
+	secureSettingsSecretSuffix = "-secure-settings"
+	certsSecretSuffix          = "-certs"
+	serviceSuffix              = "-es"
+	discoveryServiceSuffix     = "-es-discovery"
+	cASecretSuffix             = "-ca"
+	cAPrivateKeySecretSuffix   = "-ca-private-key"
+	elasticUserSecretSuffix    = "-elastic-user"
+	esRolesUsersSecretSuffix   = "-es-roles-users"
+	extraFilesSecretSuffix     = "-extrafiles"
+	internalUsersSecretSuffix  = "-internal-users"
 )
 
 // Suffix a resource name.
@@ -86,6 +86,10 @@ func ConfigSecret(podName string) string {
 	return suffix(podName, configSecretSuffix)
 }
 
+func SecureSettingsSecret(esName string) string {
+	return suffix(esName, secureSettingsSecretSuffix)
+}
+
 func CertsSecret(podName string) string {
 	return suffix(podName, certsSecretSuffix)
 }
@@ -120,8 +124,4 @@ func ExtraFilesSecret(esName string) string {
 
 func InternalUsersSecret(esName string) string {
 	return suffix(esName, internalUsersSecretSuffix)
-}
-
-func KeystoreSecret(esName string) string {
-	return suffix(esName, keystoreSecretSuffix)
 }
