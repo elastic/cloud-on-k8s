@@ -46,7 +46,7 @@ var DefaultCfg = ElasticsearchSettings{
 	},
 }
 
-// CfgOptions are config options for elasticsearch.yml. Currently only the support for dotted keys.
+// CfgOptions are config options for elasticsearch.yml. Currently contains only support for dotted keys.
 var CfgOptions = []ucfg.Option{ucfg.PathSep(".")}
 
 // Config represents untyped elasticsearch.yml configuration inside the Elasticsearch spec.
@@ -95,7 +95,7 @@ func (c *Config) DeepCopyInto(out *Config) {
 	return
 }
 
-// MustUnpack returns a typed subset the Config.
+// MustUnpack returns a typed subset of the Config.
 // Panics on errors.
 func (c Config) MustUnpack() ElasticsearchSettings {
 	cfg, err := c.Unpack()

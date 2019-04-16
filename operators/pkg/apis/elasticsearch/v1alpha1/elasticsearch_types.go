@@ -34,7 +34,7 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
-	// Nodes represents a list of topology elements to be part of the cluster
+	// Nodes represents a list of groups of  nodes with the same configuration to be part of the cluster
 	Nodes []NodeSpec `json:"nodes,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features

@@ -69,7 +69,7 @@ func ParseConfig(yml []byte) (*CanonicalConfig, error) {
 
 }
 
-// Set set key to string vals in c.  An error is returned if key is invalid.
+// Set sets key to string vals in c.  An error is returned if key is invalid.
 func (c *CanonicalConfig) Set(key string, vals ...string) error {
 	if c == nil {
 		return errors.New("config is nil")
@@ -96,7 +96,7 @@ func (c *CanonicalConfig) Unpack() (estype.ElasticsearchSettings, error) {
 	return cfg, c.access().Unpack(&cfg, options...)
 }
 
-// MergeWith returns a new flat config with the content of c and c2.
+// MergeWith returns a new canonical config with the content of c and c2.
 // In case of conflict, c2 is taking precedence.
 func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	for _, c2 := range cfgs {

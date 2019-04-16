@@ -109,7 +109,7 @@ func TestConfig_DeepCopyInto(t *testing.T) {
 		expected Config
 	}{
 		{
-			name:     "simple copy",
+			name:     "deep copy via JSON roundtrip changes some types",
 			in:       testFixture,
 			expected: expectedJSONized,
 		},
@@ -132,7 +132,7 @@ func TestConfig_DeepCopy(t *testing.T) {
 		want Config
 	}{
 		{
-			name: "simple copy",
+			name: "deep copy via JSON roundtrip changes some types",
 			in:   testFixture,
 			want: expectedJSONized,
 		},

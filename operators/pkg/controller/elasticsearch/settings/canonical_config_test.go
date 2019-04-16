@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFlatConfig_Render(t *testing.T) {
+func TestCanonicalConfig_Render(t *testing.T) {
 	config := MustCanonicalConfig(map[string]string{
 		"aaa":        "aa  a",
 		"bbb":        "b  bb",
@@ -30,7 +30,7 @@ zz: zzz  z z z
 	require.Equal(t, expected, output)
 }
 
-func TestFlatConfig_MergeWith(t *testing.T) {
+func TestCanonicalConfig_MergeWith(t *testing.T) {
 	tests := []struct {
 		name string
 		c    *CanonicalConfig
