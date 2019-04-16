@@ -41,8 +41,8 @@ spec:
   nodes:
   - config:
       node.master: true
-      node.attr.box_type: hot
       node.data: true
+      node.attr.node_type: mixed
     resources:
       limits:
         memory: 1Gi
@@ -68,6 +68,7 @@ spec:
       node.master: true
       node.data: false
       node.ingest: false
+      node.attr.node_type: master-only
     resources:
       limits:
         memory: 1Gi
@@ -78,6 +79,7 @@ spec:
       node.master: false
       node.data: true
       node.ingest: false
+      node.attr.node_type: data-only
     resources:
       limits:
         memory: 1Gi
