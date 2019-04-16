@@ -118,7 +118,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 1,
-							Config: v1alpha1.Config{
+							Config: &v1alpha1.Config{
 								Data: map[string]interface{}{
 									v1alpha1.NodeMaster: "true",
 								},
@@ -126,7 +126,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 						},
 						{
 							NodeCount: 2,
-							Config: v1alpha1.Config{
+							Config: &v1alpha1.Config{
 								Data: map[string]interface{}{
 									v1alpha1.NodeData: "true",
 								},
@@ -160,7 +160,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 1,
-					Config: v1alpha1.Config{
+					Config: &v1alpha1.Config{
 						Data: map[string]interface{}{
 							v1alpha1.NodeMaster: "true",
 						},

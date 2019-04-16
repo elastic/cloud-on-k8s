@@ -14,7 +14,7 @@ import (
 func createNode(count int, nodeTypes v1alpha1.Config) v1alpha1.NodeSpec {
 	return v1alpha1.NodeSpec{
 		NodeCount: int32(count),
-		Config:    nodeTypes,
+		Config:    &nodeTypes,
 	}
 }
 

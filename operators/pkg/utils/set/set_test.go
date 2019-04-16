@@ -123,7 +123,7 @@ func TestStringSet_Del(t *testing.T) {
 				s: "a",
 			},
 			assertion: func(s StringSet) {
-				require.Equal(t, 1, s.Count())
+				require.Equal(t, 0, s.Count())
 				require.False(t, s.Has("a"))
 			},
 		},

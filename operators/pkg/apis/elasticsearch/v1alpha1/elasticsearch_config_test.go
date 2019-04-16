@@ -149,13 +149,13 @@ func TestConfig_DeepCopy(t *testing.T) {
 func TestConfig_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
-		args    Config
+		args    *Config
 		want    ElasticsearchSettings
 		wantErr bool
 	}{
 		{
 			name: "happy path",
-			args: Config{
+			args: &Config{
 				Data: map[string]interface{}{
 					"node": map[string]interface{}{
 						"master": false,
@@ -177,6 +177,12 @@ func TestConfig_Unpack(t *testing.T) {
 					InitialMasterNodes: []string{"a", "b"},
 				},
 			},
+			wantErr: false,
+		},
+		{
+			name:    "Unpack is nil safe",
+			args:    nil,
+			want:    DefaultCfg,
 			wantErr: false,
 		},
 	}

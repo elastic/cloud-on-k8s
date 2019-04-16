@@ -49,9 +49,9 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 
 // MustNewSingleValue creates a new config holding a single string value.
 // Convenience constructor, will panic in the unlikely event of errors.
-func MustNewSingleValue(k string, v ...string) *CanonicalConfig {
+func MustNewSingleValue(k string, v string) *CanonicalConfig {
 	cfg := fromConfig(ucfg.New())
-	err := cfg.Set(k, v...)
+	err := cfg.access().SetString(k, -1, v, options...)
 	if err != nil {
 		panic(err)
 	}
@@ -69,16 +69,14 @@ func ParseConfig(yml []byte) (*CanonicalConfig, error) {
 
 }
 
-// Set sets key to string vals in c.  An error is returned if key is invalid.
-func (c *CanonicalConfig) Set(key string, vals ...string) error {
+// SetStrings sets key to string vals in c.  An error is returned if key is invalid.
+func (c *CanonicalConfig) SetStrings(key string, vals ...string) error {
 	if c == nil {
 		return errors.New("config is nil")
 	}
 	switch len(vals) {
 	case 0:
 		return errors.New("Nothing to set")
-	case 1:
-		return c.access().SetString(key, -1, vals[0], options...)
 	default:
 		for i, v := range vals {
 			err := c.access().SetString(key, i, v, options...)

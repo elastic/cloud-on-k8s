@@ -42,7 +42,7 @@ func ClusterInitialMasterNodesEnforcer(
 			continue
 		}
 
-		err := performableChanges.ToCreate[i].PodSpecCtx.Config.Set(
+		err := performableChanges.ToCreate[i].PodSpecCtx.Config.SetStrings(
 			settings.ClusterInitialMasterNodes,
 			masterEligibleNodeNames...,
 		)

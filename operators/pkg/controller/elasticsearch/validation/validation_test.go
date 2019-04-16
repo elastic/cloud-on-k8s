@@ -106,7 +106,7 @@ func TestValidate(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: "true",
 										estype.NodeData:   "false",

@@ -47,6 +47,10 @@ func NewExpectedPodSpecs(
 
 	for _, node := range es.Spec.Nodes {
 		for i := int32(0); i < node.NodeCount; i++ {
+			cfg := v1alpha1.Config{}
+			if node.Config != nil {
+				cfg = *node.Config
+			}
 			params := pod.NewPodSpecParams{
 				Version:         es.Spec.Version,
 				LicenseType:     es.Spec.GetLicenseType(),
@@ -56,7 +60,7 @@ func NewExpectedPodSpecs(
 					es.Spec.Nodes,
 				),
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				Config:               node.Config,
+				Config:               cfg,
 				Affinity:             node.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
 				Resources:            node.Resources,

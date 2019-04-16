@@ -60,7 +60,10 @@ func hasMaster(ctx Context) validation.Result {
 func noBlacklistedSettings(ctx Context) validation.Result {
 	violations := make(map[int]set.StringSet)
 	for i, n := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		config, err := settings.NewCanonicalConfigFrom(n.Config)
+		if n.Config == nil {
+			continue
+		}
+		config, err := settings.NewCanonicalConfigFrom(*n.Config)
 		if err != nil {
 			violations[i] = map[string]struct{}{
 				cfgInvalidMsg: {},

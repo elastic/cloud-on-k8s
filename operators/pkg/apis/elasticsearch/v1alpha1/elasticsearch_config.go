@@ -97,7 +97,7 @@ func (c *Config) DeepCopyInto(out *Config) {
 
 // MustUnpack returns a typed subset of the Config.
 // Panics on errors.
-func (c Config) MustUnpack() ElasticsearchSettings {
+func (c *Config) MustUnpack() ElasticsearchSettings {
 	cfg, err := c.Unpack()
 	if err != nil {
 		panic(err)
@@ -106,8 +106,12 @@ func (c Config) MustUnpack() ElasticsearchSettings {
 }
 
 // Unpack unpacks Config into a typed subset.
-func (c Config) Unpack() (ElasticsearchSettings, error) {
+func (c *Config) Unpack() (ElasticsearchSettings, error) {
 	esSettings := DefaultCfg // defensive copy
+	if c == nil {
+		// make this nil safe to allow a ptr value to work around Json serialization issues
+		return esSettings, nil
+	}
 	config, err := ucfg.NewFrom(c.Data, CfgOptions...)
 	if err != nil {
 		return esSettings, err

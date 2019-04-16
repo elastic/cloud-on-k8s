@@ -309,3 +309,82 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 		})
 	}
 }
+
+type testConfig struct {
+	A []string `config:"a"`
+}
+
+func TestCanonicalConfig_SetStrings(t *testing.T) {
+	type args struct {
+		key  string
+		vals []string
+	}
+	tests := []struct {
+		name    string
+		c       *CanonicalConfig
+		args    args
+		want    testConfig
+		wantErr bool
+	}{
+		{
+			name: "mutates config",
+			c:    NewCanonicalConfig(),
+			args: args{
+				key:  "a",
+				vals: []string{"foo", "bar"},
+			},
+			want:    testConfig{A: []string{"foo", "bar"}},
+			wantErr: false,
+		},
+		{
+			name: "always sets a list setting",
+			c:    NewCanonicalConfig(),
+			args: args{
+				key:  "a",
+				vals: []string{"foo"},
+			},
+			want:    testConfig{A: []string{"foo"}},
+			wantErr: false,
+		},
+		{
+			name:    "with nil argument",
+			c:       NewCanonicalConfig(),
+			args:    args{},
+			wantErr: true,
+		},
+		{
+			name: "with nil config",
+			c:    nil,
+			args: args{
+				key:  "a",
+				vals: []string{"a"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "already set",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": []string{"foo", "bar", "baz"},
+			}),
+			args: args{
+				key:  "a",
+				vals: []string{"bizz", "buzz"},
+			},
+			want:    testConfig{A: []string{"bizz", "buzz", "baz"}},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.c.SetStrings(tt.args.key, tt.args.vals...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("CanonicalConfig.SetStrings() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err == nil {
+				var cmp testConfig
+				require.NoError(t, tt.c.access().Unpack(&cmp))
+				require.Equal(t, tt.want, cmp)
+			}
+		})
+	}
+}

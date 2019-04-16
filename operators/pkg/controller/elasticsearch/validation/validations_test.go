@@ -44,7 +44,7 @@ func Test_hasMaster(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []v1alpha1.NodeSpec{
 							{
-								Config: v1alpha1.Config{
+								Config: &v1alpha1.Config{
 									Data: map[string]interface{}{
 										v1alpha1.NodeMaster: "false",
 										v1alpha1.NodeData:   "false",
@@ -67,7 +67,7 @@ func Test_hasMaster(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []v1alpha1.NodeSpec{
 							{
-								Config: v1alpha1.Config{
+								Config: &v1alpha1.Config{
 									Data: map[string]interface{}{
 										v1alpha1.NodeMaster: "true",
 										v1alpha1.NodeData:   "false",
@@ -90,7 +90,7 @@ func Test_hasMaster(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []v1alpha1.NodeSpec{
 							{
-								Config: v1alpha1.Config{
+								Config: &v1alpha1.Config{
 									Data: map[string]interface{}{
 										v1alpha1.NodeMaster: "true",
 										v1alpha1.NodeData:   "false",
@@ -182,7 +182,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										settings.ClusterInitialMasterNodes: "foo",
 									},
@@ -203,14 +203,14 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										settings.ClusterInitialMasterNodes: "foo",
 									},
 								},
 							},
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										settings.XPackSecurityTransportSslVerificationMode: "bar",
 									},
@@ -233,7 +233,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										"node.attr.box_type": "foo",
 									},
@@ -254,7 +254,7 @@ func Test_noBlacklistedSettings(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: estype.Config{
+								Config: &estype.Config{
 									Data: map[string]interface{}{
 										"cluster": map[string]interface{}{
 											"initial_master_nodes": []string{"foo", "bar"},
