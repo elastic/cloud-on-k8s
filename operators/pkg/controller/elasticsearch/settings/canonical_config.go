@@ -52,7 +52,7 @@ func MustCanonicalConfig(cfg interface{}) *CanonicalConfig {
 // Convenience constructor, will panic in the unlikely event of errors.
 func MustNewSingleValue(k string, v string) *CanonicalConfig {
 	cfg := fromConfig(ucfg.New())
-	err := cfg.access().SetString(k, -1, v, options...)
+	err := cfg.asUCfg().SetString(k, -1, v, options...)
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +79,7 @@ func (c *CanonicalConfig) SetStrings(key string, vals ...string) error {
 		return errors.New("Nothing to set")
 	default:
 		for i, v := range vals {
-			err := c.access().SetString(key, i, v, options...)
+			err := c.asUCfg().SetString(key, i, v, options...)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func (c *CanonicalConfig) SetStrings(key string, vals ...string) error {
 // Unpack returns a typed subset of Elasticsearch settings.
 func (c *CanonicalConfig) Unpack() (estype.ElasticsearchSettings, error) {
 	cfg := estype.DefaultCfg
-	return cfg, c.access().Unpack(&cfg, options...)
+	return cfg, c.asUCfg().Unpack(&cfg, options...)
 }
 
 // MergeWith merges the content of c and c2.
@@ -101,7 +101,7 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 		if c2 == nil {
 			continue
 		}
-		err := c.access().Merge(c2.access(), options...)
+		err := c.asUCfg().Merge(c2.asUCfg(), options...)
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 // Keys are expected in dotted form.
 func (c *CanonicalConfig) HasPrefixes(keys []string) []string {
 	var has []string
-	flatKeys := c.access().FlattenedKeys(options...)
+	flatKeys := c.asUCfg().FlattenedKeys(options...)
 	for _, s := range keys {
 		for _, k := range flatKeys {
 			if strings.HasPrefix(k, s) {
@@ -131,7 +131,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 		return []byte{}, nil
 	}
 	var out untypedDict
-	err := c.access().Unpack(&out)
+	err := c.asUCfg().Unpack(&out)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -147,12 +147,12 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 		return diff
 	}
 	if c == nil && c2 != nil {
-		return c2.access().FlattenedKeys(options...)
+		return c2.asUCfg().FlattenedKeys(options...)
 	}
 	if c != nil && c2 == nil {
-		return c.access().FlattenedKeys(options...)
+		return c.asUCfg().FlattenedKeys(options...)
 	}
-	keyDiff := udiff.CompareConfigs(c.access(), c2.access(), options...)
+	keyDiff := udiff.CompareConfigs(c.asUCfg(), c2.asUCfg(), options...)
 	diff = append(diff, keyDiff[udiff.Add]...)
 	diff = append(diff, keyDiff[udiff.Remove]...)
 	diff = removeIgnored(diff, ignore)
@@ -162,11 +162,11 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	// at this point both configs should contain the same keys but may have different values
 	var cUntyped untypedDict
 	var c2Untyped untypedDict
-	err := c.access().Unpack(&cUntyped, options...)
+	err := c.asUCfg().Unpack(&cUntyped, options...)
 	if err != nil {
 		return []string{err.Error()}
 	}
-	err = c2.access().Unpack(&c2Untyped, options...)
+	err = c2.asUCfg().Unpack(&c2Untyped, options...)
 	if err != nil {
 		return []string{err.Error()}
 	}
@@ -278,7 +278,7 @@ func asUntypedSlice(l, r interface{}) ([]interface{}, []interface{}, error) {
 	return lhs, rhs, nil
 }
 
-func (c *CanonicalConfig) access() *ucfg.Config {
+func (c *CanonicalConfig) asUCfg() *ucfg.Config {
 	return (*ucfg.Config)(c)
 }
 

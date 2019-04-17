@@ -19,8 +19,9 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
-// NewDefaultESConfig builds the elasticsearch configuration file from the given parameters
-func NewDefaultESConfig(
+// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
+// parameters.
+func NewMergedESConfig(
 	clusterName string,
 	zenMinMasterNodes int,
 	userConfig v1alpha1.Config,

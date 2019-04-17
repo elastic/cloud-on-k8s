@@ -393,7 +393,7 @@ func TestCanonicalConfig_SetStrings(t *testing.T) {
 			}
 			if err == nil {
 				var cmp testConfig
-				require.NoError(t, tt.c.access().Unpack(&cmp))
+				require.NoError(t, tt.c.asUCfg().Unpack(&cmp))
 				require.Equal(t, tt.want, cmp)
 			}
 		})

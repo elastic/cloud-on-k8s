@@ -31,13 +31,13 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "same is equal",
 			c: Config{
 				Data: map[string]interface{}{
-					NodeMaster: "true",
+					NodeMaster: true,
 				},
 			},
 			args: args{
 				c2: Config{
 					Data: map[string]interface{}{
-						NodeMaster: "true",
+						NodeMaster: true,
 					},
 				},
 			},
@@ -47,14 +47,14 @@ func TestConfig_RoleDefaults(t *testing.T) {
 			name: "detect differences",
 			c: Config{
 				Data: map[string]interface{}{
-					NodeMaster: "false",
-					NodeData:   "true",
+					NodeMaster: false,
+					NodeData:   true,
 				},
 			},
 			args: args{
 				c2: Config{
 					Data: map[string]interface{}{
-						NodeData: "true",
+						NodeData: true,
 					},
 				},
 			},
