@@ -19,34 +19,34 @@ const (
 	timeToStartEs = 100 * time.Millisecond
 )
 
-type ClientOkMock struct{}
+type EsClientOkMock struct{}
 
-func (c ClientOkMock) ReloadSecureSettings() error { return nil }
-func (c ClientOkMock) WaitForEsReady()             { time.Sleep(timeToStartEs) }
+func (c EsClientOkMock) ReloadSecureSettings() error { return nil }
+func (c EsClientOkMock) WaitForEsReady()             { time.Sleep(timeToStartEs) }
 
-type ClientKoMock struct{}
+type EsClientKoMock struct{}
 
-func (c ClientKoMock) ReloadSecureSettings() error { return errors.New("failed") }
-func (c ClientKoMock) WaitForEsReady()             { time.Sleep(timeToStartEs) }
+func (c EsClientKoMock) ReloadSecureSettings() error { return errors.New("failed") }
+func (c EsClientKoMock) WaitForEsReady()             { time.Sleep(timeToStartEs) }
 
 type KeystoreOkMock struct{}
 
-func (k KeystoreOkMock) Create() error                         { return nil }
-func (k KeystoreOkMock) Delete() (bool, error)                 { return true, nil }
-func (k KeystoreOkMock) ListSettings() (string, error)         { return "", nil }
-func (k KeystoreOkMock) AddFileSettings(filename string) error { return nil }
+func (k KeystoreOkMock) Create() error                        { return nil }
+func (k KeystoreOkMock) Delete() (bool, error)                { return true, nil }
+func (k KeystoreOkMock) ListSettings() (string, error)        { return "", nil }
+func (k KeystoreOkMock) AddFileSetting(filename string) error { return nil }
 
 type KeystoreKoMock struct{}
 
-func (k KeystoreKoMock) Create() error                         { return errors.New("failed") }
-func (k KeystoreKoMock) Delete() (bool, error)                 { return true, nil }
-func (k KeystoreKoMock) ListSettings() (string, error)         { return "", nil }
-func (k KeystoreKoMock) AddFileSettings(filename string) error { return nil }
+func (k KeystoreKoMock) Create() error                        { return errors.New("failed") }
+func (k KeystoreKoMock) Delete() (bool, error)                { return true, nil }
+func (k KeystoreKoMock) ListSettings() (string, error)        { return "", nil }
+func (k KeystoreKoMock) AddFileSetting(filename string) error { return nil }
 
 func TestCoalescingRetry_Ok(t *testing.T) {
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	// Add an item in the queue
@@ -71,7 +71,7 @@ func TestCoalescingRetry_Ok(t *testing.T) {
 func TestCoalescingRetry_Ko(t *testing.T) {
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
-	}, ClientKoMock{}, KeystoreOkMock{})
+	}, EsClientKoMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	// Add an item in the queue
@@ -94,15 +94,15 @@ func TestCoalescingRetry_Ko(t *testing.T) {
 func TestWatchForUpdate(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		SecretsSourceDir:  sourcePath,
 		ReloadCredentials: true,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
-	// Starts watchForUpdate and wait at least one polling
+	// Start watchForUpdate and wait at least one polling
 	go updater.watchForUpdate()
 	time.Sleep(dirWatcherPollingPeriod * 1)
 
@@ -129,12 +129,12 @@ func TestWatchForUpdate(t *testing.T) {
 func TestStart_WaitingEs(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
 		SecretsSourceDir:  sourcePath,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
@@ -150,12 +150,12 @@ func TestStart_WaitingEs(t *testing.T) {
 func TestStart_UpdatedAtLeastOnce(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: false,
 		SecretsSourceDir:  sourcePath,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
@@ -172,12 +172,12 @@ func TestStart_UpdatedAtLeastOnce(t *testing.T) {
 func TestStart_Reload(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
 		SecretsSourceDir:  sourcePath,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
@@ -193,12 +193,12 @@ func TestStart_Reload(t *testing.T) {
 func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		SecretsSourceDir:  sourcePath,
 		ReloadCredentials: false,
-	}, ClientOkMock{}, KeystoreOkMock{})
+	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
@@ -224,7 +224,7 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 func TestStart_ReloadFailure(t *testing.T) {
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
-	}, ClientKoMock{}, KeystoreOkMock{})
+	}, EsClientKoMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
@@ -238,12 +238,12 @@ func TestStart_ReloadFailure(t *testing.T) {
 func TestStart_KeystoreUpdateFailure(t *testing.T) {
 	sourcePath, err := ioutil.TempDir("", "")
 	assert.NoError(t, err)
-	defer func() { _ = os.RemoveAll(sourcePath) }()
+	defer os.RemoveAll(sourcePath)
 
 	updater, err := NewUpdater(Config{
 		SecretsSourceDir:  sourcePath,
 		ReloadCredentials: false,
-	}, ClientOkMock{}, KeystoreKoMock{})
+	}, EsClientOkMock{}, KeystoreKoMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()

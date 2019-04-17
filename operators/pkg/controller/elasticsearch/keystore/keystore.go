@@ -20,8 +20,8 @@ type Keystore interface {
 	Delete() (bool, error)
 	// ListSettings lists the settings in the keystore
 	ListSettings() (string, error)
-	// AddFileSettings adds a file settings to the keystore
-	AddFileSettings(filename string) error
+	// AddFileSetting adds a file setting to the keystore
+	AddFileSetting(filename string) error
 }
 
 // keystore is the default Keystore implementation that relies on the elasticsearch-keystore binary.
@@ -34,7 +34,7 @@ type keystore struct {
 	settingsPath string
 }
 
-func NewKeystoreCLI(cfg Config) Keystore {
+func NewKeystore(cfg Config) Keystore {
 	return keystore{
 		binaryPath:   cfg.KeystoreBinary,
 		keystorePath: cfg.KeystorePath,
@@ -59,7 +59,7 @@ func (c keystore) ListSettings() (string, error) {
 	return settings, nil
 }
 
-func (c keystore) AddFileSettings(filename string) error {
+func (c keystore) AddFileSetting(filename string) error {
 	return exec.Command(c.binaryPath, "add-file", filename, path.Join(c.settingsPath, filename)).Run()
 }
 

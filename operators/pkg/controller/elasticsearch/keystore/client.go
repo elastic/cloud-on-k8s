@@ -18,7 +18,7 @@ import (
 
 const waitEsReadinessPeriod = 10 * time.Second
 
-type Client interface {
+type EsClient interface {
 	ReloadSecureSettings() error
 	WaitForEsReady()
 }
@@ -30,7 +30,7 @@ type esClient struct {
 	version     version.Version
 }
 
-func NewEsClient(cfg Config) Client {
+func NewEsClient(cfg Config) EsClient {
 	return esClient{
 		cfg.EsCACertsPath,
 		cfg.EsEndpoint,

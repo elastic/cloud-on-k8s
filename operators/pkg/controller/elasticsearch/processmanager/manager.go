@@ -39,7 +39,7 @@ func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 		ksu, err = keystore.NewUpdater(
 			ksCfg,
 			keystore.NewEsClient(ksCfg),
-			keystore.NewKeystoreCLI(ksCfg),
+			keystore.NewKeystore(ksCfg),
 		)
 		if err != nil {
 			log.Error(err, "Failed to create keystore updater")

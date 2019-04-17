@@ -32,12 +32,12 @@ type Updater struct {
 	reloadQueue workqueue.DelayingInterface
 	status      Status
 	lock        sync.RWMutex
-	client      Client
+	esClient    EsClient
 	keystore    Keystore
 }
 
 // NewUpdater returns a new keystore updater.
-func NewUpdater(cfg Config, client Client, keystore Keystore) (*Updater, error) {
+func NewUpdater(cfg Config, esClient EsClient, keystore Keystore) (*Updater, error) {
 	status := Status{notInitializedState, "Keystore updater created", time.Now()}
 
 	return &Updater{
@@ -45,7 +45,7 @@ func NewUpdater(cfg Config, client Client, keystore Keystore) (*Updater, error) 
 		reloadQueue: workqueue.NewDelayingQueue(),
 		status:      status,
 		lock:        sync.RWMutex{},
-		client:      client,
+		esClient:    esClient,
 		keystore:    keystore,
 	}, nil
 }
@@ -71,7 +71,7 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
 	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
-	u.client.WaitForEsReady()
+	u.esClient.WaitForEsReady()
 
 	if u.config.ReloadCredentials {
 		go u.coalescingRetry()
@@ -128,7 +128,7 @@ func (u *Updater) coalescingRetry() {
 		item, shutdown = u.reloadQueue.Get()
 
 		log.Info("Reloading secure settings")
-		err := u.client.ReloadSecureSettings()
+		err := u.esClient.ReloadSecureSettings()
 		if err != nil {
 			msg := "Failed to reload secure settings"
 			log.Error(err, msg+". Continuing.")
@@ -172,7 +172,7 @@ func (u *Updater) updateKeystore() (error, string) {
 		}
 
 		log.Info("Adding setting to keystore", "file", file.Name())
-		err = u.keystore.AddFileSettings(file.Name())
+		err = u.keystore.AddFileSetting(file.Name())
 		if err != nil {
 			return err, fmt.Sprintf("could not add setting %s", file.Name())
 		}
