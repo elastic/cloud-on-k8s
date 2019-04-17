@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
@@ -81,7 +80,6 @@ type defaultDriver struct {
 		scheme *runtime.Scheme,
 		es v1alpha1.Elasticsearch,
 		trustRelationships []v1alpha1.TrustRelationship,
-		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
@@ -181,6 +179,10 @@ func (d *defaultDriver) Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
 	})
 
+	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
+		return results.WithError(err)
+	}
+
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -218,9 +220,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(
-		d.Client, d.Scheme, es, trustRelationships, d.DynamicWatches,
-	)
+	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, trustRelationships)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -487,11 +487,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
-			ProbeUser:         internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser:   internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:       internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,
 	)

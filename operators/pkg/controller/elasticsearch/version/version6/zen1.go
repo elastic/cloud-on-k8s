@@ -69,9 +69,16 @@ func UpdateZen1Discovery(
 		if err != nil {
 			return false, err
 		}
-		config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
-		err = settings.ReconcileConfig(c, cluster, p, config)
+		err = config.MergeWith(
+			settings.MustNewSingleValue(
+				settings.DiscoveryZenMinimumMasterNodes,
+				strconv.Itoa(minimumMasterNodes),
+			),
+		)
 		if err != nil {
+			return false, err
+		}
+		if err := settings.ReconcileConfig(c, cluster, p, config); err != nil {
 			return false, err
 		}
 	}
@@ -79,7 +86,15 @@ func UpdateZen1Discovery(
 	// Update the current value for each new pod that is about to be created
 	for _, change := range performableChanges.ToCreate {
 		// Update the minimum_master_nodes before pod creation in order to avoid split brain situation.
-		change.PodSpecCtx.Config[settings.DiscoveryZenMinimumMasterNodes] = strconv.Itoa(minimumMasterNodes)
+		err := change.PodSpecCtx.Config.MergeWith(
+			settings.MustNewSingleValue(
+				settings.DiscoveryZenMinimumMasterNodes,
+				strconv.Itoa(minimumMasterNodes),
+			),
+		)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	// Check if we really need to update minimum_master_nodes with a API call

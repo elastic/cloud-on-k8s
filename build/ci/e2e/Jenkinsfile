@@ -5,6 +5,8 @@ node('swarm') {
 	    checkout scm
     }
     stage("Make ci-e2e") {
-        sh 'make -C build/ci ci-e2e'
+        withEnv(["REPOSITORY=${GCLOUD_PROJECT}", "REGISTRY=eu.gcr.io"]) {
+            sh 'make -C build/ci ci-e2e'
+        }
     }
 }

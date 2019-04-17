@@ -118,18 +118,19 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
 
 			// flatten the topology
-			var expectedTopology []estype.TopologyElementSpec
-			for _, topoElem := range es.Spec.Topology {
-				for i := 0; i < int(topoElem.NodeCount); i++ {
-					expectedTopology = append(expectedTopology, topoElem)
+			var expectedTopology []estype.NodeSpec
+			for _, node := range es.Spec.Nodes {
+				for i := 0; i < int(node.NodeCount); i++ {
+					expectedTopology = append(expectedTopology, node)
 				}
 			}
 			// match each actual node to an expected node
 			for _, node := range nodes.Nodes {
-				nodeTypes := rolesToNodeTypes(node.Roles)
+				nodeRoles := rolesToConfig(node.Roles)
 				for i, topoElem := range expectedTopology {
-					if topoElem.NodeTypes == nodeTypes && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
-						// it's a match! #tinder
+					cfg, err := topoElem.Config.Unpack()
+					require.NoError(t, err)
+					if cfg.Node == nodeRoles && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
@@ -142,24 +143,24 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 	}
 }
 
-func rolesToNodeTypes(roles []string) estype.NodeTypesSpec {
-	nt := estype.NodeTypesSpec{}
+func rolesToConfig(roles []string) estype.Node {
+	node := estype.Node{
+		ML: true, // ML is not reported in roles array, we assume true
+	}
 	for _, r := range roles {
 		switch r {
 		case "master":
-			nt.Master = true
+			node.Master = true
 		case "data":
-			nt.Data = true
+			node.Data = true
 		case "ingest":
-			nt.Ingest = true
-		case "ml":
-			nt.ML = true
+			node.Ingest = true
 		}
 	}
-	return nt
+	return node
 }
 
-func compareMemoryLimit(topologyElement estype.TopologyElementSpec, heapMaxBytes int) bool {
+func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
 	if topologyElement.Resources.Limits.Memory() == nil {
 		// no expected memory, consider it's ok
 		return true

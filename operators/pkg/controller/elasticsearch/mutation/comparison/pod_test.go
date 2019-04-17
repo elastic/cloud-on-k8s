@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -21,8 +20,7 @@ import (
 
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
 	return pod.PodWithConfig{
-		Pod:    corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
-		Config: settings.FlatConfig{},
+		Pod: corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
 	}
 }
 
@@ -210,7 +208,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -231,7 +229,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -259,7 +257,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -292,7 +290,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -325,7 +323,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
@@ -352,7 +350,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
-					TopologyElement: v1alpha1.TopologyElementSpec{
+					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{

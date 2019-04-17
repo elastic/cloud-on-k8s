@@ -29,10 +29,10 @@ const (
 )
 
 // NewEnvVars returns the environments variables required by the keystore updater.
-func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUserSecretVolume, keystoreVolume volume.VolumeLike) []corev1.EnvVar {
+func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUserSecretVolume, secureSettingsVolume volume.VolumeLike) []corev1.EnvVar {
 	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", network.ProtocolForLicense(spec.LicenseType), network.HTTPPort)
 	return []corev1.EnvVar{
-		{Name: EnvSourceDir, Value: keystoreVolume.VolumeMount().MountPath},
+		{Name: EnvSourceDir, Value: secureSettingsVolume.VolumeMount().MountPath},
 		{Name: EnvReloadCredentials, Value: "true"},
 		{Name: EnvEsUsername, Value: spec.ReloadCredsUser.Name},
 		{Name: EnvEsPasswordFile, Value: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, spec.ReloadCredsUser.Name)},

@@ -9,13 +9,13 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -266,15 +266,15 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
 					},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{
@@ -301,16 +301,16 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
-						{Pod: pod4, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
+						{Pod: pod4},
 					},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{

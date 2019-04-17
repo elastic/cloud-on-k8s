@@ -127,7 +127,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master2", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: map[string]string{},
+									Config: settings.NewCanonicalConfig(),
 								},
 							},
 						},
@@ -160,7 +160,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master5", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: map[string]string{},
+									Config: settings.NewCanonicalConfig(),
 								},
 							},
 						},
@@ -198,7 +198,11 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			}
 			// Check the mmn in the new pods
 			for _, newPod := range tt.args.performableChanges.ToCreate {
-				assert.Equal(t, tt.expectedMinimumMasterNode, newPod.PodSpecCtx.Config[settings.DiscoveryZenMinimumMasterNodes])
+				expectedConfiguration :=
+					settings.MustNewSingleValue(settings.DiscoveryZenMinimumMasterNodes, tt.expectedMinimumMasterNode)
+				if diff := newPod.PodSpecCtx.Config.Diff(expectedConfiguration, nil); diff != nil {
+					t.Errorf("zen1.UpdateZen1Discovery() = %v, want %v", diff, tt.want)
+				}
 			}
 			if !tt.want { // requeue not returned: it means that minimum_master_nodes should be saved in status
 				assert.Equal(t, tt.expectedMinimumMasterNode, strconv.Itoa(tt.args.state.GetZen1MinimumMasterNodes()))

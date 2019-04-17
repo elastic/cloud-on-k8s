@@ -34,20 +34,25 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
-	// Topology represents a list of topology elements to be part of the cluster
-	Topology []TopologyElementSpec `json:"topology,omitempty"`
+	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
+	Nodes []NodeSpec `json:"nodes,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
+
+	// SecureSettings reference the name of a secret containing secure settings,
+	// to be injected into Elasticsearch keystore on each node. It must exist in the
+	// same namespace as the Elasticsearch resource.
+	SecureSettings *commonv1alpha1.ResourceNameReference `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
-	for _, topoElem := range es.Topology {
+	for _, topoElem := range es.Nodes {
 		count += topoElem.NodeCount
 	}
 	return count
@@ -63,10 +68,10 @@ func (es ElasticsearchSpec) GetLicenseType() LicenseType {
 	return licenseType
 }
 
-// TopologyElementSpec defines a common topology for a set of Elasticsearch nodes
-type TopologyElementSpec struct {
-	// NodeTypes represents the node types
-	NodeTypes NodeTypesSpec `json:"nodeTypes,omitempty"`
+// NodeSpec defines a common topology for a set of Elasticsearch nodes
+type NodeSpec struct {
+	// Config represents Elasticsearch configuration.
+	Config *Config `json:"config,omitempty"`
 
 	// Resources to be allocated for this topology
 	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
@@ -105,18 +110,6 @@ type ElasticsearchPodSpec struct {
 	// Affinity is the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
-}
-
-// NodeTypesSpec defines the types associated to the node
-type NodeTypesSpec struct {
-	// Master represents a master node
-	Master bool `json:"master,omitempty"`
-	// Data represents a data node
-	Data bool `json:"data,omitempty"`
-	// Ingest represents an ingest node
-	Ingest bool `json:"ingest,omitempty"`
-	// ML represents a machine learning node
-	ML bool `json:"ml,omitempty"`
 }
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
