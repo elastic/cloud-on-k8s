@@ -48,7 +48,7 @@ func ReconcileSecureSettings(
 	// retrieve the secret referenced by the user in the Elasticsearch namespace
 	userSecret := &corev1.Secret{}
 	if userSecretRef != nil {
-		userSecret, err = retrieveUserSecret(c, eventsRecorder, es.Namespace, userSecretRef.Name)
+		userSecret, err = retrieveUserSecret(c, eventsRecorder, es.Namespace, userSecretRef.SecretName)
 		if err != nil {
 			return err
 		}
@@ -103,7 +103,7 @@ func userSecretWatchName(cluster types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchUserSecret(watched watches.DynamicWatches, userSecretRef *commonv1alpha1.ResourceNameReference, cluster types.NamespacedName) error {
+func watchUserSecret(watched watches.DynamicWatches, userSecretRef *commonv1alpha1.SecretRef, cluster types.NamespacedName) error {
 	watchName := userSecretWatchName(cluster)
 	if userSecretRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
@@ -113,7 +113,7 @@ func watchUserSecret(watched watches.DynamicWatches, userSecretRef *commonv1alph
 		Name: watchName,
 		Watched: types.NamespacedName{
 			Namespace: cluster.Namespace,
-			Name:      userSecretRef.Name,
+			Name:      userSecretRef.SecretName,
 		},
 		Watcher: cluster,
 	})
