@@ -5,6 +5,7 @@
 package helpers
 
 import (
+	"bytes"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -22,9 +23,12 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -167,6 +171,48 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 		return nil, fmt.Errorf("No value found for secret %s", certificates.CAFileName)
 	}
 	return certificates.ParsePEMCerts(caCert)
+}
+
+// Exec runs the given cmd into the given pod.
+func (k *K8sHelper) Exec(pod types.NamespacedName, cmd []string) (string, string, error) {
+	// create the exec client
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return "", "", err
+	}
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		return "", "", err
+	}
+
+	// build the exec url
+	req := clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(pod.Name).
+		Namespace(pod.Namespace).
+		SubResource("exec").
+		VersionedParams(
+			&corev1.PodExecOptions{
+				Command: cmd,
+				Stdout:  true,
+				Stderr:  true,
+			},
+			runtime.NewParameterCodec(scheme.Scheme),
+		)
+	exec, err := remotecommand.NewSPDYExecutor(cfg, "POST", req.URL())
+	if err != nil {
+		return "", "", err
+	}
+
+	// execute
+	var stdout, stderr bytes.Buffer
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin:  nil,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Tty:    false,
+	})
+	return stdout.String(), stderr.String(), err
 }
 
 func ESPodListOptions(stackName string) client.ListOptions {

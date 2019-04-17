@@ -7,6 +7,7 @@ package stack
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
@@ -114,6 +115,13 @@ func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec
 
 func (b Builder) withESTopologyElement(topologyElement estype.TopologyElementSpec) Builder {
 	b.Elasticsearch.Spec.Topology = append(b.Elasticsearch.Spec.Topology, topologyElement)
+	return b
+}
+
+func (b Builder) WithSecureSettings(secretName string) Builder {
+	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.ResourceNameReference{
+		Name: secretName,
+	}
 	return b
 }
 
