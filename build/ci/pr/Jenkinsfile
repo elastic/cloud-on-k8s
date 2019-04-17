@@ -1,10 +1,26 @@
-#!/usr/bin/env groovy
+pipeline {
 
-node('swarm') {
-    stage('Checkout from GitHub') {
-	    checkout scm
+    agent {
+        label 'linux'
     }
-    stage("Make ci") {
-        sh 'make -C build/ci ci-pr'
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
     }
+
+    stages {
+        stage('Checkout from GitHub') {
+            checkout scm
+        }
+        stage("Run validation for PR") {
+            sh 'make -C build/ci ci-pr'
+        }
+    }
+
+    post {
+        cleanup {
+            cleanWs()
+        }
+    }
+
 }
