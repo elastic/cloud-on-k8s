@@ -6,13 +6,13 @@ package keystore
 
 import (
 	"errors"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 )
 
