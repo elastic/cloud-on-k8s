@@ -45,7 +45,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager check-license-header
 
 ## -- build
 
@@ -63,6 +63,9 @@ generate:
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
+
+process-manager:
+	go build -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
 
 cert-initializer: generate
 	go build -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
