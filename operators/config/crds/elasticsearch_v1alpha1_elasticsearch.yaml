@@ -77,7 +77,7 @@ spec:
               - platinum
               type: string
             nodes:
-              description: Nodes represents a list of groups of  nodes with the same
+              description: Nodes represents a list of groups of nodes with the same
                 configuration to be part of the cluster
               items:
                 properties:

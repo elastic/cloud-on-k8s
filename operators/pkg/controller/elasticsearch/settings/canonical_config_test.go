@@ -300,6 +300,17 @@ func TestCanonicalConfig_Diff(t *testing.T) {
 			},
 			want: []string{"a", "c"},
 		},
+		{
+			name: "handles comparison of different types correctly",
+			c: MustCanonicalConfig(map[string]interface{}{
+				"a": []string{"x", "y"},
+			}),
+			args: args{
+				c2:     MustCanonicalConfig(map[string]interface{}{}),
+				ignore: []string{"a"},
+			},
+			want: nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

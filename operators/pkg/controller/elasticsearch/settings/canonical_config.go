@@ -5,6 +5,7 @@
 package settings
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -207,9 +208,17 @@ func diffMap(c1, c2 untypedDict, key string) []string {
 		v2 := c2[k]
 		switch v.(type) {
 		case untypedDict:
-			diff = append(diff, diffMap(v.(untypedDict), v2.(untypedDict), newKey)...)
+			l, r, err := asUntypedDict(v, v2)
+			if err != nil {
+				diff = append(diff, newKey)
+			}
+			diff = append(diff, diffMap(l, r, newKey)...)
 		case []interface{}:
-			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
+			l, r, err := asUntypedSlice(v, v2)
+			if err != nil {
+				diff = append(diff, newKey)
+			}
+			diff = append(diff, diffSlice(l, r, newKey)...)
 		default:
 			if v != v2 {
 				diff = append(diff, newKey)
@@ -231,9 +240,17 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 		newKey := key + "." + strconv.Itoa(i)
 		switch v.(type) {
 		case untypedDict:
-			diff = append(diff, diffMap(v.(untypedDict), v2.(untypedDict), newKey)...)
+			l, r, err := asUntypedDict(v, v2)
+			if err != nil {
+				diff = append(diff, newKey)
+			}
+			diff = append(diff, diffMap(l, r, newKey)...)
 		case []interface{}:
-			diff = append(diff, diffSlice(v.([]interface{}), v2.([]interface{}), newKey)...)
+			l, r, err := asUntypedSlice(v, v2)
+			if err != nil {
+				diff = append(diff, newKey)
+			}
+			diff = append(diff, diffSlice(l, r, newKey)...)
 		default:
 			if v != v2 {
 				diff = append(diff, newKey)
@@ -241,6 +258,24 @@ func diffSlice(s, s2 []interface{}, key string) []string {
 		}
 	}
 	return diff
+}
+
+func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
+	lhs, ok := l.(untypedDict)
+	rhs, ok2 := r.(untypedDict)
+	if !ok || !ok2 {
+		return nil, nil, fmt.Errorf("map assertation failed for l: %t r: %t", ok, ok2)
+	}
+	return lhs, rhs, nil
+}
+
+func asUntypedSlice(l, r interface{}) ([]interface{}, []interface{}, error) {
+	lhs, ok := l.([]interface{})
+	rhs, ok2 := r.([]interface{})
+	if !ok || !ok2 {
+		return nil, nil, fmt.Errorf("slice assertation failed for l: %t r: %t", ok, ok2)
+	}
+	return lhs, rhs, nil
 }
 
 func (c *CanonicalConfig) access() *ucfg.Config {
