@@ -19,10 +19,11 @@ func quorum(nMasters int) int {
 
 // ComputeMinimumMasterNodes returns the minimum number of master nodes
 // that should be set in a cluster with the given topology
-func ComputeMinimumMasterNodes(topology []v1alpha1.TopologyElementSpec) int {
+func ComputeMinimumMasterNodes(topology []v1alpha1.NodeSpec) int {
 	nMasters := 0
 	for _, t := range topology {
-		if t.NodeTypes.Master {
+		cfg := t.Config.MustUnpack() // we assume resource has passed validation at this point
+		if cfg.Node.Master {
 			nMasters += int(t.NodeCount)
 		}
 	}

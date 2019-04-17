@@ -6,11 +6,11 @@ metadata:
   name: trust-one
 spec:
   version: "6.7.0"
-  topologies:
-    - nodeTypes:
-        master: true
-        data: true
-        ingest: true
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
       resources:
         limits:
           memory: 1Gi
@@ -24,11 +24,11 @@ metadata:
   name: trust-two
 spec:
   version: "6.7.0"
-  topologies:
-    - nodeTypes:
-        master: true
-        data: true
-        ingest: true
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
       resources:
         limits:
           memory: 1Gi

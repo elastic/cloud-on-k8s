@@ -42,21 +42,21 @@ func ConfigSecretVolume(podName string) volume.SecretVolume {
 }
 
 // GetESConfigContent retrieves the configuration secret of the given pod,
-// and returns the corresponding FlatConfig.
-func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (FlatConfig, error) {
+// and returns the corresponding CanonicalConfig.
+func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (*CanonicalConfig, error) {
 	secret, err := GetESConfigSecret(client, esPod)
 	if err != nil {
-		return FlatConfig{}, err
+		return nil, err
 	}
 	if len(secret.Data) == 0 {
-		return FlatConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return nil, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
 	}
 	content := secret.Data[ConfigFileName]
 	if len(content) == 0 {
-		return FlatConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return nil, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
 	}
 
-	return ParseConfig(string(content))
+	return ParseConfig(content)
 }
 
 // GetESConfigSecret returns the secret holding the ES configuration for the given pod
@@ -72,7 +72,11 @@ func GetESConfigSecret(client k8s.Client, esPod types.NamespacedName) (corev1.Se
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config FlatConfig) error {
+func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config *CanonicalConfig) error {
+	rendered, err := config.Render()
+	if err != nil {
+		return err
+	}
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: pod.Namespace,
@@ -83,7 +87,7 @@ func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod core
 			},
 		},
 		Data: map[string][]byte{
-			ConfigFileName: config.Render(),
+			ConfigFileName: rendered,
 		},
 	}
 	reconciled := corev1.Secret{}

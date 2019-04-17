@@ -19,21 +19,31 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
-// NewDefaultESConfig builds the elasticsearch configuration file from the given parameters
-func NewDefaultESConfig(
+// NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
+// parameters.
+func NewMergedESConfig(
 	clusterName string,
 	zenMinMasterNodes int,
-	nodeTypes v1alpha1.NodeTypesSpec,
+	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
-) FlatConfig {
-	return baseConfig(clusterName, zenMinMasterNodes).
-		MergeWith(nodeTypesConfig(nodeTypes)).
-		MergeWith(xpackConfig(licenseType))
+) (*CanonicalConfig, error) {
+	config, err := NewCanonicalConfigFrom(userConfig)
+	if err != nil {
+		return nil, err
+	}
+	err = config.MergeWith(
+		baseConfig(clusterName, zenMinMasterNodes),
+		xpackConfig(licenseType),
+	)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
-	return FlatConfig{
+func baseConfig(clusterName string, minMasterNodes int) *CanonicalConfig {
+	return MustCanonicalConfig(map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -47,31 +57,21 @@ func baseConfig(clusterName string, minMasterNodes int) FlatConfig {
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
-	}
-}
-
-// nodeTypesConfig returns configuration bit related to nodes types
-func nodeTypesConfig(nodeTypes v1alpha1.NodeTypesSpec) FlatConfig {
-	return FlatConfig{
-		NodeMaster: fmt.Sprintf("%t", nodeTypes.Master),
-		NodeData:   fmt.Sprintf("%t", nodeTypes.Data),
-		NodeIngest: fmt.Sprintf("%t", nodeTypes.Ingest),
-		NodeML:     fmt.Sprintf("%t", nodeTypes.ML),
-	}
+	})
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
+func xpackConfig(licenseType v1alpha1.LicenseType) *CanonicalConfig {
 
 	// disable x-pack security if using basic
 	if licenseType == v1alpha1.LicenseTypeBasic {
-		return FlatConfig{
+		return MustCanonicalConfig(map[string]interface{}{
 			XPackSecurityEnabled: "false",
-		}
+		})
 	}
 
 	// enable x-pack security, including TLS
-	cfg := FlatConfig{
+	cfg := map[string]interface{}{
 		// x-pack security general settings
 		XPackSecurityEnabled:                      "true",
 		XPackSecurityAuthcReservedRealmEnabled:    "false",
@@ -101,8 +101,8 @@ func xpackConfig(licenseType v1alpha1.LicenseType) FlatConfig {
 
 	if licenseType == v1alpha1.LicenseTypeTrial {
 		// auto-generate a trial license
-		cfg = cfg.MergeWith(FlatConfig{XPackLicenseSelfGeneratedType: "trial"})
+		cfg[XPackLicenseSelfGeneratedType] = "trial"
 	}
 
-	return cfg
+	return MustCanonicalConfig(cfg)
 }

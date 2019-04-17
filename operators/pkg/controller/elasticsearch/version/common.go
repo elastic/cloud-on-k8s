@@ -38,27 +38,31 @@ func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
-	for _, topoElem := range es.Spec.Topology {
-		for i := int32(0); i < topoElem.NodeCount; i++ {
+	for _, node := range es.Spec.Nodes {
+		for i := int32(0); i < node.NodeCount; i++ {
+			cfg := v1alpha1.Config{}
+			if node.Config != nil {
+				cfg = *node.Config
+			}
 			params := pod.NewPodSpecParams{
 				Version:         es.Spec.Version,
 				LicenseType:     es.Spec.GetLicenseType(),
 				CustomImageName: es.Spec.Image,
 				ClusterName:     es.Name,
 				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-					es.Spec.Topology,
+					es.Spec.Nodes,
 				),
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				NodeTypes:            topoElem.NodeTypes,
-				Affinity:             topoElem.PodTemplate.Spec.Affinity,
+				Config:               cfg,
+				Affinity:             node.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-				Resources:            topoElem.Resources,
+				Resources:            node.Resources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
@@ -76,7 +80,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, TopologyElement: topoElem, Config: config})
+			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, NodeSpec: node, Config: config})
 		}
 	}
 
@@ -88,9 +92,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
+	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, settings.FlatConfig, error) {
+) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
 	if p.CustomImageName != "" {
@@ -188,13 +192,16 @@ func podSpec(
 	// Setup init containers
 	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
 	if err != nil {
-		return corev1.PodSpec{}, settings.FlatConfig{}, err
+		return corev1.PodSpec{}, nil, err
 	}
 	podSpec.InitContainers = initContainers
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
-	esConfig := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.NodeTypes, p.LicenseType)
+	esConfig, err := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.Config, p.LicenseType)
+	if err != nil {
+		return corev1.PodSpec{}, nil, err
+	}
 
 	return podSpec, esConfig, nil
 }
@@ -208,16 +215,20 @@ func NewPod(
 	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	// add labels from the version
 	labels[label.VersionLabelName] = version.String()
+	cfg, err := podSpecCtx.Config.Unpack()
+	if err != nil {
+		return corev1.Pod{}, err
+	}
 
 	// add labels for node types
-	label.NodeTypesMasterLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Master, labels)
-	label.NodeTypesDataLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Data, labels)
-	label.NodeTypesIngestLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.Ingest, labels)
-	label.NodeTypesMLLabelName.Set(podSpecCtx.TopologyElement.NodeTypes.ML, labels)
+	label.NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
+	label.NodeTypesDataLabelName.Set(cfg.Node.Data, labels)
+	label.NodeTypesIngestLabelName.Set(cfg.Node.Ingest, labels)
+	label.NodeTypesMLLabelName.Set(cfg.Node.ML, labels)
 
 	// add user-defined labels, unless we already manage a label matching the same key. we might want to consider
 	// issuing at least a warning in this case due to the potential for unexpected behavior
-	for k, v := range podSpecCtx.TopologyElement.PodTemplate.Labels {
+	for k, v := range podSpecCtx.NodeSpec.PodTemplate.Labels {
 		if _, ok := labels[k]; !ok {
 			labels[k] = v
 		}
@@ -228,7 +239,7 @@ func NewPod(
 			Name:        name.NewPodName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
-			Annotations: podSpecCtx.TopologyElement.PodTemplate.Annotations,
+			Annotations: podSpecCtx.NodeSpec.PodTemplate.Annotations,
 		},
 		Spec: podSpecCtx.PodSpec,
 	}

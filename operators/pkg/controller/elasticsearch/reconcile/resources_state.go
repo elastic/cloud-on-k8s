@@ -67,7 +67,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 					// 1. the pod was recently deleted along with its config.
 					// The pod is not terminated yet, but the config isn't there anymore.
 					// That's ok: just give it a dummy config, it will be deleted anyway.
-					config = settings.FlatConfig{"pod.deletion": "in.progress"}
+					config = settings.MustNewSingleValue("pod.deletion", "in.progress")
 				} else if cleanup.IsTooYoungForGC(&p) {
 					// 2. the pod was created recently and the config is not there yet
 					// in our client cache: let's just requeue.
@@ -79,9 +79,8 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 					// replaced since it will not match any expected pod.
 					errMsg := "no configuration secret volume found for that pod, scheduling it for deletion"
 					log.Error(errors.New(errMsg), "Missing secret, replacing pod", "pod", p.Name)
-					config = settings.FlatConfig{
-						"error.pod.to.replace": errMsg,
-					}
+					config = settings.MustNewSingleValue("error.pod.to.replace", errMsg)
+
 				}
 			} else {
 				return nil, err

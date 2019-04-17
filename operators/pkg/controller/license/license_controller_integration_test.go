@@ -133,7 +133,7 @@ func TestReconcile(t *testing.T) {
 			Version:          "7.0.0",
 			LicenseType:      "platinum",
 			SetVMMaxMapCount: &varFalse,
-			Topology: []v1alpha1.TopologyElementSpec{
+			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 3,
 				},

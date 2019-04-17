@@ -82,39 +82,51 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-// -- ES Topology
+// -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
-	b.Elasticsearch.Spec.Topology = []estype.TopologyElementSpec{}
+	b.Elasticsearch.Spec.Nodes = []estype.NodeSpec{}
 	return b
 }
 
 func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Master: true},
+		Config: &estype.Config{Data: map[string]interface{}{
+			estype.NodeMaster: "true",
+		},
+		},
 		Resources: resources,
 	})
 }
 
 func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Data: true},
+		Config: &estype.Config{
+			Data: map[string]interface{}{
+				estype.NodeData: "true",
+			},
+		},
 		Resources: resources,
 	})
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Master: true, Data: true},
+		Config: &estype.Config{
+			Data: map[string]interface{}{
+				estype.NodeMaster: "true",
+				estype.NodeData:   "true",
+			},
+		},
 		Resources: resources,
 	})
 }
 
-func (b Builder) withESTopologyElement(topologyElement estype.TopologyElementSpec) Builder {
-	b.Elasticsearch.Spec.Topology = append(b.Elasticsearch.Spec.Topology, topologyElement)
+func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder {
+	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, topologyElement)
 	return b
 }
 
