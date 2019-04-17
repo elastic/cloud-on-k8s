@@ -14,11 +14,6 @@ const (
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
 
-	NodeData   = "node.data"
-	NodeIngest = "node.ingest"
-	NodeMaster = "node.master"
-	NodeML     = "node.ml"
-
 	NodeName = "node.name"
 
 	PathData = "path.data"
@@ -38,3 +33,28 @@ const (
 	XPackSecurityTransportSslTrustRestrictionsPath  = "xpack.security.transport.ssl.trust_restrictions.path"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
+
+var Blacklist = []string{
+	ClusterName,
+	DiscoveryZenMinimumMasterNodes,
+	DiscoveryZenPingUnicastHosts,
+	ClusterInitialMasterNodes,
+	NetworkHost,
+	NetworkPublishHost,
+	NodeName,
+	PathData,
+	PathLogs,
+	XPackLicenseSelfGeneratedType,
+	XPackSecurityAuthcReservedRealmEnabled,
+	XPackSecurityEnabled,
+	XPackSecurityHttpSslCertificate,
+	XPackSecurityHttpSslCertificateAuthorities,
+	XPackSecurityHttpSslEnabled,
+	XPackSecurityHttpSslKey,
+	XPackSecurityTransportSslCertificate,
+	XPackSecurityTransportSslCertificateAuthorities,
+	XPackSecurityTransportSslEnabled,
+	XPackSecurityTransportSslKey,
+	XPackSecurityTransportSslTrustRestrictionsPath,
+	XPackSecurityTransportSslVerificationMode,
+}

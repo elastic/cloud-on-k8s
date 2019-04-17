@@ -101,7 +101,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					Topology: []v1alpha1.TopologyElementSpec{
+					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 2,
 						},
@@ -115,14 +115,22 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					Topology: []v1alpha1.TopologyElementSpec{
+					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 1,
-							NodeTypes: v1alpha1.NodeTypesSpec{Master: true},
+							Config: &v1alpha1.Config{
+								Data: map[string]interface{}{
+									v1alpha1.NodeMaster: "true",
+								},
+							},
 						},
 						{
 							NodeCount: 2,
-							NodeTypes: v1alpha1.NodeTypesSpec{Data: true},
+							Config: &v1alpha1.Config{
+								Data: map[string]interface{}{
+									v1alpha1.NodeData: "true",
+								},
+							},
 						},
 					},
 				},
@@ -149,10 +157,14 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version: "1.2.3",
 			Image:   "custom-image",
-			Topology: []v1alpha1.TopologyElementSpec{
+			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 1,
-					NodeTypes: v1alpha1.NodeTypesSpec{Master: true},
+					Config: &v1alpha1.Config{
+						Data: map[string]interface{}{
+							v1alpha1.NodeMaster: "true",
+						},
+					},
 				},
 			},
 		},

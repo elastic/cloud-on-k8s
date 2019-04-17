@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -257,9 +256,9 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				ToDelete:       []corev1.Pod{pod1, pod2},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
 					},
 				},
 				observedState: observer.State{
@@ -286,10 +285,10 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 				ToDelete:       []corev1.Pod{pod4},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
-						{Pod: pod4, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
+						{Pod: pod4},
 					},
 				},
 				observedState: observer.State{

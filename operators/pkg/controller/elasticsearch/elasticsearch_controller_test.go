@@ -67,10 +67,12 @@ func TestReconcile(t *testing.T) {
 		Spec: estype.ElasticsearchSpec{
 			Version:          "7.0.0",
 			SetVMMaxMapCount: &varFalse,
-			Topology: []v1alpha1.TopologyElementSpec{
+			Nodes: []v1alpha1.NodeSpec{
 				{
-					NodeTypes: estype.NodeTypesSpec{
-						Master: true,
+					Config: &estype.Config{
+						Data: map[string]interface{}{
+							estype.NodeMaster: true,
+						},
 					},
 					NodeCount: 3,
 				},

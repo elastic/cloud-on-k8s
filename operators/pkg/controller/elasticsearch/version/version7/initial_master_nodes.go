@@ -5,8 +5,6 @@
 package version7
 
 import (
-	"strings"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
@@ -44,16 +42,14 @@ func ClusterInitialMasterNodesEnforcer(
 			continue
 		}
 
-		cfg := InitialMasterNodesConfig(masterEligibleNodeNames)
-		performableChanges.ToCreate[i].PodSpecCtx.Config = change.PodSpecCtx.Config.MergeWith(cfg)
+		err := performableChanges.ToCreate[i].PodSpecCtx.Config.SetStrings(
+			settings.ClusterInitialMasterNodes,
+			masterEligibleNodeNames...,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &performableChanges, nil
-}
-
-// InitialMasterNodesConfig returns the configuration to set up initial master nodes on v7+
-func InitialMasterNodesConfig(masterEligibleNodes []string) settings.FlatConfig {
-	return settings.FlatConfig{
-		settings.ClusterInitialMasterNodes: strings.Join(masterEligibleNodes, ","),
-	}
 }

@@ -64,7 +64,7 @@ func ExpectedPodSpecs(
 		es,
 		paramsTmpl,
 		newEnvironmentVars,
-		settings.NewDefaultESConfig,
+		settings.NewMergedESConfig,
 		newInitContainers,
 		operatorImage,
 	)
