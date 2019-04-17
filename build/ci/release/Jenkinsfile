@@ -1,11 +1,15 @@
 pipeline {
 
     agent {
-        label 'swarm'
+        label 'linux'
     }
 
     environment {
         REGISTRY = 'eu.gcr.io'
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
     }
 
     stages {
@@ -13,6 +17,12 @@ pipeline {
             steps {
                 sh 'make -C build/ci ci-release'
             }
+        }
+    }
+
+    post {
+        cleanup {
+            cleanWs()
         }
     }
 
