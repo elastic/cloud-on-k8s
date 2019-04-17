@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonvalidation "github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"k8s.io/api/admission/v1beta1"
@@ -58,7 +59,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	if err == nil {
 		current = &onServer
 	}
-	var results []validation.Result
+	var results []commonvalidation.Result
 	validationCtx, err := validation.NewValidationContext(current, esCluster)
 	if err != nil {
 		log.Error(err, "while creating validation context")
@@ -70,8 +71,8 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	return aggregate(results)
 }
 
-func aggregate(results []validation.Result) types.Response {
-	response := validation.Result{Allowed: true}
+func aggregate(results []commonvalidation.Result) types.Response {
+	response := commonvalidation.Result{Allowed: true}
 	for _, r := range results {
 		if !r.Allowed {
 			response.Allowed = false

@@ -13,8 +13,8 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
@@ -37,9 +37,9 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -62,7 +62,6 @@ func NewExpectedPodSpecs(
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
-				KeystoreSecretRef:    paramsTmpl.KeystoreSecretRef,
 				ProbeUser:            paramsTmpl.ProbeUser,
 				ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
 			}
@@ -90,7 +89,7 @@ func podSpec(
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, zenMinMasterNodes int, nodeTypes v1alpha1.NodeTypesSpec, licenseType v1alpha1.LicenseType) settings.FlatConfig,
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.FlatConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
@@ -123,16 +122,16 @@ func podSpec(
 		volume.NodeCertificatesSecretVolumeName,
 		volume.NodeCertificatesSecretVolumeMountPath,
 	)
-
 	privateKeyVolume := volume.NewSecretVolumeWithMountPath(
 		initcontainer.PrivateKeySharedVolume.Name,
 		initcontainer.PrivateKeySharedVolume.Volume().Name,
 		initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount().MountPath)
 
-	keystoreVolume := volume.NewSecretVolumeWithMountPath(
-		p.KeystoreSecretRef.Name,
-		keystore.SecretVolumeName,
-		keystore.SecretMountPath)
+	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
+		name.SecureSettingsSecret(p.ClusterName),
+		volume.SecureSettingsVolumeName,
+		volume.SecureSettingsVolumeMountPath,
+	)
 
 	resourceLimits := corev1.ResourceList{
 		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
@@ -146,7 +145,7 @@ func podSpec(
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, keystoreVolume),
+			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            pod.DefaultContainerName,
@@ -156,22 +155,7 @@ func podSpec(
 				// we do not specify Requests here in order to end up in the qosClass of Guaranteed.
 				// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 			},
-			ReadinessProbe: &corev1.Probe{
-				FailureThreshold:    3,
-				InitialDelaySeconds: 10,
-				PeriodSeconds:       10,
-				SuccessThreshold:    3,
-				TimeoutSeconds:      5,
-				Handler: corev1.Handler{
-					Exec: &corev1.ExecAction{
-						Command: []string{
-							"sh",
-							"-c",
-							pod.DefaultReadinessProbeScript,
-						},
-					},
-				},
-			},
+			ReadinessProbe: pod.NewReadinessProbe(),
 			VolumeMounts: append(
 				initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount(),
@@ -182,7 +166,7 @@ func podSpec(
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
-				keystoreVolume.VolumeMount(),
+				secureSettingsVolume.VolumeMount(),
 			),
 			Command: []string{processmanager.CommandPath},
 		}},
@@ -196,7 +180,7 @@ func podSpec(
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
-			keystoreVolume.Volume(),
+			secureSettingsVolume.Volume(),
 		),
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
@@ -241,7 +225,7 @@ func NewPod(
 
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        pod.NewNodeName(es.Name),
+			Name:        name.NewPodName(es.Name),
 			Namespace:   es.Namespace,
 			Labels:      labels,
 			Annotations: podSpecCtx.TopologyElement.PodTemplate.Annotations,

@@ -19,8 +19,16 @@ import (
 )
 
 func TestEnsureNodeCertificateSecretExists(t *testing.T) {
-	stubOwner := &corev1.Pod{}
-	preExistingSecret := &corev1.Secret{}
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod",
+		},
+	}
+	preExistingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pod-certs",
+		},
+	}
 
 	type args struct {
 		c                   k8s.Client
@@ -41,16 +49,19 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 			args: args{
 				c:                   k8s.WrapClient(fake.NewFakeClient()),
 				nodeCertificateType: LabelNodeCertificateTypeElasticsearchAll,
+				pod:                 pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				assert.Contains(t, secret.Labels, LabelNodeCertificateType)
 				assert.Equal(t, secret.Labels[LabelNodeCertificateType], LabelNodeCertificateTypeElasticsearchAll)
+				assert.Equal(t, "pod-certs", secret.Name)
 			},
 		},
 		{
 			name: "should not create a new secret if it already exists",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(preExistingSecret)),
+				c:   k8s.WrapClient(fake.NewFakeClient(preExistingSecret)),
+				pod: pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				assert.Equal(t, preExistingSecret, secret)
@@ -64,7 +75,7 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 			}
 
 			if tt.args.owner == nil {
-				tt.args.owner = stubOwner
+				tt.args.owner = &pod
 			}
 
 			got, err := EnsureNodeCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.nodeCertificateType, tt.args.labels)

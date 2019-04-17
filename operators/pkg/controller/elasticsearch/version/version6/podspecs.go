@@ -74,7 +74,7 @@ func ExpectedPodSpecs(
 func newInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
-	setVMMaxMapCount bool,
+	setVMMaxMapCount *bool,
 	nodeCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
@@ -92,7 +92,7 @@ func newEnvironmentVars(
 	nodeCertificatesVolume volume.SecretVolume,
 	privateKeySecretVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
-	keystoreSecretVolume volume.SecretVolume,
+	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
 
@@ -115,7 +115,7 @@ func newEnvironmentVars(
 	}
 
 	vars = append(vars, processmanager.NewEnvVars(nodeCertificatesVolume, privateKeySecretVolume)...)
-	vars = append(vars, keystore.NewEnvVars(p, nodeCertificatesVolume, reloadCredsUserSecretVolume, keystoreSecretVolume)...)
+	vars = append(vars, keystore.NewEnvVars(p, nodeCertificatesVolume, reloadCredsUserSecretVolume, secureSettingsSecretVolume)...)
 
 	return vars
 }

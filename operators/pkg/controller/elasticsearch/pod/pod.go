@@ -31,7 +31,6 @@ var (
 	DefaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 
@@ -76,7 +75,8 @@ type NewPodSpecParams struct {
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVMMaxMapCount bool
+	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
+	SetVMMaxMapCount *bool
 
 	// Resources is the memory/cpu resources the pod wants
 	Resources commonv1alpha1.ResourcesSpec
@@ -89,8 +89,6 @@ type NewPodSpecParams struct {
 	ConfigMapVolume volume.ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
-	// KeystoreSecretRef is configuration for the Elasticsearch key store setup
-	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.

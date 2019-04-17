@@ -11,15 +11,23 @@ import (
 // Default values for the volume name and paths
 const (
 	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
-	DefaultSecretMountPath                = "/mnt/elastic/secrets"
-	ProbeUserSecretMountPath              = "/mnt/elastic/probe-user"
-	ProbeUserVolumeName                   = "probe-user"
-	ReloadCredsUserSecretMountPath        = "/mnt/elastic/reload-creds-user"
-	ReloadCredsUserVolumeName             = "reload-creds-user"
+	DefaultSecretMountPath = "/mnt/elastic/secrets"
+
+	ProbeUserSecretMountPath = "/mnt/elastic/probe-user"
+	ProbeUserVolumeName      = "probe-user"
+
+	ReloadCredsUserSecretMountPath = "/mnt/elastic/reload-creds-user"
+	ReloadCredsUserVolumeName      = "reload-creds-user"
+
 	NodeCertificatesSecretVolumeName      = "node-certificates"
 	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
-	ExtraFilesSecretVolumeMountPath       = "/usr/share/elasticsearch/config/extrafiles"
-	ProcessManagerEmptyDirMountPath       = "/mnt/elastic/process-manager"
+
+	SecureSettingsVolumeName      = "secure-settings"
+	SecureSettingsVolumeMountPath = "/mnt/elastic/secure-settings"
+
+	ExtraFilesSecretVolumeMountPath = "/usr/share/elasticsearch/config/extrafiles"
+
+	ProcessManagerEmptyDirMountPath = "/mnt/elastic/process-manager"
 )
 
 var (

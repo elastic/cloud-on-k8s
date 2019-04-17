@@ -76,38 +76,24 @@ spec:
               - gold
               - platinum
               type: string
+            secureSettings:
+              description: SecureSettings reference the name of a secret containing
+                secure settings, to be injected into Elasticsearch keystore on each
+                node. It must exist in the same namespace as the Elasticsearch resource.
+              properties:
+                name:
+                  type: string
+              required:
+              - name
+              type: object
             setVmMaxMapCount:
-              description: SetVMMaxMapCount indicates whether a init container should
+              description: SetVMMaxMapCount indicates whether an init container should
                 be used to ensure that the `vm.max_map_count` is set according to
                 https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
                 Setting this to true requires the kubelet to allow running privileged
-                containers.
+                containers. Defaults to true if not specified. To be disabled, it
+                must be explicitly set to false.
               type: boolean
-            snapshotRepository:
-              description: SnapshotRepository defines a snapshot repository to be
-                used for automatic snapshots.
-              properties:
-                settings:
-                  description: Settings are provider specific repository settings
-                  properties:
-                    bucketName:
-                      description: BucketName is the name of the provider specific
-                        storage bucket to use.
-                      type: string
-                    credentials:
-                      description: Credentials is a reference to a secret containing
-                        credentials for the storage provider.
-                      type: object
-                  type: object
-                type:
-                  description: Type of repository
-                  enum:
-                  - gcs
-                  type: string
-              required:
-              - type
-              - settings
-              type: object
             topology:
               description: Topology represents a list of topology elements to be part
                 of the cluster

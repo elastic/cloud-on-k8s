@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"time"
@@ -15,7 +14,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
@@ -29,7 +27,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
@@ -83,7 +80,6 @@ type defaultDriver struct {
 		scheme *runtime.Scheme,
 		es v1alpha1.Elasticsearch,
 		trustRelationships []v1alpha1.TrustRelationship,
-		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
@@ -176,6 +172,10 @@ func (d *defaultDriver) Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
 	})
 
+	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
+		return results.WithError(err)
+	}
+
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -213,22 +213,9 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(
-		d.Client, d.Scheme, es, trustRelationships, d.DynamicWatches,
-	)
+	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, trustRelationships)
 	if err != nil {
 		return results.WithError(err)
-	}
-
-	if err := snapshot.ReconcileSnapshotterCronJob(
-		d.Client,
-		d.Scheme,
-		es,
-		internalUsers.ControllerUser.Auth(),
-		d.OperatorImage,
-	); err != nil {
-		// it's ok to continue even if we cannot reconcile the cron job
-		results.WithError(err)
 	}
 
 	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
@@ -237,16 +224,6 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	if esReachable {
-		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
-		if err != nil {
-			msg := "Could not reconcile snapshot repository"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg)
-			// requeue to retry but continue, as the failure might be caused by transient inconsistency between ES and
-			// operator e.g. after certificates have been rotated
-			results.WithResult(defaultRequeue)
-		}
-
 		err = remotecluster.UpdateRemoteCluster(d.Client, esClient, es, reconcileState)
 		if err != nil {
 			msg := "Could not update remote clusters in Elasticsearch settings"
@@ -480,11 +457,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
-			ProbeUser:         internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser:   internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:       internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,
 	)

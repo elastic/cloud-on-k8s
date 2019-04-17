@@ -16,3 +16,8 @@ type ResourcesSpec struct {
 type ReconcilerStatus struct {
 	AvailableNodes int `json:"availableNodes,omitempty"`
 }
+
+// ResourceNameReference references a k8s resource by name, within an expected namespace.
+type ResourceNameReference struct {
+	Name string `json:"name"`
+}

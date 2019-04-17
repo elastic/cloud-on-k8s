@@ -9,19 +9,23 @@
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
-KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
-GCLOUD_PROJECT ?= elastic-cloud-dev
+KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
 ## -- Docker image
-# default to GCR registry
-REGISTRY ?= eu.gcr.io
-ifeq ($(KUBECTL_CLUSTER), minikube)
-	# but on minikube, use a local registry
-	REGISTRY = localhost:5000
+
+REPOSITORY ?= elastic-dev
+# on GKE, use GCR and GCLOUD_PROJECT
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+	REGISTRY ?= eu.gcr.io
+	REPOSITORY = ${GCLOUD_PROJECT}
+endif
+# default to local registry
+ifeq ($(REGISTRY),)
+	REGISTRY ?= localhost:5000
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(GCLOUD_PROJECT)/k8s-operators$(IMG_SUFFIX)
+IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
 # use git sha1 as the default image tag
 GIT_SHA1 = $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(GIT_SHA1)
@@ -105,8 +109,16 @@ run: install-crds
 			--operator-namespace=elastic-system \
 			--auto-install-webhooks=false
 
+# if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
+check-gke:
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set while GKE detected)
+endif
+endif
+
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: install-crds docker-build docker-push
+deploy: check-gke install-crds docker-build docker-push
 	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
 		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
@@ -153,24 +165,28 @@ set-context-minikube:
 	kubectl config use-context "minikube"
 	$(eval KUBECTL_CLUSTER="minikube")
 
-bootstrap-minikube: 
+bootstrap-minikube:
 	hack/minikube-cluster.sh
 	$(MAKE) set-context-minikube registry lazy-push-latest-operator-image-in-local-registry cluster-bootstrap
 
 ## -- gke
 
-set-context-gke:
-	minikube stop || true
+require-gcloud-project:
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set)
+endif
+
+set-context-gke: require-gcloud-project
 	kubectl config use-context $(shell hack/gke-cluster.sh name)
 	$(eval KUBECTL_CLUSTER=$(shell hack/gke-cluster.sh name))
 
-bootstrap-gke:
+bootstrap-gke: require-gcloud-project
 	./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
-delete-gke:
+delete-gke: require-gcloud-project
 	./hack/gke-cluster.sh delete
 
 ## -- registry in the cluster

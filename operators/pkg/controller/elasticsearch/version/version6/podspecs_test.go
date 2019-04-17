@@ -35,7 +35,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 		nodeCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
 		reloadCredsUserVolume  volume.SecretVolume
-		keystoreVolume         volume.SecretVolume
+		secureSettingsVolume   volume.SecretVolume
 	}
 	tests := []struct {
 		name    string
@@ -53,7 +53,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
-				keystoreVolume:         volume.NewSecretVolumeWithMountPath("keystore", "/keystore", "/keystore"),
+				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
 				{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -71,7 +71,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: processmanager.EnvTLS, Value: "true"},
 				{Name: processmanager.EnvCertPath, Value: "/certs/cert.pem"},
 				{Name: processmanager.EnvKeyPath, Value: "/key/node.key"},
-				{Name: keystore.EnvSourceDir, Value: "/keystore"},
+				{Name: keystore.EnvSourceDir, Value: "/secure-settings"},
 				{Name: keystore.EnvReloadCredentials, Value: "true"},
 				{Name: keystore.EnvEsUsername, Value: "username2"},
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
@@ -84,7 +84,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newEnvironmentVars(tt.args.p, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
-				tt.args.reloadCredsUserVolume, tt.args.keystoreVolume)
+				tt.args.reloadCredsUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
@@ -147,9 +147,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	es := v1alpha1.Elasticsearch{
 		ObjectMeta: testObjectMeta,
 		Spec: v1alpha1.ElasticsearchSpec{
-			Version:          "1.2.3",
-			Image:            "custom-image",
-			SetVMMaxMapCount: true,
+			Version: "1.2.3",
+			Image:   "custom-image",
 			Topology: []v1alpha1.TopologyElementSpec{
 				{
 					NodeCount: 1,

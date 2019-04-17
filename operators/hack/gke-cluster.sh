@@ -13,11 +13,11 @@
 
 set -eu
 
-: "${GCLOUD_PROJECT:=elastic-cloud-dev}"
+: "${GCLOUD_PROJECT}"
 : "${GKE_CLUSTER_NAME:=${USER//_}-dev-cluster}"
 : "${GKE_CLUSTER_REGION:=europe-west3}"
 : "${GKE_ADMIN_USERNAME:=admin}"
-: "${GKE_CLUSTER_VERSION:=1.11.6}"
+: "${GKE_CLUSTER_VERSION:=1.11}"
 : "${GKE_MACHINE_TYPE:=n1-highmem-4}"
 : "${GKE_LOCAL_SSD_COUNT:=1}"
 : "${GKE_NODE_COUNT_PER_ZONE:=1}"
@@ -46,8 +46,8 @@ create_cluster() {
         --machine-type "${GKE_MACHINE_TYPE}" --image-type "COS" --disk-type "pd-ssd" --disk-size "30" \
         --local-ssd-count "${GKE_LOCAL_SSD_COUNT}" --scopes "${GKE_GCP_SCOPES}" --num-nodes "${GKE_NODE_COUNT_PER_ZONE}" \
         --enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing \
-        --no-enable-autoupgrade --no-enable-autorepair --network "projects/elastic-cloud-dev/global/networks/default" \
-        --subnetwork "projects/elastic-cloud-dev/regions/europe-west3/subnetworks/default"
+        --no-enable-autoupgrade --no-enable-autorepair --network "projects/${GCLOUD_PROJECT}/global/networks/default" \
+        --subnetwork "projects/${GCLOUD_PROJECT}/regions/europe-west3/subnetworks/default"
 
     # Export credentials for kubelet
     gcloud beta container --project ${GCLOUD_PROJECT} clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
