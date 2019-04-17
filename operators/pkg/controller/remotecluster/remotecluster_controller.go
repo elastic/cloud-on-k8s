@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
@@ -108,6 +109,13 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	if common.IsPaused(instance.ObjectMeta) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
 		return common.PauseRequeue, nil
+	}
+
+	if !license.CommercialFeaturesEnabled(r) {
+		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
+			State: v1alpha1.RemoteClusterFeatureDisabled,
+		})
+		return reconcile.Result{}, nil
 	}
 
 	// Use the driver to create the remote cluster
