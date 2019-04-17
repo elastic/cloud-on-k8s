@@ -38,7 +38,6 @@ const (
 	esRolesUsersSecretSuffix   = "-es-roles-users"
 	extraFilesSecretSuffix     = "-extrafiles"
 	internalUsersSecretSuffix  = "-internal-users"
-	keystoreSecretSuffix       = "-keystore"
 )
 
 // Suffix a resource name.
@@ -125,8 +124,4 @@ func ExtraFilesSecret(esName string) string {
 
 func InternalUsersSecret(esName string) string {
 	return suffix(esName, internalUsersSecretSuffix)
-}
-
-func KeystoreSecret(esName string) string {
-	return suffix(esName, keystoreSecretSuffix)
 }

@@ -35,7 +35,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 		nodeCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
 		reloadCredsUserVolume  volume.SecretVolume
-		keystoreVolume         volume.SecretVolume
+		secureSettingsVolume   volume.SecretVolume
 	}
 	tests := []struct {
 		name    string
@@ -53,7 +53,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
-				keystoreVolume:         volume.NewSecretVolumeWithMountPath("keystore", "/keystore", "/keystore"),
+				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
 				{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
@@ -71,7 +71,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: processmanager.EnvTLS, Value: "true"},
 				{Name: processmanager.EnvCertPath, Value: "/certs/cert.pem"},
 				{Name: processmanager.EnvKeyPath, Value: "/key/node.key"},
-				{Name: keystore.EnvSourceDir, Value: "/keystore"},
+				{Name: keystore.EnvSourceDir, Value: "/secure-settings"},
 				{Name: keystore.EnvReloadCredentials, Value: "true"},
 				{Name: keystore.EnvEsUsername, Value: "username2"},
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
@@ -84,7 +84,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newEnvironmentVars(tt.args.p, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
-				tt.args.reloadCredsUserVolume, tt.args.keystoreVolume)
+				tt.args.reloadCredsUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
@@ -180,7 +180,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 14, len(esPodSpec.Volumes))
+	assert.Equal(t, 13, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -189,6 +189,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
-	assert.Equal(t, 15, len(esContainer.VolumeMounts))
+	assert.Equal(t, 14, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }
