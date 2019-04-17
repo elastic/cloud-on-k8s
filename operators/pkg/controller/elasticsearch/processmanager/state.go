@@ -120,10 +120,10 @@ func (p *Process) updateState(action string, signal syscall.Signal, lastErr erro
 func nextState(state ProcessState, action string, err error) ProcessState {
 	switch action {
 	case initAction:
-		// If the state is still started, the process must have been killed
+		// If the state is still started, the process must have been failed or restarted by an external program
 		if state == started {
-			log.Info("Process marked 'started' on init must have been 'killed'")
-			return killed
+			log.Info("Process marked 'started' on init must have been 'failed'")
+			return failed
 		}
 		return state
 	case startAction:

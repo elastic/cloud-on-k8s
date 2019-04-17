@@ -125,49 +125,62 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 	return p.state, nil
 }
 
-// Kill a process group by sending a signal.
-func (p *Process) Kill(s os.Signal) (ProcessState, error) {
-	sig, ok := s.(syscall.Signal)
-	if !ok {
-		err := errors.New("os: unsupported signal type")
-		return stopFailed, err
-	}
-	killHard := sig == killHardSignal
-
+// KillSoft kills the process group by sending a SIGTERM.
+func (p *Process) KillSoft() (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
-	// Can stop or kill?
+	// Can stop?
 	switch p.state {
-	case stopping:
-		if !killHard {
-			return p.state, nil
-		}
+	case stopping, stopped, killing, killed, failed:
+		return p.state, nil
+	}
+
+	p.updateState(stopAction, killSoftSignal, nil)
+	err := p.Kill(killSoftSignal)
+	p.updateState(stopAction, killSoftSignal, err)
+
+	return p.state, err
+}
+
+// KillHard kills the process group by sending a SIGKILL.
+func (p *Process) KillHard() (ProcessState, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Can kill?
+	switch p.state {
 	case stopped, killing, killed, failed:
 		return p.state, nil
 	}
 
-	var action string
-	if killHard {
-		action = killAction
-	} else {
-		action = stopAction
+	p.updateState(killAction, killHardSignal, nil)
+	err := p.Kill(killSoftSignal)
+	p.updateState(killAction, killHardSignal, err)
+
+	return p.state, err
+}
+
+// Kill sends a signal to the process group to kill it.
+func (p *Process) Kill(s os.Signal) error {
+	sig, ok := s.(syscall.Signal)
+	if !ok {
+		err := errors.New("os: unsupported signal type")
+		return err
 	}
 
-	// Send signal to the whole process group
 	err := syscall.Kill(-(p.pid), sig)
 	if err != nil {
 		if err.Error() == ErrNoSuchProcess {
-			p.updateState(action, sig, err)
+			//p.updateState(action, sig, err)
 			// Looks like the process is already dead. This should not happen.
 			// Normally the end of the process should have been intercepted and the program exited.
 			Exit("failed to kill process already dead", 1)
 		}
+		return err
 	}
 
-	p.updateState(action, sig, err)
-
-	return p.state, err
+	return nil
 }
 
 // Status returns the status of the process.

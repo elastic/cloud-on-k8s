@@ -168,7 +168,7 @@ func Test_Kill15ProcessManager(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, stopped)
+	assertProcessStatus(t, client, started)
 }
 
 func Test_DockerStop(t *testing.T) {
@@ -179,7 +179,7 @@ func Test_DockerStop(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, stopped)
+	assertProcessStatus(t, client, started)
 }
 
 func Test_DockerKill(t *testing.T) {
@@ -190,5 +190,5 @@ func Test_DockerKill(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, killed)
+	assertProcessStatus(t, client, started)
 }

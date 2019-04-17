@@ -116,7 +116,7 @@ func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Kill(killSoftSignal)
+	state, err := s.esProcess.KillSoft()
 	if err != nil {
 		log.Error(err, "Failed to stop es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -128,7 +128,7 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Kill(killHardSignal)
+	state, err := s.esProcess.KillHard()
 	if err != nil {
 		log.Error(err, "Failed to kill es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
