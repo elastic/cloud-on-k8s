@@ -28,8 +28,11 @@ func TestUpdateSecureSettings(t *testing.T) {
 			Namespace: helpers.DefaultNamespace,
 		},
 		Data: map[string][]byte{
-			"key1": []byte("initialValue1"),
-			"key2": []byte("initialValue2"),
+			"key.without.prefix":        []byte("string value"),
+			"es.string.string.setting1": []byte("string value"),
+			"es.string.string.setting2": []byte("string value"),
+			"es.file.file.setting1":     []byte("file content"),
+			"es.file.file.setting2":     []byte("file content"),
 		},
 	}
 
@@ -57,16 +60,18 @@ func TestUpdateSecureSettings(t *testing.T) {
 		WithSteps(
 
 			// initial secure settings should be there in all nodes keystore
-			stack.CheckKeystoreEntries(k, s.Elasticsearch, []string{"key1", "key2"}),
+			stack.CheckKeystoreEntries(k, s.Elasticsearch, []string{
+				"file.setting1", "file.setting2", "key.without.prefix", "string.setting1", "string.setting2"}),
 
 			// modify the secure settings secret
 			helpers.TestStep{
 				Name: "Modify secure settings secret",
 				Test: func(t *testing.T) {
-					// remove key2, add key3
+					// remove some keys, add new ones
 					secureSettings.Data = map[string][]byte{
-						"key1": []byte("updatedValue1"), // the actual value update cannot be checked :(
-						"key3": []byte("initialValue3"),
+						"es.string.string.setting1":     []byte("new string content"), // the actual value update cannot be checked :(
+						"es.string.new.string.setting2": []byte("string content"),
+						"es.file.new.file.setting":      []byte("file content"),
 					}
 					err := k.Client.Update(&secureSettings)
 					require.NoError(t, err)
@@ -74,7 +79,8 @@ func TestUpdateSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckKeystoreEntries(k, s.Elasticsearch, []string{"key1", "key3"}),
+			stack.CheckKeystoreEntries(k, s.Elasticsearch, []string{
+				"new.file.setting", "new.string.setting2", "string.setting1"}),
 
 			// remove the secure settings reference
 			helpers.TestStep{
