@@ -48,5 +48,5 @@ if relevant insert the resource definition
 
 * Logs:
 ```
-insert operator logs or any relevant message relevant to the issue here
+insert operator logs or any relevant message to the issue here
 ```

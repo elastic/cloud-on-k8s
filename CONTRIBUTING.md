@@ -45,7 +45,7 @@ There are 3 test suites:
 * **End-to-end tests** (e2e) allow us to test interactions between the operator and a real Kubernetes cluster. They use the standard `go test` tooling, please see the `test/e2e` directory. Keep in mind that while they simulate some real user scenarios end-to-end tests are slow and hard to debug, we should rely primarily on unit and integration tests.
 
 ### Logging
-The operator relies on controller-runtime logging instead of golang built-it log library. It uses a kind of logging called structured logging, log messages must not contain variables but they can be associated with some key/value pairs.
+The operator relies on controller-runtime logging instead of golang built-in log library. It uses a kind of logging called structured logging, log messages must not contain variables but they can be associated with some key/value pairs.
 
 For instance, do not write:
 ```
