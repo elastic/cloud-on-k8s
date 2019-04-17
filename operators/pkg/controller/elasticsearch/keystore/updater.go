@@ -26,7 +26,7 @@ var (
 	log = logf.Log.WithName("keystore-updater")
 )
 
-// Updater updates the keystore
+// Updater updates the Elasticsearch keystore by watching a local directory corresponding to a Kubernetes secret.
 type Updater struct {
 	config      Config
 	reloadQueue workqueue.DelayingInterface
@@ -50,7 +50,7 @@ func NewUpdater(cfg Config, client Client, keystore Keystore) (*Updater, error) 
 	}, nil
 }
 
-// Status returns the Keystore updater status
+// Status returns the keystore updater status
 func (u *Updater) Status() (Status, error) {
 	u.lock.RLock()
 	defer u.lock.RUnlock()
@@ -89,7 +89,7 @@ func (u *Updater) watchForUpdate() {
 			log.Error(err, "Cannot update keystore", "msg", msg)
 			u.updateStatus(failedState, msg, err)
 		} else {
-			u.updateStatus(runningState, "Keystore updated", nil)
+			u.updateStatus(runningState, keystoreUpdatedReason, nil)
 		}
 		return false, nil // run forever
 	}
@@ -108,7 +108,7 @@ func (u *Updater) watchForUpdate() {
 		log.Error(err, "Cannot update keystore", "msg", msg)
 		u.updateStatus(failedState, msg, err)
 	} else {
-		u.updateStatus(runningState, "Keystore updated", err)
+		u.updateStatus(runningState, keystoreUpdatedReason, err)
 	}
 
 	// then run on files change
@@ -135,9 +135,8 @@ func (u *Updater) coalescingRetry() {
 			u.updateStatus(failedState, msg, err)
 			u.reloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
 		} else {
-			msg := "Successfully reloaded secure settings"
-			u.updateStatus(runningState, msg, nil)
-			log.Info(msg)
+			u.updateStatus(runningState, secureSettingsReloadedReason, nil)
+			log.Info(secureSettingsReloadedReason)
 		}
 		u.reloadQueue.Done(item)
 	}
