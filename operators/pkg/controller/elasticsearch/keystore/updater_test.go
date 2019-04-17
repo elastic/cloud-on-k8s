@@ -68,17 +68,56 @@ func TestCoalescingRetry_Ko(t *testing.T) {
 	}, ClientKoMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
+	// Add an item in the queue
 	updater.reloadQueue.Add(attemptReload)
 	assert.Equal(t, 1, updater.reloadQueue.Len())
 
+	// Start coalescingRetry in background and wait 1s
 	go updater.coalescingRetry()
 	time.Sleep(1 * time.Second)
 
+	// The queue had to be filled
 	assert.Equal(t, 0, updater.reloadQueue.Len())
 
+	// Status is KO
 	s, err := updater.Status()
 	assert.NoError(t, err)
 	assert.Equal(t, string(failedState), string(s.State))
+}
+
+func TestWatchForUpdate(t *testing.T) {
+	sourcePath, err := ioutil.TempDir("", "")
+	assert.NoError(t, err)
+	defer func() { _ = os.RemoveAll(sourcePath) }()
+
+	updater, err := NewUpdater(Config{
+		SecretsSourceDir:  sourcePath,
+		ReloadCredentials: true,
+	}, ClientOkMock{}, KeystoreOkMock{})
+	assert.NoError(t, err)
+
+	// Starts watchForUpdate and wait at least one polling
+	go updater.watchForUpdate()
+	time.Sleep(dirWatcherPollingPeriod * 1)
+
+	assert.Equal(t, 1, updater.reloadQueue.Len())
+
+	// consume the queue manually
+	item, _ := updater.reloadQueue.Get()
+	updater.reloadQueue.Done(item)
+	assert.Equal(t, 0, updater.reloadQueue.Len())
+
+	// write a new settings to store in the keystore
+	_ = ioutil.WriteFile(filepath.Join(sourcePath, "setting1"), []byte("secret1"), 0644)
+	time.Sleep(dirWatcherPollingPeriod * 2)
+
+	// the queue had to be filled
+	assert.Equal(t, 1, updater.reloadQueue.Len())
+
+	s, err := updater.Status()
+	assert.NoError(t, err)
+	assert.Equal(t, string(runningState), string(s.State))
+	assert.Equal(t, string(keystoreUpdatedReason), string(s.Reason))
 }
 
 func TestStart_WaitingEs(t *testing.T) {
