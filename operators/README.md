@@ -38,12 +38,9 @@ Run `make check-requisites` to check that all dependencies are installed.
    ```
 2. Deploy the operator.
 
-   Use either `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
-
-3. Proceed with the following commands:
-
-   * `make dep-vendor-only`: Downloads extra Go libraries needed to compile the project and stores them in the vendor directory.
-   * `make samples`: Apply a sample stack resource.
+   * `make dep-vendor-only` to download extra Go libraries needed to compile the project and stores them in the vendor directory.
+   *  `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
+   * `make samples` to apply a sample stack resource.
 
 ### Running E2E tests
 
