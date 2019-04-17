@@ -2,7 +2,7 @@
 
 # Welcome !
 
-Thank you for your interest in contributing Elastic operator !
+Thank you for your interest in contributing to the Elastic K8S operator !
 The goal of this document is to provide a high-level overview of how you can get involved.
 
 -   [Bug reports](#bug-reports)
