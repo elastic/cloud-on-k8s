@@ -6,6 +6,7 @@ package keystore
 
 import (
 	"errors"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,6 +24,11 @@ type EsClientOkMock struct{}
 
 func (c EsClientOkMock) ReloadSecureSettings() error { return nil }
 func (c EsClientOkMock) WaitForEsReady()             { time.Sleep(timeToStartEs) }
+
+type EsClientNeverReadyMock struct{}
+
+func (c EsClientNeverReadyMock) ReloadSecureSettings() error { return nil }
+func (c EsClientNeverReadyMock) WaitForEsReady()             { select {} }
 
 type EsClientKoMock struct{}
 
@@ -54,12 +60,15 @@ func TestCoalescingRetry_Ok(t *testing.T) {
 	updater.reloadQueue.Add(attemptReload)
 	assert.Equal(t, 1, updater.reloadQueue.Len())
 
-	// Start coalescingRetry in background and wait 1s
+	// Start coalescingRetry in background
 	go updater.coalescingRetry()
-	time.Sleep(1 * time.Second)
 
-	// The queue should be empty
-	assert.Equal(t, 0, updater.reloadQueue.Len())
+	test.RetryUntilSuccess(t, func() error {
+		if updater.reloadQueue.Len() != 0 {
+			return errors.New("reload queue should be empty")
+		}
+		return nil
+	})
 
 	// Status is running and settings have been reloaded
 	s, err := updater.Status()
@@ -78,12 +87,15 @@ func TestCoalescingRetry_Ko(t *testing.T) {
 	updater.reloadQueue.Add(attemptReload)
 	assert.Equal(t, 1, updater.reloadQueue.Len())
 
-	// Start coalescingRetry in background and wait 1s
+	// Start coalescingRetry in background
 	go updater.coalescingRetry()
-	time.Sleep(1 * time.Second)
 
-	// The queue should be empty
-	assert.Equal(t, 0, updater.reloadQueue.Len())
+	test.RetryUntilSuccess(t, func() error {
+		if updater.reloadQueue.Len() != 0 {
+			return errors.New("reload queue should be empty")
+		}
+		return nil
+	})
 
 	// Status is failed
 	s, err := updater.Status()
@@ -134,12 +146,21 @@ func TestStart_WaitingEs(t *testing.T) {
 	updater, err := NewUpdater(Config{
 		ReloadCredentials: true,
 		SecretsSourceDir:  sourcePath,
-	}, EsClientOkMock{}, KeystoreOkMock{})
+	}, EsClientNeverReadyMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
 	go updater.Start()
-	// Do not wait that ES is ready
-	time.Sleep(timeToStartEs / 2)
+
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != waitingState {
+			return errors.New("state should be waiting")
+		}
+
+		return nil
+	})
 
 	// Status is waiting
 	s, err := updater.Status()
