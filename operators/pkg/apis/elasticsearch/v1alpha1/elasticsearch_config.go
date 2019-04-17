@@ -22,7 +22,7 @@ type ClusterSettings struct {
 	InitialMasterNodes []string `config:"initial_master_nodes"`
 }
 
-// Node is the node node in elasticsearch.yml.
+// Node is the node section in elasticsearch.yml.
 type Node struct {
 	Master bool `config:"master"`
 	Data   bool `config:"data"`
@@ -36,7 +36,7 @@ type ElasticsearchSettings struct {
 	Cluster ClusterSettings `config:"cluster"`
 }
 
-// DefaultCfg is an instance of ElasticsearchSettings with defaults set as they are in elasticsearch.yml.
+// DefaultCfg is an instance of ElasticsearchSettings with defaults set as they are in Elasticsearch.
 var DefaultCfg = ElasticsearchSettings{
 	Node: Node{
 		Master: true,
@@ -88,7 +88,7 @@ func (c *Config) DeepCopyInto(out *Config) {
 	var copy map[string]interface{}
 	err = json.Unmarshal(bytes, &copy)
 	if err != nil {
-		// we assume again optimistically that because we just marshalled that the round trip works as well
+		// we assume again optimistically because we just marshalled that the round trip works as well
 		panic(err)
 	}
 	out.Data = copy

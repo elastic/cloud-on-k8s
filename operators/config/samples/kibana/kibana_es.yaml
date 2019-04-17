@@ -42,7 +42,7 @@ spec:
   - config:
       node.master: true
       node.data: true
-      node.attr.node_type: mixed
+      node.attr.attr_name: attr_value
     resources:
       limits:
         memory: 1Gi
@@ -68,7 +68,7 @@ spec:
       node.master: true
       node.data: false
       node.ingest: false
-      node.attr.node_type: master-only
+      node.attr.attr_name: attr_value
     resources:
       limits:
         memory: 1Gi
@@ -79,7 +79,7 @@ spec:
       node.master: false
       node.data: true
       node.ingest: false
-      node.attr.node_type: data-only
+      node.attr.attr_name: attr_value
     resources:
       limits:
         memory: 1Gi

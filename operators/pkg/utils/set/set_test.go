@@ -27,7 +27,7 @@ func TestMake(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "creates set will passed strings",
+			name: "creates set from passed strings",
 			args: args{
 				strings: []string{"a", "b"},
 			},

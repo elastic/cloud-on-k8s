@@ -66,7 +66,6 @@ func ParseConfig(yml []byte) (*CanonicalConfig, error) {
 		return nil, err
 	}
 	return fromConfig(config), nil
-
 }
 
 // SetStrings sets key to string vals in c.  An error is returned if key is invalid.
@@ -94,7 +93,7 @@ func (c *CanonicalConfig) Unpack() (estype.ElasticsearchSettings, error) {
 	return cfg, c.access().Unpack(&cfg, options...)
 }
 
-// MergeWith returns a new canonical config with the content of c and c2.
+// MergeWith merges the content of c and c2.
 // In case of conflict, c2 is taking precedence.
 func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	for _, c2 := range cfgs {
@@ -140,7 +139,7 @@ func (c *CanonicalConfig) Render() ([]byte, error) {
 
 type untypedDict = map[string]interface{}
 
-// Diff returns the flattened keys whre c and c2 differ.
+// Diff returns the flattened keys where c and c2 differ.
 func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	var diff []string
 	if c == c2 {
@@ -155,8 +154,9 @@ func (c *CanonicalConfig) Diff(c2 *CanonicalConfig, ignore []string) []string {
 	keyDiff := udiff.CompareConfigs(c.access(), c2.access(), options...)
 	diff = append(diff, keyDiff[udiff.Add]...)
 	diff = append(diff, keyDiff[udiff.Remove]...)
+	diff = removeIgnored(diff, ignore)
 	if len(diff) > 0 {
-		return removeIgnored(diff, ignore)
+		return diff
 	}
 	// at this point both configs should contain the same keys but may have different values
 	var cUntyped untypedDict

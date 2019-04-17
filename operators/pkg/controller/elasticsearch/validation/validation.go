@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	cfgInvalidMsg            = "[config invalid]"
+	cfgInvalidMsg            = "configuration invalid"
 	nameTooLongErrMsg        = "Elasticsearch name length cannot exceed the limit of %d characters"
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
