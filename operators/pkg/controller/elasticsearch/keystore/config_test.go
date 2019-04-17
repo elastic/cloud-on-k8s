@@ -5,11 +5,12 @@
 package keystore
 
 import (
-	"github.com/spf13/cobra"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateConfig_InvalidSourceDir(t *testing.T) {

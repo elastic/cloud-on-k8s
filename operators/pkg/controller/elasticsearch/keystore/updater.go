@@ -8,12 +8,12 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/client-go/util/workqueue"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
+	"k8s.io/client-go/util/workqueue"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

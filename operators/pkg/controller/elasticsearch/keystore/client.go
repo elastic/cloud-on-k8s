@@ -8,11 +8,11 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"io/ioutil"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 )
 
