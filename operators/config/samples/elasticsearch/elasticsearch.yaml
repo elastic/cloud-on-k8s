@@ -9,15 +9,15 @@ metadata:
 spec:
   version: "6.7.0"
   licenseType: trial # can be "basic", "trial", "gold", "platinum"
-  topology:
-  - nodeTypes:
-      master: true
-      data: true
-      ingest: true
+  nodes:
+  - config:
+      node.master: true
+      node.data: true
+      node.attr.attr_name: attr_value
     resources:
       limits:
         memory: 1Gi
-        cpu: 500m
+        cpu: 1000m
     nodeCount: 3
     ## this shows how to add a custom label to all pods created for this topology element
     #template:
@@ -34,7 +34,7 @@ spec:
     #    resources:
     #      requests:
     #        storage: 2Gi
-    ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
-    # secureSettings:
-    #   secretName: "ref-to-secret"
+  ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
+  # secureSettings:
+  #   secretName: "ref-to-secret"
   expose: LoadBalancer
