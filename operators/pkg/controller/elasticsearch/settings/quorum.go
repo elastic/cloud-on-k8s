@@ -49,7 +49,7 @@ func UpdateSeedHostsConfigMap(
 	// Create an array with the pod IP of the current master nodes
 	var seedHosts []string
 	for _, master := range masters {
-		if len(master.Status.PodIP) > 0 { // do not add pod is no IPs
+		if len(master.Status.PodIP) > 0 { // do not add pod with no IPs
 			seedHosts = append(
 				seedHosts,
 				fmt.Sprintf("%s:%d", master.Status.PodIP, network.TransportPort),
