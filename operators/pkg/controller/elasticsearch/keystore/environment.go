@@ -6,12 +6,8 @@ package keystore
 
 import (
 	"fmt"
-	"path"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -28,16 +24,24 @@ const (
 	EnvEsVersion         = "KEYSTORE_ES_VERSION"
 )
 
+type NewEnvVarsParams struct {
+	SourceDir          string
+	ESUsername         string
+	ESPasswordFilepath string
+	ESVersion          string
+	ESCaCertPath       string
+	Protocol           string
+}
+
 // NewEnvVars returns the environments variables required by the keystore updater.
-func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUserSecretVolume, secureSettingsVolume volume.VolumeLike) []corev1.EnvVar {
-	esEndpoint := fmt.Sprintf("%s://127.0.0.1:%d", network.ProtocolForLicense(spec.LicenseType), network.HTTPPort)
+func NewEnvVars(params NewEnvVarsParams) []corev1.EnvVar {
 	return []corev1.EnvVar{
-		{Name: EnvSourceDir, Value: secureSettingsVolume.VolumeMount().MountPath},
+		{Name: EnvSourceDir, Value: params.SourceDir},
 		{Name: EnvReloadCredentials, Value: "true"},
-		{Name: EnvEsUsername, Value: spec.ReloadCredsUser.Name},
-		{Name: EnvEsPasswordFile, Value: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, spec.ReloadCredsUser.Name)},
-		{Name: EnvEsCaCertsPath, Value: path.Join(nodeCertsSecretVolume.VolumeMount().MountPath, certificates.CAFileName)},
-		{Name: EnvEsEndpoint, Value: esEndpoint},
-		{Name: EnvEsVersion, Value: spec.Version},
+		{Name: EnvEsUsername, Value: params.ESUsername},
+		{Name: EnvEsPasswordFile, Value: params.ESPasswordFilepath},
+		{Name: EnvEsCaCertsPath, Value: params.ESCaCertPath},
+		{Name: EnvEsEndpoint, Value: fmt.Sprintf("%s://127.0.0.1:%d", params.Protocol, network.HTTPPort)},
+		{Name: EnvEsVersion, Value: params.ESVersion},
 	}
 }
