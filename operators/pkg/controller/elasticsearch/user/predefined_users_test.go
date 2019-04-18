@@ -5,8 +5,9 @@
 package user
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewExternalUsers(t *testing.T) {
