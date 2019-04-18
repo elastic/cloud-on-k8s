@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
@@ -498,10 +500,11 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			ProbeUser:       internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:      k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:          internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
 		},
 		d.OperatorImage,
 	)

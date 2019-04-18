@@ -42,6 +42,10 @@ var (
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
 				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", settings.ConfigFileName),
 			},
+			{
+				Source: stringsutil.Concat(volume.UnicastHostsVolumeMountPath, "/", volume.UnicastHostsFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", volume.UnicastHostsFile),
+			},
 		},
 	}
 )

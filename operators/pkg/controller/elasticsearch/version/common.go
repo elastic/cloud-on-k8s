@@ -62,6 +62,7 @@ func NewExpectedPodSpecs(
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
 				ProbeUser:            paramsTmpl.ProbeUser,
 				ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
+				UnicastHostsVolume:   paramsTmpl.UnicastHostsVolume,
 			}
 			podSpec, config, err := podSpec(
 				params,
@@ -160,6 +161,7 @@ func podSpec(
 				initcontainer.ExtraBinaries.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.ConfigMapVolume.VolumeMount(),
+				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				extraFilesSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
@@ -175,6 +177,7 @@ func podSpec(
 			initcontainer.ExtraBinaries.Volume(),
 			p.UsersSecretVolume.Volume(),
 			p.ConfigMapVolume.Volume(),
+			p.UnicastHostsVolume.Volume(),
 			probeSecret.Volume(),
 			extraFilesSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
