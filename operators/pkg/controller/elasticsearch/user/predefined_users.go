@@ -38,14 +38,14 @@ var (
 	}
 )
 
-// newExternalUsers return new predefined external users.
+// newExternalUsers returns new predefined external users.
 func newExternalUsers() []User {
 	return []User{
 		New(ExternalUserName, Roles(SuperUserBuiltinRole)),
 	}
 }
 
-// newInternalUsers return new predefined internal users.
+// newInternalUsers returns new predefined internal users.
 func newInternalUsers() []User {
 	return []User{
 		New(InternalControllerUserName, Roles(SuperUserBuiltinRole)),
