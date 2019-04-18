@@ -155,7 +155,7 @@ func (p *Process) KillHard() (ProcessState, error) {
 	}
 
 	p.updateState(killAction, killHardSignal, nil)
-	err := p.Kill(killSoftSignal)
+	err := p.Kill(killHardSignal)
 	p.updateState(killAction, killHardSignal, err)
 
 	return p.state, err
