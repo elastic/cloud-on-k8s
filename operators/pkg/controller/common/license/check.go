@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/pkg/errors"
-
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -66,20 +64,4 @@ func (lc *Checker) CommercialFeaturesEnabled() bool {
 	}
 	return false
 
-}
-
-func valid(lic v1alpha1.EnterpriseLicense, pubKey []byte, now time.Time, sig []byte) error {
-	if !lic.IsValid(now) {
-		// do the cheap check first
-		return errors.New("license expired")
-	}
-	verifier, err := NewVerifier(pubKey)
-	if err != nil {
-		return errors.Wrap(err, "while creating license verifier")
-	}
-	err = verifier.ValidSignature(lic, sig)
-	if err != nil {
-		return errors.Wrap(err, "invalid license")
-	}
-	return nil
 }
