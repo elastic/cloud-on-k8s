@@ -47,6 +47,9 @@ const (
 // Annotations helper functions
 
 func getPhase(pod corev1.Pod) (Phase, bool) {
+	if pod.Annotations == nil {
+		return Phase(""), false
+	}
 	phase, isSet := pod.Annotations[PhaseAnnotation]
 	return Phase(phase), isSet
 }
@@ -75,6 +78,9 @@ func setPhase(client k8s.Client, pod corev1.Pod, phase Phase) error {
 }
 
 func getStrategy(pod corev1.Pod) Strategy {
+	if pod.Annotations == nil {
+		return StrategySingle
+	}
 	strategy, isSet := pod.Annotations[StrategyAnnotation]
 	if !isSet {
 		return StrategySingle

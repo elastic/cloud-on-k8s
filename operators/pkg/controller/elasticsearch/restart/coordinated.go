@@ -99,11 +99,6 @@ func (c *CoordinatedRestart) coordinatedStepsExec(steps ...Step) (done bool, err
 		}
 	}
 
-	c.EventsRecorder.AddEvent(
-		corev1.EventTypeNormal, events.EventReasonRestart,
-		fmt.Sprintf("Coordinated restart completed for cluster %s", c.Cluster.Name),
-	)
-	log.Info("Coordinated restart completed", "cluster", c.Cluster.Name)
 	return true, nil
 }
 
@@ -200,6 +195,12 @@ func (c *CoordinatedRestart) start() Step {
 					return false, err
 				}
 			}
+
+			c.EventsRecorder.AddEvent(
+				corev1.EventTypeNormal, events.EventReasonRestart,
+				fmt.Sprintf("Coordinated restart complete for cluster %s", c.Cluster.Name),
+			)
+			log.Info("Coordinated restart complete", "cluster", c.Cluster.Name)
 
 			return true, nil
 		},
