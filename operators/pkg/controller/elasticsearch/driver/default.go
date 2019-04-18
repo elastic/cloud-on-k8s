@@ -310,9 +310,9 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	// We don't have all the master IPs or some of them are about to be created or deleted.
-	// We need to requeue to ensure that the list of seeds will be updated accordingly.
 	if changes.HasMasterChanges() || requeue {
+		// We don't have all the master IPs or some of them are about to be created or deleted.
+		// We need to requeue to ensure that the list of seeds will be updated accordingly.
 		results.WithResult(defaultRequeue)
 	}
 

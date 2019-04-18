@@ -38,7 +38,7 @@ const (
 	esRolesUsersSecretSuffix    = "-es-roles-users"
 	extraFilesSecretSuffix      = "-extrafiles"
 	internalUsersSecretSuffix   = "-internal-users"
-	unicastHostsConfigMapSuffix = "-hosts"
+	unicastHostsConfigMapSuffix = "-unicast-hosts"
 )
 
 // Suffix a resource name.
