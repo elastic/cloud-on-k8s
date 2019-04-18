@@ -51,7 +51,7 @@ ci-e2e: vault-gke-creds
 		-w $(GO_MOUNT_PATH) \
 		-e "IMG_SUFFIX=-ci" \
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-		-e "REGISTRY=$(REGISTRY})" \
+		-e "REGISTRY=$(REGISTRY)" \
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
 		-e "GKE_CLUSTER_NAME=e2e-qa-$(shell date +'%Y%m%d-%H%M%S')" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
