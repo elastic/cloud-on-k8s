@@ -8,6 +8,8 @@ import (
 	"bytes"
 	"encoding/json"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,7 +87,7 @@ func reconcileVersionWideResources(
 			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
 		},
 		PostUpdate: func() {
-			markPodsAsUpdated(c, es)
+			annotation.MarkPodsAsUpdated(c, es)
 		},
 	}); err != nil {
 		return nil, err

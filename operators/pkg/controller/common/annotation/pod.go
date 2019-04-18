@@ -7,8 +7,12 @@ package annotation
 import (
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -19,6 +23,31 @@ const (
 var (
 	log = logf.Log.WithName("annotation")
 )
+
+// MarkPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
+func MarkPodsAsUpdated(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+) {
+	// Get all pods
+	var podList corev1.PodList
+	err := c.List(&client.ListOptions{
+		Namespace:     es.Namespace,
+		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+	}, &podList)
+	if err != nil {
+		log.Error(
+			err, "failed to list pods for annotation update",
+			"namespace", es.Namespace,
+			"name", es.Name,
+		)
+		return
+	}
+	// Update annotation
+	for _, pod := range podList.Items {
+		MarkPodAsUpdated(c, pod)
+	}
+}
 
 // MarkPodAsUpdated updates a specific annotation on the pod, it is mostly used as a convenient method
 // to speedup secret propagation into the pod.

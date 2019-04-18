@@ -10,6 +10,7 @@ const (
 	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
 	DiscoveryZenPingUnicastHosts   = "discovery.zen.ping.unicast.hosts"
 	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
+	DiscoveryZenHostsProvider      = "discovery.zen.hosts_provider"
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"

@@ -28,6 +28,9 @@ const (
 	ExtraFilesSecretVolumeMountPath = "/usr/share/elasticsearch/config/extrafiles"
 
 	ExtraBinariesPath = "/mnt/elastic/bin"
+
+	UnicastHostsVolumeMountPath = "/mnt/elastic/unicast-hosts"
+	UnicastHostsFile            = "unicast_hosts.txt"
 )
 
 var (
