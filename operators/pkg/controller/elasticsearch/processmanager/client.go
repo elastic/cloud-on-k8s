@@ -12,8 +12,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
+
+const DefaultReqTimeout = 1 * time.Minute
 
 type Client struct {
 	Endpoint string
