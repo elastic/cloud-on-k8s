@@ -40,7 +40,7 @@ const (
 	RemoteClusterRemovalFailed   string = "RemovalFailed"
 	RemoteClusterPending         string = "Pending"
 	RemoteClusterDeletionPending string = "DeletionPending"
-	RemoteClusterFeatureDisabled string = "CommericalFeaturesDisabled"
+	RemoteClusterFeatureDisabled string = "CommercialFeaturesDisabled"
 )
 
 // +genclient
