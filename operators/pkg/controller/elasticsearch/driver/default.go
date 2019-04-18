@@ -9,6 +9,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
@@ -25,17 +31,13 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/remotecluster"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -262,6 +264,16 @@ func (d *defaultDriver) Reconcile(
 		"to_keep:", len(changes.ToKeep),
 		"to_delete:", len(changes.ToDelete),
 	)
+
+	// restart pods that need to be restarted before going on with processing changes
+	done, err := restart.HandleESRestarts(d.Client, esClient, d.Dialer, es, *changes)
+	if err != nil {
+		return results.WithError(err)
+	}
+	if !done {
+		log.V(1).Info("Pods restart is not over yet, re-queueing.")
+		return results.WithResult(defaultRequeue)
+	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
