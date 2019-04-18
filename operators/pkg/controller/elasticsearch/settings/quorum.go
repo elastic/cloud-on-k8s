@@ -9,16 +9,13 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
