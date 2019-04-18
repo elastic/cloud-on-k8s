@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -42,7 +41,7 @@ var (
 // Add creates a new RemoteCluster Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, parameter operator.Parameters) error {
-	r := newReconciler(mgr, parameter.Dialer)
+	r := newReconciler(mgr, parameter.OperatorNamespace)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -51,13 +50,14 @@ func Add(mgr manager.Manager, parameter operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, dialer net.Dialer) *ReconcileRemoteCluster {
+func newReconciler(mgr manager.Manager, operatorNs string) *ReconcileRemoteCluster {
 	c := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileRemoteCluster{
-		Client:   c,
-		scheme:   mgr.GetScheme(),
-		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetRecorder("remotecluster-controller"),
+		Client:         c,
+		scheme:         mgr.GetScheme(),
+		watches:        watches.NewDynamicWatches(),
+		recorder:       mgr.GetRecorder("remotecluster-controller"),
+		licenseChecker: license.NewLicenseChecker(c, operatorNs),
 	}
 }
 
@@ -76,9 +76,10 @@ var _ reconcile.Reconciler = &ReconcileRemoteCluster{}
 // ReconcileRemoteCluster reconciles a RemoteCluster object.
 type ReconcileRemoteCluster struct {
 	k8s.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
-	watches  watches.DynamicWatches
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
+	watches        watches.DynamicWatches
+	licenseChecker *license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -111,7 +112,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	if !license.CommercialFeaturesEnabled(r) {
+	if !r.licenseChecker.CommercialFeaturesEnabled() {
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
 			State: v1alpha1.RemoteClusterFeatureDisabled,
 		})

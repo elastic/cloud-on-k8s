@@ -205,10 +205,12 @@ func execute() {
 		log.Error(err, "invalid roles specified")
 		os.Exit(1)
 	}
+	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:               dialer,
 		OperatorImage:        operatorImage,
+		OperatorNamespace:    operatorNamespace,
 		CACertValidity:       caCertValidity,
 		CACertRotateBefore:   caCertRotateBefore,
 		NodeCertValidity:     nodeCertValidity,

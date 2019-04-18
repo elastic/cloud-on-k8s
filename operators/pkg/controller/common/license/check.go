@@ -18,9 +18,21 @@ import (
 	client2 "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CommercialFeaturesEnabled(client k8s.Client) bool {
+type Checker struct {
+	client            k8s.Client
+	operatorNamespace string
+}
+
+func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
+	return &Checker{
+		client:            client,
+		operatorNamespace: operatorNamespace,
+	}
+}
+
+func (lc *Checker) CommercialFeaturesEnabled() bool {
 	var licenses v1alpha1.EnterpriseLicenseList
-	err := client.List(&client2.ListOptions{}, &licenses)
+	err := lc.client.List(&client2.ListOptions{}, &licenses)
 	if err != nil {
 		log.Error(err, "while reading licenses")
 		return false
@@ -30,8 +42,8 @@ func CommercialFeaturesEnabled(client k8s.Client) bool {
 		sigRef := l.Spec.SignatureRef
 		var signtureSec corev1.Secret
 
-		err := client.Get(types.NamespacedName{
-			Namespace: "", // TODO ns!
+		err := lc.client.Get(types.NamespacedName{
+			Namespace: lc.operatorNamespace,
 			Name:      sigRef.Name,
 		}, &signtureSec)
 		if err != nil {
@@ -40,18 +52,23 @@ func CommercialFeaturesEnabled(client k8s.Client) bool {
 		}
 		pk := publicKeyBytes
 		if l.Spec.Type == v1alpha1.LicenseTypeEnterpriseTrial {
-			pk = signtureSec.Data["pubkey"] // TODO const
+			pk = signtureSec.Data[TrialPubkeyKey]
 		}
-		if err := Valid(l, pk, time.Now(), signtureSec.Data[sigRef.Key]); err != nil {
+		verifier, err := NewVerifier(pk)
+		if err != nil {
+			log.Error(err, "while creating license verifier")
 			continue
 		}
-		return true
+		status := verifier.Valid(l, signtureSec.Data[sigRef.Key], time.Now())
+		if status == v1alpha1.LicenseStatusValid {
+			return true
+		}
 	}
 	return false
 
 }
 
-func Valid(lic v1alpha1.EnterpriseLicense, pubKey []byte, now time.Time, sig []byte) error {
+func valid(lic v1alpha1.EnterpriseLicense, pubKey []byte, now time.Time, sig []byte) error {
 	if !lic.IsValid(now) {
 		// do the cheap check first
 		return errors.New("license expired")
@@ -60,7 +77,7 @@ func Valid(lic v1alpha1.EnterpriseLicense, pubKey []byte, now time.Time, sig []b
 	if err != nil {
 		return errors.Wrap(err, "while creating license verifier")
 	}
-	err = verifier.Valid(lic, sig)
+	err = verifier.ValidSignature(lic, sig)
 	if err != nil {
 		return errors.Wrap(err, "invalid license")
 	}

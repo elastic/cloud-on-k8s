@@ -43,10 +43,7 @@ var (
 )
 
 const (
-	trialStatusSecretKey = "trial-status"
-	pubkeyKey            = "pubkey"
-	signatureKey         = "signature"
-	finalizerName        = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
+	finalizerName = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
 // ReconcileTrials reconciles Enterprise trial licenses.
@@ -99,7 +96,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 	// 1. fetch trial status secret
 	var trialStatus corev1.Secret
-	err = r.Get(types.NamespacedName{Namespace: license.Namespace, Name: trialStatusSecretKey}, &trialStatus)
+	err = r.Get(types.NamespacedName{Namespace: license.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		// 2. if not present create one + finalizer
 		err := r.initTrial(license)
@@ -120,14 +117,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to initialise license verifier")
 	}
-	err = verifier.Valid(license, trialStatus.Data[signatureKey])
-	if err != nil {
-		return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusInvalid)
-	}
-	if !license.IsValid(time.Now()) {
-		return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusExpired)
-	}
-	return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusValid)
+	licenseStatus := verifier.Valid(license, trialStatus.Data[licensing.TrialSignatureKey], time.Now())
+	return reconcile.Result{}, r.updateStatus(license, licenseStatus)
 }
 
 func (r *ReconcileTrials) isTrialRunning() bool {
@@ -162,7 +153,7 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: l.Namespace,
-			Name:      trialStatusSecretKey,
+			Name:      licensing.TrialStatusSecretKey,
 			Labels: map[string]string{
 				license.EnterpriseLicenseLabelName: l.Name,
 			},
@@ -171,8 +162,8 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 			},
 		},
 		Data: map[string][]byte{
-			signatureKey: sig,
-			pubkeyKey:    pubkeyBytes,
+			licensing.TrialSignatureKey: sig,
+			licensing.TrialPubkeyKey:    pubkeyBytes,
 		},
 	}
 	err = r.Create(&trialStatus)
@@ -182,9 +173,9 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 	l.Finalizers = append(l.Finalizers, finalizerName)
 	l.Spec.SignatureRef = corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: trialStatusSecretKey,
+			Name: licensing.TrialStatusSecretKey,
 		},
-		Key: signatureKey,
+		Key: licensing.TrialSignatureKey,
 	}
 	l.Status = v1alpha1.LicenseStatusValid
 	return pkgerrors.Wrap(r.Update(&l), "Failed to update trial license")
@@ -198,7 +189,7 @@ func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.V
 		}, nil
 	}
 	// after operator restart fall back to persisted trial status
-	return licensing.NewVerifier(trialStatus.Data[pubkeyKey])
+	return licensing.NewVerifier(trialStatus.Data[licensing.TrialPubkeyKey])
 }
 
 func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
@@ -219,10 +210,10 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 	if err != nil {
 		return err
 	}
-	if bytes.Equal(trialStatus.Data[pubkeyKey], pubkeyBytes) {
+	if bytes.Equal(trialStatus.Data[licensing.TrialPubkeyKey], pubkeyBytes) {
 		return nil
 	}
-	trialStatus.Data[pubkeyKey] = pubkeyBytes
+	trialStatus.Data[licensing.TrialPubkeyKey] = pubkeyBytes
 	return r.Update(&trialStatus)
 
 }
@@ -257,7 +248,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch the trial status secret as well
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			if obj.Meta.GetName() != trialStatusSecretKey {
+			if obj.Meta.GetName() != licensing.TrialStatusSecretKey {
 				return nil
 			}
 			labels := obj.Meta.GetLabels()

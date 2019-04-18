@@ -330,8 +330,8 @@ func TestLicenseVerifier_Valid(t *testing.T) {
 			if tt.verifyInput != nil {
 				toVerify = tt.verifyInput(tt.args)
 			}
-			if err := v.Valid(toVerify, sig); (err != nil) != tt.wantErr {
-				t.Errorf("Verifier.Valid() error = %v, wantErr %v", err, tt.wantErr)
+			if err := v.ValidSignature(toVerify, sig); (err != nil) != tt.wantErr {
+				t.Errorf("Verifier.ValidSignature() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -353,7 +353,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 		{
 			name: "Can create verifier from pub key bytes",
 			want: func(v *Verifier) {
-				require.NoError(t, v.Valid(licenseFixture, signatureFixture))
+				require.NoError(t, v.ValidSignature(licenseFixture, signatureFixture))
 			},
 		},
 		{
@@ -361,7 +361,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 			want: func(v *Verifier) {
 				l := licenseFixture
 				l.Spec.Issuer = "me"
-				require.Error(t, v.Valid(l, signatureFixture))
+				require.Error(t, v.ValidSignature(l, signatureFixture))
 			},
 		},
 		{
@@ -377,7 +377,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 				malice[8] = 255
 				tampered := make([]byte, base64.StdEncoding.EncodedLen(len(malice)))
 				base64.StdEncoding.Encode(tampered, malice)
-				err = v.Valid(licenseFixture, tampered)
+				err = v.ValidSignature(licenseFixture, tampered)
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "magic")
 			},
@@ -388,7 +388,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 				signer := NewSigner(privKey)
 				bytes, err := signer.Sign(licenseFixture)
 				require.NoError(t, err)
-				require.NoError(t, v.Valid(licenseFixture, bytes))
+				require.NoError(t, v.ValidSignature(licenseFixture, bytes))
 			},
 		},
 	}
