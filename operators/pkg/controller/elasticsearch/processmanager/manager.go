@@ -30,13 +30,21 @@ type ProcessManager struct {
 func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 	var ksu *keystore.Updater
 	if cfg.EnableKeystoreUpdater {
-		keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
+		ksCfg, err, reason := keystore.NewConfigFromFlags()
 		if err != nil {
-			log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
+			log.Error(err, "Failed to create keystore updater config from flags", "reason", reason)
 			return nil, err
 		}
 
-		ksu = keystore.NewUpdater(keystoreUpdaterCfg)
+		ksu, err = keystore.NewUpdater(
+			ksCfg,
+			keystore.NewEsClient(ksCfg),
+			keystore.NewKeystore(ksCfg),
+		)
+		if err != nil {
+			log.Error(err, "Failed to create keystore updater")
+			return nil, err
+		}
 	}
 
 	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
