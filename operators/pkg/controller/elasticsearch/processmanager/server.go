@@ -18,6 +18,8 @@ import (
 
 const (
 	shutdownTimeout = 5 * time.Second
+	// DefaultPort used by the process-manager HTTP api
+	DefaultPort = 8080
 )
 
 // ProcessServer is an HTTP server that can access to the managed process and the keystore updater.
