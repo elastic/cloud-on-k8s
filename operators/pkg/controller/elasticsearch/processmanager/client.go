@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
 type Client struct {
@@ -20,7 +21,7 @@ type Client struct {
 	HTTP     *http.Client
 }
 
-func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
+func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) *Client {
 	client := http.DefaultClient
 	if len(caCerts) > 0 {
 		certPool := x509.NewCertPool()
@@ -32,6 +33,11 @@ func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
 			TLSClientConfig: &tls.Config{
 				RootCAs: certPool,
 			},
+		}
+
+		// use the custom dialer if provided
+		if dialer != nil {
+			transportConfig.DialContext = dialer.DialContext
 		}
 
 		client = &http.Client{

@@ -75,7 +75,7 @@ func startContainer(t *testing.T, cmd string) *Client {
 	assert.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
-	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil)
+	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil, nil)
 	assertProcessStatus(t, client, Started)
 
 	return client
