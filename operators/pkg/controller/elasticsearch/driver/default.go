@@ -265,8 +265,17 @@ func (d *defaultDriver) Reconcile(
 		"to_delete:", len(changes.ToDelete),
 	)
 
-	// restart pods that need to be restarted before going on with processing changes
-	done, err := restart.HandleESRestarts(d.Client, esClient, reconcileState.Recorder, d.Dialer, es, *changes)
+	// restart ES processed that need to be restarted before going on with other changes
+	done, err := restart.HandleESRestarts(
+		restart.RestartContext{
+			Cluster:        es,
+			EventsRecorder: reconcileState.Recorder,
+			K8sClient:      d.Client,
+			Changes:        *changes,
+			Dialer:         d.Dialer,
+			EsClient:       esClient,
+		},
+	)
 	if err != nil {
 		return results.WithError(err)
 	}

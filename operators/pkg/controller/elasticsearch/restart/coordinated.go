@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -20,7 +19,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	netutils "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
 // scheduleCoordinatedRestart annotates all pods for a coordinated restart.
@@ -42,12 +40,8 @@ func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, err
 // CoordinatedRestart holds the logic to restart nodes simultaneously.
 // It waits for all nodes to be stopped, then starts them all.
 type CoordinatedRestart struct {
-	k8sClient      k8s.Client
-	esClient       client.Client
-	eventsRecorder *events.Recorder
-	dialer         netutils.Dialer
-	cluster        v1alpha1.Elasticsearch
-	pods           pod.PodsWithConfig
+	RestartContext
+	pods pod.PodsWithConfig
 }
 
 // Exec attempts some progression on the restart process for all pods.
@@ -105,11 +99,11 @@ func (c *CoordinatedRestart) coordinatedStepsExec(steps ...Step) (done bool, err
 		}
 	}
 
-	c.eventsRecorder.AddEvent(
+	c.EventsRecorder.AddEvent(
 		corev1.EventTypeNormal, events.EventReasonRestart,
-		fmt.Sprintf("Coordinated restart completed for cluster %s", c.cluster.Name),
+		fmt.Sprintf("Coordinated restart completed for cluster %s", c.Cluster.Name),
 	)
-	log.Info("Coordinated restart completed", "cluster", c.cluster.Name)
+	log.Info("Coordinated restart completed", "cluster", c.Cluster.Name)
 	return true, nil
 }
 
@@ -179,11 +173,11 @@ func (c *CoordinatedRestart) start() Step {
 				return false, nil // requeue
 			}
 
-			externalService, err := services.GetExternalService(c.k8sClient, c.cluster)
+			externalService, err := services.GetExternalService(c.K8sClient, c.Cluster)
 			if err != nil {
 				return false, err
 			}
-			esReachable, err := services.IsServiceReady(c.k8sClient, externalService)
+			esReachable, err := services.IsServiceReady(c.K8sClient, externalService)
 			if err != nil {
 				return false, err
 			}
@@ -196,13 +190,13 @@ func (c *CoordinatedRestart) start() Step {
 			log.V(1).Info("Enabling shards allocation")
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
-			if err := c.esClient.EnableShardAllocation(ctx); err != nil {
+			if err := c.EsClient.EnableShardAllocation(ctx); err != nil {
 				return false, err
 			}
 
 			// restart is over, remove all annotations
 			for _, p := range pods {
-				if err := deletePodAnnotations(c.k8sClient, p.Pod); err != nil {
+				if err := deletePodAnnotations(c.K8sClient, p.Pod); err != nil {
 					return false, err
 				}
 			}
@@ -215,7 +209,7 @@ func (c *CoordinatedRestart) start() Step {
 // setPhase applies the given phase to the given pods.
 func (c *CoordinatedRestart) setPhase(pods pod.PodsWithConfig, phase Phase) error {
 	for _, p := range pods {
-		if err := setPhase(c.k8sClient, p.Pod, phase); err != nil {
+		if err := setPhase(c.K8sClient, p.Pod, phase); err != nil {
 			return err
 		}
 	}
@@ -229,14 +223,14 @@ func (c *CoordinatedRestart) prepareClusterForStop() error {
 	log.V(1).Info("Disabling shards allocation for coordinated restart")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	if err := c.esClient.DisableShardAllocation(ctx); err != nil {
+	if err := c.EsClient.DisableShardAllocation(ctx); err != nil {
 		return err
 	}
 
 	// perform a synced flush (best effort) to speedup shard recovery
 	ctx2, cancel2 := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel2()
-	if err := c.esClient.SyncedFlush(ctx2); err != nil {
+	if err := c.EsClient.SyncedFlush(ctx2); err != nil {
 		return err
 	}
 
@@ -316,7 +310,7 @@ func (c *CoordinatedRestart) getESStatus(p corev1.Pod) (processmanager.ProcessSt
 func (c *CoordinatedRestart) processManagerClient(pod corev1.Pod) (*processmanager.Client, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	rawCA, err := nodecerts.GetCA(c.k8sClient, k8s.ExtractNamespacedName(&c.cluster.ObjectMeta))
+	rawCA, err := nodecerts.GetCA(c.K8sClient, k8s.ExtractNamespacedName(&c.Cluster.ObjectMeta))
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +318,7 @@ func (c *CoordinatedRestart) processManagerClient(pod corev1.Pod) (*processmanag
 	if err != nil {
 		return nil, err
 	}
-	return processmanager.NewClient(url, certs, c.dialer), nil
+	return processmanager.NewClient(url, certs, c.Dialer), nil
 }
 
 // filterPodsInPhase returns pods that are in the given phase.
