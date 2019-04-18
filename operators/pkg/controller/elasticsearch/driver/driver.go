@@ -92,10 +92,10 @@ func NewDriver(opts Options) (Driver, error) {
 		// .. except we still have to manage minimum_master_nodes while doing a rolling upgrade from 6 -> 7
 		// we approximate this by also handling zen 1, even in 7
 		// TODO: only do this if there's 6.x masters in the cluster.
-		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
+		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	case 6:
 		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
-		driver.zen1SettingsUpdater = esversion.UpdateZen1Discovery
+		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
 	}

@@ -5,13 +5,10 @@
 package version
 
 import (
-	"context"
-	"fmt"
 	"path"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
@@ -38,7 +35,7 @@ func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -51,13 +48,10 @@ func NewExpectedPodSpecs(
 				cfg = *node.Config
 			}
 			params := pod.NewPodSpecParams{
-				Version:         es.Spec.Version,
-				LicenseType:     es.Spec.GetLicenseType(),
-				CustomImageName: es.Spec.Image,
-				ClusterName:     es.Name,
-				DiscoveryZenMinimumMasterNodes: settings.ComputeMinimumMasterNodes(
-					es.Spec.Nodes,
-				),
+				Version:              es.Spec.Version,
+				LicenseType:          es.Spec.GetLicenseType(),
+				CustomImageName:      es.Spec.Image,
+				ClusterName:          es.Name,
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
 				Config:               cfg,
 				Affinity:             node.PodTemplate.Spec.Affinity,
@@ -92,7 +86,7 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, zenMinMasterNodes int, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
@@ -198,7 +192,7 @@ func podSpec(
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
-	esConfig, err := newESConfigFn(p.ClusterName, p.DiscoveryZenMinimumMasterNodes, p.Config, p.LicenseType)
+	esConfig, err := newESConfigFn(p.ClusterName, p.Config, p.LicenseType)
 	if err != nil {
 		return corev1.PodSpec{}, nil, err
 	}
@@ -245,14 +239,6 @@ func NewPod(
 	}
 
 	return pod, nil
-}
-
-func UpdateZen1Discovery(esClient client.Client, allPods []corev1.Pod) error {
-	minimumMasterNodes := settings.ComputeMinimumMasterNodesFromPods(allPods)
-	log.Info(fmt.Sprintf("Setting minimum master nodes to %d ", minimumMasterNodes))
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-	defer cancel()
-	return esClient.SetMinimumMasterNodes(ctx, minimumMasterNodes)
 }
 
 // MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
