@@ -266,7 +266,7 @@ func (d *defaultDriver) Reconcile(
 	)
 
 	// restart pods that need to be restarted before going on with processing changes
-	done, err := restart.HandleESRestarts(d.Client, esClient, d.Dialer, es, *changes)
+	done, err := restart.HandleESRestarts(d.Client, esClient, reconcileState.Recorder, d.Dialer, es, *changes)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -20,6 +20,8 @@ const (
 	EventReasonValidation = "Validation"
 	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
 	EventReasonStateChange = "StateChange"
+	// EventReasonRestart describes events where one or multiple Elasticsearch nodes are scheduled for a restart.
+	EventReasonRestart = "Restart"
 )
 
 // Event is a k8s event that can be recorded via an event recorder.

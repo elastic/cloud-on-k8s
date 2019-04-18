@@ -13,6 +13,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
@@ -41,11 +42,12 @@ func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, err
 // CoordinatedRestart holds the logic to restart nodes simultaneously.
 // It waits for all nodes to be stopped, then starts them all.
 type CoordinatedRestart struct {
-	k8sClient k8s.Client
-	esClient  client.Client
-	dialer    netutils.Dialer
-	cluster   v1alpha1.Elasticsearch
-	pods      pod.PodsWithConfig
+	k8sClient      k8s.Client
+	esClient       client.Client
+	eventsRecorder *events.Recorder
+	dialer         netutils.Dialer
+	cluster        v1alpha1.Elasticsearch
+	pods           pod.PodsWithConfig
 }
 
 // Exec attempts some progression on the restart process for all pods.
@@ -103,7 +105,11 @@ func (c *CoordinatedRestart) coordinatedStepsExec(steps ...Step) (done bool, err
 		}
 	}
 
-	log.Info("Coordinated restart successful")
+	c.eventsRecorder.AddEvent(
+		corev1.EventTypeNormal, events.EventReasonRestart,
+		fmt.Sprintf("Coordinated restart completed for cluster %s", c.cluster.Name),
+	)
+	log.Info("Coordinated restart completed", "cluster", c.cluster.Name)
 	return true, nil
 }
 

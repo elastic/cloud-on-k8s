@@ -1,13 +1,18 @@
 package restart
 
 import (
+	"fmt"
+
+	corev1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	netutils "github.com/elastic/k8s-operators/operators/pkg/utils/net"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("mutation")
@@ -16,12 +21,13 @@ var log = logf.Log.WithName("mutation")
 func HandleESRestarts(
 	k8sClient k8s.Client,
 	esClient client.Client,
+	eventsRecorder *events.Recorder,
 	dialer netutils.Dialer,
 	cluster v1alpha1.Elasticsearch,
 	changes mutation.Changes,
 ) (done bool, err error) {
 	// start with any restart currently in progress
-	done, err = processOngoingRestarts(k8sClient, esClient, dialer, cluster, changes)
+	done, err = processOngoingRestarts(k8sClient, esClient, eventsRecorder, dialer, cluster, changes)
 	if err != nil {
 		return false, err
 	}
@@ -31,7 +37,7 @@ func HandleESRestarts(
 	}
 
 	// no ongoing restart, are there other restarts to schedule?
-	annotatedCount, err := scheduleRestarts(k8sClient, cluster, changes)
+	annotatedCount, err := scheduleRestarts(k8sClient, eventsRecorder, cluster, changes)
 	if err != nil {
 		return false, err
 	}
@@ -46,7 +52,14 @@ func HandleESRestarts(
 }
 
 // processOngoingRestarts attempts to progress the restart state machine of concerned pods.
-func processOngoingRestarts(k8sClient k8s.Client, esClient client.Client, dialer netutils.Dialer, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (done bool, err error) {
+func processOngoingRestarts(
+	k8sClient k8s.Client,
+	esClient client.Client,
+	eventsRecorder *events.Recorder,
+	dialer netutils.Dialer,
+	cluster v1alpha1.Elasticsearch,
+	changes mutation.Changes,
+) (done bool, err error) {
 	// TODO: include changes.ToReuse here
 	podsToLookAt := changes.ToKeep
 
@@ -72,11 +85,12 @@ func processOngoingRestarts(k8sClient k8s.Client, esClient client.Client, dialer
 	if len(annotatedPods[StrategyCoordinated]) > 0 {
 		// run the coordinated restart
 		restart := &CoordinatedRestart{
-			k8sClient: k8sClient,
-			esClient:  esClient,
-			dialer:    dialer,
-			cluster:   cluster,
-			pods:      annotatedPods[StrategyCoordinated],
+			k8sClient:      k8sClient,
+			esClient:       esClient,
+			eventsRecorder: eventsRecorder,
+			dialer:         dialer,
+			cluster:        cluster,
+			pods:           annotatedPods[StrategyCoordinated],
 		}
 		done, err = restart.Exec()
 	}
@@ -85,7 +99,7 @@ func processOngoingRestarts(k8sClient k8s.Client, esClient client.Client, dialer
 }
 
 // scheduleRestarts inspects the current cluster and changes, to maybe annotate some pods for restart.
-func scheduleRestarts(client k8s.Client, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (int, error) {
+func scheduleRestarts(client k8s.Client, eventsRecorder *events.Recorder, cluster v1alpha1.Elasticsearch, changes mutation.Changes) (int, error) {
 	// a coordinated restart can be requested at the cluster-level
 	if getClusterRestartAnnotation(cluster) == StrategyCoordinated {
 		// annotate all current pods of the cluster (toKeep)
@@ -95,11 +109,15 @@ func scheduleRestarts(client k8s.Client, cluster v1alpha1.Elasticsearch, changes
 		if err != nil {
 			return 0, err
 		}
-		// pods are now annotated:  remove annotation from the cluster
+		// pods are now annotated: remove annotation from the cluster
 		// to avoid restarting over and over again
 		if err := deleteClusterAnnotation(client, cluster); err != nil {
 			return 0, err
 		}
+		eventsRecorder.AddEvent(
+			corev1.EventTypeNormal, events.EventReasonRestart,
+			fmt.Sprintf("Coordinated restart scheduled for cluster %s", cluster.Name),
+		)
 		return count, nil
 	}
 
