@@ -114,22 +114,30 @@ func TestWatchForUpdate(t *testing.T) {
 	}, EsClientOkMock{}, KeystoreOkMock{})
 	assert.NoError(t, err)
 
-	// Start watchForUpdate and wait at least one polling
+	// Start watchForUpdate in background
 	go updater.watchForUpdate()
-	time.Sleep(dirWatcherPollingPeriod * 1)
+
+	test.RetryUntilSuccess(t, func() error {
+		if updater.reloadQueue.Len() != 1 {
+			return errors.New("reload queue must be filled")
+		}
+		return nil
+	})
 
 	// Consume the queue manually
-	assert.Equal(t, 1, updater.reloadQueue.Len())
 	item, _ := updater.reloadQueue.Get()
 	updater.reloadQueue.Done(item)
 	assert.Equal(t, 0, updater.reloadQueue.Len())
 
 	// Write a new settings to be stored in the keystore
 	_ = ioutil.WriteFile(filepath.Join(sourcePath, "setting1"), []byte("secret1"), 0644)
-	time.Sleep(dirWatcherPollingPeriod * 2)
 
-	// The queue had to be filled
-	assert.Equal(t, 1, updater.reloadQueue.Len())
+	test.RetryUntilSuccess(t, func() error {
+		if updater.reloadQueue.Len() != 1 {
+			return errors.New("reload queue must be filled")
+		}
+		return nil
+	})
 
 	// Status is running and keystore is updated
 	s, err := updater.Status()
@@ -156,16 +164,10 @@ func TestStart_WaitingEs(t *testing.T) {
 		assert.NoError(t, err)
 
 		if s.State != waitingState {
-			return errors.New("state should be waiting")
+			return errors.New("state must be waiting")
 		}
-
 		return nil
 	})
-
-	// Status is waiting
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(waitingState), string(s.State))
 }
 
 func TestStart_UpdatedAtLeastOnce(t *testing.T) {
@@ -180,14 +182,19 @@ func TestStart_UpdatedAtLeastOnce(t *testing.T) {
 	assert.NoError(t, err)
 
 	go updater.Start()
-	// Wait twice the time needed for ES to be ready
-	time.Sleep(timeToStartEs * 2)
 
-	// Status is running and keystore is updated
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
-	assert.Equal(t, keystoreUpdatedReason, string(s.Reason))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != runningState {
+			return errors.New("status must be running")
+		}
+		if s.Reason != keystoreUpdatedReason {
+			return errors.New("keystore must be updated")
+		}
+		return nil
+	})
 }
 
 func TestStart_Reload(t *testing.T) {
@@ -202,13 +209,20 @@ func TestStart_Reload(t *testing.T) {
 	assert.NoError(t, err)
 
 	go updater.Start()
-	time.Sleep(timeToStartEs * 2)
 
-	// Status is running and settings have been reloaded
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
-	assert.Equal(t, secureSettingsReloadedReason, string(s.Reason))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != runningState {
+			return errors.New("status must be running")
+		}
+		if s.Reason != secureSettingsReloadedReason {
+			return errors.New("secure settings must be reloaded")
+		}
+		return nil
+	})
+
 }
 
 func TestStart_ReloadAndWatchUpdate(t *testing.T) {
@@ -223,23 +237,35 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 	assert.NoError(t, err)
 
 	go updater.Start()
-	time.Sleep(timeToStartEs * 2)
 
-	// Status is running and keystore is updated
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
-	assert.Equal(t, keystoreUpdatedReason, string(s.Reason))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
 
-	// Write a setting and wait a bit to give time to the updater to watch it
+		if s.State != runningState {
+			return errors.New("status must be running")
+		}
+		if s.Reason != keystoreUpdatedReason {
+			return errors.New("keystore must be updated")
+		}
+		return nil
+	})
+
+	// Write a secure setting
 	_ = ioutil.WriteFile(filepath.Join(sourcePath, "setting1"), []byte("secret1"), 0644)
-	time.Sleep(dirWatcherPollingPeriod + 100*time.Millisecond)
 
-	// Status is running and keystore is updated
-	s, err = updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
-	assert.Equal(t, keystoreUpdatedReason, string(s.Reason))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != runningState {
+			return errors.New("status must be running")
+		}
+		if s.Reason != keystoreUpdatedReason {
+			return errors.New("keystore must be updated")
+		}
+		return nil
+	})
 }
 
 func TestStart_ReloadFailure(t *testing.T) {
@@ -249,11 +275,16 @@ func TestStart_ReloadFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	go updater.Start()
-	time.Sleep(timeToStartEs * 2)
 
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(failedState), string(s.State))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != failedState {
+			return errors.New("status must be failed")
+		}
+		return nil
+	})
 }
 
 func TestStart_KeystoreUpdateFailure(t *testing.T) {
@@ -268,9 +299,14 @@ func TestStart_KeystoreUpdateFailure(t *testing.T) {
 	assert.NoError(t, err)
 
 	go updater.Start()
-	time.Sleep(timeToStartEs * 2)
 
-	s, err := updater.Status()
-	assert.NoError(t, err)
-	assert.Equal(t, string(failedState), string(s.State))
+	test.RetryUntilSuccess(t, func() error {
+		s, err := updater.Status()
+		assert.NoError(t, err)
+
+		if s.State != failedState {
+			return errors.New("status must be failed")
+		}
+		return nil
+	})
 }
