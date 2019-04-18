@@ -17,6 +17,7 @@ import (
 
 var log = logf.Log.WithName("restart")
 
+// RestartContext groups together dependencies required to perform ES restarts.
 type RestartContext struct {
 	K8sClient      k8s.Client
 	EsClient       client.Client
