@@ -10,10 +10,14 @@ pipeline {
 
     stages {
         stage('Checkout from GitHub') {
-            checkout scm
+            steps {
+                checkout scm
+            }
         }
         stage("Run validation for PR") {
-            sh 'make -C build/ci ci-pr'
+            steps {
+                sh 'make -C build/ci ci-pr'
+            }
         }
     }
 
