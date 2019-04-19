@@ -19,26 +19,14 @@ func NewMockClient(status ProcessStatus, err error) Client {
 }
 
 func (m *MockClient) Start(ctx context.Context) (ProcessStatus, error) {
-	if m.err != nil {
-		return ProcessStatus{}, m.err
-	}
-	return m.status, nil
+	return m.status, m.err
 }
 func (m *MockClient) Stop(ctx context.Context) (ProcessStatus, error) {
-	if m.err != nil {
-		return ProcessStatus{}, m.err
-	}
-	return m.status, nil
+	return m.status, m.err
 }
 func (m *MockClient) Kill(ctx context.Context) (ProcessStatus, error) {
-	if m.err != nil {
-		return ProcessStatus{}, m.err
-	}
-	return m.status, nil
+	return m.status, m.err
 }
 func (m *MockClient) Status(ctx context.Context) (ProcessStatus, error) {
-	if m.err != nil {
-		return ProcessStatus{}, m.err
-	}
-	return m.status, nil
+	return m.status, m.err
 }

@@ -66,7 +66,6 @@ func hasPhase(pod corev1.Pod, expected Phase) bool {
 	return isSet && actual == expected
 }
 
-// filterPodsInPhase returns pods that are in the given phase.
 func filterPodsInPhase(pods []corev1.Pod, phase Phase) []corev1.Pod {
 	filtered := make([]corev1.Pod, 0, len(pods))
 	for _, p := range pods {
@@ -95,7 +94,6 @@ func setPhase(client k8s.Client, pod corev1.Pod, phase Phase) error {
 	return client.Update(&pod)
 }
 
-// setPhases applies the given phase to the given pods.
 func setPhases(client k8s.Client, pods []corev1.Pod, phase Phase) error {
 	for _, p := range pods {
 		if err := setPhase(client, p, phase); err != nil {

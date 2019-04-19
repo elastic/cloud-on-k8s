@@ -1,3 +1,7 @@
+// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+// or more contributor license agreements. Licensed under the Elastic License;
+// you may not use this file except in compliance with the Elastic License.
+
 package restart
 
 import (
@@ -101,7 +105,7 @@ func scheduleClusterRestart(restartContext RestartContext) (int, error) {
 		// annotate all current pods of the cluster (toKeep)
 		// we don't care about pods to create or pods to delete here
 		// TODO: include changes.ToReuse here
-		count, err := scheduleRestartForPods(restartContext.K8sClient, restartContext.Changes.ToKeep, restartStrategy)
+		count, err := schedulePodsRestart(restartContext.K8sClient, restartContext.Changes.ToKeep, restartStrategy)
 		if err != nil {
 			return 0, err
 		}
@@ -112,7 +116,7 @@ func scheduleClusterRestart(restartContext RestartContext) (int, error) {
 		}
 		restartContext.EventsRecorder.AddEvent(
 			corev1.EventTypeNormal, events.EventReasonRestart,
-			fmt.Sprintf("Restart scheduled for cluster: %s. Strategy: %s.", restartContext.Cluster.Name, restartStrategy),
+			fmt.Sprintf("Restart scheduled for cluster %s with strategy %s.", restartContext.Cluster.Name, restartStrategy),
 		)
 		return count, nil
 	default:
@@ -121,8 +125,8 @@ func scheduleClusterRestart(restartContext RestartContext) (int, error) {
 	}
 }
 
-// scheduleRestartForPods annotates all pods for the given restart strategy.
-func scheduleRestartForPods(c k8s.Client, pods pod.PodsWithConfig, strategy Strategy) (int, error) {
+// schedulePodsRestart annotates pods with the given restart strategy.
+func schedulePodsRestart(c k8s.Client, pods pod.PodsWithConfig, strategy Strategy) (int, error) {
 	count := 0
 	for _, p := range pods {
 		if isAnnotatedForRestart(p.Pod) {

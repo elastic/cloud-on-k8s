@@ -265,7 +265,7 @@ func (d *defaultDriver) Reconcile(
 		"to_delete:", len(changes.ToDelete),
 	)
 
-	// restart ES processed that need to be restarted before going on with other changes
+	// restart ES processes that need to be restarted before going on with other changes
 	done, err := restart.HandleESRestarts(
 		restart.RestartContext{
 			Cluster:        es,
