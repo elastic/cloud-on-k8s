@@ -60,7 +60,7 @@ func rmContainer() {
 	_ = bash("docker rm -f %s", containerName).Run()
 }
 
-func startContainer(t *testing.T, cmd string) *Client {
+func startContainer(t *testing.T, cmd string) Client {
 	// Always clean up the container before starting another one
 	rmContainer()
 
@@ -100,7 +100,7 @@ func assertContainerExited(t *testing.T) {
 	assert.True(t, strings.Contains(string(out), "Exited"))
 }
 
-func assertProcessStatus(t *testing.T, client *Client, expectedState ProcessState) {
+func assertProcessStatus(t *testing.T, client Client, expectedState ProcessState) {
 	time.Sleep(1 * time.Second)
 
 	status, err := client.Status(context.Background())
