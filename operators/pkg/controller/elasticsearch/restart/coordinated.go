@@ -6,8 +6,10 @@ package restart
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -21,6 +23,10 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
+// CoordinatedRestartDefaultTimeout is the time after which we consider the coordinated restart is
+// taking too long to proceed and probably won't complete
+const CoordinatedRestartDefaultTimeout = 15 * time.Minute
+
 // scheduleCoordinatedRestart annotates all pods for a coordinated restart.
 func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, error) {
 	count := 0
@@ -29,7 +35,7 @@ func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, err
 			log.V(1).Info("Pod already in a restart phase", "pod", p.Pod.Name)
 			continue
 		}
-		if err := setPhaseAndStrategy(c, p.Pod, PhaseSchedule, StrategyCoordinated); err != nil {
+		if err := setScheduleRestartAnnotations(c, p.Pod, StrategyCoordinated, time.Now()); err != nil {
 			return count, err
 		}
 		count++
@@ -75,8 +81,22 @@ type Step struct {
 // call, but we'll eventually make some progress.
 func (c *CoordinatedRestart) coordinatedStepsExec(steps ...Step) (done bool, err error) {
 	if len(c.pods) == 0 {
+		// nothing to do
 		return true, nil
 	}
+
+	// abort the restart for pods which have reached timeout
+	for i, p := range c.pods {
+		aborted, err := c.abortIfTimeoutReached(p)
+		if err != nil {
+			return false, err
+		}
+		if aborted {
+			// no need to keep this pod
+			c.pods = append(c.pods[:i], c.pods[i+1:]...)
+		}
+	}
+
 	log.Info("Handling coordinated restart", "count", len(c.pods))
 
 	for _, step := range steps {
@@ -322,13 +342,31 @@ func (c *CoordinatedRestart) processManagerClient(pod corev1.Pod) (*processmanag
 	return processmanager.NewClient(url, certs, c.Dialer), nil
 }
 
-// filterPodsInPhase returns pods that are in the given phase.
-func filterPodsInPhase(pods pod.PodsWithConfig, phase Phase) pod.PodsWithConfig {
-	filtered := make(pod.PodsWithConfig, 0, len(pods))
-	for _, p := range pods {
-		if hasPhase(p.Pod, phase) {
-			filtered = append(filtered, p)
-		}
+func (c *CoordinatedRestart) abortIfTimeoutReached(pod corev1.Pod) (bool, error) {
+	startTime, isSet := getStartTime(pod)
+	if !isSet {
+		// start time doesn't appear in the cache yet, or has been tweaked by a human
+		return false, nil
 	}
-	return filtered
+	if time.Now().Sub(startTime) > c.timeout {
+		log.Error(
+			errors.New("timeout exceeded"), "Coordinated restart is taking too long, aborting.",
+			"pod", pod.Name, "timeout", c.timeout,
+		)
+		// We've reached the restart timeout for this pod: chances are something is wrong and a human
+		// intervention is required to figure it out.
+		// We don't want to block the reconciliation loop on the restart forever: going forward with the
+		// reconciliation might actually fix the current situation.
+		// Let's abort the restart by removing restart annotations.
+		// The pod is left in an unknown state.
+		if err := deletePodAnnotations(c.K8sClient, pod); err != nil {
+			return false, err
+		}
+		c.EventsRecorder.AddEvent(
+			corev1.EventTypeWarning, events.EventReasonUnexpected,
+			fmt.Sprintf("Aborting coordinated restart for pod %s, timeout exceeded.", pod.Name),
+		)
+		return true, nil
+	}
+	return false, nil
 }
