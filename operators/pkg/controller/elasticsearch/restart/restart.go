@@ -80,12 +80,7 @@ func processOngoingRestarts(restartContext RestartContext) (done bool, err error
 
 	if len(annotatedPods[StrategyCoordinated]) > 0 {
 		// run the coordinated restart
-		restart := &CoordinatedRestart{
-			RestartContext: restartContext,
-			pods:           annotatedPods[StrategyCoordinated].Pods(),
-			timeout:        CoordinatedRestartDefaultTimeout,
-		}
-		done, err = restart.Exec()
+		done, err = NewCoordinatedRestart(restartContext).Exec()
 	}
 
 	return done, err

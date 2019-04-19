@@ -8,15 +8,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
@@ -47,8 +44,17 @@ func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, err
 // It waits for all nodes to be stopped, then starts them all.
 type CoordinatedRestart struct {
 	RestartContext
-	pods    []corev1.Pod
-	timeout time.Duration
+	pods            []corev1.Pod
+	timeout         time.Duration
+	pmClientFactory pmClientFactory
+}
+
+func NewCoordinatedRestart(restartContext RestartContext) *CoordinatedRestart {
+	return &CoordinatedRestart{
+		RestartContext:  restartContext,
+		timeout:         CoordinatedRestartDefaultTimeout,
+		pmClientFactory: createProcessManagerClient,
+	}
 }
 
 // Exec attempts some progression on the restart process for all pods.
@@ -270,7 +276,7 @@ func (c *CoordinatedRestart) ensureESProcessStopped(pods []corev1.Pod) (bool, er
 	// TODO: parallel requests
 	for _, p := range pods {
 		// request ES process stop through the pod's process manager (idempotent)
-		pmClient, err := c.processManagerClient(p)
+		pmClient, err := c.pmClientFactory(c.RestartContext, p)
 		if err != nil {
 			return false, err
 		}
@@ -294,7 +300,7 @@ func (c *CoordinatedRestart) ensureESProcessStopped(pods []corev1.Pod) (bool, er
 
 // ensureESProcessStarted interacts with the process manager to ensure all ES processes are started.
 func (c *CoordinatedRestart) ensureESProcessStarted(p corev1.Pod) (bool, error) {
-	pmClient, err := c.processManagerClient(p)
+	pmClient, err := c.pmClientFactory(c.RestartContext, p)
 	if err != nil {
 		return false, err
 	}
@@ -319,7 +325,7 @@ func (c *CoordinatedRestart) ensureESProcessStarted(p corev1.Pod) (bool, error) 
 
 // getESStatus returns the current ES process status in the given pod.
 func (c *CoordinatedRestart) getESStatus(p corev1.Pod) (processmanager.ProcessState, error) {
-	pmClient, err := c.processManagerClient(p)
+	pmClient, err := c.pmClientFactory(c.RestartContext, p)
 	if err != nil {
 		return "", err
 	}
@@ -331,21 +337,6 @@ func (c *CoordinatedRestart) getESStatus(p corev1.Pod) (processmanager.ProcessSt
 	}
 
 	return status.State, nil
-}
-
-// processManagerClient creates a client to interact with the pod's process manager.
-func (c *CoordinatedRestart) processManagerClient(pod corev1.Pod) (*processmanager.Client, error) {
-	podIP := net.ParseIP(pod.Status.PodIP)
-	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	rawCA, err := nodecerts.GetCA(c.K8sClient, k8s.ExtractNamespacedName(&c.Cluster.ObjectMeta))
-	if err != nil {
-		return nil, err
-	}
-	certs, err := certificates.ParsePEMCerts(rawCA)
-	if err != nil {
-		return nil, err
-	}
-	return processmanager.NewClient(url, certs, c.Dialer), nil
 }
 
 func (c *CoordinatedRestart) abortIfTimeoutReached(pod corev1.Pod) (bool, error) {
