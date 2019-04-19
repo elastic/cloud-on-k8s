@@ -168,12 +168,12 @@ func (hc *HashedCredentials) Secret() corev1.Secret {
 
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
 func NewInternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
-	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), internalUsers)
+	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), newInternalUsers())
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
 func NewExternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
-	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), externalUsers)
+	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), newExternalUsers())
 }
 
 func usersToClearTextCredentials(es types.NamespacedName, secretName string, users []User) *ClearTextCredentials {

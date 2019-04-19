@@ -32,17 +32,22 @@ func NewState(c v1alpha1.Elasticsearch) *State {
 func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	var nodesAvailable []corev1.Pod
 	for _, pod := range pods {
-		conditionsTrue := 0
-		for _, cond := range pod.Status.Conditions {
-			if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
-				conditionsTrue++
-			}
-		}
-		if conditionsTrue == 2 {
+		if IsAvailable(pod) {
 			nodesAvailable = append(nodesAvailable, pod)
 		}
 	}
 	return nodesAvailable
+}
+
+// IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
+func IsAvailable(pod corev1.Pod) bool {
+	conditionsTrue := 0
+	for _, cond := range pod.Status.Conditions {
+		if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
+			conditionsTrue++
+		}
+	}
+	return conditionsTrue == 2
 }
 
 func (s *State) updateWithPhase(
@@ -112,6 +117,18 @@ func (s *State) UpdateRemoteClusters(remoteCluster map[string]string) {
 // GetRemoteClusters returns the remote clusters that have been set in the cluster.
 func (s *State) GetRemoteClusters() map[string]string {
 	return s.status.RemoteClusters
+}
+
+// UpdateZen1MinimumMasterNodes updates the current minimum master nodes in the state.
+func (s *State) UpdateZen1MinimumMasterNodes(value int) {
+	s.status.ZenDiscovery = v1alpha1.ZenDiscoveryStatus{
+		MinimumMasterNodes: value,
+	}
+}
+
+// GetZen1MinimumMasterNodes returns the current minimum master nodes as it is stored in the state.
+func (s *State) GetZen1MinimumMasterNodes() int {
+	return s.status.ZenDiscovery.MinimumMasterNodes
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.

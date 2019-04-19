@@ -219,6 +219,12 @@ spec:
               type: object
             service:
               type: string
+            zenDiscovery:
+              properties:
+                minimumMasterNodes:
+                  format: int64
+                  type: integer
+              type: object
           type: object
   version: v1alpha1
 status:

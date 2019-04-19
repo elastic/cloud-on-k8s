@@ -231,7 +231,12 @@ type ElasticsearchStatus struct {
 	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
+	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
 	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
+}
+
+type ZenDiscoveryStatus struct {
+	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

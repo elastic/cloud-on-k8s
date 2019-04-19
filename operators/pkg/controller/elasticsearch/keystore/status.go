@@ -14,6 +14,9 @@ const (
 	waitingState        State = "waiting"
 	runningState        State = "running"
 	failedState         State = "failed"
+
+	keystoreUpdatedReason        = "Keystore updated"
+	secureSettingsReloadedReason = "Secure settings reloaded"
 )
 
 // Status defined the observed state of a Keystore updater
