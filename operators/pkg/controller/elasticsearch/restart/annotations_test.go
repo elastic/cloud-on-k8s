@@ -99,7 +99,7 @@ func Test_setPhase(t *testing.T) {
 }
 
 func Test_getStrategy(t *testing.T) {
-	require.Equal(t, StrategySingle, getStrategy(corev1.Pod{}))
+	require.Equal(t, StrategySimple, getStrategy(corev1.Pod{}))
 	require.Equal(t, StrategyCoordinated, getStrategy(corev1.Pod{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{StrategyAnnotation: string(StrategyCoordinated)}}}))
 }
 

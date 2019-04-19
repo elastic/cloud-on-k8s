@@ -2,6 +2,7 @@ package restart
 
 import (
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -90,25 +91,48 @@ func processOngoingRestarts(restartContext RestartContext) (done bool, err error
 // scheduleRestarts inspects the current cluster and changes, to maybe annotate some pods for restart.
 func scheduleRestarts(restartContext RestartContext) (int, error) {
 	// a coordinated restart can be requested at the cluster-level
-	if getClusterRestartAnnotation(restartContext.Cluster) == StrategyCoordinated {
+	return scheduleClusterRestart(restartContext)
+}
+
+func scheduleClusterRestart(restartContext RestartContext) (int, error) {
+	restartStrategy := getClusterRestartAnnotation(restartContext.Cluster)
+	switch restartStrategy {
+	case StrategySimple, StrategyCoordinated:
 		// annotate all current pods of the cluster (toKeep)
 		// we don't care about pods to create or pods to delete here
 		// TODO: include changes.ToReuse here
-		count, err := scheduleCoordinatedRestart(restartContext.K8sClient, restartContext.Changes.ToKeep)
+		count, err := scheduleRestartForPods(restartContext.K8sClient, restartContext.Changes.ToKeep, restartStrategy)
 		if err != nil {
 			return 0, err
 		}
-		// pods are now annotated: remove annotation from the cluster
+		// pods are now annotated: remove annotation from the cluster resource
 		// to avoid restarting over and over again
 		if err := deleteClusterAnnotation(restartContext.K8sClient, restartContext.Cluster); err != nil {
 			return 0, err
 		}
 		restartContext.EventsRecorder.AddEvent(
 			corev1.EventTypeNormal, events.EventReasonRestart,
-			fmt.Sprintf("Coordinated restart scheduled for cluster %s", restartContext.Cluster.Name),
+			fmt.Sprintf("Restart scheduled for cluster: %s. Strategy: %s.", restartContext.Cluster.Name, restartStrategy),
 		)
 		return count, nil
+	default:
+		// nothing to do
+		return 0, nil
 	}
+}
 
-	return 0, nil
+// scheduleRestartForPods annotates all pods for the given restart strategy.
+func scheduleRestartForPods(c k8s.Client, pods pod.PodsWithConfig, strategy Strategy) (int, error) {
+	count := 0
+	for _, p := range pods {
+		if isAnnotatedForRestart(p.Pod) {
+			log.V(1).Info("Pod already in a restart phase", "pod", p.Pod.Name)
+			continue
+		}
+		if err := setScheduleRestartAnnotations(c, p.Pod, strategy, time.Now()); err != nil {
+			return count, err
+		}
+		count++
+	}
+	return count, nil
 }

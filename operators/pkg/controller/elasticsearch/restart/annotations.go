@@ -23,8 +23,8 @@ const (
 	// StrategyAnnotation, set on a pod, indicates the restart strategy to be used.
 	StrategyAnnotation = "elasticsearch.k8s.elastic.co/restart-strategy"
 
-	// StrategySingle schedules a simple restart.
-	StrategySingle Strategy = "single"
+	// StrategySimple schedules a simple restart.
+	StrategySimple Strategy = "simple"
 	// StrategyCoordinated schedules a coordinated (simultaneous) restart.
 	StrategyCoordinated Strategy = "coordinated"
 	// StrategyRolling schedules a rolling (pod-by-pod) restart.
@@ -95,8 +95,18 @@ func setPhase(client k8s.Client, pod corev1.Pod, phase Phase) error {
 	return client.Update(&pod)
 }
 
+// setPhases applies the given phase to the given pods.
+func setPhases(client k8s.Client, pods []corev1.Pod, phase Phase) error {
+	for _, p := range pods {
+		if err := setPhase(client, p, phase); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func getStrategy(pod corev1.Pod) Strategy {
-	defaultStrategy := StrategySingle
+	defaultStrategy := StrategySimple
 	if pod.Annotations == nil {
 		return defaultStrategy
 	}

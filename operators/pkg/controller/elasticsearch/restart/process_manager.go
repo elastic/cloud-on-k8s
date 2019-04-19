@@ -5,6 +5,7 @@
 package restart
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -30,4 +31,48 @@ func createProcessManagerClient(restartContext RestartContext, pod corev1.Pod) (
 		return nil, err
 	}
 	return processmanager.NewClient(url, certs, restartContext.Dialer), nil
+}
+
+// ensureESProcessStopped interacts with the process manager to stop the ES process.
+func ensureESProcessStopped(pmClient processmanager.Client, podName string) (bool, error) {
+	// request ES process stop (idempotent)
+	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+	defer cancel()
+	log.V(1).Info("Requesting ES process stop", "pod", podName)
+	status, err := pmClient.Stop(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// we got the current status back, check if the process is stopped
+	if status.State != processmanager.Stopped {
+		log.V(1).Info("ES process is not stopped yet", "pod", podName, "state", status.State)
+		// not stopped yet, requeue
+		return false, nil
+	}
+
+	log.V(1).Info("ES process successfully stopped", "pod", podName)
+	return true, nil
+}
+
+// ensureESProcessStarted interacts with the process manager to ensure all ES processes are started.
+func ensureESProcessStarted(pmClient processmanager.Client, podName string) (bool, error) {
+	// request ES process start (idempotent)
+	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
+	defer cancel()
+	log.V(1).Info("Requesting ES process start", "pod", podName)
+	status, err := pmClient.Start(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// we got the current status back, check if the process is started
+	if status.State != processmanager.Started {
+		log.V(1).Info("ES process is not started yet", "pod", podName, "state", status.State)
+		// not started yet, requeue
+		return false, nil
+	}
+
+	log.V(1).Info("ES process successfully started", "pod", podName)
+	return true, nil
 }
