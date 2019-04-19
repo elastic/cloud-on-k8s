@@ -47,7 +47,8 @@ func scheduleCoordinatedRestart(c k8s.Client, pods pod.PodsWithConfig) (int, err
 // It waits for all nodes to be stopped, then starts them all.
 type CoordinatedRestart struct {
 	RestartContext
-	pods pod.PodsWithConfig
+	pods    []corev1.Pod
+	timeout time.Duration
 }
 
 // Exec attempts some progression on the restart process for all pods.
@@ -68,7 +69,7 @@ func (c *CoordinatedRestart) Exec() (done bool, err error) {
 type Step struct {
 	initPhase Phase
 	endPhase  Phase
-	do        func(pods pod.PodsWithConfig) (bool, error)
+	do        func(pods []corev1.Pod) (bool, error)
 }
 
 // coordinatedStepsExec executes a series of step in a coordinated way.
@@ -122,14 +123,16 @@ func (c *CoordinatedRestart) coordinatedStepsExec(steps ...Step) (done bool, err
 	return true, nil
 }
 
-// scheduleStop prepares the cluster to be stopped, then move pods to the "stop" phase.
+// scheduleStop prepares the cluster to be stopped, then moves pods to the "stop" phase.
 func (c *CoordinatedRestart) scheduleStop() Step {
 	return Step{
 		initPhase: PhaseSchedule,
 		endPhase:  PhaseStop,
-		do: func(pods pod.PodsWithConfig) (bool, error) {
+		do: func(pods []corev1.Pod) (bool, error) {
 			if err := c.prepareClusterForStop(); err != nil {
-				return false, err
+				// We consider this call best-effort: ES endpoint might not be reachable.
+				// Let's continue.
+				log.Error(err, "Failed to prepare the cluster for full restart (might not be reachable). Continuing.")
 			}
 			if err := c.setPhase(pods, PhaseStop); err != nil {
 				return false, err
@@ -144,7 +147,7 @@ func (c *CoordinatedRestart) stop() Step {
 	return Step{
 		initPhase: PhaseStop,
 		endPhase:  PhaseStart,
-		do: func(pods pod.PodsWithConfig) (bool, error) {
+		do: func(pods []corev1.Pod) (bool, error) {
 			allStopped, err := c.ensureESProcessStopped(pods)
 			if err != nil {
 				return false, err
@@ -170,7 +173,7 @@ func (c *CoordinatedRestart) start() Step {
 	return Step{
 		initPhase: PhaseStart,
 		endPhase:  "",
-		do: func(pods pod.PodsWithConfig) (bool, error) {
+		do: func(pods []corev1.Pod) (bool, error) {
 			podsDone := 0
 			for _, p := range pods {
 				// - ensure es process started
@@ -211,7 +214,7 @@ func (c *CoordinatedRestart) start() Step {
 
 			// restart is over, remove all annotations
 			for _, p := range pods {
-				if err := deletePodAnnotations(c.K8sClient, p.Pod); err != nil {
+				if err := deletePodAnnotations(c.K8sClient, p); err != nil {
 					return false, err
 				}
 			}
@@ -228,9 +231,9 @@ func (c *CoordinatedRestart) start() Step {
 }
 
 // setPhase applies the given phase to the given pods.
-func (c *CoordinatedRestart) setPhase(pods pod.PodsWithConfig, phase Phase) error {
+func (c *CoordinatedRestart) setPhase(pods []corev1.Pod, phase Phase) error {
 	for _, p := range pods {
-		if err := setPhase(c.K8sClient, p.Pod, phase); err != nil {
+		if err := setPhase(c.K8sClient, p, phase); err != nil {
 			return err
 		}
 	}
@@ -238,9 +241,10 @@ func (c *CoordinatedRestart) setPhase(pods pod.PodsWithConfig, phase Phase) erro
 }
 
 // prepareClusterForStop performs cluster-wide ES requests to speedup the restart process.
+// See https://www.elastic.co/guide/en/elasticsearch/reference/6.7/restart-upgrade.html.
 func (c *CoordinatedRestart) prepareClusterForStop() error {
 	// disable shard allocation to ensure shards from stopped nodes
-	// won't be moved around
+	// won't be moved around during the restart process
 	log.V(1).Info("Disabling shards allocation for coordinated restart")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
@@ -249,6 +253,8 @@ func (c *CoordinatedRestart) prepareClusterForStop() error {
 	}
 
 	// perform a synced flush (best effort) to speedup shard recovery
+	// any ongoing indexing operation on a particular shard will make the sync flush
+	// fail for that particular shard, that's ok.
 	ctx2, cancel2 := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel2()
 	if err := c.EsClient.SyncedFlush(ctx2); err != nil {
@@ -259,42 +265,42 @@ func (c *CoordinatedRestart) prepareClusterForStop() error {
 }
 
 // ensureESProcessStopped interacts with the process manager to stop the ES process.
-func (c *CoordinatedRestart) ensureESProcessStopped(pods pod.PodsWithConfig) (bool, error) {
+func (c *CoordinatedRestart) ensureESProcessStopped(pods []corev1.Pod) (bool, error) {
 	stoppedCount := 0
 	// TODO: parallel requests
 	for _, p := range pods {
 		// request ES process stop through the pod's process manager (idempotent)
-		pmClient, err := c.processManagerClient(p.Pod)
+		pmClient, err := c.processManagerClient(p)
 		if err != nil {
 			return false, err
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
 		defer cancel()
-		log.V(1).Info("Requesting ES process stop", "pod", p.Pod.Name)
+		log.V(1).Info("Requesting ES process stop", "pod", p.Name)
 		status, err := pmClient.Stop(ctx)
 		if err != nil {
 			return false, err
 		}
 		// we got the current status back, check if the process is stopped
 		if status.State == processmanager.Stopped {
-			log.V(1).Info("ES process successfully stopped", "pod", p.Pod.Name)
+			log.V(1).Info("ES process successfully stopped", "pod", p.Name)
 			stoppedCount++
 		} else {
-			log.V(1).Info("ES process is not stopped yet", "pod", p.Pod.Name, "state", status.State)
+			log.V(1).Info("ES process is not stopped yet", "pod", p.Name, "state", status.State)
 		}
 	}
 	return stoppedCount == len(pods), nil
 }
 
 // ensureESProcessStarted interacts with the process manager to ensure all ES processes are started.
-func (c *CoordinatedRestart) ensureESProcessStarted(p pod.PodWithConfig) (bool, error) {
-	pmClient, err := c.processManagerClient(p.Pod)
+func (c *CoordinatedRestart) ensureESProcessStarted(p corev1.Pod) (bool, error) {
+	pmClient, err := c.processManagerClient(p)
 	if err != nil {
 		return false, err
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
 	defer cancel()
-	log.V(1).Info("Requesting ES process start", "pod", p.Pod.Name)
+	log.V(1).Info("Requesting ES process start", "pod", p.Name)
 	status, err := pmClient.Start(ctx)
 	if err != nil {
 		return false, err
@@ -302,12 +308,12 @@ func (c *CoordinatedRestart) ensureESProcessStarted(p pod.PodWithConfig) (bool, 
 
 	// check the returned process status
 	if status.State != processmanager.Started {
-		log.V(1).Info("ES process is not started yet", "pod", p.Pod.Name, "state", status.State)
+		log.V(1).Info("ES process is not started yet", "pod", p.Name, "state", status.State)
 		// not started yet, requeue
 		return false, nil
 	}
 
-	log.V(1).Info("ES process successfully started", "pod", p.Pod.Name)
+	log.V(1).Info("ES process successfully started", "pod", p.Name)
 	return true, nil
 }
 
