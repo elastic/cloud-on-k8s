@@ -49,9 +49,11 @@ type CoordinatedRestart struct {
 	pmClientFactory pmClientFactory
 }
 
-func NewCoordinatedRestart(restartContext RestartContext) *CoordinatedRestart {
+// NewCoordinatedRestart returns a CoordinatedRestart struct with default values.
+func NewCoordinatedRestart(restartContext RestartContext, pods []corev1.Pod) *CoordinatedRestart {
 	return &CoordinatedRestart{
 		RestartContext:  restartContext,
+		pods:            pods,
 		timeout:         CoordinatedRestartDefaultTimeout,
 		pmClientFactory: createProcessManagerClient,
 	}
@@ -339,6 +341,8 @@ func (c *CoordinatedRestart) getESStatus(p corev1.Pod) (processmanager.ProcessSt
 	return status.State, nil
 }
 
+// abortIfTimeoutReached inspects the restart start time for the given time,
+// and decides whether restart should be aborted.
 func (c *CoordinatedRestart) abortIfTimeoutReached(pod corev1.Pod) (bool, error) {
 	startTime, isSet := getStartTime(pod)
 	if !isSet {

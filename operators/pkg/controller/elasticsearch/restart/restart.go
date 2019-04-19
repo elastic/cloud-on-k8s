@@ -76,11 +76,12 @@ func processOngoingRestarts(restartContext RestartContext) (done bool, err error
 		return true, nil
 	}
 
-	log.V(1).Info("Pods annotated for restart", "count", len(annotatedPods))
+	log.V(1).Info("Pods annotated for restart")
 
 	if len(annotatedPods[StrategyCoordinated]) > 0 {
 		// run the coordinated restart
-		done, err = NewCoordinatedRestart(restartContext).Exec()
+		restart := NewCoordinatedRestart(restartContext, annotatedPods[StrategyCoordinated].Pods())
+		done, err = restart.Exec()
 	}
 
 	return done, err
