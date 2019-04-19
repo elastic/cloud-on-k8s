@@ -2,10 +2,6 @@
 
 The following yaml files can be customized as required:
 
-## kustomization.yaml
-
-Defines the namespace in which the global operator will be deployed. Can be changed as required.
-
 ## namespace.yaml
 
 Creates a namespace for the global operator to be deployed into. Must match the namespace set in `kustomization.yaml`.
