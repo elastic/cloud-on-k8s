@@ -60,6 +60,10 @@ dep-vendor-only:
 generate:
 	go generate ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	# combine all crds into one for easy installation
+	for yaml in $$(ls config/crds/*); do \
+		cat $$yaml && echo -e "\n---\n" ; \
+	done > config/crds.yaml
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
