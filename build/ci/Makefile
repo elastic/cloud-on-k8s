@@ -31,6 +31,7 @@ ci-pr: check-license-header
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "IMG_SUFFIX=-ci" \
+		--net=host \
 		k8s-operators-ci-pr \
 		bash -c \
 			"make -C operators ci && \

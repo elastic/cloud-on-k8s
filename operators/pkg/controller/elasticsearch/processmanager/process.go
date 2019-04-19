@@ -24,9 +24,11 @@ const (
 
 	ErrNoSuchProcess = "no such process"
 
-	stopAction  = "stop"
-	startAction = "start"
-	waitAction  = "wait"
+	initAction      = "initialization"
+	startAction     = "start"
+	stopAction      = "stop"
+	killAction      = "kill"
+	terminateAction = "terminate"
 
 	EsConfigFilePath = "/usr/share/elasticsearch/config/elasticsearch.yml"
 )
@@ -38,29 +40,6 @@ type ProcessStatus struct {
 	State          ProcessState `json:"state"`
 	Since          string       `json:"since"`
 	ConfigChecksum string       `json:"config_checksum"`
-}
-
-// ProcessState represents the state of a process.
-type ProcessState string
-
-const (
-	started     ProcessState = "started"
-	stopping    ProcessState = "stopping"
-	stopped     ProcessState = "stopped"
-	killing     ProcessState = "killing"
-	killed      ProcessState = "killed"
-	startFailed ProcessState = "startFailed"
-	stopFailed  ProcessState = "stopFailed"
-	killFailed  ProcessState = "killFailed"
-	failed      ProcessState = "failed"
-)
-
-func (s ProcessState) String() string {
-	return string(s)
-}
-
-func (s ProcessState) Error() error {
-	return fmt.Errorf("error: process %s", s)
 }
 
 type Process struct {
@@ -77,20 +56,26 @@ type Process struct {
 // NewProcess create a new process.
 func NewProcess(name string, cmd string) *Process {
 	args := strings.Split(strings.Trim(cmd, " "), " ")
-	return &Process{
+
+	state := ReadProcessState()
+
+	p := Process{
 		id:    name,
 		name:  args[0],
 		args:  args[1:],
-		state: stopped,
+		state: state,
 		mutex: sync.RWMutex{},
 	}
+
+	p.updateState(initAction, noSignal, nil)
+
+	return &p
 }
 
-// Start starts a process.
-// The process is started only if it's not starting, started or stopping.
-// It returns an error if the process is stopping or killing.
-// A goroutine is started to monitor the end of the process in the background.
-func (p *Process) Start() (ProcessState, error) {
+// Start a process.
+// A goroutine is started to monitor the end of the process in the background and
+// to report the status resulting from the execution to a given ExitStatus channel done.
+func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
@@ -110,71 +95,92 @@ func (p *Process) Start() (ProcessState, error) {
 
 	err := cmd.Start()
 	if err != nil {
-		return startFailed, err
+		p.updateState(startAction, noSignal, err)
+		return p.state, err
 	}
 
-	state := started
 	p.pid = cmd.Process.Pid
 
-	p.updateState(startAction, state, p.pid, noSignal, err)
+	p.updateState(startAction, noSignal, err)
 
+	// Waiting for the process to terminate
 	go func() {
 		err := cmd.Wait()
-		p.terminate(waitAction, err)
+
+		// Update the state depending the previous state
+		p.mutex.Lock()
+		state := p.updateState(terminateAction, noSignal, nil)
+		p.mutex.Unlock()
+
+		code := exitCode(err)
+
+		// If the done channel is defined, then send the exit status, else exit the program
+		if done != nil {
+			done <- ExitStatus{state, code, err}
+		} else {
+			Exit(fmt.Sprintf("process %s", state), code)
+		}
 	}()
+
+	return p.state, nil
+}
+
+// KillSoft kills the process group by sending a SIGTERM.
+func (p *Process) KillSoft() (ProcessState, error) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	// Can stop?
+	switch p.state {
+	case stopping, stopped, killing, killed, failed:
+		return p.state, nil
+	}
+
+	p.updateState(stopAction, killSoftSignal, nil)
+	err := p.Kill(killSoftSignal)
+	p.updateState(stopAction, killSoftSignal, err)
 
 	return p.state, err
 }
 
-// Kill kills a process group by forwarding a signal.
-// The process is stopped only if it's not stopping, killing, stopped or killed.
-func (p *Process) Kill(s os.Signal) (ProcessState, error) {
-	sig, ok := s.(syscall.Signal)
-	if !ok {
-		err := errors.New("os: unsupported signal type")
-		return stopFailed, err
-	}
-	killHard := sig == killHardSignal
-
+// KillHard kills the process group by sending a SIGKILL.
+func (p *Process) KillHard() (ProcessState, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
 	// Can kill?
 	switch p.state {
-	case stopping:
-		if !killHard {
-			return p.state, nil
-		}
-	case killing:
-		if killHard {
-			return p.state, nil
-		}
-	case stopped, killed, failed:
+	case stopped, killing, killed, failed:
 		return p.state, nil
 	}
 
-	state := stopping
-	errState := stopFailed
-	if killHard {
-		state = killing
-		errState = killFailed
-	}
-
-	// Send signal to the whole process group
-	err := syscall.Kill(-(p.pid), sig)
-	if err != nil {
-		if p.state == started && err.Error() == ErrNoSuchProcess {
-			// No process but still marked started? This should not happen.
-			// Normally the termination of the process is intercepted to update the process state.
-			p.mutex.Unlock()
-			p.GracefulExit("unexpected state: no process to kill, but process still marked started", err)
-		}
-		state = errState
-	}
-
-	p.updateState(stopAction, state, p.pid, sig, err)
+	p.updateState(killAction, killHardSignal, nil)
+	err := p.Kill(killHardSignal)
+	p.updateState(killAction, killHardSignal, err)
 
 	return p.state, err
+}
+
+// Kill sends a signal to the process group to kill it.
+func (p *Process) Kill(s os.Signal) error {
+	sig, ok := s.(syscall.Signal)
+	if !ok {
+		err := errors.New("os: unsupported signal type")
+		return err
+	}
+
+	err := syscall.Kill(-(p.pid), sig)
+	if err != nil {
+		if err.Error() == ErrNoSuchProcess {
+			//p.updateState(action, sig, err)
+			// Looks like the process is already dead. This should not happen.
+			// Normally the end of the process should have been intercepted and the program exited.
+			Exit("failed to kill process already dead", 1)
+		}
+		return err
+	}
+
+	return nil
 }
 
 // Status returns the status of the process.
@@ -191,62 +197,6 @@ func (p *Process) Status() ProcessStatus {
 	}
 }
 
-// isAlive returns if the process is alive by trying to get the process group id.
-func (p *Process) isAlive(action string) bool {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	_, err := syscall.Getpgid(p.pid)
-	alive := err == nil
-
-	log.Info("Process liveness check", "action", action, "state", p.state, "alive", alive, "err", err)
-	return alive
-}
-
-// terminate updates the process state if the process is not alive.
-func (p *Process) terminate(action string, err error) {
-	alive := p.isAlive(action)
-	log.Info("Process terminated", "action", action, "state", p.state, "alive", alive, "err", err)
-
-	if !alive {
-		switch p.state {
-		case stopping:
-			p.mutex.Lock()
-			p.updateState(action, stopped, p.pid, noSignal, err)
-			p.mutex.Unlock()
-		case killing:
-			p.mutex.Lock()
-			p.updateState(action, killed, p.pid, noSignal, err)
-			p.mutex.Unlock()
-		case started:
-			p.mutex.Lock()
-			p.updateState(action, failed, p.pid, noSignal, err)
-			p.mutex.Unlock()
-			// No process but still marked started. Something unexpected happened to the process!
-			// The process is terminated without the process manager schedules a stop or a kill.
-			// Exit the program hoping to be restarted by something (as a kubelet?).
-			p.GracefulExit("unexpected state: process terminated without stop/kill", err)
-		}
-	}
-
-	return
-}
-
-// updateState updates the process state and the last update time.
-func (p *Process) updateState(action string, state ProcessState, pid int, signal syscall.Signal, err error) {
-	p.state = state
-	p.lastUpdate = time.Now()
-
-	kv := []interface{}{"action", action, "id", p.id, "state", state, "pid", pid}
-	if signal != noSignal {
-		kv = append(kv, "signal", signal)
-	}
-	if err != nil {
-		kv = append(kv, "err", err)
-	}
-	log.Info("Update process state", kv...)
-}
-
 func computeConfigChecksum() (string, error) {
 	data, err := ioutil.ReadFile(EsConfigFilePath)
 	if err != nil {
@@ -256,38 +206,19 @@ func computeConfigChecksum() (string, error) {
 	return fmt.Sprint(crc32.ChecksumIEEE(data)), nil
 }
 
-// GracefulExit exits the program after sending a soft kill to the process with a timeout for a hard kill.
-func (p *Process) GracefulExit(reason string, err error) {
-	log.Info("Graceful exit", "reason", reason, "err", err)
-
-	// Try to exit early
-	if !p.isAlive("graceful exit") {
-		log.Info("Exited")
-		os.Exit(1)
+// exitCode tries to extract the exit code from an error
+func exitCode(err error) int {
+	exitCode := 0
+	if err != nil {
+		exitCode = 1
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				exitCode = waitStatus.ExitStatus()
+			}
+		} else {
+			log.Info("Failed to terminate process", "err", err.Error())
+			exitCode = 1
+		}
 	}
-
-	// Timeout to kill hard if kill soft is not enough
-	time.AfterFunc(10*time.Second, func() {
-		log.Info("Graceful exit, kill hard")
-		_, _ = p.Kill(killHardSignal)
-	})
-
-	// Timeout to exit if the process is still alive after the kill(s)
-	time.AfterFunc(10*time.Second, func() {
-		log.Info("Graceful exit, exit timeout")
-		os.Exit(1)
-	})
-
-	// Kill soft
-	log.Info("Graceful exit, kill soft")
-	_, _ = p.Kill(killSoftSignal)
-
-	// Wait for the process to die
-	for p.isAlive("graceful exit kill") {
-		time.Sleep(1 * time.Second)
-	}
-
-	// Bye!
-	log.Info("Exited")
-	os.Exit(1)
+	return exitCode
 }

@@ -29,7 +29,7 @@ type ProcessServer struct {
 	ksUpdater *keystore.Updater
 }
 
-// NewServer creates a new ProcessServer.
+// NewProcessServer creates a new ProcessServer.
 func NewProcessServer(cfg *Config, process *Process, updater *keystore.Updater) *ProcessServer {
 	mux := http.NewServeMux()
 	s := ProcessServer{
@@ -82,21 +82,23 @@ func (s *ProcessServer) Start() {
 			if err == http.ErrServerClosed {
 				log.Info("HTTP server closed")
 			} else {
-				s.esProcess.GracefulExit("could not start http server", err)
+				errMsg := "failed to start the HTTP server"
+				log.Error(err, errMsg)
+				Exit(errMsg, 1)
 			}
 		}
+
 	}()
 }
 
-// Stop stops the HTTP server.
-func (s *ProcessServer) Stop() {
+// Exit shuts down the HTTP server.
+func (s *ProcessServer) Exit() {
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		log.Error(err, "Fail to stop HTTP server")
 		return
 	}
-	log.Info("HTTP server stopped")
 }
 
 func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
@@ -104,7 +106,7 @@ func (s *ProcessServer) Health(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Start()
+	state, err := s.esProcess.Start(nil)
 	if err != nil {
 		log.Error(err, "Failed to start es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -114,7 +116,7 @@ func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Kill(killSoftSignal)
+	state, err := s.esProcess.KillSoft()
 	if err != nil {
 		log.Error(err, "Failed to stop es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -126,7 +128,7 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
-	state, err := s.esProcess.Kill(killHardSignal)
+	state, err := s.esProcess.KillHard()
 	if err != nil {
 		log.Error(err, "Failed to kill es process", "state", state)
 		w.WriteHeader(http.StatusInternalServerError)

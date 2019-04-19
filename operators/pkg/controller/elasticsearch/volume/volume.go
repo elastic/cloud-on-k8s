@@ -27,7 +27,7 @@ const (
 
 	ExtraFilesSecretVolumeMountPath = "/usr/share/elasticsearch/config/extrafiles"
 
-	ExtraBinariesPath = "/mnt/elastic/bin"
+	ProcessManagerEmptyDirMountPath = "/mnt/elastic/process-manager"
 )
 
 var (
