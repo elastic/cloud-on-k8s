@@ -18,7 +18,6 @@ REPOSITORY ?= elastic-dev
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
 	REPOSITORY = ${GCLOUD_PROJECT}
-	echo "Setting for GKE"
 endif
 # default to local registry
 ifeq ($(REGISTRY),)
