@@ -31,6 +31,7 @@ ci-pr: check-license-header
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
 		-e "IMG_SUFFIX=-ci" \
+		--net=host \
 		k8s-operators-ci-pr \
 		bash -c \
 			"make -C operators ci && \
@@ -38,7 +39,21 @@ ci-pr: check-license-header
 
 ## -- Release job
 
-# TODO
+ci-release: vault-gke-creds
+	docker build -f e2e/Dockerfile -t k8s-operators-ci-release .
+	docker run --rm -t \
+    	-v /var/run/docker.sock:/var/run/docker.sock \
+    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+    	-w $(GO_MOUNT_PATH) \
+    	-e "USER=random_fellow" \
+    	-e "TAG=${TAG_NAME}" \
+    	-e "IMG_SUFFIX=-release" \
+    	-e "REGISTRY=${REGISTRY}" \
+    	-e "REPOSITORY=${GCLOUD_PROJECT}" \
+    	-e "GCLOUD_PROJECT=${GCLOUD_PROJECT}" \
+    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+    	k8s-operators-ci-release \
+    	bash -c "make -C operators ci-release"
 
 ## -- End-to-end tests job
 

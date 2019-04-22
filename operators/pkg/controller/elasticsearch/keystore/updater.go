@@ -6,49 +6,51 @@ package keystore
 
 import (
 	"context"
-	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
+	"k8s.io/client-go/util/workqueue"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
-	attemptReload         = "attempt-reload"
-	waitEsReadinessPeriod = 10 * time.Second
+	attemptReload           = "attempt-reload"
+	dirWatcherPollingPeriod = 1 * time.Second
 )
 
 var (
 	log = logf.Log.WithName("keystore-updater")
 )
 
-// Updater updates the keystore
+// Updater updates the Elasticsearch keystore by watching a local directory corresponding to a Kubernetes secret.
 type Updater struct {
-	config Config
-	status Status
-	lock   sync.RWMutex
+	config      Config
+	reloadQueue workqueue.DelayingInterface
+	status      Status
+	lock        sync.RWMutex
+	esClient    EsClient
+	keystore    Keystore
 }
 
 // NewUpdater returns a new keystore updater.
-func NewUpdater(cfg Config) *Updater {
+func NewUpdater(cfg Config, esClient EsClient, keystore Keystore) (*Updater, error) {
+	status := Status{notInitializedState, "Keystore updater created", time.Now()}
+
 	return &Updater{
-		config: cfg,
-		status: Status{notInitializedState, "Keystore updater created", time.Now()},
-	}
+		config:      cfg,
+		reloadQueue: workqueue.NewDelayingQueue(),
+		status:      status,
+		lock:        sync.RWMutex{},
+		esClient:    esClient,
+		keystore:    keystore,
+	}, nil
 }
 
-// Status returns the Keystore updater status
+// Status returns the keystore updater status
 func (u *Updater) Status() (Status, error) {
 	u.lock.RLock()
 	defer u.lock.RUnlock()
@@ -68,35 +70,14 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
-	u.waitForElasticsearchReady()
+	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
+	u.esClient.WaitForEsReady()
 
 	if u.config.ReloadCredentials {
 		go u.coalescingRetry()
 	}
 
 	go u.watchForUpdate()
-}
-
-func (u *Updater) waitForElasticsearchReady() {
-	caCerts, err := loadCerts(u.config.EsCACertsPath)
-	if err != nil {
-		log.Error(err, "Cannot create Elasticsearch client with CA certs")
-		return
-	}
-	esClient := client.NewElasticsearchClient(nil, u.config.EsEndpoint, u.config.EsUser, u.config.EsVersion, caCerts)
-
-	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
-
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
-		_, err := esClient.GetClusterInfo(ctx)
-		cancel()
-		if err == nil {
-			break
-		}
-		log.Info("Waiting for Elasticsearch to be ready")
-		time.Sleep(waitEsReadinessPeriod)
-	}
 }
 
 func (u *Updater) watchForUpdate() {
@@ -108,13 +89,13 @@ func (u *Updater) watchForUpdate() {
 			log.Error(err, "Cannot update keystore", "msg", msg)
 			u.updateStatus(failedState, msg, err)
 		} else {
-			u.updateStatus(runningState, "Keystore updated", nil)
+			u.updateStatus(runningState, keystoreUpdatedReason, nil)
 		}
 		return false, nil // run forever
 	}
 
 	log.Info("Watch for update")
-	watcher, err := fs.DirectoryWatcher(context.Background(), u.config.SecretsSourceDir, onEvent, 1*time.Second)
+	watcher, err := fs.DirectoryWatcher(context.Background(), u.config.SecretsSourceDir, onEvent, dirWatcherPollingPeriod)
 	if err != nil {
 		msg := "Cannot watch filesystem"
 		log.Error(err, msg, "path", u.config.SecretsSourceDir)
@@ -126,7 +107,10 @@ func (u *Updater) watchForUpdate() {
 	if err != nil {
 		log.Error(err, "Cannot update keystore", "msg", msg)
 		u.updateStatus(failedState, msg, err)
+	} else {
+		u.updateStatus(runningState, keystoreUpdatedReason, err)
 	}
+
 	// then run on files change
 	if err := watcher.Run(); err != nil {
 		msg := "Cannot watch filesystem"
@@ -140,73 +124,45 @@ func (u *Updater) coalescingRetry() {
 	var item interface{}
 	shutdown := false
 	for !shutdown {
-		log.Info("Wait for reloading credentials")
-		item, shutdown = u.config.ReloadQueue.Get()
+		log.Info("Wait for reloading secure settings")
+		item, shutdown = u.reloadQueue.Get()
 
-		err, msg := u.reloadCredentials()
+		log.Info("Reloading secure settings")
+		err := u.esClient.ReloadSecureSettings()
 		if err != nil {
+			msg := "Failed to reload secure settings"
 			log.Error(err, msg+". Continuing.")
 			u.updateStatus(failedState, msg, err)
-			u.config.ReloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
+			u.reloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
 		} else {
-			msg := "Successfully reloaded credentials"
-			u.updateStatus(runningState, msg, nil)
-			log.Info(msg)
+			u.updateStatus(runningState, secureSettingsReloadedReason, nil)
+			log.Info(secureSettingsReloadedReason)
 		}
-		u.config.ReloadQueue.Done(item)
+		u.reloadQueue.Done(item)
 	}
 }
 
-// reloadCredentials tries to make an API call to the reload_secure_credentials API
-// to reload reloadable settings after the keystore has been updated.
-func (u *Updater) reloadCredentials() (error, string) {
-	log.Info("Reloading secure settings")
-	caCerts, err := loadCerts(u.config.EsCACertsPath)
-	if err != nil {
-		return err, "cannot create Elasticsearch client with CA certs"
-	}
-	api := client.NewElasticsearchClient(nil, u.config.EsEndpoint, u.config.EsUser, u.config.EsVersion, caCerts)
-	// TODO this is problematic as this call is supposed to happen only when all nodes have the updated
-	// keystore which is something we cannot guarantee from this process. Also this call will be issued
-	// on each node which is redundant and might be problematic as well.
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	return api.ReloadSecureSettings(ctx), "Error reloading credentials"
-}
-
-// loadCerts returns the certificates given a certificates path.
-func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
-	bytes, err := ioutil.ReadFile(caCertPath)
-	if err != nil {
-		return nil, err
-	}
-	return certificates.ParsePEMCerts(bytes)
-}
-
-// updateKeystore reconciles the source directory with Elasticsearch keystores by recreating the
+// updateKeystore reconciles the source directory with the Elasticsearch keystore by recreating the
 // keystore and adding a setting for each file in the source directory.
 func (u *Updater) updateKeystore() (error, string) {
-	// delete existing keystore (TODO can we do that to a running cluster?)
-	_, err := os.Stat(u.config.KeystorePath)
-	if !os.IsNotExist(err) {
-		log.Info("Removing keystore", "keystore-path", u.config.KeystorePath)
-		err := os.Remove(u.config.KeystorePath)
-		if err != nil {
-			return err, "could not delete keystore file"
-		}
+	// TODO: can we do that to a running cluster?
+	ok, err := u.keystore.Delete()
+	if err != nil {
+		return err, "could not delete keystore file"
+	}
+	if ok {
+		log.Info("Deleted keystore", "keystore-path", u.config.KeystorePath)
 	}
 
 	log.Info("Creating keystore", "keystore-path", u.config.KeystorePath)
-	create := exec.Command(u.config.KeystoreBinary, "create", "--silent")
-	create.Dir = filepath.Dir(u.config.KeystorePath)
-	err = create.Run()
+	err = u.keystore.Create()
 	if err != nil {
 		return err, "could not create new keystore"
 	}
 
 	fileInfos, err := ioutil.ReadDir(u.config.SecretsSourceDir)
 	if err != nil {
-		return err, "could not read source directory"
+		return err, "could not read settings source directory"
 	}
 
 	for _, file := range fileInfos {
@@ -214,26 +170,22 @@ func (u *Updater) updateKeystore() (error, string) {
 			log.Info(fmt.Sprintf("Ignoring %s", file.Name()))
 			continue
 		}
+
 		log.Info("Adding setting to keystore", "file", file.Name())
-		add := exec.Command(u.config.KeystoreBinary, "add-file", file.Name(), path.Join(u.config.SecretsSourceDir, file.Name()))
-		err := add.Run()
+		err = u.keystore.AddFileSetting(file.Name())
 		if err != nil {
 			return err, fmt.Sprintf("could not add setting %s", file.Name())
 		}
 	}
 
-	list := exec.Command(u.config.KeystoreBinary, "list")
-	bytes, err := list.Output()
+	settings, err := u.keystore.ListSettings()
 	if err != nil {
 		return err, "error during listing keystore settings"
 	}
-
-	re := regexp.MustCompile(`\r?\n`)
-	input := re.ReplaceAllString(string(bytes), " ")
-	log.Info("keystore updated", "settings", input)
+	log.Info("Keystore updated", "settings", settings)
 
 	if u.config.ReloadCredentials {
-		u.config.ReloadQueue.Add(attemptReload)
+		u.reloadQueue.Add(attemptReload)
 	}
 
 	return nil, ""

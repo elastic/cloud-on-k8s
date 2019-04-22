@@ -33,16 +33,21 @@ func main() {
 			procMgr, err := pm.NewProcessManager(cfg)
 			exitOnErr(err)
 
-			err = procMgr.Start()
+			done := make(chan pm.ExitStatus)
+			err = procMgr.Start(done)
 			exitOnErr(err)
 
-			sig := waitForStop()
+			// forward signals to the process
+			go func() {
+				sig := waitForSignal()
+				err = procMgr.Forward(sig)
+				if err != nil {
+					exitOnErr(err)
+				}
+			}()
 
-			log.Info("Forward signal", "sig", sig)
-			err = procMgr.Stop(sig)
-			if err != nil {
-				exitOnErr(err)
-			}
+			// wait for the process to exit, then exit as well
+			procMgr.WaitToExit(done)
 		},
 	}
 
@@ -56,10 +61,10 @@ func main() {
 	exitOnErr(err)
 }
 
-func waitForStop() os.Signal {
-	stop := make(chan os.Signal)
-	signal.Notify(stop, syscall.SIGTERM)
-	sig := <-stop
+func waitForSignal() os.Signal {
+	sigs := make(chan os.Signal)
+	signal.Notify(sigs, syscall.SIGTERM)
+	sig := <-sigs
 	return sig
 }
 

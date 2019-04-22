@@ -10,7 +10,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strconv"
+	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,148 +19,176 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const testCmd = "fixtures/simulate-child-processes.sh"
+var (
+	imageName     string
+	containerName string
+	cmd           = "/usr/local/bin/docker-entrypoint.sh"
+)
 
-func TestSimpleScript(t *testing.T) {
-	runTest(t, testCmd, func(client *Client) {
-		assertState(t, client, started)
+func TestMain(m *testing.M) {
+	setup()
+	retCode := m.Run()
+	teardown()
 
-		// stopping
-		status, err := client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-
-		// starting
-		status, err = client.Start(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, started)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-	})
+	os.Exit(retCode)
 }
 
-func TestZombiesScript(t *testing.T) {
-	runTest(t, testCmd+" zombies", func(client *Client) {
-		assertState(t, client, started)
+func setup() {
+	randName := fmt.Sprintf("%s-%d", "pm-test", time.Now().UnixNano())
+	imageName = randName
+	containerName = randName
 
-		// stopping
-		status, err := client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-
-		// starting
-		status, err = client.Start(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, started, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, started)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopped)
-	})
-}
-
-func TestZombiesAndTrapScript(t *testing.T) {
-	runTest(t, testCmd+" zombies enableTrap", func(client *Client) {
-		assertState(t, client, started)
-
-		// stopping
-		status, err := client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		// starting should fail because the stop is still in progress
-		status, err = client.Start(context.Background())
-		assert.Error(t, err)
-		assertEqual(t, stopping, status.State)
-
-		assertState(t, client, stopping)
-
-		// stopping
-		status, err = client.Stop(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, stopping, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, stopping)
-
-		// killing
-		status, err = client.Kill(context.Background())
-		assert.NoError(t, err)
-		assertEqual(t, killing, status.State)
-		time.Sleep(10 * time.Millisecond)
-
-		assertState(t, client, killed)
-	})
-}
-
-func TestInvalidCommand(t *testing.T) {
-	cfg := newConfig(t, "invalid_command")
-	procMgr, err := NewProcessManager(cfg)
-	assert.NoError(t, err)
-	err = procMgr.Start()
-	assert.Error(t, err)
-}
-
-func newConfig(t *testing.T, cmd string) *Config {
-	port, err := net.GetRandomPort()
-	assert.NoError(t, err)
-
-	HTTPPort, err := strconv.Atoi(port)
-	assert.NoError(t, err)
-
-	return &Config{
-		ProcessName:           "test",
-		ProcessCmd:            cmd,
-		HTTPPort:              HTTPPort,
-		EnableKeystoreUpdater: false,
+	// Build a Docker image based on Elasticsearch with the process manager
+	err := exec.Command("docker", "build",
+		"-f", "tests/Dockerfile",
+		"-t", imageName, "../../../..").Run()
+	if err != nil {
+		log.Error(err, "Failed to build docker image")
+		os.Exit(1)
 	}
 }
 
-func runTest(t *testing.T, cmd string, do func(client *Client)) {
-	cfg := newConfig(t, cmd)
-	procMgr, err := NewProcessManager(cfg)
+func teardown() {
+	rmContainer()
+}
+
+func bash(format string, a ...interface{}) *exec.Cmd {
+	return exec.Command("bash", "-c", fmt.Sprintf(format, a...))
+}
+
+func rmContainer() {
+	_ = bash("docker rm -f %s", containerName).Run()
+}
+
+func startContainer(t *testing.T, cmd string) *Client {
+	// Always clean up the container before starting another one
+	rmContainer()
+
+	port, err := net.GetRandomPort()
 	assert.NoError(t, err)
-	err = procMgr.Start()
+	err = exec.Command("docker", "run", "-d",
+		"--name", containerName,
+		"-p", port+":8080",
+		"-e", "PM_PROC_NAME=es", "-e", "PM_PROC_CMD="+cmd,
+		"-e", "PM_KEYSTORE_UPDATER=false",
+		imageName).Start()
 	assert.NoError(t, err)
+	time.Sleep(1 * time.Second)
 
-	client := NewClient(fmt.Sprintf("http://localhost:%d", cfg.HTTPPort), nil)
+	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil)
+	assertProcessStatus(t, client, started)
 
-	time.Sleep(3 * time.Second)
-	do(client)
+	return client
+}
 
-	err = procMgr.Stop(os.Kill)
+func restartContainer(t *testing.T) {
+	err := bash("docker start %s", containerName).Run()
 	assert.NoError(t, err)
 }
 
-func assertState(t *testing.T, client *Client, expectedState ProcessState) {
+func getProcessPID(t *testing.T) string {
+	out, err := bash("docker exec %s ps -eo pid,cmd | grep java | awk '{print $1}'", containerName).Output()
+	assert.NoError(t, err)
+	return string(out)
+}
+
+func assertContainerExited(t *testing.T) {
+	time.Sleep(1 * time.Second)
+
+	out, err := bash(`docker ps --all --filter=name=%s --format="{{.Status}}"`, containerName).Output()
+	assert.NoError(t, err)
+	assert.True(t, strings.Contains(string(out), "Exited"))
+}
+
+func assertProcessStatus(t *testing.T, client *Client, expectedState ProcessState) {
+	time.Sleep(1 * time.Second)
+
 	status, err := client.Status(context.Background())
 	assert.NoError(t, err)
-	assertEqual(t, expectedState, status.State)
+	assert.Equal(t, expectedState.String(), status.State.String())
+
+	if status.State == started {
+		assert.NotEmpty(t, getProcessPID(t))
+	} else {
+		assert.Empty(t, getProcessPID(t))
+	}
 }
 
-func assertEqual(t *testing.T, expected ProcessState, actual ProcessState) {
-	assert.Equal(t, expected.String(), actual.String())
+// -- Tests
+
+func Test_ApiStop(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	_, err := client.Stop(context.Background())
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, stopped)
+}
+
+func Test_ApiKill(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	_, err := client.Kill(context.Background())
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, killed)
+}
+
+func Test_Kill15Process(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	err := bash("docker exec %s kill -15 %s", containerName, getProcessPID(t)).Run()
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, started)
+}
+
+func Test_Kill9Process(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	err := bash("docker exec %s kill -9 %s", containerName, getProcessPID(t)).Run()
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, started)
+}
+
+func Test_Kill15ProcessManager(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	err := bash("docker exec %s kill -15 1", containerName).Run()
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, started)
+}
+
+func Test_DockerStop(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	err := bash("docker stop %s", containerName).Run()
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, started)
+}
+
+func Test_DockerKill(t *testing.T) {
+	client := startContainer(t, cmd)
+
+	err := bash("docker kill %s", containerName).Run()
+	assert.NoError(t, err)
+	assertContainerExited(t)
+
+	restartContainer(t)
+	assertProcessStatus(t, client, started)
 }
