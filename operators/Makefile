@@ -167,6 +167,7 @@ show-credentials:
 cluster-bootstrap: dep-vendor-only install-crds
 
 clean-k8s-cluster:
+	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
 	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
