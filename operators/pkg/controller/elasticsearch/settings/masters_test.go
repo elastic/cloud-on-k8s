@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-// newPod creates a new named potentially labeled as master
+// newPodWithIP creates a new Pod potentially labeled as master with a given podIP
 func newPodWithIP(name, ip string, master bool) corev1.Pod {
 	p := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{

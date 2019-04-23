@@ -57,9 +57,6 @@ func UpdateSeedHostsConfigMap(
 		}
 	}
 
-	// Check if we have to requeue because some pods don't have an IP yet
-	requeue := len(seedHosts) != len(masters)
-
 	var hosts string
 	if seedHosts != nil {
 		hosts = strings.Join(seedHosts, "\n")
@@ -74,6 +71,9 @@ func UpdateSeedHostsConfigMap(
 			volume.UnicastHostsFile: hosts,
 		},
 	}
+
+	// Check if we have to requeue because some pods don't have an IP yet
+	requeue := len(seedHosts) != len(masters)
 
 	reconciled := &corev1.ConfigMap{}
 	return requeue, reconciler.ReconcileResource(
