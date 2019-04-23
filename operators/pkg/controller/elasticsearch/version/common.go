@@ -35,7 +35,7 @@ func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -49,7 +49,6 @@ func NewExpectedPodSpecs(
 			}
 			params := pod.NewPodSpecParams{
 				Version:              es.Spec.Version,
-				LicenseType:          es.Spec.GetLicenseType(),
 				CustomImageName:      es.Spec.Image,
 				ClusterName:          es.Name,
 				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
@@ -86,7 +85,7 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config, licenseType v1alpha1.LicenseType) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
@@ -192,7 +191,7 @@ func podSpec(
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
-	esConfig, err := newESConfigFn(p.ClusterName, p.Config, p.LicenseType)
+	esConfig, err := newESConfigFn(p.ClusterName, p.Config)
 	if err != nil {
 		return corev1.PodSpec{}, nil, err
 	}
