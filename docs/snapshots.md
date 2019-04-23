@@ -64,7 +64,7 @@ GCS credentials will be propagated into each node's keystore automatically.
 Following the [snapshot documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html), create the GCS snapshot repository in Elasticsearch:
 
 ```
-PUT _snapshot/my_gcs_repository
+PUT /_snapshot/my_gcs_repository
 {
   "type": "gcs",
   "settings": {
