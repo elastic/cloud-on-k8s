@@ -112,7 +112,15 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	if !r.licenseChecker.CommercialFeaturesEnabled() {
+	enabled, err := r.licenseChecker.CommercialFeaturesEnabled()
+	if err != nil {
+		return defaultRequeue, err
+	}
+	if !enabled {
+		log.Info(
+			"Remote cluster controller is a commercial feature. Commercial features are disabled",
+			"iteration", currentIteration,
+		)
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
 			State: v1alpha1.RemoteClusterFeatureDisabled,
 		})

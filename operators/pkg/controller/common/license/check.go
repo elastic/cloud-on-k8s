@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	client2 "sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,12 +27,11 @@ func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
 	}
 }
 
-func (lc *Checker) CommercialFeaturesEnabled() bool {
+func (lc *Checker) CommercialFeaturesEnabled() (bool, error) {
 	var licenses v1alpha1.EnterpriseLicenseList
 	err := lc.client.List(&client2.ListOptions{}, &licenses)
 	if err != nil {
-		log.Error(err, "while reading licenses")
-		return false
+		return false, errors.Wrap(err, "while reading licenses")
 	}
 
 	for _, l := range licenses.Items {
@@ -43,9 +43,9 @@ func (lc *Checker) CommercialFeaturesEnabled() bool {
 			Name:      sigRef.Name,
 		}, &signtureSec)
 		if err != nil {
-			log.Error(err, "while loading signature secret")
-			return false
+			return false, errors.Wrap(err, "while loading signature secret")
 		}
+
 		pk := publicKeyBytes
 		if l.Spec.Type == v1alpha1.LicenseTypeEnterpriseTrial {
 			pk = signtureSec.Data[TrialPubkeyKey]
@@ -57,9 +57,8 @@ func (lc *Checker) CommercialFeaturesEnabled() bool {
 		}
 		status := verifier.Valid(l, signtureSec.Data[sigRef.Key], time.Now())
 		if status == v1alpha1.LicenseStatusValid {
-			return true
+			return true, nil
 		}
 	}
-	return false
-
+	return false, nil
 }

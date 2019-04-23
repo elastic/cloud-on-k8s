@@ -23,10 +23,11 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 		operatorNamespace string
 	}
 	tests := []struct {
-		name   string
-		around func(*testing.T, func())
-		fields fields
-		want   bool
+		name    string
+		around  func(*testing.T, func())
+		fields  fields
+		want    bool
+		wantErr bool
 	}{
 		{
 			name:   "valid license: OK",
@@ -41,10 +42,11 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 			name:   "no secret: FAIL",
 			around: withPublicKeyFixture,
 			fields: fields{
-				initialObjects:    withSignature(licenseFixture, signatureFixture)[:0],
+				initialObjects:    withSignature(licenseFixture, signatureFixture)[:1],
 				operatorNamespace: "test-system",
 			},
-			want: false,
+			want:    false,
+			wantErr: true,
 		},
 		{
 			name:   "wrong namespace: FAIL",
@@ -53,7 +55,8 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 				initialObjects:    withSignature(licenseFixture, signatureFixture),
 				operatorNamespace: "another-ns",
 			},
-			want: false,
+			want:    false,
+			wantErr: true,
 		},
 		{
 			name: "no public key: FAIL",
@@ -71,7 +74,11 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 				operatorNamespace: tt.fields.operatorNamespace,
 			}
 			test := func() {
-				if got := lc.CommercialFeaturesEnabled(); got != tt.want {
+				got, err := lc.CommercialFeaturesEnabled()
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Checker.CommercialFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
+				}
+				if got != tt.want {
 					t.Errorf("Checker.CommercialFeaturesEnabled() = %v, want %v", got, tt.want)
 				}
 			}

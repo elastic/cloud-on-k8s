@@ -8,7 +8,6 @@ package trial
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"sync/atomic"
@@ -19,14 +18,11 @@ import (
 	licensing "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	commonvalidation "github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/license"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/license/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/license/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -40,10 +36,6 @@ import (
 
 var (
 	log = logf.Log.WithName("trial-controller")
-)
-
-const (
-	finalizerName = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
 // ReconcileTrials reconciles Enterprise trial licenses.
@@ -90,10 +82,6 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusInvalid)
 	}
 
-	err = mutation.PopulateTrialLicense(&license)
-	if err != nil {
-		return reconcile.Result{}, pkgerrors.Wrap(err, "Failed to populate trial license")
-	}
 	// 1. fetch trial status secret
 	var trialStatus corev1.Secret
 	err = r.Get(types.NamespacedName{Namespace: license.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
@@ -131,54 +119,13 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 		return r.updateStatus(l, v1alpha1.LicenseStatusInvalid)
 	}
 
-	mutation.StartTrial(&l, time.Now())
-	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
-	rnd := rand.Reader
-	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
+	trialPubKey, err := licensing.InitTrial(r, l)
 	if err != nil {
 		return err
 	}
 	// retain pub key in memory for later iterations
-	r.trialPubKey = &tmpPrivKey.PublicKey
-	// sign trial license
-	signer := licensing.NewSigner(tmpPrivKey)
-	sig, err := signer.Sign(l)
-	if err != nil {
-		return pkgerrors.Wrap(err, "Failed to sign license")
-	}
-	pubkeyBytes, err := x509.MarshalPKIXPublicKey(&tmpPrivKey.PublicKey)
-	if err != nil {
-		return pkgerrors.Wrap(err, "Failed to marshal public key for trial status")
-	}
-	trialStatus := corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: l.Namespace,
-			Name:      licensing.TrialStatusSecretKey,
-			Labels: map[string]string{
-				license.EnterpriseLicenseLabelName: l.Name,
-			},
-			Finalizers: []string{
-				finalizerName,
-			},
-		},
-		Data: map[string][]byte{
-			licensing.TrialSignatureKey: sig,
-			licensing.TrialPubkeyKey:    pubkeyBytes,
-		},
-	}
-	err = r.Create(&trialStatus)
-	if err != nil {
-		return pkgerrors.Wrap(err, "Failed to create trial status")
-	}
-	l.Finalizers = append(l.Finalizers, finalizerName)
-	l.Spec.SignatureRef = corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: licensing.TrialStatusSecretKey,
-		},
-		Key: licensing.TrialSignatureKey,
-	}
-	l.Status = v1alpha1.LicenseStatusValid
-	return pkgerrors.Wrap(r.Update(&l), "Failed to update trial license")
+	r.trialPubKey = trialPubKey
+	return nil
 }
 
 func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.Verifier, error) {
@@ -252,7 +199,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				return nil
 			}
 			labels := obj.Meta.GetLabels()
-			licenseName, ok := labels[license.EnterpriseLicenseLabelName]
+			licenseName, ok := labels[licensing.EnterpriseLicenseLabelName]
 			if !ok {
 				return nil
 			}

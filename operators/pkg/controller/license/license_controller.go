@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	match "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
+	license "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -134,7 +134,7 @@ func findLicense(c k8s.Client, licenseType v1alpha1.LicenseType) (v1alpha1.Clust
 	if err := c.List(&client.ListOptions{}, &licenseList); err != nil {
 		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, err
 	}
-	return match.BestMatch(licenseList.Items, licenseType)
+	return license.BestMatch(licenseList.Items, licenseType)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -209,7 +209,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
 		Spec:       matchingSpec,
 	}
-	toAssign.Labels = map[string]string{EnterpriseLicenseLabelName: parent.Name}
+	toAssign.Labels = map[string]string{license.EnterpriseLicenseLabelName: parent.Name}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{
