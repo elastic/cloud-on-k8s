@@ -10,7 +10,7 @@ The Elastic Operator can be deployed in 2 different modes using the following ar
 
 ### All-in-one
 
-A single operator with all roles, that manage resources in all namespaces.
+A single operator with all roles, that manages resources in all namespaces.
 
 ```bash
 OPERATOR_IMAGE=<?> NAMESPACE=<?> make all-in-one \
