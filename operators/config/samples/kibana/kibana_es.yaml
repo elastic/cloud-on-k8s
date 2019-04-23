@@ -21,7 +21,6 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: "6.7.0"
-  licenseType: trial # can be "basic", "trial", "gold", "platinum"
   updateStrategy:
     groups:
     # give each failure domain a chance to reconcile failures before regular changes:
