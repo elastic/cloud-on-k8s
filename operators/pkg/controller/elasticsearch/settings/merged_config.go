@@ -21,7 +21,6 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	userConfig v1alpha1.Config,
-	licenseType v1alpha1.LicenseType,
 ) (*CanonicalConfig, error) {
 	config, err := NewCanonicalConfigFrom(userConfig)
 	if err != nil {
@@ -29,7 +28,7 @@ func NewMergedESConfig(
 	}
 	err = config.MergeWith(
 		baseConfig(clusterName),
-		xpackConfig(licenseType),
+		xpackConfig(),
 	)
 	if err != nil {
 		return nil, err
@@ -56,15 +55,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig(licenseType v1alpha1.LicenseType) *CanonicalConfig {
-
-	// disable x-pack security if using basic
-	if licenseType == v1alpha1.LicenseTypeBasic {
-		return MustCanonicalConfig(map[string]interface{}{
-			XPackSecurityEnabled: "false",
-		})
-	}
-
+func xpackConfig() *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -92,11 +83,6 @@ func xpackConfig(licenseType v1alpha1.LicenseType) *CanonicalConfig {
 			volume.ExtraFilesSecretVolumeMountPath,
 			nodecerts.TrustRestrictionsFilename,
 		),
-	}
-
-	if licenseType == v1alpha1.LicenseTypeTrial {
-		// auto-generate a trial license
-		cfg[XPackLicenseSelfGeneratedType] = "trial"
 	}
 
 	return MustCanonicalConfig(cfg)
