@@ -54,7 +54,7 @@ spec:
 And apply the modifications:
 
 ````bash
-$ kubectl apply -f elasticsearch.yml
+kubectl apply -f elasticsearch.yml
 ````
 
 GCS credentials will be propagated into each node's keystore automatically.
@@ -118,7 +118,7 @@ spec:
 Then apply it to the kubernetes cluster:
 
 ```
-$ kubectl apply -f snapshotter.yml
+kubectl apply -f snapshotter.yml
 ```
 
 For more details on Kubernetes CronJobs, please visit the [official documentation](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/).
