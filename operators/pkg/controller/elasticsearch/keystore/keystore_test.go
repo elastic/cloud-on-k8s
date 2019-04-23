@@ -16,13 +16,20 @@ import (
 )
 
 type MockCmd struct {
-	cmd *exec.Cmd
+	cmd    *exec.Cmd
+	output []byte
 }
 
 func (m *MockCmd) Run(cmd *exec.Cmd) error {
 	// keep a reference to cmd for inspection
 	m.cmd = cmd
 	return nil
+}
+
+func (m *MockCmd) Output(cmd *exec.Cmd) ([]byte, error) {
+	// keep a reference to cmd for inspection
+	m.cmd = cmd
+	return m.output, nil
 }
 
 func Test_keystore_AddSetting(t *testing.T) {
@@ -37,7 +44,7 @@ func Test_keystore_AddSetting(t *testing.T) {
 		keystorePath: "/usr/share/elasticsearch/config/elasticsearch.keystore",
 		binaryPath:   "/usr/share/elasticsearch/bin/elasticsearch-keystore",
 		settingsPath: tmpDir,
-		cmdRunner:    mockCmd.Run,
+		cmdRunner:    mockCmd,
 	}
 
 	tests := []struct {

@@ -38,6 +38,22 @@ type Keystore interface {
 	AddStringSetting(filename string) error
 }
 
+// CmdRunner runs an exec.Cmd. It is mostly used as an abstraction for testing purpose.
+type CmdRunner interface {
+	Run(cmd *exec.Cmd) error
+	Output(cmd *exec.Cmd) ([]byte, error)
+}
+
+// execCmdRunner is an implementation of CmdRunner that simply relies on the builtin exec.Cmd.
+type execCmdRunner struct{}
+
+func (e *execCmdRunner) Run(cmd *exec.Cmd) error {
+	return cmd.Run()
+}
+func (e *execCmdRunner) Output(cmd *exec.Cmd) ([]byte, error) {
+	return cmd.Output()
+}
+
 // keystore is the default Keystore implementation that relies on the elasticsearch-keystore binary.
 type keystore struct {
 	// binaryPath is the path of the elasticsearch-keystore binary
@@ -47,7 +63,7 @@ type keystore struct {
 	// settingsPath is the path of the directory where the secure settings to store in the keystore live
 	settingsPath string
 	// cmdRunner executes the given cmd, can be overridden for testing purpose
-	cmdRunner func(cmd *exec.Cmd) error
+	cmdRunner CmdRunner
 }
 
 func NewKeystore(cfg Config) Keystore {
@@ -55,7 +71,7 @@ func NewKeystore(cfg Config) Keystore {
 		binaryPath:   cfg.KeystoreBinary,
 		keystorePath: cfg.KeystorePath,
 		settingsPath: cfg.SecretsSourceDir,
-		cmdRunner:    func(cmd *exec.Cmd) error { return cmd.Run() },
+		cmdRunner:    &execCmdRunner{},
 	}
 }
 
@@ -66,7 +82,7 @@ func (c keystore) Create() error {
 }
 
 func (c keystore) ListSettings() (string, error) {
-	bytes, err := exec.Command(c.binaryPath, "list").Output()
+	bytes, err := c.cmdRunner.Output(exec.Command(c.binaryPath, "list"))
 	if err != nil {
 		return "", err
 	}
@@ -88,7 +104,7 @@ func (c keystore) AddSetting(filename string) error {
 func (c keystore) AddFileSetting(filename string) error {
 	settingName := strings.TrimPrefix(filename, FileSettingPrefix)
 	cmd := exec.Command(c.binaryPath, "add-file", settingName, path.Join(c.settingsPath, filename))
-	return c.cmdRunner(cmd)
+	return c.cmdRunner.Run(cmd)
 }
 
 func (c keystore) readSettingFileContent(filename string) ([]byte, error) {
@@ -104,7 +120,7 @@ func (c keystore) AddStringSetting(filename string) error {
 	cmd := exec.Command(c.binaryPath, "add", settingName)
 	// pipe the file content into stdin to set the string setting value
 	cmd.Stdin = bytes.NewBuffer(value)
-	return c.cmdRunner(cmd)
+	return c.cmdRunner.Run(cmd)
 }
 
 func (c keystore) Delete() (bool, error) {
