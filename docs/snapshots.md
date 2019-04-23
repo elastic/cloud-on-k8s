@@ -40,7 +40,7 @@ Create a Kubernetes secret from that file:
 kubectl create secret generic gcs-credentials --from-file=es.file.gcs.client.default.credentials_file
 ```
 
-Then, edit the `secureSettings` section of the Elasticsearch cluster resource:
+Then, edit the `secureSettings` section of the Elasticsearch resource:
 
 ```yaml
 kind: Elasticsearch
@@ -115,7 +115,7 @@ spec:
               secretName: elasticsearch-sample-elastic-user
 ```
 
-Then apply it to the kubernetes cluster:
+Then apply it to the Kubernetes cluster:
 
 ```
 kubectl apply -f snapshotter.yml
