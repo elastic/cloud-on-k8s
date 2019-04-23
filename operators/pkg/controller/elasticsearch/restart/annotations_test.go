@@ -104,7 +104,7 @@ func Test_getStrategy(t *testing.T) {
 }
 
 func Test_setScheduleRestartAnnotations(t *testing.T) {
-	now := time.Now().Truncate(time.Second)
+	now := time.Now().Truncate(time.Second).UTC()
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
