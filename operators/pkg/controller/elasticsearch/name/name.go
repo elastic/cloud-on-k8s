@@ -127,6 +127,7 @@ func InternalUsersSecret(esName string) string {
 	return suffix(esName, internalUsersSecretSuffix)
 }
 
+// UnicastHostsConfigMap returns the name of the ConfigMap that holds the list of seed nodes for a given cluster.
 func UnicastHostsConfigMap(esName string) string {
 	return suffix(esName, unicastHostsConfigMapSuffix)
 }
