@@ -62,6 +62,39 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 		expectedContent string
 	}{
 		{
+			name: "Do not fail if no master has an IP",
+			args: args{
+				pods: []corev1.Pod{
+					newPodWithIP("master1", "", true),
+					newPodWithIP("master2", "", true),
+					newPodWithIP("master3", "", true),
+					newPodWithIP("node1", "", false),
+					newPodWithIP("node2", "10.0.2.8", false),
+				},
+				c:      k8s.WrapClient(fake.NewFakeClient()),
+				es:     es,
+				scheme: scheme.Scheme,
+			},
+			want:            true,
+			wantErr:         false,
+			expectedContent: "",
+		},
+		{
+			name: "Do not fail if there's no master at all",
+			args: args{
+				pods: []corev1.Pod{
+					newPodWithIP("node1", "", false),
+					newPodWithIP("node2", "10.0.2.8", false),
+				},
+				c:      k8s.WrapClient(fake.NewFakeClient()),
+				es:     es,
+				scheme: scheme.Scheme,
+			},
+			want:            false,
+			wantErr:         false,
+			expectedContent: "",
+		},
+		{
 			name: "One of the master doesn't have an IP",
 			args: args{
 				pods: []corev1.Pod{ //
