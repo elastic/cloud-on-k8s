@@ -76,9 +76,9 @@ func NewKeystore(cfg Config) Keystore {
 }
 
 func (c keystore) Create() error {
-	create := exec.Command(c.binaryPath, "create", "--silent")
-	create.Dir = filepath.Dir(c.keystorePath)
-	return create.Run()
+	cmd := exec.Command(c.binaryPath, "create", "--silent")
+	cmd.Dir = filepath.Dir(c.keystorePath)
+	return c.cmdRunner.Run(cmd)
 }
 
 func (c keystore) ListSettings() (string, error) {
