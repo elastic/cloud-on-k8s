@@ -30,14 +30,14 @@ kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/
 2. Install the operator with its RBAC rules:
 
 ```bash
-export OPERATOR_IMAGE=TODOFIXME
-kustomize build config/global-operator | sed -e "s|\$OPERATOR_IMAGE|$OPERATOR_IMAGE|g" | kubectl apply -f -
+# TODO: reference a public url to a single hardcoded version of the yaml file here instead
+NAMESPACE=elastic-operator kubectl apply -f config/operator/all-in-one.yaml
 ```
 
 3. Monitor the operator logs:
 
 ```bash
-kubectl --namespace=elastic-system logs -f statefulset.apps/elastic-global-operator
+kubectl -n elastic-operator logs -f statefulset.apps/elastic-operator
 ```
 
 ## Deploy Elasticsearch
@@ -51,14 +51,13 @@ kind: Elasticsearch
 metadata:
   name: sample
 spec:
-  version: 6.4.2
-  setVmMaxMapCount: true
-  topology:
-  - nodeTypes:
-      master: true
-      data: true
-      ingest: true
-    nodeCount: 1
+  version: 7.0.0
+  nodes:
+  - nodeCount: 1
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
 EOF
 ```
 
@@ -175,14 +174,13 @@ kind: Elasticsearch
 metadata:
   name: sample
 spec:
-  version: 6.4.2
-  setVmMaxMapCount: true
-  topology:
-  - nodeTypes:
-      master: true
-      data: true
-      ingest: true
-    nodeCount: 3
+  version: 7.7.0
+  nodes:
+  - nodeCount: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
 EOF
 ```
 
@@ -207,14 +205,13 @@ kind: Elasticsearch
 metadata:
   name: my-cluster
 spec:
-  version: "6.4.2"
-  setVmMaxMapCount: true
-  topology:
-  - nodeTypes:
-      master: true
-      data: true
-      ingest: true
-    nodeCount: 3
+  version: "7.7.0"
+  nodes:
+  - nodeCount: 3
+    config:
+      node.master: true
+      node.data: true
+      node.ingest: true
     volumeClaimTemplates:
     - metadata:
         name: data
