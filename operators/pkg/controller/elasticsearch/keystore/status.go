@@ -11,11 +11,11 @@ type State string
 
 const (
 	notInitializedState State = "notInitialized"
-	waitingState        State = "waiting"
+	WaitingState        State = "waiting"
 	runningState        State = "running"
 	failedState         State = "failed"
 
-	keystoreUpdatedReason        = "Keystore updated"
+	KeystoreUpdatedReason        = "Keystore updated"
 	secureSettingsReloadedReason = "Secure settings reloaded"
 )
 

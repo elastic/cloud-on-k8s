@@ -14,10 +14,12 @@ import (
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/stretchr/testify/require"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
@@ -94,10 +96,13 @@ func TestRetrieveState(t *testing.T) {
 			wantLicense: true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client := fakeEsClient(!tt.wantHealth, !tt.wantState, !tt.wantLicense)
-			state := RetrieveState(context.Background(), client)
+			k8sClient := k8s.WrapClient(fake.NewFakeClient())
+			esClient := fakeEsClient(!tt.wantHealth, !tt.wantState, !tt.wantLicense)
+			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
+			state := RetrieveState(context.Background(), k8sClient, cluster, esClient, nil, nil)
 			if tt.wantHealth {
 				require.NotNil(t, state.ClusterHealth)
 				require.Equal(t, state.ClusterHealth.NumberOfNodes, 3)
