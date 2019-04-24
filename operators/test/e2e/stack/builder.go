@@ -29,8 +29,6 @@ var DefaultResources = common.ResourcesSpec{
 // -- Stack
 
 type Builder struct {
-	selfGenTrialLicense bool
-
 	Elasticsearch estype.Elasticsearch
 	Kibana        kbtype.Kibana
 	Association   v1alpha1.KibanaElasticsearchAssociation
