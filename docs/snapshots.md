@@ -1,14 +1,14 @@
-# Automated snapshots example
+# How to perform automated snapshots
 
-Automated snapshots for Elasticsearch in Kubernetes can be easily achieved by:
+To perform automated snapshots for Elasticsearch in Kubernetes you have to:
 
-1. Providing snapshot repository credentials in Elasticsearch keystore
-2. Registering the snapshot repository with Elasticsearch API
-3. Setting up a [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) to perform the snapshots request
+1. Provide snapshot repository credentials in Elasticsearch keystore.
+2. Register the snapshot repository with Elasticsearch API.
+3. Set up a [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/) to perform the snapshots request.
 
-This example will guide you through an example using the [Google Cloud Storage Repository Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html).
+The example in this section uses the [Google Cloud Storage Repository Plugin](https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html).
 
-For more information on Elasticsearch snapshots, see the official [documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html).
+For more information on Elasticsearch snapshots, see [Snapshot and Restore](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html).
 
 ## Provide GCS credentials to Elasticsearch keystore
 
