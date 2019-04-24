@@ -110,7 +110,7 @@ func TestReconcile(t *testing.T) {
 
 	// test trial initialisation on create
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
-	validateTrialDuration(t, createdLicense, now, time.Second)
+	validateTrialDuration(t, createdLicense, now, time.Minute)
 
 	// tamper with the trial status
 	var trialStatus corev1.Secret
