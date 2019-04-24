@@ -22,7 +22,7 @@ generate-all-in-one:
 	sed \
 		-e "/# /d" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
-		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
+		-e "s|<NAMESPACE>|$$NAMESPACE|g"
 
 generate-global:
 	@ for yaml in $$(ls global/*yaml); do \
