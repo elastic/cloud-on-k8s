@@ -17,21 +17,21 @@ const (
 `
 )
 
-var ExtraBinaries = SharedVolume{
+var ProcessManagerVolume = SharedVolume{
 	Name:                   "local-bin-volume",
 	InitContainerMountPath: "/volume/bin",
-	EsContainerMountPath:   volume.ExtraBinariesPath,
+	EsContainerMountPath:   volume.ProcessManagerEmptyDirMountPath,
 }
 
 func NewInjectProcessManagerInitContainer(imageName string) (corev1.Container, error) {
 	container := corev1.Container{
 		Image: imageName,
 		Env: []corev1.EnvVar{
-			{Name: envBinDirectoryPath, Value: ExtraBinaries.InitContainerMountPath},
+			{Name: envBinDirectoryPath, Value: ProcessManagerVolume.InitContainerMountPath},
 		},
 		Name:         "inject-process-manager",
 		Command:      []string{"bash", "-c", script},
-		VolumeMounts: []corev1.VolumeMount{ExtraBinaries.InitContainerVolumeMount()},
+		VolumeMounts: []corev1.VolumeMount{ProcessManagerVolume.InitContainerVolumeMount()},
 	}
 	return container, nil
 }
