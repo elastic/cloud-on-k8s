@@ -125,7 +125,7 @@ kubectl port-forward service/sample-es 9200
 Then, in another shell, request the Elasticsearch endpoint (skipping certificate verification for now):
 
 ```bash
-curl "https://localhost:9200" -u elastic:<PASSWORD> -k
+curl -u elastic:<PASSWORD> -k "https://localhost:9200"
 ```
 ```
 {
