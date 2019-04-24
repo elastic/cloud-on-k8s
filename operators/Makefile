@@ -139,7 +139,7 @@ generate-all-in-one:
 	# TODO: replace the image name with the final released name (docker.elastic.co/k8s-operators/k8s-operators ?)
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) -s -C config/operator generate-all-in-one > config/all-in-one.yaml
+		$(MAKE) --no-print-directory -C config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: install-crds docker-build docker-push
