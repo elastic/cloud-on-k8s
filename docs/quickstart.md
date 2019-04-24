@@ -22,16 +22,13 @@ You will learn how to:
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
 ```bash
-# TODO: fix the URL once the repo is public (for now it does not work without a secret token query param)
 kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
-
 ```
 
 2. Install the operator with its RBAC rules:
 
 ```bash
-# TODO: reference a public url to a single hardcoded version of the yaml file here instead
-NAMESPACE=elastic-operator kubectl apply -f config/operator/all-in-one.yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/operator/all-in-one.yaml
 ```
 
 3. Monitor the operator logs:
