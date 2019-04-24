@@ -8,7 +8,6 @@ Managed Elastic products and services in Kubernetes.
 * [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
 * [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kustomize](https://github.com/kubernetes-sigs/kustomize)
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)

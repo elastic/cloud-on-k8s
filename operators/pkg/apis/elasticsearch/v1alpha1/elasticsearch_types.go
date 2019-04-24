@@ -43,10 +43,12 @@ type ElasticsearchSpec struct {
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
-	// SecureSettings reference the name of a secret containing secure settings,
-	// to be injected into Elasticsearch keystore on each node. It must exist in the
-	// same namespace as the Elasticsearch resource.
-	SecureSettings *commonv1alpha1.ResourceNameReference `json:"secureSettings,omitempty"`
+	// SecureSettings reference a secret containing secure settings, to be injected
+	// into Elasticsearch keystore on each node.
+	// It must exist in the same namespace as the Elasticsearch resource.
+	// Secret keys must start with `es.file.` or `es.string.` according to the
+	// secure setting type.
+	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -229,7 +231,12 @@ type ElasticsearchStatus struct {
 	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
+	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
 	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
+}
+
+type ZenDiscoveryStatus struct {
+	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

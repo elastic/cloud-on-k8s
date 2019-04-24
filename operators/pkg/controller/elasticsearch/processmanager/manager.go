@@ -6,10 +6,10 @@ package processmanager
 
 import (
 	"os"
-	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	reap "github.com/hashicorp/go-reap"
+	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -30,13 +30,21 @@ type ProcessManager struct {
 func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 	var ksu *keystore.Updater
 	if cfg.EnableKeystoreUpdater {
-		keystoreUpdaterCfg, err, reason := keystore.NewConfigFromFlags()
+		ksCfg, err, reason := keystore.NewConfigFromFlags()
 		if err != nil {
-			log.Error(err, "Error creating keystore-updater config from flags", "reason", reason)
+			log.Error(err, "Failed to create keystore updater config from flags", "reason", reason)
 			return nil, err
 		}
 
-		ksu = keystore.NewUpdater(keystoreUpdaterCfg)
+		ksu, err = keystore.NewUpdater(
+			ksCfg,
+			keystore.NewEsClient(ksCfg),
+			keystore.NewKeystore(ksCfg),
+		)
+		if err != nil {
+			log.Error(err, "Failed to create keystore updater")
+			return nil, err
+		}
 	}
 
 	process := NewProcess(cfg.ProcessName, cfg.ProcessCmd)
@@ -49,41 +57,64 @@ func NewProcessManager(cfg *Config) (*ProcessManager, error) {
 	}, nil
 }
 
-// Start all processes, the process reaper and the HTTP server in a non-blocking way.
-func (pm ProcessManager) Start() error {
+// Start the process reaper, the HTTP server, the managed process and the keystore updater.
+func (pm ProcessManager) Start(done chan ExitStatus) error {
+	log.Info("Starting...")
+
 	if pm.enableReaper {
 		go reap.ReapChildren(nil, nil, nil, nil)
 	}
 
 	pm.server.Start()
 
-	_, err := pm.process.Start()
-	if err != nil {
-		return err
+	if pm.process.ShouldBeStarted() {
+		_, err := pm.process.Start(done)
+		if err != nil {
+			return err
+		}
+	} else {
+		log.Info("Process not restarted")
 	}
 
 	if pm.keystoreUpdater != nil {
 		pm.keystoreUpdater.Start()
 	}
 
-	log.Info("Process manager started")
+	log.Info("Started")
 	return nil
 }
 
-// Stop the HTTP server, forwards a given signal to the process and wait for its termination.
-func (pm ProcessManager) Stop(sig os.Signal) error {
-	pm.server.Stop()
+// Forward a given signal to the process to kill it.
+func (pm ProcessManager) Forward(sig os.Signal) error {
+	log.Info("Forwarding signal", "sig", sig)
 
-	_, err := pm.process.Kill(sig)
-	if err != nil {
-		return err
+	if pm.process.CanBeStopped() {
+		err := pm.process.Kill(sig)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("process not started to forward signal")
 	}
 
-	// Wait for the process to die
-	for pm.process.isAlive("process manager signal forwarding") {
-		time.Sleep(1 * time.Second)
-	}
-
-	log.Info("Process manager stopped")
 	return nil
+}
+
+type ExitStatus struct {
+	processState ProcessState
+	exitCode     int
+	err          error
+}
+
+// WaitToExit waits to exit the HTTP server and the program.
+func (pm ProcessManager) WaitToExit(done chan ExitStatus) {
+	s := <-done
+	pm.server.Exit()
+	Exit("process "+s.processState.String(), s.exitCode)
+}
+
+// Exit the program.
+func Exit(reason string, code int) {
+	log.Info("Exit", "reason", reason, "code", code)
+	os.Exit(code)
 }

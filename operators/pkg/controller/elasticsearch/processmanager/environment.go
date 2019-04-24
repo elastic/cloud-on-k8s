@@ -25,7 +25,7 @@ const (
 	EnvExpVars         = "PM_EXP_VARS"
 	EnvProfiler        = "PM_PROFILER"
 
-	CommandPath          = volume.ExtraBinariesPath + "/process-manager"
+	CommandPath          = volume.ProcessManagerEmptyDirMountPath + "/process-manager"
 	ElasticsearchCommand = "/usr/local/bin/docker-entrypoint.sh"
 )
 

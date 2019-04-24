@@ -7,23 +7,19 @@ package settings
 import (
 	"fmt"
 	"path"
-	"strconv"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 )
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
 // parameters.
 func NewMergedESConfig(
 	clusterName string,
-	zenMinMasterNodes int,
 	userConfig v1alpha1.Config,
 	licenseType v1alpha1.LicenseType,
 ) (*CanonicalConfig, error) {
@@ -32,7 +28,7 @@ func NewMergedESConfig(
 		return nil, err
 	}
 	err = config.MergeWith(
-		baseConfig(clusterName, zenMinMasterNodes),
+		baseConfig(clusterName),
 		xpackConfig(licenseType),
 	)
 	if err != nil {
@@ -42,14 +38,13 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string, minMasterNodes int) *CanonicalConfig {
+func baseConfig(clusterName string) *CanonicalConfig {
 	return MustCanonicalConfig(map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
 
-		DiscoveryZenPingUnicastHosts:   services.DiscoveryServiceName(clusterName),
-		DiscoveryZenMinimumMasterNodes: strconv.Itoa(minMasterNodes),
+		DiscoveryZenPingUnicastHosts: services.DiscoveryServiceName(clusterName),
 
 		// derive IP dynamically from the pod IP, injected as env var
 		NetworkPublishHost: "${" + EnvPodIP + "}",

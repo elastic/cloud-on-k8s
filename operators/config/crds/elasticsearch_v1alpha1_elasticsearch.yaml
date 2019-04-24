@@ -127,14 +127,16 @@ spec:
                 type: object
               type: array
             secureSettings:
-              description: SecureSettings reference the name of a secret containing
-                secure settings, to be injected into Elasticsearch keystore on each
-                node. It must exist in the same namespace as the Elasticsearch resource.
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into Elasticsearch keystore on each node. It must exist
+                in the same namespace as the Elasticsearch resource. Secret keys must
+                start with `es.file.` or `es.string.` according to the secure setting
+                type.
               properties:
-                name:
+                secretName:
                   type: string
               required:
-              - name
+              - secretName
               type: object
             setVmMaxMapCount:
               description: SetVMMaxMapCount indicates whether an init container should
@@ -217,6 +219,12 @@ spec:
               type: object
             service:
               type: string
+            zenDiscovery:
+              properties:
+                minimumMasterNodes:
+                  format: int64
+                  type: integer
+              type: object
           type: object
   version: v1alpha1
 status:

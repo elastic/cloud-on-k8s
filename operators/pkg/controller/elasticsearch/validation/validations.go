@@ -23,6 +23,7 @@ var Validations = []Validation{
 	supportedVersion,
 	noDowngrades,
 	validUpgradePath,
+	noBlacklistedSettings,
 }
 
 // nameLength checks the length of the Elasticsearch name.

@@ -10,12 +10,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/go-ucfg"
+	ucfg "github.com/elastic/go-ucfg"
 	udiff "github.com/elastic/go-ucfg/diff"
 	uyaml "github.com/elastic/go-ucfg/yaml"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),

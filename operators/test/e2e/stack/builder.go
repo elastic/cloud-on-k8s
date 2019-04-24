@@ -131,8 +131,8 @@ func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder 
 }
 
 func (b Builder) WithSecureSettings(secretName string) Builder {
-	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.ResourceNameReference{
-		Name: secretName,
+	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.SecretRef{
+		SecretName: secretName,
 	}
 	return b
 }

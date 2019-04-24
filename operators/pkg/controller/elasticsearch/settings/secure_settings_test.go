@@ -69,8 +69,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: clusterObjMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					SecureSettings: &commonv1alpha1.ResourceNameReference{
-						Name: "non-existing",
+					SecureSettings: &commonv1alpha1.SecretRef{
+						SecretName: "non-existing",
 					},
 				},
 			},
@@ -92,8 +92,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: clusterObjMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					SecureSettings: &commonv1alpha1.ResourceNameReference{
-						Name: "user-secret",
+					SecureSettings: &commonv1alpha1.SecretRef{
+						SecretName: "user-secret",
 					},
 				},
 			},
@@ -120,8 +120,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 				ObjectMeta: clusterObjMeta,
 				// it is referenced in the spec
 				Spec: v1alpha1.ElasticsearchSpec{
-					SecureSettings: &commonv1alpha1.ResourceNameReference{
-						Name: "user-secret",
+					SecureSettings: &commonv1alpha1.SecretRef{
+						SecretName: "user-secret",
 					},
 				},
 			},
@@ -167,8 +167,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: clusterObjMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					SecureSettings: &commonv1alpha1.ResourceNameReference{
-						Name: "user-secret",
+					SecureSettings: &commonv1alpha1.SecretRef{
+						SecretName: "user-secret",
 					},
 				},
 			},
@@ -213,8 +213,8 @@ func TestReconcileSecureSettings(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: clusterObjMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
-					SecureSettings: &commonv1alpha1.ResourceNameReference{
-						Name: "user-secret",
+					SecureSettings: &commonv1alpha1.SecretRef{
+						SecretName: "user-secret",
 					},
 				},
 			},
@@ -298,13 +298,13 @@ func Test_retrieveUserSecret(t *testing.T) {
 			"key2": []byte("value2"),
 		},
 	}
-	ref := commonv1alpha1.ResourceNameReference{
-		Name: secretName,
+	ref := commonv1alpha1.SecretRef{
+		SecretName: secretName,
 	}
 	tests := []struct {
 		name       string
 		c          k8s.Client
-		ref        commonv1alpha1.ResourceNameReference
+		ref        commonv1alpha1.SecretRef
 		namespace  string
 		want       *corev1.Secret
 		wantEvents []events.Event
@@ -334,7 +334,7 @@ func Test_retrieveUserSecret(t *testing.T) {
 		{
 			name:       "no namespace provided, use default one",
 			c:          k8s.WrapClient(fake.NewFakeClient(&secret)),
-			ref:        commonv1alpha1.ResourceNameReference{Name: secretName},
+			ref:        commonv1alpha1.SecretRef{SecretName: secretName},
 			namespace:  secretNs,
 			want:       &secret,
 			wantEvents: []events.Event{},
@@ -343,7 +343,7 @@ func Test_retrieveUserSecret(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			eventsRecorder := events.NewRecorder()
-			got, err := retrieveUserSecret(tt.c, eventsRecorder, tt.namespace, tt.ref.Name)
+			got, err := retrieveUserSecret(tt.c, eventsRecorder, tt.namespace, tt.ref.SecretName)
 			require.NoError(t, err)
 			require.Equal(t, tt.want.Data, got.Data)
 			require.EqualValues(t, tt.wantEvents, eventsRecorder.Events())

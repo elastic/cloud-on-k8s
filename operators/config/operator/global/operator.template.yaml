@@ -1,30 +1,28 @@
-# Very similar to a global operator, but with
+# Very similar to a namespace operator, but with
 # a different service account and different run arguments
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: elastic-global-operator
+  namespace: <NAMESPACE>
   labels:
     control-plane: elastic-global-operator
-    controller-tools.k8s.io: "1.0"
 spec:
   selector:
     matchLabels:
       control-plane: elastic-global-operator
-      controller-tools.k8s.io: "1.0"
   serviceName: elastic-global-operator
   template:
     metadata:
       labels:
         control-plane: elastic-global-operator
-        controller-tools.k8s.io: "1.0"
     spec:
       serviceAccountName: elastic-global-operator
       containers:
-      - image: $OPERATOR_IMAGE
+      - image: <OPERATOR_IMAGE>
         imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--operator-roles", "all"]
+        args: ["manager", "--development", "--operator-roles", "global,webhook"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -35,7 +33,7 @@ spec:
           - name: WEBHOOK_PODS_LABEL
             value: elastic-global-operator
           - name: OPERATOR_IMAGE
-            value: $OPERATOR_IMAGE
+            value: <OPERATOR_IMAGE>
         resources:
           limits:
             cpu: 100m
@@ -62,3 +60,4 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: webhook-server-secret
+  namespace: <NAMESPACE>
