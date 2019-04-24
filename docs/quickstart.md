@@ -171,7 +171,7 @@ kind: Kibana
 metadata:
   name: sample
 spec:
-  version: 6.4.2
+  version: 7.0.0
   nodeCount: 1
 ---
 apiVersion: associations.k8s.elastic.co/v1alpha1
@@ -231,7 +231,7 @@ kind: Elasticsearch
 metadata:
   name: sample
 spec:
-  version: 7.7.0
+  version: 7.0.0
   nodes:
   - nodeCount: 3
     config:
@@ -262,7 +262,7 @@ kind: Elasticsearch
 metadata:
   name: my-cluster
 spec:
-  version: "7.7.0"
+  version: 7.0.0
   nodes:
   - nodeCount: 3
     config:
