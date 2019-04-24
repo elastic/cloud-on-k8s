@@ -16,14 +16,15 @@ You will learn how to:
 ## Requirements
 
 * Kubernetes 1.11+
-* kustomize 1.0.9+
 
 ## Deploy the operator
 
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
 ```bash
-kubectl apply -f config/crds
+# TODO: fix the URL once the repo is public (for now it does not work without a secret token query param)
+kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
+
 ```
 
 2. Install the operator with its RBAC rules:
