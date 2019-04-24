@@ -1,14 +1,14 @@
-# Quickstart tutorial
+# Quickstart
 
 ## Overview
 
-This quickstart tutorial will guide you through:
+You will learn how to:
 
-* Deploying the operator in your Kubernetes cluster
-* Deploying an Elasticsearch cluster
-* Deploying a Kibana instance
-* Accessing Elasticsearch and Kibana
-* Going further
+* Deploy the operator in your Kubernetes cluster
+* Deploy an Elasticsearch cluster
+* Deploy a Kibana instance
+* Access Elasticsearch and Kibana
+* Deep dive with:
     * Securing your cluster
     * Using persistent storage
     * Additional features
@@ -20,28 +20,20 @@ This quickstart tutorial will guide you through:
 
 ## Deploy the operator
 
-### Install CRDs
-
-Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
+1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
 ```bash
 kubectl apply -f config/crds
 ```
 
-### Deploy the operator
-
-TODO: use the official operator image once built, and get rid of kustomize.
-
-To install the operator along with its RBAC rules, run:
+2. Install the operator with its RBAC rules:
 
 ```bash
 export OPERATOR_IMAGE=TODOFIXME
 kustomize build config/global-operator | sed -e "s|\$OPERATOR_IMAGE|$OPERATOR_IMAGE|g" | kubectl apply -f -
 ```
 
-### Monitor the operator logs
-
-To get some insights about current reconciliation loop iterations, run:
+3. Monitor the operator logs:
 
 ```bash
 kubectl --namespace=elastic-system logs -f statefulset.apps/elastic-global-operator
@@ -89,15 +81,15 @@ kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=sample'
 
 ### Access Elasticsearch
 
-A `ClusterIP` Service is automatically created for your cluster:
+A ClusterIP Service is automatically created for your cluster:
 
 ```
 kubectl get service sample-es
 ```
 
-You can use it to reach Elasticsearch from within the Kubernetes cluster, using the URL `http://sample-es:9200`.
+Elasticsearch can be accessed from the Kubernetes cluster, using the URL `http://sample-es:9200`.
 
-Let's use `kubectl port-forward` to access it from our local workstation:
+Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
 ```bash
 kubectl port-forward service/sample-es 9200
@@ -113,7 +105,7 @@ curl "localhost:9200/_cat/health?v"
 
 ### Target our sample Elasticsearch cluster
 
-Let's specify a Kibana instance and associate it with our sample Elasticsearch cluster:
+Specify a Kibana instance and associate it with your sample Elasticsearch cluster:
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -161,7 +153,7 @@ A `ClusterIP` Service was automatically created for Kibana:
 kubectl get service sample-kibana
 ```
 
-Let's use `kubectl port-forward` to access it from our local workstation:
+Use `kubectl port-forward` to access Kibana from your local workstation:
 
 ```bash
 kubectl port-forward service/sample-kibana 5601
@@ -171,9 +163,9 @@ You can then open http://localhost:5601 in your browser.
 
 ## Upgrade your deployment
 
-We can easily apply any modification to the original cluster specification. The operator will ensure changes are applied to the existing cluster while avoiding downtime.
+We can easily apply any modification to the original cluster specification. The operator makes sure that changes are applied to the existing cluster, avoiding downtime.
 
-Let's grow the cluster to 3 nodes:
+Grow the cluster to 3 nodes:
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -197,14 +189,14 @@ EOF
 
 ### Securing your cluster
 
-Any production-grade Elasticsearch deployment should be setup with security. There are several ways to achieve that goal. We recommend:
+To secure your production-grade Elasticsearch deployment, you can:
 
-* Using XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
-* Setting up an ingress proxy layer (TODO: link here to the nginx ingress sample)
+* Use XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
+* Set up an ingress proxy layer (TODO: link here to the nginx ingress sample)
 
 ### Using persistent storage
 
-The sample cluster we just deployed is using an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which, due to its limitations, may not qualify for production workloads. 
+The sample cluster you have just deployed uses an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which may not qualify for production workloads. 
 
 You can request a PersistentVolumeClaim in the cluster specification, to target any PersistentVolume class available in your Kubernetes cluster:
 
@@ -241,7 +233,7 @@ To aim for the best performance, the operator supports persistent volumes local 
  
 ### Additional features
 
-Several features are supported by the operator:
+The operator supports the following features:
 
 * Node-to-node TLS encryption
 * User management
