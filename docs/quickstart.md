@@ -70,6 +70,10 @@ Get an overview of current Elasticsearch clusters in the Kubernetes cluster, inc
 ```bash
 kubectl get elasticsearch
 ```
+```
+NAME      HEALTH    NODES     VERSION   PHASE         AGE
+sample    green     1         7.0.0     Operational   1m
+```
 
 While the cluster is created, there is no health yet and the phase is still Pending. After a while, the cluster appears as Running, with a green health.
 
@@ -78,16 +82,42 @@ You can see that one Pod is in the process of being started:
 ```bash
 kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=sample'
 ```
+```
+NAME                   READY     STATUS    RESTARTS   AGE
+sample-es-5zctxpn8nd   1/1       Running   0          1m
+```
+
+And access the logs for that pod:
+
+```bash
+kubectl logs -f sample-es-5zctxpn8nd
+```
 
 ### Access Elasticsearch
 
+#### ClusterIP service
+
 A ClusterIP Service is automatically created for your cluster:
 
-```
+```bash
 kubectl get service sample-es
 ```
+```
+NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+sample-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+```
 
-Elasticsearch can be accessed from the Kubernetes cluster, using the URL `http://sample-es:9200`.
+Elasticsearch can be accessed from the Kubernetes cluster, using the URL `https://sample-es:9200`.
+
+#### Retrieve credentials
+
+A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
+
+```bash
+kubectl get secret sample-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
+```
+
+#### Request Elasticsearch
 
 Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
@@ -95,10 +125,37 @@ Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 kubectl port-forward service/sample-es 9200
 ```
 
-Then in another shell:
+Then, in another shell, request the Elasticsearch endpoint (skipping certificate verification for now):
 
 ```bash
-curl "localhost:9200/_cat/health?v"
+curl "https://localhost:9200" -u elastic:<PASSWORD> -k
+```
+```
+{
+  "name" : "sample-es-5zctxpn8nd",
+  "cluster_name" : "sample",
+  "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
+  "version" : {
+    "number" : "7.0.0",
+    "build_flavor" : "default",
+    "build_type" : "docker",
+    "build_hash" : "b7e28a7",
+    "build_date" : "2019-04-05T22:55:32.697037Z",
+    "build_snapshot" : false,
+    "lucene_version" : "8.0.0",
+    "minimum_wire_compatibility_version" : "6.7.0",
+    "minimum_index_compatibility_version" : "6.0.0-beta1"
+  },
+  "tagline" : "You Know, for Search"
+}
+```
+
+#### Retrieve the CA certificate
+
+TLS encryption is enabled by default. To perform certificate verification from the client, retrieve the CA certificate used to issue Elasticsearch nodes certificates:
+
+```bash
+kubectl get secret sample-ca -o jsonpath="{.data['ca\.pem']}"
 ```
 
 ## Deploy Kibana
