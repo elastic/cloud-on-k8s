@@ -30,6 +30,7 @@ IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
+LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/k8s-operators:latest"
 
 ## -- Namespaces
 
@@ -64,6 +65,9 @@ generate:
 	for yaml in $$(ls config/crds/*); do \
 		cat $$yaml && echo -e "\n---\n" ; \
 	done > config/crds.yaml
+	$(MAKE) generate-all-in-one
+	git --no-pager diff
+
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
@@ -132,15 +136,14 @@ deploy: check-gke install-crds docker-build docker-push
 		$(MAKE) -sC config/operator generate-namespace | kubectl apply -f -
 
 generate-all-in-one:
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	# TODO: replace the image name with the final released name (docker.elastic.co/k8s-operators/k8s-operators ?)
+	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) -sC config/operator generate-all-in-one > config/all-in-one.yaml
+		$(MAKE) --no-print-directory -C config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: install-crds docker-build docker-push
-	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
-	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) -sC config/operator generate-all-in-one | kubectl apply -f -
+	kubectl apply -f config/all-in-one.yaml
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
