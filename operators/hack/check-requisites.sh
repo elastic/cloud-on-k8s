@@ -26,7 +26,6 @@ check go
 check goimports
 check dep
 check golangci-lint
-check kustomize
 check kubectl
 check kubebuilder
 check minikube

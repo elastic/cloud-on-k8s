@@ -123,14 +123,24 @@ endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: check-gke install-crds docker-build docker-push
-	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
-	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
-		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
-	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-global | kubectl apply -f -
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(NAMESPACE_OPERATOR_NAMESPACE) \
+	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-namespace | kubectl apply -f -
+
+generate-all-in-one:
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: install-crds docker-build docker-push
-	kustomize build config/all-in-one-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-all-in-one | kubectl apply -f -
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator

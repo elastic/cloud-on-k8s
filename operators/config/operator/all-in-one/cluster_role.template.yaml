@@ -1,8 +1,11 @@
+# The all-in-one operator has cluster-wide permissions on all required resources.
+# Same resources as the namespace operator, except for the addition of:
+# - enterpriselicenses
+# - validating|mutatingwebhookconfigurations
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
-  name: elastic-namespace-operator
+  name: elastic-operator
 rules:
 - apiGroups:
   - ""
@@ -52,6 +55,8 @@ rules:
   - elasticsearches
   - elasticsearches/status
   - clusterlicenses
+  - enterpriselicenses
+  - enterpriselicenses/status
   - trustrelationships
   - users
   - users/status
@@ -79,6 +84,19 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  - apmservers/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - associations.k8s.elastic.co
   resources:
   - apmserverelasticsearchassociations
@@ -94,9 +112,10 @@ rules:
   - patch
   - delete
 - apiGroups:
-  - apm.k8s.elastic.co
+  - admissionregistration.k8s.io
   resources:
-  - apmservers
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
   verbs:
   - get
   - list
@@ -105,11 +124,3 @@ rules:
   - update
   - patch
   - delete
-- apiGroups:
-  - apm.k8s.elastic.co
-  resources:
-  - apmservers/status
-  verbs:
-  - get
-  - update
-  - patch
