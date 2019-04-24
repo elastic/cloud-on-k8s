@@ -27,6 +27,6 @@ func StartTrial(t *testing.T, c k8s.Client) {
 		},
 	}
 	require.NoError(t, c.Create(&l))
-	_, err := license.InitTrial(c, l)
+	_, err := license.InitTrial(c, &l)
 	require.NoError(t, err)
 }

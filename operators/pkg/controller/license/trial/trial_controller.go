@@ -119,7 +119,7 @@ func (r *ReconcileTrials) initTrial(l v1alpha1.EnterpriseLicense) error {
 		return r.updateStatus(l, v1alpha1.LicenseStatusInvalid)
 	}
 
-	trialPubKey, err := licensing.InitTrial(r, l)
+	trialPubKey, err := licensing.InitTrial(r, &l)
 	if err != nil {
 		return err
 	}

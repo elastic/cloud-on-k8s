@@ -16,44 +16,43 @@ import (
 )
 
 func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
-
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	type fields struct {
 		initialObjects    []runtime.Object
 		operatorNamespace string
+		publicKey         []byte
 	}
 	tests := []struct {
 		name    string
-		around  func(*testing.T, func())
 		fields  fields
 		want    bool
 		wantErr bool
 	}{
 		{
-			name:   "valid license: OK",
-			around: withPublicKeyFixture,
+			name: "valid license: OK",
 			fields: fields{
 				initialObjects:    withSignature(licenseFixture, signatureFixture),
 				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
 			},
 			want: true,
 		},
 		{
-			name:   "no secret: FAIL",
-			around: withPublicKeyFixture,
+			name: "no secret: FAIL",
 			fields: fields{
 				initialObjects:    withSignature(licenseFixture, signatureFixture)[:1],
 				operatorNamespace: "test-system",
+				publicKey:         publicKeyBytesFixture(t),
 			},
 			want:    false,
 			wantErr: true,
 		},
 		{
-			name:   "wrong namespace: FAIL",
-			around: withPublicKeyFixture,
+			name: "wrong namespace: FAIL",
 			fields: fields{
 				initialObjects:    withSignature(licenseFixture, signatureFixture),
 				operatorNamespace: "another-ns",
+				publicKey:         publicKeyBytesFixture(t),
 			},
 			want:    false,
 			wantErr: true,
@@ -70,22 +69,16 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			lc := &Checker{
-				client:            k8s.WrapClient(fake.NewFakeClientWithScheme(scheme.Scheme, tt.fields.initialObjects...)),
+				k8sClient:         k8s.WrapClient(fake.NewFakeClientWithScheme(scheme.Scheme, tt.fields.initialObjects...)),
 				operatorNamespace: tt.fields.operatorNamespace,
+				publicKey:         tt.fields.publicKey,
 			}
-			test := func() {
-				got, err := lc.CommercialFeaturesEnabled()
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Checker.CommercialFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
-				}
-				if got != tt.want {
-					t.Errorf("Checker.CommercialFeaturesEnabled() = %v, want %v", got, tt.want)
-				}
+			got, err := lc.CommercialFeaturesEnabled()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Checker.CommercialFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
 			}
-			if tt.around != nil {
-				tt.around(t, test)
-			} else {
-				test()
+			if got != tt.want {
+				t.Errorf("Checker.CommercialFeaturesEnabled() = %v, want %v", got, tt.want)
 			}
 		})
 	}

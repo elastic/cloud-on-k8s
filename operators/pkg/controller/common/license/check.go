@@ -12,50 +12,52 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	client2 "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Checker struct {
-	client            k8s.Client
+	k8sClient         k8s.Client
 	operatorNamespace string
+	publicKey         []byte
 }
 
 func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
 	return &Checker{
-		client:            client,
+		k8sClient:         client,
 		operatorNamespace: operatorNamespace,
+		publicKey:         publicKeyBytes,
 	}
 }
 
 func (lc *Checker) CommercialFeaturesEnabled() (bool, error) {
 	var licenses v1alpha1.EnterpriseLicenseList
-	err := lc.client.List(&client2.ListOptions{}, &licenses)
+	err := lc.k8sClient.List(&client.ListOptions{}, &licenses)
 	if err != nil {
 		return false, errors.Wrap(err, "while reading licenses")
 	}
 
 	for _, l := range licenses.Items {
 		sigRef := l.Spec.SignatureRef
-		var signtureSec corev1.Secret
+		var signatureSec corev1.Secret
 
-		err := lc.client.Get(types.NamespacedName{
+		err := lc.k8sClient.Get(types.NamespacedName{
 			Namespace: lc.operatorNamespace,
 			Name:      sigRef.Name,
-		}, &signtureSec)
+		}, &signatureSec)
 		if err != nil {
 			return false, errors.Wrap(err, "while loading signature secret")
 		}
 
-		pk := publicKeyBytes
+		pk := lc.publicKey
 		if l.Spec.Type == v1alpha1.LicenseTypeEnterpriseTrial {
-			pk = signtureSec.Data[TrialPubkeyKey]
+			pk = signatureSec.Data[TrialPubkeyKey]
 		}
 		verifier, err := NewVerifier(pk)
 		if err != nil {
 			log.Error(err, "while creating license verifier")
 			continue
 		}
-		status := verifier.Valid(l, signtureSec.Data[sigRef.Key], time.Now())
+		status := verifier.Valid(l, signatureSec.Data[sigRef.Key], time.Now())
 		if status == v1alpha1.LicenseStatusValid {
 			return true, nil
 		}

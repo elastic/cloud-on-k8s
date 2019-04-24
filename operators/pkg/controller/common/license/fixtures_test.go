@@ -31,16 +31,6 @@ var licenseFixture = v1alpha1.EnterpriseLicense{
 	},
 }
 
-func withPublicKeyFixture(t *testing.T, test func()) {
-	pubKeyCopy := publicKeyBytes
-	bytes, err := x509.MarshalPKIXPublicKey(publicKeyFixture(t))
-	require.NoError(t, err)
-	publicKeyBytes = bytes
-	test()
-	publicKeyBytes = pubKeyCopy
-
-}
-
 func withSignature(l v1alpha1.EnterpriseLicense, sig []byte) []runtime.Object {
 	lcopy := l
 	lcopy.SetName("test-license")
@@ -64,6 +54,12 @@ func withSignature(l v1alpha1.EnterpriseLicense, sig []byte) []runtime.Object {
 		},
 	}
 
+}
+
+func publicKeyBytesFixture(t *testing.T) []byte {
+	bytes, err := x509.MarshalPKIXPublicKey(publicKeyFixture(t))
+	require.NoError(t, err)
+	return bytes
 }
 
 func publicKeyFixture(t *testing.T) *rsa.PublicKey {

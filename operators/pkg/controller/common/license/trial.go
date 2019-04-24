@@ -29,8 +29,12 @@ const (
 	TrialFinalizerName   = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
-func InitTrial(c k8s.Client, l estype.EnterpriseLicense) (*rsa.PublicKey, error) {
-	if err := populateTrialLicense(&l); err != nil {
+func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error) {
+	if l == nil {
+		return nil, errors.New("license is nil")
+	}
+
+	if err := populateTrialLicense(l); err != nil {
 		return nil, pkgerrors.Wrap(err, "Failed to populate trial license")
 	}
 	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
@@ -41,7 +45,7 @@ func InitTrial(c k8s.Client, l estype.EnterpriseLicense) (*rsa.PublicKey, error)
 	}
 	// sign trial license
 	signer := NewSigner(tmpPrivKey)
-	sig, err := signer.Sign(l)
+	sig, err := signer.Sign(*l)
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Failed to sign license")
 	}
@@ -78,14 +82,11 @@ func InitTrial(c k8s.Client, l estype.EnterpriseLicense) (*rsa.PublicKey, error)
 	}
 	l.Status = estype.LicenseStatusValid
 	// return pub key to retain in memory for later iterations
-	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(c.Update(&l), "Failed to update trial license")
+	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(c.Update(l), "Failed to update trial license")
 }
 
 // populateTrialLicense adds missing fields to a trial license.
 func populateTrialLicense(l *estype.EnterpriseLicense) error {
-	if l == nil {
-		return errors.New("license is nil")
-	}
 	if !l.IsTrial() {
 		return fmt.Errorf("%v is not a trial license", k8s.ExtractNamespacedName(l))
 	}

@@ -5,6 +5,7 @@
 package license
 
 import (
+	"crypto/rsa"
 	"testing"
 	"time"
 
@@ -35,22 +36,29 @@ func TestInitTrial(t *testing.T) {
 			Type: estype.LicenseTypeEnterpriseTrial,
 		},
 	}
-
 	type args struct {
 		c k8s.Client
-		l estype.EnterpriseLicense
+		l *estype.EnterpriseLicense
 	}
 	tests := []struct {
-		name          string
-		args          args
-		wantNilReturn bool
-		wantErr       bool
+		name    string
+		args    args
+		want    func(*estype.EnterpriseLicense, *rsa.PublicKey)
+		wantErr bool
 	}{
+		{
+			name: "nil license",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient()),
+				l: nil,
+			},
+			wantErr: true,
+		},
 		{
 			name: "failing client",
 			args: args{
 				c: failingClient{},
-				l: estype.EnterpriseLicense{
+				l: &estype.EnterpriseLicense{
 					ObjectMeta: v1.ObjectMeta{
 						Name: "failing client test",
 					},
@@ -59,35 +67,42 @@ func TestInitTrial(t *testing.T) {
 					},
 				},
 			},
-			wantNilReturn: true,
-			wantErr:       true,
+			want: func(_ *estype.EnterpriseLicense, key *rsa.PublicKey) {
+				require.Nil(t, key)
+			},
+			wantErr: true,
 		},
 		{
 			name: "deleted/non-existing license",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				l: licenseFixture,
+				l: &licenseFixture,
 			},
-			wantNilReturn: false,
-			wantErr:       true,
+			wantErr: true,
 		},
 		{
 			name: "not a trial license",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				l: estype.EnterpriseLicense{},
+				l: &estype.EnterpriseLicense{},
 			},
-			wantNilReturn: true,
-			wantErr:       true,
+			want: func(l *estype.EnterpriseLicense, k *rsa.PublicKey) {
+				require.Equal(t, *l, estype.EnterpriseLicense{})
+				require.Nil(t, k)
+			},
+			wantErr: true,
 		},
 		{
 			name: "successful trial start",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient(&licenseFixture)),
-				l: licenseFixture,
+				l: &licenseFixture,
 			},
-			wantNilReturn: false,
-			wantErr:       false,
+			want: func(l *estype.EnterpriseLicense, k *rsa.PublicKey) {
+				require.NotNil(t, k)
+				require.NoError(t, l.IsMissingFields())
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -97,8 +112,8 @@ func TestInitTrial(t *testing.T) {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if (got == nil) != tt.wantNilReturn {
-				t.Errorf("InitTrial() got = %v, want nil %v", got, tt.wantNilReturn)
+			if tt.want != nil {
+				tt.want(tt.args.l, got)
 			}
 		})
 	}
@@ -114,11 +129,6 @@ func TestPopulateTrialLicense(t *testing.T) {
 		assertions func(estype.EnterpriseLicense)
 		wantErr    bool
 	}{
-		{
-			name:    "nil FAIL",
-			args:    args{},
-			wantErr: true,
-		},
 		{
 			name: "non-trial FAIL",
 			args: args{

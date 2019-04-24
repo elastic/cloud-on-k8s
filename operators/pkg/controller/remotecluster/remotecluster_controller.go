@@ -118,7 +118,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	}
 	if !enabled {
 		log.Info(
-			"Remote cluster controller is a commercial feature. Commercial features are disabled",
+			"Remote cluster controller is an enterprise feature. Enterprise features are disabled",
 			"iteration", currentIteration,
 		)
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
