@@ -71,9 +71,9 @@ Get an overview of current Elasticsearch clusters in the Kubernetes cluster, inc
 kubectl get elasticsearch
 ```
 
-While the cluster is being created, you might notice there is no "health" yet and the phase is still "Pending". After a while the cluster should appear as "Running", with a green health.
+While the cluster is created, there is no health yet and the phase is still Pending. After a while, the cluster appears as Running, with a green health.
 
-You should notice one Pod in the process of being started:
+You can see that one Pod is in the process of being started:
 
 ```bash
 kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=sample'
