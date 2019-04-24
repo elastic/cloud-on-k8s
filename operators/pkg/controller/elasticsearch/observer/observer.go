@@ -6,10 +6,13 @@ package observer
 
 import (
 	"context"
+	"crypto/x509"
 	"sync"
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -42,6 +45,10 @@ type OnObservation func(cluster types.NamespacedName, previousState State, newSt
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
+	k8sClient k8s.Client
+	dialer    net.Dialer
+	caCerts   []*x509.Certificate
+
 	cluster  types.NamespacedName
 	esClient client.Client
 
@@ -59,8 +66,15 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
+func NewObserver(
+	k8sClient k8s.Client, dialer net.Dialer, caCerts []*x509.Certificate,
+	cluster types.NamespacedName, esClient client.Client,
+	settings Settings, onObservation OnObservation,
+) *Observer {
 	observer := Observer{
+		k8sClient:     k8sClient,
+		dialer:        dialer,
+		caCerts:       caCerts,
 		cluster:       cluster,
 		esClient:      esClient,
 		creationTime:  time.Now(),
@@ -129,7 +143,7 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 
-	newState := RetrieveState(timeoutCtx, o.esClient)
+	newState := RetrieveState(timeoutCtx, o.k8sClient, o.cluster, o.esClient, o.caCerts, o.dialer)
 
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastState(), newState)

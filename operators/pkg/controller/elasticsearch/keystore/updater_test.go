@@ -147,7 +147,7 @@ func TestWatchForUpdate(t *testing.T) {
 	s, err := updater.Status()
 	assert.NoError(t, err)
 	assert.Equal(t, string(runningState), string(s.State))
-	assert.Equal(t, string(keystoreUpdatedReason), string(s.Reason))
+	assert.Equal(t, string(KeystoreUpdatedReason), string(s.Reason))
 }
 
 func TestStart_WaitingEs(t *testing.T) {
@@ -167,7 +167,7 @@ func TestStart_WaitingEs(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != waitingState {
+		if s.State != WaitingState {
 			return errors.New("state must be waiting")
 		}
 		return nil
@@ -194,7 +194,7 @@ func TestStart_UpdatedAtLeastOnce(t *testing.T) {
 		if s.State != runningState {
 			return errors.New("status must be running")
 		}
-		if s.Reason != keystoreUpdatedReason {
+		if s.Reason != KeystoreUpdatedReason {
 			return errors.New("keystore must be updated")
 		}
 		return nil
@@ -249,7 +249,7 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 		if s.State != runningState {
 			return errors.New("status must be running")
 		}
-		if s.Reason != keystoreUpdatedReason {
+		if s.Reason != KeystoreUpdatedReason {
 			return errors.New("keystore must be updated")
 		}
 		return nil
@@ -265,7 +265,7 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 		if s.State != runningState {
 			return errors.New("status must be running")
 		}
-		if s.Reason != keystoreUpdatedReason {
+		if s.Reason != KeystoreUpdatedReason {
 			return errors.New("keystore must be updated")
 		}
 		return nil

@@ -95,7 +95,7 @@ type defaultDriver struct {
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -208,7 +208,10 @@ func (d *defaultDriver) Reconcile(
 		caCert,
 	)
 
-	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
+	observedState := d.observedStateResolver(
+		k8s.ExtractNamespacedName(&es),
+		[]*x509.Certificate{caCert},
+		esClient)
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {

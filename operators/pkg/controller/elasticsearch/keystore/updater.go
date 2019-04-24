@@ -70,7 +70,7 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
-	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
+	u.updateStatus(WaitingState, "Waiting for Elasticsearch to be ready", nil)
 	u.esClient.WaitForEsReady()
 
 	if u.config.ReloadCredentials {
@@ -89,7 +89,7 @@ func (u *Updater) watchForUpdate() {
 			log.Error(err, "Cannot update keystore", "msg", msg)
 			u.updateStatus(failedState, msg, err)
 		} else {
-			u.updateStatus(runningState, keystoreUpdatedReason, nil)
+			u.updateStatus(runningState, KeystoreUpdatedReason, nil)
 		}
 		return false, nil // run forever
 	}
@@ -108,7 +108,7 @@ func (u *Updater) watchForUpdate() {
 		log.Error(err, "Cannot update keystore", "msg", msg)
 		u.updateStatus(failedState, msg, err)
 	} else {
-		u.updateStatus(runningState, keystoreUpdatedReason, err)
+		u.updateStatus(runningState, KeystoreUpdatedReason, err)
 	}
 
 	// then run on files change
