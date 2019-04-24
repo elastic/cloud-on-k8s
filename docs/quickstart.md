@@ -111,7 +111,7 @@ Elasticsearch can be accessed from the Kubernetes cluster, using the URL `https:
 A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
 
 ```bash
-kubectl get secret sample-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
+PASSWORD=$(kubectl get secret sample-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ```
 
 #### Request Elasticsearch
@@ -125,7 +125,7 @@ kubectl port-forward service/sample-es 9200
 Then, in another shell, request the Elasticsearch endpoint (skipping certificate verification for now):
 
 ```bash
-curl -u elastic:<PASSWORD> -k "https://localhost:9200"
+curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ```
 ```
 {
