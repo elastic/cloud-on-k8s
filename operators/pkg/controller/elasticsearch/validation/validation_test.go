@@ -9,9 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/stretchr/testify/assert"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 )
 
 func TestNewValidationContext(t *testing.T) {
@@ -137,15 +141,32 @@ func TestValidate(t *testing.T) {
 			name: "multiple failures",
 			args: args{
 				es: estype.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: "ns",
+						Name:      "that-is-a-very-long-name-with-37chars",
+					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "1.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								NodeCount: 1,
+								Config: &estype.Config{
+									Data: map[string]interface{}{
+										estype.NodeMaster: false,
+										settings.XPackSecurityTransportSslCertificate: "blacklisted setting",
+									},
+								},
+							},
+						},
 					},
 				},
 			},
 			wantErr: false,
 			errContains: []string{
+				"name length cannot exceed the limit",
 				masterRequiredMsg,
 				"unsupported version",
+				"is not user configurable",
 			},
 		},
 	}
@@ -155,6 +176,7 @@ func TestValidate(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			require.Equal(t, len(tt.errContains), len(validations))
 			for _, errStr := range tt.errContains {
 				found := false
 				for _, v := range validations {
