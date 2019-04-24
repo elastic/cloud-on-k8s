@@ -235,7 +235,7 @@ The operator supports the following features:
 
 * Node-to-node TLS encryption
 * User management
-* Automated snapshots
+* Secure settings (for eg. automated snapshots)
 * Nodes resources limitations (CPU, RAM, disk)
 * Cluster update strategies
 * Version upgrades
@@ -245,5 +245,6 @@ The operator supports the following features:
 * Operator namespace management
 * APM server deployments
 * Pausing reconciliations
+* Full cluster restart
 
 TODO: add a link to the homepage of all features documentation.
