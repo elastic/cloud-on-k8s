@@ -6,7 +6,6 @@ package client
 
 import (
 	"context"
-	"path"
 
 	"github.com/pkg/errors"
 )
@@ -25,6 +24,10 @@ func (c *clientV6) GetClusterState(ctx context.Context) (ClusterState, error) {
 	return clusterState, c.get(ctx, "/_cluster/state/dispatcher,master_node,nodes,routing_table", &clusterState)
 }
 
+func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error {
+	return c.put(ctx, "/_cluster/settings", &settings, nil)
+}
+
 func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
 	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
@@ -33,32 +36,6 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
 	return result, c.get(ctx, "/_cluster/health", &result)
-}
-
-func (c *clientV6) GetSnapshotRepository(ctx context.Context, name string) (SnapshotRepository, error) {
-	var result map[string]SnapshotRepository
-	return result[name], c.get(ctx, path.Join("/_snapshot", name), &result)
-}
-
-func (c *clientV6) DeleteSnapshotRepository(ctx context.Context, name string) error {
-	return c.delete(ctx, path.Join("/_snapshot", name), nil, nil)
-}
-
-func (c *clientV6) UpsertSnapshotRepository(ctx context.Context, name string, repository SnapshotRepository) error {
-	return c.put(ctx, path.Join("/_snapshot", name), repository, nil)
-}
-
-func (c *clientV6) GetAllSnapshots(ctx context.Context, repo string) (SnapshotsList, error) {
-	var result SnapshotsList
-	return result, c.get(ctx, path.Join("/_snapshot", repo, "_all"), &result)
-}
-
-func (c *clientV6) TakeSnapshot(ctx context.Context, repo string, snapshot string) error {
-	return c.put(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
-}
-
-func (c *clientV6) DeleteSnapshot(ctx context.Context, repo string, snapshot string) error {
-	return c.delete(ctx, path.Join("/_snapshot", repo, snapshot), nil, nil)
 }
 
 func (c *clientV6) SetMinimumMasterNodes(ctx context.Context, n int) error {

@@ -4,15 +4,73 @@
 
 package keystore
 
-const (
-	managedSecretSuffix = "-keystore"
-	// SecretMountPath is the mount path for keystore secrets in the init container.
-	SecretMountPath = "/mnt/elastic/keystore-secrets"
-	// SecretVolumeName is the name of the volume where the keystore secret is referenced.
-	SecretVolumeName = "keystore"
+import (
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"regexp"
 )
 
-// ManagedSecretName returns the name of the operator managed secret containing Elasticsearch keystore data.
-func ManagedSecretName(clusterName string) string {
-	return clusterName + managedSecretSuffix
+// Keystore is used to manage settings stored in the Elasticsearch keystore.
+type Keystore interface {
+	// Create a new Elasticsearch keystore
+	Create() error
+	// Delete the Elasticsearch keystore
+	Delete() (bool, error)
+	// ListSettings lists the settings in the keystore
+	ListSettings() (string, error)
+	// AddFileSetting adds a file setting to the keystore
+	AddFileSetting(filename string) error
+}
+
+// keystore is the default Keystore implementation that relies on the elasticsearch-keystore binary.
+type keystore struct {
+	// binaryPath is the path of the elasticsearch-keystore binary
+	binaryPath string
+	// keystorePath is the path of the elasticsearch.keystore file used to store secure settings on disk
+	keystorePath string
+	// settingsPath is the path of the directory where the secure settings to store in the keystore live
+	settingsPath string
+}
+
+func NewKeystore(cfg Config) Keystore {
+	return keystore{
+		binaryPath:   cfg.KeystoreBinary,
+		keystorePath: cfg.KeystorePath,
+		settingsPath: cfg.SecretsSourceDir,
+	}
+}
+
+func (c keystore) Create() error {
+	create := exec.Command(c.binaryPath, "create", "--silent")
+	create.Dir = filepath.Dir(c.keystorePath)
+	return create.Run()
+}
+
+func (c keystore) ListSettings() (string, error) {
+	bytes, err := exec.Command(c.binaryPath, "list").Output()
+	if err != nil {
+		return "", err
+	}
+
+	re := regexp.MustCompile(`\r?\n`)
+	settings := re.ReplaceAllString(string(bytes), " ")
+	return settings, nil
+}
+
+func (c keystore) AddFileSetting(filename string) error {
+	return exec.Command(c.binaryPath, "add-file", filename, path.Join(c.settingsPath, filename)).Run()
+}
+
+func (c keystore) Delete() (bool, error) {
+	_, err := os.Stat(c.keystorePath)
+	if !os.IsNotExist(err) {
+		err := os.Remove(c.keystorePath)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }

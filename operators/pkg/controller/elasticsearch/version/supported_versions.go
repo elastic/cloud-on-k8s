@@ -8,16 +8,19 @@ import (
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/pkg/errors"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	corev1 "k8s.io/api/core/v1"
 )
 
+// LowestHighestSupportedVersions expresses the wire-format compatibility range for a version.
 type LowestHighestSupportedVersions struct {
 	LowestSupportedVersion  version.Version
 	HighestSupportedVersion version.Version
 }
 
+// VerifySupportsExistingPods checks the given pods against the supported version range in lh.
 func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 	pods []corev1.Pod,
 ) error {
@@ -26,23 +29,27 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 		if err != nil {
 			return err
 		}
-		if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
-			return fmt.Errorf(
-				"pod %s has version %v, which is older than the lowest supported version %s",
-				pod.Name,
-				v,
-				lh.LowestSupportedVersion,
-			)
-		}
+		return errors.Wrap(lh.Supports(*v), fmt.Sprintf("%s has incompatible version", pod.Name))
+	}
+	return nil
+}
 
-		if !lh.HighestSupportedVersion.IsSameOrAfter(*v) {
-			return fmt.Errorf(
-				"pod %s has version %v, which is newer than the highest supported version %s",
-				pod.Name,
-				v,
-				lh.HighestSupportedVersion,
-			)
-		}
+// Supports compares a given with the supported version range and returns an error if out of bounds.
+func (lh LowestHighestSupportedVersions) Supports(v version.Version) error {
+	if !v.IsSameOrAfter(lh.LowestSupportedVersion) {
+		return fmt.Errorf(
+			"%s is unsupported, it is older than the oldest supported version %s",
+			v,
+			lh.LowestSupportedVersion,
+		)
+	}
+
+	if !lh.HighestSupportedVersion.IsSameOrAfter(v) {
+		return fmt.Errorf(
+			"%s is unsupported, it is newer than the newest supported version %s",
+			v,
+			lh.HighestSupportedVersion,
+		)
 	}
 	return nil
 }

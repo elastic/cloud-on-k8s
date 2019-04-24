@@ -11,14 +11,13 @@ import (
 	"strings"
 
 	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/ghodss/yaml"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -32,17 +31,17 @@ const (
 
 // ElasticUsersRolesSecretName is the name of the secret containing all users and roles information in ES format.
 func ElasticUsersRolesSecretName(ownerName string) string {
-	return stringsutil.Concat(ownerName, "-es-roles-users")
+	return name.EsRolesUsersSecret(ownerName)
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials.
 func ElasticInternalUsersSecretName(ownerName string) string {
-	return stringsutil.Concat(ownerName, "-internal-users")
+	return name.InternalUsersSecret(ownerName)
 }
 
 // ElasticExternalUsersSecretName is the name of the secret containing the external users' credentials.
 func ElasticExternalUsersSecretName(ownerName string) string {
-	return stringsutil.Concat(ownerName, "-elastic-user")
+	return name.ElasticUserSecret(ownerName)
 }
 
 // UserCredentials captures Elasticsearch user credentials and their representation in a k8s secret.
@@ -169,12 +168,12 @@ func (hc *HashedCredentials) Secret() corev1.Secret {
 
 // NewInternalUserCredentials creates a secret for the ES user used by the controller.
 func NewInternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
-	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), internalUsers)
+	return usersToClearTextCredentials(es, ElasticInternalUsersSecretName(es.Name), newInternalUsers())
 }
 
 // NewExternalUserCredentials creates a secret for the Elastic user to be used by external users.
 func NewExternalUserCredentials(es types.NamespacedName) *ClearTextCredentials {
-	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), externalUsers)
+	return usersToClearTextCredentials(es, ElasticExternalUsersSecretName(es.Name), newExternalUsers())
 }
 
 func usersToClearTextCredentials(es types.NamespacedName, secretName string, users []User) *ClearTextCredentials {

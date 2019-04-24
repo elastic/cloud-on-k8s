@@ -12,11 +12,13 @@ import (
 )
 
 func TestNewInitContainers(t *testing.T) {
+	varTrue := true
+	varFalse := false
 	type args struct {
 		elasticsearchImage string
 		operatorImage      string
 		linkedFiles        LinkedFilesArray
-		SetVMMaxMapCount   bool
+		SetVMMaxMapCount   *bool
 		nodeCertsVolume    volume.SecretVolume
 	}
 	tests := []struct {
@@ -30,10 +32,21 @@ func TestNewInitContainers(t *testing.T) {
 				elasticsearchImage: "es-image",
 				operatorImage:      "op-image",
 				linkedFiles:        LinkedFilesArray{},
-				SetVMMaxMapCount:   true,
+				SetVMMaxMapCount:   &varTrue,
 				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 3,
+			expectedNumberOfContainers: 4,
+		},
+		{
+			name: "with SetVMMaxMapCount unspecified",
+			args: args{
+				elasticsearchImage: "es-image",
+				operatorImage:      "op-image",
+				linkedFiles:        LinkedFilesArray{},
+				SetVMMaxMapCount:   nil,
+				nodeCertsVolume:    volume.SecretVolume{},
+			},
+			expectedNumberOfContainers: 4,
 		},
 		{
 			name: "with SetVMMaxMapCount disabled",
@@ -41,10 +54,10 @@ func TestNewInitContainers(t *testing.T) {
 				elasticsearchImage: "es-image",
 				operatorImage:      "op-image",
 				linkedFiles:        LinkedFilesArray{},
-				SetVMMaxMapCount:   false,
+				SetVMMaxMapCount:   &varFalse,
 				nodeCertsVolume:    volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 2,
+			expectedNumberOfContainers: 3,
 		},
 	}
 	for _, tt := range tests {

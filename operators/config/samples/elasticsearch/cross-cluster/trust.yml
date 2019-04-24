@@ -5,13 +5,12 @@ kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
-  version: "6.5.4"
-  setVmMaxMapCount: true
-  topologies:
-    - nodeTypes:
-        master: true
-        data: true
-        ingest: true
+  version: "6.7.0"
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
       resources:
         limits:
           memory: 1Gi
@@ -24,13 +23,12 @@ kind: Elasticsearch
 metadata:
   name: trust-two
 spec:
-  version: "6.5.4"
-  setVmMaxMapCount: true
-  topologies:
-    - nodeTypes:
-        master: true
-        data: true
-        ingest: true
+  version: "6.7.0"
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
       resources:
         limits:
           memory: 1Gi

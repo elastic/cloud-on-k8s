@@ -14,19 +14,19 @@ import (
 
 // serveCSR serves the given csr via an HTTP server listening on the given port.
 // It stops when stopChan provides a value or gets closed.
-func serveCSR(port int, csr []byte, stopChan <-chan struct{}) error {
-	srv := &http.Server{Addr: fmt.Sprintf(":%d", port)}
+func (i *CertInitializer) serveCSR(stopChan <-chan struct{}, csr []byte) error {
+	srv := &http.Server{Addr: fmt.Sprintf(":%d", i.config.Port)}
 	http.HandleFunc(certificates.CertInitializerRoute, func(w http.ResponseWriter, r *http.Request) {
 		log.Info("CSR request")
 		if _, err := w.Write(csr); err != nil {
-			log.Error(err, "failed to write CSR to the HTTP response")
+			log.Error(err, "Failed to write CSR to the HTTP response")
 		}
 	})
 	go func() {
 		// stop the server when requested
 		<-stopChan
 		if err := srv.Shutdown(context.Background()); err != nil {
-			log.Error(err, "failed to shutdown the http server")
+			log.Error(err, "Failed to shutdown the http server")
 		}
 	}()
 	// run until stopped

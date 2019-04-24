@@ -6,8 +6,10 @@ package driver
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	espod "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
@@ -20,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -59,7 +62,7 @@ func createElasticsearchPod(
 	// - Re-use the same name for the PVC.
 	//   - E.g, List PVCs, if a PVC we want to use exist
 
-	for _, claimTemplate := range podSpecCtx.TopologyElement.VolumeClaimTemplates {
+	for _, claimTemplate := range podSpecCtx.NodeSpec.VolumeClaimTemplates {
 		// TODO : we are creating PVC way too far in the process, it's almost too late to compare them with existing ones
 		pvc, err := getOrCreatePVC(&pod, claimTemplate, orphanedPVCs, c, scheme, es)
 		if err != nil {
@@ -179,9 +182,7 @@ func getOrCreatePVC(pod *corev1.Pod,
 
 func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.Pod) *corev1.PersistentVolumeClaim {
 	pvc := claimTemplate.DeepCopy()
-	// generate unique name for this pvc.
-	// TODO: this may become too long?
-	pvc.Name = pod.Name + "-" + claimTemplate.Name
+	pvc.Name = name.NewPVCName(pod.Name, claimTemplate.Name)
 	pvc.Namespace = pod.Namespace
 	// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
 	// reflecting state from K8s.
@@ -242,4 +243,31 @@ func deleteElasticsearchPod(
 	}
 
 	return reconcile.Result{}, nil
+}
+
+// markPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
+// See godoc of k8s.MarkPodAsUpdated for more information.
+func markPodsAsUpdated(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+) {
+	// Get all pods
+	var podList corev1.PodList
+	err := c.List(&client.ListOptions{
+		Namespace:     es.Namespace,
+		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+	}, &podList)
+	if err != nil {
+		log.Error(
+			err,
+			"failed to list pods for annotation update",
+			"namespace", es.Namespace,
+			"name", es.Name,
+		)
+		return
+	}
+	// Update annotation
+	for _, pod := range podList.Items {
+		annotation.MarkPodAsUpdated(c, pod)
+	}
 }

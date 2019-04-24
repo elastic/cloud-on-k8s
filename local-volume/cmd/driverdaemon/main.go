@@ -33,7 +33,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		nodeName := viper.GetString(nodeNameFlag)
 		if nodeName == "" {
-			log.Fatal("$NODE_NAME should be set by referencing spec.nodeName")
+			log.Fatal("Environment variable NODE_NAME should be set by referencing spec.nodeName")
 		}
 		driverKind := viper.GetString(driverKindFlag)
 		driverOpts := drivers.Options{

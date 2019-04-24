@@ -1,0 +1,1066 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmservers.apm.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: APM version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: apm.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: ApmServer
+    plural: apmservers
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            expose:
+              description: 'Expose determines which service type to use for this workload.
+                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            featureFlags:
+              description: FeatureFlags are apm-specific flags that enable or disable
+                specific experimental features
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodeCount:
+              description: NodeCount defines how many nodes the Apm Server deployment
+                must have.
+              format: int32
+              type: integer
+            output:
+              properties:
+                elasticsearch:
+                  description: Elasticsearch configures the Elasticsearch output
+                  properties:
+                    auth:
+                      description: Auth configures authentication for APM Server to
+                        use.
+                      properties:
+                        inline:
+                          description: Inline is auth provided as plaintext inline
+                            credentials.
+                          properties:
+                            password:
+                              description: Password is the password to use.
+                              type: string
+                            username:
+                              description: User is the username to use.
+                              type: string
+                          type: object
+                        secret:
+                          description: SecretKeyRef is a secret that contains the
+                            credentials to use.
+                          type: object
+                      type: object
+                    hosts:
+                      description: Hosts are the URLs of the output Elasticsearch
+                        nodes.
+                      items:
+                        type: string
+                      type: array
+                    ssl:
+                      description: SSL configures TLS-related configuration for Elasticsearch
+                      properties:
+                        certificateAuthoritiesSecret:
+                          description: CertificateAuthoritiesSecret names a secret
+                            that contains a CA file entry to use.
+                          type: string
+                      type: object
+                  type: object
+              type: object
+            resources:
+              description: Resources to be allocated for each Apm Server node
+              properties:
+                limits:
+                  description: Limits represents the limits to considerate for these
+                    resources
+                  type: object
+              type: object
+            version:
+              description: Version represents the version of the APM Server
+              type: string
+          type: object
+        status:
+          properties:
+            health:
+              type: string
+            secretTokenSecret:
+              description: SecretTokenSecretName is the name of the Secret that contains
+                the secret token
+              type: string
+            service:
+              description: ExternalService is the name of the service the agents should
+                connect to.
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: apmserverelasticsearchassociations.associations.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.associationStatus
+    name: status
+    type: string
+  group: associations.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: ApmServerElasticsearchAssociation
+    plural: apmserverelasticsearchassociations
+    shortNames:
+    - aea
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            apmServer:
+              description: ApmServer refers to the ApmServer resource.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            elasticsearch:
+              description: Elasticsearch refers to the Elasticsearch resource
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+          required:
+          - elasticsearch
+          - apmServer
+          type: object
+        status:
+          properties:
+            associationStatus:
+              description: AssociationStatus indicates the current state of the association.
+              type: string
+          required:
+          - associationStatus
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanaelasticsearchassociations.associations.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.associationStatus
+    name: status
+    type: string
+  group: associations.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: KibanaElasticsearchAssociation
+    plural: kibanaelasticsearchassociations
+    shortNames:
+    - kea
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            elasticsearch:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            kibana:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+            monitoring:
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+          required:
+          - elasticsearch
+          - kibana
+          type: object
+        status:
+          properties:
+            associationStatus:
+              type: string
+          required:
+          - associationStatus
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: clusterlicenses.elasticsearch.k8s.elastic.co
+spec:
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: ClusterLicense
+    plural: clusterlicenses
+    shortNames:
+    - cl
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            expiryDateInMillis:
+              format: int64
+              type: integer
+            issueDateInMillis:
+              format: int64
+              type: integer
+            issuedTo:
+              type: string
+            issuer:
+              type: string
+            maxNodes:
+              format: int64
+              type: integer
+            signatureRef:
+              type: object
+            startDateInMillis:
+              format: int64
+              type: integer
+            type:
+              type: string
+            uid:
+              description: UID is the license UID not the k8s API UID (!)
+              type: string
+          required:
+          - maxNodes
+          - type
+          - signatureRef
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: elasticsearches.elasticsearch.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: Elasticsearch version
+    name: version
+    type: string
+  - JSONPath: .status.phase
+    name: phase
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: elasticsearch.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Elasticsearch
+    plural: elasticsearches
+    shortNames:
+    - es
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            expose:
+              description: 'Expose determines which service type to use for this workload.
+                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            featureFlags:
+              description: FeatureFlags are instance-specific flags that enable or
+                disable specific experimental features
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            licenseType:
+              description: LicenseType represents the expected license type for this
+                cluster. Will default to "basic" if not set.
+              enum:
+              - basic
+              - trial
+              - gold
+              - platinum
+              type: string
+            nodes:
+              description: Nodes represents a list of groups of nodes with the same
+                configuration to be part of the cluster
+              items:
+                properties:
+                  config:
+                    description: Config represents Elasticsearch configuration.
+                    type: object
+                  nodeCount:
+                    description: NodeCount defines how many nodes have this topology
+                    format: int32
+                    type: integer
+                  resources:
+                    description: Resources to be allocated for this topology
+                    properties:
+                      limits:
+                        description: Limits represents the limits to considerate for
+                          these resources
+                        type: object
+                    type: object
+                  template:
+                    description: PodTemplate is the object that describes the Elasticsearch
+                      pods.
+                    properties:
+                      metadata:
+                        description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
+                        type: object
+                      spec:
+                        description: 'Specification of the desired behavior of the
+                          pod. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status'
+                        properties:
+                          affinity:
+                            description: Affinity is the pod's scheduling constraints
+                            type: object
+                        type: object
+                    type: object
+                  volumeClaimTemplates:
+                    description: 'VolumeClaimTemplates is a list of claims that pods
+                      are allowed to reference. Every claim in this list must have
+                      at least one matching (by name) volumeMount in one container
+                      in the template. A claim in this list takes precedence over
+                      any volumes in the template, with the same name. TODO: Define
+                      the behavior if a claim already exists with the same name. TODO:
+                      define special behavior based on claim metadata.name. (e.g data
+                      / logs volumes)'
+                    items:
+                      type: object
+                    type: array
+                type: object
+              type: array
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into Elasticsearch keystore on each node. It must exist
+                in the same namespace as the Elasticsearch resource. Secret keys must
+                start with `es.file.` or `es.string.` according to the secure setting
+                type.
+              properties:
+                secretName:
+                  type: string
+              required:
+              - secretName
+              type: object
+            setVmMaxMapCount:
+              description: SetVMMaxMapCount indicates whether an init container should
+                be used to ensure that the `vm.max_map_count` is set according to
+                https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
+                Setting this to true requires the kubelet to allow running privileged
+                containers. Defaults to true if not specified. To be disabled, it
+                must be explicitly set to false.
+              type: boolean
+            updateStrategy:
+              description: UpdateStrategy specifies how updates to the cluster should
+                be performed.
+              properties:
+                changeBudget:
+                  description: ChangeBudget is the change budget that should be used
+                    when performing mutations to the cluster.
+                  properties:
+                    maxSurge:
+                      description: 'MaxSurge is the maximum number of pods that can
+                        be scheduled above the original number of pods. By default,
+                        a fixed value of 1 is used. Value can be an absolute number
+                        (ex: 5) or a percentage of total pods at the start of the
+                        update (ex: 10%). This can not be 0 if MaxUnavailable is 0
+                        if you want automatic rolling updates to be applied. Absolute
+                        number is calculated from percentage by rounding up. Example:
+                        when this is set to 30%, the new group can be scaled up by
+                        30% immediately when the rolling update starts. Once old pods
+                        have been killed, new group can be scaled up further, ensuring
+                        that total number of pods running at any time during the update
+                        is at most 130% of the target number of pods.'
+                      format: int64
+                      type: integer
+                    maxUnavailable:
+                      description: 'MaxUnavailable is the maximum number of pods that
+                        can be unavailable during the update. Value can be an absolute
+                        number (ex: 5) or a percentage of total pods at the start
+                        of update (ex: 10%). Absolute number is calculated from percentage
+                        by rounding down. This can not be 0 if MaxSurge is 0 if you
+                        want automatic rolling changes to be applied. By default,
+                        a fixed value of 0 is used. Example: when this is set to 30%,
+                        the group can be scaled down by 30% immediately when the rolling
+                        update starts. Once new pods are ready, the group can be scaled
+                        down further, followed by scaling up the group, ensuring that
+                        at least 70% of the target number of pods are available at
+                        all times during the update.'
+                      format: int64
+                      type: integer
+                  required:
+                  - maxUnavailable
+                  - maxSurge
+                  type: object
+                groups:
+                  description: Groups is a list of groups that should have their cluster
+                    mutations considered in a fair manner with a strict change budget
+                    (not allowing any surge or unavailability) before the entire cluster
+                    is reconciled with the full change budget.
+                  items:
+                    properties:
+                      selector:
+                        description: Selector is the selector used to match pods.
+                        type: object
+                    type: object
+                  type: array
+              type: object
+            version:
+              description: Version represents the version of the stack
+              type: string
+          type: object
+        status:
+          properties:
+            clusterUUID:
+              type: string
+            health:
+              type: string
+            masterNode:
+              type: string
+            phase:
+              type: string
+            remoteClusters:
+              type: object
+            service:
+              type: string
+            zenDiscovery:
+              properties:
+                minimumMasterNodes:
+                  format: int64
+                  type: integer
+              type: object
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: enterpriselicenses.elasticsearch.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status
+    name: status
+    type: string
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: EnterpriseLicense
+    plural: enterpriselicenses
+    shortNames:
+    - el
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            clusterLicenses:
+              items:
+                properties:
+                  expiryDateInMillis:
+                    format: int64
+                    type: integer
+                  issueDateInMillis:
+                    format: int64
+                    type: integer
+                  issuedTo:
+                    type: string
+                  issuer:
+                    type: string
+                  maxNodes:
+                    format: int64
+                    type: integer
+                  signatureRef:
+                    type: object
+                  startDateInMillis:
+                    format: int64
+                    type: integer
+                  type:
+                    type: string
+                  uid:
+                    description: UID is the license UID not the k8s API UID (!)
+                    type: string
+                required:
+                - maxNodes
+                - type
+                - signatureRef
+                type: object
+              type: array
+            eula:
+              properties:
+                accepted:
+                  type: boolean
+              required:
+              - accepted
+              type: object
+            expiryDateInMillis:
+              format: int64
+              type: integer
+            issueDateInMillis:
+              format: int64
+              type: integer
+            issuedTo:
+              type: string
+            issuer:
+              type: string
+            maxInstances:
+              format: int64
+              type: integer
+            signatureRef:
+              type: object
+            startDateInMillis:
+              format: int64
+              type: integer
+            type:
+              type: string
+            uid:
+              description: UID is the license UID not the k8s API UID (!)
+              type: string
+          required:
+          - type
+          - eula
+          type: object
+        status:
+          type: string
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: remoteclusters.elasticsearch.k8s.elastic.co
+spec:
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: RemoteCluster
+    plural: remoteclusters
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            remote:
+              type: object
+          required:
+          - remote
+          type: object
+        status:
+          properties:
+            clusterName:
+              type: string
+            localTrustRelationship:
+              type: string
+            seedHosts:
+              items:
+                type: string
+              type: array
+            state:
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: trustrelationships.elasticsearch.k8s.elastic.co
+spec:
+  group: elasticsearch.k8s.elastic.co
+  names:
+    kind: TrustRelationship
+    plural: trustrelationships
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            caCert:
+              description: CaCert contains the PEM-encoded CA certificate for the
+                remote cluster.
+              type: string
+            trustRestrictions:
+              description: TrustRestrictions contains configuration for the trust
+                restrictions feature of Elasticsearch for this relationship
+              properties:
+                trust:
+                  description: Trust contains configuration for the Elasticsearch
+                    trust restrictions.
+                  properties:
+                    subjectName:
+                      description: SubjectName is a list of patterns that incoming
+                        TLS client certificates must match.
+                      items:
+                        type: string
+                      type: array
+                  type: object
+              type: object
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: users.elasticsearch.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.name
+    name: username
+    type: string
+  - JSONPath: .status.phase
+    name: status
+    type: string
+  group: elasticsearch.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: User
+    plural: users
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            name:
+              type: string
+            passwordHash:
+              type: string
+            userRoles:
+              items:
+                type: string
+              type: array
+          required:
+          - name
+          - passwordHash
+          - userRoles
+          type: object
+        status:
+          properties:
+            phase:
+              type: string
+            reason:
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    controller-tools.k8s.io: "1.0"
+  name: kibanas.kibana.k8s.elastic.co
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.health
+    name: health
+    type: string
+  - JSONPath: .status.availableNodes
+    description: Available nodes
+    name: nodes
+    type: integer
+  - JSONPath: .spec.version
+    description: Kibana version
+    name: version
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: age
+    type: date
+  group: kibana.k8s.elastic.co
+  names:
+    categories:
+    - elastic
+    kind: Kibana
+    plural: kibanas
+    shortNames:
+    - kb
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            elasticsearch:
+              description: Elasticsearch configures how Kibana connects to Elasticsearch
+              properties:
+                auth:
+                  description: Auth configures authentication for Kibana to use.
+                  properties:
+                    inline:
+                      description: Inline is auth provided as plaintext inline credentials.
+                      properties:
+                        password:
+                          description: Password is the password to use.
+                          type: string
+                        username:
+                          description: User is the username to use.
+                          type: string
+                      required:
+                      - username
+                      - password
+                      type: object
+                    secret:
+                      type: object
+                  type: object
+                caCertSecret:
+                  description: CaCertSecret names a secret that contains a CA file
+                    entry to use.
+                  type: string
+                url:
+                  description: ElasticsearchURL is the URL to the target Elasticsearch
+                  type: string
+              required:
+              - url
+              type: object
+            expose:
+              description: 'Expose determines which service type to use for this workload.
+                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
+              enum:
+              - ClusterIP
+              - LoadBalancer
+              - NodePort
+              type: string
+            featureFlags:
+              description: FeatureFlags are instance-specific flags that enable or
+                disable specific experimental features
+              type: object
+            image:
+              description: Image represents the docker image that will be used.
+              type: string
+            nodeCount:
+              description: NodeCount defines how many nodes the Kibana deployment
+                must have.
+              format: int32
+              type: integer
+            resources:
+              description: Resources to be allocated for this topology
+              properties:
+                limits:
+                  description: Limits represents the limits to considerate for these
+                    resources
+                  type: object
+              type: object
+            version:
+              description: Version represents the version of Kibana
+              type: string
+          type: object
+        status:
+          properties:
+            health:
+              type: string
+          type: object
+  version: v1alpha1
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+
+---
+

@@ -5,31 +5,28 @@
 package driver
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"time"
-
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/snapshot"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
@@ -83,7 +80,6 @@ type defaultDriver struct {
 		scheme *runtime.Scheme,
 		es v1alpha1.Elasticsearch,
 		trustRelationships []v1alpha1.TrustRelationship,
-		w watches.DynamicWatches,
 	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
@@ -114,7 +110,14 @@ type defaultDriver struct {
 
 	// zen1SettingsUpdater updates the zen1 settings for the current pods.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(esClient esclient.Client, allPods []corev1.Pod) error
+	zen1SettingsUpdater func(
+		cluster v1alpha1.Elasticsearch,
+		c k8s.Client,
+		esClient esclient.Client,
+		allPods []corev1.Pod,
+		performableChanges *mutation.PerformableChanges,
+		reconcileState *reconcile.State,
+	) (bool, error)
 
 	// zen2SettingsUpdater updates the zen2 settings for the current changes.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
@@ -176,6 +179,10 @@ func (d *defaultDriver) Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
 	})
 
+	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
+		return results.WithError(err)
+	}
+
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -213,22 +220,9 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(
-		d.Client, d.Scheme, es, trustRelationships, d.DynamicWatches,
-	)
+	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, trustRelationships)
 	if err != nil {
 		return results.WithError(err)
-	}
-
-	if err := snapshot.ReconcileSnapshotterCronJob(
-		d.Client,
-		d.Scheme,
-		es,
-		internalUsers.ControllerUser.Auth(),
-		d.OperatorImage,
-	); err != nil {
-		// it's ok to continue even if we cannot reconcile the cron job
-		results.WithError(err)
 	}
 
 	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
@@ -237,13 +231,11 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	if esReachable {
-		err = snapshot.ReconcileSnapshotRepository(context.Background(), esClient, es.Spec.SnapshotRepository)
+		err = remotecluster.UpdateRemoteCluster(d.Client, esClient, es, reconcileState)
 		if err != nil {
-			msg := "Could not reconcile snapshot repository"
+			msg := "Could not update remote clusters in Elasticsearch settings"
 			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
 			log.Error(err, msg)
-			// requeue to retry but continue, as the failure might be caused by transient inconsistency between ES and
-			// operator e.g. after certificates have been rotated
 			results.WithResult(defaultRequeue)
 		}
 	}
@@ -312,6 +304,29 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
+	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
+	// correct value for minimum_master_nodes.
+	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
+	// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
+	if d.zen1SettingsUpdater != nil {
+		requeue, err := d.zen1SettingsUpdater(
+			es,
+			d.Client,
+			esClient,
+			resourcesState.AllPods,
+			performableChanges,
+			reconcileState,
+		)
+
+		if err != nil {
+			return results.WithError(err)
+		}
+
+		if requeue {
+			results.WithResult(defaultRequeue)
+		}
+	}
+
 	for _, change := range performableChanges.ToCreate {
 		d.PodsExpectations.ExpectCreation(namespacedName)
 		if err := createElasticsearchPod(
@@ -354,19 +369,6 @@ func (d *defaultDriver) Reconcile(
 
 	if !changes.HasChanges() {
 		// Current state matches expected state
-
-		// Update discovery for any previously created pods that have come up (see also below in create pod)
-		if d.zen1SettingsUpdater != nil {
-			if err := d.zen1SettingsUpdater(
-				esClient,
-				reconcile.AvailableElasticsearchNodes(resourcesState.CurrentPods.Pods()),
-			); err != nil {
-				// TODO: reconsider whether this error should be propagated with results instead?
-				log.Error(err, "Error during update discovery after having no changes, requeuing.")
-				return results.WithResult(defaultRequeue)
-			}
-		}
-
 		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
 		return results
 	}
@@ -379,13 +381,13 @@ func (d *defaultDriver) Reconcile(
 
 	// Shrink clusters by deleting deprecated pods
 	if err = d.attemptPodsDeletion(
-		performableChanges.ToDelete.Pods(),
+		performableChanges,
 		reconcileState,
 		resourcesState,
 		observedState,
 		results,
 		esClient,
-		namespacedName,
+		es,
 	); err != nil {
 		return results.WithError(err)
 	}
@@ -403,29 +405,41 @@ func (d *defaultDriver) Reconcile(
 
 // attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
 func (d *defaultDriver) attemptPodsDeletion(
-	ToDelete []corev1.Pod,
+	changes *mutation.PerformableChanges,
 	reconcileState *reconcile.State,
 	resourcesState *reconcile.ResourcesState,
 	observedState observer.State,
 	results *reconciler.Results,
 	esClient esclient.Client,
-	namespacedName types.NamespacedName,
+	elasticsearch v1alpha1.Elasticsearch,
 ) error {
 	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
 	copy(newState, resourcesState.CurrentPods.Pods())
-	for _, pod := range ToDelete {
+	for _, pod := range changes.ToDelete.Pods() {
 		newState = removePodFromList(newState, pod)
 		preDelete := func() error {
 			if d.zen1SettingsUpdater != nil {
-				if err := d.zen1SettingsUpdater(esClient, newState); err != nil {
+				requeue, err := d.zen1SettingsUpdater(
+					elasticsearch,
+					d.Client,
+					esClient,
+					newState,
+					changes,
+					reconcileState)
+
+				if err != nil {
 					return err
+				}
+
+				if requeue {
+					results.WithResult(defaultRequeue)
 				}
 			}
 			return nil
 		}
 
 		// do not delete a pod or expect a deletion if a data migration is in progress
-		isMigratingData := migration.IsMigratingData(observedState, pod, ToDelete)
+		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
 		if isMigratingData {
 			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
 			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
@@ -433,6 +447,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 			continue
 		}
 
+		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
 		d.PodsExpectations.ExpectDeletion(namespacedName)
 		result, err := deleteElasticsearchPod(
 			d.Client,
@@ -472,11 +487,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:     k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			KeystoreSecretRef: k8s.ExtractNamespacedName(&versionWideResources.KeyStoreConfig),
-			ProbeUser:         internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser:   internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:   volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:       internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 		},
 		d.OperatorImage,
 	)

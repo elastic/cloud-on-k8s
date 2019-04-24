@@ -14,19 +14,10 @@ const (
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
 
-	NodeData   = "node.data"
-	NodeIngest = "node.ingest"
-	NodeMaster = "node.master"
-	NodeML     = "node.ml"
-
 	NodeName = "node.name"
 
 	PathData = "path.data"
 	PathLogs = "path.logs"
-
-	TransportProfilesClientPort                                 = "transport.profiles.client.port"
-	TransportProfilesClientXPackSecuritySslClientAuthentication = "transport.profiles.client.xpack.security.ssl.client_authentication"
-	TransportProfilesClientXPackSecurityType                    = "transport.profiles.client.xpack.security.type"
 
 	XPackLicenseSelfGeneratedType                   = "xpack.license.self_generated.type"
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
@@ -42,3 +33,28 @@ const (
 	XPackSecurityTransportSslTrustRestrictionsPath  = "xpack.security.transport.ssl.trust_restrictions.path"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
+
+var Blacklist = []string{
+	ClusterName,
+	DiscoveryZenMinimumMasterNodes,
+	DiscoveryZenPingUnicastHosts,
+	ClusterInitialMasterNodes,
+	NetworkHost,
+	NetworkPublishHost,
+	NodeName,
+	PathData,
+	PathLogs,
+	XPackLicenseSelfGeneratedType,
+	XPackSecurityAuthcReservedRealmEnabled,
+	XPackSecurityEnabled,
+	XPackSecurityHttpSslCertificate,
+	XPackSecurityHttpSslCertificateAuthorities,
+	XPackSecurityHttpSslEnabled,
+	XPackSecurityHttpSslKey,
+	XPackSecurityTransportSslCertificate,
+	XPackSecurityTransportSslCertificateAuthorities,
+	XPackSecurityTransportSslEnabled,
+	XPackSecurityTransportSslKey,
+	XPackSecurityTransportSslTrustRestrictionsPath,
+	XPackSecurityTransportSslVerificationMode,
+}

@@ -5,7 +5,7 @@
 # you may not use this file except in compliance with the Elastic License.
 
 case "$1" in
-    driver) ./driver.sh;;
-    provisioner) ./provisioner;;
+    driver) exec ./driver.sh;;
+    provisioner) exec ./provisioner;;
     *) echo "Usage: entrypoint.sh <driver|provisioner>";;
 esac

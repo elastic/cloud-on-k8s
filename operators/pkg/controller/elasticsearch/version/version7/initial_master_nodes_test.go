@@ -5,7 +5,6 @@
 package version7
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
@@ -32,19 +31,21 @@ func newPod(name string, master bool) pod.PodWithConfig {
 
 	label.NodeTypesMasterLabelName.Set(master, p.Labels)
 
-	return pod.PodWithConfig{Pod: p, Config: settings.FlatConfig{}}
+	return pod.PodWithConfig{Pod: p, Config: settings.NewCanonicalConfig()}
 }
 
 func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
 	for _, change := range changes.ToCreate {
-		nodes, isSet := change.PodSpecCtx.Config[settings.ClusterInitialMasterNodes]
+		cfg, err := change.PodSpecCtx.Config.Unpack()
+		require.NoError(t, err)
+		nodes := cfg.Cluster.InitialMasterNodes
 		if !label.IsMasterNode(change.Pod) {
-			require.False(t, isSet)
+			require.Nil(t, nodes)
 		} else if !shouldBeSet {
-			require.False(t, isSet)
+			require.Nil(t, nodes)
 		} else {
-			require.True(t, isSet)
-			require.Equal(t, strings.Join(nodeNames, ","), nodes)
+			require.NotNil(t, nodes)
+			require.Equal(t, nodeNames, nodes)
 		}
 	}
 }
@@ -67,6 +68,9 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
+							PodSpecCtx: pod.PodSpecContext{
+								Config: settings.NewCanonicalConfig(),
+							},
 						}},
 					},
 				},
@@ -85,6 +89,9 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
+							PodSpecCtx: pod.PodSpecContext{
+								Config: settings.NewCanonicalConfig(),
+							},
 						}},
 					},
 				},
@@ -102,18 +109,43 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{
-							{Pod: newPod("b", true).Pod},
-							{Pod: newPod("c", true).Pod},
-							{Pod: newPod("d", true).Pod},
-							{Pod: newPod("e", true).Pod},
+							{
+								Pod: newPod("b", true).Pod,
+								PodSpecCtx: pod.PodSpecContext{
+									Config: settings.NewCanonicalConfig(),
+								},
+							},
+							{
+								Pod: newPod("c", true).Pod,
+								PodSpecCtx: pod.PodSpecContext{
+									Config: settings.NewCanonicalConfig(),
+								},
+							},
+							{
+								Pod: newPod("d", true).Pod,
+								PodSpecCtx: pod.PodSpecContext{
+									Config: settings.NewCanonicalConfig(),
+								},
+							},
+							{
+								Pod: newPod("e", true).Pod,
+								PodSpecCtx: pod.PodSpecContext{
+									Config: settings.NewCanonicalConfig(),
+								},
+							},
 							// f is not master, so masters should not be informed of it
-							{Pod: newPod("f", false).Pod},
+							{
+								Pod: newPod("f", false).Pod,
+								PodSpecCtx: pod.PodSpecContext{
+									Config: settings.NewCanonicalConfig(),
+								},
+							},
 						},
 					},
 				},
 			},
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
-				assertInitialMasterNodes(t, changes, true, "b,c,d,e")
+				assertInitialMasterNodes(t, changes, true, "b", "c", "d", "e")
 			},
 		},
 	}

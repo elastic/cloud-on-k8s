@@ -8,17 +8,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -218,9 +219,11 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	expectedEmptyResult := reconciler.Results{}
 	expectedEmptyResult.WithResult(k8sreconcile.Result{})
 
-	nn := types.NamespacedName{
-		Namespace: "default",
-		Name:      "elasticsearch-sample",
+	elasticsearch := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "elasticsearch-sample",
+		},
 	}
 
 	type fields struct {
@@ -228,13 +231,13 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	}
 
 	type args struct {
-		ToDelete       []corev1.Pod
+		ToDelete       *mutation.PerformableChanges
 		reconcileState *reconcile.State
 		resourcesState *reconcile.ResourcesState
 		observedState  observer.State
 		results        *reconciler.Results
 		esClient       esclient.Client
-		namespacedName types.NamespacedName
+		elasticsearch  v1alpha1.Elasticsearch
 	}
 
 	type want struct {
@@ -252,19 +255,26 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 		{
 			name: "Do not delete a pod with migrating data",
 			args: args{
-				namespacedName: nn,
-				ToDelete:       []corev1.Pod{pod1, pod2},
+				elasticsearch: elasticsearch,
+				ToDelete: &mutation.PerformableChanges{
+					Changes: mutation.Changes{
+						ToDelete: pod.PodsWithConfig{
+							pod.PodWithConfig{Pod: pod1},
+							pod.PodWithConfig{Pod: pod2},
+						},
+					},
+				},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
 					},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{
@@ -281,20 +291,26 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 		{
 			name: "Delete a pod with no data",
 			args: args{
-				namespacedName: nn,
-				ToDelete:       []corev1.Pod{pod4},
+				elasticsearch: elasticsearch,
+				ToDelete: &mutation.PerformableChanges{
+					Changes: mutation.Changes{
+						ToDelete: pod.PodsWithConfig{
+							pod.PodWithConfig{Pod: pod4},
+						},
+					},
+				},
 				resourcesState: &reconcile.ResourcesState{
 					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1, Config: settings.FlatConfig{}},
-						{Pod: pod2, Config: settings.FlatConfig{}},
-						{Pod: pod3, Config: settings.FlatConfig{}},
-						{Pod: pod4, Config: settings.FlatConfig{}},
+						{Pod: pod1},
+						{Pod: pod2},
+						{Pod: pod3},
+						{Pod: pod4},
 					},
 				},
 				observedState: observer.State{
 					ClusterState: &clusterState,
 				},
-				reconcileState: &reconcile.State{},
+				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
 				results:        &reconciler.Results{},
 			},
 			fields: fields{
@@ -317,10 +333,11 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 			}
 			if err := d.attemptPodsDeletion(
 				tt.args.ToDelete, tt.args.reconcileState, tt.args.resourcesState,
-				tt.args.observedState, tt.args.results, tt.args.esClient, tt.args.namespacedName); (err != nil) != tt.wantErr {
+				tt.args.observedState, tt.args.results, tt.args.esClient, tt.args.elasticsearch); (err != nil) != tt.wantErr {
 				t.Errorf("defaultDriver.attemptPodsDeletion() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.EqualValues(t, tt.want.results, tt.args.results)
+			nn := k8s.ExtractNamespacedName(&tt.args.elasticsearch)
 			assert.EqualValues(t, tt.want.fulfilledExpectation, tt.fields.Options.PodsExpectations.Fulfilled(nn))
 		})
 	}

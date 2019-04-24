@@ -23,58 +23,38 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=basic,trial,gold,platinum
 	LicenseType string `json:"licenseType,omitempty"`
 
-	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
+	// SetVMMaxMapCount indicates whether an init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVMMaxMapCount bool `json:"setVmMaxMapCount,omitempty"`
+	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
+	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
 	// Expose determines which service type to use for this workload. The
 	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
-	// Topology represents a list of topology elements to be part of the cluster
-	Topology []TopologyElementSpec `json:"topology,omitempty"`
-
-	// SnapshotRepository defines a snapshot repository to be used for automatic snapshots.
-	SnapshotRepository *SnapshotRepository `json:"snapshotRepository,omitempty"`
+	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
+	Nodes []NodeSpec `json:"nodes,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
-}
 
-// SnapshotRepositoryType as in gcs, AWS s3, file etc.
-type SnapshotRepositoryType string
-
-// Supported repository types
-const (
-	SnapshotRepositoryTypeGCS SnapshotRepositoryType = "gcs"
-)
-
-// SnapshotRepositorySettings specify a storage location for snapshots.
-type SnapshotRepositorySettings struct {
-	// BucketName is the name of the provider specific storage bucket to use.
-	BucketName string `json:"bucketName,omitempty"`
-	// Credentials is a reference to a secret containing credentials for the storage provider.
-	Credentials corev1.SecretReference `json:"credentials,omitempty"`
-}
-
-// SnapshotRepository specifies that the user wants automatic snapshots to happen and indicates where they should be stored.
-type SnapshotRepository struct {
-	// Type of repository
-	// +kubebuilder:validation:Enum=gcs
-	Type SnapshotRepositoryType `json:"type"`
-	// Settings are provider specific repository settings
-	Settings SnapshotRepositorySettings `json:"settings"`
+	// SecureSettings reference a secret containing secure settings, to be injected
+	// into Elasticsearch keystore on each node.
+	// It must exist in the same namespace as the Elasticsearch resource.
+	// Secret keys must start with `es.file.` or `es.string.` according to the
+	// secure setting type.
+	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
 func (es ElasticsearchSpec) NodeCount() int32 {
 	count := int32(0)
-	for _, topoElem := range es.Topology {
+	for _, topoElem := range es.Nodes {
 		count += topoElem.NodeCount
 	}
 	return count
@@ -90,10 +70,10 @@ func (es ElasticsearchSpec) GetLicenseType() LicenseType {
 	return licenseType
 }
 
-// TopologyElementSpec defines a common topology for a set of Elasticsearch nodes
-type TopologyElementSpec struct {
-	// NodeTypes represents the node types
-	NodeTypes NodeTypesSpec `json:"nodeTypes,omitempty"`
+// NodeSpec defines a common topology for a set of Elasticsearch nodes
+type NodeSpec struct {
+	// Config represents Elasticsearch configuration.
+	Config *Config `json:"config,omitempty"`
 
 	// Resources to be allocated for this topology
 	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
@@ -132,18 +112,6 @@ type ElasticsearchPodSpec struct {
 	// Affinity is the pod's scheduling constraints
 	// +optional
 	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
-}
-
-// NodeTypesSpec defines the types associated to the node
-type NodeTypesSpec struct {
-	// Master represents a master node
-	Master bool `json:"master,omitempty"`
-	// Data represents a data node
-	Data bool `json:"data,omitempty"`
-	// Ingest represents an ingest node
-	Ingest bool `json:"ingest,omitempty"`
-	// ML represents a machine learning node
-	ML bool `json:"ml,omitempty"`
 }
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
@@ -251,6 +219,8 @@ const (
 	ElasticsearchPendingPhase ElasticsearchOrchestrationPhase = "Pending"
 	// ElasticsearchMigratingDataPhase Elasticsearch is currently migrating data to another node.
 	ElasticsearchMigratingDataPhase ElasticsearchOrchestrationPhase = "MigratingData"
+	// ElasticsearchResourceInvalid is marking a resource as invalid, should never happen if admission control is installed correctly.
+	ElasticsearchResourceInvalid ElasticsearchOrchestrationPhase = "Invalid"
 )
 
 // ElasticsearchStatus defines the observed state of Elasticsearch
@@ -261,6 +231,12 @@ type ElasticsearchStatus struct {
 	ClusterUUID     string                          `json:"clusterUUID,omitempty"`
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
+	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
+	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
+}
+
+type ZenDiscoveryStatus struct {
+	MinimumMasterNodes int `json:"minimumMasterNodes,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

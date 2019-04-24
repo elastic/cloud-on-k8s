@@ -56,9 +56,12 @@ rules:
   - elasticsearches/status
   - clusterlicenses
   - enterpriselicenses
+  - enterpriselicenses/status
   - trustrelationships
   - users
   - users/status
+  - remoteclusters
+  - remoteclusters/status
   verbs:
   - get
   - list

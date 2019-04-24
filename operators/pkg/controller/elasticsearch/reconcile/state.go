@@ -10,45 +10,44 @@ import (
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Event is a k8s event that can be recorded via an event recorder.
-type Event struct {
-	EventType string
-	Reason    string
-	Message   string
-}
-
 // State holds the accumulated state during the reconcile loop including the response and a pointer to an
 // Elasticsearch resource for status updates.
 type State struct {
+	*events.Recorder
 	cluster v1alpha1.Elasticsearch
 	status  v1alpha1.ElasticsearchStatus
-	events  []Event
 }
 
 // NewState creates a new reconcile state based on the given cluster
 func NewState(c v1alpha1.Elasticsearch) *State {
-	return &State{cluster: c, status: *c.Status.DeepCopy()}
+	return &State{Recorder: events.NewRecorder(), cluster: c, status: *c.Status.DeepCopy()}
 }
 
 // AvailableElasticsearchNodes filters a slice of pods for the ones that are ready.
 func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	var nodesAvailable []corev1.Pod
 	for _, pod := range pods {
-		conditionsTrue := 0
-		for _, cond := range pod.Status.Conditions {
-			if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
-				conditionsTrue++
-			}
-		}
-		if conditionsTrue == 2 {
+		if IsAvailable(pod) {
 			nodesAvailable = append(nodesAvailable, pod)
 		}
 	}
 	return nodesAvailable
+}
+
+// IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
+func IsAvailable(pod corev1.Pod) bool {
+	conditionsTrue := 0
+	for _, cond := range pod.Status.Conditions {
+		if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
+			conditionsTrue++
+		}
+	}
+	return conditionsTrue == 2
 }
 
 func (s *State) updateWithPhase(
@@ -110,24 +109,36 @@ func (s *State) UpdateElasticsearchMigrating(
 	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }
 
-// AddEvent records the intent to emit a k8s event with the given attributes.
-func (s *State) AddEvent(eventType, reason, message string) *State {
-	s.events = append(s.events, Event{
-		eventType,
-		reason,
-		message,
-	})
-	return s
+// UpdateRemoteClusters updates the remote clusters saved in the persistent settings of the cluster.
+func (s *State) UpdateRemoteClusters(remoteCluster map[string]string) {
+	s.status.RemoteClusters = remoteCluster
+}
+
+// GetRemoteClusters returns the remote clusters that have been set in the cluster.
+func (s *State) GetRemoteClusters() map[string]string {
+	return s.status.RemoteClusters
+}
+
+// UpdateZen1MinimumMasterNodes updates the current minimum master nodes in the state.
+func (s *State) UpdateZen1MinimumMasterNodes(value int) {
+	s.status.ZenDiscovery = v1alpha1.ZenDiscoveryStatus{
+		MinimumMasterNodes: value,
+	}
+}
+
+// GetZen1MinimumMasterNodes returns the current minimum master nodes as it is stored in the state.
+func (s *State) GetZen1MinimumMasterNodes() int {
+	return s.status.ZenDiscovery.MinimumMasterNodes
 }
 
 // Apply takes the current Elasticsearch status, compares it to the previous status, and updates the status accordingly.
 // It returns the events to emit and an updated version of the Elasticsearch cluster resource with
 // the current status applied to its status sub-resource.
-func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
+func (s *State) Apply() ([]events.Event, *v1alpha1.Elasticsearch) {
 	previous := s.cluster.Status
 	current := s.status
 	if reflect.DeepEqual(previous, current) {
-		return s.events, nil
+		return s.Events(), nil
 	}
 	if current.IsDegraded(previous) {
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonUnhealthy, "Elasticsearch cluster health degraded")
@@ -157,5 +168,12 @@ func (s *State) Apply() ([]Event, *v1alpha1.Elasticsearch) {
 		)
 	}
 	s.cluster.Status = current
-	return s.events, &s.cluster
+	return s.Events(), &s.cluster
+}
+
+func (s *State) UpdateElasticsearchInvalid(results []validation.Result) {
+	s.status.Phase = v1alpha1.ElasticsearchResourceInvalid
+	for _, r := range results {
+		s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, r.Reason)
+	}
 }

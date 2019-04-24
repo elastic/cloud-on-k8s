@@ -1,0 +1,67 @@
+# This example sets up an ingress relying on the NGINX ingress controller
+# as a reverse proxy in front of the Elasticsearch service.
+# See https://github.com/kubernetes/ingress-nginx for more information.
+#
+# Requirements:
+# - deploy the NGINX ingress controller: https://kubernetes.github.io/ingress-nginx/deploy/
+# - (optional) deploy the cert-manager to auto-generate Let's encrypt certificates: https://docs.cert-manager.io/en/latest/getting-started/install.html
+#
+# Optional:
+# - setup basic auth (see annotations)
+# - setup TLS termination from a TLS certificate (see tls spec)
+# - setup TLS termination from a Let's Encrypt auto-generated TLS certificate (see annotations)
+# - use https to communicate from NGINX to Elasticsearch (see annotations)
+#
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-es-kibana-sample
+  annotations:
+    # Use the nginx ingress controller, not the cloud-provider default one
+    kubernetes.io/ingress.class: "nginx"
+
+    # Rewrite routes: eg. "/elasticsearch/_cat/nodes" to "/_cat/nodes"
+    nginx.ingress.kubernetes.io/rewrite-target: "/$1"
+
+    # Basic auth configuration
+    # see https://github.com/kubernetes/ingress-nginx/tree/master/docs/examples/auth/basic
+    # Can be disabled if already handled by Elasticsearch XPack security.
+    nginx.ingress.kubernetes.io/auth-type: basic
+    # Name of the secret that contains the user/password definitions
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+
+    # If the ES cluster is already configured to use TLS,
+    # use https to reach the cluster.
+    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+
+    # Auto-generate a Let's Encrypt certificate with cert-manager
+    certmanager.k8s.io/issuer: "letsencrypt-prod"
+    certmanager.k8s.io/acme-challenge-type: http01
+
+    # If not using TLS, disable automatic http to https redirection
+    # nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+    # Restrict access to a range of IP addresses
+    # nginx.ingress.kubernetes.io/whitelist-source-range: 10.0.0.0/24,35.26.87.5
+
+spec:
+  rules:
+  - host: foo.bar.com
+    http:
+      paths:
+        - path: /elasticsearch/?(.*)
+          backend:
+            # specify the ES service name
+            serviceName: elasticsearch-sample-es
+            servicePort: 9200
+        - path: /kibana/?(.*)
+          backend:
+            # specify the kibana service name
+            serviceName: kibana-sample-kibana
+            servicePort: 5601
+  tls:
+    # TLS termination configuration
+    # see https://github.com/kubernetes/ingress-nginx/tree/master/docs/examples/tls-termination
+    - hosts:
+      - foo.bar.com
+      secretName: es-kibana-sample-tls-secret

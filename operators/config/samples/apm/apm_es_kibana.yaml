@@ -15,7 +15,7 @@ spec:
     namespace: "default"
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
-kind: ElasticsearchCluster
+kind: Elasticsearch
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
@@ -23,12 +23,11 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: "6.6.1"
-  setVmMaxMapCount: true
-  topology:
-    - nodeTypes:
-        master: true
-        data: true
-        ingest: true
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
       resources:
         limits:
           memory: 1Gi

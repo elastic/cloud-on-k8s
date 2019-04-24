@@ -120,7 +120,7 @@ const (
 	ExpectationsTTLNanosec = 5 * time.Minute // time is internally represented as int64 nanoseconds
 
 	// ExpectationsFinalizerName designates a finalizer to clean up expectations on es cluster deletion.
-	ExpectationsFinalizerName = "expectations.finalizers.elasticsearch.stack.k8s.elastic.co"
+	ExpectationsFinalizerName = "expectations.finalizers.elasticsearch.k8s.elastic.co"
 )
 
 // NewExpectations creates expectations with the default TTL.

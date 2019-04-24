@@ -26,17 +26,8 @@ const (
 	ReloadCredsUserRole = "reload_creds_user"
 )
 
-// Predefined users and roles.
+// Predefined roles.
 var (
-	externalUsers = []User{
-		New(ExternalUserName, Roles(SuperUserBuiltinRole)),
-	}
-	internalUsers = []User{
-		New(InternalControllerUserName, Roles(SuperUserBuiltinRole)),
-		New(InternalProbeUserName, Roles(ProbeUserRole)),
-		New(InternalReloadCredsUserName, Roles(ReloadCredsUserRole)),
-	}
-
 	PredefinedRoles = map[string]client.Role{
 		ProbeUserRole: {
 			Cluster: []string{"monitor"},
@@ -46,6 +37,22 @@ var (
 		},
 	}
 )
+
+// newExternalUsers returns new predefined external users.
+func newExternalUsers() []User {
+	return []User{
+		New(ExternalUserName, Roles(SuperUserBuiltinRole)),
+	}
+}
+
+// newInternalUsers returns new predefined internal users.
+func newInternalUsers() []User {
+	return []User{
+		New(InternalControllerUserName, Roles(SuperUserBuiltinRole)),
+		New(InternalProbeUserName, Roles(ProbeUserRole)),
+		New(InternalReloadCredsUserName, Roles(ReloadCredsUserRole)),
+	}
+}
 
 // InternalUsers are Elasticsearch users intended for system use.
 type InternalUsers struct {

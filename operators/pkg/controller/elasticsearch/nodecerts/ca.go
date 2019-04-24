@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -150,4 +151,36 @@ func certIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bo
 		return false
 	}
 	return true
+}
+
+// GetCA attempts to fetch the CA of a cluster.
+func GetCA(c k8s.Client, es types.NamespacedName) ([]byte, error) {
+	remoteCA := &v1.Secret{}
+	remoteSecretNamespacedName := GetCASecretNamespacedName(es)
+	err := c.Get(remoteSecretNamespacedName, remoteCA)
+	if err != nil {
+		log.V(1).Info("Error while fetching remote CA", "error", err)
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Extract the CA from the secret
+	caCert, exists := remoteCA.Data[certificates.CAFileName]
+	if !exists {
+		log.V(1).Info(
+			"CA file not found in secret", "secret",
+			remoteSecretNamespacedName, "file", certificates.CAFileName,
+		)
+		return nil, nil
+	}
+	return caCert, nil
+}
+
+func GetCASecretNamespacedName(es types.NamespacedName) types.NamespacedName {
+	return types.NamespacedName{
+		Name:      CACertSecretName(es.Name),
+		Namespace: es.Namespace,
+	}
 }

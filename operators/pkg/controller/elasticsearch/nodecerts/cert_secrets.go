@@ -7,6 +7,7 @@ package nodecerts
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,13 +64,6 @@ func findNodeCertificateSecrets(
 	return nodeCertificateSecrets.Items, nil
 }
 
-// NodeCertificateSecretObjectKeyForPod returns the object key for the secret containing the node certificates for
-// a given pod.
-func NodeCertificateSecretObjectKeyForPod(pod corev1.Pod) types.NamespacedName {
-	// TODO: trim and suffix?
-	return k8s.ExtractNamespacedName(&pod)
-}
-
 // EnsureNodeCertificateSecretExists ensures the existence of the corev1.Secret that at a later point in time will
 // contain the node certificates.
 func EnsureNodeCertificateSecretExists(
@@ -80,16 +74,19 @@ func EnsureNodeCertificateSecretExists(
 	nodeCertificateType string,
 	labels map[string]string,
 ) (*corev1.Secret, error) {
-	secretObjectKey := NodeCertificateSecretObjectKeyForPod(pod)
+	secretRef := types.NamespacedName{
+		Namespace: pod.Namespace,
+		Name:      name.CertsSecret(pod.Name),
+	}
 
 	var secret corev1.Secret
-	if err := c.Get(secretObjectKey, &secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(secretRef, &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		secret = corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretObjectKey.Name,
-				Namespace: secretObjectKey.Namespace,
+				Name:      secretRef.Name,
+				Namespace: secretRef.Namespace,
 
 				Labels: map[string]string{
 					// store the pod that this Secret will be mounted to so we can traverse from secret -> pod

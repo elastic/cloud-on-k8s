@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/chrono"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -23,7 +23,7 @@ import (
 )
 
 func Test_nextReconcileRelativeTo(t *testing.T) {
-	now := test.MustParseTime("2019-02-01")
+	now := chrono.MustParseTime("2019-02-01")
 	type args struct {
 		expiry time.Time
 		safety time.Duration
@@ -36,7 +36,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		{
 			name: "remaining time too short: requeue immediately ",
 			args: args{
-				expiry: test.MustParseTime("2019-02-02"),
+				expiry: chrono.MustParseTime("2019-02-02"),
 				safety: 30 * 24 * time.Hour,
 			},
 			want: reconcile.Result{Requeue: true},
@@ -44,7 +44,7 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		{
 			name: "default: requeue after expiry - safety/2 ",
 			args: args{
-				expiry: test.MustParseTime("2019-02-03"),
+				expiry: chrono.MustParseTime("2019-02-03"),
 				safety: 48 * time.Hour,
 			},
 			want: reconcile.Result{RequeueAfter: 24 * time.Hour},

@@ -186,7 +186,7 @@ func kibanaWatchName(assocKey types.NamespacedName) string {
 // because the assocation has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches",
+		Name: "dynamic-watches.finalizers.associations.k8s.elastic.co",
 		Execute: func() error {
 			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocKey))
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))

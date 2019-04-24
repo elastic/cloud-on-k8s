@@ -16,6 +16,42 @@ const (
 	EventReasonUnhealthy = "Unhealthy"
 	// EventReasonUnexpected describes events that were not anticipated or happened at an unexpected time.
 	EventReasonUnexpected = "Unexpected"
+	// EventReasonValidation describes events that were due to an invalid resource being submitted by the user.
+	EventReasonValidation = "Validation"
 	// EventReasonStateChange describes events that are expected state changes in a Elasticsearch cluster.
 	EventReasonStateChange = "StateChange"
 )
+
+// Event is a k8s event that can be recorded via an event recorder.
+type Event struct {
+	EventType string
+	Reason    string
+	Message   string
+}
+
+// Recorder keeps track of events.
+type Recorder struct {
+	events []Event
+}
+
+// NewRecorder returns an initialized event recorder.
+func NewRecorder() *Recorder {
+	return &Recorder{events: []Event{}}
+}
+
+// AddEvent records the intent to emit a k8s event with the given attributes.
+func (r *Recorder) AddEvent(eventType, reason, message string) {
+	if r.events == nil {
+		r.events = []Event{}
+	}
+	r.events = append(r.events, Event{
+		eventType,
+		reason,
+		message,
+	})
+}
+
+// Events returns all recorded events.
+func (r *Recorder) Events() []Event {
+	return r.events
+}

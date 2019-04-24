@@ -17,13 +17,13 @@ func NewInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
 	linkedFiles LinkedFilesArray,
-	SetVMMaxMapCount bool,
+	setVMMaxMapCount *bool,
 	nodeCertificatesVolume volume.SecretVolume,
 	additional ...corev1.Container,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
-	if SetVMMaxMapCount {
-		// Only create the privileged init container if needed
+	// create the privileged init container if not explicitly disabled by the user
+	if setVMMaxMapCount == nil || *setVMMaxMapCount {
 		osSettingsContainer, err := NewOSSettingsInitContainer(elasticsearchImage)
 		if err != nil {
 			return nil, err
@@ -34,11 +34,18 @@ func NewInitContainers(
 	if err != nil {
 		return nil, err
 	}
+
 	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, nodeCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}
-	containers = append(containers, prepareFsContainer, certInitializerContainer)
+
+	injectProcessManager, err := NewInjectProcessManagerInitContainer(operatorImage)
+	if err != nil {
+		return nil, err
+	}
+
+	containers = append(containers, prepareFsContainer, injectProcessManager, certInitializerContainer)
 	containers = append(containers, additional...)
 	return containers, nil
 }

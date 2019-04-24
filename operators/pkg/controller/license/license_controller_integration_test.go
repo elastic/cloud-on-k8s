@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/chrono"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -67,15 +68,15 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.EnterpriseLicenseSpec{
 			LicenseMeta: v1alpha1.LicenseMeta{
 				UID:                "test",
-				ExpiryDateInMillis: test.ToMillis(expiryDate),
+				ExpiryDateInMillis: chrono.ToMillis(expiryDate),
 			},
 			Type:         "enterprise",
 			SignatureRef: corev1.SecretKeySelector{},
 			ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
 				{
 					LicenseMeta: v1alpha1.LicenseMeta{
-						ExpiryDateInMillis: test.ToMillis(expiryDate),
-						StartDateInMillis:  test.ToMillis(startDate),
+						ExpiryDateInMillis: chrono.ToMillis(expiryDate),
+						StartDateInMillis:  chrono.ToMillis(startDate),
 					},
 					Type: v1alpha1.LicenseTypePlatinum,
 					SignatureRef: corev1.SecretKeySelector{
@@ -122,6 +123,7 @@ func TestReconcile(t *testing.T) {
 	assert.NoError(t, c.Create(controllerSecret))
 	defer c.Delete(controllerSecret)
 
+	varFalse := false
 	cluster := &v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -130,8 +132,8 @@ func TestReconcile(t *testing.T) {
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
 			LicenseType:      "platinum",
-			SetVMMaxMapCount: false,
-			Topology: []v1alpha1.TopologyElementSpec{
+			SetVMMaxMapCount: &varFalse,
+			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 3,
 				},

@@ -55,6 +55,8 @@ rules:
   - trustrelationships
   - users
   - users/status
+  - remoteclusters
+  - remoteclusters/status
   verbs:
   - get
   - list
@@ -83,19 +85,6 @@ rules:
   - apmserverelasticsearchassociations/status
   - kibanaelasticsearchassociations
   - kibanaelasticsearchassociations/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-- apiGroups:
-  - admissionregistration.k8s.io
-  resources:
-  - mutatingwebhookconfigurations
-  - validatingwebhookconfigurations
   verbs:
   - get
   - list

@@ -16,3 +16,8 @@ type ResourcesSpec struct {
 type ReconcilerStatus struct {
 	AvailableNodes int `json:"availableNodes,omitempty"`
 }
+
+// SecretRef reference a secret by name.
+type SecretRef struct {
+	SecretName string `json:"secretName"`
+}

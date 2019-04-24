@@ -36,11 +36,14 @@ func NewTrustRootConfig(clusterName string, namespace string) TrustRootConfig {
 		Trust: TrustConfig{
 			// the Subject Name needs to match the certificates of the nodes we want to allow to connect.
 			// this needs to be kept in sync with buildCertificateCommonName
-			SubjectName: []string{fmt.Sprintf(
-				"*.node.%s.%s.es.cluster.local", clusterName, namespace,
-			)},
+			SubjectName: GetSubjectName(clusterName, namespace),
 		},
 	}
+}
+
+// GetSubjectName returns the wildcard name of the nodes we want to allow to connect.
+func GetSubjectName(clusterName string, namespace string) []string {
+	return []string{fmt.Sprintf("*.node.%s.%s.es.cluster.local", clusterName, namespace)}
 }
 
 // Include appends the provided Trust to the current trust config.

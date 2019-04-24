@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -30,10 +31,6 @@ var log = logf.KBLog.WithName("nodecerts")
 // The certificate is passed to the pod through a secret volume mount.
 // The corresponding private key stays in the ES pod: we request a CSR from the pod,
 // and never access the private key directly.
-
-const (
-	lastCertUpdateAnnotation = "elasticsearch.k8s.elastic.co/last-cert-update"
-)
 
 // ReconcileNodeCertificateSecrets reconciles certificate secrets for nodes
 // of the given es cluster.
@@ -212,17 +209,7 @@ func doReconcile(
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
 		}
-		// To speedup secret propagation into the pod, also update the pod itself
-		// with a "dummy" annotation. Otherwise, it may take 1+ minute.
-		// This could be fixed in kubelet at some point,
-		// see https://github.com/kubernetes/kubernetes/issues/30189
-		if pod.Annotations == nil {
-			pod.Annotations = map[string]string{}
-		}
-		pod.Annotations[lastCertUpdateAnnotation] = time.Now().Format(time.RFC3339)
-		if err := c.Update(&pod); err != nil {
-			return reconcile.Result{}, err
-		}
+		annotation.MarkPodAsUpdated(c, pod)
 	}
 
 	return reconcile.Result{}, nil

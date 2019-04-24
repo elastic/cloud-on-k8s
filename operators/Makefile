@@ -9,22 +9,26 @@
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
-KUBECTL_CLUSTER = $(shell kubectl config current-context 2> /dev/null)
-GCLOUD_PROJECT ?= elastic-cloud-dev
+KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 
 ## -- Docker image
-# default to GCR registry
-REGISTRY ?= eu.gcr.io
-ifeq ($(KUBECTL_CLUSTER), minikube)
-	# but on minikube, use a local registry
-	REGISTRY = localhost:5000
+
+REPOSITORY ?= elastic-dev
+# on GKE, use GCR and GCLOUD_PROJECT
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+	REGISTRY ?= eu.gcr.io
+	REPOSITORY = ${GCLOUD_PROJECT}
+endif
+# default to local registry
+ifeq ($(REGISTRY),)
+	REGISTRY ?= localhost:5000
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(GCLOUD_PROJECT)/k8s-operators$(IMG_SUFFIX)
+IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
 # use git sha1 as the default image tag
-GIT_SHA1 = $(shell git rev-parse --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(GIT_SHA1)
+TAG ?= $(shell git rev-parse --verify HEAD)
+OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
 ## -- Namespaces
@@ -41,7 +45,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator keystore-updater check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager cert-initializer check-license-header
 
 ## -- build
 
@@ -56,14 +60,18 @@ dep-vendor-only:
 generate:
 	go generate ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	# combine all crds into one for easy installation
+	for yaml in $$(ls config/crds/*); do \
+		cat $$yaml && echo -e "\n---\n" ; \
+	done > config/crds.yaml
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
 
-keystore-updater: generate
-	go build -o bin/keystore-updater github.com/elastic/k8s-operators/operators/cmd/keystore-updater
+process-manager:
+	go build -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
 
-cert-initializer: generate
+cert-initializer:
 	go build -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
 
 fmt:
@@ -97,18 +105,32 @@ install-crds: generate
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
 run: install-crds
-	# Run the operator locally with role All, with sidecar image set to latest
+    # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run ./cmd/main.go manager \
-			--development --operator-role=all \
-			--ca-cert-validity=10h --ca-cert-rotate-before=1h
+			--development --operator-roles=global,namespace \
+			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
+			--operator-namespace=elastic-system \
+			--auto-install-webhooks=false
+
+# if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
+check-gke:
+ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set while GKE detected)
+endif
+endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: install-crds docker-build docker-push
+deploy: check-gke install-crds docker-build docker-push
 	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
 		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
 	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
+
+# Deploy an all in one operator against the current k8s cluster
+deploy-all-in-one: install-crds docker-build docker-push
+	kustomize build config/all-in-one-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -147,24 +169,28 @@ set-context-minikube:
 	kubectl config use-context "minikube"
 	$(eval KUBECTL_CLUSTER="minikube")
 
-bootstrap-minikube: 
+bootstrap-minikube:
 	hack/minikube-cluster.sh
 	$(MAKE) set-context-minikube registry lazy-push-latest-operator-image-in-local-registry cluster-bootstrap
 
 ## -- gke
 
-set-context-gke:
-	minikube stop || true
+require-gcloud-project:
+ifndef GCLOUD_PROJECT
+	$(error GCLOUD_PROJECT not set)
+endif
+
+set-context-gke: require-gcloud-project
 	kubectl config use-context $(shell hack/gke-cluster.sh name)
 	$(eval KUBECTL_CLUSTER=$(shell hack/gke-cluster.sh name))
 
-bootstrap-gke:
+bootstrap-gke: require-gcloud-project
 	./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
-delete-gke:
+delete-gke: require-gcloud-project
 	./hack/gke-cluster.sh delete
 
 ## -- registry in the cluster
@@ -219,7 +245,7 @@ e2e-setup:
 	kubectl apply -f config/e2e/rbac.yaml
 
 # Run e2e tests as a k8s batch job
-E2E_IMG ?= $(IMG)-e2e-tests:$(GIT_SHA1)
+E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 e2e: e2e-setup
 	# push the e2e tests docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
@@ -252,6 +278,10 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # that we delete if everything went fine
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
+
+ci-release:
+	@ hack/gke-cluster.sh registry
+	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 
 
 ##########################

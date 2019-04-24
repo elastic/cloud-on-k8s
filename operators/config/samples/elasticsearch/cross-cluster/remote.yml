@@ -1,0 +1,54 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: trust-one
+  labels:
+    k8s.elastic.co/expected-license: "trial"
+spec:
+  licenseType: trial # can be "basic", "trial", "gold", "platinum"
+  version: "6.6.2"
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 1
+      nodeCount: 1
+  expose: ClusterIP
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: trust-two
+  labels:
+    k8s.elastic.co/expected-license: "trial"
+spec:
+  version: "6.6.2"
+  licenseType: trial # can be "basic", "trial", "gold", "platinum"
+  nodes:
+    - config:
+        node.master: true
+        node.data: true
+        node.ingest: true
+      resources:
+        limits:
+          memory: 1Gi
+          cpu: 1
+      nodeCount: 1
+  expose: ClusterIP
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: RemoteCluster
+metadata:
+  labels:
+    controller-tools.k8s.io: "1.0"
+    elasticsearch.k8s.elastic.co/cluster-name: trust-one
+  name: remotecluster-sample-1-2
+spec:
+  remote:
+    k8sLocalRef:
+      name: trust-two
+      namespace: default

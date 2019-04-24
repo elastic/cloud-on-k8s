@@ -7,6 +7,7 @@ package stack
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
@@ -16,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const defaultVersion = "6.4.2"
+const defaultVersion = "6.7.0"
 
 var DefaultResources = common.ResourcesSpec{
 	Limits: map[corev1.ResourceName]resource.Quantity{
@@ -47,8 +48,7 @@ func NewStackBuilder(name string) Builder {
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				SetVMMaxMapCount: true,
-				Version:          defaultVersion,
+				Version: defaultVersion,
 			},
 		},
 		Kibana: kbtype.Kibana{
@@ -82,46 +82,65 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-// -- ES Topology
+// -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
-	b.Elasticsearch.Spec.Topology = []estype.TopologyElementSpec{}
+	b.Elasticsearch.Spec.Nodes = []estype.NodeSpec{}
 	return b
 }
 
 func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Master: true},
+		Config: &estype.Config{Data: map[string]interface{}{
+			estype.NodeMaster: "true",
+		},
+		},
 		Resources: resources,
 	})
 }
 
 func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Data: true},
+		Config: &estype.Config{
+			Data: map[string]interface{}{
+				estype.NodeData: "true",
+			},
+		},
 		Resources: resources,
 	})
 }
 
 func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.TopologyElementSpec{
+	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		NodeTypes: estype.NodeTypesSpec{Master: true, Data: true},
+		Config: &estype.Config{
+			Data: map[string]interface{}{
+				estype.NodeMaster: "true",
+				estype.NodeData:   "true",
+			},
+		},
 		Resources: resources,
 	})
 }
 
-func (b Builder) withESTopologyElement(topologyElement estype.TopologyElementSpec) Builder {
-	b.Elasticsearch.Spec.Topology = append(b.Elasticsearch.Spec.Topology, topologyElement)
+func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder {
+	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, topologyElement)
+	return b
+}
+
+func (b Builder) WithSecureSettings(secretName string) Builder {
+	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.SecretRef{
+		SecretName: secretName,
+	}
 	return b
 }
 
 // -- Kibana
 
 func (b Builder) WithKibana(count int) Builder {
-	b.Kibana.Spec.NodeCount = 1
+	b.Kibana.Spec.NodeCount = int32(count)
 	return b
 }
 

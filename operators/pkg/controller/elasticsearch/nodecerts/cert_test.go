@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -355,10 +356,16 @@ func Test_doReconcile(t *testing.T) {
 				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
 				if tt.wantCertUpdateAnnotationUpdated {
+					// check that the CSR annotation has been updated
 					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-					lastCertUpdate, err := time.Parse(time.RFC3339, updatedPod.Annotations[lastCertUpdateAnnotation])
+					lastCertUpdate, err := time.Parse(time.RFC3339, updatedSecret.Annotations[LastCSRUpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
+					// also check that the pod annotation has been updated too
+					assert.NotEmpty(t, updatedPod.Annotations[annotation.UpdateAnnotation])
+					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedPod.Annotations[annotation.UpdateAnnotation])
+					require.NoError(t, err)
+					assert.True(t, lastPodUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}
 			}
 		})

@@ -70,12 +70,12 @@ func (l LicenseType) String() string {
 // LicenseMeta contains license (meta) information shared between enterprise and cluster licenses.
 type LicenseMeta struct {
 	// UID is the license UID not the k8s API UID (!)
-	UID                string `json:"uid"`
-	IssueDateInMillis  int64  `json:"issueDateInMillis"`
-	ExpiryDateInMillis int64  `json:"expiryDateInMillis"`
-	IssuedTo           string `json:"issuedTo"`
-	Issuer             string `json:"issuer"`
-	StartDateInMillis  int64  `json:"startDateInMillis"`
+	UID                string `json:"uid,omitempty"`
+	IssueDateInMillis  int64  `json:"issueDateInMillis,omitempty"`
+	ExpiryDateInMillis int64  `json:"expiryDateInMillis,omitempty"`
+	IssuedTo           string `json:"issuedTo,omitempty"`
+	Issuer             string `json:"issuer,omitempty"`
+	StartDateInMillis  int64  `json:"startDateInMillis,omitempty"`
 }
 
 // StartDate is the date as of which this license is valid.
@@ -93,6 +93,14 @@ func (l LicenseMeta) IsValid(instant time.Time) bool {
 	return (l.StartDate().Equal(instant) || l.StartDate().Before(instant)) &&
 		l.ExpiryDate().After(instant)
 }
+
+type LicenseStatus string
+
+const (
+	LicenseStatusValid   LicenseStatus = "Valid"
+	LicenseStatusExpired LicenseStatus = "Expired"
+	LicenseStatusInvalid LicenseStatus = "Invalid"
+)
 
 // ClusterLicenseSpec defines the desired state of ClusterLicense
 type ClusterLicenseSpec struct {

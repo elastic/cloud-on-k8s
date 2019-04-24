@@ -31,14 +31,13 @@ var (
 	DefaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
-		{Name: "client", ContainerPort: network.TransportClientPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 
 // PodWithConfig contains a pod and its configuration
 type PodWithConfig struct {
 	Pod    corev1.Pod
-	Config settings.FlatConfig
+	Config *settings.CanonicalConfig
 }
 
 // PodsWithConfig is simply a list of PodWithConfig
@@ -67,8 +66,8 @@ type NewPodSpecParams struct {
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
-	// NodeTypes defines the types (master/data/ingest) associated to the ES node
-	NodeTypes v1alpha1.NodeTypesSpec
+	// Config is the user provided Elasticsearch configuration.
+	Config v1alpha1.Config
 
 	// Affinity is the pod's scheduling constraints
 	Affinity *corev1.Affinity
@@ -76,7 +75,8 @@ type NewPodSpecParams struct {
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
 	// Setting this to true requires the kubelet to allow running privileged containers.
-	SetVMMaxMapCount bool
+	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
+	SetVMMaxMapCount *bool
 
 	// Resources is the memory/cpu resources the pod wants
 	Resources commonv1alpha1.ResourcesSpec
@@ -89,8 +89,6 @@ type NewPodSpecParams struct {
 	ConfigMapVolume volume.ConfigMapVolume
 	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
 	ExtraFilesRef types.NamespacedName
-	// KeystoreSecretRef is configuration for the Elasticsearch key store setup
-	KeystoreSecretRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
@@ -99,9 +97,9 @@ type NewPodSpecParams struct {
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
 type PodSpecContext struct {
-	PodSpec         corev1.PodSpec
-	TopologyElement v1alpha1.TopologyElementSpec
-	Config          settings.FlatConfig
+	PodSpec  corev1.PodSpec
+	NodeSpec v1alpha1.NodeSpec
+	Config   *settings.CanonicalConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

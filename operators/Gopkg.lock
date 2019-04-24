@@ -45,6 +45,19 @@
   revision = "6480d4af844c189cf5dd913db24ddd339d3a4f85"
 
 [[projects]]
+  digest = "1:ae22b31cc4eccb85d5a53fdaa3f189071e21cb14ee78e05c24f4dc3d49560253"
+  name = "github.com/elastic/go-ucfg"
+  packages = [
+    ".",
+    "diff",
+    "internal/parse",
+    "yaml",
+  ]
+  pruneopts = "T"
+  revision = "0539807037ce820e147797f051ff32b05f4f9288"
+  version = "v0.7.0"
+
+[[projects]]
   digest = "1:0ffd93121f3971aea43f6a26b3eaaa64c8af20fb0ff0731087d8dab7164af5a8"
   name = "github.com/emicklei/go-restful"
   packages = [
@@ -190,6 +203,14 @@
   ]
   pruneopts = "T"
   revision = "c63ab54fda8f77302f8d414e19933f2b6026a089"
+
+[[projects]]
+  branch = "master"
+  digest = "1:93cde32e6a4f5911b86cdc7a0092f9a775fa228d6afce033b5cb575700cdca19"
+  name = "github.com/hashicorp/go-reap"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "bf58d8a43e7b6bf026d99d6295c4de703b67b374"
 
 [[projects]]
   digest = "1:8ec8d88c248041a6df5f6574b87bc00e7e0b493881dad2e7ef47b11dc69093b5"
@@ -1014,6 +1035,7 @@
     "pkg/source/internal",
     "pkg/webhook",
     "pkg/webhook/admission",
+    "pkg/webhook/admission/builder",
     "pkg/webhook/admission/types",
     "pkg/webhook/internal/cert",
     "pkg/webhook/internal/cert/generator",
@@ -1069,9 +1091,13 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/elastic/go-ucfg",
+    "github.com/elastic/go-ucfg/diff",
+    "github.com/elastic/go-ucfg/yaml",
     "github.com/emicklei/go-restful",
     "github.com/ghodss/yaml",
     "github.com/go-test/deep",
+    "github.com/hashicorp/go-reap",
     "github.com/magiconair/properties/assert",
     "github.com/onsi/gomega",
     "github.com/pkg/errors",
@@ -1081,6 +1107,9 @@
     "github.com/stretchr/testify/require",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/net/context",
+    "gopkg.in/yaml.v2",
+    "k8s.io/api/admission/v1beta1",
+    "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
     "k8s.io/api/batch/v1",
     "k8s.io/api/batch/v1beta1",
@@ -1098,6 +1127,7 @@
     "k8s.io/apimachinery/pkg/util/errors",
     "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/rand",
+    "k8s.io/apimachinery/pkg/util/uuid",
     "k8s.io/apimachinery/pkg/util/yaml",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/kubernetes/scheme",
@@ -1110,6 +1140,7 @@
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/deepcopy-gen",
     "sigs.k8s.io/controller-runtime/pkg/client",
+    "sigs.k8s.io/controller-runtime/pkg/client/apiutil",
     "sigs.k8s.io/controller-runtime/pkg/client/config",
     "sigs.k8s.io/controller-runtime/pkg/client/fake",
     "sigs.k8s.io/controller-runtime/pkg/controller",
@@ -1124,6 +1155,10 @@
     "sigs.k8s.io/controller-runtime/pkg/runtime/scheme",
     "sigs.k8s.io/controller-runtime/pkg/runtime/signals",
     "sigs.k8s.io/controller-runtime/pkg/source",
+    "sigs.k8s.io/controller-runtime/pkg/webhook",
+    "sigs.k8s.io/controller-runtime/pkg/webhook/admission",
+    "sigs.k8s.io/controller-runtime/pkg/webhook/admission/builder",
+    "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types",
     "sigs.k8s.io/controller-tools/cmd/controller-gen",
     "sigs.k8s.io/testing_frameworks/integration",
     "sigs.k8s.io/yaml",
