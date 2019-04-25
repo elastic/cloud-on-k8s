@@ -80,8 +80,8 @@ func TestReconcile(t *testing.T) {
 	assert.Error(t, c.Get(trustRelationship1Key, trustRelationship1))
 	test.StartTrial(t, c)
 
-	// looks like we need at least two interations to do the actual reconciling
-	test.CheckReconcileCalledIn(t, requests, expectedRequest, 2, 2)
+	// looks like we need four rounds to do the actual reconciling
+	test.CheckReconcileCalledIn(t, requests, expectedRequest, 4, 4)
 	// expect the creation of the first TrustRelationship
 	test.RetryUntilSuccess(t, func() error {
 		err := c.Get(trustRelationship1Key, trustRelationship1)
