@@ -20,6 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Quorum computes the quorum of a cluster given the number of masters.
@@ -94,7 +95,11 @@ func UpdateSeedHostsConfigMap(
 			},
 			PostUpdate: func() {
 				log.Info("Seed hosts updated", "hosts", seedHosts)
-				annotation.MarkPodsAsUpdated(c, es)
+				annotation.MarkPodsAsUpdated(c,
+					client.ListOptions{
+						Namespace:     es.Namespace,
+						LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+					})
 			},
 		})
 }
