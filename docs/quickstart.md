@@ -58,7 +58,7 @@ spec:
 EOF
 ```
 
-The operator will automatically take care of managing pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator will automatically take care of managing Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
 ### Monitor cluster health and creation progress
 
@@ -84,7 +84,7 @@ NAME                   READY     STATUS    RESTARTS   AGE
 quickstart-es-5zctxpn8nd   1/1       Running   0          1m
 ```
 
-And access the logs for that pod:
+And access the logs for that Pod:
 
 ```bash
 kubectl logs -f quickstart-es-5zctxpn8nd
