@@ -146,9 +146,6 @@ func AnnotateClusterForCoordinatedRestart(cluster *v1alpha1.Elasticsearch) {
 }
 
 func getStartTime(pod corev1.Pod) (time.Time, bool) {
-	if pod.Annotations == nil {
-		pod.Annotations = map[string]string{}
-	}
 	startTime, err := time.Parse(time.RFC3339, pod.Annotations[StartTimeAnnotation])
 	if err != nil {
 		return time.Time{}, false
