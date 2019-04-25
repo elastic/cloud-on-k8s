@@ -245,7 +245,7 @@ EOF
 To secure your production-grade Elasticsearch deployment, you can:
 
 * Use XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
-* Set up an ingress proxy layer (TODO: link here to the nginx ingress sample)
+* Set up an ingress proxy layer ([example using NGINX](https://github.com/elastic/k8s-operators/blob/master/operators/config/samples/ingress/nginx-ingress.yaml))
 
 ### Using persistent storage
 
