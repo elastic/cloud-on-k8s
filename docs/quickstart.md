@@ -300,5 +300,3 @@ The operator supports the following features:
 * APM server deployments
 * Pausing reconciliations
 * Full cluster restart
-
-TODO: add a link to the homepage of all features documentation.
