@@ -46,7 +46,7 @@ cat <<EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  name: sample
+  name: quickstart
 spec:
   version: 7.0.0
   nodes:
@@ -69,7 +69,7 @@ kubectl get elasticsearch
 ```
 ```
 NAME      HEALTH    NODES     VERSION   PHASE         AGE
-sample    green     1         7.0.0     Operational   1m
+quickstart    green     1         7.0.0     Operational   1m
 ```
 
 While the cluster is created, there is no health yet and the phase is still Pending. After a while, the cluster appears as Running, with a green health.
@@ -77,17 +77,17 @@ While the cluster is created, there is no health yet and the phase is still Pend
 You can see that one Pod is in the process of being started:
 
 ```bash
-kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=sample'
+kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'
 ```
 ```
 NAME                   READY     STATUS    RESTARTS   AGE
-sample-es-5zctxpn8nd   1/1       Running   0          1m
+quickstart-es-5zctxpn8nd   1/1       Running   0          1m
 ```
 
 And access the logs for that pod:
 
 ```bash
-kubectl logs -f sample-es-5zctxpn8nd
+kubectl logs -f quickstart-es-5zctxpn8nd
 ```
 
 ### Access Elasticsearch
@@ -97,21 +97,21 @@ kubectl logs -f sample-es-5zctxpn8nd
 A ClusterIP Service is automatically created for your cluster:
 
 ```bash
-kubectl get service sample-es
+kubectl get service quickstart-es
 ```
 ```
 NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-sample-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ```
 
-Elasticsearch can be accessed from the Kubernetes cluster, using the URL `https://sample-es:9200`.
+Elasticsearch can be accessed from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
 
 #### Retrieve credentials
 
 A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
 
 ```bash
-PASSWORD=$(kubectl get secret sample-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ```
 
 #### Request Elasticsearch
@@ -119,7 +119,7 @@ PASSWORD=$(kubectl get secret sample-elastic-user -o=jsonpath='{.data.elastic}' 
 Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
 ```bash
-kubectl port-forward service/sample-es 9200
+kubectl port-forward service/quickstart-es 9200
 ```
 
 Then, in another shell, request the Elasticsearch endpoint (skipping certificate verification for now):
@@ -129,8 +129,8 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ```
 ```
 {
-  "name" : "sample-es-5zctxpn8nd",
-  "cluster_name" : "sample",
+  "name" : "quickstart-es-5zctxpn8nd",
+  "cluster_name" : "quickstart",
   "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
   "version" : {
     "number" : "7.0.0",
@@ -152,21 +152,21 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 TLS encryption is enabled by default. To perform certificate verification from the client, retrieve the CA certificate used to issue Elasticsearch nodes certificates:
 
 ```bash
-kubectl get secret sample-ca -o jsonpath="{.data['ca\.pem']}"
+kubectl get secret quickstart-ca -o jsonpath="{.data['ca\.pem']}"
 ```
 
 ## Deploy Kibana
 
-### Target our sample Elasticsearch cluster
+### Target the Elasticsearch cluster
 
-Specify a Kibana instance and associate it with your sample Elasticsearch cluster:
+Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
 
 ```bash
 cat <<EOF | kubectl apply -f -
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  name: sample
+  name: quickstart
 spec:
   version: 7.0.0
   nodeCount: 1
@@ -174,13 +174,13 @@ spec:
 apiVersion: associations.k8s.elastic.co/v1alpha1
 kind: KibanaElasticsearchAssociation
 metadata:
-  name: kibana-es-sample
+  name: kibana-es-quickstart
 spec:
   elasticsearch:
-    name: sample
+    name: quickstart
     namespace: default
   kibana:
-    name: sample
+    name: quickstart
     namespace: default
 EOF
 ```
@@ -196,7 +196,7 @@ kubectl get kibana
 And the associated Pods:
 
 ```bash
-kubectl get pod --selector='kibana.k8s.elastic.co/name=sample'
+kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'
 ```
 
 ### Access Kibana
@@ -204,13 +204,13 @@ kubectl get pod --selector='kibana.k8s.elastic.co/name=sample'
 A `ClusterIP` Service was automatically created for Kibana:
 
 ```
-kubectl get service sample-kibana
+kubectl get service quickstart-kibana
 ```
 
 Use `kubectl port-forward` to access Kibana from your local workstation:
 
 ```bash
-kubectl port-forward service/sample-kibana 5601
+kubectl port-forward service/quickstart-kibana 5601
 ```
 
 You can then open http://localhost:5601 in your browser.
@@ -226,7 +226,7 @@ cat <<EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  name: sample
+  name: quickstart
 spec:
   version: 7.0.0
   nodes:
@@ -249,7 +249,7 @@ To secure your production-grade Elasticsearch deployment, you can:
 
 ### Using persistent storage
 
-The sample cluster you have just deployed uses an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which may not qualify for production workloads. 
+The quickstart cluster you have just deployed uses an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which may not qualify for production workloads. 
 
 You can request a PersistentVolumeClaim in the cluster specification, to target any PersistentVolume class available in your Kubernetes cluster:
 
