@@ -19,6 +19,10 @@ Before you start, install the following tools and packages:
 
 Run `make check-requisites` to check that all dependencies are installed.
 
+## Quickstart
+
+See the [quickstart tutorial](docs/quickstart.md).
+
 ## Development
 
 1. Get a working development Kubernetes cluster. You can either use:
