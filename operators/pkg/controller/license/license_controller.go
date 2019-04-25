@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	license "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
