@@ -97,7 +97,6 @@ func populateTrialLicense(l *estype.EnterpriseLicense) error {
 		setStartAndExpiry(l, time.Now())
 	}
 	return nil
-
 }
 
 // setStartAndExpiry sets the issue, start and end dates for a trial.
