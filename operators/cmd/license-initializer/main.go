@@ -7,6 +7,7 @@ package main
 import (
 	"flag"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -17,13 +18,15 @@ func main() {
 	var pubkeyFile string
 	flag.StringVar(&pubkeyFile, "filename", "", "filename pointing to the DER encoded public key")
 	flag.Parse()
+	generateSrc(pubkeyFile, os.Stdout)
+}
 
+func generateSrc(pubkeyFile string, out io.Writer) {
 	type params struct {
 		Bytes       []byte
 		ShouldBreak func(int) bool
 	}
-	var tmpl = `
-// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+	var tmpl = `// Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
@@ -46,7 +49,7 @@ var publicKeyBytes = []byte{
 		panic(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
 	}
 	t := template.Must(template.New("license").Parse(tmpl))
-	err = t.Execute(os.Stdout, params{
+	err = t.Execute(out, params{
 		Bytes: bytes,
 		ShouldBreak: func(i int) bool {
 			return (i+1)%8 == 0
