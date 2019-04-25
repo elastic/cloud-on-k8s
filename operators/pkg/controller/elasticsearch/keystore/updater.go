@@ -172,7 +172,7 @@ func (u *Updater) updateKeystore() (error, string) {
 		}
 
 		log.Info("Adding setting to keystore", "file", file.Name())
-		err = u.keystore.AddFileSetting(file.Name())
+		err = u.keystore.AddSetting(file.Name())
 		if err != nil {
 			return err, fmt.Sprintf("could not add setting %s", file.Name())
 		}

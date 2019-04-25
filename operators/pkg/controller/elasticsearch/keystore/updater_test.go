@@ -37,17 +37,21 @@ func (c EsClientKoMock) WaitForEsReady()             { time.Sleep(timeToStartEs)
 
 type KeystoreOkMock struct{}
 
-func (k KeystoreOkMock) Create() error                        { return nil }
-func (k KeystoreOkMock) Delete() (bool, error)                { return true, nil }
-func (k KeystoreOkMock) ListSettings() (string, error)        { return "", nil }
-func (k KeystoreOkMock) AddFileSetting(filename string) error { return nil }
+func (k KeystoreOkMock) Create() error                          { return nil }
+func (k KeystoreOkMock) Delete() (bool, error)                  { return true, nil }
+func (k KeystoreOkMock) ListSettings() (string, error)          { return "", nil }
+func (k KeystoreOkMock) AddFileSetting(filename string) error   { return nil }
+func (k KeystoreOkMock) AddStringSetting(filename string) error { return nil }
+func (k KeystoreOkMock) AddSetting(filename string) error       { return nil }
 
 type KeystoreKoMock struct{}
 
-func (k KeystoreKoMock) Create() error                        { return errors.New("failed") }
-func (k KeystoreKoMock) Delete() (bool, error)                { return true, nil }
-func (k KeystoreKoMock) ListSettings() (string, error)        { return "", nil }
-func (k KeystoreKoMock) AddFileSetting(filename string) error { return nil }
+func (k KeystoreKoMock) Create() error                          { return errors.New("failed") }
+func (k KeystoreKoMock) Delete() (bool, error)                  { return true, nil }
+func (k KeystoreKoMock) ListSettings() (string, error)          { return "", nil }
+func (k KeystoreKoMock) AddFileSetting(filename string) error   { return nil }
+func (k KeystoreKoMock) AddStringSetting(filename string) error { return nil }
+func (k KeystoreKoMock) AddSetting(filename string) error       { return nil }
 
 func TestCoalescingRetry_Ok(t *testing.T) {
 	updater, err := NewUpdater(Config{
