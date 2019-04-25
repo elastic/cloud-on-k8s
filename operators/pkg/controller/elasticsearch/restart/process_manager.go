@@ -22,7 +22,7 @@ type pmClientFactory func(restartContext RestartContext, pod corev1.Pod) (proces
 func createProcessManagerClient(restartContext RestartContext, pod corev1.Pod) (processmanager.Client, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	rawCA, err := nodecerts.GetCA(restartContext.K8sClient, k8s.ExtractNamespacedName(&restartContext.Cluster.ObjectMeta))
+	rawCA, err := nodecerts.GetCA(restartContext.K8sClient, k8s.ExtractNamespacedName(&restartContext.Cluster))
 	if err != nil {
 		return nil, err
 	}

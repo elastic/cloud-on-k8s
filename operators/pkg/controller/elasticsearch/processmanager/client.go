@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
+// DefaultReqTimeout is the default timeout of an HTTP request to the Process Manager
 const DefaultReqTimeout = 1 * time.Minute
 
 type Client interface {

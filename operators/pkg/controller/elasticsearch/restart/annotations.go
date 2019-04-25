@@ -19,15 +19,14 @@ const (
 	// ClusterRestartAnnotation can be set on the Elasticsearch cluster resource
 	// to trigger a cluster restart. Its value must match an existing Strategy.
 	ClusterRestartAnnotation = "elasticsearch.k8s.elastic.co/restart"
-
 	// StrategyAnnotation, set on a pod, indicates the restart strategy to be used.
 	StrategyAnnotation = "elasticsearch.k8s.elastic.co/restart-strategy"
-
 	// StrategySimple schedules a simple restart.
 	StrategySimple Strategy = "simple"
 	// StrategyCoordinated schedules a coordinated (simultaneous) restart.
 	StrategyCoordinated Strategy = "coordinated"
 	// StrategyRolling schedules a rolling (pod-by-pod) restart.
+	// TODO: implement the rolling restart strategy
 	StrategyRolling Strategy = "rolling"
 )
 
@@ -37,12 +36,11 @@ type Phase string
 const (
 	// PhaseAnnotation, set on a pod, indicates the current phase of the underlying ES process.
 	PhaseAnnotation = "elasticsearch.k8s.elastic.co/restart-phase"
-
 	// PhaseSchedule indicates a restart is requested.
 	PhaseSchedule Phase = "schedule"
-	// PhaseSchedule indicates the ES process should be stopped.
+	// PhaseStop indicates the ES process should be stopped.
 	PhaseStop Phase = "stop"
-	// PhaseSchedule indicates the ES process should be started.
+	// PhaseStart indicates the ES process should be started.
 	PhaseStart Phase = "start"
 )
 

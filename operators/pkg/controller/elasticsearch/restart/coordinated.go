@@ -10,11 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // CoordinatedRestartDefaultTimeout is the time after which we consider the coordinated restart is
@@ -61,7 +60,7 @@ type Step struct {
 	do        func(pods []corev1.Pod) (bool, error)
 }
 
-// coordinatedStepsExec executes a series of step in a coordinated way.
+// coordinatedStepsExec executes a series of steps in a coordinated way.
 //
 // The restart process is implemented as a state machine, persisted through Phases in pod annotations.
 // Pods move from one step to another at the same time: we wait until all pods have completed one step
