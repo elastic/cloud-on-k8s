@@ -55,6 +55,7 @@ spec:
       node.master: true
       node.data: true
       node.ingest: true
+      xpack.license.self_generated.type: trial
 EOF
 ```
 
@@ -235,6 +236,7 @@ spec:
       node.master: true
       node.data: true
       node.ingest: true
+      xpack.license.self_generated.type: trial
 EOF
 ```
 
@@ -266,6 +268,7 @@ spec:
       node.master: true
       node.data: true
       node.ingest: true
+      xpack.license.self_generated.type: trial
     volumeClaimTemplates:
     - metadata:
         name: data
