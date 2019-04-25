@@ -4,6 +4,8 @@ Managed Elastic products and services in Kubernetes.
 
 ## Requirements
 
+Before you start, install the following tools and packages:
+
 * [go](https://golang.org/dl/)
 * [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
 * [dep](https://github.com/golang/dep)
@@ -11,6 +13,7 @@ Managed Elastic products and services in Kubernetes.
 * [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
 * [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
 * [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
+* [docker](https://docs.docker.com/)
 * [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (for Mac `brew install md5sha1sum`)
 
@@ -18,28 +21,30 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 ## Development
 
-To start, get a working development Kubernetes cluster using [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube) or [GKE](https://cloud.google.com/kubernetes-engine/):
+1. Get a working development Kubernetes cluster. You can either use:
 
-```bash
-make bootstrap-minikube
-# or
-GCLOUD_PROJECT=my-project-id make bootstrap-gke
-```
+    [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
-Then, use either `make run` to run the operator locally, or `make deploy` to deploy the operators on the cluster.
+  ```bash
+   make bootstrap-minikube
+   # Sets up a Minikube cluster with required resources
+   ```
+   or [GKE](https://cloud.google.com/kubernetes-engine/)
 
-### Useful development targets
+   ```bash
+   GCLOUD_PROJECT=my-project-id make bootstrap-gke
+   # Sets up GKE cluster with required resources		
+   ```
+2. Deploy the operator.
 
-* `make bootstrap-minikube`: Sets up a Minikube cluster with required resources.
-* `make bootstrap-gke`: Sets up a Minikube cluster with required resources.
-* `make run`: Run the operator locally.
-* `make deploy`: Deploy the operators into the configured k8s cluster.
-* `make samples`: Apply a sample stack resource.
+   * `make dep-vendor-only` to download extra Go libraries needed to compile the project and stores them in the vendor directory.
+   *  `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
+   * `make samples` to apply a sample stack resource.
 
 ### Running E2E tests
 
-E2E tests will run in the `e2e` namespace. An operator needs to be running and managing resources in the `e2e` namespace.
-To do that run `MANAGED_NAMESPACE=e2e make run`. After that you can run e2e tests in a separate shell `make e2e-local`.
+E2E tests will run in the `e2e` namespace. An operator must run and manage resources in the `e2e` namespace.
+To do that, run `MANAGED_NAMESPACE=e2e make run`. Then you can run E2E tests in a separate shell `make e2e-local`.
 
 ## Recommended reading
 
