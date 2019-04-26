@@ -66,8 +66,6 @@ generate:
 		cat $$yaml && echo -e "\n---\n" ; \
 	done > config/crds.yaml
 	$(MAKE) generate-all-in-one
-	git --no-pager diff
-
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
@@ -167,6 +165,7 @@ show-credentials:
 cluster-bootstrap: dep-vendor-only install-crds
 
 clean-k8s-cluster:
+	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
 	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
