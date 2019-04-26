@@ -306,14 +306,8 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// Compute seed hosts based on current masters with a podIP
-	requeue, err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods)
-	if err != nil {
+	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
-	}
-	if changes.HasMasterChanges() || requeue {
-		// We don't have all the master IPs or some of them are about to be created or deleted.
-		// We need to requeue to ensure that the list of seeds will be updated accordingly.
-		results.WithResult(defaultRequeue)
 	}
 
 	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the

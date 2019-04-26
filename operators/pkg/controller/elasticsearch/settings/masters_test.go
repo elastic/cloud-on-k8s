@@ -57,7 +57,6 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 	tests := []struct {
 		name            string
 		args            args
-		want            bool
 		wantErr         bool
 		expectedContent string
 	}{
@@ -75,7 +74,6 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es:     es,
 				scheme: scheme.Scheme,
 			},
-			want:            true,
 			wantErr:         false,
 			expectedContent: "",
 		},
@@ -90,7 +88,6 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es:     es,
 				scheme: scheme.Scheme,
 			},
-			want:            false,
 			wantErr:         false,
 			expectedContent: "",
 		},
@@ -108,7 +105,6 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es:     es,
 				scheme: scheme.Scheme,
 			},
-			want:            true,
 			wantErr:         false,
 			expectedContent: "10.0.9.2:9300\n10.0.3.3:9300",
 		},
@@ -126,20 +122,16 @@ func TestUpdateSeedHostsConfigMap(t *testing.T) {
 				es:     es,
 				scheme: scheme.Scheme,
 			},
-			want:            false,
 			wantErr:         false,
 			expectedContent: "10.0.9.2:9300\n10.0.6.5:9300\n10.0.3.3:9300",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := UpdateSeedHostsConfigMap(tt.args.c, tt.args.scheme, tt.args.es, tt.args.pods)
+			err := UpdateSeedHostsConfigMap(tt.args.c, tt.args.scheme, tt.args.es, tt.args.pods)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("UpdateSeedHostsConfigMap() error = %v, wantErr %v", err, tt.wantErr)
 				return
-			}
-			if got != tt.want {
-				t.Errorf("UpdateSeedHostsConfigMap() = %v, want %v", got, tt.want)
 			}
 
 			// Check the resulting confimap

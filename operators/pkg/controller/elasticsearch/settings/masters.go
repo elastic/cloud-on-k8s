@@ -38,7 +38,7 @@ func UpdateSeedHostsConfigMap(
 	scheme *runtime.Scheme,
 	es v1alpha1.Elasticsearch,
 	pods []corev1.Pod,
-) (bool, error) {
+) error {
 	// Get the masters from the pods
 	var masters []corev1.Pod
 	for _, p := range pods {
@@ -73,11 +73,8 @@ func UpdateSeedHostsConfigMap(
 		},
 	}
 
-	// Check if we have to requeue because some pods don't have an IP yet
-	requeue := len(seedHosts) != len(masters)
-
 	reconciled := &corev1.ConfigMap{}
-	return requeue, reconciler.ReconcileResource(
+	return reconciler.ReconcileResource(
 		reconciler.Params{
 			Client:     c,
 			Scheme:     scheme,
