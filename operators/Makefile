@@ -66,8 +66,6 @@ generate:
 		cat $$yaml && echo -e "\n---\n" ; \
 	done > config/crds.yaml
 	$(MAKE) generate-all-in-one
-	git --no-pager diff
-
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
