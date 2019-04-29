@@ -6,6 +6,10 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: remoteclusters.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.state
+    name: state
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
     kind: RemoteCluster

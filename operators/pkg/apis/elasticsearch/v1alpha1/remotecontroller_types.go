@@ -48,6 +48,7 @@ const (
 // RemoteCluster is the Schema for the remoteclusters API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="state",type="string",JSONPath=".status.state"
 type RemoteCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
