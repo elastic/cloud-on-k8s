@@ -25,7 +25,7 @@
 
 **Environment**
 
-* Elastic operator information:
+* Version information:
 
 	insert version or git commit id here
 
