@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
@@ -31,6 +32,7 @@ var (
 	DefaultContainerPorts = []corev1.ContainerPort{
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
 	}
 )
 
@@ -56,8 +58,6 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 type NewPodSpecParams struct {
 	// Version is the Elasticsearch version
 	Version string
-	// LicenseType is the type of license attached to the cluster
-	LicenseType v1alpha1.LicenseType
 	// CustomImageName is the custom image used, leave empty for the default
 	CustomImageName string
 	// ClusterName is the name of the Elasticsearch cluster
@@ -93,6 +93,8 @@ type NewPodSpecParams struct {
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
 	ReloadCredsUser client.UserAuth
+	// UnicastHostsVolume contains a file with the seed hosts.
+	UnicastHostsVolume volume.ConfigMapVolume
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

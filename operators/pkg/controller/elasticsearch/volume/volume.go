@@ -27,6 +27,9 @@ const (
 
 	ExtraFilesSecretVolumeMountPath = "/usr/share/elasticsearch/config/extrafiles"
 
+	UnicastHostsVolumeMountPath = "/mnt/elastic/unicast-hosts"
+	UnicastHostsFile            = "unicast_hosts.txt"
+
 	ProcessManagerEmptyDirMountPath = "/mnt/elastic/process-manager"
 )
 

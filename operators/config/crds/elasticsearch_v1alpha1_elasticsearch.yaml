@@ -67,15 +67,6 @@ spec:
             image:
               description: Image represents the docker image that will be used.
               type: string
-            licenseType:
-              description: LicenseType represents the expected license type for this
-                cluster. Will default to "basic" if not set.
-              enum:
-              - basic
-              - trial
-              - gold
-              - platinum
-              type: string
             nodes:
               description: Nodes represents a list of groups of nodes with the same
                 configuration to be part of the cluster

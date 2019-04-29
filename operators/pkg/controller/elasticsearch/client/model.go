@@ -57,7 +57,8 @@ type Node struct {
 	Name  string   `json:"name"`
 	Roles []string `json:"roles"`
 	JVM   struct {
-		Mem struct {
+		StartTimeInMillis int64 `json:"start_time_in_millis"`
+		Mem               struct {
 			HeapMaxInBytes int `json:"heap_max_in_bytes"`
 		} `json:"mem"`
 	} `json:"jvm"`

@@ -131,7 +131,6 @@ func TestReconcile(t *testing.T) {
 		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version:          "7.0.0",
-			LicenseType:      "platinum",
 			SetVMMaxMapCount: &varFalse,
 			Nodes: []v1alpha1.NodeSpec{
 				{

@@ -16,16 +16,16 @@ $(error OPERATOR_IMAGE not set)
 endif
 
 generate-all-in-one:
-	@ for yaml in $$(ls all-in-one/*yaml); do \
+	@ for yaml in $$(LC_COLLATE=C ls all-in-one/*yaml); do \
 		cat $$yaml && echo -e "\n---\n"; \
 	done | \
 	sed \
 		-e "/# /d" \
 		-e "s|<OPERATOR_IMAGE>|$$OPERATOR_IMAGE|g" \
-		-e "s|<NAMESPACE>|$$NAMESPACE|g" \
+		-e "s|<NAMESPACE>|$$NAMESPACE|g"
 
 generate-global:
-	@ for yaml in $$(ls global/*yaml); do \
+	@ for yaml in $$(LC_COLLATE=C ls global/*yaml); do \
 		cat $$yaml && echo -e "\n---\n"; \
 	done | \
 	sed \
@@ -37,7 +37,7 @@ generate-namespace:
 ifndef MANAGED_NAMESPACE
 	$(error MANAGED_NAMESPACE not set)
 endif
-	@ for yaml in $$(ls namespace/*yaml); do \
+	@ for yaml in $$(LC_COLLATE=C ls namespace/*yaml); do \
 		cat $$yaml && echo -e "\n---\n"; \
 	done | \
 	sed \

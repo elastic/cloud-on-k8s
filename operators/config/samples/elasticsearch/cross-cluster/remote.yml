@@ -3,15 +3,14 @@ kind: Elasticsearch
 metadata:
   name: trust-one
   labels:
-    k8s.elastic.co/expected-license: "trial"
 spec:
-  licenseType: trial # can be "basic", "trial", "gold", "platinum"
   version: "6.6.2"
   nodes:
     - config:
         node.master: true
         node.data: true
         node.ingest: true
+        xpack.license.self_generated.type: trial
       resources:
         limits:
           memory: 1Gi
@@ -24,15 +23,14 @@ kind: Elasticsearch
 metadata:
   name: trust-two
   labels:
-    k8s.elastic.co/expected-license: "trial"
 spec:
   version: "6.6.2"
-  licenseType: trial # can be "basic", "trial", "gold", "platinum"
   nodes:
     - config:
         node.master: true
         node.data: true
         node.ingest: true
+        xpack.license.self_generated.type: trial
       resources:
         limits:
           memory: 1Gi

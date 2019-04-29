@@ -33,6 +33,20 @@ func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string)
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 
+func (c *clientV6) EnableShardAllocation(ctx context.Context) error {
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "all"}}
+	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
+}
+
+func (c *clientV6) DisableShardAllocation(ctx context.Context) error {
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "none"}}
+	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
+}
+
+func (c *clientV6) SyncedFlush(ctx context.Context) error {
+	return c.post(ctx, "/_flush/synced", nil, nil)
+}
+
 func (c *clientV6) GetClusterHealth(ctx context.Context) (Health, error) {
 	var result Health
 	return result, c.get(ctx, "/_cluster/health", &result)

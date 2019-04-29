@@ -13,50 +13,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/chrono"
 )
 
-func Test_typeMatches(t *testing.T) {
-	platinum := v1alpha1.LicenseTypePlatinum
-	type args struct {
-		d v1alpha1.LicenseType
-		t v1alpha1.LicenseType
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "types match",
-			args: args{
-				d: platinum,
-				t: v1alpha1.LicenseTypePlatinum,
-			},
-			want: true,
-		},
-		{
-			name: "types match: no type requested",
-			args: args{
-				t: v1alpha1.LicenseTypeGold,
-			},
-			want: true,
-		},
-		{
-			name: "types differ",
-			args: args{
-				d: platinum,
-				t: v1alpha1.LicenseTypeGold,
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := typeMatches(tt.args.d, tt.args.t); got != tt.want {
-				t.Errorf("typeMatches() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 var (
 	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
 	gold     = v1alpha1.LicenseTypeGold
@@ -88,18 +44,19 @@ func license(l v1alpha1.ClusterLicenseSpec, t v1alpha1.LicenseType) v1alpha1.Clu
 
 func Test_bestMatchAt(t *testing.T) {
 	type args struct {
-		licenses       []v1alpha1.EnterpriseLicense
-		desiredLicense v1alpha1.LicenseType
+		licenses []v1alpha1.EnterpriseLicense
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    v1alpha1.ClusterLicenseSpec
-		wantErr bool
+		name      string
+		args      args
+		want      v1alpha1.ClusterLicenseSpec
+		wantFound bool
+		wantErr   bool
 	}{
 		{
-			name:    "error: no licenses",
-			wantErr: true,
+			name:      "error: no licenses",
+			wantFound: false,
+			wantErr:   false,
 		},
 		{
 			name: "error: only expired enterprise license",
@@ -114,7 +71,8 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				}},
 			},
-			wantErr: true,
+			wantFound: false,
+			wantErr:   true,
 		},
 		{
 			name: "error: only expired nested licenses",
@@ -138,8 +96,9 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				},
 			},
-			want:    v1alpha1.ClusterLicenseSpec{},
-			wantErr: true,
+			want:      v1alpha1.ClusterLicenseSpec{},
+			wantFound: false,
+			wantErr:   true,
 		},
 		{
 			name: "success: longest valid platinum",
@@ -160,8 +119,9 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				},
 			},
-			want:    license(twelveMonth, platinum),
-			wantErr: false,
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
+			wantErr:   false,
 		},
 		{
 			name: "success: longest valid from multiple enterprise licenses",
@@ -192,45 +152,12 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				},
 			},
-			want:    license(twelveMonth, platinum),
-			wantErr: false,
+			want:      license(twelveMonth, platinum),
+			wantFound: true,
+			wantErr:   false,
 		},
 		{
-			name: "success: longest valid of specific type",
-			args: args{
-				licenses: []v1alpha1.EnterpriseLicense{
-					{
-						Spec: v1alpha1.EnterpriseLicenseSpec{
-							LicenseMeta: v1alpha1.LicenseMeta{
-								ExpiryDateInMillis: chrono.MustMillis("2019-03-31"),
-								StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							},
-							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
-								license(oneMonth, gold),
-								license(twoMonth, platinum),
-							},
-						},
-					},
-					{
-						Spec: v1alpha1.EnterpriseLicenseSpec{
-							LicenseMeta: v1alpha1.LicenseMeta{
-								ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
-								StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							},
-							ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
-								license(twoMonth, gold),
-								license(twelveMonth, platinum),
-							},
-						},
-					},
-				},
-				desiredLicense: gold,
-			},
-			want:    license(twoMonth, gold),
-			wantErr: false,
-		},
-		{
-			name: "success: best license when type not specified",
+			name: "success: best license",
 			args: args{
 				licenses: []v1alpha1.EnterpriseLicense{
 					{
@@ -259,16 +186,20 @@ func Test_bestMatchAt(t *testing.T) {
 					},
 				},
 			},
-			want:    license(twoMonth, platinum),
-			wantErr: false,
+			want:      license(twoMonth, platinum),
+			wantFound: true,
+			wantErr:   false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, err := bestMatchAt(now, tt.args.licenses, tt.args.desiredLicense)
+			got, _, found, err := bestMatchAt(now, tt.args.licenses)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
 				return
+			}
+			if tt.wantFound != found {
+				t.Errorf("bestMatchAt() found = %v, want %v", found, tt.wantFound)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("bestMatchAt() = %v, want %v", got, tt.want)
@@ -279,8 +210,7 @@ func Test_bestMatchAt(t *testing.T) {
 
 func Test_filterValidForType(t *testing.T) {
 	type args struct {
-		licenseType v1alpha1.LicenseType
-		licenses    []v1alpha1.EnterpriseLicense
+		licenses []v1alpha1.EnterpriseLicense
 	}
 	tests := []struct {
 		name string
@@ -331,7 +261,7 @@ func Test_filterValidForType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := filterValidForType(tt.args.licenseType, now, tt.args.licenses); !reflect.DeepEqual(got, tt.want) {
+			if got := filterValid(now, tt.args.licenses); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("filterValidForType expected %v, got %v", tt.want, got)
 			}
 		})

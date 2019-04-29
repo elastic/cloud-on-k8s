@@ -128,13 +128,14 @@ type ReconcileLicenses struct {
 	iteration int64
 }
 
-// findLicense tries to find a license of the given type.
-func findLicense(c k8s.Client, licenseType v1alpha1.LicenseType) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, error) {
+// findLicense tries to find the best license available.
+func findLicense(c k8s.Client) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, bool, error) {
 	licenseList := v1alpha1.EnterpriseLicenseList{}
-	if err := c.List(&client.ListOptions{}, &licenseList); err != nil {
-		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, err
+	err := c.List(&client.ListOptions{}, &licenseList)
+	if err != nil {
+		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, false, err
 	}
-	return license.BestMatch(licenseList.Items, licenseType)
+	return license.BestMatch(licenseList.Items)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -190,14 +191,17 @@ func reconcileSecret(
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
 func (r *ReconcileLicenses) reconcileClusterLicense(
 	cluster v1alpha1.Elasticsearch,
-	licenseType v1alpha1.LicenseType,
 	margin time.Duration,
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(&cluster)
-	matchingSpec, parent, err := findLicense(r, licenseType)
+	matchingSpec, parent, found, err := findLicense(r)
 	if err != nil {
 		return noResult, err
+	}
+	if !found {
+		// no license, nothing to do
+		return noResult, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
 	selector, err := reconcileSecret(r, cluster, matchingSpec.SignatureRef, parent.Namespace)
@@ -251,15 +255,8 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	licenseType := cluster.Spec.GetLicenseType()
-
-	if !licenseType.IsGoldOrPlatinum() {
-		log.Info("No license reconciliation required", "type", licenseType)
-		return reconcile.Result{}, nil
-	}
-
 	safetyMargin := defaultSafetyMargin
-	newExpiry, err := r.reconcileClusterLicense(cluster, licenseType, safetyMargin)
+	newExpiry, err := r.reconcileClusterLicense(cluster, safetyMargin)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
