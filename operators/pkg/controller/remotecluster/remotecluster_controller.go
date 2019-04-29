@@ -112,7 +112,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	enabled, err := r.licenseChecker.CommercialFeaturesEnabled()
+	enabled, err := r.licenseChecker.EnterpriseFeaturesEnabled()
 	if err != nil {
 		return defaultRequeue, err
 	}

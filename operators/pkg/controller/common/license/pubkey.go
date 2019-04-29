@@ -4,4 +4,5 @@
 
 package license
 
+// publicKeyBytes will be replaced at build time with the actual public key bytes.
 var publicKeyBytes []byte

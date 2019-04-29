@@ -73,12 +73,12 @@ func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,
 			}
-			got, err := lc.CommercialFeaturesEnabled()
+			got, err := lc.EnterpriseFeaturesEnabled()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Checker.CommercialFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Checker.EnterpriseFeaturesEnabled() err = %v, wantErr %v", err, tt.wantErr)
 			}
 			if got != tt.want {
-				t.Errorf("Checker.CommercialFeaturesEnabled() = %v, want %v", got, tt.want)
+				t.Errorf("Checker.EnterpriseFeaturesEnabled() = %v, want %v", got, tt.want)
 			}
 		})
 	}

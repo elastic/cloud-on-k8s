@@ -41,12 +41,12 @@ var publicKeyBytes = []byte{
 }
 `
 	if pubkeyFile == "" {
-		panic(errors.New("--filename is a required argument"))
+		handleErr(errors.New("--filename is a required argument"))
 	}
 
 	bytes, err := ioutil.ReadFile(pubkeyFile)
 	if err != nil {
-		panic(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
+		handleErr(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
 	}
 	t := template.Must(template.New("license").Parse(tmpl))
 	err = t.Execute(out, params{
@@ -56,6 +56,13 @@ var publicKeyBytes = []byte{
 		},
 	})
 	if err != nil {
-		panic(errors.Wrap(err, "Failed to write template"))
+		handleErr(errors.Wrap(err, "Failed to write template"))
+	}
+}
+
+func handleErr(err error) {
+	if err != nil {
+		println(err.Error())
+		os.Exit(1)
 	}
 }

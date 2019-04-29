@@ -15,12 +15,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Checker contains parameters for license checks.
 type Checker struct {
 	k8sClient         k8s.Client
 	operatorNamespace string
 	publicKey         []byte
 }
 
+// NewLicenseChecker creates a new license checker.
 func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
 	return &Checker{
 		k8sClient:         client,
@@ -29,7 +31,8 @@ func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
 	}
 }
 
-func (lc *Checker) CommercialFeaturesEnabled() (bool, error) {
+// EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
+func (lc *Checker) EnterpriseFeaturesEnabled() (bool, error) {
 	var licenses v1alpha1.EnterpriseLicenseList
 	err := lc.k8sClient.List(&client.ListOptions{}, &licenses)
 	if err != nil {
