@@ -8,8 +8,8 @@ const (
 	ClusterName = "cluster.name"
 
 	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
-	DiscoveryZenPingUnicastHosts   = "discovery.zen.ping.unicast.hosts"
 	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
+	DiscoveryZenHostsProvider      = "discovery.zen.hosts_provider"
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
@@ -37,7 +37,6 @@ const (
 var Blacklist = []string{
 	ClusterName,
 	DiscoveryZenMinimumMasterNodes,
-	DiscoveryZenPingUnicastHosts,
 	ClusterInitialMasterNodes,
 	NetworkHost,
 	NetworkPublishHost,

@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
@@ -304,6 +305,11 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
+	// Compute seed hosts based on current masters with a podIP
+	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
+		return results.WithError(err)
+	}
+
 	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
 	// correct value for minimum_master_nodes.
 	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
@@ -487,10 +493,11 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			ProbeUser:       internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:      k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:          internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
 		},
 		d.OperatorImage,
 	)

@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 )
 
@@ -44,7 +43,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
 
-		DiscoveryZenPingUnicastHosts: services.DiscoveryServiceName(clusterName),
+		DiscoveryZenHostsProvider: "file",
 
 		// derive IP dynamically from the pod IP, injected as env var
 		NetworkPublishHost: "${" + EnvPodIP + "}",

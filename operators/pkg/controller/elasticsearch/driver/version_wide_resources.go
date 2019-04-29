@@ -8,17 +8,19 @@ import (
 	"bytes"
 	"encoding/json"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // VersionWideResources are resources that are tied to a version, but no specific pod within that version
@@ -85,7 +87,11 @@ func reconcileVersionWideResources(
 			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
 		},
 		PostUpdate: func() {
-			markPodsAsUpdated(c, es)
+			annotation.MarkPodsAsUpdated(c,
+				client.ListOptions{
+					Namespace:     es.Namespace,
+					LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+				})
 		},
 	}); err != nil {
 		return nil, err

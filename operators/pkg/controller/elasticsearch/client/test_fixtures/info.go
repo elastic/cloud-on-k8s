@@ -10,7 +10,7 @@ const (
 	"cluster_uuid": "LGA3VblKTNmzP6Q6SWxfkw",
 	"version": {
 	  "build_date": "2018-09-13T22:18:07.696808Z",
-	  "minimum_wire_compatibility_version": "5.6.0",
+	  "minimum_wire_compatibility_version": "6.5.0",
 	  "build_hash": "e36acdb",
 	  "number": "6.4.1",
 	  "lucene_version": "7.4.0",

@@ -6,7 +6,6 @@ package driver
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
@@ -22,7 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -243,31 +241,4 @@ func deleteElasticsearchPod(
 	}
 
 	return reconcile.Result{}, nil
-}
-
-// markPodsAsUpdated updates a specific annotation on the pods to speedup secret propagation.
-// See godoc of k8s.MarkPodAsUpdated for more information.
-func markPodsAsUpdated(
-	c k8s.Client,
-	es v1alpha1.Elasticsearch,
-) {
-	// Get all pods
-	var podList corev1.PodList
-	err := c.List(&client.ListOptions{
-		Namespace:     es.Namespace,
-		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
-	}, &podList)
-	if err != nil {
-		log.Error(
-			err,
-			"failed to list pods for annotation update",
-			"namespace", es.Namespace,
-			"name", es.Name,
-		)
-		return
-	}
-	// Update annotation
-	for _, pod := range podList.Items {
-		annotation.MarkPodAsUpdated(c, pod)
-	}
 }

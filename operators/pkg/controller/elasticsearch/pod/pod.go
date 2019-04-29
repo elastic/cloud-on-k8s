@@ -93,6 +93,8 @@ type NewPodSpecParams struct {
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
 	ReloadCredsUser client.UserAuth
+	// UnicastHostsVolume contains a file with the seed hosts.
+	UnicastHostsVolume volume.ConfigMapVolume
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
