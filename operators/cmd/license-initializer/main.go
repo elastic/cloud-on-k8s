@@ -6,6 +6,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -15,10 +16,27 @@ import (
 )
 
 func main() {
-	var pubkeyFile string
-	flag.StringVar(&pubkeyFile, "filename", "", "filename pointing to the DER encoded public key")
+	var outFile string
+	flag.StringVar(&outFile, "out", "", "file to write generated output to")
 	flag.Parse()
-	generateSrc(pubkeyFile, os.Stdout)
+	const pubKeyEnvVar = "LICENSE_PUBKEY"
+	pubkeyFile := os.Getenv(pubKeyEnvVar)
+	if pubkeyFile == "" {
+		handleErr(fmt.Errorf("%s is a required environment variable pointing to a DER encoded public key", pubKeyEnvVar))
+	}
+	var out io.Writer
+	if outFile == "" {
+		out = os.Stdout
+	} else {
+		file, err := os.Create(outFile)
+		if err != nil {
+			handleErr(err)
+		}
+		defer file.Close()
+		out = file
+	}
+
+	generateSrc(pubkeyFile, out)
 }
 
 func generateSrc(pubkeyFile string, out io.Writer) {
@@ -40,9 +58,6 @@ var publicKeyBytes = []byte{
 {{- end}}
 }
 `
-	if pubkeyFile == "" {
-		handleErr(errors.New("--filename is a required argument"))
-	}
 
 	bytes, err := ioutil.ReadFile(pubkeyFile)
 	if err != nil {
