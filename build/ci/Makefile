@@ -26,7 +26,6 @@ vault-gke-creds:
 
 # reads Elastic public key from Vault into $PUBLIC_KEY_FILE
 vault-public-key:
-	@ echo $(shell pwd)
 	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
     	vault read \
     		-address=$(VAULT_ADDR) \

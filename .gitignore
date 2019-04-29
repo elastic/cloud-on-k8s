@@ -26,4 +26,4 @@ bin
 vendor/
 
 # Elastic public key
-*license.key
+license.key
