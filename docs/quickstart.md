@@ -208,7 +208,7 @@ kubectl port-forward service/quickstart-kibana 5601
 
 You can then open http://localhost:5601 in your browser.
 
-## Upgrade your deployment
+## Modify your deployment
 
 You can apply any modification to the original cluster specification. The operator makes sure that changes are applied to the existing cluster, avoiding downtime.
 
