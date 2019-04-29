@@ -21,21 +21,21 @@ You will learn how to:
 
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
-```
+    ```bash
+    kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
+    ```
 
 2. Install the operator with its RBAC rules:
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/operator/all-in-one.yaml
-```
+    ```bash
+           kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/operator/all-in-one.yaml
+           ```
 
 3. Monitor the operator logs:
 
-```bash
-kubectl -n elastic-operator logs -f statefulset.apps/elastic-operator
-```
+    ```bash
+    kubectl -n elastic-operator logs -f statefulset.apps/elastic-operator
+    ```
 
 ## Deploy the Elasticsearch cluster
 
@@ -119,34 +119,34 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
 
 1. Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
-```bash
-kubectl port-forward service/quickstart-es 9200
-```
+    ```bash
+    kubectl port-forward service/quickstart-es 9200
+    ```
 
 2. In another shell, request the Elasticsearch endpoint (skipping the certificate verification for now):
 
-```bash
-curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
-```
-```
-{
-  "name" : "quickstart-es-5zctxpn8nd",
-  "cluster_name" : "quickstart",
-  "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
-  "version" : {
-    "number" : "7.0.0",
-    "build_flavor" : "default",
-    "build_type" : "docker",
-    "build_hash" : "b7e28a7",
-    "build_date" : "2019-04-05T22:55:32.697037Z",
-    "build_snapshot" : false,
-    "lucene_version" : "8.0.0",
-    "minimum_wire_compatibility_version" : "6.7.0",
-    "minimum_index_compatibility_version" : "6.0.0-beta1"
-  },
-  "tagline" : "You Know, for Search"
-}
-```
+    ```bash
+    curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+    ```
+    ```
+    {
+      "name" : "quickstart-es-5zctxpn8nd",
+      "cluster_name" : "quickstart",
+      "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
+      "version" : {
+        "number" : "7.0.0",
+        "build_flavor" : "default",
+        "build_type" : "docker",
+        "build_hash" : "b7e28a7",
+        "build_date" : "2019-04-05T22:55:32.697037Z",
+        "build_snapshot" : false,
+        "lucene_version" : "8.0.0",
+        "minimum_wire_compatibility_version" : "6.7.0",
+        "minimum_index_compatibility_version" : "6.0.0-beta1"
+      },
+      "tagline" : "You Know, for Search"
+    }
+    ```
 
 ## Deploy the Kibana instance
 
