@@ -1,9 +1,7 @@
-# Elastic Cloud on Kubernetes Contributing Guide
-
-## Welcome
+# How to Contribute to Elastic Cloud on Kubernetes
 
 Thank you for your interest in contributing to Elastic Cloud on Kubernetes!
-The goal of this document is to provide a high-level overview of how you can get involved.
+The goal of this document is to provide a high-level overview on how you can get involved.
 
 - [Report your bugs](#bug-reports)
 - [Set up your development environment](#development-environment)
@@ -17,32 +15,32 @@ The goal of this document is to provide a high-level overview of how you can get
   - [Prepare a Pull Request](#prepare-a-pull-request)
 - [Design documents](#design-documents)
 
-### Report your bugs
+## Report your bugs
 
 If you find an issue, check first our [list of issues](https://github.com/elastic/k8s-operators/issues). If your problem has not been reported yet, open a new issue, add a detailed description on how to reproduce the problem and complete it with any additional information that might help solving the issue.
 
-### Set up your development environment
+## Set up your development environment
 
 Check requirements and steps in this [README](https://github.com/elastic/k8s-operators/blob/master/operators/README.md).
 
-### Contribute with your code
+## Contribute with your code
 
-#### Format your code and manage imports
+### Format your code and manage imports
 
 1. Run your code through [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) (you can use `make fmt` for that) and [go vet](https://golang.org/cmd/vet/) before opening a pull request.
 2. Make sure you only have two groups in your imports:
     - group for packages from the standard library
     - group for third parties
 
-#### Scripts
+### Scripts
 
 As most of the contributors are using macOS and Linux please ensure that scripts run on these two environments.
 
-#### Tests
+### Tests
 
 Your contributions should pass the existing tests. You must provide new tests to demonstrate bugs and fixes.
 
-##### Test suites
+#### Test suites
 
 There are 3 test suites:
 
@@ -55,7 +53,7 @@ There are 3 test suites:
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
       They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios.
 
-#### Logging
+### Logging
 
 The operator relies on controller-runtime logging instead of golang built-in log library. It uses a type of logging called _structured logging_, log messages must not contain variables, but they can be associated with some key/value pairs.
 
@@ -77,19 +75,19 @@ We only use two levels: `debug` and `info`. To produce a log at the `debug` leve
 logger.V(1).Info("starting reconciliation", "pod", req.NamespacedNamed)
 ```
 
-#### License Headers
+### License headers
 
 We require license headers on all files that are part of the source code.
 
-#### Submit your changes
+### Submit your changes
 
-##### Sign the CLA
+#### Sign the CLA
 
 Make sure you signed the [Contributor License Agreement](https://www.elastic.co/fr/contributor-agreement/). You only need to sign the CLA once. By signing this agreement, you give us the right to distribute your code without restriction.
 
-##### Prepare a Pull Request
+#### Prepare a Pull Request
 
-A good pull request will be reviewed quickly, here are some simples rules:
+Here are some good practices for a good pull request:
 
 - Push your changes to a topic branch in your fork of the repository.
 - Break your pull request into smaller PRs if it's too large.
@@ -97,7 +95,7 @@ A good pull request will be reviewed quickly, here are some simples rules:
 - Write a short and self-explanatory title.
 - The code reviewer should understand what your pull request is doing by reading the description.
 
-### Design documents
+## Design documents
 
 We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/k8s-operators/tree/master/docs/design) to understand the technical choices that we make.
 
