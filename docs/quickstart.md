@@ -148,14 +148,6 @@ curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 }
 ```
 
-#### Retrieve the CA certificate
-
-TLS encryption is enabled by default. To perform certificate verification from the client, retrieve the CA certificate used to issue Elasticsearch nodes certificates:
-
-```bash
-kubectl get secret quickstart-ca -o jsonpath="{.data['ca\.pem']}"
-```
-
 ## Deploy the Kibana instance
 
 ### Target the Elasticsearch cluster
