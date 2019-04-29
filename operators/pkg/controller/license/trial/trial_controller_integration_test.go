@@ -110,7 +110,7 @@ func TestReconcile(t *testing.T) {
 
 	// test trial initialisation on create
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
-	validateTrialDuration(t, createdLicense, now, time.Second)
+	validateTrialDuration(t, createdLicense, now, time.Minute)
 
 	// tamper with the trial status
 	var trialStatus corev1.Secret
@@ -132,12 +132,12 @@ func TestReconcile(t *testing.T) {
 
 	// Delete the trial license
 	require.NoError(t, deleteTrial())
+	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// recreate it
 	require.NoError(t, c.Create(trialLicense))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// expect an invalid license
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
 
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// ClusterLicense should be GC'ed but can't be tested here
 }

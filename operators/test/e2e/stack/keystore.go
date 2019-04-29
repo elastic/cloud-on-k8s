@@ -35,7 +35,7 @@ func CheckKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, expec
 				// parse entries from stdout
 				var entries []string
 				// the keystore contains a "keystore.seed" entry we don't want to include in the comparison
-				noKeystoreSeeds := strings.Replace(stdout, "keystore.seed", "", 1)
+				noKeystoreSeeds := strings.Replace(stdout, "keystore.seed\n", "", 1)
 				// remove trailing newlines and whitespaces
 				trimmed := strings.TrimSpace(noKeystoreSeeds)
 				// split by lines, unless no output

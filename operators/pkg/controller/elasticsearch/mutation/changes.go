@@ -6,6 +6,7 @@ package mutation
 
 import (
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,6 +52,21 @@ func EmptyChanges() Changes {
 // HasChanges returns true if there are no topology changes to performed
 func (c Changes) HasChanges() bool {
 	return len(c.ToCreate) > 0 || len(c.ToDelete) > 0
+}
+
+// HasMasterChanges returns true if some masters are involved in the topology changes.
+func (c Changes) HasMasterChanges() bool {
+	for _, pod := range c.ToCreate {
+		if label.IsMasterNode(pod.Pod) {
+			return true
+		}
+	}
+	for _, pod := range c.ToDelete {
+		if label.IsMasterNode(pod.Pod) {
+			return true
+		}
+	}
+	return false
 }
 
 // IsEmpty returns true if this set has no deletion, creation or kept pods

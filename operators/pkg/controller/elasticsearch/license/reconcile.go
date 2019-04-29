@@ -19,11 +19,6 @@ func Reconcile(
 	clusterClient esclient.Client,
 	current *esclient.License,
 ) error {
-	if !esCluster.Spec.GetLicenseType().IsGoldOrPlatinum() {
-		// nothing to do
-		return nil
-	}
-
 	clusterName := k8s.ExtractNamespacedName(&esCluster)
 	if err := ensureLicenseWatch(clusterName, w); err != nil {
 		return err

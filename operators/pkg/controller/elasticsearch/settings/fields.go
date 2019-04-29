@@ -8,8 +8,8 @@ const (
 	ClusterName = "cluster.name"
 
 	DiscoveryZenMinimumMasterNodes = "discovery.zen.minimum_master_nodes"
-	DiscoveryZenPingUnicastHosts   = "discovery.zen.ping.unicast.hosts"
 	ClusterInitialMasterNodes      = "cluster.initial_master_nodes"
+	DiscoveryZenHostsProvider      = "discovery.zen.hosts_provider"
 
 	NetworkHost        = "network.host"
 	NetworkPublishHost = "network.publish_host"
@@ -19,7 +19,6 @@ const (
 	PathData = "path.data"
 	PathLogs = "path.logs"
 
-	XPackLicenseSelfGeneratedType                   = "xpack.license.self_generated.type"
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"
@@ -37,14 +36,12 @@ const (
 var Blacklist = []string{
 	ClusterName,
 	DiscoveryZenMinimumMasterNodes,
-	DiscoveryZenPingUnicastHosts,
 	ClusterInitialMasterNodes,
 	NetworkHost,
 	NetworkPublishHost,
 	NodeName,
 	PathData,
 	PathLogs,
-	XPackLicenseSelfGeneratedType,
 	XPackSecurityAuthcReservedRealmEnabled,
 	XPackSecurityEnabled,
 	XPackSecurityHttpSslCertificate,

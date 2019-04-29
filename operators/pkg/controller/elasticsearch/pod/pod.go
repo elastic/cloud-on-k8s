@@ -58,8 +58,6 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 type NewPodSpecParams struct {
 	// Version is the Elasticsearch version
 	Version string
-	// LicenseType is the type of license attached to the cluster
-	LicenseType v1alpha1.LicenseType
 	// CustomImageName is the custom image used, leave empty for the default
 	CustomImageName string
 	// ClusterName is the name of the Elasticsearch cluster
@@ -95,6 +93,8 @@ type NewPodSpecParams struct {
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.
 	ReloadCredsUser client.UserAuth
+	// UnicastHostsVolume contains a file with the seed hosts.
+	UnicastHostsVolume volume.ConfigMapVolume
 }
 
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.

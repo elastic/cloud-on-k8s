@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -30,18 +31,18 @@ type NewEnvVarsParams struct {
 	ESPasswordFilepath string
 	ESVersion          string
 	ESCaCertPath       string
-	Protocol           string
 }
 
 // NewEnvVars returns the environments variables required by the keystore updater.
 func NewEnvVars(params NewEnvVarsParams) []corev1.EnvVar {
+	esEndpoint := fmt.Sprintf("https://127.0.0.1:%d", network.HTTPPort)
 	return []corev1.EnvVar{
 		{Name: EnvSourceDir, Value: params.SourceDir},
 		{Name: EnvReloadCredentials, Value: "true"},
 		{Name: EnvEsUsername, Value: params.ESUsername},
 		{Name: EnvEsPasswordFile, Value: params.ESPasswordFilepath},
 		{Name: EnvEsCaCertsPath, Value: params.ESCaCertPath},
-		{Name: EnvEsEndpoint, Value: fmt.Sprintf("%s://127.0.0.1:%d", params.Protocol, network.HTTPPort)},
+		{Name: EnvEsEndpoint, Value: esEndpoint},
 		{Name: EnvEsVersion, Value: params.ESVersion},
 	}
 }

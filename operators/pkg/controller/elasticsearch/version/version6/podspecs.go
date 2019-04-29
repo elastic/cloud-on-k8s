@@ -8,11 +8,12 @@ import (
 	"fmt"
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -20,7 +21,6 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -42,6 +42,10 @@ var (
 			{
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
 				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", settings.ConfigFileName),
+			},
+			{
+				Source: stringsutil.Concat(volume.UnicastHostsVolumeMountPath, "/", volume.UnicastHostsFile),
+				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", volume.UnicastHostsFile),
 			},
 		},
 	}
@@ -110,7 +114,7 @@ func newEnvironmentVars(
 		// TODO: the JVM options are hardcoded, but should be configurable
 		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
 
-		{Name: settings.EnvReadinessProbeProtocol, Value: network.ProtocolForLicense(p.LicenseType)},
+		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
@@ -121,7 +125,6 @@ func newEnvironmentVars(
 			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
 			ESUsername:         p.ReloadCredsUser.Name,
 			ESPasswordFilepath: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, p.ReloadCredsUser.Name),
-			Protocol:           network.ProtocolForLicense(p.LicenseType),
 			ESCaCertPath:       path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
 			ESVersion:          p.Version,
 		})...)

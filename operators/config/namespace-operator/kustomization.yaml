@@ -1,6 +1,0 @@
-resources:
-- namespace.yaml
-- role_bindings.yaml
-- cluster_role.yaml
-- service_account.yaml
-- operator.yaml

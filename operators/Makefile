@@ -27,9 +27,10 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
 # use git sha1 as the default image tag
-GIT_SHA1 = $(shell git rev-parse --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(GIT_SHA1)
+TAG ?= $(shell git rev-parse --verify HEAD)
+OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
+LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/k8s-operators:latest"
 
 ## -- Namespaces
 
@@ -60,6 +61,11 @@ dep-vendor-only:
 generate:
 	go generate ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
+	# combine all crds into one for easy installation
+	for yaml in $$(ls config/crds/*); do \
+		cat $$yaml && echo -e "\n---\n" ; \
+	done > config/crds.yaml
+	$(MAKE) generate-all-in-one
 
 elastic-operator: generate
 	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
@@ -119,14 +125,23 @@ endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
 deploy: check-gke install-crds docker-build docker-push
-	kustomize build config/global-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
-	kustomize build config/namespace-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' \
-		-e 's|$$MANAGED_NAMESPACE|$(MANAGED_NAMESPACE)|g' \
-	        -e 's|$$NAMESPACE_OPERATOR_NAMESPACE|$(NAMESPACE_OPERATOR_NAMESPACE)|g' | kubectl apply -f -
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-global | kubectl apply -f -
+	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
+	NAMESPACE=$(NAMESPACE_OPERATOR_NAMESPACE) \
+	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
+		$(MAKE) -sC config/operator generate-namespace | kubectl apply -f -
+
+generate-all-in-one:
+	# TODO: replace the image name with the final released name (docker.elastic.co/k8s-operators/k8s-operators ?)
+	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
+	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+		$(MAKE) --no-print-directory -C config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: install-crds docker-build docker-push
-	kustomize build config/all-in-one-operator | sed -e 's|$$OPERATOR_IMAGE|$(OPERATOR_IMAGE)|g' | kubectl apply -f -
+	kubectl apply -f config/all-in-one.yaml
 
 logs-namespace-operator:
 	@ kubectl --namespace=$(NAMESPACE_OPERATOR_NAMESPACE) logs -f statefulset.apps/elastic-namespace-operator
@@ -150,6 +165,7 @@ show-credentials:
 cluster-bootstrap: dep-vendor-only install-crds
 
 clean-k8s-cluster:
+	kubectl delete --ignore-not-found=true  ValidatingWebhookConfiguration validating-webhook-configuration
 	for ns in $(NAMESPACE_OPERATOR_NAMESPACE) $(GLOBAL_OPERATOR_NAMESPACE) $(MANAGED_NAMESPACE); do \
 		echo "Deleting resources in $$ns"; \
 		kubectl delete statefulsets -n $$ns --all; \
@@ -241,7 +257,7 @@ e2e-setup:
 	kubectl apply -f config/e2e/rbac.yaml
 
 # Run e2e tests as a k8s batch job
-E2E_IMG ?= $(IMG)-e2e-tests:$(GIT_SHA1)
+E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 e2e: e2e-setup
 	# push the e2e tests docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
@@ -274,6 +290,10 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # that we delete if everything went fine
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
+
+ci-release:
+	@ hack/gke-cluster.sh registry
+	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 
 
 ##########################

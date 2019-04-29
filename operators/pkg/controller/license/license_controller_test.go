@@ -59,16 +59,11 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 	}
 }
 
-func clusterWithLicense(licenseType v1alpha1.LicenseType) *v1alpha1.Elasticsearch {
-	return &v1alpha1.Elasticsearch{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "cluster",
-			Namespace: "namespace",
-		},
-		Spec: v1alpha1.ElasticsearchSpec{
-			LicenseType: string(licenseType),
-		},
-	}
+var cluster = &v1alpha1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "cluster",
+		Namespace: "namespace",
+	},
 }
 
 func enterpriseLicense(licenseType v1alpha1.LicenseType, maxNodes int, expired bool) *v1alpha1.EnterpriseLicense {
@@ -127,30 +122,21 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 		wantRequeueAfter bool
 	}{
 		{
-			name:             "basic license: nothing to do",
-			cluster:          clusterWithLicense("basic"),
-			k8sResources:     []runtime.Object{clusterWithLicense("basic")},
+			name:             "no existing license: nothing to do",
+			cluster:          cluster,
+			k8sResources:     []runtime.Object{cluster},
 			wantErr:          "",
 			wantNewLicense:   false,
 			wantRequeue:      false,
 			wantRequeueAfter: false,
 		},
 		{
-			name:             "trial license: nothing to do",
-			cluster:          clusterWithLicense("trial"),
-			k8sResources:     []runtime.Object{clusterWithLicense("trial")},
-			wantErr:          "",
-			wantNewLicense:   false,
-			wantRequeue:      false,
-			wantRequeueAfter: false,
-		},
-		{
-			name:    "gold expected with existing matching license",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypeGold),
+			name:    "existing gold matching license",
+			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(v1alpha1.LicenseTypeGold, 1, false),
 				licenseSigSecret(),
-				clusterWithLicense(v1alpha1.LicenseTypeGold),
+				cluster,
 			},
 			wantErr:          "",
 			wantNewLicense:   true,
@@ -158,12 +144,12 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantRequeueAfter: true,
 		},
 		{
-			name:    "platinum expected with existing matching license",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+			name:    "existing platinum matching license",
+			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, false),
 				licenseSigSecret(),
-				clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+				cluster,
 			},
 			wantErr:          "",
 			wantNewLicense:   true,
@@ -171,36 +157,12 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantRequeueAfter: true,
 		},
 		{
-			name:    "platinum expected but no enterprise license",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypePlatinum),
-			k8sResources: []runtime.Object{
-				clusterWithLicense(v1alpha1.LicenseTypePlatinum),
-			},
-			wantErr:          "no matching license found",
-			wantNewLicense:   false,
-			wantRequeue:      false,
-			wantRequeueAfter: false,
-		},
-		{
-			name:    "platinum expected but only gold available",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypePlatinum),
-			k8sResources: []runtime.Object{
-				enterpriseLicense(v1alpha1.LicenseTypeGold, 1, false),
-				licenseSigSecret(),
-				clusterWithLicense(v1alpha1.LicenseTypePlatinum),
-			},
-			wantErr:          "no matching license found",
-			wantNewLicense:   false,
-			wantRequeue:      false,
-			wantRequeueAfter: false,
-		},
-		{
-			name:    "platinum expected but existing license expired",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+			name:    "existing license expired",
+			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, true),
 				licenseSigSecret(),
-				clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+				cluster,
 			},
 			wantErr:          "no matching license found",
 			wantNewLicense:   false,
@@ -208,11 +170,11 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantRequeueAfter: false,
 		},
 		{
-			name:    "platinum expected but license sig does not exist (yet)",
-			cluster: clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+			name:    "license sig does not exist (yet)",
+			cluster: cluster,
 			k8sResources: []runtime.Object{
 				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, false),
-				clusterWithLicense(v1alpha1.LicenseTypePlatinum),
+				cluster,
 			},
 			wantErr:          "secrets \"license-secret\" not found",
 			wantNewLicense:   false,

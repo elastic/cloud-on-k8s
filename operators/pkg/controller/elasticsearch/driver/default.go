@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
@@ -201,7 +202,6 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 	esClient := d.newElasticsearchClient(
-		network.ProtocolForCluster(es),
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
@@ -322,6 +322,11 @@ func (d *defaultDriver) Reconcile(
 		if err != nil {
 			return results.WithError(err)
 		}
+	}
+
+	// Compute seed hosts based on current masters with a podIP
+	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
+		return results.WithError(err)
 	}
 
 	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
@@ -507,10 +512,11 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:   k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
-			ProbeUser:       internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser: internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume: volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ExtraFilesRef:      k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ProbeUser:          internalUsers.ProbeUser.Auth(),
+			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
+			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
 		},
 		d.OperatorImage,
 	)
@@ -532,7 +538,7 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(protocol string, service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
-	url := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", protocol, service.Name, service.Namespace, network.HTTPPort)
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
+	url := fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, []*x509.Certificate{caCert})
 }
