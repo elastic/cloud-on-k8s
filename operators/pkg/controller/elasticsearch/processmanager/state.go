@@ -22,16 +22,16 @@ var processStateFile = filepath.Join(volume.ProcessManagerEmptyDirMountPath, "pr
 type ProcessState string
 
 const (
-	notInitialized ProcessState = "notInitialized"
-	started        ProcessState = "started"
-	startFailed    ProcessState = "startFailed"
-	stopping       ProcessState = "stopping"
-	stopped        ProcessState = "stopped"
-	stopFailed     ProcessState = "stopFailed"
-	killing        ProcessState = "killing"
-	killed         ProcessState = "killed"
-	killFailed     ProcessState = "killFailed"
-	failed         ProcessState = "failed"
+	NotInitialized ProcessState = "notInitialized"
+	Started        ProcessState = "started"
+	StartFailed    ProcessState = "startFailed"
+	Stopping       ProcessState = "stopping"
+	Stopped        ProcessState = "stopped"
+	StopFailed     ProcessState = "stopFailed"
+	Killing        ProcessState = "killing"
+	Killed         ProcessState = "killed"
+	KillFailed     ProcessState = "killFailed"
+	Failed         ProcessState = "failed"
 )
 
 func (s ProcessState) String() string {
@@ -42,13 +42,13 @@ func (s ProcessState) String() string {
 // The state is notInitialized if the file does not exist or an IO error occurs.
 func ReadProcessState() ProcessState {
 	if _, err := os.Stat(processStateFile); os.IsNotExist(err) {
-		return notInitialized
+		return NotInitialized
 	}
 
 	data, err := ioutil.ReadFile(processStateFile)
 	if err != nil {
 		log.Error(err, "Failed to read process state file")
-		return notInitialized
+		return NotInitialized
 	}
 
 	return ProcessState(string(data))
@@ -71,7 +71,7 @@ func (p *Process) ShouldBeStarted() bool {
 	defer p.mutex.RUnlock()
 
 	switch p.state {
-	case stopping, stopped, killing, killed:
+	case Stopping, Stopped, Killing, Killed:
 		return false
 	}
 
@@ -87,7 +87,7 @@ func (p *Process) CanBeStopped() bool {
 	defer p.mutex.RUnlock()
 
 	switch p.state {
-	case stopped, killed:
+	case Stopped, Killed:
 		return false
 	}
 
@@ -121,34 +121,34 @@ func nextState(state ProcessState, action string, err error) ProcessState {
 	switch action {
 	case initAction:
 		// If the state is still started, the process must have been failed or restarted by an external program
-		if state == started {
+		if state == Started {
 			log.Info("Process marked 'started' on init must have been 'failed'")
-			return failed
+			return Failed
 		}
 		return state
 	case startAction:
 		if err != nil {
-			return startFailed
+			return StartFailed
 		}
-		return started
+		return Started
 	case stopAction:
 		if err != nil {
-			return stopFailed
+			return StopFailed
 		}
-		return stopping
+		return Stopping
 	case killAction:
 		if err != nil {
-			return killFailed
+			return KillFailed
 		}
-		return killing
+		return Killing
 	case terminateAction:
 		switch state {
-		case stopping:
-			return stopped
-		case killing:
-			return killed
-		case started:
-			return failed
+		case Stopping:
+			return Stopped
+		case Killing:
+			return Killed
+		case Started:
+			return Failed
 		}
 	default:
 		panic(fmt.Sprintf("Unknown action: %s", action))

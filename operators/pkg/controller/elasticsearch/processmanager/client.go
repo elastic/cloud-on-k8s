@@ -12,15 +12,28 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
+
+	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
-type Client struct {
+// DefaultReqTimeout is the default timeout of an HTTP request to the Process Manager
+const DefaultReqTimeout = 1 * time.Minute
+
+type Client interface {
+	Start(ctx context.Context) (ProcessStatus, error)
+	Stop(ctx context.Context) (ProcessStatus, error)
+	Kill(ctx context.Context) (ProcessStatus, error)
+	Status(ctx context.Context) (ProcessStatus, error)
+}
+
+type DefaultClient struct {
 	Endpoint string
 	caCerts  []*x509.Certificate
 	HTTP     *http.Client
 }
 
-func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
+func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) Client {
 	client := http.DefaultClient
 	if len(caCerts) > 0 {
 		certPool := x509.NewCertPool()
@@ -34,45 +47,50 @@ func NewClient(endpoint string, caCerts []*x509.Certificate) *Client {
 			},
 		}
 
+		// use the custom dialer if provided
+		if dialer != nil {
+			transportConfig.DialContext = dialer.DialContext
+		}
+
 		client = &http.Client{
 			Transport: &transportConfig,
 		}
 	}
 
-	return &Client{
+	return &DefaultClient{
 		endpoint,
 		caCerts,
 		client,
 	}
 }
 
-func (c *Client) Start(ctx context.Context) (ProcessStatus, error) {
+func (c *DefaultClient) Start(ctx context.Context) (ProcessStatus, error) {
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", "/es/start", &status)
 	return status, err
 }
 
-func (c *Client) Stop(ctx context.Context) (ProcessStatus, error) {
+func (c *DefaultClient) Stop(ctx context.Context) (ProcessStatus, error) {
 	uri := "/es/stop"
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", uri, &status)
 	return status, err
 }
 
-func (c *Client) Kill(ctx context.Context) (ProcessStatus, error) {
+func (c *DefaultClient) Kill(ctx context.Context) (ProcessStatus, error) {
 	uri := "/es/kill"
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", uri, &status)
 	return status, err
 }
 
-func (c *Client) Status(ctx context.Context) (ProcessStatus, error) {
+func (c *DefaultClient) Status(ctx context.Context) (ProcessStatus, error) {
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", "/es/status", &status)
 	return status, err
 }
 
-func (c *Client) doRequest(ctx context.Context, method string, uri string, respBody interface{}) error {
+func (c *DefaultClient) doRequest(ctx context.Context, method string, uri string, respBody interface{}) error {
 	url := c.Endpoint + uri
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {

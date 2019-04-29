@@ -60,7 +60,7 @@ func rmContainer() {
 	_ = bash("docker rm -f %s", containerName).Run()
 }
 
-func startContainer(t *testing.T, cmd string) *Client {
+func startContainer(t *testing.T, cmd string) Client {
 	// Always clean up the container before starting another one
 	rmContainer()
 
@@ -75,8 +75,8 @@ func startContainer(t *testing.T, cmd string) *Client {
 	assert.NoError(t, err)
 	time.Sleep(1 * time.Second)
 
-	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil)
-	assertProcessStatus(t, client, started)
+	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil, nil)
+	assertProcessStatus(t, client, Started)
 
 	return client
 }
@@ -100,14 +100,14 @@ func assertContainerExited(t *testing.T) {
 	assert.True(t, strings.Contains(string(out), "Exited"))
 }
 
-func assertProcessStatus(t *testing.T, client *Client, expectedState ProcessState) {
+func assertProcessStatus(t *testing.T, client Client, expectedState ProcessState) {
 	time.Sleep(1 * time.Second)
 
 	status, err := client.Status(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, expectedState.String(), status.State.String())
 
-	if status.State == started {
+	if status.State == Started {
 		assert.NotEmpty(t, getProcessPID(t))
 	} else {
 		assert.Empty(t, getProcessPID(t))
@@ -124,7 +124,7 @@ func Test_ApiStop(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, stopped)
+	assertProcessStatus(t, client, Stopped)
 }
 
 func Test_ApiKill(t *testing.T) {
@@ -135,7 +135,7 @@ func Test_ApiKill(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, killed)
+	assertProcessStatus(t, client, Killed)
 }
 
 func Test_Kill15Process(t *testing.T) {
@@ -146,7 +146,7 @@ func Test_Kill15Process(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, started)
+	assertProcessStatus(t, client, Started)
 }
 
 func Test_Kill9Process(t *testing.T) {
@@ -157,7 +157,7 @@ func Test_Kill9Process(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, started)
+	assertProcessStatus(t, client, Started)
 }
 
 func Test_Kill15ProcessManager(t *testing.T) {
@@ -168,7 +168,7 @@ func Test_Kill15ProcessManager(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, started)
+	assertProcessStatus(t, client, Started)
 }
 
 func Test_DockerStop(t *testing.T) {
@@ -179,7 +179,7 @@ func Test_DockerStop(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, started)
+	assertProcessStatus(t, client, Started)
 }
 
 func Test_DockerKill(t *testing.T) {
@@ -190,5 +190,5 @@ func Test_DockerKill(t *testing.T) {
 	assertContainerExited(t)
 
 	restartContainer(t)
-	assertProcessStatus(t, client, started)
+	assertProcessStatus(t, client, Started)
 }

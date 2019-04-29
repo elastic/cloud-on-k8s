@@ -546,15 +546,15 @@
   version = "v1.3.1"
 
 [[projects]]
-  digest = "1:e95496462101745805bd4e041a5b841e108c7cf761264d53648246308de2761e"
+  digest = "1:17c4ccf5cdb1627aaaeb5c1725cb13aec97b63ea2033d4a6824dcaedf94223dc"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "require",
   ]
   pruneopts = "T"
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
+  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:365b8ecb35a5faf5aa0ee8d798548fc9cd4200cb95d77a5b0b285ac881bae499"
@@ -850,6 +850,7 @@
     "pkg/util/naming",
     "pkg/util/net",
     "pkg/util/rand",
+    "pkg/util/remotecommand",
     "pkg/util/runtime",
     "pkg/util/sets",
     "pkg/util/strategicpatch",
@@ -932,11 +933,13 @@
     "tools/portforward",
     "tools/record",
     "tools/reference",
+    "tools/remotecommand",
     "transport",
     "transport/spdy",
     "util/buffer",
     "util/cert",
     "util/connrotation",
+    "util/exec",
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
@@ -1111,8 +1114,6 @@
     "k8s.io/api/admission/v1beta1",
     "k8s.io/api/admissionregistration/v1beta1",
     "k8s.io/api/apps/v1",
-    "k8s.io/api/batch/v1",
-    "k8s.io/api/batch/v1beta1",
     "k8s.io/api/core/v1",
     "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1",
     "k8s.io/apimachinery/pkg/api/errors",
@@ -1135,6 +1136,7 @@
     "k8s.io/client-go/rest",
     "k8s.io/client-go/tools/portforward",
     "k8s.io/client-go/tools/record",
+    "k8s.io/client-go/tools/remotecommand",
     "k8s.io/client-go/transport/spdy",
     "k8s.io/client-go/util/workqueue",
     "k8s.io/code-generator/cmd/client-gen",

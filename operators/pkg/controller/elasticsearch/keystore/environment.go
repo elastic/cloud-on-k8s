@@ -6,12 +6,9 @@ package keystore
 
 import (
 	"fmt"
-	"path"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -28,16 +25,24 @@ const (
 	EnvEsVersion         = "KEYSTORE_ES_VERSION"
 )
 
+type NewEnvVarsParams struct {
+	SourceDir          string
+	ESUsername         string
+	ESPasswordFilepath string
+	ESVersion          string
+	ESCaCertPath       string
+}
+
 // NewEnvVars returns the environments variables required by the keystore updater.
-func NewEnvVars(spec pod.NewPodSpecParams, nodeCertsSecretVolume, reloadCredsUserSecretVolume, secureSettingsVolume volume.VolumeLike) []corev1.EnvVar {
+func NewEnvVars(params NewEnvVarsParams) []corev1.EnvVar {
 	esEndpoint := fmt.Sprintf("https://127.0.0.1:%d", network.HTTPPort)
 	return []corev1.EnvVar{
-		{Name: EnvSourceDir, Value: secureSettingsVolume.VolumeMount().MountPath},
+		{Name: EnvSourceDir, Value: params.SourceDir},
 		{Name: EnvReloadCredentials, Value: "true"},
-		{Name: EnvEsUsername, Value: spec.ReloadCredsUser.Name},
-		{Name: EnvEsPasswordFile, Value: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, spec.ReloadCredsUser.Name)},
-		{Name: EnvEsCaCertsPath, Value: path.Join(nodeCertsSecretVolume.VolumeMount().MountPath, certificates.CAFileName)},
+		{Name: EnvEsUsername, Value: params.ESUsername},
+		{Name: EnvEsPasswordFile, Value: params.ESPasswordFilepath},
+		{Name: EnvEsCaCertsPath, Value: params.ESCaCertPath},
 		{Name: EnvEsEndpoint, Value: esEndpoint},
-		{Name: EnvEsVersion, Value: spec.Version},
+		{Name: EnvEsVersion, Value: params.ESVersion},
 	}
 }

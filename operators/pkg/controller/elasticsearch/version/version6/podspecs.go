@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
@@ -119,7 +120,14 @@ func newEnvironmentVars(
 	}
 
 	vars = append(vars, processmanager.NewEnvVars(nodeCertificatesVolume, privateKeySecretVolume)...)
-	vars = append(vars, keystore.NewEnvVars(p, nodeCertificatesVolume, reloadCredsUserSecretVolume, secureSettingsSecretVolume)...)
+	vars = append(vars, keystore.NewEnvVars(
+		keystore.NewEnvVarsParams{
+			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
+			ESUsername:         p.ReloadCredsUser.Name,
+			ESPasswordFilepath: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, p.ReloadCredsUser.Name),
+			ESCaCertPath:       path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
+			ESVersion:          p.Version,
+		})...)
 
 	return vars
 }
