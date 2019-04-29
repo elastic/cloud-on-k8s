@@ -19,7 +19,6 @@ const (
 	PathData = "path.data"
 	PathLogs = "path.logs"
 
-	XPackLicenseSelfGeneratedType                   = "xpack.license.self_generated.type"
 	XPackSecurityAuthcReservedRealmEnabled          = "xpack.security.authc.reserved_realm.enabled"
 	XPackSecurityEnabled                            = "xpack.security.enabled"
 	XPackSecurityHttpSslCertificate                 = "xpack.security.http.ssl.certificate"
@@ -43,7 +42,6 @@ var Blacklist = []string{
 	NodeName,
 	PathData,
 	PathLogs,
-	XPackLicenseSelfGeneratedType,
 	XPackSecurityAuthcReservedRealmEnabled,
 	XPackSecurityEnabled,
 	XPackSecurityHttpSslCertificate,

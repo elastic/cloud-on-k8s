@@ -19,7 +19,6 @@ kind: Elasticsearch
 metadata:
   labels:
     controller-tools.k8s.io: "1.0"
-    k8s.elastic.co/expected-license: "trial"
   name: elasticsearch-sample
 spec:
   version: "6.6.1"
@@ -28,6 +27,7 @@ spec:
         node.master: true
         node.data: true
         node.ingest: true
+        xpack.license.self_generated.type: trial
       resources:
         limits:
           memory: 1Gi

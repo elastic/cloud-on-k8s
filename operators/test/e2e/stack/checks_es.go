@@ -78,11 +78,12 @@ func (e *esClusterChecks) CheckESLicense(es estype.Elasticsearch) helpers.TestSt
 	return helpers.TestStep{
 		Name: "Elasticsearch license type should be the expected one",
 		Test: func(t *testing.T) {
+			expected := "trial" // TODO add tests for other license types
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
 			license, err := e.client.GetLicense(ctx)
 			require.NoError(t, err)
-			assert.Equal(t, es.Spec.GetLicenseType().String(), license.Type)
+			assert.Equal(t, expected, license.Type)
 			assert.Equal(t, "active", license.Status)
 		},
 	}
