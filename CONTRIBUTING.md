@@ -29,8 +29,8 @@ Check requirements and steps in this [README](https://github.com/elastic/k8s-ope
 
 1. Run your code through [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports) (you can use `make fmt` for that) and [go vet](https://golang.org/cmd/vet/) before opening a pull request.
 2. Make sure you only have two groups in your imports:
-    - group for packages from the standard library
-    - group for third parties
+    - a group for packages from the standard library
+    - a group for third parties
 
 ### Scripts
 
@@ -48,7 +48,7 @@ There are 3 test suites:
   
   A good practice is to have some [table-driven tests](https://github.com/golang/go/wiki/TableDrivenTests), you can use [gotests](https://github.com/cweill/gotests) to quickly generate them from your code.
   
-- **Integration tests** - some tests are flagged as integration since they can take more than a few milliseconds to complete. Hence it's usually a good idea to separate them from the rest of the unit tests that can run pretty fast. Usually they include disk IO operations, network IO operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
+- **Integration tests** - some tests are flagged as integration since they can take more than a few milliseconds to complete. Hence it's usually a good idea to separate them from the rest of the unit tests that can run pretty fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
 
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
       They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios.

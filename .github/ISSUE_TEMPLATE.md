@@ -12,7 +12,9 @@
 -->
 
 <!-- Feature request -->
+
 ## Proposal
+
 **Use case. Why is this important?**
 
 <!-- Bug report -->
