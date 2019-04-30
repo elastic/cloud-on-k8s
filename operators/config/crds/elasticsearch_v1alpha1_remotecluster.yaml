@@ -7,8 +7,8 @@ metadata:
   name: remoteclusters.elasticsearch.k8s.elastic.co
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.state
-    name: state
+  - JSONPath: .status.phase
+    name: status
     type: string
   group: elasticsearch.k8s.elastic.co
   names:
@@ -45,12 +45,12 @@ spec:
               type: string
             localTrustRelationship:
               type: string
+            phase:
+              type: string
             seedHosts:
               items:
                 type: string
               type: array
-            state:
-              type: string
           type: object
   version: v1alpha1
 status:
