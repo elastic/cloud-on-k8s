@@ -5,38 +5,65 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func main() {
-	var outFile string
-	flag.StringVar(&outFile, "out", "", "file to write generated output to")
-	flag.Parse()
-	const pubKeyEnvVar = "LICENSE_PUBKEY"
-	pubkeyFile := os.Getenv(pubKeyEnvVar)
-	if pubkeyFile == "" {
-		handleErr(fmt.Errorf("%s is a required environment variable pointing to a DER encoded public key", pubKeyEnvVar))
-	}
-	var out io.Writer
-	if outFile == "" {
-		out = os.Stdout
-	} else {
-		file, err := os.Create(outFile)
-		if err != nil {
-			handleErr(err)
-		}
-		defer file.Close()
-		out = file
-	}
+const (
+	pubKeyFlag  = "license-pubkey"
+	outFileFlag = "out"
+)
 
-	generateSrc(pubkeyFile, out)
+var Cmd = &cobra.Command{
+	Use:   "license-initializer",
+	Short: "Embed license public key in source",
+	Run: func(cmd *cobra.Command, args []string) {
+		pubkeyFile := viper.GetString(pubKeyFlag)
+		if pubkeyFile == "" {
+			handleErr(fmt.Errorf("%s is a required environment variable pointing to a DER encoded public key", pubKeyFlag))
+		}
+		outFile := viper.GetString(outFileFlag)
+		var out io.Writer
+		if outFile == "" {
+			out = os.Stdout
+		} else {
+			file, err := os.Create(outFile)
+			if err != nil {
+				handleErr(err)
+			}
+			defer file.Close()
+			out = file
+		}
+		generateSrc(pubkeyFile, out)
+	},
+}
+
+func init() {
+	Cmd.Flags().String(
+		pubKeyFlag,
+		"",
+		"path pointing to a DER encoded public key",
+	)
+	Cmd.Flags().String(
+		outFileFlag,
+		"",
+		"file to write generated output to",
+	)
+	handleErr(viper.BindPFlags(Cmd.Flags()))
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
+}
+
+func main() {
+	handleErr(Cmd.Execute())
 }
 
 func generateSrc(pubkeyFile string, out io.Writer) {
