@@ -44,7 +44,7 @@ func doReconcile(
 			previousRemoteRelationshipName,
 			remoteCluster,
 			remoteCluster.Status.K8SLocalStatus.RemoteSelector); err != nil {
-			return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterRemovalFailed), err
+			return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterRemovalFailed), err
 		}
 	}
 
@@ -59,7 +59,7 @@ func doReconcile(
 			"name", remoteCluster.Name,
 		)
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonConfigurationError, ClusterNameLabelMissing)
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), nil // Wait for the object to be updated
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), nil // Wait for the object to be updated
 	}
 	localClusterSelector = assoctype.ObjectSelector{
 		Namespace: remoteCluster.Namespace,
@@ -75,17 +75,17 @@ func doReconcile(
 		r.watches)
 	err := h.Handle(&remoteCluster, watchFinalizer)
 	if err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	// Add watches on the CA secret of the local cluster.
 	if err := addCertificatesAuthorityWatches(r, remoteCluster, localClusterSelector); err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	// Add watches on the CA secret of the remote cluster.
 	if err := addCertificatesAuthorityWatches(r, remoteCluster, remoteCluster.Spec.Remote.K8sLocalRef); err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	log.V(1).Info(
@@ -98,17 +98,17 @@ func doReconcile(
 
 	local, err := newAssociatedCluster(r.Client, localClusterSelector)
 	if err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	remote, err := newAssociatedCluster(r.Client, remoteCluster.Spec.Remote.K8sLocalRef)
 	if err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	if !remoteCluster.DeletionTimestamp.IsZero() {
 		// association is being deleted nothing to do
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterDeletionPending), nil
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterDeletionPending), nil
 	}
 
 	// Check if local CA exists
@@ -118,7 +118,7 @@ func doReconcile(
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonLocalCaCertNotFound, message)
 		// CA secrets are watched, we don't need to requeue.
 		// If CA is created later it will trigger a new reconciliation.
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterPending), nil
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterPending), nil
 	}
 
 	// Check if remote CA exists
@@ -126,26 +126,26 @@ func doReconcile(
 		message := caCertMissingError("remote", remoteCluster.Spec.Remote.K8sLocalRef)
 		log.Error(fmt.Errorf("cannot find remote Ca cert"), message)
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonRemoteCACertMissing, message)
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterPending), nil
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterPending), nil
 	}
 
 	// Create local relationship
 	localSubject := nodecerts.GetSubjectName(remote.Selector.Name, remote.Selector.Namespace)
 	localRelationshipName := fmt.Sprintf("%s-%s", LocalTrustRelationshipPrefix, remoteCluster.Name)
 	if err := reconcileTrustRelationShip(r.Client, remoteCluster, localRelationshipName, local, remote, localSubject); err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	// Create remote relationship
 	remoteSubject := nodecerts.GetSubjectName(local.Selector.Name, local.Selector.Namespace)
 	remoteRelationshipName := fmt.Sprintf("%s-%s-%s", RemoteTrustRelationshipPrefix, remoteCluster.Name, remoteCluster.Namespace)
 	if err := reconcileTrustRelationShip(r.Client, remoteCluster, remoteRelationshipName, remote, local, remoteSubject); err != nil {
-		return updateStatusWithState(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	// Build status
 	status := v1alpha1.RemoteClusterStatus{
-		State:                  v1alpha1.RemoteClusterPropagated,
+		Phase:                  v1alpha1.RemoteClusterPropagated,
 		ClusterName:            localClusterSelector.Name,
 		LocalTrustRelationship: localRelationshipName,
 		SeedHosts:              []string{services.ExternalDiscoveryServiceHostname(remote.Selector.NamespacedName())},
@@ -166,8 +166,11 @@ func caCertMissingError(location string, selector assoctype.ObjectSelector) stri
 	)
 }
 
-func updateStatusWithState(remoteCluster *v1alpha1.RemoteCluster, state string) v1alpha1.RemoteClusterStatus {
+func updateStatusWithPhase(
+	remoteCluster *v1alpha1.RemoteCluster,
+	phase v1alpha1.RemoteClusterPhase,
+) v1alpha1.RemoteClusterStatus {
 	status := remoteCluster.Status.DeepCopy()
-	status.State = state
+	status.Phase = phase
 	return *status
 }

@@ -120,7 +120,7 @@ func Test_apply(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "State successfully updated",
+			name: "Phase successfully updated",
 			args: args{
 				rca: &ReconcileRemoteCluster{
 					Client: newFakeClient(t, []runtime.Object{
@@ -142,7 +142,7 @@ func Test_apply(t *testing.T) {
 				),
 			},
 			want: v1alpha1.RemoteClusterStatus{
-				State:                  v1alpha1.RemoteClusterPropagated,
+				Phase:                  v1alpha1.RemoteClusterPropagated,
 				ClusterName:            "trust-one-es",
 				LocalTrustRelationship: "rc-remotecluster-sample-1-2",
 				K8SLocalStatus: v1alpha1.LocalRefStatus{
