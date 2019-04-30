@@ -115,18 +115,55 @@ func (p Params) Validate() error {
 }
 
 func extractTransformLoadLicense(p Params) error {
-	var source SourceEnterpriseLicense
-	fileBytes, err := ioutil.ReadFile(p.LicenseFile)
+	secret, expectedLicense, err := extractTransformLicense(p)
 	if err != nil {
 		return err
 	}
-	if err = json.Unmarshal(fileBytes, &source); err != nil {
+
+	var reconciledSecret corev1.Secret
+	if err := reconciler.ReconcileResource(reconciler.Params{
+		Client:     k8s.WrapClient(p.Client),
+		Scheme:     scheme.Scheme,
+		Owner:      nil,
+		Expected:   secret,
+		Reconciled: &reconciledSecret,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(secret.Data, reconciledSecret.Data)
+		},
+		UpdateReconciled: func() {
+			reconciledSecret.Data = secret.Data
+		},
+	}); err != nil {
 		return err
+	}
+
+	var reconciledLicense v1alpha1.EnterpriseLicense
+	return reconciler.ReconcileResource(reconciler.Params{
+		Client:     k8s.WrapClient(p.Client),
+		Scheme:     scheme.Scheme,
+		Expected:   expectedLicense,
+		Reconciled: &reconciledLicense,
+		NeedsUpdate: func() bool {
+			return !reflect.DeepEqual(reconciledLicense.Spec, expectedLicense.Spec)
+		},
+		UpdateReconciled: func() {
+			reconciledLicense.Spec = expectedLicense.Spec
+		},
+	})
+}
+
+func extractTransformLicense(p Params) (*corev1.Secret, *v1alpha1.EnterpriseLicense, error) {
+	var source SourceEnterpriseLicense
+	fileBytes, err := ioutil.ReadFile(p.LicenseFile)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err = json.Unmarshal(fileBytes, &source); err != nil {
+		return nil, nil, err
 	}
 
 	name := licenseResourceName(source)
 	secretName := name + "-license-sigs"
-
 	const enterpriseSig = "enterprise-license-sig"
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -165,23 +202,6 @@ func extractTransformLoadLicense(p Params) error {
 			})
 	}
 
-	var reconciledSecret corev1.Secret
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client:     k8s.WrapClient(p.Client),
-		Scheme:     scheme.Scheme,
-		Owner:      nil,
-		Expected:   &secret,
-		Reconciled: &reconciledSecret,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(secret.Data, reconciledSecret.Data)
-		},
-		UpdateReconciled: func() {
-			reconciledSecret.Data = secret.Data
-		},
-	}); err != nil {
-		return err
-	}
-
 	expectedLicense := v1alpha1.EnterpriseLicense{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -210,22 +230,10 @@ func extractTransformLoadLicense(p Params) error {
 			},
 		},
 	}
-	var reconciledLicense v1alpha1.EnterpriseLicense
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     k8s.WrapClient(p.Client),
-		Scheme:     scheme.Scheme,
-		Expected:   &expectedLicense,
-		Reconciled: &reconciledLicense,
-		NeedsUpdate: func() bool {
-			return !reflect.DeepEqual(reconciledLicense.Spec, expectedLicense.Spec)
-		},
-		UpdateReconciled: func() {
-			reconciledLicense.Spec = expectedLicense.Spec
-		},
-	})
+	return &secret, &expectedLicense, nil
 }
 
 func licenseResourceName(source SourceEnterpriseLicense) string {
 	limit := math.Min(64, float64(len(source.Data.IssuedTo)))
-	return strings.ToLower(strings.Replace(source.Data.IssuedTo[:int(limit)], " ", "", -1)) + "-" + source.Data.UID[24:]
+	return strings.ToLower(strings.Replace(source.Data.IssuedTo[:int(limit)], " ", "-", -1)) + "-" + source.Data.UID[24:]
 }
