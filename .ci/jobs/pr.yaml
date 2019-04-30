@@ -1,0 +1,25 @@
+---
+- job:
+    description: Job that runs the pr Jenkinsfile on any PR of the k8s-operators project. This Job is managed by JJB.
+    logrotate:
+      daysToKeep: 7
+      numToKeep: 100
+      artifactDaysToKeep: 5
+      artifactNumToKeep: 10
+    name: k8s-operators-pr
+    project-type: multibranch
+    prune-dead-branches: true
+    periodic-folder-trigger: 1d
+    script-path: build/ci/pr/Jenkinsfile
+    scm:
+      - github:
+          branch-discovery: "all"
+          discover-pr-forks-strategy: "merge-current"
+          discover-pr-forks-trust: "contributors"
+          discover-pr-origin: "merge-current"
+          credentials-id: 'f3af1bfb-d48e-48d1-82a2-acca009c1b23'
+          repo: 'k8s-operators'
+          repo-owner: 'elastic'
+          discover-tags: true
+    wrappers:
+      - ansicolor
