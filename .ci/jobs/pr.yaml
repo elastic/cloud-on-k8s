@@ -21,5 +21,3 @@
           repo: 'k8s-operators'
           repo-owner: 'elastic'
           discover-tags: true
-    wrappers:
-      - ansicolor
