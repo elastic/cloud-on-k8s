@@ -34,7 +34,7 @@ kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/
 3. Monitor the operator logs:
 
 ```bash
-kubectl -n elastic-operator logs -f statefulset.apps/elastic-operator
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ```
 
 ## Deploy Elasticsearch
