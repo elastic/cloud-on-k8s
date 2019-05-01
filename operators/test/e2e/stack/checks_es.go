@@ -10,16 +10,15 @@ import (
 	"math"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type esClusterChecks struct {
-	client client.Client
+	client *helpers.Client
 }
 
 // ESClusterChecks returns all test steps to verify the given stack's Elasticsearch

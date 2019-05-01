@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/k8s-operators/operators/test/e2e/elasticsearch/data"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -23,6 +25,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 	s := stack.NewStackBuilder("test-restart").
 		WithESMasterDataNodes(3, stack.DefaultResources)
+	l := data.NewDataLoader(s.Elasticsearch, k, 1, 5)
 
 	// keep track of nodes start time before the restart
 	// it is supposed to be different after the restart is over
@@ -32,6 +35,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 		// create the cluster
 		WithSteps(stack.InitTestSteps(s, k)...).
 		WithSteps(stack.CreationTestSteps(s, k)...).
+		WithSteps(data.InjectDataSteps(l, 10000)...).
 		WithSteps(
 			helpers.TestStep{
 				Name: "Retrieve nodes start time",
@@ -88,6 +92,8 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 		).
 		// we should get back to a green cluster
 		WithSteps(stack.CheckStackSteps(s, k)...).
+		// Check that we didn't loose some data
+		WithSteps(data.CheckDataStep(l)).
 		// finally, cleanup resources
 		WithSteps(stack.DeletionTestSteps(s, k)...).
 		RunSequential(t)

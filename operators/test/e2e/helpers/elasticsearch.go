@@ -5,45 +5,86 @@
 package helpers
 
 import (
-	"flag"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"net/http"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-
+	elasticsearch "github.com/elastic/go-elasticsearch"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
-// if `--auto-port-forward` is passed to `go test`, then use a custom
-// dialer that sets up port-forwarding to services running within k8s
-// (useful when running tests on a dev env instead of as a batch job)
-var autoPortForward = flag.Bool(
-	"auto-port-forward", false,
-	"enables automatic port-forwarding (for dev use only as it exposes "+
-		"k8s resources on ephemeral ports to localhost)")
+// define an alias to avoid some name conflict
+type APIClient = elasticsearch.Client
+
+// Client is a Elasticsearch client that satisfies the Client interface used in the operator but also
+// come along with a native API client which is more appropriate for creating indices and loading some data
+// with the bulk api.
+type Client struct {
+	client.Client
+	*APIClient
+}
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
-func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Client, error) {
+func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (*Client, error) {
 	password, err := k.GetElasticPassword(es.Name)
 	if err != nil {
 		return nil, err
 	}
-	esUser := client.UserAuth{Name: "elastic", Password: password}
-	caCert, err := k.GetCACert(es.Name)
+	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", es.Name, es.Namespace)
+
+	// Get the certificate authority
+	caCerts, err := k.GetCACert(es.Name)
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", es.Name, es.Namespace)
+	certPool := x509.NewCertPool()
+	for _, c := range caCerts {
+		certPool.AddCert(c)
+	}
+	transportConfig := http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs: certPool,
+		},
+	}
+
+	// use the custom dialer if provided
 	var dialer net.Dialer
 	if *autoPortForward {
 		dialer = portforward.NewForwardingDialer()
 	}
+	if dialer != nil {
+		transportConfig.DialContext = dialer.DialContext
+	}
+
+	// Create the configuration of the API client
+	config := elasticsearch.Config{
+		Username:  "elastic",
+		Password:  password,
+		Transport: &transportConfig,
+		Addresses: []string{inClusterURL},
+	}
+	// Create the API client
+	apiClient, err := elasticsearch.NewClient(config)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the operator client
 	v, err := version.Parse(es.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
-	client := client.NewElasticsearchClient(dialer, inClusterURL, esUser, *v, caCert)
-	return client, nil
+	opClient := client.NewElasticsearchClient(
+		dialer,
+		inClusterURL,
+		client.UserAuth{Name: "elastic", Password: password},
+		*v,
+		caCerts,
+	)
+	return &Client{opClient, apiClient}, nil
 }

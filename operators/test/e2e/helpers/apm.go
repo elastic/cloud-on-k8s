@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
@@ -20,8 +19,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
-
-const DefaultReqTimeout = 1 * time.Minute
 
 // ApmClient is a simple client to use with an Apm Server.
 type ApmClient struct {
