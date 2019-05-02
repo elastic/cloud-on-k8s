@@ -2,14 +2,14 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package data
+package loader
 
 import (
 	"fmt"
 	"strings"
 )
 
-func (d *Loader) setupIndex() error {
+func (d *DocumentLoader) setupIndex() error {
 	m := fmt.Sprintf(mapping, d.shards, d.replicas)
 	res, err := d.Client.Indices.Create(
 		indexName,
@@ -28,7 +28,7 @@ func (d *Loader) setupIndex() error {
 	return nil
 }
 
-func (d *Loader) ensureIndex() error {
+func (d *DocumentLoader) ensureIndex() error {
 	res, err := d.Client.Indices.Exists([]string{indexName})
 	if err != nil {
 		return err

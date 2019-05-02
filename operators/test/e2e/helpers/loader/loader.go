@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package data
+package loader
 
 import (
 	"bytes"
@@ -34,9 +34,9 @@ const (
 }`
 )
 
-// Loader can be used to create a sample index, bulk import some data and check if all the data
-// are available during some e2e tests.
-type Loader struct {
+// DocumentLoader can be used to create a sample index, bulk import some documents and check
+// if all the documents are available during some e2e tests.
+type DocumentLoader struct {
 	es        estype.Elasticsearch
 	k8sHelper *helpers.K8sHelper
 	// Creation of the client is delayed because we have to wait for the secrets to be created.
@@ -49,9 +49,9 @@ type Loader struct {
 	expected int
 }
 
-// NewDataLoader creates a new data loader. The returned implementation is not thread-safe.
-func NewDataLoader(es estype.Elasticsearch, k *helpers.K8sHelper, replicas, shards int) *Loader {
-	return &Loader{
+// NewDocumentLoader creates a new document loader. The returned implementation is not thread-safe.
+func NewDocumentLoader(es estype.Elasticsearch, k *helpers.K8sHelper, replicas, shards int) *DocumentLoader {
+	return &DocumentLoader{
 		es:        es,
 		k8sHelper: k,
 		replicas:  replicas,
@@ -59,7 +59,7 @@ func NewDataLoader(es estype.Elasticsearch, k *helpers.K8sHelper, replicas, shar
 	}
 }
 
-func (d *Loader) init() error {
+func (d *DocumentLoader) init() error {
 	if d.Client != nil {
 		return nil
 	}
@@ -83,7 +83,7 @@ func generateDocuments(count int) []sampleDocument {
 }
 
 // Load inserts some documents with the /bulk endpoint.
-func (d *Loader) Load(count int) error {
+func (d *DocumentLoader) Load(count int) error {
 	if err := d.init(); err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (d *Loader) Load(count int) error {
 }
 
 // CheckData gets the current number of documents in the e2e index and compares it with the expected one.
-func (d *Loader) CheckData(t *testing.T) {
+func (d *DocumentLoader) CheckData(t *testing.T) {
 	require.NoError(t, d.init())
 	res, err := d.Client.Count(d.Client.Count.WithIndex(indexName))
 	defer res.Body.Close()

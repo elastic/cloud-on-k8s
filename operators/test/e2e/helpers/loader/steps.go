@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package data
+package loader
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 )
 
 // LoadDataSteps bulk loads some data and check that all documents have been created.
-func LoadDataSteps(loader *Loader, count int) []helpers.TestStep {
+func LoadDataSteps(loader *DocumentLoader, count int) []helpers.TestStep {
 	return []helpers.TestStep{
 		{
 			Name: "Injecting data should succeed",
@@ -31,7 +31,7 @@ func LoadDataSteps(loader *Loader, count int) []helpers.TestStep {
 }
 
 // CheckDataStep returns a step that checks that documents are still in the cluster.
-func CheckDataStep(loader *Loader) helpers.TestStep {
+func CheckDataStep(loader *DocumentLoader) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Data count should be ok",
 		Test: func(t *testing.T) {
