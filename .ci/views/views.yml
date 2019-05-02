@@ -1,0 +1,5 @@
+---
+- view: 
+    name: 'k8s-operators' 
+    regex: 'k8s-operators-.*' 
+    view-type: list
