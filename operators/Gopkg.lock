@@ -45,6 +45,18 @@
   revision = "6480d4af844c189cf5dd913db24ddd339d3a4f85"
 
 [[projects]]
+  digest = "1:006de09033e8222ff55164c4aeb1351939ab08236a6b091d998896d590a2ec57"
+  name = "github.com/elastic/go-elasticsearch"
+  packages = [
+    ".",
+    "esapi",
+    "estransport",
+  ]
+  pruneopts = "T"
+  revision = "3aa68f5e96e138fa4dafc9403b10674b4310a632"
+  version = "v0.0.0"
+
+[[projects]]
   digest = "1:ae22b31cc4eccb85d5a53fdaa3f189071e21cb14ee78e05c24f4dc3d49560253"
   name = "github.com/elastic/go-ucfg"
   packages = [
@@ -1094,6 +1106,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/elastic/go-elasticsearch",
+    "github.com/elastic/go-elasticsearch/esapi",
     "github.com/elastic/go-ucfg",
     "github.com/elastic/go-ucfg/diff",
     "github.com/elastic/go-ucfg/yaml",
