@@ -28,12 +28,25 @@ pipeline {
     }
 
     post {
+        success {
+            script {
+                def msg = "Image " + + " was released!"
+                slackSend botUser: true,
+                    channel: '#cloud-k8s',
+                    color: 'danger',
+                    message: msg,
+                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
+        }
         unsuccessful {
-            slackSend botUser: true,
-                      channel: '#cloud-k8s',
-                      color: 'danger',
-                      message: 'Release build ${env.JOB_NAME}#${env.BUILD_NUMBER} failed!',
-                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+            script {
+                def msg = "Release job failed!\r\n" + env.BUILD_URL
+                slackSend botUser: true,
+                    channel: '#cloud-k8s',
+                    color: 'danger',
+                    message: msg,
+                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
         }
         cleanup {
             cleanWs()
