@@ -230,6 +230,9 @@ docker-build:
 	docker build . -t $(OPERATOR_IMAGE)
 
 docker-push:
+ifeq ($(RELEASE), true)
+	docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
+endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
 	# use the minikube registry
 	@ hack/registry.sh port-forward start
