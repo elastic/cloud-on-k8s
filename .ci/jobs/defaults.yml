@@ -4,3 +4,8 @@
 
 - meta:
     cluster: cloud-ci
+
+##### JOB DEFAULTS
+
+- job:
+      foo: bar
