@@ -1,0 +1,48 @@
+pipeline {
+
+    agent {
+        label 'linux'
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    environment {
+        REGISTRY = "eu.gcr.io"
+    }
+
+    stages {
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
+        stage("Run E2E tests") {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'vault-addr', variable: 'VAULT_ADDR'),
+                    string(credentialsId: 'vault-role-id', variable: 'VAULT_ROLE_ID'),
+                    string(credentialsId: 'vault-secret-id', variable: 'VAULT_SECRET_ID'),
+                    string(credentialsId: 'k8s-operators-gcloud-project', variable: 'GCLOUD_PROJECT'),
+                ]) {
+                    sh 'make -C build/ci ci-e2e'
+                }
+            }
+        }
+    }
+
+    post {
+        unsuccessful {
+            slackSend botUser: true,
+                      channel: '#cloud-k8s',
+                      color: 'danger',
+                      message: 'E2E tests build ${env.BUILD_NUMBER} failed!',
+                      tokenCredentialId: 'cloud-ci-slack-integration-token'
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+
+}
