@@ -231,7 +231,7 @@ docker-build:
 
 docker-push:
 ifeq ($(RELEASE), true)
-	docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
+	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
 	# use the minikube registry
