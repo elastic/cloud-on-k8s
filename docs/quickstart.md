@@ -28,7 +28,7 @@ You will learn how to:
 2. Install the operator with its RBAC rules:
 
     ```bash
-           kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
+    kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
     ```
 
 3. Monitor the operator logs:
