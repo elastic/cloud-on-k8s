@@ -6,18 +6,13 @@ package observer
 
 import (
 	"context"
-	"crypto/x509"
-	"fmt"
-	"net"
 	"sync"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	netutils "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -39,9 +34,9 @@ type State struct {
 
 // RetrieveState returns the current Elasticsearch cluster state
 func RetrieveState(
-	ctx context.Context, k8sClient k8s.Client,
+	ctx context.Context,
 	cluster types.NamespacedName, esClient esclient.Client,
-	caCerts []*x509.Certificate, dialer netutils.Dialer,
+	k8sClient k8s.Client, pmClientFactory pmClientFactory,
 ) State {
 	// retrieve both cluster state and health in parallel
 	clusterStateChan := make(chan *client.ClusterState)
@@ -91,13 +86,13 @@ func RetrieveState(
 		keystoreStatuses := make([]keystore.Status, len(pods))
 		wg := sync.WaitGroup{}
 		// request the process manager API for each pod
-		for i, pod := range pods {
+		for i, p := range pods {
 			wg.Add(1)
-			go func(idx int, p corev1.Pod) {
+			go func(idx int, pod corev1.Pod) {
 				defer wg.Done()
-				status := getKeystoreStatus(ctx, caCerts, dialer, p)
+				status := getKeystoreStatus(ctx, pmClientFactory, pod)
 				keystoreStatuses[idx] = status
-			}(i, pod)
+			}(i, p)
 		}
 		wg.Wait()
 		keystoreStatusesChan <- keystoreStatuses
@@ -112,21 +107,16 @@ func RetrieveState(
 	}
 }
 
-func getKeystoreStatus(ctx context.Context, caCerts []*x509.Certificate, dialer netutils.Dialer, pod corev1.Pod) keystore.Status {
+func getKeystoreStatus(ctx context.Context, pmClientFactory pmClientFactory, pod corev1.Pod) keystore.Status {
 	if !k8s.IsPodReady(pod) {
 		log.V(3).Info("Pod not ready to retrieve keystore status", "pod_name", pod.Name)
-		return keystore.Status{State: keystore.WaitingState}
+		return keystore.Status{State: keystore.WaitingState, Reason: "Pod not ready"}
 	}
 
-	// Create new process manager client
-	podIP := net.ParseIP(pod.Status.PodIP)
-	endpoint := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	pmClient := processmanager.NewClient(endpoint, caCerts, dialer)
-
-	status, err := pmClient.KeystoreStatus(ctx)
+	status, err := pmClientFactory().KeystoreStatus(ctx)
 	if err != nil {
 		log.V(3).Info("Unable to retrieve keystore status", "pod_name", pod.Name, "error", err)
-		return keystore.Status{State: keystore.State("Unreachable")}
+		return keystore.Status{State: keystore.FailedState, Reason: "Unable to retrieve keystore status"}
 	}
 
 	log.V(3).Info("Keystore updater", "pod_name", pod.Name, "status", status)

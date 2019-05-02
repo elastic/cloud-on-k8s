@@ -77,7 +77,7 @@ func TestCoalescingRetry_Ok(t *testing.T) {
 	// Status is running and settings have been reloaded
 	s, err := updater.Status()
 	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
+	assert.Equal(t, string(RunningState), string(s.State))
 	assert.Equal(t, secureSettingsReloadedReason, s.Reason)
 }
 
@@ -104,7 +104,7 @@ func TestCoalescingRetry_Ko(t *testing.T) {
 	// Status is failed
 	s, err := updater.Status()
 	assert.NoError(t, err)
-	assert.Equal(t, string(failedState), string(s.State))
+	assert.Equal(t, string(FailedState), string(s.State))
 }
 
 func TestWatchForUpdate(t *testing.T) {
@@ -146,7 +146,7 @@ func TestWatchForUpdate(t *testing.T) {
 	// Status is running and keystore is updated
 	s, err := updater.Status()
 	assert.NoError(t, err)
-	assert.Equal(t, string(runningState), string(s.State))
+	assert.Equal(t, string(RunningState), string(s.State))
 	assert.Equal(t, string(KeystoreUpdatedReason), string(s.Reason))
 }
 
@@ -191,7 +191,7 @@ func TestStart_UpdatedAtLeastOnce(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != runningState {
+		if s.State != RunningState {
 			return errors.New("status must be running")
 		}
 		if s.Reason != KeystoreUpdatedReason {
@@ -218,7 +218,7 @@ func TestStart_Reload(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != runningState {
+		if s.State != RunningState {
 			return errors.New("status must be running")
 		}
 		if s.Reason != secureSettingsReloadedReason {
@@ -246,7 +246,7 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != runningState {
+		if s.State != RunningState {
 			return errors.New("status must be running")
 		}
 		if s.Reason != KeystoreUpdatedReason {
@@ -262,7 +262,7 @@ func TestStart_ReloadAndWatchUpdate(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != runningState {
+		if s.State != RunningState {
 			return errors.New("status must be running")
 		}
 		if s.Reason != KeystoreUpdatedReason {
@@ -284,7 +284,7 @@ func TestStart_ReloadFailure(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != failedState {
+		if s.State != FailedState {
 			return errors.New("status must be failed")
 		}
 		return nil
@@ -308,7 +308,7 @@ func TestStart_KeystoreUpdateFailure(t *testing.T) {
 		s, err := updater.Status()
 		assert.NoError(t, err)
 
-		if s.State != failedState {
+		if s.State != FailedState {
 			return errors.New("status must be failed")
 		}
 		return nil

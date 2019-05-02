@@ -35,5 +35,8 @@ func (m *MockClient) Status(ctx context.Context) (ProcessStatus, error) {
 	return m.status, m.err
 }
 func (m *MockClient) KeystoreStatus(ctx context.Context) (keystore.Status, error) {
-	return keystore.Status{Reason: keystore.KeystoreUpdatedReason}, m.err
+	return keystore.Status{
+		State:  keystore.RunningState,
+		Reason: keystore.KeystoreUpdatedReason,
+	}, m.err
 }
