@@ -28,16 +28,6 @@ pipeline {
     }
 
     post {
-        success {
-            script {
-                def msg = "Image " + + " was released!"
-                slackSend botUser: true,
-                    channel: '#cloud-k8s',
-                    color: 'danger',
-                    message: msg,
-                    tokenCredentialId: 'cloud-ci-slack-integration-token'
-            }
-        }
         unsuccessful {
             script {
                 def msg = "Release job failed!\r\n" + env.BUILD_URL
