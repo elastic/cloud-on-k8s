@@ -39,7 +39,7 @@ const (
 type Loader struct {
 	es        estype.Elasticsearch
 	k8sHelper *helpers.K8sHelper
-	// Creation of the client is delayed because we must way for the secrets to be created.
+	// Creation of the client is delayed because we have to wait for the secrets to be created.
 	Client *helpers.Client
 	// Number of replica
 	replicas int
@@ -68,7 +68,7 @@ func (d *Loader) init() error {
 	return err
 }
 
-func generateData(count int) []sampleDocument {
+func generateDocuments(count int) []sampleDocument {
 	documents := make([]sampleDocument, count)
 	for i := 0; i < count; i++ {
 		id := i + 1
@@ -82,12 +82,12 @@ func generateData(count int) []sampleDocument {
 	return documents
 }
 
-// Load inserts documents with the /bulk endpoint.
+// Load inserts some documents with the /bulk endpoint.
 func (d *Loader) Load(count int) error {
 	if err := d.init(); err != nil {
 		return err
 	}
-	documents := generateData(count)
+	documents := generateDocuments(count)
 
 	// Always make sure that the index has been created
 	if err := d.ensureIndex(); err != nil {
