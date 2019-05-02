@@ -17,7 +17,7 @@ func LoadDocumentsSteps(loader *DocumentLoader, count int) []helpers.TestStep {
 		{
 			Name: "Loading some documents should succeed",
 			Test: func(t *testing.T) {
-				err := loader.Load(count)
+				err := loader.LoadDocuments(count)
 				require.NoError(t, err)
 			},
 		},

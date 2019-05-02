@@ -82,8 +82,8 @@ func generateDocuments(count int) []sampleDocument {
 	return documents
 }
 
-// Load inserts some documents with the /bulk endpoint.
-func (d *DocumentLoader) Load(count int) error {
+// LoadDocuments inserts some documents with the /bulk endpoint.
+func (d *DocumentLoader) LoadDocuments(count int) error {
 	if err := d.init(); err != nil {
 		return err
 	}
