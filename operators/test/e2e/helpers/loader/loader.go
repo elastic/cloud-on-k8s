@@ -140,8 +140,8 @@ func (d *DocumentLoader) Load(count int) error {
 	return nil
 }
 
-// CheckData gets the current number of documents in the e2e index and compares it with the expected one.
-func (d *DocumentLoader) CheckData(t *testing.T) {
+// CheckDocuments gets the current number of documents in the e2e index and compares it with the expected one.
+func (d *DocumentLoader) CheckDocuments(t *testing.T) {
 	require.NoError(t, d.init())
 	res, err := d.Client.Count(d.Client.Count.WithIndex(indexName))
 	defer res.Body.Close()

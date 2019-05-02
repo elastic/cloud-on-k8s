@@ -33,7 +33,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 		// create the cluster
 		WithSteps(stack.InitTestSteps(s, k)...).
 		WithSteps(stack.CreationTestSteps(s, k)...).
-		WithSteps(loader.LoadDataSteps(l, 10000)...).
+		WithSteps(loader.LoadDocumentsSteps(l, 10000)...).
 		WithSteps(
 			helpers.TestStep{
 				Name: "Retrieve nodes start time",
@@ -91,7 +91,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 		// we should get back to a green cluster
 		WithSteps(stack.CheckStackSteps(s, k)...).
 		// Check that we haven't lost some data
-		WithSteps(loader.CheckDataStep(l)).
+		WithSteps(loader.CheckDocumentsStep(l)).
 		// finally, cleanup resources
 		WithSteps(stack.DeletionTestSteps(s, k)...).
 		RunSequential(t)

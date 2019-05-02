@@ -11,31 +11,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// LoadDataSteps bulk loads some data and check that all documents have been created.
-func LoadDataSteps(loader *DocumentLoader, count int) []helpers.TestStep {
+// LoadDocumentsSteps bulk loads some documents and check that all of them have been created.
+func LoadDocumentsSteps(loader *DocumentLoader, count int) []helpers.TestStep {
 	return []helpers.TestStep{
 		{
-			Name: "Injecting data should succeed",
+			Name: "Loading some documents should succeed",
 			Test: func(t *testing.T) {
 				err := loader.Load(count)
 				require.NoError(t, err)
 			},
 		},
 		{
-			Name: "Data count should be ok",
+			Name: "Document count should be ok",
 			Test: func(t *testing.T) {
-				loader.CheckData(t)
+				loader.CheckDocuments(t)
 			},
 		},
 	}
 }
 
-// CheckDataStep returns a step that checks that documents are still in the cluster.
-func CheckDataStep(loader *DocumentLoader) helpers.TestStep {
+// CheckDocumentsStep returns a step that checks that documents are still in the cluster.
+func CheckDocumentsStep(loader *DocumentLoader) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Data count should be ok",
+		Name: "Document count should be ok",
 		Test: func(t *testing.T) {
-			loader.CheckData(t)
+			loader.CheckDocuments(t)
 		},
 	}
 }
