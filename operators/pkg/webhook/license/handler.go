@@ -52,7 +52,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	var onServer estype.EnterpriseLicense
 	err = v.client.Get(ctx, k8s.ExtractNamespacedName(&license), &onServer)
 	if err != nil && !apierrors.IsNotFound(err) {
-		log.Error(err, "Failed to retrieve existing cluster")
+		log.Error(err, "Failed to retrieve existing license")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
 	var current *estype.EnterpriseLicense
@@ -61,10 +61,6 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	}
 	var results []commonvalidation.Result
 	validationCtx := &validation.Context{Current: current, Proposed: license}
-	if err != nil {
-		log.Error(err, "while creating validation context")
-		return admission.ValidationResponse(false, err.Error())
-	}
 	for _, v := range validation.Validations {
 		results = append(results, v(*validationCtx))
 	}

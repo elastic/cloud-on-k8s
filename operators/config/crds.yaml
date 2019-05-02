@@ -457,15 +457,6 @@ spec:
             image:
               description: Image represents the docker image that will be used.
               type: string
-            licenseType:
-              description: LicenseType represents the expected license type for this
-                cluster. Will default to "basic" if not set.
-              enum:
-              - basic
-              - trial
-              - gold
-              - platinum
-              type: string
             nodes:
               description: Nodes represents a list of groups of nodes with the same
                 configuration to be part of the cluster
@@ -750,6 +741,10 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: remoteclusters.elasticsearch.k8s.elastic.co
 spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    name: status
+    type: string
   group: elasticsearch.k8s.elastic.co
   names:
     kind: RemoteCluster
@@ -785,12 +780,12 @@ spec:
               type: string
             localTrustRelationship:
               type: string
+            phase:
+              type: string
             seedHosts:
               items:
                 type: string
               type: array
-            state:
-              type: string
           type: object
   version: v1alpha1
 status:

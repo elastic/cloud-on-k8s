@@ -51,11 +51,3 @@ func TestStackSample(t *testing.T) {
 	// run, with mutation to the same stack (should work and do nothing)
 	stack.RunCreationMutationDeletionTests(t, s, s)
 }
-
-// TestStackSample_BasicLicense runs a test suite using the sample stack,
-// overridden to use a Basic license
-func TestStackSample_BasicLicense(t *testing.T) {
-	s := readSampleStack()
-	s.Elasticsearch.Spec.LicenseType = "basic"
-	stack.RunCreationMutationDeletionTests(t, s, s)
-}

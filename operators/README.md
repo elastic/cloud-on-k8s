@@ -21,7 +21,7 @@ Run `make check-requisites` to check that all dependencies are installed.
 
 ## Quickstart
 
-See the [quickstart tutorial](docs/quickstart.md).
+See the [Quickstart](../docs/quickstart.md).
 
 ## Development
 

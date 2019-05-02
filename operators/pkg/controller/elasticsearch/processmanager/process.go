@@ -81,9 +81,9 @@ func (p *Process) Start(done chan ExitStatus) (ProcessState, error) {
 
 	// Can start only if not started, stopping or killing
 	switch p.state {
-	case started:
+	case Started:
 		return p.state, nil
-	case stopping, killing:
+	case Stopping, Killing:
 		return p.state, fmt.Errorf("error: cannot start process %s", p.state)
 	}
 
@@ -132,7 +132,7 @@ func (p *Process) KillSoft() (ProcessState, error) {
 
 	// Can stop?
 	switch p.state {
-	case stopping, stopped, killing, killed, failed:
+	case Stopping, Stopped, Killing, Killed, Failed:
 		return p.state, nil
 	}
 
@@ -150,7 +150,7 @@ func (p *Process) KillHard() (ProcessState, error) {
 
 	// Can kill?
 	switch p.state {
-	case stopped, killing, killed, failed:
+	case Stopped, Killing, Killed, Failed:
 		return p.state, nil
 	}
 
