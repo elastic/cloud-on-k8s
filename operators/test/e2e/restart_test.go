@@ -33,7 +33,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 		// create the cluster
 		WithSteps(stack.InitTestSteps(s, k)...).
 		WithSteps(stack.CreationTestSteps(s, k)...).
-		WithSteps(data.InjectDataSteps(l, 10000)...).
+		WithSteps(data.LoadDataSteps(l, 10000)...).
 		WithSteps(
 			helpers.TestStep{
 				Name: "Retrieve nodes start time",

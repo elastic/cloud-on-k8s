@@ -18,7 +18,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
-// define an alias to avoid some name conflict
+// APIClient defines an alias to avoid some name conflict
 type APIClient = elasticsearch.Client
 
 // Client is a Elasticsearch client that satisfies the Client interface used in the operator but also

@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// InjectDataSteps bulk loads some data and check that all documents have been created.
-func InjectDataSteps(loader *Loader, count int) []helpers.TestStep {
+// LoadDataSteps bulk loads some data and check that all documents have been created.
+func LoadDataSteps(loader *Loader, count int) []helpers.TestStep {
 	return []helpers.TestStep{
 		{
 			Name: "Injecting data should succeed",
