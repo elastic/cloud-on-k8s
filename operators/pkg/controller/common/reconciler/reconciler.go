@@ -84,8 +84,10 @@ func ReconcileResource(params Params) error {
 	}
 	kind := gvk.Kind
 
-	if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
-		return err
+	if params.Owner != nil {
+		if err := controllerutil.SetControllerReference(params.Owner, metaObj, params.Scheme); err != nil {
+			return err
+		}
 	}
 
 	// Check if already exists
