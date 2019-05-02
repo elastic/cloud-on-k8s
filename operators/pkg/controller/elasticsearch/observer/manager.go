@@ -6,6 +6,7 @@ package observer
 
 import (
 	"crypto/x509"
+	"reflect"
 	"sync"
 
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
@@ -51,7 +52,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, caCerts []*x509.Certific
 	switch {
 	case !exists:
 		return m.createObserver(cluster, caCerts, esClient)
-	case exists && !observer.esClient.Equal(esClient):
+	case exists && (!observer.esClient.Equal(esClient) || !reflect.DeepEqual(observer.caCerts, caCerts)):
 		log.Info("Replacing observer HTTP client", "cluster", cluster)
 		m.StopObserving(cluster)
 		return m.createObserver(cluster, caCerts, esClient)
