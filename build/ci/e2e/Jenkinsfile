@@ -34,11 +34,14 @@ pipeline {
 
     post {
         unsuccessful {
-            slackSend botUser: true,
+            script {
+                def msg = "E2E tests failed!\r\n" + env.BUILD_URL
+                slackSend botUser: true,
                       channel: '#cloud-k8s',
                       color: 'danger',
-                      message: 'E2E tests build ${env.BUILD_NUMBER} failed!',
+                      message: msg,
                       tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
         }
         cleanup {
             cleanWs()
