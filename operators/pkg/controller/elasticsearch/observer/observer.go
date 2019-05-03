@@ -47,7 +47,7 @@ var DefaultSettings = Settings{
 type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
 
 // pmClientFactory is a function to create process manager client (to ease testing)
-type pmClientFactory func() processmanager.Client
+type pmClientFactory func(pod corev1.Pod) processmanager.Client
 
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
@@ -91,6 +91,8 @@ func NewObserver(
 		onObservation: onObservation,
 		mutex:         sync.RWMutex{},
 	}
+	observer.pmClientFactory = observer.createProcessManagerClient
+
 	log.Info("Creating observer", "cluster", cluster)
 	return &observer
 }

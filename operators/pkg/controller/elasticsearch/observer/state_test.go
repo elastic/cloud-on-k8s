@@ -63,7 +63,7 @@ func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Clien
 	})
 }
 
-func createMockPMClient() processmanager.Client {
+func createMockPMClient(pod v1.Pod) processmanager.Client {
 	return processmanager.NewMockClient(processmanager.ProcessStatus{State: processmanager.Started}, nil)
 }
 

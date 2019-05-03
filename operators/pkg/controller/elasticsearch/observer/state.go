@@ -113,7 +113,7 @@ func getKeystoreStatus(ctx context.Context, pmClientFactory pmClientFactory, pod
 		return keystore.Status{State: keystore.WaitingState, Reason: "Pod not ready"}
 	}
 
-	status, err := pmClientFactory().KeystoreStatus(ctx)
+	status, err := pmClientFactory(pod).KeystoreStatus(ctx)
 	if err != nil {
 		log.V(3).Info("Unable to retrieve keystore status", "pod_name", pod.Name, "error", err)
 		return keystore.Status{State: keystore.FailedState, Reason: "Unable to retrieve keystore status"}
