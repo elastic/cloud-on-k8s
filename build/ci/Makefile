@@ -36,8 +36,8 @@ vault-public-key:
 
 # reads Docker password from Vault
 vault-docker-creds:
-	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
-	DOCKER_PASSWORD=$$(vault read -field password secret/infra/prod/$(DOCKER_LOGIN))
+	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
+	@ DOCKER_PASSWORD=$$(VAULT_TOKEN=$(VAULT_TOKEN) vault read -field password secret/infra/prod/$(DOCKER_LOGIN))
 
 ## -- Job executed on all PRs
 
