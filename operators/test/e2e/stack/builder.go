@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const defaultVersion = "6.7.0"
+const defaultVersion = "6.7.2"
 
 var DefaultResources = common.ResourcesSpec{
 	Limits: map[corev1.ResourceName]resource.Quantity{
@@ -94,6 +94,7 @@ func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Bu
 		NodeCount: int32(count),
 		Config: &estype.Config{Data: map[string]interface{}{
 			estype.NodeMaster: "true",
+			estype.NodeData:   "false",
 		},
 		},
 		Resources: resources,
@@ -105,7 +106,8 @@ func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Buil
 		NodeCount: int32(count),
 		Config: &estype.Config{
 			Data: map[string]interface{}{
-				estype.NodeData: "true",
+				estype.NodeMaster: "false",
+				estype.NodeData:   "true",
 			},
 		},
 		Resources: resources,
