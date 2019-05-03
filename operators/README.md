@@ -23,7 +23,7 @@ Before you start, install the following tools and packages:
 
 ```bash
 go get -u github.com/elastic/k8s-operators
-cd ${GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators
+cd ${GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators/operators
 ```
 
 ### Check prerequisites
