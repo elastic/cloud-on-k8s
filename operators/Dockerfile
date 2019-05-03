@@ -7,12 +7,12 @@ COPY pkg/    pkg/
 COPY cmd/    cmd/
 COPY vendor/ vendor/
 
-ARG TAGS
+ARG GO_TAGS
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$TAGS" -a -o elastic-operator github.com/elastic/k8s-operators/operators/cmd
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$TAGS" -a -o process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$TAGS" -a -o cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o elastic-operator github.com/elastic/k8s-operators/operators/cmd
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest

@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestChecker_CommercialFeaturesEnabled(t *testing.T) {
+func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	type fields struct {
 		initialObjects    []runtime.Object

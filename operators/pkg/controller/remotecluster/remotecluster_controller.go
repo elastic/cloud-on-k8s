@@ -122,7 +122,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 			"iteration", currentIteration,
 		)
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
-			State: v1alpha1.RemoteClusterFeatureDisabled,
+			Phase: v1alpha1.RemoteClusterFeatureDisabled,
 		})
 		return reconcile.Result{}, nil
 	}
