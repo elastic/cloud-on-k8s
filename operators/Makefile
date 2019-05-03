@@ -25,7 +25,8 @@ ifeq ($(REGISTRY),)
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
+IMG_NAME ?= k8s-operators
+IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
 # use git sha1 as the default image tag
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
