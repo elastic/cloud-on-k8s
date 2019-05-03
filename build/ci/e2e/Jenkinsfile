@@ -4,16 +4,21 @@ pipeline {
         label 'linux'
     }
 
-    environment {
-        REGISTRY = 'eu.gcr.io'
-    }
-
     options {
         timeout(time: 1, unit: 'HOURS')
     }
 
+    environment {
+        REGISTRY = "eu.gcr.io"
+    }
+
     stages {
-        stage('Build and push release image') {
+        stage('Checkout from GitHub') {
+            steps {
+                checkout scm
+            }
+        }
+        stage("Run E2E tests") {
             steps {
                 withCredentials([
                     string(credentialsId: 'vault-addr', variable: 'VAULT_ADDR'),
@@ -21,7 +26,7 @@ pipeline {
                     string(credentialsId: 'vault-secret-id', variable: 'VAULT_SECRET_ID'),
                     string(credentialsId: 'k8s-operators-gcloud-project', variable: 'GCLOUD_PROJECT'),
                 ]) {
-                    sh 'make -C build/ci ci-release'
+                    sh 'make -C build/ci ci-e2e'
                 }
             }
         }
@@ -30,12 +35,12 @@ pipeline {
     post {
         unsuccessful {
             script {
-                def msg = "Release job failed!\r\n" + env.BUILD_URL
+                def msg = "E2E tests failed!\r\n" + env.BUILD_URL
                 slackSend botUser: true,
-                    channel: '#cloud-k8s',
-                    color: 'danger',
-                    message: msg,
-                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+                      channel: '#cloud-k8s',
+                      color: 'danger',
+                      message: msg,
+                      tokenCredentialId: 'cloud-ci-slack-integration-token'
             }
         }
         cleanup {

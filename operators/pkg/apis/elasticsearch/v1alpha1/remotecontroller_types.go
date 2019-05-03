@@ -21,11 +21,11 @@ type RemoteClusterRef struct {
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.
 type RemoteClusterStatus struct {
-	State                  string         `json:"state,omitempty"`
-	ClusterName            string         `json:"clusterName,omitempty"`
-	LocalTrustRelationship string         `json:"localTrustRelationship,omitempty"`
-	SeedHosts              []string       `json:"seedHosts,omitempty"`
-	K8SLocalStatus         LocalRefStatus `json:"k8sLocal,omitempty"`
+	Phase                  RemoteClusterPhase `json:"phase,omitempty"`
+	ClusterName            string             `json:"clusterName,omitempty"`
+	LocalTrustRelationship string             `json:"localTrustRelationship,omitempty"`
+	SeedHosts              []string           `json:"seedHosts,omitempty"`
+	K8SLocalStatus         LocalRefStatus     `json:"k8sLocal,omitempty"`
 }
 
 // LocalRefStatus defines the state of the K8S local driver state.
@@ -34,13 +34,16 @@ type LocalRefStatus struct {
 	RemoteTrustRelationship string                   `json:"remoteTrustRelationship,omitempty"`
 }
 
+// RemoteClusterPhase defines the current phase of the deployment of the RemoteCluster
+type RemoteClusterPhase string
+
 const (
-	RemoteClusterPropagated      string = "Propagated"
-	RemoteClusterFailed          string = "Failed"
-	RemoteClusterRemovalFailed   string = "RemovalFailed"
-	RemoteClusterPending         string = "Pending"
-	RemoteClusterDeletionPending string = "DeletionPending"
-	RemoteClusterFeatureDisabled string = "EnterpriseFeaturesDisabled"
+	RemoteClusterPropagated      RemoteClusterPhase = "Propagated"
+	RemoteClusterFailed          RemoteClusterPhase = "Failed"
+	RemoteClusterRemovalFailed   RemoteClusterPhase = "RemovalFailed"
+	RemoteClusterPending         RemoteClusterPhase = "Pending"
+	RemoteClusterDeletionPending RemoteClusterPhase = "DeletionPending"
+	RemoteClusterFeatureDisabled RemoteClusterPhase = "EnterpriseFeaturesDisabled"
 )
 
 // +genclient
@@ -49,6 +52,7 @@ const (
 // RemoteCluster is the Schema for the remoteclusters API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="status",type="string",JSONPath=".status.phase"
 type RemoteCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

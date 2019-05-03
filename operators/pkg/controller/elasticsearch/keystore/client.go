@@ -7,7 +7,6 @@ package keystore
 import (
 	"context"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -88,7 +87,6 @@ func (c esClient) newEsClientWithCACerts() (client.Client, error) {
 
 // loadCerts returns the certificates given a certificates path.
 func loadCerts(caCertPath string) ([]*x509.Certificate, error) {
-	fmt.Println("caCertPath", caCertPath)
 	bytes, err := ioutil.ReadFile(caCertPath)
 	if err != nil {
 		return nil, err

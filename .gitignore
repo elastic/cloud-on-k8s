@@ -25,3 +25,5 @@ bin
 # ignore vendor/
 vendor/
 
+# Elastic public key
+license.key

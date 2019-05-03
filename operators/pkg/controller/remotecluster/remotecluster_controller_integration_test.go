@@ -118,8 +118,8 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if v1alpha1.RemoteClusterPropagated != fetched.Status.State {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.RemoteClusterPropagated, fetched.Status.State)
+		if v1alpha1.RemoteClusterPropagated != fetched.Status.Phase {
+			return fmt.Errorf("expected %v, found %v", v1alpha1.RemoteClusterPropagated, fetched.Status.Phase)
 		}
 		return nil
 	})
@@ -136,8 +136,8 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if v1alpha1.RemoteClusterPending != fetched.Status.State {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.RemoteClusterPending, fetched.Status.State)
+		if v1alpha1.RemoteClusterPending != fetched.Status.Phase {
+			return fmt.Errorf("expected %v, found %v", v1alpha1.RemoteClusterPending, fetched.Status.Phase)
 		}
 		return nil
 	})

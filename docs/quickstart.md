@@ -28,13 +28,13 @@ kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/
 2. Install the operator with its RBAC rules:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/operator/all-in-one.yaml
+kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
 ```
 
 3. Monitor the operator logs:
 
 ```bash
-kubectl -n elastic-operator logs -f statefulset.apps/elastic-operator
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ```
 
 ## Deploy Elasticsearch

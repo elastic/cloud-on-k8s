@@ -9,6 +9,8 @@ GO_MOUNT_PATH ?= /go/src/github.com/elastic/k8s-operators
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
+VAULT_PUBLIC_KEY ?= secret/release/license
+PUBLIC_KEY_FILE ?= license.key
 
 check-license-header:
 	./../check-license-header.sh
@@ -21,6 +23,16 @@ vault-gke-creds:
 			-field=service-account \
 			$(VAULT_GKE_CREDS_SECRET) \
 			> $(GKE_CREDS_FILE)
+
+# reads Elastic public key from Vault into $PUBLIC_KEY_FILE
+vault-public-key:
+	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
+    	vault read \
+    		-address=$(VAULT_ADDR) \
+    		-field=pubkey \
+    		$(VAULT_PUBLIC_KEY) \
+    		| base64 --decode \
+    		> $(PUBLIC_KEY_FILE)
 
 ## -- Job executed on all PRs
 
