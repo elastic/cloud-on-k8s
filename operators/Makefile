@@ -60,7 +60,7 @@ dep-vendor-only:
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
-	go generate ./pkg/... ./cmd/...
+	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	# combine all crds into one for easy installation
 	for yaml in $$(ls config/crds/*); do \
@@ -69,24 +69,28 @@ generate:
 	$(MAKE) generate-all-in-one
 
 elastic-operator: generate
-	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
+	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
 
 process-manager:
-	go build -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
+	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
 
 cert-initializer:
-	go build -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd
 
+clean:
+	rm -f pkg/controller/common/license/zz_generated.pubkey.go
+
 ## -- tests
 
-unit:
+unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
-integration: generate
-	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
+integration: GO_TAGS += integration
+integration: clean generate
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
@@ -141,6 +145,7 @@ generate-all-in-one:
 		$(MAKE) --no-print-directory -C config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
+deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: install-crds docker-build docker-push
 	kubectl apply -f config/all-in-one.yaml
 
@@ -228,7 +233,7 @@ force-push-latest-operator-image-in-local-registry:
 #################################
 
 docker-build:
-	docker build . -t $(OPERATOR_IMAGE)
+	docker build . --build-arg GO_TAGS='$(GO_TAGS)' -t $(OPERATOR_IMAGE)
 
 docker-push:
 ifeq ($(RELEASE), true)
@@ -295,6 +300,7 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
 
+ci-release: export GO_TAGS = release
 ci-release:
 	@ hack/gke-cluster.sh registry
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -39,7 +40,34 @@ func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 		return err
 	}
 
+	// Watch licenses in order to enable functionality if license status changes
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: reconcileAllRemoteClusters(r.Client),
+	}); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// reconcileAllRemoteClusters creates a reconcile request for each currently existing remote cluster resource.
+func reconcileAllRemoteClusters(c k8s.Client) handler.ToRequestsFunc {
+	return handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+		var list v1alpha1.RemoteClusterList
+		if err := c.List(&client.ListOptions{}, &list); err != nil {
+			log.Error(err, "failed to list remote clusters in watch handler for enterprise licenses")
+			// dropping any errors on the floor here
+			return nil
+		}
+		var reqs []reconcile.Request
+		for _, rc := range list.Items {
+			log.Info("Synthesizing reconcile for ", "resource", k8s.ExtractNamespacedName(&rc))
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: k8s.ExtractNamespacedName(&rc),
+			})
+		}
+		return reqs
+	})
 }
 
 // newToRequestsFuncFromTrustRelationshipLabel creates a watch handler function that creates reconcile requests based on the
