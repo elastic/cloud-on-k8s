@@ -5,7 +5,15 @@ pipeline {
     }
 
     environment {
-        REGISTRY = 'eu.gcr.io'
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        REGISTRY = 'push.docker.elastic.co'
+        REPOSITORY = 'xxx'
+        IMG_NAME = 'yyy'
+        IMG_SUFFIX = ''
+        DOCKER_LOGIN = 'abc'
     }
 
     options {
@@ -15,19 +23,22 @@ pipeline {
     stages {
         stage('Build and push release image') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'vault-addr', variable: 'VAULT_ADDR'),
-                    string(credentialsId: 'vault-role-id', variable: 'VAULT_ROLE_ID'),
-                    string(credentialsId: 'vault-secret-id', variable: 'VAULT_SECRET_ID'),
-                    string(credentialsId: 'k8s-operators-gcloud-project', variable: 'GCLOUD_PROJECT'),
-                ]) {
-                    sh 'make -C build/ci ci-release'
-                }
+                sh 'make -C build/ci ci-release'
             }
         }
     }
 
     post {
+        success {
+            script {
+                def msg = env.REGISTRY + "/" + env.REPOSITORY + "/" + env.IMG_NAME + ":" + env.TAG_NAME + " was released! Congratulations!"
+                slackSend botUser: true,
+                    channel: '#cloud-k8s',
+                    color: 'green',
+                    message: msg,
+                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+            }
+        }
         unsuccessful {
             script {
                 def msg = "Release job failed!\r\n" + env.BUILD_URL
