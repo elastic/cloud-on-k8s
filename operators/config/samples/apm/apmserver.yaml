@@ -7,4 +7,4 @@ metadata:
 spec:
   version: "6.6.1"
   nodeCount: 1
-    expose: LoadBalancer
+  expose: LoadBalancer
