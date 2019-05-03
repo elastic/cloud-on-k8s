@@ -327,3 +327,73 @@ func Test_nameLength(t *testing.T) {
 		})
 	}
 }
+
+func Test_validSanIP(t *testing.T) {
+	validIP := "3.4.5.6"
+	validIP2 := "192.168.12.13"
+	validIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
+	invalidIP := "notanip"
+	tests := []struct {
+		name      string
+		esCluster estype.Elasticsearch
+		want      validation.Result
+	}{
+		{
+			name: "no SAN IP: OK",
+			esCluster: estype.Elasticsearch{
+				Spec: estype.ElasticsearchSpec{Version: "6.7.0"},
+			},
+			want: validation.OK,
+		},
+		{
+			name: "valid SAN IPs: OK",
+			esCluster: estype.Elasticsearch{
+				Spec: estype.ElasticsearchSpec{
+					Version: "6.7.0",
+					TLS: &estype.TLSOptions{
+						SubjectAltNames: []v1alpha1.SubjectAlternativeName{
+							{
+								IP: &validIP,
+							},
+							{
+								IP: &validIP2,
+							},
+							{
+								IP: &validIPv6,
+							},
+						},
+					},
+				},
+			},
+			want: validation.OK,
+		},
+		{
+			name: "invalid SAN IPs: NOT OK",
+			esCluster: estype.Elasticsearch{
+				Spec: estype.ElasticsearchSpec{
+					Version: "6.7.0",
+					TLS: &estype.TLSOptions{
+						SubjectAltNames: []v1alpha1.SubjectAlternativeName{
+							{
+								IP: &invalidIP,
+							},
+							{
+								IP: &validIP2,
+							},
+						},
+					},
+				},
+			},
+			want: validation.Result{Allowed: false, Reason: invalidSanIPErrMsg, Error: fmt.Errorf("invalid SAN IP: %s", invalidIP)},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, err := NewValidationContext(nil, tt.esCluster)
+			require.NoError(t, err)
+			if got := validSanIP(*ctx); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("validSanIP() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

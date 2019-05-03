@@ -6,6 +6,7 @@ package validation
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	netutil "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/set"
 )
 
@@ -24,6 +26,7 @@ var Validations = []Validation{
 	noDowngrades,
 	validUpgradePath,
 	noBlacklistedSettings,
+	validSanIP,
 }
 
 // nameLength checks the length of the Elasticsearch name.
@@ -108,4 +111,23 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 		Allowed: false,
 		Reason:  sb.String(),
 	}
+}
+
+func validSanIP(ctx Context) validation.Result {
+	tlsOpts := ctx.Proposed.Elasticsearch.Spec.TLS
+	if tlsOpts != nil {
+		for _, san := range tlsOpts.SubjectAltNames {
+			if san.IP != nil {
+				ip := netutil.MaybeIPTo4(net.ParseIP(*san.IP))
+				if ip == nil {
+					return validation.Result{
+						Error:   fmt.Errorf("invalid SAN IP: %s", *san.IP),
+						Reason:  invalidSanIPErrMsg,
+						Allowed: false,
+					}
+				}
+			}
+		}
+	}
+	return validation.OK
 }

@@ -137,6 +137,23 @@ spec:
                 containers. Defaults to true if not specified. To be disabled, it
                 must be explicitly set to false.
               type: boolean
+            tls:
+              description: TLS describe additional options to consider when generating
+                nodes TLS certificates.
+              properties:
+                subjectAltNames:
+                  description: 'SubjectAltNames is a list of SAN to include in the
+                    nodes certificates. For example: a wildcard DNS to expose the
+                    cluster.'
+                  items:
+                    properties:
+                      dns:
+                        type: string
+                      ip:
+                        type: string
+                    type: object
+                  type: array
+              type: object
             updateStrategy:
               description: UpdateStrategy specifies how updates to the cluster should
                 be performed.

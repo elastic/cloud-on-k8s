@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -44,6 +45,9 @@ type ElasticsearchSpec struct {
 	// Secret keys must start with `es.file.` or `es.string.` according to the
 	// secure setting type.
 	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
+
+	// TLS describe additional options to consider when generating nodes TLS certificates.
+	TLS *TLSOptions `json:"tls,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -168,6 +172,17 @@ var DefaultFallbackGroupingDefinition = GroupingDefinition{
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       1,
 	MaxUnavailable: 0,
+}
+
+type TLSOptions struct {
+	// SubjectAltNames is a list of SAN to include in the nodes certificates.
+	// For example: a wildcard DNS to expose the cluster.
+	SubjectAltNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
+}
+
+type SubjectAlternativeName struct {
+	DNS *string `json:"dns,omitempty"`
+	IP  *string `json:"ip,omitempty"`
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.

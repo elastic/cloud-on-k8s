@@ -12,10 +12,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	netutil "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
 // CSRRequestDelay limits the number of CSR requests we do in consecutive reconciliations
@@ -53,67 +56,25 @@ func maybeRequestCSR(pod corev1.Pod, csrClient certificates.CSRClient, lastCSRUp
 // CreateValidatedCertificateTemplate validates a CSR and creates a certificate template.
 func CreateValidatedCertificateTemplate(
 	pod corev1.Pod,
-	clusterName, namespace string,
+	cluster v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	nodeCertValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
-	podIP := net.ParseIP(pod.Status.PodIP)
-	if podIP == nil {
-		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
-	}
-
-	commonName := buildCertificateCommonName(pod, clusterName, namespace)
-	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
-		OID:   certificates.CommonNameObjectIdentifier,
-		Value: commonName,
-	}
-	commonNameOtherName, err := commonNameUTF8OtherName.ToOtherName()
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to create othername")
-	}
-
-	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
-	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
-	generalNames := []certificates.GeneralName{
-		{OtherName: *commonNameOtherName},
-		{DNSName: commonName},
-		{DNSName: pod.Name},
-		{IPAddress: maybeIPTo4(podIP)},
-		{IPAddress: net.ParseIP("127.0.0.1").To4()},
-	}
-
-	if svcs != nil {
-		for _, svc := range svcs {
-			if ip := net.ParseIP(svc.Spec.ClusterIP); ip != nil {
-				generalNames = append(generalNames,
-					certificates.GeneralName{IPAddress: maybeIPTo4(ip)},
-				)
-			}
-
-			generalNames = append(generalNames,
-				certificates.GeneralName{DNSName: svc.Name},
-				certificates.GeneralName{DNSName: getServiceFullyQualifiedHostname(svc)},
-			)
-		}
-	}
-
-	generalNamesBytes, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
+	// TODO: csr signature is not checked, common name not verified
+	generalNames, err := createSubjectAltNameExt(cluster, svcs, pod)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: csr signature is not checked, common name not verified
-	// TODO: add services dns entries / ip addresses to cert?
-
 	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
-			CommonName:         commonName,
-			OrganizationalUnit: []string{clusterName},
+			CommonName:         buildCertificateCommonName(pod, cluster.Name, cluster.Namespace),
+			OrganizationalUnit: []string{cluster.Name},
 		},
 
 		ExtraExtensions: []pkix.Extension{
-			{Id: certificates.SubjectAlternativeNamesObjectIdentifier, Value: generalNamesBytes},
+			{Id: certificates.SubjectAlternativeNamesObjectIdentifier, Value: generalNames},
 		},
 		NotBefore: time.Now().Add(-10 * time.Minute),
 		NotAfter:  time.Now().Add(nodeCertValidity),
@@ -131,6 +92,81 @@ func CreateValidatedCertificateTemplate(
 	return &certificateTemplate, nil
 }
 
+func createSubjectAltNameExt(
+	cluster v1alpha1.Elasticsearch,
+	svcs []corev1.Service,
+	pod corev1.Pod,
+) ([]byte, error) {
+	generalNames, err := buildGeneralNames(cluster, svcs, pod)
+	if err != nil {
+		return nil, err
+	}
+	return certificates.MarshalToSubjectAlternativeNamesData(generalNames)
+}
+
+func buildGeneralNames(
+	cluster v1alpha1.Elasticsearch,
+	svcs []corev1.Service,
+	pod corev1.Pod,
+) ([]certificates.GeneralName, error) {
+	podIP := net.ParseIP(pod.Status.PodIP)
+	if podIP == nil {
+		return nil, fmt.Errorf("pod currently has no valid IP, found: [%s]", pod.Status.PodIP)
+	}
+
+	commonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
+	commonNameUTF8OtherName := &certificates.UTF8StringValuedOtherName{
+		OID:   certificates.CommonNameObjectIdentifier,
+		Value: commonName,
+	}
+	commonNameOtherName, err := commonNameUTF8OtherName.ToOtherName()
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create othername")
+	}
+
+	// because we're using the ES-customized subject alternative-names extension, we have to handle all the general
+	// names here instead of using x509.Certificate.DNSNames, .IPAddresses etc.
+	generalNames := []certificates.GeneralName{
+		{OtherName: *commonNameOtherName},
+		{DNSName: commonName},
+		{DNSName: pod.Name},
+		{IPAddress: netutil.MaybeIPTo4(podIP)},
+		{IPAddress: net.ParseIP("127.0.0.1").To4()},
+	}
+
+	// append user-provided SANs
+	var userProvidedSANs []certificates.GeneralName
+	if tlsOpts := cluster.Spec.TLS; tlsOpts != nil {
+		for _, san := range tlsOpts.SubjectAltNames {
+			if san.DNS != nil {
+				userProvidedSANs = append(userProvidedSANs, certificates.GeneralName{DNSName: *san.DNS})
+			}
+			if san.IP != nil {
+				userProvidedSANs = append(userProvidedSANs,
+					certificates.GeneralName{IPAddress: netutil.MaybeIPTo4(net.ParseIP(*san.IP))})
+			}
+		}
+	}
+	generalNames = append(generalNames, userProvidedSANs...)
+
+	// append services names and ClusterIPs
+	if svcs != nil {
+		for _, svc := range svcs {
+			if ip := net.ParseIP(svc.Spec.ClusterIP); ip != nil {
+				generalNames = append(generalNames,
+					certificates.GeneralName{IPAddress: netutil.MaybeIPTo4(ip)},
+				)
+			}
+			generalNames = append(generalNames,
+				certificates.GeneralName{DNSName: svc.Name},
+				certificates.GeneralName{DNSName: getServiceFullyQualifiedHostname(svc)},
+			)
+		}
+	}
+
+	return generalNames, nil
+}
+
 // buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
 // this needs to be kept in sync with the usage of trust_restrictions (see elasticsearch.TrustConfig)
 func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) string {
@@ -141,12 +177,4 @@ func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) s
 func getServiceFullyQualifiedHostname(svc corev1.Service) string {
 	// TODO: cluster.local suffix should be configurable
 	return fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
-}
-
-// maybeIPTo4 attempts to convert the provided net.IP to a 4-byte representation if possible, otherwise does nothing.
-func maybeIPTo4(ipAddress net.IP) net.IP {
-	if ip := ipAddress.To4(); ip != nil {
-		return ip
-	}
-	return ipAddress
 }

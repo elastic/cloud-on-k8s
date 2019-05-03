@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
@@ -36,6 +37,7 @@ var (
 	certData                     []byte
 	pemCert                      []byte
 	testIP                       = "1.2.3.4"
+	testCluster                  = v1alpha1.Elasticsearch{ObjectMeta: metav1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"}}
 	testPod                      = corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "test-pod-name",
@@ -54,6 +56,7 @@ var (
 		},
 	}
 	podWithRunningCertInitializer = corev1.Pod{
+		ObjectMeta: testPod.ObjectMeta,
 		Status: corev1.PodStatus{
 			PodIP: testIP,
 			InitContainerStatuses: []corev1.ContainerStatus{
@@ -67,6 +70,7 @@ var (
 		},
 	}
 	podWithTerminatedCertInitializer = corev1.Pod{
+		ObjectMeta: testPod.ObjectMeta,
 		Status: corev1.PodStatus{
 			PodIP: testIP,
 			InitContainerStatuses: []corev1.ContainerStatus{
@@ -141,7 +145,8 @@ func init() {
 	}
 	fakeCSRClient = FakeCSRClient{csr: testCSRBytes}
 	testCSR, err = x509.ParseCertificateRequest(testCSRBytes)
-	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(testPod, "test-es-name", "test-namespace", []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
+	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(
+		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
@@ -153,9 +158,11 @@ func init() {
 }
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
+	sanDNS := "my.dns.com"
 	type args struct {
 		secret       corev1.Secret
 		pod          corev1.Pod
+		cluster      v1alpha1.Elasticsearch
 		rotateBefore time.Duration
 	}
 	tests := []struct {
@@ -168,6 +175,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret:       corev1.Secret{},
 				pod:          testPod,
+				cluster:      testCluster,
 				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
@@ -181,6 +189,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					},
 				},
 				pod:          testPod,
+				cluster:      testCluster,
 				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
@@ -194,6 +203,21 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					},
 				},
 				pod:          corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
+				cluster:      testCluster,
+				rotateBefore: certificates.DefaultRotateBefore,
+			},
+			want: true,
+		},
+		{
+			name: "pod name mismatch",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						CertFileName: pemCert,
+					},
+				},
+				pod:          corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
+				cluster:      testCluster,
 				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
@@ -207,6 +231,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					},
 				},
 				pod:          testPod,
+				cluster:      testCluster,
 				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: false,
@@ -220,14 +245,40 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					},
 				},
 				pod:          testPod,
+				cluster:      testCluster,
 				rotateBefore: certificates.DefaultCertValidity, // rotate before the same duration as total validity
+			},
+			want: true,
+		},
+		{
+			name: "different SANs",
+			args: args{
+				secret: corev1.Secret{
+					Data: map[string][]byte{
+						CertFileName: pemCert,
+					},
+				},
+				pod: testPod,
+				cluster: v1alpha1.Elasticsearch{
+					ObjectMeta: testCluster.ObjectMeta,
+					Spec: v1alpha1.ElasticsearchSpec{
+						TLS: &v1alpha1.TLSOptions{
+							SubjectAltNames: []v1alpha1.SubjectAlternativeName{
+								{
+									DNS: &sanDNS,
+								},
+							},
+						},
+					},
+				},
+				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewCertificate(tt.args.secret, testCA, tt.args.pod, tt.args.rotateBefore); got != tt.want {
+			if got := shouldIssueNewCertificate(tt.args.cluster, []corev1.Service{testSvc}, tt.args.secret, testCA, tt.args.pod, tt.args.rotateBefore); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
@@ -258,7 +309,7 @@ func Test_doReconcile(t *testing.T) {
 				},
 			},
 			additionalTrustedCAsPemEncoded:  additionalCA,
-			pod:                             corev1.Pod{},
+			pod:                             podWithRunningCertInitializer,
 			wantSecretUpdated:               true,
 			wantCertUpdateAnnotationUpdated: false,
 		},
@@ -333,8 +384,7 @@ func Test_doReconcile(t *testing.T) {
 				*tt.secret.DeepCopy(), // We need a deepcopy to not update the original data slice
 				tt.pod,
 				fakeCSRClient,
-				"cluster",
-				"namespace",
+				testCluster,
 				[]corev1.Service{testSvc},
 				testCA, tt.additionalTrustedCAsPemEncoded,
 				certificates.DefaultCertValidity,

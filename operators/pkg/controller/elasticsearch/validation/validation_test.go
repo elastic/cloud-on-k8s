@@ -93,6 +93,7 @@ func TestNewValidationContext(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	invalidIP := "notanip"
 	type args struct {
 		es estype.Elasticsearch
 	}
@@ -147,6 +148,13 @@ func TestValidate(t *testing.T) {
 					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "1.0.0",
+						TLS: &estype.TLSOptions{
+							SubjectAltNames: []estype.SubjectAlternativeName{
+								{
+									IP: &invalidIP,
+								},
+							},
+						},
 						Nodes: []estype.NodeSpec{
 							{
 								NodeCount: 1,
@@ -167,6 +175,7 @@ func TestValidate(t *testing.T) {
 				masterRequiredMsg,
 				"unsupported version",
 				"is not user configurable",
+				invalidSanIPErrMsg,
 			},
 		},
 	}
