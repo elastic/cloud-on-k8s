@@ -5,7 +5,7 @@ kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
@@ -23,7 +23,7 @@ kind: Elasticsearch
 metadata:
   name: trust-two
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
