@@ -6,13 +6,11 @@ package stack
 
 import (
 	"fmt"
-	"testing"
 
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
-	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -298,10 +296,15 @@ func CheckClusterUUID(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elastic password should be available",
-		Test: func(t *testing.T) {
+		Test: helpers.Eventually(func() error {
 			password, err := k.GetElasticPassword(stack.Elasticsearch.Name)
-			require.NoError(t, err)
-			require.NotEqual(t, "", password)
-		},
+			if err != nil {
+				return err
+			}
+			if password == "" {
+				return fmt.Errorf("user password is not set")
+			}
+			return nil
+		}),
 	}
 }
