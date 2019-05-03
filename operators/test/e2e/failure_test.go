@@ -171,7 +171,7 @@ func TestDeleteServices(t *testing.T) {
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {
-	s := stack.NewStackBuilder("test-failure-delete-elastic-user-secret").
+	s := stack.NewStackBuilder("test-delete-elastic-user-secret").
 		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
