@@ -21,6 +21,7 @@ import (
 // in K8s is the expected one
 func K8sStackChecks(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{
+		CheckCertificateAuthority(stack, k8sClient),
 		CheckKibanaDeployment(stack, k8sClient),
 		CheckKibanaPodsCount(stack, k8sClient),
 		CheckESVersion(stack, k8sClient),
@@ -29,10 +30,51 @@ func K8sStackChecks(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestSte
 		CheckServices(stack, k8sClient),
 		CheckESPodsReady(stack, k8sClient),
 		CheckESPodsResources(stack, k8sClient),
+		CheckPodCertificates(stack, k8sClient),
 		CheckServicesEndpoints(stack, k8sClient),
 		CheckClusterHealth(stack, k8sClient),
 		CheckClusterUUID(stack, k8sClient),
 		CheckESPassword(stack, k8sClient),
+	}
+}
+
+// CheckCertificateAuthority checks that the CA is fully setup (CA cert + private key)
+func CheckCertificateAuthority(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Certificate Authority should be set and deployed",
+		Test: helpers.Eventually(func() error {
+			// Check if the private CA is there
+			_, err := k.GetCACert(stack.Elasticsearch.Name)
+			if err != nil {
+				return err
+			}
+			// Check if the private key is here
+			_, err = k.GetCAPrivateKey(stack.Elasticsearch.Name)
+			if err != nil {
+				return err
+			}
+			return nil
+		}),
+	}
+}
+
+// CheckPodCertificates checks that all pods have a private key and signed certificate
+func CheckPodCertificates(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Every pod should have a certificate",
+		Test: helpers.Eventually(func() error {
+			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
+			if err != nil {
+				return err
+			}
+			for _, pod := range pods {
+				_, _, err := k.GetNodeCert(pod.Name)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}),
 	}
 }
 
