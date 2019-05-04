@@ -39,11 +39,14 @@ func ESClusterChecks(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.Test
 func (e *esClusterChecks) BuildESClient(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Every secret should be set so that we can build an ES client",
-		Test: func(t *testing.T) {
+		Test: helpers.Eventually(func() error {
 			esClient, err := helpers.NewElasticsearchClient(es, k)
-			assert.NoError(t, err)
+			if err != nil {
+				return err
+			}
 			e.client = esClient
-		},
+			return nil
+		}),
 	}
 }
 

@@ -202,7 +202,7 @@ func TestDeleteCACert(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Elasticsearch.Name, // that's the CA cert secret name \o/
+						Name:      s.Elasticsearch.Name + "-ca", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)
