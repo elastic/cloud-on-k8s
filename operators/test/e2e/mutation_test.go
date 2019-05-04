@@ -61,20 +61,20 @@ func TestMutationLessNodes(t *testing.T) {
 // then mutates it to a 1 node cluster with more RAM
 func TestMutationResizeMemoryUp(t *testing.T) {
 	// create a stack with a 1G node
-	memory1G := resource.MustParse("1G")
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				"memory": memory1G,
+				corev1.ResourceMemory: resource.MustParse("1G"),
+				corev1.ResourceCPU:    resource.MustParse("1"),
 			},
 		})
 	// mutate it to 1 node with 2G memory
-	memory2G := resource.MustParse("2G")
 	mutatedStack := initStack.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				"memory": memory2G,
+				corev1.ResourceMemory: resource.MustParse("2G"),
+				corev1.ResourceCPU:    resource.MustParse("1"),
 			},
 		})
 
@@ -85,20 +85,20 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create a stack with a 2G node
-	memory2G := resource.MustParse("2G")
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				"memory": memory2G,
+				corev1.ResourceMemory: resource.MustParse("2G"),
+				corev1.ResourceCPU:    resource.MustParse("1"),
 			},
 		})
 	// mutate it to 1 node with 1G memory
-	memory1G := resource.MustParse("1G")
 	mutatedStack := initStack.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				"memory": memory1G,
+				corev1.ResourceMemory: resource.MustParse("1G"),
+				corev1.ResourceCPU:    resource.MustParse("1"),
 			},
 		})
 
