@@ -24,6 +24,12 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - "pods/exec"
+    verbs:
+      - "create"
+  - apiGroups:
+      - ""
+    resources:
       - pods
       - services
       - endpoints
@@ -33,6 +39,7 @@ rules:
       - list
       - watch
       - delete
+      - create
   - apiGroups:
       - "apps"
     resources:
