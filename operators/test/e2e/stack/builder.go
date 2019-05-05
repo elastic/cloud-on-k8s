@@ -21,8 +21,8 @@ const defaultVersion = "6.7.2"
 
 var DefaultResources = common.ResourcesSpec{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1G"),
-		corev1.ResourceCPU:    resource.MustParse("500m"),
+		corev1.ResourceMemory: resource.MustParse("2G"),
+		corev1.ResourceCPU:    resource.MustParse("2"),
 	},
 }
 
