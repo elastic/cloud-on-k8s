@@ -65,7 +65,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("1G"),
-				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
 	// mutate it to 1 node with 2G memory
@@ -74,7 +74,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("2G"),
-				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
 
@@ -89,7 +89,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("2G"),
-				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
 	// mutate it to 1 node with 1G memory
@@ -98,7 +98,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 		WithESMasterDataNodes(1, common.ResourcesSpec{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("1G"),
-				corev1.ResourceCPU:    resource.MustParse("1"),
+				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
 
