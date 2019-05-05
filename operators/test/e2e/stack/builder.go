@@ -93,8 +93,7 @@ func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Bu
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{Data: map[string]interface{}{
-			estype.NodeMaster: "true",
-			estype.NodeData:   "false",
+			estype.NodeData: "false",
 		},
 		},
 		Resources: resources,
@@ -107,7 +106,6 @@ func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Buil
 		Config: &estype.Config{
 			Data: map[string]interface{}{
 				estype.NodeMaster: "false",
-				estype.NodeData:   "true",
 			},
 		},
 		Resources: resources,
@@ -118,10 +116,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
-			Data: map[string]interface{}{
-				estype.NodeMaster: "true",
-				estype.NodeData:   "true",
-			},
+			Data: map[string]interface{}{},
 		},
 		Resources: resources,
 	})
