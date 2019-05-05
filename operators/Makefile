@@ -203,7 +203,7 @@ bootstrap-gke: require-gcloud-project
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
 delete-gke: require-gcloud-project
-	#./hack/gke-cluster.sh delete
+	./hack/gke-cluster.sh delete
 
 ## -- registry in the cluster
 
@@ -273,7 +273,7 @@ e2e-compile:
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: e2e-setup
-	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
+	go test -v -failfast -timeout 2h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Clean k8s cluster from e2e resources
 clean-e2e:
