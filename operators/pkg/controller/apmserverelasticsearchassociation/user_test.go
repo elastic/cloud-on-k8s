@@ -27,8 +27,8 @@ import (
 
 const resourceNameFixture = "as-elastic-internal-apm"
 
-// associationFixture is a shared test fixture
-var associationFixture = apmtype.ApmServer{
+// apmFixture is a shared test fixture
+var apmFixture = apmtype.ApmServer{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "as",
 		Namespace: "default",
@@ -68,7 +68,7 @@ func Test_reconcileEsUser(t *testing.T) {
 
 	type args struct {
 		initialObjects []runtime.Object
-		assoc          apmtype.ApmServer
+		apm            apmtype.ApmServer
 	}
 	tests := []struct {
 		name          string
@@ -80,7 +80,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Happy path: should create a secret and a user CRD",
 			args: args{
 				initialObjects: nil,
-				assoc:          associationFixture,
+				apm:            apmFixture,
 			},
 			postCondition: func(c k8s.Client) {
 				key := types.NamespacedName{
@@ -100,7 +100,7 @@ func Test_reconcileEsUser(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other",
 					}}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
@@ -121,7 +121,7 @@ func Test_reconcileEsUser(t *testing.T) {
 						Namespace: "default",
 					},
 				}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
@@ -140,18 +140,18 @@ func Test_reconcileEsUser(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "default",
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							association.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var u estype.User
 				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
 				expectedLabels := map[string]string{
-					association.AssociationLabelName: associationFixture.Name,
+					association.AssociationLabelName: apmFixture.Name,
 					common.TypeLabelName:             label.Type,
 					label.ClusterNameLabelName:       "es",
 				}
@@ -163,7 +163,7 @@ func Test_reconcileEsUser(t *testing.T) {
 		{
 			name: "Reconcile is namespace aware",
 			args: args{
-				assoc: apmtype.ApmServer{
+				apm: apmtype.ApmServer{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "as",
 						Namespace: "ns-2",
@@ -202,7 +202,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	for _, tt := range tests {
 		c := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reconcileEsUser(c, sc, tt.args.assoc); (err != nil) != tt.wantErr {
+			if err := reconcileEsUser(c, sc, tt.args.apm); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postCondition(c)

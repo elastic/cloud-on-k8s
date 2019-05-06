@@ -36,18 +36,18 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "only valid objects",
-			args: associationFixture,
+			args: apmFixture,
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 					},
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 					},
 				},
 			},
@@ -58,23 +58,23 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "Orpaned objects exist",
-			args: associationFixture,
+			args: apmFixture,
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							association.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							association.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -83,7 +83,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							association.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -92,7 +92,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							association.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -129,12 +129,12 @@ func Test_deleteOrphanedResources(t *testing.T) {
 func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// user CR should be in ES namespace
 	require.NoError(t, c.Get(types.NamespacedName{
-		Namespace: associationFixture.Namespace,
+		Namespace: apmFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &estype.User{}))
 	// secret should be in Kibana namespace
 	require.NoError(t, c.Get(types.NamespacedName{
-		Namespace: associationFixture.Namespace,
+		Namespace: apmFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &corev1.Secret{}))
 }
