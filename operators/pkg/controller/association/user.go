@@ -88,7 +88,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &assoc,
+		Owner:      &kibana,
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
@@ -134,7 +134,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &assoc,
+		Owner:      &kibana, // user is owned by the Kibana resource
 		Expected:   expectedUser,
 		Reconciled: &reconciledUser,
 		NeedsUpdate: func() bool {
