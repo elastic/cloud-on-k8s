@@ -15,9 +15,9 @@ import (
 func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: kb.Namespace,
-			Name:      PseudoNamespacedResourceName(kb),
-			Labels:    NewLabels(kb.Name),
+			Namespace:   kb.Namespace,
+			Name:        PseudoNamespacedResourceName(kb),
+			Labels:      NewLabels(kb.Name),
 			Annotations: kb.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
