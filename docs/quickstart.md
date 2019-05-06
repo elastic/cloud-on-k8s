@@ -25,13 +25,20 @@ You will learn how to:
     kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
     ```
 
-2. Install the operator with its RBAC rules:
+2. Add a [Cluster Role Binding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
+    ```bash
+    kubectl create clusterrolebinding elastic-operators--manager-rolebinding \
+        --clusterrole=cluster-admin \
+        --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+    ```
+
+3. Install the operator with its RBAC rules:
 
     ```bash
     kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
     ```
 
-3. Monitor the operator logs:
+4. Monitor the operator logs:
 
     ```bash
     kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
