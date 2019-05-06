@@ -70,9 +70,6 @@ generate:
 	done > config/crds.yaml
 	$(MAKE) generate-all-in-one
 
-generate-pubkey:
-	go run cmd/license-initializer/main.go --license-pubkey $(ROOT_DIR)/build/ci/license.key | goimports > pkg/controller/common/license/pubkey.go
-
 elastic-operator: generate
 	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
 
@@ -306,9 +303,10 @@ ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
 
 ci-release: export GO_TAGS = release
+ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ hack/gke-cluster.sh registry
-	@ $(MAKE) dep-vendor-only generate generate-pubkey docker-build docker-push
+	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 
 
 ##########################
