@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
@@ -32,11 +33,11 @@ var associationFixture = assoctype.ApmServerElasticsearchAssociation{
 		Namespace: "default",
 	},
 	Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-		Elasticsearch: assoctype.ObjectSelector{
+		Elasticsearch: commonv1alpha1.ObjectSelector{
 			Name:      "es",
 			Namespace: "default",
 		},
-		ApmServer: assoctype.ObjectSelector{
+		ApmServer: commonv1alpha1.ObjectSelector{
 			Name:      "as",
 			Namespace: "default",
 		},
@@ -160,11 +161,11 @@ func Test_reconcileEsUser(t *testing.T) {
 						Namespace: "ns-1",
 					},
 					Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-						Elasticsearch: assoctype.ObjectSelector{
+						Elasticsearch: commonv1alpha1.ObjectSelector{
 							Name:      "es",
 							Namespace: "ns-1",
 						},
-						ApmServer: assoctype.ObjectSelector{
+						ApmServer: commonv1alpha1.ObjectSelector{
 							Name:      "as",
 							Namespace: "ns-2",
 						},

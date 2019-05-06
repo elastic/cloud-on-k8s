@@ -12,6 +12,7 @@ import (
 
 	apmv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
@@ -82,11 +83,11 @@ func TestReconcile(t *testing.T) {
 			Namespace: associationKey.Namespace,
 		},
 		Spec: v1alpha1.ApmServerElasticsearchAssociationSpec{
-			Elasticsearch: v1alpha1.ObjectSelector{
+			Elasticsearch: commonv1alpha1.ObjectSelector{
 				Name:      "foo",
 				Namespace: "default",
 			},
-			ApmServer: v1alpha1.ObjectSelector{
+			ApmServer: commonv1alpha1.ObjectSelector{
 				Name:      apmKey.Name,
 				Namespace: apmKey.Namespace,
 			},
@@ -133,8 +134,8 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		if commonv1alpha1.AssociationPending != fetched.Status.AssociationStatus {
+			return fmt.Errorf("expected %v, found %v", commonv1alpha1.AssociationPending, fetched.Status.AssociationStatus)
 		}
 		return nil
 	})

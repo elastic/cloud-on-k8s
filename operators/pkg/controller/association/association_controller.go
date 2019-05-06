@@ -195,11 +195,11 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 	}
 }
 
-func resultFromStatus(status assoctype.AssociationStatus) reconcile.Result {
+func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
-	case assoctype.AssociationPending:
+	case commonv1alpha1.AssociationPending:
 		return defaultRequeue // retry again
-	case assoctype.AssociationEstablished, assoctype.AssociationFailed:
+	case commonv1alpha1.AssociationEstablished, commonv1alpha1.AssociationFailed:
 		return reconcile.Result{} // we are done or there is not much we can do
 	default:
 		return reconcile.Result{} // make the compiler happy
@@ -236,7 +236,7 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 			// Es not found, could be deleted or not yet created? Recheck in a while
 			return assoctype.AssociationPending, nil
 		}
-		return assoctype.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	err = reconcileEsUser(r.Client, r.scheme, association)
@@ -246,8 +246,8 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 
 	var publicCACertSecret corev1.Secret
 	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
-	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
-		return assoctype.AssociationPending, err // maybe not created yet
+	if err := r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
+		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
 
 	var expectedEsConfig kbtype.BackendElasticsearch
@@ -269,15 +269,15 @@ func (r *ReconcileAssociation) reconcileInternal(association assoctype.KibanaEla
 	if !reflect.DeepEqual(currentKb.Spec.Elasticsearch, expectedEsConfig) {
 		currentKb.Spec.Elasticsearch = expectedEsConfig
 		log.Info("Updating Kibana spec with Elasticsearch backend configuration")
-		if err := r.Update(&currentKb); err != nil {
-			return assoctype.AssociationPending, err
+		if err := r.Update(&kibana); err != nil {
+			return commonv1alpha1.AssociationPending, err
 		}
 	}
 
 	if err := deleteOrphanedResources(r, association); err != nil {
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
-	return assoctype.AssociationEstablished, nil
+	return commonv1alpha1.AssociationEstablished, nil
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
