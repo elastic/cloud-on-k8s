@@ -192,7 +192,6 @@ spec:
                   type: string
               required:
               - name
-              - namespace
               type: object
             elasticsearch:
               description: Elasticsearch refers to the Elasticsearch resource
@@ -203,7 +202,6 @@ spec:
                   type: string
               required:
               - name
-              - namespace
               type: object
           required:
           - elasticsearch
