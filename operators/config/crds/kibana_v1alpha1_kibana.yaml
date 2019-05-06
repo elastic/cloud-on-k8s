@@ -81,6 +81,18 @@ spec:
               required:
               - url
               type: object
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             expose:
               description: 'Expose determines which service type to use for this workload.
                 The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
@@ -115,6 +127,8 @@ spec:
           type: object
         status:
           properties:
+            associationStatus:
+              type: string
             health:
               type: string
           type: object
