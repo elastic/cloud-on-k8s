@@ -5,10 +5,10 @@
 package controller
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibanaassociation"
 )
 
 func init() {
-	Register(operator.NamespaceOperator, association.Add)
+	Register(operator.NamespaceOperator, kibanaassociation.Add)
 }

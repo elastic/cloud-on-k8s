@@ -26,13 +26,13 @@ import (
 	associationsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
@@ -273,7 +273,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(associati
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, assoc associationsv1alpha1.ApmServerElasticsearchAssociation) error {
 	var secrets corev1.SecretList
-	selector := association.NewResourceSelector(assoc.Name)
+	selector := kibanaassociation.NewResourceSelector(assoc.Name)
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
 		return err
 	}

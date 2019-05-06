@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package association
+package kibanaassociation
 
 import (
 	"reflect"
@@ -32,7 +32,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-// Kibana-Elasticsearch association controller
+// Kibana association controller
 //
 // This controller's only purpose is to complete a Kibana resource
 // with connection details to an existing Elasticsearch cluster.
@@ -44,9 +44,12 @@ import (
 //   the Kibana resource with ES connection details
 // - create the Kibana user for Elasticsearch
 // - reconcile on any change from watching Kibana, Elasticsearch, Users and secrets
+//
+// If reference to an Elasticsearch cluster is not set in the Kibana resource,
+// this controller does nothing.
 
 var (
-	log            = logf.Log.WithName("association-controller")
+	log            = logf.Log.WithName("kibana-association-controller")
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
@@ -87,7 +90,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 
 var _ reconcile.Reconciler = &ReconcileAssociation{}
 
-// ReconcileAssociation reconciles a Kibana-Elasticsearch association object
+// ReconcileAssociation reconciles a Kibana resource for association with Elasticsearch
 type ReconcileAssociation struct {
 	k8s.Client
 	scheme   *runtime.Scheme

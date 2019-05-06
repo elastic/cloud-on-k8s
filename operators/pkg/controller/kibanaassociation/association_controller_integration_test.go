@@ -4,7 +4,7 @@
 
 // +build integration
 
-package association
+package kibanaassociation
 
 import (
 	"errors"
