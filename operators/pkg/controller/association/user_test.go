@@ -49,8 +49,8 @@ var kibanaFixture = kbtype.Kibana{
 
 var t = true
 var ownerRefFixture = metav1.OwnerReference{
-	APIVersion:         "associations.k8s.elastic.co/v1alpha1",
-	Kind:               "KibanaElasticsearchAssociation",
+	APIVersion:         "kibana.k8s.elastic.co/v1alpha1",
+	Kind:               "Kibana",
 	Name:               "foo",
 	UID:                "",
 	Controller:         &t,
