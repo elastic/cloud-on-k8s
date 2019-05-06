@@ -1,23 +1,7 @@
 # This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: kibana-es-sample
-spec:
-  elasticsearch:
-    name: "elasticsearch-sample"
-    namespace: "default"
-  kibana:
-    name: "kibana-sample"
-    namespace: "default"
----
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
   version: "6.7.2"
@@ -90,10 +74,10 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
   version: "6.7.2"
   nodeCount: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"
   expose: LoadBalancer
