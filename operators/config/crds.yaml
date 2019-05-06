@@ -98,6 +98,18 @@ spec:
                       items:
                         type: string
                       type: array
+                    ref:
+                      description: Ref allows users to reference a Elasticsearch cluster
+                        inside k8s to automatically derive the other fields.
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
                     ssl:
                       description: SSL configures TLS-related configuration for Elasticsearch
                       properties:

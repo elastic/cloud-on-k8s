@@ -7,7 +7,9 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
+	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
@@ -23,23 +25,27 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const resourceNameFixture = "foo-elastic-internal-apm"
+const resourceNameFixture = "as-elastic-internal-apm"
 
 // associationFixture is a shared test fixture
-var associationFixture = assoctype.ApmServerElasticsearchAssociation{
+var associationFixture = apmtype.ApmServer{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "foo",
+		Name:      "as",
 		Namespace: "default",
 	},
-	Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-		Elasticsearch: assoctype.ObjectSelector{
-			Name:      "es",
-			Namespace: "default",
+	Spec: apmtype.ApmServerSpec{
+		Output: apmtype.Output{
+			Elasticsearch: apmtype.ElasticsearchOutput{
+				Ref: &assoctype.ObjectSelector{
+					Name:      "es",
+					Namespace: "default",
+				},
+			},
 		},
-		ApmServer: assoctype.ObjectSelector{
-			Name:      "as",
-			Namespace: "default",
+		Resources: v1alpha1.ResourcesSpec{
+			Limits: nil,
 		},
+		FeatureFlags: nil,
 	},
 }
 
@@ -47,6 +53,9 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add assoc types")
+	}
+	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add apm types")
 	}
 	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add Es types")
@@ -59,7 +68,7 @@ func Test_reconcileEsUser(t *testing.T) {
 
 	type args struct {
 		initialObjects []runtime.Object
-		assoc          assoctype.ApmServerElasticsearchAssociation
+		assoc          apmtype.ApmServer
 	}
 	tests := []struct {
 		name          string
@@ -154,20 +163,24 @@ func Test_reconcileEsUser(t *testing.T) {
 		{
 			name: "Reconcile is namespace aware",
 			args: args{
-				assoc: assoctype.ApmServerElasticsearchAssociation{
+				assoc: apmtype.ApmServer{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "ns-1",
+						Name:      "as",
+						Namespace: "ns-2",
 					},
-					Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-						Elasticsearch: assoctype.ObjectSelector{
-							Name:      "es",
-							Namespace: "ns-1",
+					Spec: apmtype.ApmServerSpec{
+						Output: apmtype.Output{
+							Elasticsearch: apmtype.ElasticsearchOutput{
+								Ref: &assoctype.ObjectSelector{
+									Name:      "es",
+									Namespace: "ns-1",
+								},
+							},
 						},
-						ApmServer: assoctype.ObjectSelector{
-							Name:      "as",
-							Namespace: "ns-2",
+						Resources: v1alpha1.ResourcesSpec{
+							Limits: nil,
 						},
+						FeatureFlags: nil,
 					},
 				},
 			},

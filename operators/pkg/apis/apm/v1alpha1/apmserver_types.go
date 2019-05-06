@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,6 +46,9 @@ type Output struct {
 
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
+	// Ref allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
+	Ref *v1alpha1.ObjectSelector `json:"ref,omitempty"`
+
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
 
@@ -79,6 +83,8 @@ type ApmServerStatus struct {
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
+	// Association is the status of any auto-linking to Elasticsearch clusters.
+	Association v1alpha1.AssociationStatus
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

@@ -30,9 +30,8 @@ import (
 
 var (
 	c               k8s.Client
-	associationKey  = types.NamespacedName{Name: "baz", Namespace: "default"}
 	apmKey          = types.NamespacedName{Name: "bar", Namespace: "default"}
-	expectedRequest = reconcile.Request{NamespacedName: associationKey}
+	expectedRequest = reconcile.Request{NamespacedName: apmKey}
 )
 
 func TestReconcile(t *testing.T) {
@@ -70,36 +69,27 @@ func TestReconcile(t *testing.T) {
 			Name:      apmKey.Name,
 			Namespace: apmKey.Namespace,
 		},
+		Spec: apmv1alpha1.ApmServerSpec{
+			Output: apmv1alpha1.Output{
+				Elasticsearch: apmv1alpha1.ElasticsearchOutput{
+					Ref: &v1alpha1.ObjectSelector{
+						Name:      "foo",
+						Namespace: "default",
+					},
+				},
+			},
+		},
 	}
 	assert.NoError(t, c.Create(&as))
 	// Pretend secrets created by the Elasticsearch controller are there
 	caSecret := mockCaSecret(t, c, *es)
-
-	// Create the association resource, that should be reconciled
-	instance := &v1alpha1.ApmServerElasticsearchAssociation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      associationKey.Name,
-			Namespace: associationKey.Namespace,
-		},
-		Spec: v1alpha1.ApmServerElasticsearchAssociationSpec{
-			Elasticsearch: v1alpha1.ObjectSelector{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			ApmServer: v1alpha1.ObjectSelector{
-				Name:      apmKey.Name,
-				Namespace: apmKey.Namespace,
-			},
-		},
-	}
-	err = c.Create(instance)
 
 	if apierrors.IsInvalid(err) {
 		t.Logf("failed to create object, got an invalid object error: %v", err)
 		return
 	}
 	assert.NoError(t, err)
-	defer c.Delete(instance)
+	defer c.Delete(&as)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// let's wait until the Apm Server update triggers another reconcile iteration
 	test.CheckReconcileCalled(t, requests, expectedRequest)
@@ -117,6 +107,7 @@ func TestReconcile(t *testing.T) {
 		case !apmServer.Spec.Output.Elasticsearch.IsConfigured():
 			return errors.New("Not reconciled yet")
 		default:
+			assert.Equal(t, v1alpha1.AssociationEstablished, apmServer.Status.Association)
 			return nil
 		}
 	})
@@ -128,13 +119,13 @@ func TestReconcile(t *testing.T) {
 	// Ensure association goes back to pending if one of the vertices is deleted
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
-		fetched := v1alpha1.ApmServerElasticsearchAssociation{}
-		err := c.Get(associationKey, &fetched)
+		fetched := apmv1alpha1.ApmServer{}
+		err := c.Get(apmKey, &fetched)
 		if err != nil {
 			return err
 		}
-		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		if v1alpha1.AssociationPending != fetched.Status.Association {
+			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.Association)
 		}
 		return nil
 	})

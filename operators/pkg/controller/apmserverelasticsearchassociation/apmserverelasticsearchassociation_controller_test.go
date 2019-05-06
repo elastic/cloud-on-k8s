@@ -7,11 +7,12 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,14 +24,14 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	s := setupScheme(t)
 	tests := []struct {
 		name           string
-		args           assoctype.ApmServerElasticsearchAssociation
+		args           apmtype.ApmServer
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
 		{
 			name:    "nothing to delete",
-			args:    assoctype.ApmServerElasticsearchAssociation{},
+			args:    apmtype.ApmServer{},
 			wantErr: false,
 		},
 		{
@@ -127,12 +128,12 @@ func Test_deleteOrphanedResources(t *testing.T) {
 
 func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// user CR should be in ES namespace
-	assert.NoError(t, c.Get(types.NamespacedName{
+	require.NoError(t, c.Get(types.NamespacedName{
 		Namespace: associationFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &estype.User{}))
 	// secret should be in Kibana namespace
-	assert.NoError(t, c.Get(types.NamespacedName{
+	require.NoError(t, c.Get(types.NamespacedName{
 		Namespace: associationFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &corev1.Secret{}))
