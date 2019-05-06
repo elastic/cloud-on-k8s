@@ -6,20 +6,22 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 )
 
 // ApmServerElasticsearchAssociationSpec defines the desired state of ApmServerElasticsearchAssociation
 type ApmServerElasticsearchAssociationSpec struct {
 	// Elasticsearch refers to the Elasticsearch resource
-	Elasticsearch ObjectSelector `json:"elasticsearch"`
+	Elasticsearch commonv1alpha1.ObjectSelector `json:"elasticsearch"`
 	// ApmServer refers to the ApmServer resource.
-	ApmServer ObjectSelector `json:"apmServer"`
+	ApmServer commonv1alpha1.ObjectSelector `json:"apmServer"`
 }
 
 // ApmServerElasticsearchAssociationStatus defines the observed state of ApmServerElasticsearchAssociation
 type ApmServerElasticsearchAssociationStatus struct {
 	// AssociationStatus indicates the current state of the association.
-	AssociationStatus AssociationStatus `json:"associationStatus"`
+	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus"`
 }
 
 // +genclient
