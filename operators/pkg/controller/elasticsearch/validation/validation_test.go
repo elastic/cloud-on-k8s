@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -148,10 +149,14 @@ func TestValidate(t *testing.T) {
 					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "1.0.0",
-						TLS: &estype.TLSOptions{
-							SubjectAltNames: []estype.SubjectAlternativeName{
-								{
-									IP: &invalidIP,
+						HTTP: common.HTTPConfig{
+							TLS: &common.TLSOptions{
+								SelfSignedCertificates: &common.SelfSignedCertificates{
+									SubjectAlternativeNames: []common.SubjectAlternativeName{
+										{
+											IP: &invalidIP,
+										},
+									},
 								},
 							},
 						},

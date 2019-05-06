@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
@@ -262,10 +263,14 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 				cluster: v1alpha1.Elasticsearch{
 					ObjectMeta: testCluster.ObjectMeta,
 					Spec: v1alpha1.ElasticsearchSpec{
-						TLS: &v1alpha1.TLSOptions{
-							SubjectAltNames: []v1alpha1.SubjectAlternativeName{
-								{
-									DNS: &sanDNS,
+						HTTP: commonv1alpha1.HTTPConfig{
+							TLS: &commonv1alpha1.TLSOptions{
+								SelfSignedCertificates: &commonv1alpha1.SelfSignedCertificates{
+									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
+										{
+											DNS: &sanDNS,
+										},
+									},
 								},
 							},
 						},

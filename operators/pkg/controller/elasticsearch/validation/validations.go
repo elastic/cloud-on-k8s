@@ -115,17 +115,19 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 }
 
 func validSanIP(ctx Context) validation.Result {
-	tlsOpts := ctx.Proposed.Elasticsearch.Spec.TLS
+	tlsOpts := ctx.Proposed.Elasticsearch.Spec.HTTP.TLS
 	if tlsOpts != nil {
-		for _, san := range tlsOpts.SubjectAltNames {
-			if san.IP != nil {
-				ip := netutil.MaybeIPTo4(net.ParseIP(*san.IP))
-				if ip == nil {
-					msg := fmt.Sprintf("%s: %s", invalidSanIPErrMsg, *san.IP)
-					return validation.Result{
-						Error:   errors.New(msg),
-						Reason:  msg,
-						Allowed: false,
+		if tlsOpts.SelfSignedCertificates != nil {
+			for _, san := range tlsOpts.SelfSignedCertificates.SubjectAlternativeNames {
+				if san.IP != nil {
+					ip := netutil.MaybeIPTo4(net.ParseIP(*san.IP))
+					if ip == nil {
+						msg := fmt.Sprintf("%s: %s", invalidSanIPErrMsg, *san.IP)
+						return validation.Result{
+							Error:   errors.New(msg),
+							Reason:  msg,
+							Allowed: false,
+						}
 					}
 				}
 			}

@@ -136,14 +136,16 @@ func buildGeneralNames(
 
 	// append user-provided SANs
 	var userProvidedSANs []certificates.GeneralName
-	if tlsOpts := cluster.Spec.TLS; tlsOpts != nil {
-		for _, san := range tlsOpts.SubjectAltNames {
-			if san.DNS != nil {
-				userProvidedSANs = append(userProvidedSANs, certificates.GeneralName{DNSName: *san.DNS})
-			}
-			if san.IP != nil {
-				userProvidedSANs = append(userProvidedSANs,
-					certificates.GeneralName{IPAddress: netutil.MaybeIPTo4(net.ParseIP(*san.IP))})
+	if tlsOpts := cluster.Spec.HTTP.TLS; tlsOpts != nil {
+		if tlsOpts.SelfSignedCertificates != nil {
+			for _, san := range tlsOpts.SelfSignedCertificates.SubjectAlternativeNames {
+				if san.DNS != nil {
+					userProvidedSANs = append(userProvidedSANs, certificates.GeneralName{DNSName: *san.DNS})
+				}
+				if san.IP != nil {
+					userProvidedSANs = append(userProvidedSANs,
+						certificates.GeneralName{IPAddress: netutil.MaybeIPTo4(net.ParseIP(*san.IP))})
+				}
 			}
 		}
 	}

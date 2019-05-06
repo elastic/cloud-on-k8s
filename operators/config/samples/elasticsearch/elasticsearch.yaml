@@ -38,10 +38,12 @@ spec:
   # secureSettings:
   #   secretName: "ref-to-secret"
   ## Add a list of SANs into the nodes certificates
-  # tls:
-  #   subjectAltNames:
-  #     - ip: 4.3.2.1
-  #     - ip: 4.3.2.2
-  #     - dns: my.domain.name.com
-  #     - dns: my.second.domain
+  http:
+    tls:
+      selfSignedCertificates:
+        subjectAltNames:
+        - ip: 35.198.85.171
+        - ip: 4.3.2.2
+        - dns: my.domain.name.com
+        - dns: my.second.domain
   expose: LoadBalancer

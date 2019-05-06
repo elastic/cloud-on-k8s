@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
@@ -350,16 +351,20 @@ func Test_validSanIP(t *testing.T) {
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
 					Version: "6.7.0",
-					TLS: &estype.TLSOptions{
-						SubjectAltNames: []v1alpha1.SubjectAlternativeName{
-							{
-								IP: &validIP,
-							},
-							{
-								IP: &validIP2,
-							},
-							{
-								IP: &validIPv6,
+					HTTP: common.HTTPConfig{
+						TLS: &common.TLSOptions{
+							SelfSignedCertificates: &common.SelfSignedCertificates{
+								SubjectAlternativeNames: []common.SubjectAlternativeName{
+									{
+										IP: &validIP,
+									},
+									{
+										IP: &validIP2,
+									},
+									{
+										IP: &validIPv6,
+									},
+								},
 							},
 						},
 					},
@@ -372,13 +377,17 @@ func Test_validSanIP(t *testing.T) {
 			esCluster: estype.Elasticsearch{
 				Spec: estype.ElasticsearchSpec{
 					Version: "6.7.0",
-					TLS: &estype.TLSOptions{
-						SubjectAltNames: []v1alpha1.SubjectAlternativeName{
-							{
-								IP: &invalidIP,
-							},
-							{
-								IP: &validIP2,
+					HTTP: common.HTTPConfig{
+						TLS: &common.TLSOptions{
+							SelfSignedCertificates: &common.SelfSignedCertificates{
+								SubjectAlternativeNames: []common.SubjectAlternativeName{
+									{
+										IP: &invalidIP,
+									},
+									{
+										IP: &validIP2,
+									},
+								},
 							},
 						},
 					},

@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 )
 
 type FakeCSRClient struct {
@@ -181,19 +181,23 @@ func Test_buildGeneralNames(t *testing.T) {
 				cluster: v1alpha1.Elasticsearch{
 					ObjectMeta: testCluster.ObjectMeta,
 					Spec: v1alpha1.ElasticsearchSpec{
-						TLS: &v1alpha1.TLSOptions{
-							SubjectAltNames: []v1alpha1.SubjectAlternativeName{
-								{
-									DNS: &sanDNS1,
-								},
-								{
-									DNS: &sanDNS2,
-								},
-								{
-									IP: &sanIP1,
-								},
-								{
-									IP: &sanIPv6,
+						HTTP: commonv1alpha1.HTTPConfig{
+							TLS: &commonv1alpha1.TLSOptions{
+								SelfSignedCertificates: &commonv1alpha1.SelfSignedCertificates{
+									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
+										{
+											DNS: &sanDNS1,
+										},
+										{
+											DNS: &sanDNS2,
+										},
+										{
+											IP: &sanIP1,
+										},
+										{
+											IP: &sanIPv6,
+										},
+									},
 								},
 							},
 						},

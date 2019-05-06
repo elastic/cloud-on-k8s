@@ -30,6 +30,9 @@ type ElasticsearchSpec struct {
 	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
 	Expose string `json:"expose,omitempty"`
 
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
+
 	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
 	Nodes []NodeSpec `json:"nodes,omitempty"`
 
@@ -45,9 +48,6 @@ type ElasticsearchSpec struct {
 	// Secret keys must start with `es.file.` or `es.string.` according to the
 	// secure setting type.
 	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
-
-	// TLS describe additional options to consider when generating nodes TLS certificates.
-	TLS *TLSOptions `json:"tls,omitempty"`
 }
 
 // NodeCount returns the total number of nodes of the Elasticsearch cluster
@@ -172,17 +172,6 @@ var DefaultFallbackGroupingDefinition = GroupingDefinition{
 var DefaultChangeBudget = ChangeBudget{
 	MaxSurge:       1,
 	MaxUnavailable: 0,
-}
-
-type TLSOptions struct {
-	// SubjectAltNames is a list of SANs to include in the nodes certificates.
-	// For example: a wildcard DNS to expose the cluster.
-	SubjectAltNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
-}
-
-type SubjectAlternativeName struct {
-	DNS *string `json:"dns,omitempty"`
-	IP  *string `json:"ip,omitempty"`
 }
 
 // ElasticsearchHealth is the health of the cluster as returned by the health API.
