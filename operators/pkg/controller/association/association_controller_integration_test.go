@@ -7,22 +7,23 @@
 package association
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,9 +31,8 @@ import (
 
 var (
 	c               k8s.Client
-	associationKey  = types.NamespacedName{Name: "baz", Namespace: "default"}
 	kibanaKey       = types.NamespacedName{Name: "bar", Namespace: "default"}
-	expectedRequest = reconcile.Request{NamespacedName: associationKey}
+	expectedRequest = reconcile.Request{NamespacedName: kibanaKey}
 )
 
 func TestReconcile(t *testing.T) {
@@ -52,118 +52,97 @@ func TestReconcile(t *testing.T) {
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
+	// consume req requests in background, to let reconciliations go through
+	go func() {
+		for {
+			select {
+			case <-requests:
+			case <-stopMgr:
+				return
+			}
+		}
+	}()
+
 	defer func() {
 		close(stopMgr)
 		mgrStopped.Wait()
 	}()
 
-	// Assume an Elasticsearch cluster and a Kibana have been created
+	// create an Elasticsearch cluster
 	es := &esv1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 		},
 	}
-	assert.NoError(t, c.Create(es))
+	require.NoError(t, c.Create(es))
+	// Pretend secrets created by the Elasticsearch controller are there
+	_ = mockCaSecret(t, c, *es)
+
+	// create a Kibana instance referencing that cluster
 	kb := kbv1alpha1.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kibanaKey.Name,
 			Namespace: kibanaKey.Namespace,
 		},
-	}
-	assert.NoError(t, c.Create(&kb))
-	// Pretend secrets created by the Elasticsearch controller are there
-	caSecret := mockCaSecret(t, c, *es)
-
-	// Create the association resource, that should be reconciled
-	instance := &v1alpha1.KibanaElasticsearchAssociation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      associationKey.Name,
-			Namespace: associationKey.Namespace,
-		},
-		Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
-			Elasticsearch: v1alpha1.ObjectSelector{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			Kibana: v1alpha1.ObjectSelector{
-				Name:      kibanaKey.Name,
-				Namespace: kibanaKey.Namespace,
+		Spec: kbv1alpha1.KibanaSpec{
+			ElasticsearchRef: commonv1alpha1.ObjectSelector{
+				Name:      es.Name,
+				Namespace: es.Namespace,
 			},
 		},
 	}
-	err = c.Create(instance)
+	require.NoError(t, c.Create(&kb))
 
-	if apierrors.IsInvalid(err) {
-		t.Logf("failed to create object, got an invalid object error: %v", err)
-		return
-	}
-	assert.NoError(t, err)
-	defer c.Delete(instance)
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// let's wait until the Kibana update triggers another reconcile iteration
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-
-	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
-
-	// Kibana should be updated
-	kibana := &kbv1alpha1.Kibana{}
 	test.RetryUntilSuccess(t, func() error {
-		err := c.Get(kibanaKey, kibana)
-		if err != nil {
+		if err := c.Get(kibanaKey, &kb); err != nil {
 			return err
 		}
-		switch {
-		case !kibana.Spec.Elasticsearch.IsConfigured():
-			return errors.New("Not reconciled yet")
-		default:
-			return nil
+		// Kibana should be updated with ES connection details
+		if !kb.Spec.Elasticsearch.IsConfigured() {
+			return errors.New("kibana not configured yet")
 		}
-	})
-
-	// Manually delete secret containing Kibana user credentials and expect recreation
-	kbUserSecretKey := secretKey(*instance)
-	test.CheckResourceDeletionTriggersReconcile(
-		t, c, requests,
-		kbUserSecretKey,
-		&corev1.Secret{
-			ObjectMeta: k8s.ToObjectMeta(kbUserSecretKey),
-		},
-		expectedRequest,
-	)
-
-	// Manually delete user resource and expect recreation
-	kbUserKey := userKey(*instance)
-	test.CheckResourceDeletionTriggersReconcile(
-		t, c, requests,
-		kbUserKey,
-		&esv1alpha1.User{
-			ObjectMeta: k8s.ToObjectMeta(kbUserKey),
-		},
-		expectedRequest,
-	)
-
-	// Manually delete Cluster, Deployment and Secret since GC might not be enabled in the test control plane
-	test.DeleteIfExists(t, c, es)
-	test.DeleteIfExists(t, c, caSecret)
-
-	// Ensure association goes back to pending if one of the vertices is deleted
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	test.RetryUntilSuccess(t, func() error {
-		fetched := v1alpha1.KibanaElasticsearchAssociation{}
-		err := c.Get(associationKey, &fetched)
-		if err != nil {
-			return err
-		}
-		if v1alpha1.AssociationPending != fetched.Status.AssociationStatus {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		// association status should be established
+		if kb.Status.AssociationStatus != v1alpha1.AssociationEstablished {
+			return errors.New("association status not updated yet")
 		}
 		return nil
 	})
 
-	// Delete Kibana as well
-	test.DeleteIfExists(t, c, kibana)
+	// delete user secret: it should be recreated
+	kibanaUserSecretKey := KibanaUserSecretKey(kibanaKey)
+	checkResourceRecreated(t, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kibanaUserSecretKey.Name,
+			Namespace: kibanaUserSecretKey.Namespace,
+		},
+	})
+	// delete user: it should be recreated
+	kibanaUserKey := KibanaUserKey(kb, es.Namespace)
+	checkResourceRecreated(t, &esv1alpha1.User{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kibanaUserKey.Name,
+			Namespace: kibanaUserKey.Namespace,
+		},
+	})
 
+	// delete ES cluster
+	require.NoError(t, c.Delete(es))
+
+	test.RetryUntilSuccess(t, func() error {
+		if err := c.Get(kibanaKey, &kb); err != nil {
+			return err
+		}
+		// association status should be updated to pending
+		if kb.Status.AssociationStatus != v1alpha1.AssociationPending {
+			return errors.New("association status not updated yet")
+		}
+		// connection details should be removed
+		if kb.Spec.Elasticsearch.IsConfigured() {
+			return errors.New("kibana connection details still configured while ES doesn't exist")
+		}
+		return nil
+	})
 }
 
 func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.Elasticsearch) *corev1.Secret {
@@ -181,4 +160,34 @@ func mockCaSecret(t *testing.T, c k8s.Client, es esv1alpha1.Elasticsearch) *core
 	}
 	assert.NoError(t, c.Create(caSecret))
 	return caSecret
+}
+
+func checkResourceRecreated(t *testing.T, object runtime.Object) {
+	metaObj, err := meta.Accessor(object)
+	require.NoError(t, err)
+	objKey := k8s.ExtractNamespacedName(metaObj)
+	// retrieve the object and its uid
+	require.NoError(t, c.Get(objKey, object))
+	uid := metaObj.GetUID()
+
+	// delete the object
+	err = c.Delete(object)
+	require.NoError(t, err)
+
+	// should eventually be re-created (with a different uid)
+	test.RetryUntilSuccess(t, func() error {
+		err := c.Get(objKey, object)
+		if err != nil {
+			return err
+		}
+		metaObj, err := meta.Accessor(object)
+		if err != nil {
+			return err
+		}
+		newUid := metaObj.GetUID()
+		if newUid == uid {
+			return errors.New("same uid")
+		}
+		return nil
+	})
 }
