@@ -33,7 +33,6 @@ func TestEsApmServerSample(t *testing.T) {
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.Association))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Elasticsearch))
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Association))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
 
 	// set namespace
