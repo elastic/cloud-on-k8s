@@ -99,6 +99,4 @@ Here are some good practices for a good pull request:
 
 We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/k8s-operators/tree/master/docs/design) to understand the technical choices that we make.
 
-## Thank you
-
 Thank you for taking the time to contribute.
