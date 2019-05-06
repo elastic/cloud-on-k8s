@@ -150,26 +150,3 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	})
 
 }
-
-// hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual.
-func hasExpectedLabels(expected, actual metav1.Object) bool {
-	actualLabels := actual.GetLabels()
-	for k, v := range expected.GetLabels() {
-		if actualLabels[k] != v {
-			return false
-		}
-	}
-	return true
-}
-
-// setExpectedLabels set the labels from expected into actual.
-func setExpectedLabels(expected, actual metav1.Object) {
-	actualLabels := actual.GetLabels()
-	if actualLabels == nil {
-		actualLabels = make(map[string]string)
-	}
-	for k, v := range expected.GetLabels() {
-		actualLabels[k] = v
-	}
-	actual.SetLabels(actualLabels)
-}
