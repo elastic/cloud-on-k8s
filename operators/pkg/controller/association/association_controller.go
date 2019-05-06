@@ -74,41 +74,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, er
 	return c, nil
 }
 
-func addWatches(c controller.Controller, r *ReconcileAssociation) error {
-	// Watch for changes to the association
-	if err := c.Watch(&source.Kind{Type: &assoctype.KibanaElasticsearchAssociation{}}, &handler.EnqueueRequestForObject{}); err != nil {
-		return err
-	}
-
-	// Watch Elasticsearch cluster objects
-	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.ElasticsearchClusters); err != nil {
-		return err
-	}
-
-	// Watch Kibana objects
-	if err := c.Watch(&source.Kind{Type: &kbtype.Kibana{}}, r.watches.Kibanas); err != nil {
-		return err
-	}
-
-	// Watch owned secrets
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    &assoctype.KibanaElasticsearchAssociation{},
-		IsController: true,
-	}); err != nil {
-		return err
-	}
-
-	// Watch owned Users
-	if err := c.Watch(&source.Kind{Type: &estype.User{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    &assoctype.KibanaElasticsearchAssociation{},
-		IsController: true,
-	}); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 var _ reconcile.Reconciler = &ReconcileAssociation{}
 
 // ReconcileAssociation reconciles a Kibana-Elasticsearch association object
@@ -171,28 +136,6 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		}
 	}
 	return resultFromStatus(newStatus), err
-
-}
-
-func elasticsearchWatchName(assocKey types.NamespacedName) string {
-	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
-}
-
-func kibanaWatchName(assocKey types.NamespacedName) string {
-	return assocKey.Namespace + "-" + assocKey.Name + "-kb-watch"
-}
-
-// watchFinalizer ensure that we remove watches for Kibanas and Elasticsearch clusters that we are no longer interested in
-// because the assocation has been deleted.
-func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "dynamic-watches.finalizers.associations.k8s.elastic.co",
-		Execute: func() error {
-			w.Kibanas.RemoveHandlerForKey(kibanaWatchName(assocKey))
-			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(assocKey))
-			return nil
-		},
-	}
 }
 
 func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
