@@ -175,7 +175,7 @@ var DefaultChangeBudget = ChangeBudget{
 }
 
 type TLSOptions struct {
-	// SubjectAltNames is a list of SAN to include in the nodes certificates.
+	// SubjectAltNames is a list of SANs to include in the nodes certificates.
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAltNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 }
