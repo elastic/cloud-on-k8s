@@ -34,7 +34,7 @@ Check requirements and steps in this [README](https://github.com/elastic/k8s-ope
 
 ### Scripts
 
-As most of the contributors are using macOS and Linux please ensure that scripts run on these two environments.
+As most of the contributors are using macOS and Linux, make sure that scripts run on these two environments.
 
 ### Tests
 
@@ -48,7 +48,7 @@ There are 3 test suites:
   
   A good practice is to have some [table-driven tests](https://github.com/golang/go/wiki/TableDrivenTests), you can use [gotests](https://github.com/cweill/gotests) to quickly generate them from your code.
   
-- **Integration tests** - some tests are flagged as integration since they can take more than a few milliseconds to complete. Hence it's usually a good idea to separate them from the rest of the unit tests that can run pretty fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
+- **Integration tests** - some tests are flagged as integration as they can take more than a few milliseconds to complete. It's usually recommended to separate them from the rest of the unit tests that run fast. Usually they include disk I/O operations, network I/O operations on a test port, or encryption computations. We also rely on the kubebuilder testing framework, that spins up etcd and the apiserver locally, and enqueues requests to a reconciliation function.
 
 - **End-to-end tests** - (e2e) allow us to test interactions between the operator and a real Kubernetes cluster.
       They use the standard `go test` tooling. See the `test/e2e` directory. We recommend to rely primarily on unit and integration tests, as e2e tests are slow and hard to debug because they simulate real user scenarios.
@@ -93,7 +93,7 @@ Here are some good practices for a good pull request:
 - Break your pull request into smaller PRs if it's too large.
 - Run and pass unit and integration tests with `make unit` and `make integration`.
 - Write a short and self-explanatory title.
-- The code reviewer should understand what your pull request is doing by reading the description.
+- Write a clear description to make the code reviewer understand what the PR is about.
 
 ## Design documents
 
