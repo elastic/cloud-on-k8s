@@ -23,49 +23,56 @@ import (
 )
 
 const (
-	// InternalKibanaServerUserName is a user to be used by the Kibana server when interacting with ES.
-	InternalKibanaServerUserName = "elastic-internal-kibana"
+	// kibanaUser is the name of the Kibana server Elasticsearch user.
+	// Also used to suffix user and secret resources.
+	kibanaUser = "kibana-user"
 )
 
-// name to identify the Kibana user object (secret/user CRD)
-func kibanaUserObjectName(assocName string) string {
-	return assocName + "-" + InternalKibanaServerUserName
+// KibanaUserObjectName identifies the Kibana user object (secret/user CRD).
+func KibanaUserObjectName(kibanaName string) string {
+	return kibanaName + "-" + kibanaUser
 }
 
-// userKey is the namespaced name to identify the customer user resource created by the controller.
-func userKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+// KibanaUserKey is the namespaced name to identify the customer user resource created by the controller.
+func KibanaUserKey(kibana kbtype.Kibana, esNamespace string) types.NamespacedName {
+	if esNamespace == "" {
+		// no namespace given, default to Kibana's one
+		esNamespace = kibana.Namespace
+	}
 	return types.NamespacedName{
-		Namespace: assoc.Spec.Elasticsearch.Namespace,
-		Name:      kibanaUserObjectName(assoc.Name),
+		// user lives in the ES namespace
+		Namespace: esNamespace,
+		Name:      KibanaUserObjectName(kibana.Name),
 	}
 }
 
-// secretKey is the namespaced name to identify the secret containing the password for the Kibana user.
-func secretKey(assoc v1alpha1.KibanaElasticsearchAssociation) types.NamespacedName {
+// KibanaUserSecret is the namespaced name to identify the secret containing the password for the Kibana user.
+// It uses the same resource name as the Kibana user.
+func KibanaUserSecretKey(kibana types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: assoc.Spec.Kibana.Namespace,
-		Name:      kibanaUserObjectName(assoc.Name),
+		Namespace: kibana.Namespace,
+		Name:      KibanaUserObjectName(kibana.Name),
 	}
 }
 
-// creates a SecretKeySelector selecting the Kibana user secret for the given association
-func clearTextSecretKeySelector(assoc v1alpha1.KibanaElasticsearchAssociation) *corev1.SecretKeySelector {
+// KibanaUserSelector creates a SecretKeySelector for the Kibana user secret
+func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: kibanaUserObjectName(assoc.Name),
+			Name: KibanaUserObjectName(kibana.Name),
 		},
-		Key: InternalKibanaServerUserName,
+		Key: kibanaUser,
 	}
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElasticsearchAssociation) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es types.NamespacedName) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
-	secretLabels := kibana.NewLabels(assoc.Spec.Kibana.Name)
-	secretLabels[AssociationLabelName] = assoc.Name
-	secKey := secretKey(assoc)
+	secretLabels := kbctl.NewLabels(kibana.Name)
+	secretLabels[AssociationLabelName] = kibana.Name
+	secKey := KibanaUserSecretKey(k8s.ExtractNamespacedName(&kibana))
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
@@ -73,7 +80,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 			Labels:    secretLabels,
 		},
 		Data: map[string][]byte{
-			InternalKibanaServerUserName: pw,
+			kibanaUser: pw,
 		},
 	}
 
@@ -85,7 +92,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
-			_, ok := reconciledSecret.Data[InternalKibanaServerUserName]
+			_, ok := reconciledSecret.Data[kibanaUser]
 			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
 		},
 		UpdateReconciled: func() {
@@ -96,7 +103,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 	if err != nil {
 		return err
 	}
-	reconciledPw := reconciledSecret.Data[InternalKibanaServerUserName] // make sure we don't constantly update the password
+	reconciledPw := reconciledSecret.Data[kibanaUser] // make sure we don't constantly update the password
 
 	bcryptHash, err := bcrypt.GenerateFromPassword(reconciledPw, bcrypt.DefaultCost)
 	if err != nil {
@@ -104,9 +111,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
-	userLabels[AssociationLabelName] = assoc.Name
-	usrKey := userKey(assoc)
+	userLabels := label.NewLabels(es)
+	userLabels[AssociationLabelName] = kibana.Name
+	usrKey := KibanaUserKey(kibana, es.Namespace)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
@@ -114,7 +121,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.KibanaElast
 			Labels:    userLabels,
 		},
 		Spec: estype.UserSpec{
-			Name:         InternalKibanaServerUserName,
+			Name:         kibanaUser,
 			PasswordHash: string(bcryptHash),
 			UserRoles:    []string{user.KibanaSystemUserBuiltinRole},
 		},
