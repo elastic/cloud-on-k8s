@@ -17,6 +17,7 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 			Namespace: as.Namespace,
 			Name:      PseudoNamespacedResourceName(as),
 			Labels:    NewLabels(as.Name),
+			Annotations: as.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: NewLabels(as.Name),
@@ -27,7 +28,7 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(as.Spec.Expose),
+			Type:            common.GetServiceType(as.Spec.HTTP.Service.Spec.Type),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {

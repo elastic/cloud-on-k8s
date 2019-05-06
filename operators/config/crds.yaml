@@ -47,17 +47,34 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are apm-specific flags that enable or disable
                 specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.
@@ -442,17 +459,34 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.
@@ -1012,17 +1046,34 @@ spec:
               required:
               - url
               type: object
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.

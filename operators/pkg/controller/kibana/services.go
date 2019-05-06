@@ -18,6 +18,7 @@ func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 			Namespace: kb.Namespace,
 			Name:      PseudoNamespacedResourceName(kb),
 			Labels:    NewLabels(kb.Name),
+			Annotations: kb.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: NewLabels(kb.Name),
@@ -29,7 +30,7 @@ func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
 			// TODO: proper ingress forwarding
-			Type: common.GetServiceType(kb.Spec.Expose),
+			Type: common.GetServiceType(kb.Spec.HTTP.Service.Spec.Type),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
