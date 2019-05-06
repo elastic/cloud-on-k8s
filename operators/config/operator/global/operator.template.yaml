@@ -36,8 +36,8 @@ spec:
             value: <OPERATOR_IMAGE>
         resources:
           limits:
-            cpu: 100m
-            memory: 30Mi
+            cpu: 1
+            memory: 100Mi
           requests:
             cpu: 100m
             memory: 20Mi

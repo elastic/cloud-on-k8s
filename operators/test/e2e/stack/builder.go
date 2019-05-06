@@ -17,12 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const defaultVersion = "6.7.0"
+const defaultVersion = "6.7.2"
 
 var DefaultResources = common.ResourcesSpec{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1G"),
-		corev1.ResourceCPU:    resource.MustParse("500m"),
+		corev1.ResourceMemory: resource.MustParse("2G"),
+		corev1.ResourceCPU:    resource.MustParse("2"),
 	},
 }
 
@@ -93,7 +93,7 @@ func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Bu
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{Data: map[string]interface{}{
-			estype.NodeMaster: "true",
+			estype.NodeData: "false",
 		},
 		},
 		Resources: resources,
@@ -105,7 +105,7 @@ func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Buil
 		NodeCount: int32(count),
 		Config: &estype.Config{
 			Data: map[string]interface{}{
-				estype.NodeData: "true",
+				estype.NodeMaster: "false",
 			},
 		},
 		Resources: resources,
@@ -116,10 +116,7 @@ func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
-			Data: map[string]interface{}{
-				estype.NodeMaster: "true",
-				estype.NodeData:   "true",
-			},
+			Data: map[string]interface{}{},
 		},
 		Resources: resources,
 	})
