@@ -129,7 +129,8 @@ func (hc *ContinousHealthCheck) Start() {
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
-					hc.AppendErr(err)
+					// TODO: Temporarily account only red clusters, see https://github.com/elastic/k8s-operators/issues/614
+					//hc.AppendErr(err)
 					continue
 				}
 				if estype.ElasticsearchHealth(health.Status) == estype.ElasticsearchRedHealth {

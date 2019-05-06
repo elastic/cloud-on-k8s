@@ -20,7 +20,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   updateStrategy:
     groups:
     # give each failure domain a chance to reconcile failures before regular changes:
@@ -94,6 +94,6 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodeCount: 1
   expose: LoadBalancer

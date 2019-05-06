@@ -8,7 +8,7 @@ ENV DOCKER_VERSION=18.03.1-ce
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
 RUN curl -L -O https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    tar -zxvf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
+    tar -zxf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
     mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/kubebuilder
 # update PATH to include downloaded binaries
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin
@@ -32,6 +32,6 @@ RUN curl -L -O https://storage.googleapis.com/kubernetes-release/release/v${KUBE
 
 # Install Docker client for building and pushing images
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz \
-  && tar xzvf docker-${DOCKER_VERSION}.tgz --strip 1 \
+  && tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 \
                  -C /usr/local/bin docker/docker \
   && rm docker-${DOCKER_VERSION}.tgz
