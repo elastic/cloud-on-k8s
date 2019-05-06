@@ -6,7 +6,7 @@ package apm
 
 import (
 	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -22,15 +22,17 @@ var DefaultResources = common.ResourcesSpec{
 // -- Stack
 
 type Builder struct {
-	ApmServer   apmtype.ApmServer
-	Association assoctype.ApmServerElasticsearchAssociation
+	ApmServer apmtype.ApmServer
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	b.Association.ObjectMeta.Namespace = namespace
-	b.Association.Spec.Elasticsearch.Namespace = namespace
-	b.Association.Spec.ApmServer.Namespace = namespace
+	ref := b.ApmServer.Spec.Output.Elasticsearch.Ref
+	if ref == nil {
+		ref = &v1alpha1.ObjectSelector{}
+	}
+	ref.Namespace = namespace
+	b.ApmServer.Spec.Output.Elasticsearch.Ref = ref
 	return b
 }
 
@@ -47,5 +49,5 @@ func (b Builder) WithNodeCount(count int) Builder {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.ApmServer, &b.Association}
+	return []runtime.Object{&b.ApmServer}
 }

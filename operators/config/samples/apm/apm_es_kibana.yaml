@@ -1,19 +1,5 @@
 # This sample sets up a an Elasticsearch cluster along with a Kibana instance
 # and an APM server, configured to be able to communicate with each other
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: ApmServerElasticsearchAssociation
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: apmelasticsearchassociation-sample
-spec:
-  elasticsearch:
-    name: "elasticsearch-sample"
-    namespace: "default"
-  apmServer:
-    name: "apm-server-sample"
-    namespace: "default"
----
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
@@ -43,6 +29,11 @@ metadata:
 spec:
   version: "6.6.1"
   nodeCount: 1
+  output:
+    elasticsearch:
+      ref:
+        name: elasticsearch-sample
+        namespace: default
 ---
 apiVersion: associations.k8s.elastic.co/v1alpha1
 kind: KibanaElasticsearchAssociation
