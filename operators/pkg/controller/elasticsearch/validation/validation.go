@@ -18,7 +18,7 @@ const (
 	masterRequiredMsg        = "Elasticsearch needs to have at least one master node"
 	parseVersionErrMsg       = "Cannot parse Elasticsearch version"
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
-	invalidSanIPErrMsg       = "Invalid SAN IP address"
+	invalidSanIPErrMsg       = "invalid SAN IP address"
 )
 
 var log = logf.Log.WithName("es-validation")

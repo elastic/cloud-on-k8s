@@ -5,6 +5,7 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -120,9 +121,10 @@ func validSanIP(ctx Context) validation.Result {
 			if san.IP != nil {
 				ip := netutil.MaybeIPTo4(net.ParseIP(*san.IP))
 				if ip == nil {
+					msg := fmt.Sprintf("%s: %s", invalidSanIPErrMsg, *san.IP)
 					return validation.Result{
-						Error:   fmt.Errorf("invalid SAN IP: %s", *san.IP),
-						Reason:  invalidSanIPErrMsg,
+						Error:   errors.New(msg),
+						Reason:  msg,
 						Allowed: false,
 					}
 				}

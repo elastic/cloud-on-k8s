@@ -384,7 +384,7 @@ func Test_validSanIP(t *testing.T) {
 					},
 				},
 			},
-			want: validation.Result{Allowed: false, Reason: invalidSanIPErrMsg, Error: fmt.Errorf("invalid SAN IP: %s", invalidIP)},
+			want: validation.Result{Allowed: false, Reason: "invalid SAN IP address: notanip", Error: fmt.Errorf("invalid SAN IP address: notanip")},
 		},
 	}
 	for _, tt := range tests {
