@@ -34,18 +34,18 @@ Run `make check-requisites` to check that all dependencies are installed.
 
     [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
 
-  ```bash
-   make bootstrap-minikube
-   # Sets up a Minikube cluster with required resources
-   ```
+    ```bash
+      make bootstrap-minikube
+      # Sets up a Minikube cluster with required resources
+      ```
 
-   or [GKE](https://cloud.google.com/kubernetes-engine/)
+      or [GKE](https://cloud.google.com/kubernetes-engine/)
 
-   ```bash
-   export GCLOUD_PROJECT=my-project-id
-   make bootstrap-gke
-   # Sets up GKE cluster with required resources		
-   ```
+      ```bash
+      export GCLOUD_PROJECT=my-project-id
+      make bootstrap-gke
+      # Sets up GKE cluster with required resources
+      ```
 
 1. Deploy the operator.
 
