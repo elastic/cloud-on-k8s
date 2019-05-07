@@ -47,7 +47,7 @@ Run `make check-requisites` to check that all dependencies are installed.
       # Sets up GKE cluster with required resources
       ```
 
-1. Deploy the operator.
+2. Deploy the operator.
 
    * `make dep-vendor-only` to download extra Go libraries needed to compile the project and stores them in the vendor directory.
    * `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
