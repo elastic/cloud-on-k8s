@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 // File to persist the state of the process between restarts

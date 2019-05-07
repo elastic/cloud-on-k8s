@@ -7,7 +7,7 @@ package keystore
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 
 	corev1 "k8s.io/api/core/v1"
 )

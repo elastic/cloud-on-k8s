@@ -5,17 +5,16 @@
 package apm
 
 import (
-	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var DefaultResources = common.ResourcesSpec{
+var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		"memory": resource.MustParse("1G"),
+		corev1.ResourceMemory: resource.MustParse("1G"),
 	},
 }
 

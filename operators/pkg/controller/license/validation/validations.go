@@ -5,8 +5,8 @@
 package validation
 
 import (
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

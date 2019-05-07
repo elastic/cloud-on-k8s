@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/provisioner"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/provisioner"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

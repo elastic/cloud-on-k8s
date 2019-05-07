@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/stretchr/testify/assert"
 )
 

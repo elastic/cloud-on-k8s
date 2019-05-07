@@ -6,7 +6,7 @@
 
 ## Context and Problem Statement
 
-Our current [dynamic provisioner for local volumes](https://github.com/elastic/k8s-operators/tree/master/local-volume) does not handle maximum storage available on nodes. It means a pod can get assigned to a node for which we'd need to create a PersistentVolume, even though the physical disk might be full already.
+Our current [dynamic provisioner for local volumes](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume) does not handle maximum storage available on nodes. It means a pod can get assigned to a node for which we'd need to create a PersistentVolume, even though the physical disk might be full already.
 
 The way it currently works is the following:
 
@@ -132,6 +132,6 @@ Cons:
 
 ## Links <!-- optional -->
 
-* [Elastic dynamic provisioner for local volumes](https://github.com/elastic/k8s-operators/tree/master/local-volume)
+* [Elastic dynamic provisioner for local volumes](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume)
 * [Kubernetes static local volume provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner)
-* [Local volume initial issue](https://github.com/elastic/k8s-operators/issues/108)
+* [Local volume initial issue](https://github.com/elastic/cloud-on-k8s/issues/108)

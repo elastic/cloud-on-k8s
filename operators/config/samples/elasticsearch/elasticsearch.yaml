@@ -14,16 +14,18 @@ spec:
       node.data: true
       xpack.license.self_generated.type: trial
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 1000m
+    podTemplate:
+      metadata:
+        labels:
+          foo: bar
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 1
     nodeCount: 3
-    ## this shows how to add a custom label to all pods created for this topology element
-    #template:
-    #  metadata:
-    #    labels:
-    #      foo: bar
     ## this shows how to request 2Gi of persistent data storage for pods in this topology element
     #volumeClaimTemplates:
     #- metadata:
@@ -37,4 +39,15 @@ spec:
   ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
   # secureSettings:
   #   secretName: "ref-to-secret"
-  expose: LoadBalancer
+  ## Add a list of SANs into the nodes certificates
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - ip: 35.198.85.171
+        - ip: 4.3.2.2
+        - dns: my.domain.name.com
+        - dns: my.second.domain

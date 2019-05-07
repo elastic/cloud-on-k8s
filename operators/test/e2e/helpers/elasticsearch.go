@@ -8,12 +8,12 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 )
 
 // if `--auto-port-forward` is passed to `go test`, then use a custom

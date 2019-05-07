@@ -5,7 +5,7 @@
 package version6
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	corev1 "k8s.io/api/core/v1"
 )
 

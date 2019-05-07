@@ -7,7 +7,7 @@ package main
 import (
 	"os"
 
-	"github.com/elastic/k8s-operators/operators/cmd/cli/license"
+	"github.com/elastic/cloud-on-k8s/operators/cmd/cli/license"
 	"github.com/spf13/cobra"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

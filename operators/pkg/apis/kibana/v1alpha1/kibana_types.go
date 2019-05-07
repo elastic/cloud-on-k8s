@@ -5,9 +5,11 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 )
 
 // KibanaSpec defines the desired state of Kibana
@@ -21,17 +23,21 @@ type KibanaSpec struct {
 	// NodeCount defines how many nodes the Kibana deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
+	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
+	// If the namespace is not specified, the current resource namespace will be used.
+	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+
 	// Elasticsearch configures how Kibana connects to Elasticsearch
 	// +optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
-	// Resources to be allocated for this topology
-	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
+	// PodTemplate can be used to propagate configuration to Kibana pods.
+	// So far, only labels, Affinity and `Containers["kibana"].Resources.Limits` are applied.
+	// +optional
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
@@ -87,7 +93,8 @@ const (
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health KibanaHealth `json:"health,omitempty"`
+	Health            KibanaHealth                     `json:"health,omitempty"`
+	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

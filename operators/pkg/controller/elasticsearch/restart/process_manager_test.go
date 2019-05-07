@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 )
 
 func Test_ensureESProcessStopped(t *testing.T) {

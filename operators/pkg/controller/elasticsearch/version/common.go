@@ -7,19 +7,19 @@ package version
 import (
 	"path"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +47,13 @@ func NewExpectedPodSpecs(
 			if node.Config != nil {
 				cfg = *node.Config
 			}
+
+			esContainerResources := corev1.ResourceRequirements{}
+			esContainerTpl := node.GetESContainerTemplate()
+			if esContainerTpl != nil {
+				esContainerResources = esContainerTpl.Resources
+			}
+
 			params := pod.NewPodSpecParams{
 				Version:              es.Spec.Version,
 				CustomImageName:      es.Spec.Image,
@@ -55,7 +62,7 @@ func NewExpectedPodSpecs(
 				Config:               cfg,
 				Affinity:             node.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-				Resources:            node.Resources,
+				Resources:            esContainerResources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
@@ -146,7 +153,7 @@ func podSpec(
 			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            pod.DefaultContainerName,
+			Name:            v1alpha1.ElasticsearchContainerName,
 			Ports:           pod.DefaultContainerPorts,
 			Resources: corev1.ResourceRequirements{
 				Limits: resourceLimits,

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	pm "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	pm "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

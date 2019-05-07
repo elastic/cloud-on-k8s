@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
-	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -171,7 +171,7 @@ func TestDeleteServices(t *testing.T) {
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {
-	s := stack.NewStackBuilder("test-failure-delete-elastic-user-secret").
+	s := stack.NewStackBuilder("test-delete-elastic-user-secret").
 		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
@@ -202,7 +202,7 @@ func TestDeleteCACert(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: helpers.DefaultNamespace,
-						Name:      s.Elasticsearch.Name, // that's the CA cert secret name \o/
+						Name:      s.Elasticsearch.Name + "-ca", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)

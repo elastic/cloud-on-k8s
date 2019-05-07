@@ -5,39 +5,39 @@
 You will learn how to:
 
 * Deploy the operator in your Kubernetes cluster
-* Deploy an Elasticsearch cluster
-* Deploy a Kibana instance
-* Access Elasticsearch and Kibana
+* Deploy the Elasticsearch cluster
+* Deploy the Kibana instance
+* Upgrade your deployment
 * Deep dive with:
-    * Securing your cluster
-    * Using persistent storage
+    * Secure your cluster
+    * Use persistent storage
     * Additional features
 
 ## Requirements
 
 * Kubernetes 1.11+
 
-## Deploy the operator
+## Deploy the operator in your Kubernetes cluster
 
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
-```
+    ```bash
+    kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/crds.yaml
+    ```
 
 2. Install the operator with its RBAC rules:
 
-```bash
-kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
-```
+    ```bash
+    kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/all-in-one.yaml
+    ```
 
 3. Monitor the operator logs:
 
-```bash
-kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
-```
+    ```bash
+    kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
+    ```
 
-## Deploy Elasticsearch
+## Deploy the Elasticsearch cluster
 
 Let's apply a simple Elasticsearch cluster specification, with one node:
 
@@ -63,7 +63,7 @@ The operator will automatically take care of managing Pods and resources corresp
 
 ### Monitor cluster health and creation progress
 
-Get an overview of current Elasticsearch clusters in the Kubernetes cluster, including their health, version and number of nodes:
+Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including their health, version and number of nodes:
 
 ```bash
 kubectl get elasticsearch
@@ -73,7 +73,7 @@ NAME      HEALTH    NODES     VERSION   PHASE         AGE
 quickstart    green     1         7.0.0     Operational   1m
 ```
 
-While the cluster is created, there is no health yet and the phase is still Pending. After a while, the cluster appears as Running, with a green health.
+When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
 
 You can see that one Pod is in the process of being started:
 
@@ -105,7 +105,7 @@ NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ```
 
-Elasticsearch can be accessed from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
+You can access Elasticsearch from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
 
 #### Retrieve credentials
 
@@ -117,50 +117,42 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
 
 #### Request Elasticsearch
 
-Use `kubectl port-forward` to access Elasticsearch from your local workstation:
+1. Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
-```bash
-kubectl port-forward service/quickstart-es 9200
-```
+    ```bash
+    kubectl port-forward service/quickstart-es 9200
+    ```
 
-Then, in another shell, request the Elasticsearch endpoint (skipping certificate verification for now):
+2. In another shell, request the Elasticsearch endpoint (skipping the certificate verification for now):
 
-```bash
-curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
-```
-```
-{
-  "name" : "quickstart-es-5zctxpn8nd",
-  "cluster_name" : "quickstart",
-  "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
-  "version" : {
-    "number" : "7.0.0",
-    "build_flavor" : "default",
-    "build_type" : "docker",
-    "build_hash" : "b7e28a7",
-    "build_date" : "2019-04-05T22:55:32.697037Z",
-    "build_snapshot" : false,
-    "lucene_version" : "8.0.0",
-    "minimum_wire_compatibility_version" : "6.7.0",
-    "minimum_index_compatibility_version" : "6.0.0-beta1"
-  },
-  "tagline" : "You Know, for Search"
-}
-```
+    ```bash
+    curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+    ```
+    ```
+    {
+      "name" : "quickstart-es-5zctxpn8nd",
+      "cluster_name" : "quickstart",
+      "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
+      "version" : {
+        "number" : "7.0.0",
+        "build_flavor" : "default",
+        "build_type" : "docker",
+        "build_hash" : "b7e28a7",
+        "build_date" : "2019-04-05T22:55:32.697037Z",
+        "build_snapshot" : false,
+        "lucene_version" : "8.0.0",
+        "minimum_wire_compatibility_version" : "6.7.0",
+        "minimum_index_compatibility_version" : "6.0.0-beta1"
+      },
+      "tagline" : "You Know, for Search"
+    }
+    ```
 
-#### Retrieve the CA certificate
-
-TLS encryption is enabled by default. To perform certificate verification from the client, retrieve the CA certificate used to issue Elasticsearch nodes certificates:
-
-```bash
-kubectl get secret quickstart-ca -o jsonpath="{.data['ca\.pem']}"
-```
-
-## Deploy Kibana
+## Deploy the Kibana instance
 
 ### Target the Elasticsearch cluster
 
-Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
+Specify a Kibana instance to target your quickstart Elasticsearch cluster:
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -171,18 +163,8 @@ metadata:
 spec:
   version: 7.0.0
   nodeCount: 1
----
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  name: kibana-es-quickstart
-spec:
-  elasticsearch:
+  elasticsearchRef:
     name: quickstart
-    namespace: default
-  kibana:
-    name: quickstart
-    namespace: default
 EOF
 ```
 
@@ -216,9 +198,9 @@ kubectl port-forward service/quickstart-kibana 5601
 
 You can then open http://localhost:5601 in your browser.
 
-## Upgrade your deployment
+## Modify your deployment
 
-We can easily apply any modification to the original cluster specification. The operator makes sure that changes are applied to the existing cluster, avoiding downtime.
+You can apply any modification to the original cluster specification. The operator makes sure that changes are applied to the existing cluster, avoiding downtime.
 
 Grow the cluster to 3 nodes:
 
@@ -240,16 +222,16 @@ spec:
 EOF
 ```
 
-## Going further
+## Deep dive
 
-### Securing your cluster
+### Secure your cluster
 
 To secure your production-grade Elasticsearch deployment, you can:
 
 * Use XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
-* Set up an ingress proxy layer ([example using NGINX](https://github.com/elastic/k8s-operators/blob/master/operators/config/samples/ingress/nginx-ingress.yaml))
+* Set up an ingress proxy layer ([example using NGINX](https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/ingress/nginx-ingress.yaml))
 
-### Using persistent storage
+### Use persistent storage
 
 The quickstart cluster you have just deployed uses an [emptyDir volume](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir), which may not qualify for production workloads. 
 
@@ -283,7 +265,7 @@ spec:
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
  
- * [elastic local volume dynamic provisioner](https://github.com/elastic/k8s-operators/tree/master/local-volume) to setup dynamic local volumes based on LVM
+ * [elastic local volume dynamic provisioner](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume) to setup dynamic local volumes based on LVM
  * [kubernetes-sigs local volume static provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to setup static local volumes
  
 ### Additional features

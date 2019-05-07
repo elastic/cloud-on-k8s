@@ -7,13 +7,13 @@ package services
 import (
 	"strconv"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -80,9 +80,10 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      ExternalServiceName(es.Name),
-			Labels:    label.NewLabels(nsn),
+			Namespace:   es.Namespace,
+			Name:        ExternalServiceName(es.Name),
+			Labels:      label.NewLabels(nsn),
+			Annotations: es.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: label.NewLabels(nsn),
@@ -94,7 +95,7 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(es.Spec.Expose),
+			Type:            common.GetServiceType(es.Spec.HTTP.Service.Spec.Type),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {

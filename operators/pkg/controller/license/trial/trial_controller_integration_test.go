@@ -12,9 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,15 +117,15 @@ func TestReconcile(t *testing.T) {
 	var trialStatus corev1.Secret
 	trialStatusKey := types.NamespacedName{
 		Namespace: "elastic-system",
-		Name:      trialStatusSecretKey,
+		Name:      license.TrialStatusSecretKey,
 	}
 	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
-	trialStatus.Data[pubkeyKey] = []byte("foobar")
+	trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
 	require.NoError(t, c.Update(&trialStatus))
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
 		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
-		if bytes.Equal(trialStatus.Data[pubkeyKey], []byte("foobar")) {
+		if bytes.Equal(trialStatus.Data[license.TrialPubkeyKey], []byte("foobar")) {
 			return errors.New("Manipulated secret has not been corrected")
 		}
 		return nil

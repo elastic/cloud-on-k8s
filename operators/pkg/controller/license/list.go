@@ -5,8 +5,9 @@
 package license
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -17,7 +18,7 @@ func listAffectedLicenses(c k8s.Client, enterpriseLicense types.NamespacedName) 
 	var list = v1alpha1.ClusterLicenseList{}
 	// list all cluster licenses referencing the given enterprise license
 	err := c.List(&client.ListOptions{
-		LabelSelector: NewLicenseSelector(enterpriseLicense),
+		LabelSelector: license.NewLicenseSelector(enterpriseLicense),
 	}, &list)
 	if err != nil {
 		return requests, err

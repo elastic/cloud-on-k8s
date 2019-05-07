@@ -5,36 +5,50 @@ kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
         node.data: true
         node.ingest: true
-      resources:
-        limits:
-          memory: 1Gi
-          cpu: 500m
+      podTemplate:
+        spec:
+          containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
   name: trust-two
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
         node.data: true
         node.ingest: true
-      resources:
-        limits:
-          memory: 1Gi
-          cpu: 500m
+      podTemplate:
+        spec:
+          containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: TrustRelationship

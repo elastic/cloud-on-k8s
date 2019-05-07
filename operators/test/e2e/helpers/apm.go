@@ -13,10 +13,10 @@ import (
 	"net/http"
 	"time"
 
-	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

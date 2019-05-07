@@ -24,6 +24,12 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - "pods/exec"
+    verbs:
+      - "create"
+  - apiGroups:
+      - ""
+    resources:
       - pods
       - services
       - endpoints
@@ -32,6 +38,8 @@ rules:
       - get
       - list
       - watch
+      - delete
+      - create
   - apiGroups:
       - "apps"
     resources:
@@ -40,6 +48,7 @@ rules:
       - get
       - list
       - watch
+      - delete
   - apiGroups:
       - elasticsearch.k8s.elastic.co
     resources:
@@ -82,8 +91,6 @@ rules:
   - apiGroups:
       - associations.k8s.elastic.co
     resources:
-      - kibanaelasticsearchassociations
-      - kibanaelasticsearchassociations/status
       - apmserverelasticsearchassociations
       - apmserverelasticsearchassociations/status
     verbs:

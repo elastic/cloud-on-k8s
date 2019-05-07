@@ -7,8 +7,8 @@ package version6
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/magiconair/properties/assert"
 	corev1 "k8s.io/api/core/v1"
 )

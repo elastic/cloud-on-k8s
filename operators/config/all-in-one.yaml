@@ -97,8 +97,6 @@ rules:
   resources:
   - apmserverelasticsearchassociations
   - apmserverelasticsearchassociations/status
-  - kibanaelasticsearchassociations
-  - kibanaelasticsearchassociations/status
   verbs:
   - get
   - list
@@ -164,7 +162,7 @@ spec:
     spec:
       serviceAccountName: elastic-operator
       containers:
-      - image: eu.gcr.io/elastic-cloud-dev/k8s-operators:latest
+      - image: eu.gcr.io/elastic-cloud-dev/eck-operators:latest
         imagePullPolicy: Always
         name: manager
         args: ["manager", "--development", "--operator-roles", "all"]
@@ -178,7 +176,7 @@ spec:
           - name: WEBHOOK_PODS_LABEL
             value: elastic-operator
           - name: OPERATOR_IMAGE
-            value: eu.gcr.io/elastic-cloud-dev/k8s-operators:latest
+            value: eu.gcr.io/elastic-cloud-dev/eck-operators:latest
         resources:
           limits:
             cpu: 100m

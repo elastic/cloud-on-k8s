@@ -10,15 +10,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis"
-	"github.com/elastic/k8s-operators/operators/pkg/controller"
-	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
-	"github.com/elastic/k8s-operators/operators/pkg/webhook"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -205,10 +205,12 @@ func execute() {
 		log.Error(err, "invalid roles specified")
 		os.Exit(1)
 	}
+	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:               dialer,
 		OperatorImage:        operatorImage,
+		OperatorNamespace:    operatorNamespace,
 		CACertValidity:       caCertValidity,
 		CACertRotateBefore:   caCertRotateBefore,
 		NodeCertValidity:     nodeCertValidity,

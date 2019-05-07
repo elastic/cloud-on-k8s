@@ -1,26 +1,10 @@
 # This sample sets up an Elasticsearch cluster and a Kibana instance preconfigured for that cluster
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: kibana-es-sample
-spec:
-  elasticsearch:
-    name: "elasticsearch-sample"
-    namespace: "default"
-  kibana:
-    name: "kibana-sample"
-    namespace: "default"
----
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   updateStrategy:
     groups:
     # give each failure domain a chance to reconcile failures before regular changes:
@@ -43,16 +27,20 @@ spec:
       node.data: true
       xpack.license.self_generated.type: trial
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 1000m
+    # this shows how to customize the Elasticsearch pod
+    # with labels and resource limits
+    podTemplate:
+      metadata:
+        labels:
+          foo: bar
+      spec:
+        containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
     nodeCount: 3
-    ## this shows how to add a custom label to all pods created for this topology element
-    #template:
-    #  metadata:
-    #    labels:
-    #      foo: bar
     ## this shows how to request 2Gi of persistent data storage for pods in this topology element
     #volumeClaimTemplates:
     #- metadata:
@@ -69,10 +57,6 @@ spec:
       node.data: false
       node.ingest: false
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 800m
     nodeCount: 0
   # dedicated data nodes
   - config:
@@ -80,20 +64,22 @@ spec:
       node.data: true
       node.ingest: false
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 800m
     nodeCount: 0
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodeCount: 1
-  expose: LoadBalancer
+  elasticsearchRef:
+    name: "elasticsearch-sample"
+  http:
+    service:
+      spec:
+        type: LoadBalancer

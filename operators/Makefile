@@ -6,6 +6,8 @@
 ##  --      Variables      --  ##
 #################################
 
+ROOT_DIR = $(shell dirname $(CURDIR))
+
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
@@ -25,12 +27,13 @@ ifeq ($(REGISTRY),)
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG ?= $(REGISTRY)/$(REPOSITORY)/k8s-operators$(IMG_SUFFIX)
+IMG_NAME ?= eck-operators
+IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
 # use git sha1 as the default image tag
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
-LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/k8s-operators:latest"
+LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/eck-operators:latest"
 
 ## -- Namespaces
 
@@ -59,33 +62,37 @@ dep-vendor-only:
 
 # Generate API types code and manifests from annotations e.g. CRD, RBAC etc.
 generate:
-	go generate ./pkg/... ./cmd/...
+	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
 	# combine all crds into one for easy installation
 	for yaml in $$(ls config/crds/*); do \
 		cat $$yaml && echo -e "\n---\n" ; \
 	done > config/crds.yaml
-	$(MAKE) generate-all-in-one
+	$(MAKE) --no-print-directory generate-all-in-one
 
 elastic-operator: generate
-	go build -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
+	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 
 process-manager:
-	go build -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
+	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
 cert-initializer:
-	go build -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd
 
+clean:
+	rm -f pkg/controller/common/license/zz_generated.pubkey.go
+
 ## -- tests
 
-unit:
+unit: clean
 	go test ./pkg/... ./cmd/... -coverprofile cover.out
 
-integration: generate
-	go test -tags=integration ./pkg/... ./cmd/... -coverprofile cover.out
+integration: GO_TAGS += integration
+integration: clean generate
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
@@ -127,19 +134,20 @@ endif
 deploy: check-gke install-crds docker-build docker-push
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) -sC config/operator generate-global | kubectl apply -f -
+		$(MAKE) --no-print-directory -sC config/operator generate-global | kubectl apply -f -
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	NAMESPACE=$(NAMESPACE_OPERATOR_NAMESPACE) \
 	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
-		$(MAKE) -sC config/operator generate-namespace | kubectl apply -f -
+		$(MAKE) --no-print-directory -sC config/operator generate-namespace | kubectl apply -f -
 
 generate-all-in-one:
 	# TODO: replace the image name with the final released name (docker.elastic.co/k8s-operators/k8s-operators ?)
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
-		$(MAKE) --no-print-directory -C config/operator generate-all-in-one > config/all-in-one.yaml
+		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one > config/all-in-one.yaml
 
 # Deploy an all in one operator against the current k8s cluster
+deploy-all-in-one: GO_TAGS ?= release
 deploy-all-in-one: install-crds docker-build docker-push
 	kubectl apply -f config/all-in-one.yaml
 
@@ -227,7 +235,7 @@ force-push-latest-operator-image-in-local-registry:
 #################################
 
 docker-build:
-	docker build . -t $(OPERATOR_IMAGE)
+	docker build . --build-arg GO_TAGS='$(GO_TAGS)' -t $(OPERATOR_IMAGE)
 
 docker-push:
 ifeq ($(RELEASE), true)
@@ -294,6 +302,8 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
 
+ci-release: export GO_TAGS = release
+ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ hack/gke-cluster.sh registry
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push

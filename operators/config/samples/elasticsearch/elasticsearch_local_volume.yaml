@@ -7,11 +7,19 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: es-local-volume-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
   - config:
       node.master: true
       node.data: true
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 1
     nodeCount: 3
     volumeClaimTemplates:
     - metadata:

@@ -8,8 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 							Labels: map[string]string{
-								EnterpriseLicenseLabelName: "enterprise-license",
+								license.EnterpriseLicenseLabelName: "enterprise-license",
 							},
 						},
 					},

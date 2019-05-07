@@ -47,7 +47,7 @@ create_cluster() {
         --local-ssd-count "${GKE_LOCAL_SSD_COUNT}" --scopes "${GKE_GCP_SCOPES}" --num-nodes "${GKE_NODE_COUNT_PER_ZONE}" \
         --enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing \
         --no-enable-autoupgrade --no-enable-autorepair --network "projects/${GCLOUD_PROJECT}/global/networks/default" \
-        --subnetwork "projects/${GCLOUD_PROJECT}/regions/europe-west3/subnetworks/default"
+        --subnetwork "projects/${GCLOUD_PROJECT}/regions/${GKE_CLUSTER_REGION}/subnetworks/default"
 
     # Export credentials for kubelet
     gcloud beta container --project ${GCLOUD_PROJECT} clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}

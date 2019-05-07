@@ -5,8 +5,9 @@
 package v1alpha1
 
 import (
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 )
 
 // RemoteClusterSpec defines the desired state of RemoteCluster.
@@ -16,7 +17,7 @@ type RemoteClusterSpec struct {
 
 // RemoteClusterRef defines a Elasticsearch cluster that is hosted in the same K8S cluster.
 type RemoteClusterRef struct {
-	K8sLocalRef assoctype.ObjectSelector `json:"k8sLocalRef"`
+	K8sLocalRef commonv1alpha1.ObjectSelector `json:"k8sLocalRef"`
 }
 
 // RemoteClusterStatus defines the observed state of RemoteCluster.
@@ -30,8 +31,8 @@ type RemoteClusterStatus struct {
 
 // LocalRefStatus defines the state of the K8S local driver state.
 type LocalRefStatus struct {
-	RemoteSelector          assoctype.ObjectSelector `json:"remoteSelector,omitempty"`
-	RemoteTrustRelationship string                   `json:"remoteTrustRelationship,omitempty"`
+	RemoteSelector          commonv1alpha1.ObjectSelector `json:"remoteSelector,omitempty"`
+	RemoteTrustRelationship string                        `json:"remoteTrustRelationship,omitempty"`
 }
 
 // RemoteClusterPhase defines the current phase of the deployment of the RemoteCluster
@@ -43,6 +44,7 @@ const (
 	RemoteClusterRemovalFailed   RemoteClusterPhase = "RemovalFailed"
 	RemoteClusterPending         RemoteClusterPhase = "Pending"
 	RemoteClusterDeletionPending RemoteClusterPhase = "DeletionPending"
+	RemoteClusterFeatureDisabled RemoteClusterPhase = "EnterpriseFeaturesDisabled"
 )
 
 // +genclient

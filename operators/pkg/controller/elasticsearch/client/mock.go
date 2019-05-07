@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 )
 
 type RoundTripFunc func(req *http.Request) *http.Response

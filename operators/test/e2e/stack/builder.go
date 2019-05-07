@@ -5,25 +5,37 @@
 package stack
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const defaultVersion = "6.7.0"
+const defaultVersion = "6.7.2"
 
-var DefaultResources = common.ResourcesSpec{
+var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1G"),
-		corev1.ResourceCPU:    resource.MustParse("500m"),
+		corev1.ResourceMemory: resource.MustParse("2G"),
+		corev1.ResourceCPU:    resource.MustParse("2"),
 	},
+}
+
+func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:      v1alpha1.ElasticsearchContainerName,
+					Resources: resources,
+				},
+			},
+		},
+	}
 }
 
 // -- Stack
@@ -31,15 +43,10 @@ var DefaultResources = common.ResourcesSpec{
 type Builder struct {
 	Elasticsearch estype.Elasticsearch
 	Kibana        kbtype.Kibana
-	Association   v1alpha1.KibanaElasticsearchAssociation
 }
 
 func NewStackBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
-		Name:      name,
-		Namespace: helpers.DefaultNamespace,
-	}
-	selector := v1alpha1.ObjectSelector{
 		Name:      name,
 		Namespace: helpers.DefaultNamespace,
 	}
@@ -55,13 +62,10 @@ func NewStackBuilder(name string) Builder {
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
 				Version: defaultVersion,
-			},
-		},
-		Association: v1alpha1.KibanaElasticsearchAssociation{
-			ObjectMeta: meta,
-			Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
-				Elasticsearch: selector,
-				Kibana:        selector,
+				ElasticsearchRef: commonv1alpha1.ObjectSelector{
+					Name:      name,
+					Namespace: helpers.DefaultNamespace,
+				},
 			},
 		},
 	}
@@ -70,9 +74,7 @@ func NewStackBuilder(name string) Builder {
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.Elasticsearch.ObjectMeta.Namespace = namespace
 	b.Kibana.ObjectMeta.Namespace = namespace
-	b.Association.Namespace = namespace
-	b.Association.Spec.Kibana.Namespace = namespace
-	b.Association.Spec.Elasticsearch.Namespace = namespace
+	b.Kibana.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 
@@ -89,39 +91,37 @@ func (b Builder) WithNoESTopology() Builder {
 	return b
 }
 
-func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Builder {
-	return b.withESTopologyElement(estype.NodeSpec{
-		NodeCount: int32(count),
-		Config: &estype.Config{Data: map[string]interface{}{
-			estype.NodeMaster: "true",
-		},
-		},
-		Resources: resources,
-	})
-}
-
-func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Builder {
+func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
 			Data: map[string]interface{}{
-				estype.NodeData: "true",
+				estype.NodeData: "false",
 			},
 		},
-		Resources: resources,
+		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec) Builder {
+func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
 			Data: map[string]interface{}{
-				estype.NodeMaster: "true",
-				estype.NodeData:   "true",
+				estype.NodeMaster: "false",
 			},
 		},
-		Resources: resources,
+		PodTemplate: ESPodTemplate(resources),
+	})
+}
+
+func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
+	return b.withESTopologyElement(estype.NodeSpec{
+		NodeCount: int32(count),
+		Config: &estype.Config{
+			Data: map[string]interface{}{},
+		},
+		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
@@ -149,5 +149,5 @@ func (b Builder) WithKibana(count int) Builder {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.Elasticsearch, &b.Kibana, &b.Association}
+	return []runtime.Object{&b.Elasticsearch, &b.Kibana}
 }

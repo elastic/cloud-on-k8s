@@ -7,8 +7,9 @@ package comparison
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -54,9 +55,9 @@ func PodMatchesSpec(podWithConfig pod.PodWithConfig, spec pod.PodSpecContext, st
 // getEsContainer returns the elasticsearch container in the given pod
 func getEsContainer(containers []corev1.Container) (corev1.Container, error) {
 	for _, c := range containers {
-		if c.Name == pod.DefaultContainerName {
+		if c.Name == v1alpha1.ElasticsearchContainerName {
 			return c, nil
 		}
 	}
-	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", pod.DefaultContainerName)
+	return corev1.Container{}, fmt.Errorf("no container named %s in the given pod", v1alpha1.ElasticsearchContainerName)
 }

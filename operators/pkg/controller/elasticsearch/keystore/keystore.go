@@ -5,21 +5,12 @@
 package keystore
 
 import (
-	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
-	"strings"
-)
-
-const (
-	// StringSettingPrefix is used to prefix a string secure setting
-	StringSettingPrefix string = "es.string."
-	// FileSettingPrefix is used to prefix a file secure setting
-	FileSettingPrefix string = "es.file."
 )
 
 // Keystore is used to manage settings stored in the Elasticsearch keystore.
@@ -30,12 +21,8 @@ type Keystore interface {
 	Delete() (bool, error)
 	// ListSettings lists the settings in the keystore
 	ListSettings() (string, error)
-	// AddSetting adds either a file or string setting to the keystore, depending on the file prefix
+	// AddSetting adds a file setting to the keystore
 	AddSetting(filename string) error
-	// AddFileSetting adds a file setting to the keystore
-	AddFileSetting(filename string) error
-	// AddFileSettings adds a string setting to the keystore from a file content
-	AddStringSetting(filename string) error
 }
 
 // CmdRunner runs an exec.Cmd. It is mostly used as an abstraction for testing purpose.
@@ -92,35 +79,15 @@ func (c keystore) ListSettings() (string, error) {
 	return settings, nil
 }
 
-// AddSetting adds either a file or string setting to the keystore, depending on the file prefix.
-// It defaults to a string setting if no prefix is set.
+// AddSetting adds the content of a file in the keystore
+// It it safe because there is no distinction between file and string settings since ES 6.8/7.1
 func (c keystore) AddSetting(filename string) error {
-	if strings.HasPrefix(filename, FileSettingPrefix) {
-		return c.AddFileSetting(filename)
-	}
-	return c.AddStringSetting(filename)
-}
-
-func (c keystore) AddFileSetting(filename string) error {
-	settingName := strings.TrimPrefix(filename, FileSettingPrefix)
-	cmd := exec.Command(c.binaryPath, "add-file", settingName, path.Join(c.settingsPath, filename))
+	cmd := exec.Command(c.binaryPath, "add-file", filename, path.Join(c.settingsPath, filename))
 	return c.cmdRunner.Run(cmd)
 }
 
 func (c keystore) readSettingFileContent(filename string) ([]byte, error) {
 	return ioutil.ReadFile(path.Join(c.settingsPath, filename))
-}
-
-func (c keystore) AddStringSetting(filename string) error {
-	value, err := c.readSettingFileContent(filename)
-	if err != nil {
-		return err
-	}
-	settingName := strings.TrimPrefix(filename, StringSettingPrefix)
-	cmd := exec.Command(c.binaryPath, "add", settingName)
-	// pipe the file content into stdin to set the string setting value
-	cmd.Stdin = bytes.NewBuffer(value)
-	return c.cmdRunner.Run(cmd)
 }
 
 func (c keystore) Delete() (bool, error) {
