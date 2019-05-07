@@ -11,10 +11,14 @@ spec:
         node.data: true
         node.ingest: true
         xpack.license.self_generated.type: trial
-      resources:
-        limits:
-          memory: 1Gi
-          cpu: 1
+      podTemplate:
+        spec:
+          containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
       nodeCount: 1
   http:
     service:
@@ -34,10 +38,14 @@ spec:
         node.data: true
         node.ingest: true
         xpack.license.self_generated.type: trial
-      resources:
-        limits:
-          memory: 1Gi
-          cpu: 1
+      podTemplate:
+        spec:
+          containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
       nodeCount: 1
   http:
     service:

@@ -5,7 +5,6 @@
 package stack
 
 import (
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
@@ -18,11 +17,24 @@ import (
 
 const defaultVersion = "6.7.2"
 
-var DefaultResources = common.ResourcesSpec{
+var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
 		corev1.ResourceMemory: resource.MustParse("2G"),
 		corev1.ResourceCPU:    resource.MustParse("2"),
 	},
+}
+
+func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
+	return corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:      "elasticsearch",
+					Resources: resources,
+				},
+			},
+		},
+	}
 }
 
 // -- Stack
@@ -78,18 +90,19 @@ func (b Builder) WithNoESTopology() Builder {
 	return b
 }
 
-func (b Builder) WithESMasterNodes(count int, resources common.ResourcesSpec) Builder {
+func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		Config: &estype.Config{Data: map[string]interface{}{
-			estype.NodeData: "false",
+		Config: &estype.Config{
+			Data: map[string]interface{}{
+				estype.NodeData: "false",
+			},
 		},
-		},
-		Resources: resources,
+		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Builder {
+func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
@@ -97,17 +110,17 @@ func (b Builder) WithESDataNodes(count int, resources common.ResourcesSpec) Buil
 				estype.NodeMaster: "false",
 			},
 		},
-		Resources: resources,
+		PodTemplate: ESPodTemplate(resources),
 	})
 }
 
-func (b Builder) WithESMasterDataNodes(count int, resources common.ResourcesSpec) Builder {
+func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
 		Config: &estype.Config{
 			Data: map[string]interface{}{},
 		},
-		Resources: resources,
+		PodTemplate: ESPodTemplate(resources),
 	})
 }
 

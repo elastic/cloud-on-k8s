@@ -5,7 +5,6 @@
 package pod
 
 import (
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
@@ -22,9 +21,6 @@ const (
 
 	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
 	DefaultTerminationGracePeriodSeconds int64 = 120
-
-	// DefaultContainerName is the name of the elasticsearch container
-	DefaultContainerName = "elasticsearch"
 )
 
 var (
@@ -79,7 +75,7 @@ type NewPodSpecParams struct {
 	SetVMMaxMapCount *bool
 
 	// Resources is the memory/cpu resources the pod wants
-	Resources commonv1alpha1.ResourcesSpec
+	Resources corev1.ResourceRequirements
 
 	// ESConfigVolume is the secret volume that contains elasticsearch.yml configuration
 	ESConfigVolume volume.SecretVolume

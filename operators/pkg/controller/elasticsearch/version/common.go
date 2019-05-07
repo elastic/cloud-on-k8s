@@ -47,6 +47,13 @@ func NewExpectedPodSpecs(
 			if node.Config != nil {
 				cfg = *node.Config
 			}
+
+			esContainerResources := corev1.ResourceRequirements{}
+			esContainerTpl := node.GetESContainerTemplate()
+			if esContainerTpl != nil {
+				esContainerResources = esContainerTpl.Resources
+			}
+
 			params := pod.NewPodSpecParams{
 				Version:              es.Spec.Version,
 				CustomImageName:      es.Spec.Image,
@@ -55,7 +62,7 @@ func NewExpectedPodSpecs(
 				Config:               cfg,
 				Affinity:             node.PodTemplate.Spec.Affinity,
 				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
-				Resources:            node.Resources,
+				Resources:            esContainerResources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
 				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
@@ -146,7 +153,7 @@ func podSpec(
 			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
-			Name:            pod.DefaultContainerName,
+			Name:            v1alpha1.ElasticsearchContainerName,
 			Ports:           pod.DefaultContainerPorts,
 			Resources: corev1.ResourceRequirements{
 				Limits: resourceLimits,
