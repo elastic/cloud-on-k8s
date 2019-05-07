@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
@@ -93,6 +94,7 @@ func TestNewValidationContext(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	invalidIP := "notanip"
 	type args struct {
 		es estype.Elasticsearch
 	}
@@ -147,6 +149,17 @@ func TestValidate(t *testing.T) {
 					},
 					Spec: estype.ElasticsearchSpec{
 						Version: "1.0.0",
+						HTTP: common.HTTPConfig{
+							TLS: common.TLSOptions{
+								SelfSignedCertificate: &common.SelfSignedCertificate{
+									SubjectAlternativeNames: []common.SubjectAlternativeName{
+										{
+											IP: invalidIP,
+										},
+									},
+								},
+							},
+						},
 						Nodes: []estype.NodeSpec{
 							{
 								NodeCount: 1,
@@ -167,6 +180,7 @@ func TestValidate(t *testing.T) {
 				masterRequiredMsg,
 				"unsupported version",
 				"is not user configurable",
+				invalidSanIPErrMsg,
 			},
 		},
 	}

@@ -5,7 +5,9 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	netutil "github.com/elastic/k8s-operators/operators/pkg/utils/net"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/set"
 )
 
@@ -24,6 +27,7 @@ var Validations = []Validation{
 	noDowngrades,
 	validUpgradePath,
 	noBlacklistedSettings,
+	validSanIP,
 }
 
 // nameLength checks the length of the Elasticsearch name.
@@ -108,4 +112,24 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 		Allowed: false,
 		Reason:  sb.String(),
 	}
+}
+
+func validSanIP(ctx Context) validation.Result {
+	selfSignedCerts := ctx.Proposed.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate
+	if selfSignedCerts != nil {
+		for _, san := range selfSignedCerts.SubjectAlternativeNames {
+			if san.IP != "" {
+				ip := netutil.MaybeIPTo4(net.ParseIP(san.IP))
+				if ip == nil {
+					msg := fmt.Sprintf("%s: %s", invalidSanIPErrMsg, san.IP)
+					return validation.Result{
+						Error:   errors.New(msg),
+						Reason:  msg,
+						Allowed: false,
+					}
+				}
+			}
+		}
+	}
+	return validation.OK
 }
