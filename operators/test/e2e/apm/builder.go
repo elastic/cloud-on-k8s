@@ -26,12 +26,12 @@ type Builder struct {
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	ref := b.ApmServer.Spec.Output.Elasticsearch.Ref
+	ref := b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef
 	if ref == nil {
 		ref = &common.ObjectSelector{}
 	}
 	ref.Namespace = namespace
-	b.ApmServer.Spec.Output.Elasticsearch.Ref = ref
+	b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef = ref
 	return b
 }
 

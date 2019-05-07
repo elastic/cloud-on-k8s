@@ -187,7 +187,7 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
 	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// no auto-association nothing to do
-	elasticsearchRef := apmServer.Spec.Output.Elasticsearch.Ref
+	elasticsearchRef := apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
 	if elasticsearchRef == nil {
 		return "", nil
 	}
@@ -221,7 +221,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
-	expectedEsConfig.Ref = apmServer.Spec.Output.Elasticsearch.Ref
+	expectedEsConfig.ElasticsearchRef = apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
 
 	// TODO: look up CA name from the ES cluster resource
 	var publicCACertSecret corev1.Secret

@@ -36,7 +36,7 @@ var apmFixture = apmtype.ApmServer{
 	Spec: apmtype.ApmServerSpec{
 		Output: apmtype.Output{
 			Elasticsearch: apmtype.ElasticsearchOutput{
-				Ref: &commonv1alpha1.ObjectSelector{
+				ElasticsearchRef: &commonv1alpha1.ObjectSelector{
 					Name:      "es",
 					Namespace: "default",
 				},
@@ -167,7 +167,7 @@ func Test_reconcileEsUser(t *testing.T) {
 					Spec: apmtype.ApmServerSpec{
 						Output: apmtype.Output{
 							Elasticsearch: apmtype.ElasticsearchOutput{
-								Ref: &commonv1alpha1.ObjectSelector{
+								ElasticsearchRef: &commonv1alpha1.ObjectSelector{
 									Name:      "es",
 									Namespace: "ns-1",
 								},

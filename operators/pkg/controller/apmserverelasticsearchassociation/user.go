@@ -34,7 +34,7 @@ func apmUserObjectName(assocName string) string {
 // userKey is the namespaced name to identify the customer user resource created by the controller.
 func userKey(apm apmtype.ApmServer) *types.NamespacedName {
 
-	ref := apm.Spec.Output.Elasticsearch.Ref
+	ref := apm.Spec.Output.Elasticsearch.ElasticsearchRef
 	if ref == nil {
 		return nil
 	}
@@ -107,7 +107,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := label.NewLabels(apm.Spec.Output.Elasticsearch.Ref.NamespacedName())
+	userLabels := label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
 	usrKey := userKey(apm)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{

@@ -46,8 +46,8 @@ type Output struct {
 
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
-	// Ref allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
-	Ref *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
+	// ElasticsearchRef allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
+	ElasticsearchRef *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
 
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`

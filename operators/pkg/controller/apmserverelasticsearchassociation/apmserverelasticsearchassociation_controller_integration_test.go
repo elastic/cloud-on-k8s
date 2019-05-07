@@ -51,6 +51,17 @@ func TestReconcile(t *testing.T) {
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
+	// consume req requests in background, to let reconciliations go through
+	go func() {
+		for {
+			select {
+			case <-requests:
+			case <-stopMgr:
+				return
+			}
+		}
+	}()
+
 	defer func() {
 		close(stopMgr)
 		mgrStopped.Wait()
@@ -72,7 +83,7 @@ func TestReconcile(t *testing.T) {
 		Spec: apmv1alpha1.ApmServerSpec{
 			Output: apmv1alpha1.Output{
 				Elasticsearch: apmv1alpha1.ElasticsearchOutput{
-					Ref: &commonv1alpha1.ObjectSelector{
+					ElasticsearchRef: &commonv1alpha1.ObjectSelector{
 						Name:      "foo",
 						Namespace: "default",
 					},
@@ -90,10 +101,6 @@ func TestReconcile(t *testing.T) {
 	}
 	assert.NoError(t, err)
 	defer c.Delete(&as)
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// let's wait until the Apm Server update triggers another reconcile iteration
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-
 	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
 
 	// ApmServer should be updated
@@ -103,9 +110,21 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		switch {
-		case !apmServer.Spec.Output.Elasticsearch.IsConfigured():
+
+		if !apmServer.Spec.Output.Elasticsearch.IsConfigured() {
 			return errors.New("Not reconciled yet")
+		}
+		return nil
+	})
+
+	test.RetryUntilSuccess(t, func() error {
+		err := c.Get(apmKey, apmServer)
+		if err != nil {
+			return err
+		}
+		switch apmServer.Status.Association {
+		case "":
+			return errors.New("No status yet")
 		default:
 			assert.Equal(t, commonv1alpha1.AssociationEstablished, apmServer.Status.Association)
 			return nil
@@ -117,7 +136,6 @@ func TestReconcile(t *testing.T) {
 	test.DeleteIfExists(t, c, caSecret)
 
 	// Ensure association goes back to pending if one of the vertices is deleted
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
 		fetched := apmv1alpha1.ApmServer{}
 		err := c.Get(apmKey, &fetched)
