@@ -80,9 +80,10 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      ExternalServiceName(es.Name),
-			Labels:    label.NewLabels(nsn),
+			Namespace:   es.Namespace,
+			Name:        ExternalServiceName(es.Name),
+			Labels:      label.NewLabels(nsn),
+			Annotations: es.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: label.NewLabels(nsn),
@@ -94,7 +95,7 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(es.Spec.Expose),
+			Type:            common.GetServiceType(es.Spec.HTTP.Service.Spec.Type),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {

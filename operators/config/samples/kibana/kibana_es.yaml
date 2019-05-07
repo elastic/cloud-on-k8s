@@ -85,7 +85,10 @@ spec:
         memory: 1Gi
         cpu: 800m
     nodeCount: 0
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
@@ -96,4 +99,7 @@ metadata:
 spec:
   version: "6.7.2"
   nodeCount: 1
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer

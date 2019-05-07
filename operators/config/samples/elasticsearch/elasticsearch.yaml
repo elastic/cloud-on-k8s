@@ -37,4 +37,7 @@ spec:
   ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
   # secureSettings:
   #   secretName: "ref-to-secret"
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer
