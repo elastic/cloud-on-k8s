@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

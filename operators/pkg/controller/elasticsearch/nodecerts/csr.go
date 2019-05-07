@@ -12,8 +12,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 )

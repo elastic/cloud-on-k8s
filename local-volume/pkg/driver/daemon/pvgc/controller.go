@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/drivers"
-	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/daemon/drivers"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/provider"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"

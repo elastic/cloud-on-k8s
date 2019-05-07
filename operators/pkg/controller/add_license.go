@@ -5,9 +5,9 @@
 package controller
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/license"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/license/trial"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/trial"
 )
 
 func init() {

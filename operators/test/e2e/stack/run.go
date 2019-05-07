@@ -7,7 +7,7 @@ package stack
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 )
 
 // RunCreationMutationDeletionTests does exactly what its names is suggesting :)

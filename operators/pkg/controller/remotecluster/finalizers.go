@@ -5,10 +5,10 @@
 package remotecluster
 
 import (
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 )
 
 // watchFinalizer ensure that we remove watches for Secrets  we are no longer interested in

@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/set"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/set"
 )
 
 // Validations are all registered Elasticsearch validations.

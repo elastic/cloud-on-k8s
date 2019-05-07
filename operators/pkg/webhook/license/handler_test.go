@@ -10,8 +10,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/admission/v1beta1"

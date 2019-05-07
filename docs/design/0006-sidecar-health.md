@@ -122,6 +122,6 @@ seen secret revison y.
 
 ## Links
 
-* [Discussion issue](https://github.com/elastic/k8s-operators/issues/432)
+* [Discussion issue](https://github.com/elastic/cloud-on-k8s/issues/432)
 * https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
 * https://www.elastic.co/guide/en/beats/filebeat/master/running-on-kubernetes.html

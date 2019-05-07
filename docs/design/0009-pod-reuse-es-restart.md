@@ -25,7 +25,7 @@ Reusing pods may also be useful in other situations, where simply restarting Ela
 
 ## Considered Options
 
-There's a single option outlined in this proposal. [This issue](https://github.com/elastic/k8s-operators/issues/454) contains other draft algorithm implementations.
+There's a single option outlined in this proposal. [This issue](https://github.com/elastic/cloud-on-k8s/issues/454) contains other draft algorithm implementations.
 
 Other options that are considered not good enough:
 
@@ -205,7 +205,7 @@ Chosen option: option 1, because that's the only one we have here? :)
 
 ## Links
 
-* [https://github.com/elastic/k8s-operators/issues/454] Full cluster restart issue
-* [https://github.com/elastic/k8s-operators/issues/453] Basic license support issue
+* [https://github.com/elastic/cloud-on-k8s/issues/454] Full cluster restart issue
+* [https://github.com/elastic/cloud-on-k8s/issues/453] Basic license support issue
 * [https://www.elastic.co/guide/en/elasticsearch/reference/current/restart-upgrade.html] Elasticsearch full cluster restart upgrade
 * [https://www.elastic.co/guide/en/elasticsearch/reference/current/rolling-upgrades.html] Elasticsearch rolling cluster restart upgrade

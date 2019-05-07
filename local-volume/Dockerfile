@@ -1,7 +1,7 @@
 FROM golang:1.11 as builder
 
 # Build
-WORKDIR /go/src/github.com/elastic/k8s-operators/local-volume
+WORKDIR /go/src/github.com/elastic/cloud-on-k8s/local-volume
 
 COPY vendor/ vendor/
 COPY pkg/    pkg/
@@ -15,8 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 && \
 
 # Copy artefacts
 WORKDIR /app/
-RUN cp /go/src/github.com/elastic/k8s-operators/local-volume/bin/* . && \
-    cp /go/src/github.com/elastic/k8s-operators/local-volume/scripts/* . && \
+RUN cp /go/src/github.com/elastic/cloud-on-k8s/local-volume/bin/* . && \
+    cp /go/src/github.com/elastic/cloud-on-k8s/local-volume/scripts/* . && \
     rm -r /go/src/
 
 # --

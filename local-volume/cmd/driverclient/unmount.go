@@ -7,7 +7,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/client"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/client"
 	"github.com/spf13/cobra"
 )
 

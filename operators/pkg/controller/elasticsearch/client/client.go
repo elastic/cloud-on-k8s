@@ -13,8 +13,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 

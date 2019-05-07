@@ -7,8 +7,8 @@ package provisioner
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
-	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/protocol"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/provider"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/resource"
 

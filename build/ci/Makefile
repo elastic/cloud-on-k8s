@@ -5,7 +5,7 @@
 # This Makefile is mostly used for continuous integration.
 
 ROOT_DIR = $(CURDIR)/../..
-GO_MOUNT_PATH ?= /go/src/github.com/elastic/k8s-operators
+GO_MOUNT_PATH ?= /go/src/github.com/elastic/cloud-on-k8s
 
 VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json

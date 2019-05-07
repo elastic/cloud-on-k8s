@@ -239,7 +239,7 @@ EOF
 To secure your production-grade Elasticsearch deployment, you can:
 
 * Use XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
-* Set up an ingress proxy layer ([example using NGINX](https://github.com/elastic/k8s-operators/blob/master/operators/config/samples/ingress/nginx-ingress.yaml))
+* Set up an ingress proxy layer ([example using NGINX](https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/ingress/nginx-ingress.yaml))
 
 ### Use persistent storage
 
@@ -275,7 +275,7 @@ spec:
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
  
- * [elastic local volume dynamic provisioner](https://github.com/elastic/k8s-operators/tree/master/local-volume) to setup dynamic local volumes based on LVM
+ * [elastic local volume dynamic provisioner](https://github.com/elastic/cloud-on-k8s/tree/master/local-volume) to setup dynamic local volumes based on LVM
  * [kubernetes-sigs local volume static provisioner](https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner) to setup static local volumes
  
 ### Additional features

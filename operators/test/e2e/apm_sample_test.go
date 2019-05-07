@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/test/e2e/apm"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
-	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 

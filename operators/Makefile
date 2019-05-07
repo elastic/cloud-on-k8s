@@ -69,13 +69,13 @@ generate:
 	$(MAKE) --no-print-directory generate-all-in-one
 
 elastic-operator: generate
-	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
+	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 
 process-manager:
-	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
+	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
 cert-initializer:
-	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd
