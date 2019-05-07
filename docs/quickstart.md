@@ -27,13 +27,13 @@ Note: if using GKE, make sure your user has `cluster-admin` permissions: see [Pr
     kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
     ```
 
-3. Install the operator with its RBAC rules:
+2. Install the operator with its RBAC rules:
 
     ```bash
     kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
     ```
 
-4. Monitor the operator logs:
+3. Monitor the operator logs:
 
     ```bash
     kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
