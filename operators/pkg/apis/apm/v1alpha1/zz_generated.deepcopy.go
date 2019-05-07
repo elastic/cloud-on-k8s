@@ -80,7 +80,7 @@ func (in *ApmServerSpec) DeepCopyInto(out *ApmServerSpec) {
 	*out = *in
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.Output.DeepCopyInto(&out.Output)
-	in.Resources.DeepCopyInto(&out.Resources)
+	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
 		*out = make(commonv1alpha1.FeatureFlags, len(*in))

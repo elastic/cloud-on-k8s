@@ -27,16 +27,20 @@ spec:
       node.data: true
       xpack.license.self_generated.type: trial
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 1000m
+    # this shows how to customize the Elasticsearch pod
+    # with labels and resource limits
+    podTemplate:
+      metadata:
+        labels:
+          foo: bar
+      spec:
+        containers:
+          - name: elasticsearch
+            resources:
+              limits:
+                memory: 1Gi
+                cpu: 1
     nodeCount: 3
-    ## this shows how to add a custom label to all pods created for this topology element
-    #podTemplate:
-    #  metadata:
-    #    labels:
-    #      foo: bar
     ## this shows how to request 2Gi of persistent data storage for pods in this topology element
     #volumeClaimTemplates:
     #- metadata:
@@ -53,10 +57,6 @@ spec:
       node.data: false
       node.ingest: false
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 800m
     nodeCount: 0
   # dedicated data nodes
   - config:
@@ -64,10 +64,6 @@ spec:
       node.data: true
       node.ingest: false
       node.attr.attr_name: attr_value
-    resources:
-      limits:
-        memory: 1Gi
-        cpu: 800m
     nodeCount: 0
   http:
     service:

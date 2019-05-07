@@ -12,6 +12,14 @@ spec:
   - config:
       node.master: true
       node.data: true
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 1
     nodeCount: 3
     volumeClaimTemplates:
     - metadata:

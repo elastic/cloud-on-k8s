@@ -12,9 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var DefaultResources = common.ResourcesSpec{
+var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		"memory": resource.MustParse("1G"),
+		corev1.ResourceMemory: resource.MustParse("1G"),
 	},
 }
 

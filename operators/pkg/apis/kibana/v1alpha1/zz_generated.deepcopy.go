@@ -171,7 +171,7 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	out.ElasticsearchRef = in.ElasticsearchRef
 	in.Elasticsearch.DeepCopyInto(&out.Elasticsearch)
 	in.HTTP.DeepCopyInto(&out.HTTP)
-	in.Resources.DeepCopyInto(&out.Resources)
+	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
 		*out = make(commonv1alpha1.FeatureFlags, len(*in))
