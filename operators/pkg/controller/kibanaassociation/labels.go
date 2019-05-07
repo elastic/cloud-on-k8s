@@ -11,7 +11,7 @@ import (
 
 const (
 	// AssociationLabelName marks resources created by this controller for easier retrieval.
-	AssociationLabelName = "association.k8s.elastic.co/name"
+	AssociationLabelName = "kibanaassociation.k8s.elastic.co/name"
 )
 
 // NewResourceSelector selects resources labeled as related to the named association.
