@@ -7,6 +7,7 @@ package mutation
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 			Containers: []corev1.Container{{
 				Image:           image,
 				ImagePullPolicy: corev1.PullIfNotPresent,
-				Name:            "elasticsearch",
+				Name:            v1alpha1.ElasticsearchContainerName,
 				Ports:           pod.DefaultContainerPorts,
 				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{

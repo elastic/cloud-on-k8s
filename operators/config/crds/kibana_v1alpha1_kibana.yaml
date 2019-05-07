@@ -160,13 +160,10 @@ spec:
                 must have.
               format: int32
               type: integer
-            resources:
-              description: Resources to be allocated for this topology
-              properties:
-                limits:
-                  description: Limits represents the limits to considerate for these
-                    resources
-                  type: object
+            podTemplate:
+              description: PodTemplate can be used to propagate configuration to Kibana
+                pods. So far, only labels, Affinity and `Containers["kibana"].Resources.Limits`
+                are applied.
               type: object
             version:
               description: Version represents the version of Kibana

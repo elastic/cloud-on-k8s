@@ -7,7 +7,6 @@ package e2e
 import (
 	"testing"
 
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -62,7 +61,7 @@ func TestMutationLessNodes(t *testing.T) {
 func TestMutationResizeMemoryUp(t *testing.T) {
 	// create a stack with a 1G node
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
-		WithESMasterDataNodes(1, common.ResourcesSpec{
+		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("1G"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
@@ -71,7 +70,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 	// mutate it to 1 node with 2G memory
 	mutatedStack := initStack.
 		WithNoESTopology().
-		WithESMasterDataNodes(1, common.ResourcesSpec{
+		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("2G"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
@@ -86,7 +85,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create a stack with a 2G node
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
-		WithESMasterDataNodes(1, common.ResourcesSpec{
+		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("2G"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
@@ -95,7 +94,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 	// mutate it to 1 node with 1G memory
 	mutatedStack := initStack.
 		WithNoESTopology().
-		WithESMasterDataNodes(1, common.ResourcesSpec{
+		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("1G"),
 				corev1.ResourceCPU:    resource.MustParse("2"),

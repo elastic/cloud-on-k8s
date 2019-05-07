@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,8 +28,10 @@ type ApmServerSpec struct {
 	// +optional
 	Output Output `json:"output,omitempty"`
 
-	// Resources to be allocated for each Apm Server node
-	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
+	// PodTemplate can be used to propagate configuration to APM pods.
+	// So far, only labels, Affinity and `Containers["apm"].Resources.Limits` are applied.
+	// +optional
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`

@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -33,8 +34,10 @@ type KibanaSpec struct {
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
-	// Resources to be allocated for this topology
-	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
+	// PodTemplate can be used to propagate configuration to Kibana pods.
+	// So far, only labels, Affinity and `Containers["kibana"].Resources.Limits` are applied.
+	// +optional
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// FeatureFlags are instance-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`

@@ -11,6 +11,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const ElasticsearchContainerName = "elasticsearch"
+
 // ElasticsearchSpec defines the desired state of Elasticsearch
 type ElasticsearchSpec struct {
 	// Version represents the version of the stack
@@ -59,15 +61,13 @@ type NodeSpec struct {
 	// Config represents Elasticsearch configuration.
 	Config *Config `json:"config,omitempty"`
 
-	// Resources to be allocated for this topology
-	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
-
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
-	// PodTemplate is the object that describes the Elasticsearch pods.
+	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
+	// So far, only labels, Affinity and `Containers["elasticsearch"].Resources.Limits` are applied.
 	// +optional
-	PodTemplate ElasticsearchPodTemplateSpec `json:"podTemplate,omitempty"`
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
 	// Every claim in this list must have at least one matching (by name) volumeMount in one
@@ -79,23 +79,14 @@ type NodeSpec struct {
 	VolumeClaimTemplates []corev1.PersistentVolumeClaim `json:"volumeClaimTemplates,omitempty"`
 }
 
-// ElasticsearchPodTemplateSpec describes the data a pod should have when created from a template
-type ElasticsearchPodTemplateSpec struct {
-	// Standard object's metadata.
-	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// Specification of the desired behavior of the pod.
-	// More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status
-	// +optional
-	Spec ElasticsearchPodSpec `json:"spec,omitempty"`
-}
-
-type ElasticsearchPodSpec struct {
-	// Affinity is the pod's scheduling constraints
-	// +optional
-	Affinity *corev1.Affinity `json:"affinity,omitempty" protobuf:"bytes,18,opt,name=affinity"`
+// GetESContainerTemplate returns the Elasticsearch container (if set) from the NodeSpec's PodTemplate
+func (n NodeSpec) GetESContainerTemplate() *corev1.Container {
+	for _, c := range n.PodTemplate.Spec.Containers {
+		if c.Name == ElasticsearchContainerName {
+			return &c
+		}
+	}
+	return nil
 }
 
 // UpdateStrategy specifies how updates to the cluster should be performed.
