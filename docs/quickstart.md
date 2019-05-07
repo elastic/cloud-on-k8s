@@ -19,17 +19,12 @@ You will learn how to:
 
 ## Deploy the operator in your Kubernetes cluster
 
+Note: if using GKE, make sure your user has `cluster-admin` permissions: see [Prerequisites for using Kubernetes RBAC on GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control).
+
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
     ```bash
     kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
-    ```
-
-2. Add a [Cluster Role Binding](https://kubernetes.io/docs/reference/access-authn-authz/rbac/#rolebinding-and-clusterrolebinding)
-    ```bash
-    kubectl create clusterrolebinding elastic-operators--manager-rolebinding \
-        --clusterrole=cluster-admin \
-        --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
     ```
 
 3. Install the operator with its RBAC rules:
