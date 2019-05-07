@@ -1,7 +1,7 @@
 # Reusing pods by restarting the ES process with a new configuration
 
 * Status: proposed
-* Deciders: k8s-operators team
+* Deciders: cloud-on-k8s team
 * Date: 2019-03-20
 
 ## Context and Problem Statement

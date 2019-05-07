@@ -1,7 +1,7 @@
 # 6. Elasticsearch sidecar health
 
 * Status: proposed
-* Deciders: k8s-operators team
+* Deciders: cloud-on-k8s team
 * Date: 2019-03-05
 
 ## Context and Problem Statement

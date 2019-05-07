@@ -1,7 +1,7 @@
 # 5. Configurable operator and RBAC permissions
 
 * Status: proposed
-* Deciders: k8s-operators team
+* Deciders: cloud-on-k8s team
 * Date: 2019-02-13
 
 ## Context and Problem Statement

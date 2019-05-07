@@ -1,7 +1,7 @@
 # 8. Volume Management in case of disruption
 
 * Status: proposed
-* Deciders: k8s-operators team
+* Deciders: cloud-on-k8s team
 * Date: 2019-03-08
 
 ## Context and Problem Statement
