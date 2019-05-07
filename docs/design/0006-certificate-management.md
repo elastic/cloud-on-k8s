@@ -76,7 +76,7 @@ Several options considered involving an init container in the ES pod:
 * *Option B*: the init container requests the operator through an API in the operator to send the CSR. Disadvantage: similar to Option A, we implicitly authorize the ES pod to reach the operator. Even though this can be restricted to a single endpoint, it's an additional possible flow that could lead to security issues.
 * *Option C*: the init container runs an HTTP server to serve the generated CSR. The operator requests the CSR through this API. Advantage: the pod does not need to reach any other service. Disadvantage: some additional complexity in the design and the implementation.
 
-Option C is the chosen one here. For more details on the actual workflow, see the [cert-initializer README](https://github.com/elastic/k8s-operators/blob/master/operators/cmd/cert-initializer/README.md).
+Option C is the chosen one here. For more details on the actual workflow, see the [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/master/operators/cmd/cert-initializer/README.md).
 
 #### Pods certificate rotation
 
@@ -169,5 +169,5 @@ Even though choosing option 1 by default, option 3 could also be handled through
 
 ## Links
 
-* [cert-initializer README](https://github.com/elastic/k8s-operators/blob/master/operators/cmd/cert-initializer/README.md) describing interactions between the operator and the cert-initializer init container.
-* [coordination with Kibana](https://github.com/elastic/k8s-operators/issues/118)
+* [cert-initializer README](https://github.com/elastic/cloud-on-k8s/blob/master/operators/cmd/cert-initializer/README.md) describing interactions between the operator and the cert-initializer init container.
+* [coordination with Kibana](https://github.com/elastic/cloud-on-k8s/issues/118)

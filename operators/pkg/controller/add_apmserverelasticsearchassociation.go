@@ -5,8 +5,8 @@
 package controller
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserverelasticsearchassociation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserverelasticsearchassociation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 )
 
 func init() {

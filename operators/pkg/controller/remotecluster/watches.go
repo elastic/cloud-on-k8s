@@ -7,11 +7,11 @@ package remotecluster
 import (
 	"fmt"
 
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -92,7 +92,7 @@ func newToRequestsFuncFromTrustRelationshipLabel() handler.ToRequestsFunc {
 	})
 }
 
-func watchName(clusterAssociation v1alpha1.RemoteCluster, elasticsearch assoctype.ObjectSelector) string {
+func watchName(clusterAssociation v1alpha1.RemoteCluster, elasticsearch commonv1alpha1.ObjectSelector) string {
 	return fmt.Sprintf(
 		"%s-%s-%s-%s",
 		clusterAssociation.Namespace,
@@ -106,7 +106,7 @@ func watchName(clusterAssociation v1alpha1.RemoteCluster, elasticsearch assoctyp
 func addCertificatesAuthorityWatches(
 	reconcileClusterAssociation *ReconcileRemoteCluster,
 	clusterAssociation v1alpha1.RemoteCluster,
-	cluster assoctype.ObjectSelector) error {
+	cluster commonv1alpha1.ObjectSelector) error {
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
 	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    watchName(clusterAssociation, cluster),

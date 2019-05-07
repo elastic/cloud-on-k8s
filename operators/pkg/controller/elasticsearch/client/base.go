@@ -12,8 +12,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
 type baseClient struct {

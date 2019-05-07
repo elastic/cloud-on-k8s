@@ -13,7 +13,7 @@ import (
 	"net/http/pprof"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 )
 
 const (

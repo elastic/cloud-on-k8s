@@ -14,11 +14,14 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 )
 
 func tmpConfig() Config {
@@ -56,10 +59,14 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 			PodIP: "172.18.1.1",
 		},
 	}
-	clusterName := "clustername"
-	namespace := "namespace"
+	cluster := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "namespace",
+			Name:      "clustername",
+		},
+	}
 	svcs := []corev1.Service{}
-	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, csr, certificates.DefaultCertValidity)
+	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, cluster, svcs, csr, certificates.DefaultCertValidity)
 	if err != nil {
 		return err
 	}

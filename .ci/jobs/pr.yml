@@ -18,6 +18,6 @@
           discover-pr-forks-trust: "contributors"
           discover-pr-origin: "merge-current"
           credentials-id: 'f3af1bfb-d48e-48d1-82a2-acca009c1b23'
-          repo: 'k8s-operators'
+          repo: 'cloud-on-k8s'
           repo-owner: 'elastic'
           discover-tags: true

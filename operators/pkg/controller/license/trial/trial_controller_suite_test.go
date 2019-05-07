@@ -11,8 +11,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"

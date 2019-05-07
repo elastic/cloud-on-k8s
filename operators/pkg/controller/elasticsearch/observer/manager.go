@@ -5,14 +5,20 @@
 package observer
 
 import (
+	"crypto/x509"
+	"reflect"
 	"sync"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 // Manager for a set of observers
 type Manager struct {
+	k8sClient k8s.Client
+	dialer    net.Dialer
 	observers map[types.NamespacedName]*Observer
 	listeners []OnObservation // invoked on each observation event
 	lock      sync.RWMutex
@@ -20,8 +26,10 @@ type Manager struct {
 }
 
 // NewManager returns a new manager
-func NewManager(settings Settings) *Manager {
+func NewManager(dialer net.Dialer, k8sClient k8s.Client, settings Settings) *Manager {
 	return &Manager{
+		k8sClient: k8sClient,
+		dialer:    dialer,
 		observers: make(map[types.NamespacedName]*Observer),
 		lock:      sync.RWMutex{},
 		settings:  settings,
@@ -30,24 +38,24 @@ func NewManager(settings Settings) *Manager {
 
 // ObservedStateResolver returns the last known state of the given cluster,
 // as expected by the main reconciliation driver
-func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, esClient client.Client) State {
-	return m.Observe(cluster, esClient).LastState()
+func (m *Manager) ObservedStateResolver(cluster types.NamespacedName, caCerts []*x509.Certificate, esClient client.Client) State {
+	return m.Observe(cluster, caCerts, esClient).LastState()
 }
 
 // Observe gets or create a cluster state observer for the given cluster
 // In case something has changed in the given esClient (eg. different caCert), the observer is recreated accordingly
-func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) *Observer {
+func (m *Manager) Observe(cluster types.NamespacedName, caCerts []*x509.Certificate, esClient client.Client) *Observer {
 	m.lock.RLock()
 	observer, exists := m.observers[cluster]
 	m.lock.RUnlock()
 
 	switch {
 	case !exists:
-		return m.createObserver(cluster, esClient)
-	case exists && !observer.esClient.Equal(esClient):
+		return m.createObserver(cluster, caCerts, esClient)
+	case exists && (!observer.esClient.Equal(esClient) || !reflect.DeepEqual(observer.caCerts, caCerts)):
 		log.Info("Replacing observer HTTP client", "cluster", cluster)
 		m.StopObserving(cluster)
-		return m.createObserver(cluster, esClient)
+		return m.createObserver(cluster, caCerts, esClient)
 	default:
 		return observer
 	}
@@ -55,8 +63,8 @@ func (m *Manager) Observe(cluster types.NamespacedName, esClient client.Client) 
 
 // createObserver creates a new observer according to the given arguments,
 // and create/replace its entry in the observers map
-func (m *Manager) createObserver(cluster types.NamespacedName, esClient client.Client) *Observer {
-	observer := NewObserver(cluster, esClient, m.settings, m.notifyListeners)
+func (m *Manager) createObserver(cluster types.NamespacedName, caCerts []*x509.Certificate, esClient client.Client) *Observer {
+	observer := NewObserver(m.k8sClient, m.dialer, caCerts, cluster, esClient, m.settings, m.notifyListeners)
 	observer.Start()
 	m.lock.Lock()
 	m.observers[cluster] = observer
@@ -83,11 +91,13 @@ func (m *Manager) StopObserving(cluster types.NamespacedName) {
 func (m *Manager) List() []types.NamespacedName {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	list := []types.NamespacedName{}
+	names := make([]types.NamespacedName, len(m.observers))
+	i := 0
 	for name := range m.observers {
-		list = append(list, name)
+		names[i] = name
+		i++
 	}
-	return list
+	return names
 }
 
 // AddObservationListener adds the given listener to the list of listeners notified

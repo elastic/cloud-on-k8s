@@ -7,7 +7,7 @@ package restart
 import (
 	"context"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
 // prepareClusterForStop performs cluster-wide ES requests to speedup the restart process.

@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/elastic/k8s-operators/operators/cmd/manager"
-	"github.com/elastic/k8s-operators/operators/pkg/dev"
+	"github.com/elastic/cloud-on-k8s/operators/cmd/manager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
 	"github.com/spf13/cobra"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"

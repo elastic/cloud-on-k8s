@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -21,10 +21,8 @@ type ApmServerSpec struct {
 	// NodeCount defines how many nodes the Apm Server deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
 	// +optional
 	Output Output `json:"output,omitempty"`

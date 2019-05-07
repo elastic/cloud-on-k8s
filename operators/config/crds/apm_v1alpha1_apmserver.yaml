@@ -47,17 +47,64 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are apm-specific flags that enable or disable
                 specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      properties:
+                        annotations:
+                          description: 'Annotations is an unstructured key value map
+                            stored with a resource that may be set by external tools
+                            to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: http://kubernetes.io/docs/user-guide/annotations'
+                          type: object
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    nodes TLS certificates.
+                  properties:
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the nodes certificates. For example: a wildcard
+                            DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.

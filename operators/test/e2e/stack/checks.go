@@ -5,7 +5,7 @@
 package stack
 
 import (
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 )
 
 // CheckStackSteps returns all test steps to verify the status of the given stack

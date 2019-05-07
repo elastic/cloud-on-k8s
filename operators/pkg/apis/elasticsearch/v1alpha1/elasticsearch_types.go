@@ -5,7 +5,8 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,10 +25,8 @@ type ElasticsearchSpec struct {
 	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
 	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
 	// Nodes represents a list of groups of nodes with the same configuration to be part of the cluster
 	Nodes []NodeSpec `json:"nodes,omitempty"`
@@ -68,7 +67,7 @@ type NodeSpec struct {
 
 	// PodTemplate is the object that describes the Elasticsearch pods.
 	// +optional
-	PodTemplate ElasticsearchPodTemplateSpec `json:"template,omitempty"`
+	PodTemplate ElasticsearchPodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
 	// Every claim in this list must have at least one matching (by name) volumeMount in one

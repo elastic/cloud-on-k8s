@@ -47,17 +47,64 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are apm-specific flags that enable or disable
                 specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      properties:
+                        annotations:
+                          description: 'Annotations is an unstructured key value map
+                            stored with a resource that may be set by external tools
+                            to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: http://kubernetes.io/docs/user-guide/annotations'
+                          type: object
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    nodes TLS certificates.
+                  properties:
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the nodes certificates. For example: a wildcard
+                            DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.
@@ -192,7 +239,6 @@ spec:
                   type: string
               required:
               - name
-              - namespace
               type: object
             elasticsearch:
               description: Elasticsearch refers to the Elasticsearch resource
@@ -203,7 +249,6 @@ spec:
                   type: string
               required:
               - name
-              - namespace
               type: object
           required:
           - elasticsearch
@@ -213,97 +258,6 @@ spec:
           properties:
             associationStatus:
               description: AssociationStatus indicates the current state of the association.
-              type: string
-          required:
-          - associationStatus
-          type: object
-  version: v1alpha1
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
-
----
-
-apiVersion: apiextensions.k8s.io/v1beta1
-kind: CustomResourceDefinition
-metadata:
-  creationTimestamp: null
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: kibanaelasticsearchassociations.associations.k8s.elastic.co
-spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.associationStatus
-    name: status
-    type: string
-  group: associations.k8s.elastic.co
-  names:
-    categories:
-    - elastic
-    kind: KibanaElasticsearchAssociation
-    plural: kibanaelasticsearchassociations
-    shortNames:
-    - kea
-  scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          properties:
-            elasticsearch:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
-              type: object
-            kibana:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
-              type: object
-            monitoring:
-              properties:
-                name:
-                  type: string
-                namespace:
-                  type: string
-              required:
-              - name
-              - namespace
-              type: object
-          required:
-          - elasticsearch
-          - kibana
-          type: object
-        status:
-          properties:
-            associationStatus:
               type: string
           required:
           - associationStatus
@@ -442,17 +396,64 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      properties:
+                        annotations:
+                          description: 'Annotations is an unstructured key value map
+                            stored with a resource that may be set by external tools
+                            to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: http://kubernetes.io/docs/user-guide/annotations'
+                          type: object
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    nodes TLS certificates.
+                  properties:
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the nodes certificates. For example: a wildcard
+                            DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.
@@ -469,15 +470,7 @@ spec:
                     description: NodeCount defines how many nodes have this topology
                     format: int32
                     type: integer
-                  resources:
-                    description: Resources to be allocated for this topology
-                    properties:
-                      limits:
-                        description: Limits represents the limits to considerate for
-                          these resources
-                        type: object
-                    type: object
-                  template:
+                  podTemplate:
                     description: PodTemplate is the object that describes the Elasticsearch
                       pods.
                     properties:
@@ -491,6 +484,14 @@ spec:
                           affinity:
                             description: Affinity is the pod's scheduling constraints
                             type: object
+                        type: object
+                    type: object
+                  resources:
+                    description: Resources to be allocated for this topology
+                    properties:
+                      limits:
+                        description: Limits represents the limits to considerate for
+                          these resources
                         type: object
                     type: object
                   volumeClaimTemplates:
@@ -1012,17 +1013,76 @@ spec:
               required:
               - url
               type: object
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features
+              type: object
+            http:
+              description: HTTP contains settings for HTTP.
+              properties:
+                service:
+                  description: Service is a template for the Kubernetes Service
+                  properties:
+                    metadata:
+                      description: Metadata is metadata for the HTTP Service.
+                      properties:
+                        annotations:
+                          description: 'Annotations is an unstructured key value map
+                            stored with a resource that may be set by external tools
+                            to store and retrieve arbitrary metadata. They are not
+                            queryable and should be preserved when modifying objects.
+                            More info: http://kubernetes.io/docs/user-guide/annotations'
+                          type: object
+                      type: object
+                    spec:
+                      description: Spec contains user-provided settings for the HTTP
+                        Service.
+                      properties:
+                        type:
+                          description: 'Type determines which service type to use
+                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
+                            Defaults to ClusterIP.'
+                          enum:
+                          - ClusterIP
+                          - LoadBalancer
+                          - NodePort
+                          type: string
+                      type: object
+                  type: object
+                tls:
+                  description: TLS describe additional options to consider when generating
+                    nodes TLS certificates.
+                  properties:
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
+                      properties:
+                        subjectAltNames:
+                          description: 'SubjectAlternativeNames is a list of SANs
+                            to include in the nodes certificates. For example: a wildcard
+                            DNS to expose the cluster.'
+                          items:
+                            properties:
+                              dns:
+                                type: string
+                              ip:
+                                type: string
+                            type: object
+                          type: array
+                      type: object
+                  type: object
               type: object
             image:
               description: Image represents the docker image that will be used.
@@ -1046,6 +1106,8 @@ spec:
           type: object
         status:
           properties:
+            associationStatus:
+              type: string
             health:
               type: string
           type: object

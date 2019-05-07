@@ -101,8 +101,6 @@ rules:
   resources:
   - apmserverelasticsearchassociations
   - apmserverelasticsearchassociations/status
-  - kibanaelasticsearchassociations
-  - kibanaelasticsearchassociations/status
   verbs:
   - get
   - list

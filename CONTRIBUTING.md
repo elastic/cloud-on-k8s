@@ -17,7 +17,7 @@ The goal of this document is to provide a high-level overview on how you can get
 
 ## Report your bugs
 
-If you find an issue, check first our [list of issues](https://github.com/elastic/k8s-operators/issues). If your problem has not been reported yet, open a new issue, add a detailed description on how to reproduce the problem and complete it with any additional information that might help solving the issue.
+If you find an issue, check first our [list of issues](https://github.com/elastic/cloud-on-k8s/issues). If your problem has not been reported yet, open a new issue, add a detailed description on how to reproduce the problem and complete it with any additional information that might help solving the issue.
 
 ## Set up your development environment
 
@@ -97,6 +97,6 @@ Here are some good practices for a good pull request:
 
 ## Design documents
 
-We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/k8s-operators/tree/master/docs/design) to understand the technical choices that we make.
+We keep track of architectural decisions through the [architectural decision records](https://adr.github.io/). All records must apply the [Markdown Architectural Decision Records](https://adr.github.io/madr/) format. We recommend to read [these documents](https://github.com/elastic/cloud-on-k8s/tree/master/docs/design) to understand the technical choices that we make.
 
 Thank you for taking the time to contribute.

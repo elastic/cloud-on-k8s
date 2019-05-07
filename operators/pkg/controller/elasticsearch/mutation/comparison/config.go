@@ -7,7 +7,7 @@ package comparison
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 )
 
 func compareConfigs(actual *settings.CanonicalConfig, expected *settings.CanonicalConfig) Comparison {

@@ -7,7 +7,7 @@ package license
 import (
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
 type SourceClusterLicense struct {

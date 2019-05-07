@@ -7,5 +7,5 @@ attention.
 -->
 
 - Have you signed the [contributor license agreement](https://www.elastic.co/contributor-agreement)?
-- Have you followed the [contributor guidelines](https://github.com/elastic/k8s-operators/tree/master/CONTRIBUTING.md)?
+- Have you followed the [contributor guidelines](https://github.com/elastic/cloud-on-k8s/tree/master/CONTRIBUTING.md)?
 - If you submit code, is your pull request against master? We recommend pull requests against master. We will backport them as needed.

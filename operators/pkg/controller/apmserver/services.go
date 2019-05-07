@@ -5,8 +5,8 @@
 package apmserver
 
 import (
-	v1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
+	v1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,9 +14,10 @@ import (
 func NewService(as v1alpha1.ApmServer) *corev1.Service {
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			Name:      PseudoNamespacedResourceName(as),
-			Labels:    NewLabels(as.Name),
+			Namespace:   as.Namespace,
+			Name:        PseudoNamespacedResourceName(as),
+			Labels:      NewLabels(as.Name),
+			Annotations: as.Spec.HTTP.Service.Metadata.Annotations,
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: NewLabels(as.Name),
@@ -27,7 +28,7 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 				},
 			},
 			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(as.Spec.Expose),
+			Type:            common.GetServiceType(as.Spec.HTTP.Service.Spec.Type),
 		},
 	}
 	if svc.Spec.Type != corev1.ServiceTypeClusterIP {

@@ -5,9 +5,9 @@
 package provisioner
 
 import (
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
-	"github.com/elastic/k8s-operators/local-volume/pkg/k8s"
-	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/protocol"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/k8s"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/provider"
 	"github.com/kubernetes-sigs/sig-storage-lib-external-provisioner/controller"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/api/core/v1"
