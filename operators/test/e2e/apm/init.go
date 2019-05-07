@@ -7,8 +7,8 @@ package apm
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +32,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		{
 			Name: "ApmServer CRDs should exist",
 			Test: func(t *testing.T) {
-				err := k.Client.List(&client.ListOptions{}, &v1alpha1.ApmServerList{})
+				err := k.Client.List(&client.ListOptions{}, &apmtype.ApmServerList{})
 				require.NoError(t, err)
 			},
 		},

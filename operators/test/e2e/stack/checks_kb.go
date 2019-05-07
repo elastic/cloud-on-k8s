@@ -10,8 +10,8 @@ import (
 	"net/http"
 	"strings"
 
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/pkg/errors"
 )
 

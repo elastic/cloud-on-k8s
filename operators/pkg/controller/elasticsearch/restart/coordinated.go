@@ -10,9 +10,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	corev1 "k8s.io/api/core/v1"
 )
 

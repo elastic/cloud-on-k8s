@@ -7,10 +7,10 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -65,7 +65,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: apmFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -74,7 +74,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: apmFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -83,7 +83,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: apmFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -92,7 +92,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: apmFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},

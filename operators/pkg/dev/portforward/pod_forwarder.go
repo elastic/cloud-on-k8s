@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	utilsnet "github.com/elastic/k8s-operators/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	utilsnet "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"

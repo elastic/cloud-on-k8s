@@ -14,13 +14,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,7 +142,7 @@ func TestReconcile(t *testing.T) {
 				Request:    req,
 			}
 		})
-	r.esObservers.Observe(observedCluster, esclientGreen)
+	r.esObservers.Observe(observedCluster, nil, esclientGreen)
 	// cluster health should have gone from none to green,
 	// check reconciliation was called for the observed cluster
 	expectedReq := reconcile.Request{NamespacedName: observedCluster}

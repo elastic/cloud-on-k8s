@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

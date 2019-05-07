@@ -5,8 +5,8 @@
 package apmserver
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
 func PseudoNamespacedResourceName(as v1alpha1.ApmServer) string {

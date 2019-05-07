@@ -4,7 +4,7 @@
 
 package user
 
-import "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+import "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 
 const (
 	// ExternalUserName also known as the 'elastic'

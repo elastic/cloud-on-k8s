@@ -90,6 +90,9 @@ var publicKeyBytes = []byte{
 	if err != nil {
 		handleErr(errors.Wrapf(err, "Failed to read %v", pubkeyFile))
 	}
+	if len(bytes) == 0 {
+		handleErr(errors.Wrapf(err, "%v shouldn't have size 0", pubkeyFile))
+	}
 	t := template.Must(template.New("license").Parse(tmpl))
 	err = t.Execute(out, params{
 		Bytes: bytes,

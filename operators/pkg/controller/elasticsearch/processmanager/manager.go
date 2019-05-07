@@ -7,7 +7,7 @@ package processmanager
 import (
 	"os"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	reap "github.com/hashicorp/go-reap"
 	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -77,7 +77,7 @@ func (pm ProcessManager) Start(done chan ExitStatus) error {
 	}
 
 	if pm.keystoreUpdater != nil {
-		pm.keystoreUpdater.Start()
+		go pm.keystoreUpdater.Start()
 	}
 
 	log.Info("Started")

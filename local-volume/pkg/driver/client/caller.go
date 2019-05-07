@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/protocol"
 )
 
 const networkProtocol = "unix"

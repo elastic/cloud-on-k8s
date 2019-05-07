@@ -20,7 +20,7 @@ spec:
         cpu: 1000m
     nodeCount: 3
     ## this shows how to add a custom label to all pods created for this topology element
-    #template:
+    #podTemplate:
     #  metadata:
     #    labels:
     #      foo: bar
@@ -37,4 +37,15 @@ spec:
   ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
   # secureSettings:
   #   secretName: "ref-to-secret"
-  expose: LoadBalancer
+  ## Add a list of SANs into the nodes certificates
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - ip: 35.198.85.171
+        - ip: 4.3.2.2
+        - dns: my.domain.name.com
+        - dns: my.second.domain

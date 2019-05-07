@@ -19,11 +19,11 @@ Before you start, install the following tools and packages:
 
 ### Get sources using go get
 
-**Note**: People accessing this repo before the repo is public will not be able to use `go get`, you will have to clone the repo and place it in `{GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators`
+**Note**: People accessing this repo before the repo is public will not be able to use `go get`, you will have to clone the repo and place it in `{GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s`
 
 ```bash
-go get -u github.com/elastic/k8s-operators
-cd ${GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators/operators
+go get -u github.com/elastic/cloud-on-k8s
+cd ${GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s/operators
 ```
 
 ### Check prerequisites

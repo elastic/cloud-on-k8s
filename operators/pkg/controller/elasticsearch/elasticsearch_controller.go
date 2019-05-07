@@ -17,22 +17,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	elasticsearchv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	commonversion "github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/driver"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
-	esreconcile "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/validation"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	commonversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
+	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -65,7 +65,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		recorder: mgr.GetRecorder("elasticsearch-controller"),
 
 		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
-		esObservers: observer.NewManager(observer.DefaultSettings),
+		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
 		dynamicWatches:   watches.NewDynamicWatches(),

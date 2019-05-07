@@ -10,13 +10,13 @@ import (
 	"fmt"
 	"testing"
 
-	apmv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	esv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/test"
+	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	esv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -72,7 +72,7 @@ func TestReconcile(t *testing.T) {
 		Spec: apmv1alpha1.ApmServerSpec{
 			Output: apmv1alpha1.Output{
 				Elasticsearch: apmv1alpha1.ElasticsearchOutput{
-					Ref: &v1alpha1.ObjectSelector{
+					Ref: &commonv1alpha1.ObjectSelector{
 						Name:      "foo",
 						Namespace: "default",
 					},
@@ -107,7 +107,7 @@ func TestReconcile(t *testing.T) {
 		case !apmServer.Spec.Output.Elasticsearch.IsConfigured():
 			return errors.New("Not reconciled yet")
 		default:
-			assert.Equal(t, v1alpha1.AssociationEstablished, apmServer.Status.Association)
+			assert.Equal(t, commonv1alpha1.AssociationEstablished, apmServer.Status.Association)
 			return nil
 		}
 	})
@@ -124,8 +124,8 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if v1alpha1.AssociationPending != fetched.Status.Association {
-			return fmt.Errorf("expected %v, found %v", v1alpha1.AssociationPending, fetched.Status.Association)
+		if commonv1alpha1.AssociationPending != fetched.Status.Association {
+			return fmt.Errorf("expected %v, found %v", commonv1alpha1.AssociationPending, fetched.Status.Association)
 		}
 		return nil
 	})

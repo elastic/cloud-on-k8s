@@ -108,7 +108,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"k8s.io/apimachinery/pkg/types"
 )
 

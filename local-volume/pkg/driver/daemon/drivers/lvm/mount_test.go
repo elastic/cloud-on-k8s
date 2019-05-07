@@ -9,9 +9,9 @@ import (
 	"path"
 	"testing"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/flex"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/protocol"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -10,17 +10,17 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/stringsutil"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
 var (

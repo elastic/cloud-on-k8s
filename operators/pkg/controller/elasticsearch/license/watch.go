@@ -5,8 +5,8 @@
 package license
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"k8s.io/apimachinery/pkg/types"
 )
 

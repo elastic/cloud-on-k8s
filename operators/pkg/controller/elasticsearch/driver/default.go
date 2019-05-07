@@ -9,30 +9,30 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/cleanup"
-	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/migration"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/remotecluster"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/restart"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	esversion "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/remotecluster"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -95,7 +95,7 @@ type defaultDriver struct {
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -208,7 +208,10 @@ func (d *defaultDriver) Reconcile(
 		caCert,
 	)
 
-	observedState := d.observedStateResolver(k8s.ExtractNamespacedName(&es), esClient)
+	observedState := d.observedStateResolver(
+		k8s.ExtractNamespacedName(&es),
+		[]*x509.Certificate{caCert},
+		esClient)
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {

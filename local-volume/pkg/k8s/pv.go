@@ -5,7 +5,7 @@
 package k8s
 
 import (
-	"github.com/elastic/k8s-operators/local-volume/pkg/provider"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/provider"
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/kubelet/apis"

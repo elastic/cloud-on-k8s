@@ -5,8 +5,7 @@
 package v1alpha1
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -22,10 +21,8 @@ type ApmServerSpec struct {
 	// NodeCount defines how many nodes the Apm Server deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
 	// +optional
 	Output Output `json:"output,omitempty"`
@@ -47,7 +44,7 @@ type Output struct {
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
 	// Ref allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
-	Ref *v1alpha1.ObjectSelector `json:"ref,omitempty"`
+	Ref *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
 
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
@@ -84,7 +81,7 @@ type ApmServerStatus struct {
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
-	Association v1alpha1.AssociationStatus
+	Association commonv1alpha1.AssociationStatus
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

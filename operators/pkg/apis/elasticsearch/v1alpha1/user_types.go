@@ -7,7 +7,7 @@ package v1alpha1
 import (
 	"bytes"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

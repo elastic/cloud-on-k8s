@@ -7,15 +7,15 @@ package nodecerts
 import (
 	"bytes"
 	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -102,7 +102,7 @@ func ReconcileNodeCertificateSecrets(
 		switch certificateType {
 		case LabelNodeCertificateTypeElasticsearchAll:
 			if res, err := doReconcile(
-				c, secret, pod, csrClient, es.Name, es.Namespace, services, ca, additionalCAs, nodeCertValidity, nodeCertRotateBefore,
+				c, secret, pod, csrClient, es, services, ca, additionalCAs, nodeCertValidity, nodeCertRotateBefore,
 			); err != nil {
 				return res, err
 			}
@@ -123,7 +123,7 @@ func doReconcile(
 	secret corev1.Secret,
 	pod corev1.Pod,
 	csrClient certificates.CSRClient,
-	clusterName, namespace string,
+	cluster v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
@@ -142,7 +142,7 @@ func doReconcile(
 	lastCSRUpdate := secret.Annotations[LastCSRUpdateAnnotation] // may be empty
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(secret, ca, pod, nodeCertReconcileBefore)
+	issueNewCertificate := shouldIssueNewCertificate(cluster, svcs, secret, ca, pod, nodeCertReconcileBefore)
 
 	// if needed, replace the CSR by a fresh one
 	newCSR, err := maybeRequestCSR(pod, csrClient, lastCSRUpdate)
@@ -166,8 +166,8 @@ func doReconcile(
 		log.Info(
 			"Issuing new certificate",
 			"secret", secret.Name,
-			"clusterName", clusterName,
-			"namespace", namespace,
+			"clusterName", cluster.Name,
+			"namespace", cluster.Namespace,
 		)
 
 		// create a cert from the csr
@@ -175,7 +175,7 @@ func doReconcile(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, clusterName, namespace, svcs, parsedCSR, nodeCertValidity)
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, cluster, svcs, parsedCSR, nodeCertValidity)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -215,27 +215,38 @@ func doReconcile(
 	return reconcile.Result{}, nil
 }
 
+func extractNodeCert(secret corev1.Secret, commonName string) *x509.Certificate {
+	certData, ok := secret.Data[CertFileName]
+	if !ok {
+		return nil
+	}
+
+	certs, err := certificates.ParsePEMCerts(certData)
+	if err != nil {
+		log.Error(err, "Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+		return nil
+	}
+
+	// look for the node certificate
+	for _, c := range certs {
+		if c.Subject.CommonName == commonName {
+			return c
+		}
+	}
+
+	return nil
+}
+
 // shouldIssueNewCertificate returns true if we should issue a new certificate.
 // Reasons for reissuing a certificate:
 // - no certificate yet
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate SAN and IP does not match pod SAN and IP
-func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.CA, pod corev1.Pod, nodeCertReconcileBefore time.Duration) bool {
-	certData, ok := secret.Data[CertFileName]
-	if !ok {
-		// certificate is missing
-		return true
-	}
-
-	block, _ := pem.Decode(certData)
-	if block == nil {
-		log.Info("Invalid certificate data found, issuing new certificate", "secret", secret.Name)
-		return true
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		log.Info("Invalid certificate found as first block, issuing new certificate", "secret", secret.Name)
+func shouldIssueNewCertificate(cluster v1alpha1.Elasticsearch, svcs []corev1.Service, secret corev1.Secret, ca *certificates.CA, pod corev1.Pod, nodeCertReconcileBefore time.Duration) bool {
+	certCommonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
+	cert := extractNodeCert(secret, certCommonName)
+	if cert == nil {
 		return true
 	}
 
@@ -261,7 +272,27 @@ func shouldIssueNewCertificate(secret corev1.Secret, ca *certificates.CA, pod co
 		return true
 	}
 
-	// TODO: verify expected SANs in certificate, otherwise we wont actually reconcile such changes
+	// compare actual vs. expected SANs
+	expected, err := createSubjectAltNameExt(cluster, svcs, pod)
+	if err != nil {
+		log.Error(err, "Cannot create subject alternative names", "pod", pod.Name)
+		return true
+	}
+	extraExtensionFound := false
+	for _, ext := range cert.Extensions {
+		if !ext.Id.Equal(certificates.SubjectAlternativeNamesObjectIdentifier) {
+			continue
+		}
+		extraExtensionFound = true
+		if !reflect.DeepEqual(ext.Value, expected) {
+			log.Info("Certificate SANs do not match expected one, should issue new", "secret", secret.Name)
+			return true
+		}
+	}
+	if !extraExtensionFound {
+		log.Info("SAN extra extension not found, should issue new certificate", "secret", secret.Name)
+		return true
+	}
 
 	return false
 }

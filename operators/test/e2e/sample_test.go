@@ -9,11 +9,10 @@ import (
 	"os"
 	"testing"
 
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
-	"github.com/elastic/k8s-operators/operators/test/e2e/stack"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -29,15 +28,12 @@ func readSampleStack() stack.Builder {
 	helpers.ExitOnErr(err)
 	var es estype.Elasticsearch
 	var kb kbtype.Kibana
-	var assoc assoctype.KibanaElasticsearchAssociation
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&assoc))
 	helpers.ExitOnErr(decoder.Decode(&es))
 	helpers.ExitOnErr(decoder.Decode(&kb))
 
 	sampleStack.Elasticsearch = es
 	sampleStack.Kibana = kb
-	sampleStack.Association = assoc
 
 	// set namespace
 	namespaced := sampleStack.WithNamespace(helpers.DefaultNamespace)

@@ -4,7 +4,11 @@
 
 package processmanager
 
-import "context"
+import (
+	"context"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+)
 
 type MockClient struct {
 	status ProcessStatus
@@ -29,4 +33,10 @@ func (m *MockClient) Kill(ctx context.Context) (ProcessStatus, error) {
 }
 func (m *MockClient) Status(ctx context.Context) (ProcessStatus, error) {
 	return m.status, m.err
+}
+func (m *MockClient) KeystoreStatus(ctx context.Context) (keystore.Status, error) {
+	return keystore.Status{
+		State:  keystore.RunningState,
+		Reason: keystore.KeystoreUpdatedReason,
+	}, m.err
 }

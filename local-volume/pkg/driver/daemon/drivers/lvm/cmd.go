@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/cmdutil"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/daemon/cmdutil"
 	log "github.com/sirupsen/logrus"
 )
 

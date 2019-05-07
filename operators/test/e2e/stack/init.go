@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"testing"
 
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,7 +39,6 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 				crds := []runtime.Object{
 					&estype.ElasticsearchList{},
 					&kbtype.KibanaList{},
-					&assoctype.KibanaElasticsearchAssociationList{},
 				}
 				for _, crd := range crds {
 					err := k.Client.List(&client.ListOptions{}, crd)

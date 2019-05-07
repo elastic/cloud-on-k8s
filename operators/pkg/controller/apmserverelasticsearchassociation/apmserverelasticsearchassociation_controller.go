@@ -9,17 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	associationsv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,6 +21,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 var (
@@ -172,18 +173,18 @@ func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) fin
 	}
 }
 
-func resultFromStatus(status associationsv1alpha1.AssociationStatus) reconcile.Result {
+func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result {
 	switch status {
-	case associationsv1alpha1.AssociationPending:
+	case commonv1alpha1.AssociationPending:
 		return defaultRequeue // retry again
-	case associationsv1alpha1.AssociationEstablished, associationsv1alpha1.AssociationFailed:
+	case commonv1alpha1.AssociationEstablished, commonv1alpha1.AssociationFailed:
 		return reconcile.Result{} // we are done or there is not much we can do
 	default:
 		return reconcile.Result{} // make the compiler happy
 	}
 }
 
-func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (associationsv1alpha1.AssociationStatus, error) {
+func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
 	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.Output.Elasticsearch.Ref
@@ -200,7 +201,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		Watcher: assocKey,
 	})
 	if err != nil {
-		return associationsv1alpha1.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	var es estype.Elasticsearch
@@ -208,15 +209,15 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Es not found, could be deleted or not yet created? Recheck in a while
-			return associationsv1alpha1.AssociationPending, nil
+			return commonv1alpha1.AssociationPending, nil
 		}
-		return associationsv1alpha1.AssociationFailed, err
+		return commonv1alpha1.AssociationFailed, err
 	}
 
 	// TODO reconcile external user CRD here
 	err = reconcileEsUser(r.Client, r.scheme, apmServer)
 	if err != nil {
-		return associationsv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
+		return commonv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
@@ -226,7 +227,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var publicCACertSecret corev1.Secret
 	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
 	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
-		return associationsv1alpha1.AssociationPending, err // maybe not created yet
+		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
 	// TODO this is currently limiting the association to the same namespace
 	expectedEsConfig.SSL.CertificateAuthoritiesSecret = &publicCACertSecret.Name
@@ -238,7 +239,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		apmServer.Spec.Output.Elasticsearch = expectedEsConfig
 		log.Info("Updating Apm Server spec with Elasticsearch output configuration")
 		if err := r.Update(&apmServer); err != nil {
-			return associationsv1alpha1.AssociationPending, err
+			return commonv1alpha1.AssociationPending, err
 		}
 	}
 
@@ -246,7 +247,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
 	}
 
-	return associationsv1alpha1.AssociationEstablished, nil
+	return commonv1alpha1.AssociationEstablished, nil
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
@@ -255,7 +256,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	selector := association.NewResourceSelector(apm.Name)
+	selector := kibanaassociation.NewResourceSelector(apm.Name)
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
 		return err
 	}

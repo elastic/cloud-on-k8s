@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/require"
 )
 

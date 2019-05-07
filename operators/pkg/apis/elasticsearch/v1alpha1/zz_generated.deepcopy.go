@@ -9,7 +9,7 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -265,6 +265,7 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.HTTP.DeepCopyInto(&out.HTTP)
 	if in.Nodes != nil {
 		in, out := &in.Nodes, &out.Nodes
 		*out = make([]NodeSpec, len(*in))

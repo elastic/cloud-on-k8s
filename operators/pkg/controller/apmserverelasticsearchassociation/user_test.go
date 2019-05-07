@@ -7,14 +7,14 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	apmtype "github.com/elastic/k8s-operators/operators/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,16 +36,12 @@ var apmFixture = apmtype.ApmServer{
 	Spec: apmtype.ApmServerSpec{
 		Output: apmtype.Output{
 			Elasticsearch: apmtype.ElasticsearchOutput{
-				Ref: &assoctype.ObjectSelector{
+				Ref: &commonv1alpha1.ObjectSelector{
 					Name:      "es",
 					Namespace: "default",
 				},
 			},
 		},
-		Resources: v1alpha1.ResourcesSpec{
-			Limits: nil,
-		},
-		FeatureFlags: nil,
 	},
 }
 
@@ -140,7 +136,7 @@ func Test_reconcileEsUser(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "default",
 						Labels: map[string]string{
-							association.AssociationLabelName: apmFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				}},
@@ -151,9 +147,9 @@ func Test_reconcileEsUser(t *testing.T) {
 				var u estype.User
 				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
 				expectedLabels := map[string]string{
-					association.AssociationLabelName: apmFixture.Name,
-					common.TypeLabelName:             label.Type,
-					label.ClusterNameLabelName:       "es",
+					kibanaassociation.AssociationLabelName: apmFixture.Name,
+					common.TypeLabelName:                   label.Type,
+					label.ClusterNameLabelName:             "es",
 				}
 				for k, v := range expectedLabels {
 					assert.Equal(t, v, u.Labels[k])
@@ -171,16 +167,12 @@ func Test_reconcileEsUser(t *testing.T) {
 					Spec: apmtype.ApmServerSpec{
 						Output: apmtype.Output{
 							Elasticsearch: apmtype.ElasticsearchOutput{
-								Ref: &assoctype.ObjectSelector{
+								Ref: &commonv1alpha1.ObjectSelector{
 									Name:      "es",
 									Namespace: "ns-1",
 								},
 							},
 						},
-						Resources: v1alpha1.ResourcesSpec{
-							Limits: nil,
-						},
-						FeatureFlags: nil,
 					},
 				},
 			},
