@@ -5,11 +5,13 @@
 package pod
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func Test_imageWithVersion(t *testing.T) {
@@ -117,4 +119,59 @@ func envWithName(t *testing.T, name string, container corev1.Container) corev1.E
 	}
 	t.Errorf("expected env var %s does not exist ", name)
 	return corev1.EnvVar{}
+}
+
+func Test_resourceRequirements(t *testing.T) {
+	tests := []struct {
+		name        string
+		podTemplate corev1.PodTemplateSpec
+		want        corev1.ResourceRequirements
+	}{
+		{
+			name:        "empty pod template",
+			podTemplate: corev1.PodTemplateSpec{},
+			want:        DefaultResources,
+		},
+		{
+			name: "pod template with resource limits for Kibana container",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: v1alpha1.KibanaContainerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+							},
+						},
+					},
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+			},
+		},
+		{
+			name: "pod template with resource limits for another container",
+			podTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "not kibana container",
+							Resources: corev1.ResourceRequirements{
+								Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("3Gi")},
+							},
+						},
+					},
+				},
+			},
+			want: DefaultResources,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := resourceRequirements(tt.podTemplate); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("resourceRequirements() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

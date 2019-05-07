@@ -5,8 +5,6 @@
 package pod
 
 import (
-	"fmt"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
@@ -104,7 +102,6 @@ func NewSpec(p SpecParams, env EnvFactory) corev1.PodSpec {
 // resourceRequirements parses the given podTemplate to return Kibana container resource requirements.
 // If not set in the podTemplate, returns the default ones.
 func resourceRequirements(podTemplate corev1.PodTemplateSpec) corev1.ResourceRequirements {
-	fmt.Println(podTemplate)
 	for _, c := range podTemplate.Spec.Containers {
 		if c.Name == v1alpha1.KibanaContainerName && (len(c.Resources.Limits) > 0 || len(c.Resources.Requests) > 0) {
 			return c.Resources
