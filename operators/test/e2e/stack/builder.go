@@ -6,6 +6,7 @@ package stack
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -29,7 +30,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:      "elasticsearch",
+					Name:      v1alpha1.ElasticsearchContainerName,
 					Resources: resources,
 				},
 			},

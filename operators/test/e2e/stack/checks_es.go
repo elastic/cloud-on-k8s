@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -165,7 +166,7 @@ func rolesToConfig(roles []string) estype.Node {
 func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
-		if c.Name == "elasticsearch" {
+		if c.Name == v1alpha1.ElasticsearchContainerName {
 			memoryLimit = c.Resources.Limits.Memory()
 		}
 	}
