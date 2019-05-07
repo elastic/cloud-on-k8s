@@ -21,7 +21,7 @@ If you find an issue, check first our [list of issues](https://github.com/elasti
 
 ## Set up your development environment
 
-Check requirements and steps in this [README](https://github.com/elastic/k8s-operators/blob/master/operators/README.md).
+Check requirements and steps in this [guide](./operators/setup-development-environment.md).
 
 ## Contribute with your code
 
