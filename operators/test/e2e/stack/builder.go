@@ -5,7 +5,6 @@
 package stack
 
 import (
-	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -31,15 +30,10 @@ var DefaultResources = common.ResourcesSpec{
 type Builder struct {
 	Elasticsearch estype.Elasticsearch
 	Kibana        kbtype.Kibana
-	Association   v1alpha1.KibanaElasticsearchAssociation
 }
 
 func NewStackBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
-		Name:      name,
-		Namespace: helpers.DefaultNamespace,
-	}
-	selector := v1alpha1.ObjectSelector{
 		Name:      name,
 		Namespace: helpers.DefaultNamespace,
 	}
@@ -55,13 +49,10 @@ func NewStackBuilder(name string) Builder {
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
 				Version: defaultVersion,
-			},
-		},
-		Association: v1alpha1.KibanaElasticsearchAssociation{
-			ObjectMeta: meta,
-			Spec: v1alpha1.KibanaElasticsearchAssociationSpec{
-				Elasticsearch: selector,
-				Kibana:        selector,
+				ElasticsearchRef: commonv1alpha1.ObjectSelector{
+					Name:      name,
+					Namespace: helpers.DefaultNamespace,
+				},
 			},
 		},
 	}
@@ -70,9 +61,7 @@ func NewStackBuilder(name string) Builder {
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.Elasticsearch.ObjectMeta.Namespace = namespace
 	b.Kibana.ObjectMeta.Namespace = namespace
-	b.Association.Namespace = namespace
-	b.Association.Spec.Kibana.Namespace = namespace
-	b.Association.Spec.Elasticsearch.Namespace = namespace
+	b.Kibana.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 
@@ -146,5 +135,5 @@ func (b Builder) WithKibana(count int) Builder {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.Elasticsearch, &b.Kibana, &b.Association}
+	return []runtime.Object{&b.Elasticsearch, &b.Kibana}
 }

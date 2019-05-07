@@ -9,7 +9,7 @@ import (
 
 	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/association"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -64,7 +64,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: associationFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: associationFixture.Name,
 						},
 					},
 				},
@@ -73,7 +73,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: associationFixture.Namespace,
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: associationFixture.Name,
 						},
 					},
 				},
@@ -82,7 +82,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: associationFixture.Name,
 						},
 					},
 				},
@@ -91,7 +91,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							association.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: associationFixture.Name,
 						},
 					},
 				},

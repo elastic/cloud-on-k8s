@@ -81,6 +81,18 @@ spec:
               required:
               - url
               type: object
+            elasticsearchRef:
+              description: ElasticsearchRef references an Elasticsearch resource in
+                the Kubernetes cluster. If the namespace is not specified, the current
+                resource namespace will be used.
+              properties:
+                name:
+                  type: string
+                namespace:
+                  type: string
+              required:
+              - name
+              type: object
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features
@@ -162,6 +174,8 @@ spec:
           type: object
         status:
           properties:
+            associationStatus:
+              type: string
             health:
               type: string
           type: object

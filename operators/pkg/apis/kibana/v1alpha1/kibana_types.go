@@ -5,9 +5,10 @@
 package v1alpha1
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 )
 
 // KibanaSpec defines the desired state of Kibana
@@ -20,6 +21,10 @@ type KibanaSpec struct {
 
 	// NodeCount defines how many nodes the Kibana deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
+
+	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
+	// If the namespace is not specified, the current resource namespace will be used.
+	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
 
 	// Elasticsearch configures how Kibana connects to Elasticsearch
 	// +optional
@@ -85,7 +90,8 @@ const (
 // KibanaStatus defines the observed state of Kibana
 type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
-	Health KibanaHealth `json:"health,omitempty"`
+	Health            KibanaHealth                     `json:"health,omitempty"`
+	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

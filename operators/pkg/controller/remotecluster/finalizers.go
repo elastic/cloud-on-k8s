@@ -5,7 +5,7 @@
 package remotecluster
 
 import (
-	assoctype "github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/watches"
@@ -15,7 +15,7 @@ import (
 // because the RemoteCluster has been deleted.
 func watchFinalizer(
 	clusterAssociation v1alpha1.RemoteCluster,
-	local, remote assoctype.ObjectSelector,
+	local, remote commonv1alpha1.ObjectSelector,
 	w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: RemoteClusterDynamicWatchesFinalizer,
