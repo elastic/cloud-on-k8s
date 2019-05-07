@@ -17,6 +17,17 @@ Before you start, install the following tools and packages:
 * [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
 * sha1sum (for Mac `brew install md5sha1sum`)
 
+### Get sources using go get
+
+**Note**: People accessing this repo before the repo is public will not be able to use `go get`, you will have to clone the repo and place it in `{GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators`
+
+```bash
+go get -u github.com/elastic/k8s-operators
+cd ${GOPATH:-$HOME/go}/src/github.com/elastic/k8s-operators/operators
+```
+
+### Check prerequisites
+
 Run `make check-requisites` to check that all dependencies are installed.
 
 ## Quickstart
@@ -36,7 +47,8 @@ See the [Quickstart](../docs/quickstart.md).
    or [GKE](https://cloud.google.com/kubernetes-engine/)
 
    ```bash
-   GCLOUD_PROJECT=my-project-id make bootstrap-gke
+   export GCLOUD_PROJECT=my-project-id
+   make bootstrap-gke
    # Sets up GKE cluster with required resources		
    ```
 2. Deploy the operator.

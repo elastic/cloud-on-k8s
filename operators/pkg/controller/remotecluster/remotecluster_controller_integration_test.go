@@ -41,7 +41,7 @@ func TestReconcile(t *testing.T) {
 	mgr, err := manager.New(test.Config, manager.Options{})
 	client := mgr.GetClient()
 	c = k8s.WrapClient(client)
-	rec := newReconciler(mgr, nil)
+	rec := newReconciler(mgr, "default")
 	require.NoError(t, err)
 	recFn, requests := SetupTestReconcile(rec)
 	controller, err := add(mgr, recFn)
@@ -75,8 +75,14 @@ func TestReconcile(t *testing.T) {
 	defer c.Delete(instance)
 	test.CheckReconcileCalled(t, requests, expectedRequest)
 
-	// expect the creation of the first TrustRelationship
 	trustRelationship1 := &v1alpha1.TrustRelationship{}
+	// commercial features disabled
+	assert.Error(t, c.Get(trustRelationship1Key, trustRelationship1))
+	test.StartTrial(t, c)
+
+	// looks like we need four rounds to do the actual reconciling
+	test.CheckReconcileCalledIn(t, requests, expectedRequest, 4, 4)
+	// expect the creation of the first TrustRelationship
 	test.RetryUntilSuccess(t, func() error {
 		err := c.Get(trustRelationship1Key, trustRelationship1)
 		if err != nil {

@@ -5,6 +5,9 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: apmserver-sample
 spec:
-  version: "6.6.1"
+  version: "6.7.2"
   nodeCount: 1
-    expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: ClusterIP

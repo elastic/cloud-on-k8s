@@ -39,6 +39,9 @@ spec:
   #   secretName: "ref-to-secret"
   ## Add a list of SANs into the nodes certificates
   http:
+    service:
+      spec:
+        type: LoadBalancer
     tls:
       selfSignedCertificates:
         subjectAltNames:
@@ -46,4 +49,3 @@ spec:
         - ip: 4.3.2.2
         - dns: my.domain.name.com
         - dns: my.second.domain
-  expose: LoadBalancer

@@ -6,6 +6,7 @@ package helpers
 
 import (
 	"bytes"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
@@ -168,9 +170,55 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	}
 	caCert, exists := secret.Data[certificates.CAFileName]
 	if !exists {
-		return nil, fmt.Errorf("No value found for secret %s", certificates.CAFileName)
+		return nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
 	}
 	return certificates.ParsePEMCerts(caCert)
+}
+
+// GetCAPrivateKey returns the private key of the given stack
+func (k *K8sHelper) GetCAPrivateKey(stackName string) (*rsa.PrivateKey, error) {
+	var secret corev1.Secret
+	key := types.NamespacedName{
+		Namespace: DefaultNamespace,
+		Name:      name.CAPrivateKeySecret(stackName),
+	}
+	if err := k.Client.Get(key, &secret); err != nil {
+		return nil, err
+	}
+	pKeyBytes, exists := secret.Data[nodecerts.CAPrivateKeyFileName]
+	if !exists || len(pKeyBytes) == 0 {
+		return nil, fmt.Errorf("no value found for secret %s", nodecerts.CAPrivateKeyFileName)
+	}
+	return certificates.ParsePEMPrivateKey(pKeyBytes)
+}
+
+// GetNodeCert retrieves the certificate of the CA and the node certificate
+func (k *K8sHelper) GetNodeCert(podName string) (caCert, nodeCert []*x509.Certificate, err error) {
+	var secret corev1.Secret
+	key := types.NamespacedName{
+		Namespace: DefaultNamespace,
+		Name:      name.CertsSecret(podName),
+	}
+	if err = k.Client.Get(key, &secret); err != nil {
+		return nil, nil, err
+	}
+	caCertBytes, exists := secret.Data[certificates.CAFileName]
+	if !exists || len(caCertBytes) == 0 {
+		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
+	}
+	caCert, err = certificates.ParsePEMCerts(caCertBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	nodeCertBytes, exists := secret.Data[nodecerts.CertFileName]
+	if !exists || len(nodeCertBytes) == 0 {
+		return nil, nil, fmt.Errorf("no value found for secret %s", nodecerts.CertFileName)
+	}
+	nodeCert, err = certificates.ParsePEMCerts(nodeCertBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+	return
 }
 
 // Exec runs the given cmd into the given pod.

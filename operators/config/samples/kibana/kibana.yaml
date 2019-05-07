@@ -6,7 +6,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   Elasticsearch:
     url: https://url.to.elasticsearch:9200
     auth:
@@ -19,4 +19,7 @@ spec:
     nodeCertificates:
       enabled: true
   nodeCount: 1
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer

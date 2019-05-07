@@ -143,6 +143,7 @@ func (in *KibanaList) DeepCopyObject() runtime.Object {
 func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	*out = *in
 	in.Elasticsearch.DeepCopyInto(&out.Elasticsearch)
+	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags

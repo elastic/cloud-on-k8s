@@ -25,11 +25,6 @@ type ElasticsearchSpec struct {
 	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
 	SetVMMaxMapCount *bool `json:"setVmMaxMapCount,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
-
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 

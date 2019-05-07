@@ -52,14 +52,6 @@ spec:
           type: object
         spec:
           properties:
-            expose:
-              description: 'Expose determines which service type to use for this workload.
-                The options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.'
-              enum:
-              - ClusterIP
-              - LoadBalancer
-              - NodePort
-              type: string
             featureFlags:
               description: FeatureFlags are instance-specific flags that enable or
                 disable specific experimental features

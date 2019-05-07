@@ -141,7 +141,6 @@ func Test_driver_deploymentParams(t *testing.T) {
 				},
 				CaCertSecret: &caSecret,
 			},
-			Expose: "LoadBalancer",
 		},
 	}
 

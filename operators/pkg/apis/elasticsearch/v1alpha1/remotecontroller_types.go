@@ -43,6 +43,7 @@ const (
 	RemoteClusterRemovalFailed   RemoteClusterPhase = "RemovalFailed"
 	RemoteClusterPending         RemoteClusterPhase = "Pending"
 	RemoteClusterDeletionPending RemoteClusterPhase = "DeletionPending"
+	RemoteClusterFeatureDisabled RemoteClusterPhase = "EnterpriseFeaturesDisabled"
 )
 
 // +genclient

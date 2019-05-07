@@ -5,7 +5,7 @@ kind: Elasticsearch
 metadata:
   name: trust-one
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
@@ -16,14 +16,17 @@ spec:
           memory: 1Gi
           cpu: 500m
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
   name: trust-two
 spec:
-  version: "6.7.0"
+  version: "6.7.2"
   nodes:
     - config:
         node.master: true
@@ -34,7 +37,10 @@ spec:
           memory: 1Gi
           cpu: 500m
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: TrustRelationship

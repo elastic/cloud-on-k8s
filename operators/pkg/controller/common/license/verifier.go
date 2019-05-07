@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"time"
 
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	errors2 "github.com/pkg/errors"
@@ -26,8 +27,20 @@ type Verifier struct {
 	PublicKey *rsa.PublicKey
 }
 
-// Valid checks the validity of the given Enterprise license. Returns nil if valid.
-func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte) error {
+// Valid checks the validity of the given Enterprise license.
+func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte, now time.Time) v1alpha1.LicenseStatus {
+	if !l.IsValid(now) {
+		return v1alpha1.LicenseStatusExpired
+	}
+	if err := v.ValidSignature(l, sig); err != nil {
+		log.Error(err, "Failed signature check")
+		return v1alpha1.LicenseStatusInvalid
+	}
+	return v1alpha1.LicenseStatusValid
+}
+
+// ValidSignature checks signature of the given Enterprise license. Returns nil if valid.
+func (v *Verifier) ValidSignature(l v1alpha1.EnterpriseLicense, sig []byte) error {
 	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(sig)))
 	_, err := base64.StdEncoding.Decode(allParts, sig)
 	if err != nil {

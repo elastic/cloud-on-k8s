@@ -9,6 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,12 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	match "github.com/elastic/k8s-operators/operators/pkg/controller/common/license"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/operator"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
 // defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
@@ -136,7 +135,7 @@ func findLicense(c k8s.Client) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, 
 	if err != nil {
 		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, false, err
 	}
-	return match.BestMatch(licenseList.Items)
+	return license.BestMatch(licenseList.Items)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -214,7 +213,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
 		Spec:       matchingSpec,
 	}
-	toAssign.Labels = map[string]string{EnterpriseLicenseLabelName: parent.Name}
+	toAssign.Labels = map[string]string{license.EnterpriseLicenseLabelName: parent.Name}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{
