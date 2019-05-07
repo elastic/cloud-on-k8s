@@ -150,11 +150,11 @@ func TestValidate(t *testing.T) {
 					Spec: estype.ElasticsearchSpec{
 						Version: "1.0.0",
 						HTTP: common.HTTPConfig{
-							TLS: &common.TLSOptions{
+							TLS: common.TLSOptions{
 								SelfSignedCertificates: &common.SelfSignedCertificates{
 									SubjectAlternativeNames: []common.SubjectAlternativeName{
 										{
-											IP: &invalidIP,
+											IP: invalidIP,
 										},
 									},
 								},

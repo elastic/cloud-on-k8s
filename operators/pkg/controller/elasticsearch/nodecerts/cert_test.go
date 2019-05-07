@@ -15,17 +15,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
 	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // fixtures
@@ -264,11 +265,11 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					ObjectMeta: testCluster.ObjectMeta,
 					Spec: v1alpha1.ElasticsearchSpec{
 						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: &commonv1alpha1.TLSOptions{
+							TLS: commonv1alpha1.TLSOptions{
 								SelfSignedCertificates: &commonv1alpha1.SelfSignedCertificates{
 									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
 										{
-											DNS: &sanDNS,
+											DNS: sanDNS,
 										},
 									},
 								},

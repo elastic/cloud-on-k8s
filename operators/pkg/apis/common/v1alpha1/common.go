@@ -27,7 +27,7 @@ type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
 	Service HTTPService `json:"service,omitempty"`
 	// TLS describe additional options to consider when generating nodes TLS certificates.
-	TLS *TLSOptions `json:"tls,omitempty"`
+	TLS TLSOptions `json:"tls,omitempty"`
 }
 
 type TLSOptions struct {
@@ -43,8 +43,8 @@ type SelfSignedCertificates struct {
 }
 
 type SubjectAlternativeName struct {
-	DNS *string `json:"dns,omitempty"`
-	IP  *string `json:"ip,omitempty"`
+	DNS string `json:"dns,omitempty"`
+	IP  string `json:"ip,omitempty"`
 }
 
 // HTTPService contains defaults for a HTTP service.
