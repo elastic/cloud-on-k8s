@@ -18,21 +18,21 @@ check-license-header:
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
 	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-		vault read \
-			-address=$(VAULT_ADDR) \
-			-field=service-account \
-			$(VAULT_GKE_CREDS_SECRET) \
-			> $(GKE_CREDS_FILE)
+	vault read \
+		-address=$(VAULT_ADDR) \
+		-field=service-account \
+		$(VAULT_GKE_CREDS_SECRET) \
+		> $(GKE_CREDS_FILE)
 
 # reads Elastic public key from Vault into $PUBLIC_KEY_FILE
 vault-public-key:
 	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-		vault read \
-			-address=$(VAULT_ADDR) \
-			-field=pubkey \
-			$(VAULT_PUBLIC_KEY) \
-			| base64 --decode \
-			> $(PUBLIC_KEY_FILE)
+	vault read \
+		-address=$(VAULT_ADDR) \
+		-field=pubkey \
+		$(VAULT_PUBLIC_KEY) \
+		| base64 --decode \
+		> $(PUBLIC_KEY_FILE)
 
 ## -- Job executed on all PRs
 
