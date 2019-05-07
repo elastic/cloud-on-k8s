@@ -5,9 +5,9 @@
 package kibana
 
 import (
-	kibanav1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana/pod"
+	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

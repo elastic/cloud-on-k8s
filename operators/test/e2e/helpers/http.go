@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
 )
 
 // NewHTTPClient creates a new HTTP client that is aware of any port forwarding configuration.

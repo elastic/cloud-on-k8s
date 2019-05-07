@@ -7,9 +7,9 @@ package label
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

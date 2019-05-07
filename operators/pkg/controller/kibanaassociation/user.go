@@ -13,14 +13,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	kbctl "github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const (

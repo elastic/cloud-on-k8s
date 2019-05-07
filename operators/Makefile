@@ -25,13 +25,13 @@ ifeq ($(REGISTRY),)
 endif
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG_NAME ?= k8s-operators
+IMG_NAME ?= eck-operators
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
 # use git sha1 as the default image tag
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
-LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/k8s-operators:latest"
+LATEST_RELEASED_IMG = "eu.gcr.io/elastic-cloud-dev/eck-operators:latest"
 
 ## -- Namespaces
 
@@ -69,13 +69,13 @@ generate:
 	$(MAKE) --no-print-directory generate-all-in-one
 
 elastic-operator: generate
-	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/k8s-operators/operators/cmd
+	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 
 process-manager:
-	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/k8s-operators/operators/cmd/process-manager
+	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
 cert-initializer:
-	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/k8s-operators/operators/cmd/cert-initializer
+	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd

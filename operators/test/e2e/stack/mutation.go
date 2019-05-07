@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -123,7 +123,7 @@ func (hc *ContinousHealthCheck) Start() {
 				defer cancel()
 				health, err := hc.esClient.GetClusterHealth(ctx)
 				if err != nil {
-					// TODO: Temporarily account only red clusters, see https://github.com/elastic/k8s-operators/issues/614
+					// TODO: Temporarily account only red clusters, see https://github.com/elastic/cloud-on-k8s/issues/614
 					//hc.AppendErr(err)
 					continue
 				}

@@ -59,7 +59,7 @@ Allow for a hybrid approach where it is possible to enable the components of bot
 
 ## Decision Outcome
 
-Superseded by [005](https://github.com/elastic/k8s-operators/blob/master/docs/design/0005-configurable-operator.md).
+Superseded by [005](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0005-configurable-operator.md).
 
 ### Positive Consequences <!-- optional -->
 

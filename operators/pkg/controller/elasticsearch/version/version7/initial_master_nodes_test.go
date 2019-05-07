@@ -7,11 +7,11 @@ package version7
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

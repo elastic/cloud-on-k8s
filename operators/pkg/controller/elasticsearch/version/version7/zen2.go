@@ -7,9 +7,9 @@ package version7
 import (
 	"context"
 
-	esclient "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/mutation"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

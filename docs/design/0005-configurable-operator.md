@@ -1,7 +1,7 @@
 # 5. Configurable operator and RBAC permissions
 
 * Status: proposed
-* Deciders: k8s-operators team
+* Deciders: cloud-on-k8s team
 * Date: 2019-02-13
 
 ## Context and Problem Statement
@@ -37,7 +37,7 @@ The second option (namespace operator) also has some major drawbacks:
 
 ### Option 1: global and namespace operators
 
-[In a previous design proposal](https://github.com/elastic/k8s-operators/blob/master/docs/design/0002-global-operator/0002-global-operator.md), we introduced the concepts of one global and several namespace operators. 
+[In a previous design proposal](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0002-global-operator/0002-global-operator.md), we introduced the concepts of one global and several namespace operators. 
 
 The global operator deployed cluster-wide responsible for high-level cross-cluster features (CCR, CCS, enterprise licenses).
 Namespace operators are responsible for managing clusters in a single namespace. There might be several namespace operators running on a single cluster.
@@ -164,5 +164,5 @@ Cons:
 
 ## Links
 
-* [Discussion issue](https://github.com/elastic/k8s-operators/issues/374)
-* [Global operator ADR](https://github.com/elastic/k8s-operators/blob/master/docs/design/0002-global-operator/0002-global-operator.md)
+* [Discussion issue](https://github.com/elastic/cloud-on-k8s/issues/374)
+* [Global operator ADR](https://github.com/elastic/cloud-on-k8s/blob/master/docs/design/0002-global-operator/0002-global-operator.md)

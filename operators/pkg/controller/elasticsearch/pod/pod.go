@@ -5,13 +5,13 @@
 package pod
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/volume"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )

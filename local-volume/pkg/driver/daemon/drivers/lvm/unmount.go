@@ -7,9 +7,9 @@ package lvm
 import (
 	"fmt"
 
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/daemon/diskutil"
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/flex"
-	"github.com/elastic/k8s-operators/local-volume/pkg/driver/protocol"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/daemon/diskutil"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/flex"
+	"github.com/elastic/cloud-on-k8s/local-volume/pkg/driver/protocol"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -5,9 +5,9 @@
 package remotecluster
 
 import (
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

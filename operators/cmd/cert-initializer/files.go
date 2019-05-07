@@ -12,7 +12,7 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 )
 
 // readPrivateKey reads the private key stored at the given path.

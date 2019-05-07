@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/fs"
 	"k8s.io/client-go/util/workqueue"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

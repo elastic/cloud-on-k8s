@@ -9,8 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
-	pm "github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/processmanager"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+	pm "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/spf13/cobra"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )

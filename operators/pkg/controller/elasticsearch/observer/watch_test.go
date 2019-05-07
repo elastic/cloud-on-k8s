@@ -7,7 +7,7 @@ package observer
 import (
 	"testing"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
 func Test_hasHealthChanged(t *testing.T) {

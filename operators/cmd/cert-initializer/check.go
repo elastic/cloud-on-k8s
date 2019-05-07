@@ -10,8 +10,8 @@ import (
 	"crypto/x509"
 	"time"
 
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/fs"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/fs"
 )
 
 // checkExistingOnDisk reads the private key, csr and certificate on disk,
