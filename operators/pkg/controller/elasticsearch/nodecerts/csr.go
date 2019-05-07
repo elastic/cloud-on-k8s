@@ -136,7 +136,7 @@ func buildGeneralNames(
 
 	// append user-provided SANs
 	var userProvidedSANs []certificates.GeneralName
-	if selfSignedCerts := cluster.Spec.HTTP.TLS.SelfSignedCertificates; selfSignedCerts != nil {
+	if selfSignedCerts := cluster.Spec.HTTP.TLS.SelfSignedCertificate; selfSignedCerts != nil {
 		for _, san := range selfSignedCerts.SubjectAlternativeNames {
 			if san.DNS != "" {
 				userProvidedSANs = append(userProvidedSANs, certificates.GeneralName{DNSName: san.DNS})

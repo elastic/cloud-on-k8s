@@ -354,7 +354,7 @@ func Test_validSanIP(t *testing.T) {
 					Version: "6.7.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
-							SelfSignedCertificates: &common.SelfSignedCertificates{
+							SelfSignedCertificate: &common.SelfSignedCertificate{
 								SubjectAlternativeNames: []common.SubjectAlternativeName{
 									{
 										IP: validIP,
@@ -380,7 +380,7 @@ func Test_validSanIP(t *testing.T) {
 					Version: "6.7.0",
 					HTTP: common.HTTPConfig{
 						TLS: common.TLSOptions{
-							SelfSignedCertificates: &common.SelfSignedCertificates{
+							SelfSignedCertificate: &common.SelfSignedCertificate{
 								SubjectAlternativeNames: []common.SubjectAlternativeName{
 									{
 										IP: invalidIP,

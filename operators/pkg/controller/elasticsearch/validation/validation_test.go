@@ -151,7 +151,7 @@ func TestValidate(t *testing.T) {
 						Version: "1.0.0",
 						HTTP: common.HTTPConfig{
 							TLS: common.TLSOptions{
-								SelfSignedCertificates: &common.SelfSignedCertificates{
+								SelfSignedCertificate: &common.SelfSignedCertificate{
 									SubjectAlternativeNames: []common.SubjectAlternativeName{
 										{
 											IP: invalidIP,

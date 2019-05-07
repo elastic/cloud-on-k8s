@@ -115,7 +115,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 }
 
 func validSanIP(ctx Context) validation.Result {
-	selfSignedCerts := ctx.Proposed.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificates
+	selfSignedCerts := ctx.Proposed.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCerts != nil {
 		for _, san := range selfSignedCerts.SubjectAlternativeNames {
 			if san.IP != "" {

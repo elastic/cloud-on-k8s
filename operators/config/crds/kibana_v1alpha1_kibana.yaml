@@ -121,9 +121,9 @@ spec:
                   description: TLS describe additional options to consider when generating
                     nodes TLS certificates.
                   properties:
-                    selfSignedCertificates:
-                      description: SelfSignedCertificates define options to apply
-                        to self-signed certificates managed by the operator.
+                    selfSignedCertificate:
+                      description: SelfSignedCertificate define options to apply to
+                        self-signed certificate managed by the operator.
                       properties:
                         subjectAltNames:
                           description: 'SubjectAlternativeNames is a list of SANs

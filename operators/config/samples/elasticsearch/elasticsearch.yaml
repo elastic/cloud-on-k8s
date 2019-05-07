@@ -43,7 +43,7 @@ spec:
       spec:
         type: LoadBalancer
     tls:
-      selfSignedCertificates:
+      selfSignedCertificate:
         subjectAltNames:
         - ip: 35.198.85.171
         - ip: 4.3.2.2

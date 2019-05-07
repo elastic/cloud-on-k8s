@@ -266,7 +266,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 					Spec: v1alpha1.ElasticsearchSpec{
 						HTTP: commonv1alpha1.HTTPConfig{
 							TLS: commonv1alpha1.TLSOptions{
-								SelfSignedCertificates: &commonv1alpha1.SelfSignedCertificates{
+								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
 									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
 										{
 											DNS: sanDNS,

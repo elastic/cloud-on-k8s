@@ -31,12 +31,12 @@ type HTTPConfig struct {
 }
 
 type TLSOptions struct {
-	// SelfSignedCertificates define options to apply to self-signed certificates
+	// SelfSignedCertificate define options to apply to self-signed certificate
 	// managed by the operator.
-	SelfSignedCertificates *SelfSignedCertificates `json:"selfSignedCertificates,omitempty"`
+	SelfSignedCertificate *SelfSignedCertificate `json:"selfSignedCertificate,omitempty"`
 }
 
-type SelfSignedCertificates struct {
+type SelfSignedCertificate struct {
 	// SubjectAlternativeNames is a list of SANs to include in the nodes certificates.
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
