@@ -21,12 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/annotation"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/certificates"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 // fixtures

@@ -5,11 +5,11 @@
 package stack
 
 import (
-	common "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/test/e2e/helpers"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

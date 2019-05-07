@@ -10,11 +10,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 // associatedCluster represents a cluster that is part of an association in a RemoteCluster object.

@@ -17,14 +17,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/k8s-operators/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/common"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/k8s-operators/operators/pkg/controller/kibana"
-	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const resourceNameFixture = "kibana-foo-kibana-user"
