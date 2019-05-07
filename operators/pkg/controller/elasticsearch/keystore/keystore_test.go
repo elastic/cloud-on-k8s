@@ -48,18 +48,16 @@ func Test_keystore_AddSetting(t *testing.T) {
 	}
 
 	tests := []struct {
-		name          string
-		filename      string
-		fileContent   []byte
-		expectedCmd   string
-		expectedStdin []byte
+		name        string
+		filename    string
+		fileContent []byte
+		expectedCmd string
 	}{
 		{
-			name:          "file setting",
-			filename:      "my.setting",
-			fileContent:   []byte("setting value"),
-			expectedCmd:   "/usr/share/elasticsearch/bin/elasticsearch-keystore add-file my.setting " + filepath.Join(tmpDir, "my.setting"),
-			expectedStdin: nil,
+			name:        "file setting",
+			filename:    "my.setting",
+			fileContent: []byte("setting value"),
+			expectedCmd: "/usr/share/elasticsearch/bin/elasticsearch-keystore add-file my.setting " + filepath.Join(tmpDir, "my.setting"),
 		},
 	}
 	for _, tt := range tests {
@@ -74,14 +72,6 @@ func Test_keystore_AddSetting(t *testing.T) {
 
 			// verify the right command was called
 			require.Equal(t, strings.Split(tt.expectedCmd, " "), mockCmd.cmd.Args)
-
-			// verify the right content was piped in
-			if tt.expectedStdin != nil {
-				stdin := make([]byte, len(tt.fileContent))
-				_, err = mockCmd.cmd.Stdin.Read(stdin)
-				require.NoError(t, err)
-				require.Equal(t, tt.fileContent, stdin)
-			}
 		})
 	}
 }
