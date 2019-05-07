@@ -6,6 +6,8 @@
 ##  --      Variables      --  ##
 #################################
 
+ROOT_DIR = $(shell dirname $(CURDIR))
+
 # make sure sub-commands don't use eg. fish shell
 export SHELL := /bin/bash
 
@@ -301,6 +303,7 @@ ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
 
 ci-release: export GO_TAGS = release
+ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
 	@ hack/gke-cluster.sh registry
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
