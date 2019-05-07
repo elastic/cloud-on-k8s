@@ -55,25 +55,11 @@ func Test_keystore_AddSetting(t *testing.T) {
 		expectedStdin []byte
 	}{
 		{
-			name:          "string setting",
-			filename:      "es.string.my.setting",
-			fileContent:   []byte("setting value"),
-			expectedCmd:   "/usr/share/elasticsearch/bin/elasticsearch-keystore add my.setting",
-			expectedStdin: []byte("setting value"),
-		},
-		{
 			name:          "file setting",
-			filename:      "es.file.my.setting",
-			fileContent:   []byte("setting value"),
-			expectedCmd:   "/usr/share/elasticsearch/bin/elasticsearch-keystore add-file my.setting " + filepath.Join(tmpDir, "es.file.my.setting"),
-			expectedStdin: nil,
-		},
-		{
-			name:          "default to string setting if no prefix provided",
 			filename:      "my.setting",
 			fileContent:   []byte("setting value"),
-			expectedCmd:   "/usr/share/elasticsearch/bin/elasticsearch-keystore add my.setting",
-			expectedStdin: []byte("setting value"),
+			expectedCmd:   "/usr/share/elasticsearch/bin/elasticsearch-keystore add-file my.setting " + filepath.Join(tmpDir, "my.setting"),
+			expectedStdin: nil,
 		},
 	}
 	for _, tt := range tests {
