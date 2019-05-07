@@ -77,7 +77,7 @@ func (pm ProcessManager) Start(done chan ExitStatus) error {
 	}
 
 	if pm.keystoreUpdater != nil {
-		pm.keystoreUpdater.Start()
+		go pm.keystoreUpdater.Start()
 	}
 
 	log.Info("Started")

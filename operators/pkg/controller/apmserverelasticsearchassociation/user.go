@@ -7,14 +7,14 @@ package apmserverelasticsearchassociation
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/association"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/associations/v1alpha1"
+	estype "github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/apmserver"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
+	common "github.com/elastic/k8s-operators/operators/pkg/controller/common/user"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/kibanaassociation"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,7 +64,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(assoc.Spec.ApmServer.Name)
-	secretLabels[association.AssociationLabelName] = assoc.Name
+	secretLabels[kibanaassociation.AssociationLabelName] = assoc.Name
 	secKey := secretKey(assoc)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -105,7 +105,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
-	userLabels[association.AssociationLabelName] = assoc.Name
+	userLabels[kibanaassociation.AssociationLabelName] = assoc.Name
 	usrKey := userKey(assoc)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{

@@ -5,9 +5,9 @@
 package remotecluster
 
 import (
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,7 +23,7 @@ const (
 func trustRelationshipObjectMeta(
 	name string,
 	owner v1alpha1.RemoteCluster,
-	local assoctype.ObjectSelector,
+	local commonv1alpha1.ObjectSelector,
 ) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:      name,

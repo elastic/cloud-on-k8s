@@ -44,20 +44,6 @@ spec:
   version: "6.7.2"
   nodeCount: 1
 ---
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
-  name: kibanaelasticsearchassociation-sample
-spec:
-  elasticsearch:
-    name: "elasticsearch-sample"
-    namespace: "default"
-  kibana:
-    name: "kibana-sample"
-    namespace: "default"
----
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
@@ -67,3 +53,5 @@ metadata:
 spec:
   version: "6.7.2"
   nodeCount: 1
+  elasticsearchRef:
+    name: "elasticsearch-sample"

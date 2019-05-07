@@ -7,12 +7,12 @@ package remotecluster
 import (
 	"fmt"
 
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/services"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -48,7 +48,7 @@ func doReconcile(
 		}
 	}
 
-	var localClusterSelector assoctype.ObjectSelector
+	var localClusterSelector commonv1alpha1.ObjectSelector
 	// Get local cluster selector
 	localClusterName, ok := remoteCluster.Labels[label.ClusterNameLabelName]
 	if !ok {
@@ -61,7 +61,7 @@ func doReconcile(
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonConfigurationError, ClusterNameLabelMissing)
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), nil // Wait for the object to be updated
 	}
-	localClusterSelector = assoctype.ObjectSelector{
+	localClusterSelector = commonv1alpha1.ObjectSelector{
 		Namespace: remoteCluster.Namespace,
 		Name:      localClusterName,
 	}
@@ -157,7 +157,7 @@ func doReconcile(
 	return status, nil
 }
 
-func caCertMissingError(location string, selector assoctype.ObjectSelector) string {
+func caCertMissingError(location string, selector commonv1alpha1.ObjectSelector) string {
 	return fmt.Sprintf(
 		CaCertMissingError,
 		location,

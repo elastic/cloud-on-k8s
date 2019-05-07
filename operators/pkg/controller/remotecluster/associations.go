@@ -7,25 +7,26 @@ package remotecluster
 import (
 	"reflect"
 
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes/scheme"
+
+	commonv1alpha1 "github.com/elastic/k8s-operators/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 )
 
 // associatedCluster represents a cluster that is part of an association in a RemoteCluster object.
 // It contains an object selector and the CA, this is all we need to create an association.
 // The CA reference can be nil if there is no CA for the given Selector.
 type associatedCluster struct {
-	Selector assoctype.ObjectSelector
+	Selector commonv1alpha1.ObjectSelector
 	CA       []byte
 }
 
 // newAssociatedCluster creates an associatedCluster from an object selector.
-func newAssociatedCluster(c k8s.Client, selector assoctype.ObjectSelector) (associatedCluster, error) {
+func newAssociatedCluster(c k8s.Client, selector commonv1alpha1.ObjectSelector) (associatedCluster, error) {
 	ca, err := nodecerts.GetCA(c, selector.NamespacedName())
 	if err != nil {
 		return associatedCluster{}, err
@@ -87,7 +88,7 @@ func ensureTrustRelationshipIsDeleted(
 	c k8s.Client,
 	name string,
 	owner v1alpha1.RemoteCluster,
-	cluster assoctype.ObjectSelector,
+	cluster commonv1alpha1.ObjectSelector,
 ) error {
 	trustRelationShip := &v1alpha1.TrustRelationship{}
 	trustRelationShipObjectMeta := trustRelationshipObjectMeta(name, owner, cluster)

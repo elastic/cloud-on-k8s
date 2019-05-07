@@ -152,7 +152,7 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
 
 ### Target the Elasticsearch cluster
 
-Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
+Specify a Kibana instance to target your quickstart Elasticsearch cluster:
 
 ```bash
 cat <<EOF | kubectl apply -f -
@@ -163,18 +163,8 @@ metadata:
 spec:
   version: 7.0.0
   nodeCount: 1
----
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  name: kibana-es-quickstart
-spec:
-  elasticsearch:
+  elasticsearchRef:
     name: quickstart
-    namespace: default
-  kibana:
-    name: quickstart
-    namespace: default
 EOF
 ```
 
