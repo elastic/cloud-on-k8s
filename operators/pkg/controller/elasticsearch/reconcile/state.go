@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/events"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/common/validation"
 	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/k8s-operators/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -32,22 +33,11 @@ func NewState(c v1alpha1.Elasticsearch) *State {
 func AvailableElasticsearchNodes(pods []corev1.Pod) []corev1.Pod {
 	var nodesAvailable []corev1.Pod
 	for _, pod := range pods {
-		if IsAvailable(pod) {
+		if k8s.IsPodReady(pod) {
 			nodesAvailable = append(nodesAvailable, pod)
 		}
 	}
 	return nodesAvailable
-}
-
-// IsAvailable checks if both conditions ContainersReady and PodReady of a Pod are true.
-func IsAvailable(pod corev1.Pod) bool {
-	conditionsTrue := 0
-	for _, cond := range pod.Status.Conditions {
-		if cond.Status == corev1.ConditionTrue && (cond.Type == corev1.ContainersReady || cond.Type == corev1.PodReady) {
-			conditionsTrue++
-		}
-	}
-	return conditionsTrue == 2
 }
 
 func (s *State) updateWithPhase(

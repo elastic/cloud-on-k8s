@@ -42,7 +42,7 @@ func UpdateZen1Discovery(
 	for _, p := range allPods {
 		if label.IsMasterNode(p) {
 			currentMasterCount++
-			if reconcile.IsAvailable(p) {
+			if k8s.IsPodReady(p) {
 				currentAvailableMasterCount++
 			}
 		}

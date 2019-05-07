@@ -142,7 +142,7 @@ func TestReconcile(t *testing.T) {
 				Request:    req,
 			}
 		})
-	r.esObservers.Observe(observedCluster, esclientGreen)
+	r.esObservers.Observe(observedCluster, nil, esclientGreen)
 	// cluster health should have gone from none to green,
 	// check reconciliation was called for the observed cluster
 	expectedReq := reconcile.Request{NamespacedName: observedCluster}

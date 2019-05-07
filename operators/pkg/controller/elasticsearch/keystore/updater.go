@@ -70,7 +70,7 @@ func (u *Updater) updateStatus(s State, msg string, err error) {
 
 // Start updates the keystore once and then starts a watcher on source dir to update again on file changes.
 func (u *Updater) Start() {
-	u.updateStatus(waitingState, "Waiting for Elasticsearch to be ready", nil)
+	u.updateStatus(WaitingState, "Waiting for Elasticsearch to be ready", nil)
 	u.esClient.WaitForEsReady()
 
 	if u.config.ReloadCredentials {
@@ -87,9 +87,9 @@ func (u *Updater) watchForUpdate() {
 		err, msg := u.updateKeystore()
 		if err != nil {
 			log.Error(err, "Cannot update keystore", "msg", msg)
-			u.updateStatus(failedState, msg, err)
+			u.updateStatus(FailedState, msg, err)
 		} else {
-			u.updateStatus(runningState, keystoreUpdatedReason, nil)
+			u.updateStatus(RunningState, KeystoreUpdatedReason, nil)
 		}
 		return false, nil // run forever
 	}
@@ -99,23 +99,23 @@ func (u *Updater) watchForUpdate() {
 	if err != nil {
 		msg := "Cannot watch filesystem"
 		log.Error(err, msg, "path", u.config.SecretsSourceDir)
-		u.updateStatus(failedState, msg, err)
+		u.updateStatus(FailedState, msg, err)
 		return
 	}
 	// execute at least once with the initial fs content
 	err, msg := u.updateKeystore()
 	if err != nil {
 		log.Error(err, "Cannot update keystore", "msg", msg)
-		u.updateStatus(failedState, msg, err)
+		u.updateStatus(FailedState, msg, err)
 	} else {
-		u.updateStatus(runningState, keystoreUpdatedReason, err)
+		u.updateStatus(RunningState, KeystoreUpdatedReason, err)
 	}
 
 	// then run on files change
 	if err := watcher.Run(); err != nil {
 		msg := "Cannot watch filesystem"
 		log.Error(err, msg, "path", u.config.SecretsSourceDir)
-		u.updateStatus(failedState, msg, err)
+		u.updateStatus(FailedState, msg, err)
 	}
 }
 
@@ -132,10 +132,10 @@ func (u *Updater) coalescingRetry() {
 		if err != nil {
 			msg := "Failed to reload secure settings"
 			log.Error(err, msg+". Continuing.")
-			u.updateStatus(failedState, msg, err)
+			u.updateStatus(FailedState, msg, err)
 			u.reloadQueue.AddAfter(item, 5*time.Second) // TODO exp. backoff w/ jitter
 		} else {
-			u.updateStatus(runningState, secureSettingsReloadedReason, nil)
+			u.updateStatus(RunningState, secureSettingsReloadedReason, nil)
 			log.Info(secureSettingsReloadedReason)
 		}
 		u.reloadQueue.Done(item)

@@ -4,18 +4,21 @@
 
 package keystore
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // State of the Keystore updater
 type State string
 
 const (
 	notInitializedState State = "notInitialized"
-	waitingState        State = "waiting"
-	runningState        State = "running"
-	failedState         State = "failed"
+	WaitingState        State = "waiting"
+	RunningState        State = "running"
+	FailedState         State = "failed"
 
-	keystoreUpdatedReason        = "Keystore updated"
+	KeystoreUpdatedReason        = "Keystore updated"
 	secureSettingsReloadedReason = "Secure settings reloaded"
 )
 
@@ -24,4 +27,8 @@ type Status struct {
 	State  State
 	Reason string
 	At     time.Time
+}
+
+func (s State) ToString() string {
+	return fmt.Sprintf("%s", s)
 }

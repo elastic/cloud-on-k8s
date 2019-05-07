@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/elastic/k8s-operators/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/k8s-operators/operators/pkg/utils/net"
 )
 
@@ -25,6 +26,7 @@ type Client interface {
 	Stop(ctx context.Context) (ProcessStatus, error)
 	Kill(ctx context.Context) (ProcessStatus, error)
 	Status(ctx context.Context) (ProcessStatus, error)
+	KeystoreStatus(ctx context.Context) (keystore.Status, error)
 }
 
 type DefaultClient struct {
@@ -87,6 +89,12 @@ func (c *DefaultClient) Kill(ctx context.Context) (ProcessStatus, error) {
 func (c *DefaultClient) Status(ctx context.Context) (ProcessStatus, error) {
 	var status ProcessStatus
 	err := c.doRequest(ctx, "GET", "/es/status", &status)
+	return status, err
+}
+
+func (c *DefaultClient) KeystoreStatus(ctx context.Context) (keystore.Status, error) {
+	var status keystore.Status
+	err := c.doRequest(ctx, "GET", "/keystore/status", &status)
 	return status, err
 }
 
