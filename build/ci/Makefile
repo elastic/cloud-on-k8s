@@ -51,7 +51,7 @@ ci-pr: check-license-header
 
 ## -- Release job
 
-ci-release: vault-gke-creds
+ci-release: vault-gke-creds vault-public-key
 	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
 	docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
