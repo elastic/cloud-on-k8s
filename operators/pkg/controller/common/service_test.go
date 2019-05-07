@@ -21,22 +21,22 @@ func TestGetServiceType(t *testing.T) {
 		want corev1.ServiceType
 	}{
 		{
-			name: "Empty Expose means ClusterIP service type",
+			name: "Empty Type means ClusterIP service type",
 			args: args{s: ""},
 			want: corev1.ServiceTypeClusterIP,
 		},
 		{
-			name: "Expose with a correct value returns it",
+			name: "Type with a correct value returns it",
 			args: args{s: "NodePort"},
 			want: corev1.ServiceTypeNodePort,
 		},
 		{
-			name: "Expose with a correct value returns it",
+			name: "Type with a correct value returns it",
 			args: args{s: "LoadBalancer"},
 			want: corev1.ServiceTypeLoadBalancer,
 		},
 		{
-			name: "Expose with a correct value returns it",
+			name: "Type with a correct value returns it",
 			args: args{s: "ClusterIP"},
 			want: corev1.ServiceTypeClusterIP,
 		},

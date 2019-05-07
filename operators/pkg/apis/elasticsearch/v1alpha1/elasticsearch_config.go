@@ -7,7 +7,7 @@ package v1alpha1
 import (
 	"encoding/json"
 
-	"github.com/elastic/go-ucfg"
+	ucfg "github.com/elastic/go-ucfg"
 )
 
 const (

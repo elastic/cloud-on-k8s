@@ -30,10 +30,8 @@ type KibanaSpec struct {
 	// +optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
-	// Expose determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Expose string `json:"expose,omitempty"`
+	// HTTP contains settings for HTTP.
+	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
 	// Resources to be allocated for this topology
 	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`

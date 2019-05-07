@@ -16,7 +16,10 @@ spec:
           memory: 1Gi
           cpu: 1
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
@@ -36,7 +39,10 @@ spec:
           memory: 1Gi
           cpu: 1
       nodeCount: 1
-  expose: ClusterIP
+  http:
+    service:
+      spec:
+        type: ClusterIP
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: RemoteCluster

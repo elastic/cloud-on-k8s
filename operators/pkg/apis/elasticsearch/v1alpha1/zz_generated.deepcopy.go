@@ -265,6 +265,7 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.HTTP.DeepCopyInto(&out.HTTP)
 	if in.Nodes != nil {
 		in, out := &in.Nodes, &out.Nodes
 		*out = make([]NodeSpec, len(*in))

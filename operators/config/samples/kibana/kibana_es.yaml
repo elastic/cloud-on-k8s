@@ -69,7 +69,10 @@ spec:
         memory: 1Gi
         cpu: 800m
     nodeCount: 0
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
@@ -80,4 +83,7 @@ spec:
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
-  expose: LoadBalancer
+  http:
+    service:
+      spec:
+        type: LoadBalancer

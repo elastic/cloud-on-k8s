@@ -144,6 +144,7 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	*out = *in
 	out.ElasticsearchRef = in.ElasticsearchRef
 	in.Elasticsearch.DeepCopyInto(&out.Elasticsearch)
+	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
