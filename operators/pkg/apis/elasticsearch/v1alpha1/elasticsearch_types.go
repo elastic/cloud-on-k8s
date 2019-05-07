@@ -67,7 +67,7 @@ type NodeSpec struct {
 
 	// PodTemplate is the object that describes the Elasticsearch pods.
 	// +optional
-	PodTemplate ElasticsearchPodTemplateSpec `json:"template,omitempty"`
+	PodTemplate ElasticsearchPodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// VolumeClaimTemplates is a list of claims that pods are allowed to reference.
 	// Every claim in this list must have at least one matching (by name) volumeMount in one

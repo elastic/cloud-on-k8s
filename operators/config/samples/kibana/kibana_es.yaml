@@ -33,7 +33,7 @@ spec:
         cpu: 1000m
     nodeCount: 3
     ## this shows how to add a custom label to all pods created for this topology element
-    #template:
+    #podTemplate:
     #  metadata:
     #    labels:
     #      foo: bar

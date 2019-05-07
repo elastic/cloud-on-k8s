@@ -126,15 +126,7 @@ spec:
                     description: NodeCount defines how many nodes have this topology
                     format: int32
                     type: integer
-                  resources:
-                    description: Resources to be allocated for this topology
-                    properties:
-                      limits:
-                        description: Limits represents the limits to considerate for
-                          these resources
-                        type: object
-                    type: object
-                  template:
+                  podTemplate:
                     description: PodTemplate is the object that describes the Elasticsearch
                       pods.
                     properties:
@@ -148,6 +140,14 @@ spec:
                           affinity:
                             description: Affinity is the pod's scheduling constraints
                             type: object
+                        type: object
+                    type: object
+                  resources:
+                    description: Resources to be allocated for this topology
+                    properties:
+                      limits:
+                        description: Limits represents the limits to considerate for
+                          these resources
                         type: object
                     type: object
                   volumeClaimTemplates:
