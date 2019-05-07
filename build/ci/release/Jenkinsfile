@@ -10,8 +10,8 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         REGISTRY = 'push.docker.elastic.co'
-        REPOSITORY = 'xxx'
-        IMG_NAME = 'yyy'
+        REPOSITORY = 'eck'
+        IMG_NAME = 'eck-operator'
         IMG_SUFFIX = ''
         DOCKER_LOGIN = 'abc'
     }
