@@ -200,6 +200,13 @@ A `ClusterIP` Service was automatically created for Kibana:
 kubectl get service quickstart-kibana
 ```
 
+Note: You will need the `elastic` password, retrieve it again and copy it:
+```bash
+PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+
+echo $PASSWORD
+```
+
 Use `kubectl port-forward` to access Kibana from your local workstation:
 
 ```bash
@@ -207,13 +214,6 @@ kubectl port-forward service/quickstart-kibana 5601
 ```
 
 You can then open http://localhost:5601 in your browser.
-
-Note: You will need the `elastic` password, retrieve it again:
-```bash
-PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
-
-echo $PASSWORD
-```
 
 ## Modify your deployment
 
