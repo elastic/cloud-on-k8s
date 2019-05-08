@@ -2,6 +2,7 @@
 :n: Elastic Cloud on Kubernetes
 :p: k8s
 :idprefix: k8s-
+:s: k8s
 
 :console:       https://cloud.elastic.co/[{n} Console]
 :signup:        https://www.elastic.co/cloud/elasticsearch-service/signup
@@ -27,14 +28,6 @@
 :apm-agent:     https://www.elastic.co/guide/en/apm/agent/
 :curator:       https://www.elastic.co/guide/en/elasticsearch/client/curator/5.6/
 :elastic:       https://www.elastic.co
-
-:ec-feature_migrate_template: yes
-:build-stubs: yes
-
-:filter: Narrow your deployments by name, ID, or choose from several other filters. To customize your view, use a combination of filters, or change the format from a grid to a list.
-:trial-period: 14-day trial
-:trial-includes: a free deployment with the latest Elasticsearch and Kibana versions, security features, machine learning, and much more
-:Login: Log into the {console}.
 
 include::{asciidoc-dir}/../../shared/versions70.asciidoc[]
 include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
