@@ -108,15 +108,15 @@ func SupportedVersions(v version.Version) *esversion.LowestHighestSupportedVersi
 	switch v.Major {
 	case 6:
 		res = &esversion.LowestHighestSupportedVersions{
-			// Min. version is 6.8.0 since it is the first one to support security in basic
-			LowestSupportedVersion: version.MustParse("6.8.0"),
+			// Min. version is 6.7.0 for now. Will be 6.8.0 soon.
+			LowestSupportedVersion: version.MustParse("6.7.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("6.8.99"),
 		}
 	case 7:
 		res = &esversion.LowestHighestSupportedVersions{
-			// 6.8.0 is the minimum version we support in the operator
-			LowestSupportedVersion: version.MustParse("6.8.0"),
+			// 6.7.0 is the lowest wire compatibility version for 7.x
+			LowestSupportedVersion: version.MustParse("6.7.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
 			HighestSupportedVersion: version.MustParse("7.1.99"),
 		}
