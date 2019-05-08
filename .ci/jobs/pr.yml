@@ -7,17 +7,27 @@
       artifactDaysToKeep: 5
       artifactNumToKeep: 10
     name: cloud-on-k8s-pr
-    project-type: multibranch
-    prune-dead-branches: true
-    periodic-folder-trigger: 1d
-    script-path: build/ci/pr/Jenkinsfile
-    scm:
+    project-type: pipeline
+    concurrent: true
+    pipeline-scm:
+      scm:
+        - git:
+            url: https://github.com/elastic/cloud-on-k8s
+            branches:
+              - master
+            credentials-id: 'f3af1bfb-d48e-48d1-82a2-acca009c1b23'
+      script-path: build/ci/pr/Jenkinsfile
+      lightweight-checkout: true
+    triggers:
+      - github-pull-request:
+          white-list-target-branches:
+            - master
+          org-list:
+            - elastic
+          allow-whitelist-orgs-as-admins: true
+          github-hooks: true
+          status-context: cloud-ci
+          cancel-builds-on-update: true
+    properties:
       - github:
-          branch-discovery: "all"
-          discover-pr-forks-strategy: "merge-current"
-          discover-pr-forks-trust: "contributors"
-          discover-pr-origin: "merge-current"
-          credentials-id: 'f3af1bfb-d48e-48d1-82a2-acca009c1b23'
-          repo: 'cloud-on-k8s'
-          repo-owner: 'elastic'
-          discover-tags: true
+          url: https://github.com/elastic/cloud-on-k8s/
