@@ -2,6 +2,8 @@
 
 = Quickstart
 
+[partintro]
+--
 In this quickstart, you will learn how to:
 
 * Deploy the operator in your Kubernetes cluster
@@ -12,6 +14,7 @@ In this quickstart, you will learn how to:
   - Secure your cluster
   - Use persistent storage
   - Additional features
+--
 
 == Requirements
 
