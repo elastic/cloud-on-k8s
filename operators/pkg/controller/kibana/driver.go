@@ -68,11 +68,13 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
 		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
 		esAuthSecret := types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}
-		d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
+		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
 			Watched: esAuthSecret,
 			Watcher: k8s.ExtractNamespacedName(kb),
-		})
+		}); err != nil {
+			return nil, err
+		}
 		sec := corev1.Secret{}
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
 			return nil, err
