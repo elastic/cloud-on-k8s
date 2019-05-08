@@ -1,5 +1,5 @@
 ---
 - view: 
-    name: 'k8s-operators' 
-    regex: 'k8s-operators-.*' 
+    name: 'cloud-on-k8s'
+    regex: 'cloud-on-k8s-.*'
     view-type: list
