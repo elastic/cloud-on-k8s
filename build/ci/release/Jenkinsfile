@@ -13,7 +13,7 @@ pipeline {
         REPOSITORY = 'eck'
         IMG_NAME = 'eck-operator'
         IMG_SUFFIX = ''
-        DOCKER_LOGIN = 'abc'
+        DOCKER_LOGIN = 'cloudadmin'
     }
 
     options {
