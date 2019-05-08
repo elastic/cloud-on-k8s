@@ -54,11 +54,21 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
 		User:             kb.Spec.Elasticsearch.Auth,
+		PodTemplate:      kb.Spec.PodTemplate,
 	}
 
 	kibanaPodSpec := d.newPodSpec(kibanaPodSpecParams)
+
 	labels := NewLabels(kb.Name)
-	podLabels := NewLabels(kb.Name)
+	podLabels := map[string]string{}
+	// set any user-provided label to the pods (could be overriden by our own)
+	for key, value := range kb.Spec.PodTemplate.Labels {
+		podLabels[key] = value
+	}
+	// also apply Kibana labels to the pods
+	for key, value := range NewLabels(kb.Name) {
+		podLabels[key] = value
+	}
 
 	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
 	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support

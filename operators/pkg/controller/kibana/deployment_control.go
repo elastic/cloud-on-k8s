@@ -66,10 +66,12 @@ func ReconcileDeployment(c k8s.Client, s *runtime.Scheme, expected appsv1.Deploy
 		NeedsUpdate: func() bool {
 			return !reflect.DeepEqual(expected.Spec.Selector, reconciled.Spec.Selector) ||
 				!reflect.DeepEqual(expected.Spec.Replicas, reconciled.Spec.Replicas) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Affinity, reconciled.Spec.Template.Spec.Affinity) ||
 				!reflect.DeepEqual(expected.Spec.Template.ObjectMeta, reconciled.Spec.Template.ObjectMeta) ||
 				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Name, reconciled.Spec.Template.Spec.Containers[0].Name) ||
 				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Env, reconciled.Spec.Template.Spec.Containers[0].Env) ||
-				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, reconciled.Spec.Template.Spec.Containers[0].Image)
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, reconciled.Spec.Template.Spec.Containers[0].Image) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Resources, reconciled.Spec.Template.Spec.Containers[0].Resources)
 			// TODO: do something better than reflect.DeepEqual above?
 			// TODO: containers[0] is a bit flaky
 			// TODO: technically not only the Spec may be different, but deployment labels etc.

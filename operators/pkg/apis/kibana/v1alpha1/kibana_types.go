@@ -12,6 +12,8 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 )
 
+const KibanaContainerName = "kibana"
+
 // KibanaSpec defines the desired state of Kibana
 type KibanaSpec struct {
 	// Version represents the version of Kibana
