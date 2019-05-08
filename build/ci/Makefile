@@ -72,7 +72,7 @@ ci-release: vault-public-key vault-docker-creds
     	-e "REGISTRY=$(REGISTRY)" \
     	-e "REPOSITORY=$(REPOSITORY)" \
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
-    	-e "ELASTIC_DOCKER_PASSWORD=$(file < $(DOCKER_CREDENTIALS_FILE))" \
+    	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
     	-e "RELEASE=true" \
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
