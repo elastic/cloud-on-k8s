@@ -97,6 +97,15 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
+		// watch for changes in the CA secret
+		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
+			Name:    secretWatchKey(*kb),
+			Watched: key,
+			Watcher: k8s.ExtractNamespacedName(kb),
+		}); err != nil {
+			return nil, err
+		}
+
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
 			return nil, err
 		}
