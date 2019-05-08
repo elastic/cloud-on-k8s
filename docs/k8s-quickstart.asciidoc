@@ -2,7 +2,7 @@
 
 = Quickstart
 
-In this Quickstart, you will learn how to:
+In this quickstart, you will learn how to:
 
 * Deploy the operator in your Kubernetes cluster
 * Deploy the Elasticsearch cluster
@@ -19,17 +19,17 @@ In this Quickstart, you will learn how to:
 
 == Deploy the operator in your Kubernetes cluster
 
-1. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions], to extend the apiserver with additional resources:
+1. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions], to extend the API server with additional resources:
 
-  `kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml`
+  kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
 
 2. Install the operator with its RBAC rules:
 
-  `kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml`
+  kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
 
 3. Monitor the operator logs:
 
-  `kubectl -n elastic-system logs -f statefulset.apps/elastic-operator`
+  kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 == Deploy the Elasticsearch cluster
 
@@ -53,7 +53,7 @@ spec:
 EOF
 ----
 
-The operator will automatically take care of managing Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator automatically takes care of managing Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
 === Monitor cluster health and creation progress
 
@@ -62,7 +62,7 @@ Get an overview of the current Elasticsearch clusters in the Kubernetes cluster,
 `kubectl get elasticsearch`
 
 ----
-NAME      HEALTH    NODES     VERSION   PHASE         AGE
+NAME          HEALTH    NODES     VERSION   PHASE         AGE
 quickstart    green     1         7.0.0     Operational   1m
 ----
 
@@ -73,7 +73,7 @@ You can see that one Pod is in the process of being started:
 `kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'`
 
 ----
-NAME                   READY     STATUS    RESTARTS   AGE
+NAME                       READY     STATUS    RESTARTS   AGE
 quickstart-es-5zctxpn8nd   1/1       Running   0          1m
 ----
 
@@ -83,37 +83,36 @@ And access the logs for that Pod:
 
 === Access Elasticsearch
 
-==== ClusterIP service
-
 A ClusterIP Service is automatically created for your cluster:
-
 
 `kubectl get service quickstart-es`
 
+You can access Elasticsearch from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
+
 ----
-NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
-You can access Elasticsearch from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
-
 ==== Retrieve credentials
 
-A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
+A default user named `elastic` gets automatically created. Its password is stored as a Kubernetes secret:
 
 ----
 PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ----
 
-==== Request Elasticsearch
+==== Request Elasticsearch access
 
 1. Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
-   `kubectl port-forward service/quickstart-es 9200`
+   kubectl port-forward service/quickstart-es 9200
 
-2. In another shell, request the Elasticsearch endpoint (skipping the certificate verification for now):
+2. In another shell, request the Elasticsearch endpoint:
 
-  `curl -u "elastic:$PASSWORD" -k "https://localhost:9200"`
+  curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+
+NOTE: For testing purposes only, you can specify the `-k` option to turn off certificate verification.
 
 ----
     {
@@ -137,62 +136,63 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
 
 == Deploy the Kibana instance
 
-=== Target the Elasticsearch cluster
+To deploy your Kibana instance go through the following steps.
 
-Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
+1. Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
 
-----
-cat <<EOF | kubectl apply -f -
-apiVersion: kibana.k8s.elastic.co/v1alpha1
-kind: Kibana
-metadata:
-  name: quickstart
-spec:
-  version: 7.0.0
-  nodeCount: 1
----
-apiVersion: associations.k8s.elastic.co/v1alpha1
-kind: KibanaElasticsearchAssociation
-metadata:
-  name: kibana-es-quickstart
-spec:
-  elasticsearch:
+  ----
+  cat <<EOF | kubectl apply -f -
+  apiVersion: kibana.k8s.elastic.co/v1alpha1
+  kind: Kibana
+  metadata:
     name: quickstart
-    namespace: default
-  kibana:
-    name: quickstart
-    namespace: default
-EOF
-----
+    spec:
+    version: 7.0.0
+    nodeCount: 1
+    ---
+    apiVersion: associations.k8s.elastic.co/v1alpha1
+    kind: KibanaElasticsearchAssociation
+    metadata:
+    name: kibana-es-quickstart
+    spec:
+    elasticsearch:
+      name: quickstart
+      namespace: default
+      kibana:
+      name: quickstart
+      namespace: default
+      EOF
+      ----
 
-=== Monitor Kibana health and creation progress
+2. Monitor Kibana health and creation progress
 
-Similar to Elasticsearch, you can retrieve some details about Kibana instances:
+  Similar to Elasticsearch, you can retrieve some details about Kibana instances:
 
-`kubectl get kibana`
+  kubectl get kibana
 
-And the associated Pods:
+  And the associated Pods:
 
-`kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'`
+  kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'
 
-=== Access Kibana
+3. Access Kibana
 
-A `ClusterIP` Service was automatically created for Kibana:
+  A `ClusterIP` Service is automatically created for Kibana:
 
-`kubectl get service quickstart-kibana`
+  kubectl get service quickstart-kibana
 
-Use `kubectl port-forward` to access Kibana from your local workstation:
+  Use `kubectl port-forward` to access Kibana from your local workstation:
 
-`kubectl port-forward service/quickstart-kibana 5601`
+  kubectl port-forward service/quickstart-kibana 5601
 
-You can then open http://localhost:5601 in your browser.
+  Open http://localhost:5601 in your browser.
 
-== Modify your deployment
+== Upgrade your deployment
 
-You can apply any modification to the original cluster specification. The operator makes sure that changes are applied to the existing cluster, avoiding downtime.
+You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, by avoiding downtime.
 
-Grow the cluster to 3 nodes:
+For example, you can grow the cluster to three nodes:
 
+[source,sh]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
@@ -213,16 +213,21 @@ EOF
 
 == Deep dive
 
+Now that you completed the quickstart, you can try out more features like securing your cluster or using persistent storage.
+
 === Secure your cluster
 
 To secure your production-grade Elasticsearch deployment, you can:
 
-*  Use XPack security for encryption and authentication (TODO: link here to a tutorial on how to manipulate certs and auth)
+*  Use XPack security for encryption and authentication
+
+(TODO: link here to a tutorial on how to manipulate certs and auth. Note from nrichers: X-Pack [sic] is going away, so this should just talk about the security features of the Elastic Stack. See https://docs.google.com/document/d/1GX6IzKDf8IBTQexcSZZj_C-ryH4FzsSVf7s0SHKiLKA/edit# for more info.)
+
 *  Set up an ingress proxy layer (link:https://github.com/elastic/k8s-operators/blob/master/operators/config/samples/ingress/nginx-ingress.yaml[example using NGINX])
 
 === Use persistent storage
 
-The quickstart cluster you have just deployed uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which may not qualify for production workloads.
+The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
 
 You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
 
