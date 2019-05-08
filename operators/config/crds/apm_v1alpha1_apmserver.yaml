@@ -146,8 +146,8 @@ spec:
                         type: string
                       type: array
                     ref:
-                      description: Ref allows users to reference a Elasticsearch cluster
-                        inside k8s to automatically derive the other fields.
+                      description: ElasticsearchRef allows users to reference a Elasticsearch
+                        cluster inside k8s to automatically derive the other fields.
                       properties:
                         name:
                           type: string
