@@ -11,6 +11,7 @@ VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
+VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
 
 check-license-header:
 	./../check-license-header.sh
@@ -37,7 +38,7 @@ vault-public-key:
 # reads Docker password from Vault
 vault-docker-creds:
 	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
-	@ DOCKER_PASSWORD=$$(VAULT_TOKEN=$(VAULT_TOKEN) vault read -field password secret/infra/prod/$(DOCKER_LOGIN))
+	@ DOCKER_PASSWORD=$$(VAULT_TOKEN=$(VAULT_TOKEN) vault read -field=password $(VAULT_DOCKER_CREDENTIALS))
 
 ## -- Job executed on all PRs
 
