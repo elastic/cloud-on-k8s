@@ -108,17 +108,17 @@ func SupportedVersions(v version.Version) *esversion.LowestHighestSupportedVersi
 	switch v.Major {
 	case 6:
 		res = &esversion.LowestHighestSupportedVersions{
-			// Min. version is 6.5.0 since it is the first one to support discovery.zen.hosts_provider
-			LowestSupportedVersion: version.MustParse("6.5.0"),
+			// Min. version is 6.8.0 since it is the first one to support security in basic
+			LowestSupportedVersion: version.MustParse("6.8.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.7.99"),
+			HighestSupportedVersion: version.MustParse("6.8.99"),
 		}
 	case 7:
 		res = &esversion.LowestHighestSupportedVersions{
-			// 6.7.0 is the lowest wire compatibility version for 7.x
-			LowestSupportedVersion: version.MustParse("6.7.0"),
+			// 6.8.0 is the minimum version we support in the operator
+			LowestSupportedVersion: version.MustParse("6.8.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("7.0.99"),
+			HighestSupportedVersion: version.MustParse("7.1.99"),
 		}
 	}
 	return res
