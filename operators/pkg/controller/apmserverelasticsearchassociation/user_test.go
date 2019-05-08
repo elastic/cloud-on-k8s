@@ -7,6 +7,7 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -24,22 +25,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const resourceNameFixture = "foo-elastic-internal-apm"
+const resourceNameFixture = "as-elastic-internal-apm"
 
-// associationFixture is a shared test fixture
-var associationFixture = assoctype.ApmServerElasticsearchAssociation{
+// apmFixture is a shared test fixture
+var apmFixture = apmtype.ApmServer{
 	ObjectMeta: metav1.ObjectMeta{
-		Name:      "foo",
+		Name:      "as",
 		Namespace: "default",
 	},
-	Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-		Elasticsearch: commonv1alpha1.ObjectSelector{
-			Name:      "es",
-			Namespace: "default",
-		},
-		ApmServer: commonv1alpha1.ObjectSelector{
-			Name:      "as",
-			Namespace: "default",
+	Spec: apmtype.ApmServerSpec{
+		Output: apmtype.Output{
+			Elasticsearch: apmtype.ElasticsearchOutput{
+				ElasticsearchRef: &commonv1alpha1.ObjectSelector{
+					Name:      "es",
+					Namespace: "default",
+				},
+			},
 		},
 	},
 }
@@ -48,6 +49,9 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add assoc types")
+	}
+	if err := apmtype.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add apm types")
 	}
 	if err := estype.SchemeBuilder.AddToScheme(sc); err != nil {
 		assert.Fail(t, "failed to add Es types")
@@ -60,7 +64,7 @@ func Test_reconcileEsUser(t *testing.T) {
 
 	type args struct {
 		initialObjects []runtime.Object
-		assoc          assoctype.ApmServerElasticsearchAssociation
+		apm            apmtype.ApmServer
 	}
 	tests := []struct {
 		name          string
@@ -72,7 +76,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			name: "Happy path: should create a secret and a user CRD",
 			args: args{
 				initialObjects: nil,
-				assoc:          associationFixture,
+				apm:            apmFixture,
 			},
 			postCondition: func(c k8s.Client) {
 				key := types.NamespacedName{
@@ -92,7 +96,7 @@ func Test_reconcileEsUser(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other",
 					}}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
@@ -113,7 +117,7 @@ func Test_reconcileEsUser(t *testing.T) {
 						Namespace: "default",
 					},
 				}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
@@ -132,18 +136,18 @@ func Test_reconcileEsUser(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "default",
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				}},
-				assoc: associationFixture,
+				apm: apmFixture,
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var u estype.User
 				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
 				expectedLabels := map[string]string{
-					kibanaassociation.AssociationLabelName: associationFixture.Name,
+					kibanaassociation.AssociationLabelName: apmFixture.Name,
 					common.TypeLabelName:                   label.Type,
 					label.ClusterNameLabelName:             "es",
 				}
@@ -155,19 +159,19 @@ func Test_reconcileEsUser(t *testing.T) {
 		{
 			name: "Reconcile is namespace aware",
 			args: args{
-				assoc: assoctype.ApmServerElasticsearchAssociation{
+				apm: apmtype.ApmServer{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "foo",
-						Namespace: "ns-1",
+						Name:      "as",
+						Namespace: "ns-2",
 					},
-					Spec: assoctype.ApmServerElasticsearchAssociationSpec{
-						Elasticsearch: commonv1alpha1.ObjectSelector{
-							Name:      "es",
-							Namespace: "ns-1",
-						},
-						ApmServer: commonv1alpha1.ObjectSelector{
-							Name:      "as",
-							Namespace: "ns-2",
+					Spec: apmtype.ApmServerSpec{
+						Output: apmtype.Output{
+							Elasticsearch: apmtype.ElasticsearchOutput{
+								ElasticsearchRef: &commonv1alpha1.ObjectSelector{
+									Name:      "es",
+									Namespace: "ns-1",
+								},
+							},
 						},
 					},
 				},
@@ -190,7 +194,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	for _, tt := range tests {
 		c := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reconcileEsUser(c, sc, tt.args.assoc); (err != nil) != tt.wantErr {
+			if err := reconcileEsUser(c, sc, tt.args.apm); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postCondition(c)

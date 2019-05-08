@@ -7,11 +7,12 @@ package apmserverelasticsearchassociation
 import (
 	"testing"
 
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,30 +24,30 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	s := setupScheme(t)
 	tests := []struct {
 		name           string
-		args           assoctype.ApmServerElasticsearchAssociation
+		args           apmtype.ApmServer
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
 		{
 			name:    "nothing to delete",
-			args:    assoctype.ApmServerElasticsearchAssociation{},
+			args:    apmtype.ApmServer{},
 			wantErr: false,
 		},
 		{
 			name: "only valid objects",
-			args: associationFixture,
+			args: apmFixture,
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 					},
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 					},
 				},
 			},
@@ -57,23 +58,23 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		},
 		{
 			name: "Orpaned objects exist",
-			args: associationFixture,
+			args: apmFixture,
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceNameFixture,
-						Namespace: associationFixture.Namespace,
+						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -82,7 +83,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -91,7 +92,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      resourceNameFixture,
 						Namespace: "other-ns",
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: associationFixture.Name,
+							kibanaassociation.AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
@@ -127,13 +128,13 @@ func Test_deleteOrphanedResources(t *testing.T) {
 
 func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// user CR should be in ES namespace
-	assert.NoError(t, c.Get(types.NamespacedName{
-		Namespace: associationFixture.Namespace,
+	require.NoError(t, c.Get(types.NamespacedName{
+		Namespace: apmFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &estype.User{}))
 	// secret should be in Kibana namespace
-	assert.NoError(t, c.Get(types.NamespacedName{
-		Namespace: associationFixture.Namespace,
+	require.NoError(t, c.Get(types.NamespacedName{
+		Namespace: apmFixture.Namespace,
 		Name:      resourceNameFixture,
 	}, &corev1.Secret{}))
 }

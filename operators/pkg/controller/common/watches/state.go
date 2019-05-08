@@ -16,7 +16,6 @@ func NewDynamicWatches() DynamicWatches {
 		Pods:                  NewDynamicEnqueueRequest(),
 		ElasticsearchClusters: NewDynamicEnqueueRequest(),
 		Kibanas:               NewDynamicEnqueueRequest(),
-		ApmServers:            NewDynamicEnqueueRequest(),
 		ClusterLicense:        NewDynamicEnqueueRequest(),
 	}
 }
@@ -28,7 +27,6 @@ type DynamicWatches struct {
 	Pods                  *DynamicEnqueueRequest
 	ElasticsearchClusters *DynamicEnqueueRequest
 	Kibanas               *DynamicEnqueueRequest
-	ApmServers            *DynamicEnqueueRequest
 	ClusterLicense        *DynamicEnqueueRequest
 }
 

@@ -30,7 +30,6 @@ func TestEsApmServerSample(t *testing.T) {
 	helpers.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&sampleApm.Association))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Elasticsearch))
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
