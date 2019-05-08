@@ -14,6 +14,8 @@ PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 
+DOCKER_LOGIN ?= cloudadmin
+
 check-license-header:
 	./../check-license-header.sh
 
@@ -73,7 +75,6 @@ ci-release: vault-public-key vault-docker-creds
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
     	-e "ELASTIC_DOCKER_PASSWORD=$(file < $(DOCKER_CREDENTIALS_FILE))" \
     	-e "RELEASE=true" \
-    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
