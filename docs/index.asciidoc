@@ -1,0 +1,9 @@
+= Elastic Cloud on Kubernetes Documentation
+:n: Elastic Cloud on Kubernetes
+:p: k8s
+:idprefix: k8s-
+:s: k8s
+
+include::{asciidoc-dir}/../../shared/versions70.asciidoc[]
+include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
+include::k8s-quickstart.asciidoc[]
