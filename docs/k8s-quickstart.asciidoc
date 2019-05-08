@@ -21,11 +21,11 @@ In this quickstart, you will learn how to:
 
 1. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions], to extend the API server with additional resources:
 
-  kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/crds.yaml
+  kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/crds.yaml
 
 2. Install the operator with its RBAC rules:
 
-  kubectl apply -f https://raw.githubusercontent.com/elastic/k8s-operators/master/operators/config/all-in-one.yaml
+  kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/all-in-one.yaml
 
 3. Monitor the operator logs:
 
@@ -33,7 +33,7 @@ In this quickstart, you will learn how to:
 
 == Deploy the Elasticsearch cluster
 
-Let's apply a simple Elasticsearch cluster specification, with one node:
+Let's apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -136,7 +136,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 == Deploy the Kibana instance
 
-To deploy your Kibana instance go through the following steps.
+To deploy your link:{kibana-ref}introduction.html#introduction[Kibana] instance go through the following steps.
 
 1. Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
 
@@ -223,7 +223,7 @@ To secure your production-grade Elasticsearch deployment, you can:
 
 (TODO: link here to a tutorial on how to manipulate certs and auth. Note from nrichers: X-Pack [sic] is going away, so this should just talk about the security features of the Elastic Stack. See https://docs.google.com/document/d/1GX6IzKDf8IBTQexcSZZj_C-ryH4FzsSVf7s0SHKiLKA/edit# for more info.)
 
-*  Set up an ingress proxy layer (link:https://github.com/elastic/k8s-operators/blob/master/operators/config/samples/ingress/nginx-ingress.yaml[example using NGINX])
+*  Set up an ingress proxy layer (link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/ingress/nginx-ingress.yaml[example using NGINX])
 
 === Use persistent storage
 
@@ -260,7 +260,7 @@ spec:
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
 
- * link:https://github.com/elastic/k8s-operators/tree/master/local-volume[elastic local volume dynamic provisioner]to setup dynamic local volumes based on LVM.
+ * link:https://github.com/elastic/cloud-on-k8s/tree/master/local-volume[elastic local volume dynamic provisioner]to setup dynamic local volumes based on LVM.
  * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
 === Additional features
