@@ -20,8 +20,6 @@
       lightweight-checkout: true
     triggers:
       - github-pull-request:
-          white-list-target-branches:
-            - master
           org-list:
             - elastic
           allow-whitelist-orgs-as-admins: true
