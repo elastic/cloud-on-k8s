@@ -36,7 +36,7 @@ In this quickstart, you will learn how to:
 
 == Deploy the Elasticsearch cluster
 
-Let's apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
+Let's apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -139,7 +139,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 == Deploy the Kibana instance
 
-To deploy your link:{kibana-ref}introduction.html#introduction[Kibana] instance go through the following steps.
+To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
 
 1. Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
 
