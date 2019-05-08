@@ -304,6 +304,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 			w := watches.NewDynamicWatches()
+			w.Secrets.InjectScheme(scheme.Scheme)
 			version, err := version.Parse(tt.args.kb.Spec.Version)
 			assert.NoError(t, err)
 			d, err := newDriver(client, s, *version, w)
