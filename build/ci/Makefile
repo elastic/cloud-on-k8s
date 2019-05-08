@@ -66,7 +66,6 @@ ci-release: vault-public-key vault-docker-creds
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
-    	-e "USER=random_fellow" \
     	-e "TAG=$(TAG_NAME)" \
     	-e "IMG_SUFFIX=$(IMG_SUFFIX)" \
     	-e "IMG_NAME=$(IMG_NAME)" \
