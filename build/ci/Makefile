@@ -12,6 +12,7 @@ GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
+DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 
 check-license-header:
 	./../check-license-header.sh
@@ -37,8 +38,8 @@ vault-public-key:
 
 # reads Docker password from Vault
 vault-docker-creds:
-	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
-	@ DOCKER_PASSWORD=$$(VAULT_TOKEN=$(VAULT_TOKEN) vault read -field=password $(VAULT_DOCKER_CREDENTIALS))
+	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
+		vault read -address=$(VAULT_ADDR) -field=password $(VAULT_DOCKER_CREDENTIALS) > $(DOCKER_CREDENTIALS_FILE)
 
 ## -- Job executed on all PRs
 
@@ -70,7 +71,7 @@ ci-release: vault-public-key vault-docker-creds
     	-e "REGISTRY=$(REGISTRY)" \
     	-e "REPOSITORY=$(REPOSITORY)" \
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
-    	-e "ELASTIC_DOCKER_PASSWORD=$(DOCKER_PASSWORD)" \
+    	-e "ELASTIC_DOCKER_PASSWORD=$(file < $(DOCKER_CREDENTIALS_FILE))" \
     	-e "RELEASE=true" \
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
     	cloud-on-k8s-ci-release \
