@@ -69,8 +69,8 @@ Get an overview of the current Elasticsearch clusters in the Kubernetes cluster,
 kubectl get elasticsearch
 ```
 ```
-NAME      HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         7.0.0     Operational   1m
+NAME         HEALTH   NODES   VERSION   PHASE         AGE
+quickstart   green    1       7.0.0     Operational   1m
 ```
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
@@ -81,8 +81,8 @@ You can see that one Pod is in the process of being started:
 kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=quickstart'
 ```
 ```
-NAME                   READY     STATUS    RESTARTS   AGE
-quickstart-es-5zctxpn8nd   1/1       Running   0          1m
+NAME                       READY   STATUS    RESTARTS   AGE
+quickstart-es-5zctxpn8nd   1/1     Running   0          1m
 ```
 
 And access the logs for that Pod:
@@ -101,8 +101,8 @@ A ClusterIP Service is automatically created for your cluster:
 kubectl get service quickstart-es
 ```
 ```
-NAME        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   1m
 ```
 
 You can access Elasticsearch from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.

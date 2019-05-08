@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	espod "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -123,7 +122,7 @@ func createElasticsearchPod(
 	// inject both volume and volume mount
 	pod.Spec.Volumes = append(pod.Spec.Volumes, configSecretVolume.Volume())
 	for i, c := range pod.Spec.Containers {
-		if c.Name == espod.DefaultContainerName {
+		if c.Name == v1alpha1.ElasticsearchContainerName {
 			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, configSecretVolume.VolumeMount())
 		}
 	}

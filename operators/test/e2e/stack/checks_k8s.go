@@ -245,7 +245,7 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 			var expectedLimits []corev1.ResourceList
 			for _, topoElem := range stack.Elasticsearch.Spec.Nodes {
 				for i := 0; i < int(topoElem.NodeCount); i++ {
-					expectedLimits = append(expectedLimits, topoElem.Resources.Limits)
+					expectedLimits = append(expectedLimits, topoElem.GetESContainerTemplate().Resources.Limits)
 				}
 			}
 			var limits []corev1.ResourceList

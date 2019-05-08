@@ -6,6 +6,7 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -27,8 +28,10 @@ type ApmServerSpec struct {
 	// +optional
 	Output Output `json:"output,omitempty"`
 
-	// Resources to be allocated for each Apm Server node
-	Resources commonv1alpha1.ResourcesSpec `json:"resources,omitempty"`
+	// PodTemplate can be used to propagate configuration to APM pods.
+	// So far, only labels, Affinity and `Containers["apm"].Resources.Limits` are applied.
+	// +optional
+	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
 	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
@@ -43,6 +46,9 @@ type Output struct {
 
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
+	// ElasticsearchRef allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
+	ElasticsearchRef *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
+
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
 
@@ -77,6 +83,8 @@ type ApmServerStatus struct {
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
+	// Association is the status of any auto-linking to Elasticsearch clusters.
+	Association commonv1alpha1.AssociationStatus
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

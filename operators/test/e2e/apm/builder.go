@@ -6,31 +6,32 @@ package apm
 
 import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var DefaultResources = common.ResourcesSpec{
+var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		"memory": resource.MustParse("1G"),
+		corev1.ResourceMemory: resource.MustParse("1G"),
 	},
 }
 
 // -- Stack
 
 type Builder struct {
-	ApmServer   apmtype.ApmServer
-	Association assoctype.ApmServerElasticsearchAssociation
+	ApmServer apmtype.ApmServer
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	b.Association.ObjectMeta.Namespace = namespace
-	b.Association.Spec.Elasticsearch.Namespace = namespace
-	b.Association.Spec.ApmServer.Namespace = namespace
+	ref := b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef
+	if ref == nil {
+		ref = &common.ObjectSelector{}
+	}
+	ref.Namespace = namespace
+	b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef = ref
 	return b
 }
 
@@ -47,5 +48,5 @@ func (b Builder) WithNodeCount(count int) Builder {
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {
-	return []runtime.Object{&b.ApmServer, &b.Association}
+	return []runtime.Object{&b.ApmServer}
 }

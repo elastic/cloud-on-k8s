@@ -145,6 +145,17 @@ spec:
                       items:
                         type: string
                       type: array
+                    ref:
+                      description: ElasticsearchRef allows users to reference a Elasticsearch
+                        cluster inside k8s to automatically derive the other fields.
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      type: object
                     ssl:
                       description: SSL configures TLS-related configuration for Elasticsearch
                       properties:
@@ -155,13 +166,10 @@ spec:
                       type: object
                   type: object
               type: object
-            resources:
-              description: Resources to be allocated for each Apm Server node
-              properties:
-                limits:
-                  description: Limits represents the limits to considerate for these
-                    resources
-                  type: object
+            podTemplate:
+              description: PodTemplate can be used to propagate configuration to APM
+                pods. So far, only labels, Affinity and `Containers["apm"].Resources.Limits`
+                are applied.
               type: object
             version:
               description: Version represents the version of the APM Server
@@ -471,28 +479,9 @@ spec:
                     format: int32
                     type: integer
                   podTemplate:
-                    description: PodTemplate is the object that describes the Elasticsearch
-                      pods.
-                    properties:
-                      metadata:
-                        description: 'Standard object''s metadata. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata'
-                        type: object
-                      spec:
-                        description: 'Specification of the desired behavior of the
-                          pod. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status'
-                        properties:
-                          affinity:
-                            description: Affinity is the pod's scheduling constraints
-                            type: object
-                        type: object
-                    type: object
-                  resources:
-                    description: Resources to be allocated for this topology
-                    properties:
-                      limits:
-                        description: Limits represents the limits to considerate for
-                          these resources
-                        type: object
+                    description: PodTemplate can be used to propagate configuration
+                      to Elasticsearch pods. So far, only labels, Affinity and `Containers["elasticsearch"].Resources.Limits`
+                      are applied.
                     type: object
                   volumeClaimTemplates:
                     description: 'VolumeClaimTemplates is a list of claims that pods
@@ -1092,13 +1081,10 @@ spec:
                 must have.
               format: int32
               type: integer
-            resources:
-              description: Resources to be allocated for this topology
-              properties:
-                limits:
-                  description: Limits represents the limits to considerate for these
-                    resources
-                  type: object
+            podTemplate:
+              description: PodTemplate can be used to propagate configuration to Kibana
+                pods. So far, only labels, Affinity and `Containers["kibana"].Resources.Limits`
+                are applied.
               type: object
             version:
               description: Version represents the version of Kibana

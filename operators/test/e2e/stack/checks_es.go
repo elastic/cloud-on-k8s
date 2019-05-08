@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -162,14 +164,20 @@ func rolesToConfig(roles []string) estype.Node {
 }
 
 func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
-	if topologyElement.Resources.Limits.Memory() == nil {
+	var memoryLimit *resource.Quantity
+	for _, c := range topologyElement.PodTemplate.Spec.Containers {
+		if c.Name == v1alpha1.ElasticsearchContainerName {
+			memoryLimit = c.Resources.Limits.Memory()
+		}
+	}
+	if memoryLimit == nil {
 		// no expected memory, consider it's ok
 		return true
 	}
 
 	const epsilon = 0.05 // allow a 5% diff due to bytes approximation
 
-	expectedBytes := topologyElement.Resources.Limits.Memory().Value()
+	expectedBytes := memoryLimit.Value()
 	actualBytes := int64(heapMaxBytes * 2) // we set heap to half the available memory
 
 	diffRatio := math.Abs(float64(actualBytes-expectedBytes)) / math.Abs(float64(expectedBytes))
