@@ -18,8 +18,6 @@ In this quickstart, you will learn how to:
 * Deep dive with:
   - Use persistent storage
   - Additional features
---
-
 * <<{p}-deploy-operator,Deploy the operator in your Kubernetes cluster>>
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
@@ -52,7 +50,7 @@ NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions.
 [id="{p}-deploy-elasticsearch"]
 == Deploy the Elasticsearch cluster
 
-Apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
+Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
 ----
 cat <<EOF | kubectl apply -f -
