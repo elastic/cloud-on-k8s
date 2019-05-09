@@ -26,7 +26,6 @@ const (
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
 	TrialSignatureKey    = "signature"
-	TrialFinalizerName   = "trial/finalizers.k8s.elastic.co" // slash required on core object finalizers to be fully qualified
 )
 
 func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error) {
@@ -60,9 +59,6 @@ func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error
 			Labels: map[string]string{
 				EnterpriseLicenseLabelName: l.Name,
 			},
-			Finalizers: []string{
-				TrialFinalizerName,
-			},
 		},
 		Data: map[string][]byte{
 			TrialSignatureKey: sig,
@@ -73,7 +69,6 @@ func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "Failed to create trial status")
 	}
-	l.Finalizers = append(l.Finalizers, TrialFinalizerName)
 	l.Spec.SignatureRef = corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: TrialStatusSecretKey,
