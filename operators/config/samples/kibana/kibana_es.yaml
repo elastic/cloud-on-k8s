@@ -51,6 +51,7 @@ spec:
     #    resources:
     #      requests:
     #        storage: 2Gi
+    #    storageClassName: elastic-local # or eg. gcePersistentDisk
   # dedicated masters:
   - config:
       node.master: true

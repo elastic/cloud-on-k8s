@@ -16,7 +16,7 @@ Elasticsearch GCS repository plugin requires a JSON file that contains service a
 
 Using the operator, you can automatically inject secure settings into a cluster node by providing them through a secret in the Elasticsearch Spec.
 
-1. Create a file containing GCS credentials. For this exercise, name it `es.file.gcs.client.default.credentials_file`:
+1. Create a file containing GCS credentials. For this exercise, name it `gcs.client.default.credentials_file`:
 
 ```json
 {
@@ -33,11 +33,9 @@ Using the operator, you can automatically inject secure settings into a cluster 
 }
 ```
 
-The `es.file` prefix indicates that this file is used as an Elasticsearch secure setting with the `file` type.
-
 2. Create a Kubernetes secret from that file:
 ```bash
-kubectl create secret generic gcs-credentials --from-file=es.file.gcs.client.default.credentials_file
+kubectl create secret generic gcs-credentials --from-file=gcs.client.default.credentials_file
 ```
 
 3. Edit the `secureSettings` section of the Elasticsearch resource:
