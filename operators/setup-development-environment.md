@@ -1,6 +1,6 @@
-# Development Environment Setup
+# Setting up Your Development Environment
 
-This guide covers the basics of setting up a development environment.
+This page explains you how to set up your development environment.
 
 ## Requirements
 
