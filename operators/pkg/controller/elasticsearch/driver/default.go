@@ -125,6 +125,7 @@ type defaultDriver struct {
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
 	zen2SettingsUpdater func(
 		esClient esclient.Client,
+		minVersion version.Version,
 		changes mutation.Changes,
 		performableChanges mutation.PerformableChanges,
 	) error
@@ -388,6 +389,7 @@ func (d *defaultDriver) Reconcile(
 		// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
 		if err := d.zen2SettingsUpdater(
 			esClient,
+			*min,
 			*changes,
 			*performableChanges,
 		); err != nil {

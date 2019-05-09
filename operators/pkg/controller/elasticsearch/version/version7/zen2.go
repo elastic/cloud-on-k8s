@@ -7,6 +7,7 @@ package version7
 import (
 	"context"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
@@ -20,9 +21,14 @@ var (
 
 func UpdateZen2Settings(
 	esClient esclient.Client,
+	minVersion version.Version,
 	changes mutation.Changes,
 	performableChanges mutation.PerformableChanges,
 ) error {
+	if !minVersion.IsSameOrAfter(version.MustParse("7.0.0")) {
+		log.Info("not setting zen2 exclusions", "min version in cluster", minVersion)
+		return nil
+	}
 	if !changes.HasChanges() {
 		log.Info("Ensuring no voting exclusions are set")
 		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
