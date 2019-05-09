@@ -4,20 +4,22 @@
 
 [partintro]
 --
+With Elastic Cloud on Kubernetes you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
+
 Eager to get started? This fast guide shows you how to:
 
-* Deploy the operator in your Kubernetes cluster
-* Deploy the Elasticsearch cluster
-* Deploy the Kibana instance
-* Upgrade your deployment
-* Deep dive
+* <<{p}-deploy-operator,Deploy the operator in your Kubernetes cluster>>
+* <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
+* <<{p}-deploy-kibana,Deploy the Kibana instance>>
+* <<{p}-upgrade-deployment,Upgrade your deployment>>
+* <<{p}-deep-dive,Deep dive>>
 
 **Requirements**
 
 This quickstart assumes you already have Kubernetes 1.11+.
 --
 
-[float]
+[id="{p}-deploy-operator"]
 == Deploy the operator in your Kubernetes cluster
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control[Prerequisites for using Kubernetes RBAC on GKE].
@@ -35,6 +37,7 @@ NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions.
   kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 [float]
+[id="{p}-deploy-elasticsearch"]
 == Deploy the Elasticsearch cluster
 
 Apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
@@ -138,6 +141,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 ----
 
 [float]
+[id="{p}-deploy-kibana"]
 == Deploy the Kibana instance
 
 To deploy your link:{kibana-ref}introduction.html#introduction[Kibana] instance go through the following steps.
@@ -197,6 +201,7 @@ Use `kubectl port-forward` to access Kibana from your local workstation:
 Open `http://localhost:5601` in your browser.
 
 [float]
+[id="{p}-upgrade-deployment"]
 == Upgrade your deployment
 
 You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, by avoiding downtime.
@@ -223,6 +228,7 @@ EOF
 ----
 
 [float]
+[id="{p}-deep-dive"]
 == Deep dive
 
 Now that you have completed the quickstart, you can try out more features like securing your cluster or using persistent storage.
