@@ -9,6 +9,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
@@ -16,20 +27,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 // Kibana association controller
@@ -43,6 +42,7 @@ import (
 //   resolve details about that ES cluster (url, credentials), and update
 //   the Kibana resource with ES connection details
 // - create the Kibana user for Elasticsearch
+// - copy ES CA public cert secret into Kibana namespace
 // - reconcile on any change from watching Kibana, Elasticsearch, Users and secrets
 //
 // If reference to an Elasticsearch cluster is not set in the Kibana resource,
@@ -219,17 +219,14 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationPending, err
 	}
 
-	// retrieve ES CA
-	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
-	if err := r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
-		return commonv1alpha1.AssociationPending, err // maybe not created yet
+	caSecretName, err := r.reconcileCASecret(kibana, esRefKey)
+	if err != nil {
+		return commonv1alpha1.AssociationPending, err
 	}
 
 	// update Kibana resource with ES access details
 	var expectedEsConfig kbtype.BackendElasticsearch
-	// TODO this is currently limiting the association to the same namespace
-	expectedEsConfig.CaCertSecret = &publicCACertSecret.Name
+	expectedEsConfig.CaCertSecret = &caSecretName
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
 	expectedEsConfig.Auth.SecretKeyRef = KibanaUserSecretSelector(kibana)
 
@@ -245,10 +242,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 }
 
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
-// attempts. If a user changes namespace on a vertex of an association the standard reconcile mechanism will not delete the
-// now redundant old user object/secret. This function lists all resources that don't match the current name/namespace
-// combinations and deletes them.
-// It also handles cases where the Elasticsearch reference is removed from a Kibana spec.
+// attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	hasESRef := kibana.Spec.ElasticsearchRef.Name != ""
 
@@ -257,12 +251,10 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
 		return err
 	}
-	expectedSecretKey := KibanaUserSecretKey(k8s.ExtractNamespacedName(&kibana))
 	for _, s := range secrets.Items {
 		// look for association secrets owned by this kibana instance
-		if metav1.IsControlledBy(&s, &kibana) && (
-		// whose namespace is not expected, or should not exist since no es ref
-		(k8s.ExtractNamespacedName(&s) != expectedSecretKey) || !hasESRef) {
+		// which should not exist since no ES referenced in the spec
+		if metav1.IsControlledBy(&s, &kibana) && !hasESRef {
 			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 			if err := c.Delete(&s); err != nil {
 				return err
@@ -274,12 +266,10 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
 		return err
 	}
-	expectedUserKey := KibanaUserKey(kibana, kibana.Spec.ElasticsearchRef.Namespace)
 	for _, u := range users.Items {
 		// look for users owned by this Kibana instance
-		if metav1.IsControlledBy(&u, &kibana) && (
-		// whose namespace is not expected, or should not exist since no es ref
-		(k8s.ExtractNamespacedName(&u) != expectedUserKey) || !hasESRef) {
+		// which should not exist since no ES referenced in the spec
+		if metav1.IsControlledBy(&u, &kibana) && !hasESRef {
 			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
 			if err := c.Delete(&u); err != nil {
 				return err

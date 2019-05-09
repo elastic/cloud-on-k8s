@@ -54,11 +54,21 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		CustomImageName:  kb.Spec.Image,
 		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
 		User:             kb.Spec.Elasticsearch.Auth,
+		PodTemplate:      kb.Spec.PodTemplate,
 	}
 
 	kibanaPodSpec := d.newPodSpec(kibanaPodSpecParams)
+
 	labels := NewLabels(kb.Name)
-	podLabels := NewLabels(kb.Name)
+	podLabels := map[string]string{}
+	// set any user-provided label to the pods (could be overriden by our own)
+	for key, value := range kb.Spec.PodTemplate.Labels {
+		podLabels[key] = value
+	}
+	// also apply Kibana labels to the pods
+	for key, value := range NewLabels(kb.Name) {
+		podLabels[key] = value
+	}
 
 	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
 	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support
@@ -68,11 +78,13 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
 		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
 		esAuthSecret := types.NamespacedName{Name: ref.Name, Namespace: kb.Namespace}
-		d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
+		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),
 			Watched: esAuthSecret,
 			Watcher: k8s.ExtractNamespacedName(kb),
-		})
+		}); err != nil {
+			return nil, err
+		}
 		sec := corev1.Secret{}
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
 			return nil, err
@@ -95,6 +107,15 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
+		// watch for changes in the CA secret
+		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
+			Name:    secretWatchKey(*kb),
+			Watched: key,
+			Watcher: k8s.ExtractNamespacedName(kb),
+		}); err != nil {
+			return nil, err
+		}
+
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
 			return nil, err
 		}

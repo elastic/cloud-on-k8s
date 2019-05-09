@@ -107,7 +107,7 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("6.5.0"),
 				proposed: *es("7.0.0"),
 			},
-			want: validation.Result{Allowed: false, Reason: "6.5.0 is unsupported, it is older than the oldest supported version 6.7.0"},
+			want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 6.5.0 to 7.0.0"},
 		},
 		{
 			name: "too new FAIL",
@@ -115,13 +115,13 @@ func Test_validUpgradePath(t *testing.T) {
 				current:  es("7.0.0"),
 				proposed: *es("6.5.0"),
 			},
-			want: validation.Result{Allowed: false, Reason: "7.0.0 is unsupported, it is newer than the newest supported version 6.7.99"},
+			want: validation.Result{Allowed: false, Reason: "unsupported version upgrade from 7.0.0 to 6.5.0"},
 		},
 		{
 			name: "in range validation.OK",
 			args: args{
-				current:  es("6.7.0"),
-				proposed: *es("7.0.0"),
+				current:  es("6.8.0"),
+				proposed: *es("7.1.0"),
 			},
 			want: validation.OK,
 		},

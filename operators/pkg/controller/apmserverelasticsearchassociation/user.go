@@ -7,13 +7,12 @@ package apmserverelasticsearchassociation
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
+	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -33,39 +32,43 @@ func apmUserObjectName(assocName string) string {
 }
 
 // userKey is the namespaced name to identify the customer user resource created by the controller.
-func userKey(assoc v1alpha1.ApmServerElasticsearchAssociation) types.NamespacedName {
-	return types.NamespacedName{
-		Namespace: assoc.Spec.Elasticsearch.Namespace,
-		Name:      apmUserObjectName(assoc.Name),
+func userKey(apm apmtype.ApmServer) *types.NamespacedName {
+
+	ref := apm.Spec.Output.Elasticsearch.ElasticsearchRef
+	if ref == nil {
+		return nil
+	}
+	return &types.NamespacedName{
+		Namespace: ref.Namespace,
+		Name:      apmUserObjectName(apm.Name),
 	}
 }
 
 // secretKey is the namespaced name to identify the secret containing the password for the Apm user.
-func secretKey(assoc v1alpha1.ApmServerElasticsearchAssociation) types.NamespacedName {
+func secretKey(apm apmtype.ApmServer) types.NamespacedName {
 	return types.NamespacedName{
-		Namespace: assoc.Spec.ApmServer.Namespace,
-		Name:      apmUserObjectName(assoc.Name),
+		Namespace: apm.Namespace,
+		Name:      apmUserObjectName(apm.Name),
 	}
 }
 
 // creates a SecretKeySelector selecting the Apm user secret for the given association
-func clearTextSecretKeySelector(assoc v1alpha1.ApmServerElasticsearchAssociation) *corev1.SecretKeySelector {
+func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: apmUserObjectName(assoc.Name),
+			Name: apmUserObjectName(apm.Name),
 		},
 		Key: InternalApmServerUserName,
 	}
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerElasticsearchAssociation) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
-	secretLabels := apmserver.NewLabels(assoc.Spec.ApmServer.Name)
-	secretLabels[kibanaassociation.AssociationLabelName] = assoc.Name
-	secKey := secretKey(assoc)
+	secretLabels := apmserver.NewLabels(apm.Name)
+	secKey := secretKey(apm)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
@@ -81,7 +84,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &assoc,
+		Owner:      &apm,
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
@@ -104,9 +107,8 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := label.NewLabels(assoc.Spec.Elasticsearch.NamespacedName())
-	userLabels[kibanaassociation.AssociationLabelName] = assoc.Name
-	usrKey := userKey(assoc)
+	userLabels := label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
+	usrKey := userKey(apm)
 	expectedUser := &estype.User{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
@@ -128,7 +130,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, assoc v1alpha1.ApmServerEl
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &assoc,
+		Owner:      &apm,
 		Expected:   expectedUser,
 		Reconciled: &reconciledUser,
 		NeedsUpdate: func() bool {

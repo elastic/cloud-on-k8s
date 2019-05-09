@@ -8,12 +8,10 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -34,14 +32,8 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		{
 			Name: "ApmServer CRDs should exist",
 			Test: func(t *testing.T) {
-				crds := []runtime.Object{
-					&apmtype.ApmServerList{},
-					&assoctype.ApmServerElasticsearchAssociationList{},
-				}
-				for _, crd := range crds {
-					err := k.Client.List(&client.ListOptions{}, crd)
-					require.NoError(t, err)
-				}
+				err := k.Client.List(&client.ListOptions{}, &apmtype.ApmServerList{})
+				require.NoError(t, err)
 			},
 		},
 

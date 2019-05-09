@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	esv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -31,9 +30,8 @@ import (
 
 var (
 	c               k8s.Client
-	associationKey  = types.NamespacedName{Name: "baz", Namespace: "default"}
 	apmKey          = types.NamespacedName{Name: "bar", Namespace: "default"}
-	expectedRequest = reconcile.Request{NamespacedName: associationKey}
+	expectedRequest = reconcile.Request{NamespacedName: apmKey}
 )
 
 func TestReconcile(t *testing.T) {
@@ -53,6 +51,17 @@ func TestReconcile(t *testing.T) {
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
+	// consume req requests in background, to let reconciliations go through
+	go func() {
+		for {
+			select {
+			case <-requests:
+			case <-stopMgr:
+				return
+			}
+		}
+	}()
+
 	defer func() {
 		close(stopMgr)
 		mgrStopped.Wait()
@@ -71,40 +80,27 @@ func TestReconcile(t *testing.T) {
 			Name:      apmKey.Name,
 			Namespace: apmKey.Namespace,
 		},
+		Spec: apmv1alpha1.ApmServerSpec{
+			Output: apmv1alpha1.Output{
+				Elasticsearch: apmv1alpha1.ElasticsearchOutput{
+					ElasticsearchRef: &commonv1alpha1.ObjectSelector{
+						Name:      "foo",
+						Namespace: "default",
+					},
+				},
+			},
+		},
 	}
 	assert.NoError(t, c.Create(&as))
 	// Pretend secrets created by the Elasticsearch controller are there
 	caSecret := mockCaSecret(t, c, *es)
-
-	// Create the association resource, that should be reconciled
-	instance := &v1alpha1.ApmServerElasticsearchAssociation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      associationKey.Name,
-			Namespace: associationKey.Namespace,
-		},
-		Spec: v1alpha1.ApmServerElasticsearchAssociationSpec{
-			Elasticsearch: commonv1alpha1.ObjectSelector{
-				Name:      "foo",
-				Namespace: "default",
-			},
-			ApmServer: commonv1alpha1.ObjectSelector{
-				Name:      apmKey.Name,
-				Namespace: apmKey.Namespace,
-			},
-		},
-	}
-	err = c.Create(instance)
 
 	if apierrors.IsInvalid(err) {
 		t.Logf("failed to create object, got an invalid object error: %v", err)
 		return
 	}
 	assert.NoError(t, err)
-	defer c.Delete(instance)
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// let's wait until the Apm Server update triggers another reconcile iteration
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-
+	defer c.Delete(&as)
 	// Currently no effects on Elasticsearch cluster (TODO decouple user creation)
 
 	// ApmServer should be updated
@@ -114,10 +110,23 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		switch {
-		case !apmServer.Spec.Output.Elasticsearch.IsConfigured():
+
+		if !apmServer.Spec.Output.Elasticsearch.IsConfigured() {
 			return errors.New("Not reconciled yet")
+		}
+		return nil
+	})
+
+	test.RetryUntilSuccess(t, func() error {
+		err := c.Get(apmKey, apmServer)
+		if err != nil {
+			return err
+		}
+		switch apmServer.Status.Association {
+		case "":
+			return errors.New("No status yet")
 		default:
+			assert.Equal(t, commonv1alpha1.AssociationEstablished, apmServer.Status.Association)
 			return nil
 		}
 	})
@@ -127,15 +136,14 @@ func TestReconcile(t *testing.T) {
 	test.DeleteIfExists(t, c, caSecret)
 
 	// Ensure association goes back to pending if one of the vertices is deleted
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
-		fetched := v1alpha1.ApmServerElasticsearchAssociation{}
-		err := c.Get(associationKey, &fetched)
+		fetched := apmv1alpha1.ApmServer{}
+		err := c.Get(apmKey, &fetched)
 		if err != nil {
 			return err
 		}
-		if commonv1alpha1.AssociationPending != fetched.Status.AssociationStatus {
-			return fmt.Errorf("expected %v, found %v", commonv1alpha1.AssociationPending, fetched.Status.AssociationStatus)
+		if commonv1alpha1.AssociationPending != fetched.Status.Association {
+			return fmt.Errorf("expected %v, found %v", commonv1alpha1.AssociationPending, fetched.Status.Association)
 		}
 		return nil
 	})

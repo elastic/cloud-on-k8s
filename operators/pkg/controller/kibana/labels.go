@@ -9,8 +9,6 @@ import "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 const (
 	// KibanaNameLabelName used to represent a Kibana in k8s resources
 	KibanaNameLabelName = "kibana.k8s.elastic.co/name"
-	// caChecksumLabelName used to store the CA file checksum
-	caChecksumLabelName = "kibana.k8s.elastic.co/ca-file-checksum"
 
 	// Type represents the Kibana type
 	Type = "kibana"

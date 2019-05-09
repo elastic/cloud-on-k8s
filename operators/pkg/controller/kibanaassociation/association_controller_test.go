@@ -41,7 +41,16 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
+						Namespace: kibanaFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      CACertSecretName(kibanaFixture.Name),
 						Namespace: kibanaFixture.Namespace,
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
@@ -50,7 +59,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
@@ -64,76 +73,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "Orphaned objects exist",
-			kibana: kibanaFixture,
-			es:     esFixture,
-			initialObjects: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: kibanaFixture.Namespace,
-						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
-						},
-					},
-				},
-				&estype.User{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: kibanaFixture.Namespace,
-						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
-						},
-					},
-				},
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: "other-ns",
-						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
-						},
-					},
-				},
-				&estype.User{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: "other-ns",
-						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
-						},
-						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
-						},
-					},
-				},
-			},
-			postCondition: func(c k8s.Client) {
-				assertExpectObjectsExist(t, c)
-				// This works even without labels because mock client currently ignores labels
-				assert.Error(t, c.Get(types.NamespacedName{
-					Namespace: "other-ns",
-					Name:      resourceNameFixture,
-				}, &estype.User{}))
-				assert.Error(t, c.Get(types.NamespacedName{
-					Namespace: "other-ns",
-					Name:      resourceNameFixture,
-				}, &corev1.Secret{}))
-
-			},
-			wantErr: false,
-		},
-		{
-			name: "No more es ref in Kibana, orphan user for previous es ref exist",
+			name: "No more es ref in Kibana, orphan user & CA for previous es ref exist",
 			kibana: kbtype.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "kibana-foo",
@@ -144,7 +84,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: kibanaFixture.Namespace,
 						Labels: map[string]string{
 							AssociationLabelName: kibanaFixture.Name,
@@ -156,7 +96,19 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&estype.User{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userName,
+						Namespace: kibanaFixture.Namespace,
+						Labels: map[string]string{
+							AssociationLabelName: kibanaFixture.Name,
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      CACertSecretName(kibanaFixture.Name),
 						Namespace: kibanaFixture.Namespace,
 						Labels: map[string]string{
 							AssociationLabelName: kibanaFixture.Name,
@@ -171,11 +123,15 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				// This works even without labels because mock client currently ignores labels
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Namespace,
-					Name:      resourceNameFixture,
+					Name:      userName,
 				}, &estype.User{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
-					Name:      resourceNameFixture,
+					Name:      userSecretName,
+				}, &corev1.Secret{}))
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
+					Name:      CACertSecretName(kibanaFixture.Name),
 				}, &corev1.Secret{}))
 			},
 			wantErr: false,
@@ -198,11 +154,16 @@ func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// user CR should be in ES namespace
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: esFixture.Namespace,
-		Name:      resourceNameFixture,
+		Name:      userName,
 	}, &estype.User{}))
-	// secret should be in Kibana namespace
+	// user secret should be in Kibana namespace
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: kibanaFixture.Namespace,
-		Name:      resourceNameFixture,
+		Name:      userSecretName,
+	}, &corev1.Secret{}))
+	// ca secret should be in Kibana namespace
+	assert.NoError(t, c.Get(types.NamespacedName{
+		Namespace: kibanaFixture.Namespace,
+		Name:      CACertSecretName(kibanaFixture.Name),
 	}, &corev1.Secret{}))
 }

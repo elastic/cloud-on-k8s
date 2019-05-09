@@ -30,11 +30,14 @@ const (
 )
 
 // KibanaUserObjectName identifies the Kibana user object (secret/user CRD).
-func KibanaUserObjectName(kibanaName string) string {
-	return kibanaName + "-" + kibanaUser
+func KibanaUserObjectName(kibana types.NamespacedName) string {
+	// must be namespace-aware since we might have several kibanas running in
+	// different namespaces with the same name: we need one user for each
+	// in the Elasticsearch namespace
+	return kibana.Namespace + "-" + kibana.Name + "-" + kibanaUser
 }
 
-// KibanaUserKey is the namespaced name to identify the customer user resource created by the controller.
+// KibanaUserKey is the namespaced name to identify the user resource created by the controller.
 func KibanaUserKey(kibana kbtype.Kibana, esNamespace string) types.NamespacedName {
 	if esNamespace == "" {
 		// no namespace given, default to Kibana's one
@@ -43,8 +46,14 @@ func KibanaUserKey(kibana kbtype.Kibana, esNamespace string) types.NamespacedNam
 	return types.NamespacedName{
 		// user lives in the ES namespace
 		Namespace: esNamespace,
-		Name:      KibanaUserObjectName(kibana.Name),
+		Name:      KibanaUserObjectName(k8s.ExtractNamespacedName(&kibana)),
 	}
+}
+
+// KibanaUserSecretObjectName identifies the Kibana secret object.
+func KibanaUserSecretObjectName(kibana types.NamespacedName) string {
+	// does not need to be namespace aware, since it lives in Kibana namespace.
+	return kibana.Name + "-" + kibanaUser
 }
 
 // KibanaUserSecret is the namespaced name to identify the secret containing the password for the Kibana user.
@@ -52,7 +61,7 @@ func KibanaUserKey(kibana kbtype.Kibana, esNamespace string) types.NamespacedNam
 func KibanaUserSecretKey(kibana types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
 		Namespace: kibana.Namespace,
-		Name:      KibanaUserObjectName(kibana.Name),
+		Name:      KibanaUserSecretObjectName(kibana),
 	}
 }
 
@@ -60,7 +69,7 @@ func KibanaUserSecretKey(kibana types.NamespacedName) types.NamespacedName {
 func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
-			Name: KibanaUserObjectName(kibana.Name),
+			Name: KibanaUserSecretObjectName(k8s.ExtractNamespacedName(&kibana)),
 		},
 		Key: kibanaUser,
 	}
@@ -111,7 +120,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 		return err
 	}
 
-	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
+	// analogous to the secret: the user goes on the Elasticsearch side of the association
+	// we apply the ES cluster labels ("user belongs to that ES cluster")
+	// and the association label ("for that Kibana association")
 	userLabels := label.NewLabels(es)
 	userLabels[AssociationLabelName] = kibana.Name
 	usrKey := KibanaUserKey(kibana, es.Namespace)

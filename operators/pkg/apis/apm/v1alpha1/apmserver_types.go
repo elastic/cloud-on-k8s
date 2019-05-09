@@ -46,6 +46,9 @@ type Output struct {
 
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
+	// ElasticsearchRef allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
+	ElasticsearchRef *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
+
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
 
@@ -80,6 +83,8 @@ type ApmServerStatus struct {
 	ExternalService string `json:"service,omitempty"`
 	// SecretTokenSecretName is the name of the Secret that contains the secret token
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
+	// Association is the status of any auto-linking to Elasticsearch clusters.
+	Association commonv1alpha1.AssociationStatus
 }
 
 // IsDegraded returns true if the current status is worse than the previous.

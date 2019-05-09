@@ -27,6 +27,11 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 		return err
 	}
 
+	// Dynamically watch Elasticsearch public CA secrets for referenced ES clusters
+	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.Secrets); err != nil {
+		return err
+	}
+
 	// Watch Users owned by a Kibana resource
 	if err := c.Watch(&source.Kind{Type: &estype.User{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    &kbtype.Kibana{},
@@ -52,6 +57,11 @@ func elasticsearchWatchName(kibanaKey types.NamespacedName) string {
 	return kibanaKey.Namespace + "-" + kibanaKey.Name + "-es-watch"
 }
 
+// esCAWatchName returns the name of the watch setup on Elasticsearch CA secret
+func esCAWatchName(kibana types.NamespacedName) string {
+	return kibana.Namespace + "-" + kibana.Name + "-ca-watch"
+}
+
 // watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
 // because not referenced by any Kibana resource.
 func watchFinalizer(kibanaKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
@@ -59,6 +69,7 @@ func watchFinalizer(kibanaKey types.NamespacedName, w watches.DynamicWatches) fi
 		Name: "dynamic-watches.finalizers.associations.k8s.elastic.co",
 		Execute: func() error {
 			w.ElasticsearchClusters.RemoveHandlerForKey(elasticsearchWatchName(kibanaKey))
+			w.Secrets.RemoveHandlerForKey(esCAWatchName(kibanaKey))
 			return nil
 		},
 	}

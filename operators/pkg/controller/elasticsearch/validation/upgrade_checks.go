@@ -20,6 +20,10 @@ func unsupportedVersion(v *version.Version) string {
 	return fmt.Sprintf("unsupported version: %v", v)
 }
 
+func unsupportedUpgradePath(v1, v2 version.Version) string {
+	return fmt.Sprintf("unsupported version upgrade from %v to %v", v1, v2)
+}
+
 func noDowngrades(ctx Context) validation.Result {
 	if ctx.isCreate() {
 		return validation.OK
@@ -41,7 +45,10 @@ func validUpgradePath(ctx Context) validation.Result {
 	}
 	err := v.Supports(ctx.Current.Version)
 	if err != nil {
-		return validation.Result{Allowed: false, Reason: err.Error()}
+		return validation.Result{
+			Allowed: false,
+			Reason:  unsupportedUpgradePath(ctx.Current.Version, ctx.Proposed.Version),
+		}
 	}
 	return validation.OK
 }

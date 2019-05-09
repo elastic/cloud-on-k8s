@@ -305,7 +305,6 @@ ci-e2e:
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
 ci-release:
-	@ hack/gke-cluster.sh registry
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 
 

@@ -88,7 +88,7 @@ func expectedDeploymentParams() *DeploymentParams {
 					},
 				},
 				Image: "my-image",
-				Name:  "kibana",
+				Name:  kbtype.KibanaContainerName,
 				Ports: []corev1.ContainerPort{
 					{Name: "http", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
 				},
@@ -144,6 +144,27 @@ func Test_driver_deploymentParams(t *testing.T) {
 		},
 	}
 
+	// add custom labels and resource limits that should be propagated to pods
+	kibanaFixtureWithPodTemplate := kibanaFixture
+	customResourceLimits := corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
+	}
+	kibanaFixtureWithPodTemplate.Spec.PodTemplate = corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"mylabel": "value",
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:      kbtype.KibanaContainerName,
+					Resources: customResourceLimits,
+				},
+			},
+		},
+	}
+
 	var defaultInitialObjs = []runtime.Object{
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
@@ -192,6 +213,24 @@ func Test_driver_deploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjs,
 			},
 			want:    expectedDeploymentParams(),
+			wantErr: false,
+		},
+		{
+			name: "with podTemplate specified",
+			args: args{
+				kb:             &kibanaFixtureWithPodTemplate,
+				initialObjects: defaultInitialObjs,
+			},
+			want: func() *DeploymentParams {
+				p := expectedDeploymentParams()
+				p.PodLabels["mylabel"] = "value"
+				for i, c := range p.PodSpec.Containers {
+					if c.Name == kbtype.KibanaContainerName {
+						p.PodSpec.Containers[i].Resources = customResourceLimits
+					}
+				}
+				return p
+			}(),
 			wantErr: false,
 		},
 		{
@@ -265,6 +304,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 			w := watches.NewDynamicWatches()
+			w.Secrets.InjectScheme(scheme.Scheme)
 			version, err := version.Parse(tt.args.kb.Spec.Version)
 			assert.NoError(t, err)
 			d, err := newDriver(client, s, *version, w)
