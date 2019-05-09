@@ -71,9 +71,7 @@ func TestUpdateZen2Settings(t *testing.T) {
 					ToCreate: nil,
 					ToKeep:   nil,
 					ToDelete: []pod.PodWithConfig{
-						{
-							Pod: masterPodFixture,
-						},
+						{Pod: masterPodFixture},
 					},
 				},
 				performableChanges: mutation.PerformableChanges{
@@ -107,9 +105,7 @@ func TestUpdateZen2Settings(t *testing.T) {
 					ToCreate: nil,
 					ToKeep:   nil,
 					ToDelete: []pod.PodWithConfig{
-						{
-							Pod: masterPodFixture,
-						},
+						{Pod: masterPodFixture},
 					},
 				},
 				performableChanges: mutation.PerformableChanges{
