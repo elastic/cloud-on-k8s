@@ -1,69 +1,7 @@
 # Elastic operators and controllers for Kubernetes
 
-Managed Elastic products and services in Kubernetes.
+This directory contains the source code of the Elastic operators used by Elastic Cloud on Kubernetes.
 
-## Requirements
+For a broader introduction about the features of Elastic Cloud on Kubernetes, see the [README.md](../README.md) at the root of this repository.
 
-Before you start, install the following tools and packages:
-
-* [go](https://golang.org/dl/)
-* [goimports](https://godoc.org/golang.org/x/tools/cmd/goimports)
-* [dep](https://github.com/golang/dep)
-* [golangci-lint](https://github.com/golangci/golangci-lint)
-* [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (>= 1.11)
-* [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
-* [minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/)
-* [docker](https://docs.docker.com/)
-* [gcloud](https://cloud.google.com/sdk/gcloud/) (Install `beta` components)
-* sha1sum (for Mac `brew install md5sha1sum`)
-
-### Get sources using go get
-
-**Note**: People accessing this repo before the repo is public will not be able to use `go get`, you will have to clone the repo and place it in `{GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s`
-
-```bash
-go get -u github.com/elastic/cloud-on-k8s
-cd ${GOPATH:-$HOME/go}/src/github.com/elastic/cloud-on-k8s/operators
-```
-
-### Check prerequisites
-
-Run `make check-requisites` to check that all dependencies are installed.
-
-## Quickstart
-
-See the [Quickstart](../docs/quickstart.md).
-
-## Development
-
-1. Get a working development Kubernetes cluster. You can either use:
-
-    [Minikube](https://kubernetes.io/docs/tasks/tools/install-minikube/#install-minikube)
-
-  ```bash
-   make bootstrap-minikube
-   # Sets up a Minikube cluster with required resources
-   ```
-   or [GKE](https://cloud.google.com/kubernetes-engine/)
-
-   ```bash
-   export GCLOUD_PROJECT=my-project-id
-   make bootstrap-gke
-   # Sets up GKE cluster with required resources		
-   ```
-2. Deploy the operator.
-
-   * `make dep-vendor-only` to download extra Go libraries needed to compile the project and stores them in the vendor directory.
-   *  `make run` to run the operator locally, or `make deploy` to deploy the operators into the configured k8s cluster.
-   * `make samples` to apply a sample stack resource.
-
-### Running E2E tests
-
-E2E tests will run in the `e2e` namespace. An operator must run and manage resources in the `e2e` namespace.
-To do that, run `MANAGED_NAMESPACE=e2e make run`. Then you can run E2E tests in a separate shell `make e2e-local`.
-
-## Recommended reading
-
-* [Resources](https://book.kubebuilder.io/basics/what_is_a_resource.html)
-* [Controllers](https://book.kubebuilder.io/basics/what_is_a_controller.html)
-* [Controller Managers](https://book.kubebuilder.io/basics/what_is_the_controller_manager.html)
+If you want to contribute to the project, check our [contributing guide](../CONTRIBUTING.md) and see [how to setup a local development environment](dev-setup.md).
