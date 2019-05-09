@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	defaultMemoryLimits = resource.MustParse("1Gi")
+	defaultMemoryLimits = resource.MustParse("2Gi")
 	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 

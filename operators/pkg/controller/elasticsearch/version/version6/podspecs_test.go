@@ -62,7 +62,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 				}},
-				{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", 512, 512, version.SecurityPropsFile)},
+				{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", 1024, 1024, version.SecurityPropsFile)},
 				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 				{Name: settings.EnvProbeUsername, Value: "username1"},
 				{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, "username1")},
