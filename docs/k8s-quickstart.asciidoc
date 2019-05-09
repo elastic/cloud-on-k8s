@@ -16,7 +16,6 @@ In this quickstart, you will learn how to:
 * Deploy the Kibana instance
 * Upgrade your deployment
 * Deep dive with:
-  - Secure your cluster
   - Use persistent storage
   - Additional features
 --
@@ -244,18 +243,7 @@ EOF
 [id="{p}-deep-dive"]
 == Deep dive
 
-Now that you have completed the quickstart, you can try out more features like securing your cluster or using persistent storage.
-
-[float]
-=== Secure your cluster
-
-To secure your production-grade Elasticsearch deployment, you can:
-
-*  Use XPack security for encryption and authentication
-
-(TODO: link here to a tutorial on how to manipulate certs and auth. Note from nrichers: X-Pack [sic] is going away, so this should just talk about the security features of the Elastic Stack. See https://docs.google.com/document/d/1GX6IzKDf8IBTQexcSZZj_C-ryH4FzsSVf7s0SHKiLKA/edit# for more info.)
-
-*  Set up an ingress proxy layer (link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/ingress/nginx-ingress.yaml[example using NGINX])
+Now that you have completed the quickstart, you can try out more features like using persistent storage.
 
 [float]
 === Use persistent storage
