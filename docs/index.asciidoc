@@ -1,4 +1,4 @@
-= Elastic Cloud on Kubernetes Documentation
+= Elastic Cloud on Kubernetes
 :n: Elastic Cloud on Kubernetes
 :p: k8s
 :idprefix: k8s-
