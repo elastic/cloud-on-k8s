@@ -107,14 +107,6 @@ quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   1m
 
 You can access Elasticsearch from the Kubernetes cluster, using the URL `https://quickstart-es:9200`.
 
-#### Retrieve credentials
-
-A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
-
-```bash
-PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
-```
-
 #### Request Elasticsearch
 
 1. Use `kubectl port-forward` to access Elasticsearch from your local workstation:
@@ -123,30 +115,37 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
     kubectl port-forward service/quickstart-es 9200
     ```
 
-2. In another shell, request the Elasticsearch endpoint (skipping the certificate verification for now):
+2. In another shell, get the credentials and request the Elasticsearch endpoint:
 
-    ```bash
-    curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
-    ```
-    ```
-    {
-      "name" : "quickstart-es-5zctxpn8nd",
-      "cluster_name" : "quickstart",
-      "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
-      "version" : {
-        "number" : "7.0.0",
-        "build_flavor" : "default",
-        "build_type" : "docker",
-        "build_hash" : "b7e28a7",
-        "build_date" : "2019-04-05T22:55:32.697037Z",
-        "build_snapshot" : false,
-        "lucene_version" : "8.0.0",
-        "minimum_wire_compatibility_version" : "6.7.0",
-        "minimum_index_compatibility_version" : "6.0.0-beta1"
-      },
-      "tagline" : "You Know, for Search"
-    }
-    ```
+    * A default user named `elastic` was automatically created. Its password is stored as a Kubernetes secret:
+
+        ```bash
+        PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+        ```
+
+    * Request the Elasticsearch endpoint (skipping the certificate verification for now)
+        ```bash
+        curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+        ```
+        ```
+        {
+          "name" : "quickstart-es-5zctxpn8nd",
+          "cluster_name" : "quickstart",
+          "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
+          "version" : {
+            "number" : "7.0.0",
+            "build_flavor" : "default",
+            "build_type" : "docker",
+            "build_hash" : "b7e28a7",
+            "build_date" : "2019-04-05T22:55:32.697037Z",
+            "build_snapshot" : false,
+            "lucene_version" : "8.0.0",
+            "minimum_wire_compatibility_version" : "6.7.0",
+            "minimum_index_compatibility_version" : "6.0.0-beta1"
+          },
+          "tagline" : "You Know, for Search"
+        }
+        ```
 
 ## Deploy the Kibana instance
 
