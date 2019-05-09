@@ -19,6 +19,8 @@ You will learn how to:
 
 ## Deploy the operator in your Kubernetes cluster
 
+Note: if using GKE, make sure your user has `cluster-admin` permissions: see [Prerequisites for using Kubernetes RBAC on GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control).
+
 1. Install [custom resource definitions](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/), to extend the apiserver with additional resources:
 
     ```bash
