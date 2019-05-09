@@ -29,10 +29,10 @@ pipeline {
     post {
         success {
             script {
-                def msg = env.REGISTRY + "/" + env.REPOSITORY + "/" + env.IMG_NAME + ":" + env.TAG_NAME + " was released! Congratulations!"
+                def msg = "docker.elastic.co/" + env.REPOSITORY + "/" + env.IMG_NAME + ":" + env.TAG_NAME + " was released! Congratulations!"
                 slackSend botUser: true,
                     channel: '#cloud-k8s',
-                    color: 'green',
+                    color: 'good',
                     message: msg,
                     tokenCredentialId: 'cloud-ci-slack-integration-token'
             }
