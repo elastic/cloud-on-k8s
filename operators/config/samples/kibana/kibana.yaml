@@ -7,7 +7,7 @@ metadata:
   name: kibana-sample
 spec:
   version: "6.7.2"
-  Elasticsearch:
+  elasticsearch:
     url: https://url.to.elasticsearch:9200
     auth:
       # reference to a secret containing credentials in the given key
