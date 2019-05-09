@@ -34,11 +34,7 @@ This quickstart assumes you already have Kubernetes 1.11+.
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control[Prerequisites for using Kubernetes RBAC on GKE].
 
-. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions], to extend the API server with additional resources:
-
-  kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/crds.yaml
-
-. Install the operator with its RBAC rules:
+. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 
   kubectl apply -f https://raw.githubusercontent.com/elastic/cloud-on-k8s/master/operators/config/all-in-one.yaml
 
