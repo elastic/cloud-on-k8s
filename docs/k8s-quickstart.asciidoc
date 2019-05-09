@@ -61,7 +61,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.0.0
+  version: 7.1.0
   nodes:
   - nodeCount: 1
     config:
@@ -134,18 +134,18 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 +
 ----
     {
-      "name" : "quickstart-es-5zctxpn8nd",
+      "name" : "quickstart-es-r56c9dzzcr",
       "cluster_name" : "quickstart",
-      "cluster_uuid" : "2sUV1IUEQ5SA5ZSkhznCHA",
+      "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
       "version" : {
-        "number" : "7.0.0",
+        "number" : "7.1.0",
         "build_flavor" : "default",
         "build_type" : "docker",
-        "build_hash" : "b7e28a7",
-        "build_date" : "2019-04-05T22:55:32.697037Z",
-        "build_snapshot" : false,
+        "build_hash" : "04116c9",
+        "build_date" : "2019-05-08T06:20:03.781729Z",
+        "build_snapshot" : true,
         "lucene_version" : "8.0.0",
-        "minimum_wire_compatibility_version" : "6.7.0",
+        "minimum_wire_compatibility_version" : "6.8.0",
         "minimum_index_compatibility_version" : "6.0.0-beta1"
       },
       "tagline" : "You Know, for Search"
@@ -167,7 +167,7 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
   metadata:
     name: quickstart
     spec:
-    version: 7.0.0
+    version: 7.1.0
     nodeCount: 1
     ---
     apiVersion: associations.k8s.elastic.co/v1alpha1
@@ -228,7 +228,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.0.0
+  version: 7.1.0
   nodes:
   - nodeCount: 3
     config:
@@ -259,7 +259,7 @@ kind: Elasticsearch
 metadata:
   name: my-cluster
 spec:
-  version: 7.0.0
+  version: 7.1.0
   nodes:
   - nodeCount: 3
     config:
