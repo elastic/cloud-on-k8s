@@ -2,7 +2,7 @@
 
 = Quickstart
 
-In this quickstart, you will learn how to:
+Eager to get started? This fast guide shows you how to:
 
 * Deploy the operator in your Kubernetes cluster
 * Deploy the Elasticsearch cluster
@@ -15,9 +15,11 @@ In this quickstart, you will learn how to:
 
 == Requirements
 
-* Kubernetes 1.11+
+This quickstart assumes you already have Kubernetes 1.11+. 
 
 == Deploy the operator in your Kubernetes cluster
+
+NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see [Prerequisites for using Kubernetes RBAC on GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control).
 
 1. Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions], to extend the API server with additional resources:
 
@@ -33,7 +35,7 @@ In this quickstart, you will learn how to:
 
 == Deploy the Elasticsearch cluster
 
-Let's apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
+Apply a simple link:{ref}getting-started.html[Elasticsearch] cluster specification, with one node:
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -57,7 +59,7 @@ The operator automatically takes care of managing Pods and resources correspondi
 
 === Monitor cluster health and creation progress
 
-Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including their health, version and number of nodes:
+Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
 
 `kubectl get elasticsearch`
 
@@ -94,25 +96,23 @@ NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
-==== Retrieve credentials
-
-A default user named `elastic` gets automatically created. Its password is stored as a Kubernetes secret:
-
-----
-PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
-----
-
 ==== Request Elasticsearch access
 
 1. Use `kubectl port-forward` to access Elasticsearch from your local workstation:
 
    kubectl port-forward service/quickstart-es 9200
 
-2. In another shell, request the Elasticsearch endpoint:
+2. In another shell, get the credentials and request the Elasticsearch endpoint:
 
-  curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
+  * A default user named `elastic` is automatically created. Its password is stored as a Kubernetes secret:
 
-NOTE: For testing purposes only, you can specify the `-k` option to turn off certificate verification.
+    PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+
+  * Request the Elasticsearch endpoint
+
+    NOTE: For testing purposes only, you can specify the `-k` option to turn off certificate verification.
+
+    curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 
 ----
     {
@@ -138,7 +138,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 To deploy your link:{kibana-ref}introduction.html#introduction[Kibana] instance go through the following steps.
 
-1. Specify a Kibana instance and associate it with your quickstart Elasticsearch cluster:
+1. Specify a Kibana instance and associate it with your Elasticsearch cluster:
 
   ----
   cat <<EOF | kubectl apply -f -
@@ -168,17 +168,23 @@ To deploy your link:{kibana-ref}introduction.html#introduction[Kibana] instance 
 
   Similar to Elasticsearch, you can retrieve some details about Kibana instances:
 
-  kubectl get kibana
+  `kubectl get kibana`
 
   And the associated Pods:
 
-  kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'
+  `kubectl get pod --selector='kibana.k8s.elastic.co/name=quickstart'`
 
 3. Access Kibana
 
   A `ClusterIP` Service is automatically created for Kibana:
 
-  kubectl get service quickstart-kibana
+  `kubectl get service quickstart-kibana`
+
+  NOTE: You need the elastic password. Retrieve it again and copy it:
+
+  `PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)`
+
+  `echo $PASSWORD`
 
   Use `kubectl port-forward` to access Kibana from your local workstation:
 
@@ -213,7 +219,7 @@ EOF
 
 == Deep dive
 
-Now that you completed the quickstart, you can try out more features like securing your cluster or using persistent storage.
+Now that you have completed the quickstart, you can try out more features like securing your cluster or using persistent storage.
 
 === Secure your cluster
 
@@ -269,7 +275,7 @@ The operator supports the following features:
 
 * Node-to-node TLS encryption
 * User management
-* Secure settings (for eg. automated snapshots)
+* Secure settings (for ex. automated snapshots)
 * Nodes resources limitations (CPU, RAM, disk)
 * Cluster update strategies
 * Version upgrades
