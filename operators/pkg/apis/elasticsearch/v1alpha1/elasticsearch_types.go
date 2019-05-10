@@ -41,9 +41,9 @@ type ElasticsearchSpec struct {
 
 	// SecureSettings reference a secret containing secure settings, to be injected
 	// into Elasticsearch keystore on each node.
-	// It must exist in the same namespace as the Elasticsearch resource.
-	// Secret keys must start with `es.file.` or `es.string.` according to the
-	// secure setting type.
+	// Each individual key/value entry in the referenced secret is considered as an
+	// individual secure setting to be injected.
+	// The secret must exist in the same namespace as the Elasticsearch resource.
 	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 }
 
