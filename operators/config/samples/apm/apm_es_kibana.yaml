@@ -13,7 +13,6 @@ spec:
       node.master: true
       node.data: true
       node.ingest: true
-      xpack.license.self_generated.type: trial
     podTemplate:
       spec:
         containers:

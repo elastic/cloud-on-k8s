@@ -12,7 +12,6 @@ spec:
   - config:
       node.master: true
       node.data: true
-      xpack.license.self_generated.type: trial
       node.attr.attr_name: attr_value
     podTemplate:
       metadata:
