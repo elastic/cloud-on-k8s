@@ -150,6 +150,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	if err := r.finalizers.Handle(kb, secretWatchFinalizer(*kb, r.dynamicWatches)); err != nil {
+		if errors.IsConflict(err) {
+			log.V(1).Info("Conflict while handling secret watch finalizer")
+			return reconcile.Result{Requeue: true}, nil
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -171,6 +175,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	results := driver.Reconcile(&state, kb)
 	// update status
 	err = r.updateStatus(state)
+	if err != nil && errors.IsConflict(err) {
+		log.V(1).Info("Conflict while updating status")
+		return reconcile.Result{Requeue: true}, nil
+	}
 	return results.WithError(err).Aggregate()
 }
 

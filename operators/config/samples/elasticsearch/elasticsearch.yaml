@@ -23,7 +23,7 @@ spec:
         - name: elasticsearch
           resources:
             limits:
-              memory: 1Gi
+              memory: 2Gi
               cpu: 1
     nodeCount: 3
     ## this shows how to request 2Gi of persistent data storage for pods in this topology element
@@ -36,6 +36,7 @@ spec:
     #    resources:
     #      requests:
     #        storage: 2Gi
+    #    storageClassName: elastic-local # or eg. gcePersistentDisk
   ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
   # secureSettings:
   #   secretName: "ref-to-secret"

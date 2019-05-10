@@ -20,9 +20,8 @@ spec:
       serviceAccountName: elastic-operator
       containers:
       - image: <OPERATOR_IMAGE>
-        imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--operator-roles", "all"]
+        args: ["manager", "--operator-roles", "all"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -36,8 +35,8 @@ spec:
             value: <OPERATOR_IMAGE>
         resources:
           limits:
-            cpu: 100m
-            memory: 30Mi
+            cpu: 1
+            memory: 100Mi
           requests:
             cpu: 100m
             memory: 20Mi
