@@ -29,10 +29,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
-// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
 const (
-	name                = "license-controller"
+	name = "license-controller"
+
+	// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
+	// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
 	defaultSafetyMargin = 30 * 24 * time.Hour
 )
 
