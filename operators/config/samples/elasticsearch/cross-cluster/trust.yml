@@ -17,7 +17,7 @@ spec:
           - name: elasticsearch
             resources:
               limits:
-                memory: 1Gi
+                memory: 2Gi
                 cpu: 1
       nodeCount: 1
   http:
@@ -42,7 +42,7 @@ spec:
           - name: elasticsearch
             resources:
               limits:
-                memory: 1Gi
+                memory: 2Gi
                 cpu: 1
       nodeCount: 1
   http:

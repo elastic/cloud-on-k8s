@@ -38,7 +38,7 @@ spec:
           - name: elasticsearch
             resources:
               limits:
-                memory: 1Gi
+                memory: 2Gi
                 cpu: 1
     nodeCount: 3
     ## this shows how to request 2Gi of persistent data storage for pods in this topology element

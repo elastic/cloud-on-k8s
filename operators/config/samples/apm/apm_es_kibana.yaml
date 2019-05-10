@@ -16,7 +16,7 @@ spec:
         xpack.license.self_generated.type: trial
       resources:
         limits:
-          memory: 1Gi
+          memory: 2Gi
           cpu: 500m
       nodeCount: 3
 ---
