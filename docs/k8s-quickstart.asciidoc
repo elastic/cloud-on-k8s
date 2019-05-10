@@ -111,7 +111,7 @@ A ClusterIP Service is automatically created for your cluster:
 kubectl get service quickstart-es
 ----
 
-. Get access to elasticsearch
+. Get access to Elasticsearch
 +
 To access Elasticsearch from the Kubernetes cluster, use this URL:
 +
