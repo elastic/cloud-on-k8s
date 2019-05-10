@@ -19,6 +19,6 @@ Supported versions:
 *  Kubernetes: 1.11+
 *  Elasticsearch: 6.8+, 7.1+
 
-From here, you can either use the [Quickstart](https://www.elastic.co/guide/en/k8s/current/quickstart.html) to deploy you first cluster with ECK, or discover more about [Elastic operators for Kubernetes](https://github.com/elastic/cloud-on-k8s/tree/master/operators) and [Dynamic provisioner for local volumes](https://github.com/elastic/cloud-on-k8s/blob/master/local-volume).
+From here, you can either use the [Quickstart](https://www.elastic.co/guide/en/k8s/current/quickstart.html) to deploy you first cluster with ECK, or discover more about [Elastic operators for Kubernetes](https://github.com/elastic/cloud-on-k8s/tree/master/operators) and ECK [dynamic provisioner for local volumes](https://github.com/elastic/cloud-on-k8s/blob/master/local-volume).
 
 ![](docs/img/k8s-operator.gif)
