@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	defaultMemoryLimits = resource.MustParse("2Gi")
+	DefaultMemoryLimits = resource.MustParse("2Gi")
 	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
@@ -139,7 +139,7 @@ func podSpec(
 	)
 
 	resourceLimits := corev1.ResourceList{
-		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), defaultMemoryLimits),
+		corev1.ResourceMemory: nonZeroQuantityOrDefault(*p.Resources.Limits.Memory(), DefaultMemoryLimits),
 	}
 	if !p.Resources.Limits.Cpu().IsZero() {
 		resourceLimits[corev1.ResourceCPU] = *p.Resources.Limits.Cpu()
@@ -253,7 +253,7 @@ func NewPod(
 // MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
 func MemoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
 	// use half the available memory as heap
-	return quantityToMegabytes(nonZeroQuantityOrDefault(memoryLimit, defaultMemoryLimits)) / 2
+	return quantityToMegabytes(nonZeroQuantityOrDefault(memoryLimit, DefaultMemoryLimits)) / 2
 }
 
 // nonZeroQuantityOrDefault returns q if it is nonzero, defaultQuantity otherwise
