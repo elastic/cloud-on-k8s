@@ -227,7 +227,6 @@ The cluster that you deployed in this quickstart uses an link:https://kubernetes
 You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
 
 ----
-yaml
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
