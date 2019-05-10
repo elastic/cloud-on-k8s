@@ -81,7 +81,7 @@ func TestReconcile(t *testing.T) {
 					Password: "bar",
 				},
 			},
-			CaCertSecret: &secret.Name,
+			CaCertSecret: secret.Name,
 		}
 		err := c.Update(instance)
 		if errors.IsConflict(err) {
