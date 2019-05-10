@@ -1,4 +1,4 @@
-# Elastic operators and controllers for Kubernetes
+# Elastic operators for Kubernetes
 
 This directory contains the source code of the Elastic operators used by Elastic Cloud on Kubernetes.
 
