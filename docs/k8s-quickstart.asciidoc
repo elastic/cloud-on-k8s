@@ -262,7 +262,7 @@ To aim for the best performance, the operator supports persistent volumes local 
 A set of sample resources can be found link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
 Check the link:https://github.com/elastic/cloud-on-k8s/blob/v0.8.0/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample] for more details on how the Elasticsearch resource can be customized.
 
-The full description of each `CustomResourceDefinition` can be found link:https://github.com/elastic/cloud-on-k8s/tree/v0.8.0/operators/config/crds[in the project repository].
+For a full description of each `CustomResourceDefinition`, see link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/crds[in the project repository].
 You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
 
 [source,sh]
