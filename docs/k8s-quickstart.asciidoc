@@ -152,23 +152,23 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 [source,json]
 ----
-    {
-      "name" : "quickstart-es-r56c9dzzcr",
-      "cluster_name" : "quickstart",
-      "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
-      "version" : {
-        "number" : "7.0.1",
-        "build_flavor" : "default",
-        "build_type" : "docker",
-        "build_hash" : "04116c9",
-        "build_date" : "2019-05-08T06:20:03.781729Z",
-        "build_snapshot" : true,
-        "lucene_version" : "8.0.0",
-        "minimum_wire_compatibility_version" : "6.8.0",
-        "minimum_index_compatibility_version" : "6.0.0-beta1"
-      },
-      "tagline" : "You Know, for Search"
-    }
+{
+  "name" : "quickstart-es-r56c9dzzcr",
+  "cluster_name" : "quickstart",
+  "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
+  "version" : {
+    "number" : "7.0.1",
+    "build_flavor" : "default",
+    "build_type" : "docker",
+    "build_hash" : "04116c9",
+    "build_date" : "2019-05-08T06:20:03.781729Z",
+    "build_snapshot" : true,
+    "lucene_version" : "8.0.0",
+    "minimum_wire_compatibility_version" : "6.8.0",
+    "minimum_index_compatibility_version" : "6.0.0-beta1"
+  },
+  "tagline" : "You Know, for Search"
+}
 ----
 
 [float]
