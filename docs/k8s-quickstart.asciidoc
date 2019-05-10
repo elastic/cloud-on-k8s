@@ -11,7 +11,7 @@ Eager to get started? This fast guide shows you how to:
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
-* <<{p}-persistent-storage,Use persistent storage>>
+* <<{p}-deep-dive,Deep dive>>
 
 **Requirements**
 
@@ -214,9 +214,13 @@ spec:
 EOF
 ----
 
+[id="{p}-deep-dive"]
+== Deep dive
+
+Now that you have completed the quickstart, you can try out more features like using persistent storage.
+
 [float]
-[id="{p}-persistent-storage"]
-== Use persistent storage
+=== Use persistent storage
 
 The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
 
@@ -251,3 +255,9 @@ To aim for the best performance, the operator supports persistent volumes local 
 
  * link:https://github.com/elastic/cloud-on-k8s/tree/master/local-volume[elastic local volume dynamic provisioner] to setup dynamic local volumes based on LVM.
  * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
+
+[float]
+=== Check out the samples
+
+A set of sample resources can be found link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
+Check the link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample] for more details on how the Elasticsearch resource can be customized.
