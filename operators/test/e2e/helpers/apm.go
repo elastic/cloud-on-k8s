@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
@@ -26,6 +27,7 @@ const DefaultReqTimeout = 1 * time.Minute
 // ApmClient is a simple client to use with an Apm Server.
 type ApmClient struct {
 	client                   *http.Client
+	version                  string
 	endpoint                 string
 	authorizationHeaderValue string
 }
@@ -51,6 +53,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) 
 	return &ApmClient{
 		client:                   &client,
 		endpoint:                 inClusterURL,
+		version:                  as.Spec.Version,
 		authorizationHeaderValue: fmt.Sprintf("Bearer %s", secretToken),
 	}, nil
 }
@@ -74,6 +77,7 @@ func (c *ApmClient) request(
 	ctx context.Context,
 	method string,
 	pathWithQuery string,
+	headers http.Header,
 	requestObj,
 	responseObj interface{},
 ) error {
@@ -91,6 +95,8 @@ func (c *ApmClient) request(
 	if err != nil {
 		return err
 	}
+
+	request.Header = headers
 
 	resp, err := c.doRequest(ctx, request)
 	if err != nil {
@@ -115,15 +121,28 @@ type ApmServerInfo struct {
 	Version string `json:"version"`
 }
 
+type ApmServerInfo6 struct {
+	// OK contains the ApmServerInfo
+	OK ApmServerInfo `json:"ok"`
+}
+
 // ServerInfo requests the Server Information API
 func (c *ApmClient) ServerInfo(ctx context.Context) (*ApmServerInfo, error) {
-	var serverInfo ApmServerInfo
-
-	if err := c.request(ctx, http.MethodGet, "", nil, &serverInfo); err != nil {
-		return nil, err
+	requester := func(responseObj interface{}) error {
+		if err := c.request(ctx, http.MethodGet, "", http.Header{
+			"Accept": []string{"application/json"},
+		}, nil, &responseObj); err != nil {
+			return err
+		}
+		return nil
 	}
 
-	return &serverInfo, nil
+	if strings.HasPrefix(c.version, "6") {
+		var serverInfo ApmServerInfo6
+		return &serverInfo.OK, requester(&serverInfo)
+	}
+	var serverInfo ApmServerInfo
+	return &serverInfo, requester(&serverInfo)
 }
 
 // EventsErrorResponse is the error response format used by the Events API.
