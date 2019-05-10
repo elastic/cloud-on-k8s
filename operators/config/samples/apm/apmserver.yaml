@@ -5,7 +5,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: apmserver-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodeCount: 1
   http:
     service:
