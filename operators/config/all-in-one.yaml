@@ -1190,7 +1190,6 @@ spec:
       serviceAccountName: elastic-operator
       containers:
       - image: docker.elastic.co/eck/eck-operator:0.8.0-alpha4
-        imagePullPolicy: Always
         name: manager
         args: ["manager", "--development", "--operator-roles", "all"]
         env:

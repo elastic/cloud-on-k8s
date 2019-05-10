@@ -20,7 +20,6 @@ spec:
       serviceAccountName: elastic-operator
       containers:
       - image: <OPERATOR_IMAGE>
-        imagePullPolicy: Always
         name: manager
         args: ["manager", "--development", "--operator-roles", "all"]
         env:
