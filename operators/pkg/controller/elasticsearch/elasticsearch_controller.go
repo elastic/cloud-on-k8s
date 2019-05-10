@@ -228,7 +228,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {
-		log.Info("Conflict while updating status")
+		log.V(1).Info("Conflict while updating status")
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return results.WithError(err).Aggregate()
