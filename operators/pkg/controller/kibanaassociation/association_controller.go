@@ -48,8 +48,10 @@ import (
 // If reference to an Elasticsearch cluster is not set in the Kibana resource,
 // this controller does nothing.
 
+const name = "kibana-association-controller"
+
 var (
-	log            = logf.Log.WithName("kibana-association-controller")
+	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
@@ -74,14 +76,14 @@ func newReconciler(mgr manager.Manager) (*ReconcileAssociation, error) {
 		Client:   client,
 		scheme:   mgr.GetScheme(),
 		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetRecorder("association-controller"),
+		recorder: mgr.GetRecorder(name),
 	}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("association-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return c, err
 	}

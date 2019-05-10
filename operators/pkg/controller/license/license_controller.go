@@ -31,11 +31,12 @@ import (
 
 // defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
 // In case of any operational issues affecting this controller clusters will have enough runway on their current license.
-const defaultSafetyMargin = 30 * 24 * time.Hour
-
-var (
-	log = logf.Log.WithName("license-controller")
+const (
+	name                = "license-controller"
+	defaultSafetyMargin = 30 * 24 * time.Hour
 )
+
+var log = logf.Log.WithName(name)
 
 // Reconcile reads the cluster license for the cluster being reconciled. If found, it checks whether it is still valid.
 // If there is none it assigns a new one.
@@ -89,7 +90,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("license-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}

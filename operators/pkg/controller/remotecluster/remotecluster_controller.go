@@ -26,6 +26,8 @@ import (
 )
 
 const (
+	name = "remotecluster-controller"
+
 	EventReasonLocalCaCertNotFound = "LocalClusterCaNotFound"
 	EventReasonRemoteCACertMissing = "RemoteClusterCaNotFound"
 	CaCertMissingError             = "Cannot find CA certificate for %s cluster %s/%s"
@@ -34,7 +36,7 @@ const (
 )
 
 var (
-	log            = logf.Log.WithName("remotecluster-controller")
+	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 20 * time.Second}
 )
 
@@ -56,7 +58,7 @@ func newReconciler(mgr manager.Manager, operatorNs string) *ReconcileRemoteClust
 		Client:         c,
 		scheme:         mgr.GetScheme(),
 		watches:        watches.NewDynamicWatches(),
-		recorder:       mgr.GetRecorder("remotecluster-controller"),
+		recorder:       mgr.GetRecorder(name),
 		licenseChecker: license.NewLicenseChecker(c, operatorNs),
 	}
 }
@@ -64,7 +66,7 @@ func newReconciler(mgr manager.Manager, operatorNs string) *ReconcileRemoteClust
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("remotecluster-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return c, err
 	}

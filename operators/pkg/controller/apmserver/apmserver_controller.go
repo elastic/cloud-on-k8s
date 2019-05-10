@@ -37,12 +37,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var log = logf.Log.WithName("apmserver-controller")
-
 const (
+	name                    = "apmserver-controller"
 	caChecksumLabelName     = "apm.k8s.elastic.co/ca-file-checksum"
 	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
 )
+
+var log = logf.Log.WithName(name)
 
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -55,14 +56,14 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileApmServer{
 		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("apmserver-controller"),
+		recorder: mgr.GetRecorder(name),
 	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("apmserver-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}

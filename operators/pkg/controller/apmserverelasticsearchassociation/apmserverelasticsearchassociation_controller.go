@@ -35,8 +35,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
+const name = "apm-es-association-controller"
+
 var (
-	log            = logf.Log.WithName("apm-es-association-controller")
+	log            = logf.Log.WithName(name)
 	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
@@ -61,14 +63,14 @@ func newReconciler(mgr manager.Manager) (*ReconcileApmServerElasticsearchAssocia
 		Client:   client,
 		scheme:   mgr.GetScheme(),
 		watches:  watches.NewDynamicWatches(),
-		recorder: mgr.GetRecorder("association-controller"),
+		recorder: mgr.GetRecorder(name),
 	}, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	c, err := controller.New("apm-es-association-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return nil, err
 	}
