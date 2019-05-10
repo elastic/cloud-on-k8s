@@ -34,8 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const name = "trial-controller"
+
 var (
-	log = logf.Log.WithName("trial-controller")
+	log = logf.Log.WithName(name)
 )
 
 // ReconcileTrials reconciles Enterprise trial licenses.
@@ -175,13 +177,13 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	return &ReconcileTrials{
 		Client:   k8s.WrapClient(mgr.GetClient()),
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("license-controller"),
+		recorder: mgr.GetRecorder(name),
 	}
 }
 
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("trial-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}

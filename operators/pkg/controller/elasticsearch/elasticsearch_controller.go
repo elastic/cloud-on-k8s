@@ -38,9 +38,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var (
-	log = logf.Log.WithName("elasticsearch-controller")
-)
+const name = "elasticsearch-controller"
+
+var log = logf.Log.WithName(name)
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
@@ -62,7 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 	return &ReconcileElasticsearch{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder("elasticsearch-controller"),
+		recorder: mgr.GetRecorder(name),
 
 		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
 		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
@@ -78,7 +78,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
 	// Create a new controller
-	return controller.New("elasticsearch-controller", mgr, controller.Options{Reconciler: r})
+	return controller.New(name, mgr, controller.Options{Reconciler: r})
 }
 
 func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
