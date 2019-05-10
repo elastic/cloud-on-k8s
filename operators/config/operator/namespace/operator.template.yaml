@@ -21,7 +21,7 @@ spec:
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
-        args: ["manager", "--development", "--namespace", "<MANAGED_NAMESPACE>", "--operator-roles", "namespace"]
+        args: ["manager", "--namespace", "<MANAGED_NAMESPACE>", "--operator-roles", "namespace"]
         env:
           - name: OPERATOR_IMAGE
             value: <OPERATOR_IMAGE>

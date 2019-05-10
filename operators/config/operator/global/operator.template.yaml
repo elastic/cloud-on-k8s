@@ -21,7 +21,7 @@ spec:
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
-        args: ["manager", "--development", "--operator-roles", "global,webhook"]
+        args: ["manager", "--operator-roles", "global,webhook"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:

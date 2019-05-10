@@ -1191,7 +1191,7 @@ spec:
       containers:
       - image: docker.elastic.co/eck/eck-operator:0.8.0-alpha4
         name: manager
-        args: ["manager", "--development", "--operator-roles", "all"]
+        args: ["manager", "--operator-roles", "all"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
