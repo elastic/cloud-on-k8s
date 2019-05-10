@@ -25,7 +25,7 @@ NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions.
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 
-  kubectl apply -f https://download.elastic.co/downloads/eck/0.8.0/all-in-one.yaml
+  kubectl apply -f https://download.elastic.co/downloads/eck/0.8.0-pre-release/all-in-one.yaml
 
 . Monitor the operator logs:
 
