@@ -145,29 +145,19 @@ To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance
 
 . Specify a Kibana instance and associate it with your Elasticsearch cluster:
 
-  ----
-  cat <<EOF | kubectl apply -f -
-  apiVersion: kibana.k8s.elastic.co/v1alpha1
-  kind: Kibana
-  metadata:
+----
+cat <<EOF | kubectl apply -f -
+apiVersion: kibana.k8s.elastic.co/v1alpha1
+kind: Kibana
+metadata:
+  name: quickstart
+spec:
+  version: 7.0.0
+  nodeCount: 1
+  elasticsearchRef:
     name: quickstart
-    spec:
-    version: 7.1.0
-    nodeCount: 1
-    ---
-    apiVersion: associations.k8s.elastic.co/v1alpha1
-    kind: KibanaElasticsearchAssociation
-    metadata:
-    name: kibana-es-quickstart
-    spec:
-    elasticsearch:
-      name: quickstart
-      namespace: default
-      kibana:
-      name: quickstart
-      namespace: default
-  EOF
-  ----
+EOF
+----
 
 . Monitor Kibana health and creation progress.
 +
