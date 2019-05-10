@@ -19,4 +19,4 @@ Supported versions:
 *  Kubernetes: 1.11+
 *  Elasticsearch: 6.8+, 7.1+
 
-Check the [Quickstart](https://www.elastic.co/guide/en/k8s/current/quickstart.html) if you want to deploy you first cluster with ECK.
+Check the [Quickstart](https://www.elastic.co/guide/en/k8s/current/index.html) if you want to deploy you first cluster with ECK.
