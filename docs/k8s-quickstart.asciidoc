@@ -111,7 +111,7 @@ To access Elasticsearch from your local workstation, use the following command:
 +
 A default user named `elastic` is automatically created. Its password is stored as a Kubernetes secret:
 
-  PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)`
+  PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 
 . Request the Elasticsearch endpoint:
 
