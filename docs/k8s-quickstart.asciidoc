@@ -90,16 +90,17 @@ A ClusterIP Service is automatically created for your cluster:
 
 `kubectl get service quickstart-es`
 
+----
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+----
+
 . Get access to elasticsearch
 +
 To access Elasticsearch from the Kubernetes cluster, use this URL:
 
   https://quickstart-es:9200
 
-  ----
-  NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-  quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
-  ----
 +
 To access Elasticsearch from your local workstation, use the following command:
 
