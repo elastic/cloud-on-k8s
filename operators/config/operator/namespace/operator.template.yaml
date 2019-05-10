@@ -20,9 +20,8 @@ spec:
       serviceAccountName: elastic-namespace-operator
       containers:
       - image: <OPERATOR_IMAGE>
-        imagePullPolicy: Always
         name: manager
-        args: ["manager", "--development", "--namespace", "<MANAGED_NAMESPACE>", "--operator-roles", "namespace"]
+        args: ["manager", "--namespace", "<MANAGED_NAMESPACE>", "--operator-roles", "namespace"]
         env:
           - name: OPERATOR_IMAGE
             value: <OPERATOR_IMAGE>

@@ -1189,10 +1189,9 @@ spec:
     spec:
       serviceAccountName: elastic-operator
       containers:
-      - image: eu.gcr.io/elastic-cloud-dev/eck-operators:latest
-        imagePullPolicy: Always
+      - image: docker.elastic.co/eck/eck-operator:0.8.0-alpha4
         name: manager
-        args: ["manager", "--development", "--operator-roles", "all"]
+        args: ["manager", "--operator-roles", "all"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:
@@ -1203,7 +1202,7 @@ spec:
           - name: WEBHOOK_PODS_LABEL
             value: elastic-operator
           - name: OPERATOR_IMAGE
-            value: eu.gcr.io/elastic-cloud-dev/eck-operators:latest
+            value: docker.elastic.co/eck/eck-operator:0.8.0-alpha4
         resources:
           limits:
             cpu: 1
