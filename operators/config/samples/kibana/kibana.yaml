@@ -6,7 +6,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   elasticsearch:
     url: https://url.to.elasticsearch:9200
     auth:

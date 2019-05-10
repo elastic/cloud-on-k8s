@@ -4,7 +4,7 @@ metadata:
   name: trust-one
   labels:
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodes:
     - config:
         node.master: true
@@ -31,7 +31,7 @@ metadata:
   name: trust-two
   labels:
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodes:
     - config:
         node.master: true

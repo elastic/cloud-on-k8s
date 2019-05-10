@@ -4,7 +4,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   updateStrategy:
     groups:
     # give each failure domain a chance to reconcile failures before regular changes:
@@ -76,7 +76,7 @@ kind: Kibana
 metadata:
   name: kibana-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"

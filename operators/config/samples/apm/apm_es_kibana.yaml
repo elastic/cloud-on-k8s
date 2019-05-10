@@ -7,7 +7,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodes:
   - config:
       node.master: true
@@ -30,7 +30,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: apm-server-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodeCount: 1
   output:
     elasticsearch:
@@ -45,7 +45,7 @@ metadata:
     controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
-  version: "6.7.2"
+  version: "7.1.0"
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
