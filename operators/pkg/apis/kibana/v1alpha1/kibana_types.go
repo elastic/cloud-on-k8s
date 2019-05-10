@@ -54,12 +54,12 @@ type BackendElasticsearch struct {
 	Auth ElasticsearchAuth `json:"auth,omitempty"`
 
 	// CaCertSecret names a secret that contains a CA file entry to use.
-	CaCertSecret *string `json:"caCertSecret,omitempty"`
+	CaCertSecret string `json:"caCertSecret,omitempty"`
 }
 
 // IsConfigured returns true if the backend configuration is populated with non-default values.
 func (b BackendElasticsearch) IsConfigured() bool {
-	return b.URL != "" && b.Auth.IsConfigured() && b.CaCertSecret != nil
+	return b.URL != "" && b.Auth.IsConfigured() && b.CaCertSecret != ""
 }
 
 // ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster

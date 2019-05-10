@@ -139,7 +139,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 						Key: "kibana-user",
 					},
 				},
-				CaCertSecret: &caSecret,
+				CaCertSecret: caSecret,
 			},
 		},
 	}

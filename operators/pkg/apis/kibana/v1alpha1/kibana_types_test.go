@@ -11,7 +11,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 	type fields struct {
 		URL          string
 		Auth         ElasticsearchAuth
-		CaCertSecret *string
+		CaCertSecret string
 	}
 	tests := []struct {
 		name   string
@@ -23,7 +23,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 			fields: fields{
 				URL:          "",
 				Auth:         ElasticsearchAuth{},
-				CaCertSecret: nil,
+				CaCertSecret: "",
 			},
 			want: false,
 		},
@@ -37,7 +37,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 						Password: "bar",
 					},
 				},
-				CaCertSecret: nil,
+				CaCertSecret: "",
 			},
 			want: false,
 		},
@@ -51,7 +51,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 						Password: "bar",
 					},
 				},
-				CaCertSecret: &caSecretName,
+				CaCertSecret: caSecretName,
 			},
 			want: true,
 		},
