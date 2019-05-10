@@ -38,6 +38,10 @@ const (
 	configChecksumLabel = "kibana.k8s.elastic.co/config-checksum"
 )
 
+var (
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
+)
+
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {
@@ -150,6 +154,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	if err := r.finalizers.Handle(kb, secretWatchFinalizer(*kb, r.dynamicWatches)); err != nil {
+		if errors.IsConflict(err) {
+			log.Info("Conflict while handling secret watch finalizer")
+			return defaultRequeue, nil
+		}
 		return reconcile.Result{}, err
 	}
 
@@ -171,6 +179,10 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	results := driver.Reconcile(&state, kb)
 	// update status
 	err = r.updateStatus(state)
+	if err != nil && errors.IsConflict(err) {
+		log.Info("Conflict while updating status")
+		return defaultRequeue, nil
+	}
 	return results.WithError(err).Aggregate()
 }
 

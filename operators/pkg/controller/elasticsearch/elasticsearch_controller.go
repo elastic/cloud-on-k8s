@@ -39,7 +39,8 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("elasticsearch-controller")
+	log            = logf.Log.WithName("elasticsearch-controller")
+	defaultRequeue = reconcile.Result{Requeue: true, RequeueAfter: 10 * time.Second}
 )
 
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
@@ -227,6 +228,10 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	state := esreconcile.NewState(es)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
+	if err != nil && apierrors.IsConflict(err) {
+		log.Info("Conflict while updating status")
+		return defaultRequeue, nil
+	}
 	return results.WithError(err).Aggregate()
 }
 

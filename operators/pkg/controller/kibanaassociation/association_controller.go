@@ -127,6 +127,10 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	h := finalizer.NewHandler(r)
 	err = h.Handle(&kibana, watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches))
 	if err != nil {
+		if apierrors.IsConflict(err) {
+			log.Info("Conflict while handling finalizer")
+			return defaultRequeue, nil
+		}
 		// failed to prepare or run finalizer: retry
 		return defaultRequeue, err
 	}
@@ -146,6 +150,11 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	if !reflect.DeepEqual(kibana.Status.AssociationStatus, newStatus) {
 		kibana.Status.AssociationStatus = newStatus
 		if err := r.Status().Update(&kibana); err != nil {
+			if apierrors.IsConflict(err) {
+				log.Info("Conflict while updating status")
+				return defaultRequeue, nil
+			}
+
 			return defaultRequeue, err
 		}
 	}
