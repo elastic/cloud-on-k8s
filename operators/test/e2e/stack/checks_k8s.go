@@ -255,10 +255,6 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				}
 				esContainer := p.Spec.Containers[0]
 				limits = append(limits, esContainer.Resources.Limits)
-
-				if p.Status.QOSClass != corev1.PodQOSGuaranteed {
-					return fmt.Errorf("Pod QoS class should be Guaranteed")
-				}
 			}
 			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
 				return err
