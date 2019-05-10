@@ -129,7 +129,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.Info("Conflict while handling finalizer")
-			return defaultRequeue, nil
+			return reconcile.Result{Requeue: true}, nil
 		}
 		// failed to prepare or run finalizer: retry
 		return defaultRequeue, err
@@ -152,7 +152,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		if err := r.Status().Update(&kibana); err != nil {
 			if apierrors.IsConflict(err) {
 				log.Info("Conflict while updating status")
-				return defaultRequeue, nil
+				return reconcile.Result{Requeue: true}, nil
 			}
 
 			return defaultRequeue, err
