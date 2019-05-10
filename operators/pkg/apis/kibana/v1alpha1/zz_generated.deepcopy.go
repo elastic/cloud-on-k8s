@@ -18,11 +18,6 @@ import (
 func (in *BackendElasticsearch) DeepCopyInto(out *BackendElasticsearch) {
 	*out = *in
 	in.Auth.DeepCopyInto(&out.Auth)
-	if in.CaCertSecret != nil {
-		in, out := &in.CaCertSecret, &out.CaCertSecret
-		*out = new(string)
-		**out = **in
-	}
 	return
 }
 

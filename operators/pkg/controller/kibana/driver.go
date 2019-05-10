@@ -94,19 +94,19 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
 
-	if kb.Spec.Elasticsearch.CaCertSecret != nil {
+	if kb.Spec.Elasticsearch.CaCertSecret != "" {
 		// TODO: use kibanaCa to generate cert for deployment
 		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
 		esCertsVolume := volume.NewSecretVolumeWithMountPath(
-			*kb.Spec.Elasticsearch.CaCertSecret,
+			kb.Spec.Elasticsearch.CaCertSecret,
 			"elasticsearch-certs",
 			"/usr/share/kibana/config/elasticsearch-certs",
 		)
 
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: *kb.Spec.Elasticsearch.CaCertSecret}
+		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CaCertSecret}
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),

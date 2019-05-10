@@ -237,7 +237,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	// update Kibana resource with ES access details
 	var expectedEsConfig kbtype.BackendElasticsearch
-	expectedEsConfig.CaCertSecret = &caSecretName
+	expectedEsConfig.CaCertSecret = caSecretName
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
 	expectedEsConfig.Auth.SecretKeyRef = KibanaUserSecretSelector(kibana)
 
