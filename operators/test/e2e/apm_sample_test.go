@@ -43,6 +43,7 @@ func TestEsApmServerSample(t *testing.T) {
 	// TODO remove once 7.1.0 is out
 	namespacedSampleStack.Elasticsearch.Spec.Version = "7.0.1"
 	namespacedSampleStack.Kibana.Spec.Version = "7.0.1"
+	namespacedSampleApm.ApmServer.Spec.Version = "7.0.1"
 	// use a trial license until 7.1.0 is out
 	// TODO remove once 7.1.0 is out
 	for i, n := range namespacedSampleStack.Elasticsearch.Spec.Nodes {
