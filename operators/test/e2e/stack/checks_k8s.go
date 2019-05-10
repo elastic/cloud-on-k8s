@@ -9,6 +9,7 @@ import (
 
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	appsv1 "k8s.io/api/apps/v1"
@@ -245,7 +246,12 @@ func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 			var expectedLimits []corev1.ResourceList
 			for _, topoElem := range stack.Elasticsearch.Spec.Nodes {
 				for i := 0; i < int(topoElem.NodeCount); i++ {
-					expectedLimits = append(expectedLimits, topoElem.GetESContainerTemplate().Resources.Limits)
+					esContainer := topoElem.GetESContainerTemplate()
+					if esContainer != nil && esContainer.Resources.Limits != nil {
+						expectedLimits = append(expectedLimits, esContainer.Resources.Limits)
+					} else {
+						expectedLimits = append(expectedLimits, corev1.ResourceList{corev1.ResourceMemory: version.DefaultMemoryLimits})
+					}
 				}
 			}
 			var limits []corev1.ResourceList
