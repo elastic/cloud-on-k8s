@@ -27,15 +27,29 @@ type Client interface {
 	Kill(ctx context.Context) (ProcessStatus, error)
 	Status(ctx context.Context) (ProcessStatus, error)
 	KeystoreStatus(ctx context.Context) (keystore.Status, error)
+	Close()
 }
 
 type DefaultClient struct {
-	Endpoint string
-	caCerts  []*x509.Certificate
-	HTTP     *http.Client
+	Endpoint  string
+	caCerts   []*x509.Certificate
+	HTTP      *http.Client
+	transport *http.Transport
+}
+
+// Close idle connections in the underlying http client.
+func (c *DefaultClient) Close() {
+	if c.transport != nil {
+		// When the http transport goes out of scope, the underlying gouroutines responsible
+		// for handling keep-alive connections are not closed automatically.
+		// Since this client gets recreated frequently we would effectively be leaking goroutines.
+		// Let's make sure this does not happen by stopping idle connections.
+		c.transport.CloseIdleConnections()
+	}
 }
 
 func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) Client {
+	var transportConfig http.Transport
 	client := http.DefaultClient
 	if len(caCerts) > 0 {
 		certPool := x509.NewCertPool()
@@ -43,7 +57,7 @@ func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) 
 			certPool.AddCert(c)
 		}
 
-		transportConfig := http.Transport{
+		transportConfig = http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: certPool,
 			},
@@ -63,6 +77,7 @@ func NewClient(endpoint string, caCerts []*x509.Certificate, dialer net.Dialer) 
 		endpoint,
 		caCerts,
 		client,
+		&transportConfig,
 	}
 }
 

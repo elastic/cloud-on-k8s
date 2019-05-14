@@ -208,6 +208,7 @@ func (d *defaultDriver) Reconcile(
 		*min,
 		caCert,
 	)
+	defer esClient.Close()
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),

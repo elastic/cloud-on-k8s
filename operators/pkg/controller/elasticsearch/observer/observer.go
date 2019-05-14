@@ -108,6 +108,7 @@ func (o *Observer) Stop() {
 	o.stopOnce.Do(func() {
 		go func() {
 			close(o.stopChan)
+			o.esClient.Close()
 		}()
 	})
 }
