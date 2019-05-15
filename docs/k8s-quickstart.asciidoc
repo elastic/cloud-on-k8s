@@ -51,7 +51,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.0.1
+  version: 7.1.0
   nodes:
   - nodeCount: 1
     config:
@@ -76,7 +76,7 @@ kubectl get elasticsearch
 [source,sh]
 ----
 NAME          HEALTH    NODES     VERSION   PHASE         AGE
-quickstart    green     1         7.0.1     Operational   1m
+quickstart    green     1         7.1.0     Operational   1m
 ----
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
@@ -157,7 +157,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
   "cluster_name" : "quickstart",
   "cluster_uuid" : "XqWg0xIiRmmEBg4NMhnYPg",
   "version" : {
-    "number" : "7.0.1",
+    "number" : "7.1.0",
     "build_flavor" : "default",
     "build_type" : "docker",
     "build_hash" : "04116c9",
@@ -187,7 +187,7 @@ kind: Kibana
 metadata:
   name: quickstart
 spec:
-  version: 7.0.1
+  version: 7.1.0
   nodeCount: 1
   elasticsearchRef:
     name: quickstart
@@ -253,7 +253,7 @@ kind: Elasticsearch
 metadata:
   name: quickstart
 spec:
-  version: 7.0.1
+  version: 7.1.0
   nodes:
   - nodeCount: 3
     config:
@@ -278,7 +278,7 @@ kind: Elasticsearch
 metadata:
   name: my-cluster
 spec:
-  version: 7.0.1
+  version: 7.1.0
   nodes:
   - nodeCount: 3
     config:
