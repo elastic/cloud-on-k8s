@@ -299,7 +299,7 @@ spec:
         resources:
           requests:
             storage: 10Gi
-        storageClassName: Local # can be any available storage class
+        storageClassName: gcePersistentDisk # can be any available storage class
 EOF
 ----
 
