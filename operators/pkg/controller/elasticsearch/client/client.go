@@ -58,6 +58,9 @@ type Role struct {
 
 // Client captures the information needed to interact with an Elasticsearch cluster via HTTP
 type Client interface {
+	// Close idle connections in the underlying http client.
+	Close()
+	// Equal returns true if other can be considered as the same client.
 	Equal(other Client) bool
 	// GetClusterInfo get the cluster information at /
 	GetClusterInfo(ctx context.Context) (Info, error)
@@ -120,9 +123,10 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v 
 		transportConfig.DialContext = dialer.DialContext
 	}
 	base := &baseClient{
-		Endpoint: esURL,
-		User:     esUser,
-		caCerts:  caCerts,
+		Endpoint:  esURL,
+		User:      esUser,
+		caCerts:   caCerts,
+		transport: &transportConfig,
 		HTTP: &http.Client{
 			Transport: &transportConfig,
 		},

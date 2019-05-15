@@ -22,6 +22,8 @@ func NewMockClient(status ProcessStatus, err error) Client {
 	}
 }
 
+func (m *MockClient) Close() {}
+
 func (m *MockClient) Start(ctx context.Context) (ProcessStatus, error) {
 	return m.status, m.err
 }

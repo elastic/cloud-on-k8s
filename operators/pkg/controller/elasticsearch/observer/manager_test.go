@@ -127,6 +127,7 @@ func TestManager_Observe(t *testing.T) {
 }
 
 func TestManager_StopObserving(t *testing.T) {
+	esClient := fakeEsClient200(client.UserAuth{})
 	tests := []struct {
 		name                       string
 		observed                   map[types.NamespacedName]*Observer
@@ -141,25 +142,25 @@ func TestManager_StopObserving(t *testing.T) {
 		},
 		{
 			name:                       "stop observing a non-existing cluster from 1 observer",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("another-cluster")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster")},
 		},
 		{
 			name:                       "stop observing the single cluster",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster")},
 			expectedAfterStopObserving: []types.NamespacedName{},
 		},
 		{
 			name:                       "stop observing one cluster",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster1")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster2")},
 		},
 		{
 			name:                       "stop observing the same cluster twice",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster1"), cluster("cluster1")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster2")},
 		},

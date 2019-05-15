@@ -202,17 +202,16 @@ func (d *defaultDriver) Reconcile(
 	if min == nil {
 		min = &d.Version
 	}
-	esClient := d.newElasticsearchClient(
-		genericResources.ExternalService,
-		internalUsers.ControllerUser,
-		*min,
-		caCert,
-	)
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
 		[]*x509.Certificate{caCert},
-		esClient)
+		d.newElasticsearchClient(
+			genericResources.ExternalService,
+			internalUsers.ControllerUser,
+			*min,
+			caCert,
+		))
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
@@ -229,6 +228,14 @@ func (d *defaultDriver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
+
+	esClient := d.newElasticsearchClient(
+		genericResources.ExternalService,
+		internalUsers.ControllerUser,
+		*min,
+		caCert,
+	)
+	defer esClient.Close()
 
 	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
 	if err != nil {
