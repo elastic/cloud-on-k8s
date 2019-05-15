@@ -88,7 +88,7 @@ unit: clean
 
 integration: GO_TAGS += integration
 integration: clean generate
-	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out -race
+	go test -tags='$(GO_TAGS)' ./pkg/... ./cmd/... -coverprofile cover.out
 
 check-fmt:
 ifneq ($(shell goimports -l pkg cmd),)
