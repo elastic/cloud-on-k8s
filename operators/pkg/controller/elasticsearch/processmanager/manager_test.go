@@ -75,6 +75,7 @@ func startContainer(t *testing.T, cmd string) Client {
 		"-e", "PM_KEYSTORE_UPDATER=false",
 		imageName).Start()
 	assert.NoError(t, err)
+	waitForContainerReady(t)
 
 	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil, nil)
 	assertProcessStatus(t, client, Started)
@@ -85,6 +86,13 @@ func startContainer(t *testing.T, cmd string) Client {
 func restartContainer(t *testing.T) {
 	err := bash("docker start %s", containerName).Run()
 	assert.NoError(t, err)
+	waitForContainerReady(t)
+}
+
+func waitForContainerReady(t *testing.T) {
+	test.RetryUntilSuccess(t, func() error {
+		return bash("docker exec %s sh -c exit", containerName).Run()
+	})
 }
 
 func getProcessPID(t *testing.T) string {
