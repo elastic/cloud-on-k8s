@@ -28,10 +28,10 @@ type baseClient struct {
 // Should be called once this client is not used anymore.
 func (c *baseClient) Close() {
 	if c.transport != nil {
-		// When the http transport goes out of scope, the underlying gouroutines responsible
+		// When the http transport goes out of scope, the underlying goroutines responsible
 		// for handling keep-alive connections are not closed automatically.
 		// Since this client gets recreated frequently we would effectively be leaking goroutines.
-		// Let's make sure this does not happen by stopping idle connections.
+		// Let's make sure this does not happen by closing idle connections.
 		c.transport.CloseIdleConnections()
 	}
 }
