@@ -277,10 +277,11 @@ You can request a `PersistentVolumeClaim` in the cluster specification, to targe
 
 [source,yaml]
 ----
+cat <<EOF | kubectl apply -f -
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  name: my-cluster
+  name: quickstart
 spec:
   version: 7.1.0
   nodes:
@@ -297,12 +298,14 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 100GB
+            storage: 10Gi
         storageClassName: gcePersistentDisk # can be any available storage class
+EOF
 ----
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
 
+ * link:https://kubernetes.io/docs/concepts/storage/storage-classes/
  * link:https://github.com/elastic/cloud-on-k8s/tree/master/local-volume[elastic local volume dynamic provisioner] to setup dynamic local volumes based on LVM.
  * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
