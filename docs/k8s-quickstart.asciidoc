@@ -7,7 +7,7 @@ With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orche
 
 Eager to get started? This fast guide shows you how to:
 
-* <<{p}-deploy-operator,Deploy the operator in your Kubernetes cluster>>
+* <<{p}-deploy-eck,Deploy ECK in your Kubernetes cluster>>
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
@@ -18,8 +18,8 @@ Eager to get started? This fast guide shows you how to:
 This quickstart assumes you already have Kubernetes 1.11+.
 --
 
-[id="{p}-deploy-operator"]
-== Deploy the operator in your Kubernetes cluster
+[id="{p}-deploy-eck"]
+== Deploy ECK in your Kubernetes cluster
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control[Prerequisites for using Kubernetes RBAC on GKE].
 
@@ -61,7 +61,7 @@ spec:
 EOF
 ----
 
-The operator automatically takes care of managing Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
 [float]
 === Monitor cluster health and creation progress
@@ -117,16 +117,16 @@ NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
-. Get access to Elasticsearch
+. Get access to Elasticsearch.
 +
-To access Elasticsearch from the Kubernetes cluster, use this URL:
+From the Kubernetes cluster, use this URL:
 +
 [source,sh]
 ----
 https://quickstart-es:9200
 ----
 +
-To access Elasticsearch from your local workstation, use the following command:
+From your local workstation, use the following command:
 +
 [source,sh]
 ----
@@ -196,7 +196,7 @@ EOF
 
 . Monitor Kibana health and creation progress.
 +
-Similar to Elasticsearch, you can retrieve some details about Kibana instances:
+Similarly to Elasticsearch, you can retrieve details about Kibana instances:
 +
 [source,sh]
 ----
@@ -312,10 +312,10 @@ To aim for the best performance, the operator supports persistent volumes local 
 [float]
 === Check out the samples
 
-A set of sample resources can be found link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
-Check the link:https://github.com/elastic/cloud-on-k8s/blob/v0.8.0/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample] for more details on how the Elasticsearch resource can be customized.
+You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
+To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/v0.8.0/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample] .
 
-For a full description of each `CustomResourceDefinition`, see link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/crds[in the project repository].
+For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/crds[the project repository].
 You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
 
 [source,sh]
