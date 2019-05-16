@@ -19,7 +19,7 @@ spec:
     nodeCertificates:
       enabled: true
   nodeCount: 1
-  http:
-    service:
-      spec:
-        type: LoadBalancer
+  #http:
+  #  service:
+  #    spec:
+  #      type: LoadBalancer

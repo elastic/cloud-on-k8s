@@ -65,10 +65,10 @@ spec:
       node.ingest: false
       node.attr.attr_name: attr_value
     nodeCount: 0
-  http:
-    service:
-      spec:
-        type: LoadBalancer
+  #http:
+  #  service:
+  #    spec:
+  #      type: LoadBalancer
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
@@ -79,10 +79,10 @@ spec:
   nodeCount: 1
   elasticsearchRef:
     name: "elasticsearch-sample"
-  http:
-    service:
-      spec:
-        type: LoadBalancer
+  #http:
+  #  service:
+  #    spec:
+  #      type: LoadBalancer
   # this shows how to customize the Kibana pod
   # with labels and resource limits
   podTemplate:
