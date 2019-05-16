@@ -1,5 +1,4 @@
-# This sample sets up an Elasticsearch cluster with 3 nodes,
-# exposed through a LoadBalancer
+# This sample sets up an Elasticsearch cluster with 3 nodes.
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
