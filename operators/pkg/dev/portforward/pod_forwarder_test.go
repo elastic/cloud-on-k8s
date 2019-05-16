@@ -34,7 +34,7 @@ func (d *capturingDialer) DialContext(ctx context.Context, network, address stri
 }
 
 func NewPodForwarderWithTest(t *testing.T, network, addr string) *podForwarder {
-	fwd, err := NewPodForwarder(network, addr)
+	fwd, err := NewPodForwarder(network, addr, nil)
 	require.NoError(t, err)
 	return fwd
 }
@@ -151,7 +151,7 @@ func Test_parsePodAddr(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parsePodAddr(tt.args.addr)
+			got, err := parsePodAddr(tt.args.addr, nil)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, tt.wantErr, err)

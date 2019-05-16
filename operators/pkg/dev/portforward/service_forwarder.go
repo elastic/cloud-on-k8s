@@ -37,7 +37,11 @@ var _ Forwarder = &serviceForwarder{}
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
 var defaultPodForwarderFactory = ForwarderFactory(func(network, addr string) (Forwarder, error) {
-	return NewPodForwarder(network, addr)
+	clientset, err := newDefaultKubernetesClientset()
+	if err != nil {
+		return nil, err
+	}
+	return NewPodForwarder(network, addr, clientset)
 })
 
 // NewServiceForwarder returns a new initialized service forwarder

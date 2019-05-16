@@ -43,7 +43,11 @@ var defaultForwarderFactory = ForwardingDialerForwarderFactory(
 			// it looks like a service url, so forward as a service
 			return NewServiceForwarder(client, network, addr)
 		}
-		return NewPodForwarder(network, addr)
+		clientset, err := newDefaultKubernetesClientset()
+		if err != nil {
+			return nil, err
+		}
+		return NewPodForwarder(network, addr, clientset)
 	},
 )
 

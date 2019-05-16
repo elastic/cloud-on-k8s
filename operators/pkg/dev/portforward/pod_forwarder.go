@@ -16,7 +16,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	utilsnet "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
@@ -25,6 +27,9 @@ import (
 type podForwarder struct {
 	network, addr string
 	podNSN        types.NamespacedName
+
+	// clientset is used to stop the pod forwarder if the pod is deleted, may be set to nil to skip checking
+	clientset *kubernetes.Clientset
 
 	// initChan is used to wait for the port-forwarder to be set up before redirecting connections
 	initChan chan struct{}
@@ -62,8 +67,8 @@ type PortForwarder interface {
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 // NewPodForwarder returns a new initialized podForwarder
-func NewPodForwarder(network, addr string) (*podForwarder, error) {
-	podNSN, err := parsePodAddr(addr)
+func NewPodForwarder(network, addr string, clientset *kubernetes.Clientset) (*podForwarder, error) {
+	podNSN, err := parsePodAddr(addr, clientset)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +77,8 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 		network: network,
 		addr:    addr,
 
-		podNSN: *podNSN,
+		podNSN:    *podNSN,
+		clientset: clientset,
 
 		initChan: make(chan struct{}),
 
@@ -82,6 +88,15 @@ func NewPodForwarder(network, addr string) (*podForwarder, error) {
 	}, nil
 }
 
+// newDefaultKubernetesClientset creates a new Clientset
+func newDefaultKubernetesClientset() (*kubernetes.Clientset, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	return kubernetes.NewForConfig(cfg)
+}
+
 // podDNSRegex matches pods FQDN such as {name}.{namespace}.pod.cluster.local.
 var podDNSRegex = regexp.MustCompile(`^.+\..+\..*$`)
 
@@ -89,7 +104,7 @@ var podDNSRegex = regexp.MustCompile(`^.+\..+\..*$`)
 var podIPv4Regex = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
 
 // parsePodAddr parses the pod name and namespace from an address.
-func parsePodAddr(addr string) (*types.NamespacedName, error) {
+func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
 	host, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -97,7 +112,7 @@ func parsePodAddr(addr string) (*types.NamespacedName, error) {
 	if podIPv4Regex.MatchString(host) {
 		// we got an IP address
 		// try to map it to a pod name and namespace
-		return getPodWithIP(host)
+		return getPodWithIP(host, clientSet)
 	}
 	if podDNSRegex.MatchString(host) {
 		// retrieve pod name and namespace from addr
@@ -112,15 +127,7 @@ func parsePodAddr(addr string) (*types.NamespacedName, error) {
 }
 
 // getPodWithIP requests the apiserver for pods with the given IP assigned.
-func getPodWithIP(ip string) (*types.NamespacedName, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	clientSet, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
+func getPodWithIP(ip string, clientSet *kubernetes.Clientset) (*types.NamespacedName, error) {
 	pods, err := clientSet.CoreV1().
 		Pods("").
 		List(metav1.ListOptions{
@@ -192,6 +199,35 @@ func (f *podForwarder) Run(ctx context.Context) error {
 	// soon as the port-forwarding stops, whichever occurs first
 	runCtx, runCtxCancel := context.WithCancel(ctx)
 	defer runCtxCancel()
+
+	if f.clientset != nil {
+		log.Info("Watching pod for changes", "pod", f.podNSN)
+		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(metav1.ListOptions{
+			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
+		})
+		if err != nil {
+			return fmt.Errorf("unable to watch pod %s for changes: %s", f.podNSN, err)
+		}
+		defer w.Stop()
+
+		go func() {
+			for {
+				select {
+				case evt := <-w.ResultChan():
+					if evt.Type == watch.Deleted || evt.Type == watch.Error || evt.Type == "" {
+						log.Info(
+							"Pod is deleted or watch failed/closed, closing pod forwarder",
+							"pod", f.podNSN,
+						)
+						runCtxCancel()
+						return
+					}
+				case <-runCtx.Done():
+					return
+				}
+			}
+		}()
+	}
 
 	_, port, err := net.SplitHostPort(f.addr)
 	if err != nil {
