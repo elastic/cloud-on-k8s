@@ -219,15 +219,6 @@ A `ClusterIP` Service is automatically created for Kibana:
 kubectl get service quickstart-kibana
 ----
 +
-NOTE: You need the elastic password. Retrieve it again and copy it:
-+
-[source,sh]
-----
-PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
-
-echo $PASSWORD
-----
-+
 Use `kubectl port-forward` to access Kibana from your local workstation:
 +
 [source,sh]
@@ -236,6 +227,13 @@ kubectl port-forward service/quickstart-kibana 5601
 ----
 +
 Open `http://localhost:5601` in your browser.
++
+Login with the `elastic` user. Retrieve its password with:
++
+[source,sh]
+----
+echo $(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+----
 
 [float]
 [id="{p}-upgrade-deployment"]
