@@ -232,7 +232,7 @@ Login with the `elastic` user. Retrieve its password with:
 +
 [source,sh]
 ----
-kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode
+echo $(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ----
 
 [float]
