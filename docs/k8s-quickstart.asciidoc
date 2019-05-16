@@ -43,7 +43,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
-Note: The default resource request is 2gb memory and 100m cpu, and your pod will be `Pending` if your cluster does not have enough resources.
+NOTE: The default resource request is 2gb memory and 100m cpu, and your pod will be `Pending` if your cluster does not have enough resources.
 
 [source,yaml]
 ----
