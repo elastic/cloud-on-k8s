@@ -6,6 +6,8 @@ package manager
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/pprof"
 	"os"
 	"strings"
 	"time"
@@ -43,6 +45,8 @@ const (
 	OperatorNamespaceFlag   = "operator-namespace"
 	WebhookSecretFlag       = "webhook-secret"
 	WebhookPodsLabelFlag    = "webhook-pods-label"
+
+	DebugHTTPServerListenAddressFlag = "debug-http-listen"
 )
 
 var (
@@ -128,6 +132,11 @@ func init() {
 		"",
 		"k8s secret mounted into /tmp/cert to be used for webhook certificates",
 	)
+	Cmd.Flags().String(
+		DebugHTTPServerListenAddressFlag,
+		":6060",
+		"Listen address for debug HTTP server (only available in development mode)",
+	)
 
 	viper.BindPFlags(Cmd.Flags())
 	// enable using dashed notation in flags and underscores in env
@@ -142,6 +151,26 @@ func init() {
 }
 
 func execute() {
+	if dev.Enabled {
+		// expose pprof if development mode is enabled
+		mux := http.NewServeMux()
+		mux.HandleFunc("/debug/pprof/", pprof.Index)
+		mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+		mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+		mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+		mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+		pprofServer := http.Server{
+			Addr:    viper.GetString(DebugHTTPServerListenAddressFlag),
+			Handler: mux,
+		}
+		log.Info("Starting Debug HTTP Server.", "addr", pprofServer.Addr)
+
+		go func() {
+			err := pprofServer.ListenAndServe()
+			panic(err)
+		}()
+	}
 
 	var dialer net.Dialer
 	autoPortForward := viper.GetBool(AutoPortForwardFlagName)
