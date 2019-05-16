@@ -7,7 +7,7 @@ With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orche
 
 Eager to get started? This fast guide shows you how to:
 
-* <<{p}-deploy-operator,Deploy the operator in your Kubernetes cluster>>
+* <<{p}-deploy-eck,Deploy ECK in your Kubernetes cluster>>
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
@@ -18,8 +18,8 @@ Eager to get started? This fast guide shows you how to:
 This quickstart assumes you already have Kubernetes 1.11+.
 --
 
-[id="{p}-deploy-operator"]
-== Deploy the operator in your Kubernetes cluster
+[id="{p}-deploy-eck"]
+== Deploy ECK in your Kubernetes cluster
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control[Prerequisites for using Kubernetes RBAC on GKE].
 
