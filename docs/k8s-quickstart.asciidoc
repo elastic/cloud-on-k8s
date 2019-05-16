@@ -218,7 +218,6 @@ A `ClusterIP` Service is automatically created for Kibana:
 ----
 kubectl get service quickstart-kibana
 ----
-
 +
 Use `kubectl port-forward` to access Kibana from your local workstation:
 +
