@@ -3,7 +3,7 @@
 ##### GLOBAL METADATA
 
 - meta:
-    cluster: cloud-ci
+    cluster: devops-ci
 
 ##### JOB DEFAULTS
 
