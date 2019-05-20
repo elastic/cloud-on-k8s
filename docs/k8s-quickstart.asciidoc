@@ -21,7 +21,7 @@ This quickstart assumes you already have Kubernetes 1.11+.
 [id="{p}-deploy-eck"]
 == Deploy ECK in your Kubernetes cluster
 
-NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#prerequisites_for_using_role-based_access_control[Prerequisites for using Kubernetes RBAC on GKE].
+NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
