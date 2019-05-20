@@ -7,6 +7,7 @@
 package kibana
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -72,6 +73,9 @@ func TestReconcile(t *testing.T) {
 		require.NoError(t, c.Get(k8s.ExtractNamespacedName(instance), instance))
 		if err != nil {
 			return err
+		}
+		if len(instance.Finalizers) == 0 {
+			return fmt.Errorf("kibana finalizers not registered yet")
 		}
 		instance.Spec.Elasticsearch = kbtype.BackendElasticsearch{
 			URL: "http://127.0.0.1:9200",
