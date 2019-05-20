@@ -241,7 +241,7 @@ echo $(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' 
 [id="{p}-upgrade-deployment"]
 == Upgrade your deployment
 
-You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, by avoiding downtime.
+You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, while avoiding downtime.
 
 For example, you can grow the cluster to three nodes:
 
@@ -313,7 +313,7 @@ To aim for the best performance, the operator supports persistent volumes local 
 === Check out the samples
 
 You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
-To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample] .
+To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].
 
 For a full description of each `CustomResourceDefinition`, go to link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/crds[the project repository].
 You can also retrieve it from the cluster. For example, describe the Elasticsearch CRD specification with:
