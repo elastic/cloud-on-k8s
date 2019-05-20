@@ -53,7 +53,7 @@ create_cluster() {
     gcloud beta container --project ${GCLOUD_PROJECT} clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
 
     # Create required role binding between the GCP account and the K8s cluster.
-    kubectl create clusterrolebinding elastic-operators--manager-rolebinding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+    kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
 }
 
 delete_cluster() {
