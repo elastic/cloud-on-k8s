@@ -13,8 +13,9 @@ VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
-VAULT_AWS_CREDS ?= ddd
-
+VAULT_AWS_CREDS ?= qwerty
+VAULT_AWS_ACCESS_KEY_FILE ?= abc
+VAULT_AWS_SECRET_KEY_FILE ?= xyz
 
 DOCKER_LOGIN ?= cloudadmin
 
@@ -48,7 +49,9 @@ vault-docker-creds:
 # reads AWS creds for yaml upload
 vault-aws-creds:
 	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-    	vault read -address=$(VAULT_ADDR) -field=password $(VAULT_AWS_CREDS) > $(DOCKER_CREDENTIALS_FILE)
+    	vault read -address=$(VAULT_ADDR) -field=1 $(VAULT_AWS_CREDS) > $(VAULT_AWS_ACCESS_KEY_FILE)
+	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
+        vault read -address=$(VAULT_ADDR) -field=2 $(VAULT_AWS_CREDS) > $(VAULT_AWS_SECRET_KEY_FILE)
 
 ## -- Job executed on all PRs
 
@@ -85,7 +88,8 @@ ci-release: vault-public-key vault-docker-creds
     	bash -c "make -C operators ci-release"
 
 yaml-upload: vault-aws-creds
-	AWS_ACCESS_KEY_ID=$() AWS_SECRET_ACCESS_KEY=$() \
+	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
+		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
 		aws s3 cp \
 		$(ROOT_DIR)/operators/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml
