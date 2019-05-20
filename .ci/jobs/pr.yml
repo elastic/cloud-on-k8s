@@ -24,7 +24,7 @@
             - elastic
           allow-whitelist-orgs-as-admins: true
           github-hooks: true
-          status-context: cloud-ci
+          status-context: devops-ci
           cancel-builds-on-update: true
     properties:
       - github:
