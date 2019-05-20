@@ -537,6 +537,7 @@ func (d *defaultDriver) calculateChanges(
 	}
 
 	changes, err := mutation.CalculateChanges(
+		es,
 		expectedPodSpecCtxs,
 		resourcesState,
 		func(ctx pod.PodSpecContext) (corev1.Pod, error) {
