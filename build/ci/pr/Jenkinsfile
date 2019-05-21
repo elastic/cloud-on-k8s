@@ -19,26 +19,27 @@ pipeline {
     }
 
     stages {
-        stage('Checkout from GitHub') {
-            steps {
-                checkout scm
-            }
-        }
-        parallel {
-            stage("Run validation for PR") {
-                agent {
-                    label 'linux'
+        stage('Run tests in parallel') {
+            parallel {
+                stage("Run unit and integration tests") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+
+                        sh 'make -C build/ci ci-pr'
+                    }
                 }
-                steps {
-                    sh 'make -C build/ci ci-pr'
-                }
-            }
-            stage("Run smoke E2E test") {
-                agent {
-                    label 'linux'
-                }
-                steps {
-                    sh 'make -C build/ci ci-e2e'
+                stage("Run smoke E2E tests") {
+                    agent {
+                        label 'linux'
+                    }
+                    steps {
+                        checkout scm
+
+                        sh 'make -C build/ci ci-e2e'
+                    }
                 }
             }
         }
