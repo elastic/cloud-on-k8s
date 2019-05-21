@@ -126,8 +126,6 @@ func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequi
 }
 
 func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder {
-	// automatically self-gen a trial license
-	topologyElement.Config.Data["xpack.license.self_generated.type"] = "trial"
 	b.Elasticsearch.Spec.Nodes = append(b.Elasticsearch.Spec.Nodes, topologyElement)
 	return b
 }
