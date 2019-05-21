@@ -141,6 +141,13 @@ func TestBasename(t *testing.T) {
 		want string
 	}{
 		{
+			name: "pod name with no segments",
+			args: args{
+				podName: "foo",
+			},
+			want: "foo",
+		},
+		{
 			name: "sample pod name",
 			args: args{
 				podName: "sample-1-es-mqjcddtv6g",

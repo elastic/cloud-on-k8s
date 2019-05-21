@@ -82,10 +82,14 @@ func NewPodName(esName string, nodeSpec v1alpha1.NodeSpec) string {
 }
 
 // Basename returns the base name (without the random suffix) for the provided pod.
-// E.g: A pod named foo-bar-baz-{suffix} has a basename of "foo-bar-baz"
+// E.g: A pod named foo-bar-baz-{suffix} has a basename of "foo-bar-baz".
 func Basename(podName string) string {
-	podNameParts := strings.Split(podName, "-")
-	return strings.Join(podNameParts[:len(podNameParts)-1], "-")
+	idx := strings.LastIndex(podName, "-")
+	if idx == -1 {
+		// no segments in the provided pod name, so return the full pod name
+		return podName
+	}
+	return podName[0:idx]
 }
 
 // NewPVCName returns a unique PVC name given a pod name and a PVC template name.
