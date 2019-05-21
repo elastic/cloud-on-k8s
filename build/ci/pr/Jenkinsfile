@@ -6,6 +6,16 @@ pipeline {
 
     options {
         timeout(time: 30, unit: 'MINUTES')
+        parallelsAlwaysFailFast()
+    }
+
+    environment {
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
+        REGISTRY = "eu.gcr.io"
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        TESTS_MATCH = 'TestSmoke'
     }
 
     stages {
@@ -14,9 +24,22 @@ pipeline {
                 checkout scm
             }
         }
-        stage("Run validation for PR") {
-            steps {
-                sh 'make -C build/ci ci-pr'
+        parallel {
+            stage("Run validation for PR") {
+                agent {
+                    label 'linux'
+                }
+                steps {
+                    sh 'make -C build/ci ci-pr'
+                }
+            }
+            stage("Run smoke E2E test") {
+                agent {
+                    label 'linux'
+                }
+                steps {
+                    sh 'make -C build/ci ci-e2e'
+                }
             }
         }
     }
