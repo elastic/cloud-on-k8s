@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -141,24 +143,25 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
-	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
-		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-			IsController: true,
-			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+	if err := r.dynamicWatches.Secrets.AddHandlers(
+		&watches.OwnerWatch{
+			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+				IsController: true,
+				OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+			},
 		},
-	}); err != nil {
+		&watches.FuncMapWatch{
+			Name: "user-secret-watch",
+			EnqueueRequestsFromMapFunc: handler.EnqueueRequestsFromMapFunc{
+				ToRequests: user.NewToRequestsFuncFromClusterNameLabel(),
+			},
+		},
+	); err != nil {
 		return err
 	}
 
 	// ClusterLicense
 	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
-		return err
-	}
-
-	// Users
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.User{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
-	}); err != nil {
 		return err
 	}
 

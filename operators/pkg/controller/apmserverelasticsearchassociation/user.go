@@ -5,16 +5,12 @@
 package apmserverelasticsearchassociation
 
 import (
-	"reflect"
-
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,6 +64,10 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(apm.Name)
+	// add ES labels
+	for k, v := range label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName()) {
+		secretLabels[k] = v
+	}
 	secKey := secretKey(apm)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -81,7 +81,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	}
 
 	reconciledSecret := corev1.Secret{}
-	err := reconciler.ReconcileResource(reconciler.Params{
+	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
 		Owner:      &apm,
@@ -96,53 +96,6 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 			reconciledSecret.Data = expectedSecret.Data
 		},
 	})
-	if err != nil {
-		return err
-	}
-	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
-
-	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalApmServerUserName], bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
-	usrKey := userKey(apm)
-	expectedUser := &estype.User{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      usrKey.Name,
-			Namespace: usrKey.Namespace,
-			Labels:    userLabels,
-		},
-		Spec: estype.UserSpec{
-			Name:         InternalApmServerUserName,
-			PasswordHash: string(bcryptHash),
-			// TODO: lower privileges, but requires specifying a custom role
-			UserRoles: []string{"superuser"},
-		},
-		Status: estype.UserStatus{
-			Phase: estype.UserPending,
-		},
-	}
-
-	reconciledUser := estype.User{}
-	return reconciler.ReconcileResource(reconciler.Params{
-		Client:     c,
-		Scheme:     s,
-		Owner:      &apm,
-		Expected:   expectedUser,
-		Reconciled: &reconciledUser,
-		NeedsUpdate: func() bool {
-			return !hasExpectedLabels(expectedUser, &reconciledSecret) ||
-				!reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
-		},
-		UpdateReconciled: func() {
-			setExpectedLabels(expectedUser, &reconciledUser)
-			reconciledUser.Spec = expectedUser.Spec
-		},
-	})
-
 }
 
 // hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual.

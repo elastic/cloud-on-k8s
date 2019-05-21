@@ -32,14 +32,6 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 		return err
 	}
 
-	// Watch Users owned by a Kibana resource
-	if err := c.Watch(&source.Kind{Type: &estype.User{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    &kbtype.Kibana{},
-		IsController: true,
-	}); err != nil {
-		return err
-	}
-
 	// Watch Secrets owned by a Kibana resource
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForOwner{
 		OwnerType:    &kbtype.Kibana{},

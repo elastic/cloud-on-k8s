@@ -5,22 +5,19 @@
 package kibanaassociation
 
 import (
-	"reflect"
+	"bytes"
 
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	commonuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
+	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
-	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const (
@@ -29,8 +26,8 @@ const (
 	kibanaUser = "kibana-user"
 )
 
-// KibanaUserObjectName identifies the Kibana user object (secret/user CRD).
-func KibanaUserObjectName(kibana types.NamespacedName) string {
+// KibanaUserObjectName identifies the Kibana user.
+func KibanaUserName(kibana types.NamespacedName) string {
 	// must be namespace-aware since we might have several kibanas running in
 	// different namespaces with the same name: we need one user for each
 	// in the Elasticsearch namespace
@@ -46,7 +43,7 @@ func KibanaUserKey(kibana kbtype.Kibana, esNamespace string) types.NamespacedNam
 	return types.NamespacedName{
 		// user lives in the ES namespace
 		Namespace: esNamespace,
-		Name:      KibanaUserObjectName(k8s.ExtractNamespacedName(&kibana)),
+		Name:      KibanaUserName(k8s.ExtractNamespacedName(&kibana)),
 	}
 }
 
@@ -71,26 +68,26 @@ func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: KibanaUserSecretObjectName(k8s.ExtractNamespacedName(&kibana)),
 		},
-		Key: kibanaUser,
+		Key: KibanaUserName(k8s.ExtractNamespacedName(&kibana)),
 	}
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es types.NamespacedName) error {
-	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
-	pw := common.RandomPasswordBytes()
-	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
+	// this secret will be on the Kibana side of the association so we are applying the Kibana labels here
 	secretLabels := kbctl.NewLabels(kibana.Name)
 	secretLabels[AssociationLabelName] = kibana.Name
 	secKey := KibanaUserSecretKey(k8s.ExtractNamespacedName(&kibana))
-	expectedSecret := corev1.Secret{
+	pw := commonuser.RandomPasswordBytes()
+	username := KibanaUserName(k8s.ExtractNamespacedName(&kibana))
+	expectedKibanaSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
 			Namespace: secKey.Namespace,
 			Labels:    secretLabels,
 		},
 		Data: map[string][]byte{
-			kibanaUser: pw,
+			username: pw,
 		},
 	}
 
@@ -99,66 +96,63 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 		Client:     c,
 		Scheme:     s,
 		Owner:      &kibana,
-		Expected:   &expectedSecret,
+		Expected:   &expectedKibanaSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
-			_, ok := reconciledSecret.Data[kibanaUser]
-			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
+			_, ok := reconciledSecret.Data[username]
+			return !ok || !hasExpectedLabels(&expectedKibanaSecret, &reconciledSecret)
 		},
 		UpdateReconciled: func() {
-			setExpectedLabels(&expectedSecret, &reconciledSecret)
-			reconciledSecret.Data = expectedSecret.Data
+			setExpectedLabels(&expectedKibanaSecret, &reconciledSecret)
+			reconciledSecret.Data = expectedKibanaSecret.Data
 		},
 	})
 	if err != nil {
 		return err
 	}
-	reconciledPw := reconciledSecret.Data[kibanaUser] // make sure we don't constantly update the password
 
+	reconciledPw := reconciledSecret.Data[username] // make sure we don't constantly update the password
 	bcryptHash, err := bcrypt.GenerateFromPassword(reconciledPw, bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// analogous to the secret: the user goes on the Elasticsearch side of the association
+	// analogous to the Kibana secret: a user Secret goes on the Elasticsearch side of the association
 	// we apply the ES cluster labels ("user belongs to that ES cluster")
 	// and the association label ("for that Kibana association")
-	userLabels := label.NewLabels(es)
+	userLabels := commonuser.NewLabels(es)
 	userLabels[AssociationLabelName] = kibana.Name
 	usrKey := KibanaUserKey(kibana, es.Namespace)
-	expectedUser := &estype.User{
+
+	expectedESUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
 			Namespace: usrKey.Namespace,
 			Labels:    userLabels,
 		},
-		Spec: estype.UserSpec{
-			Name:         kibanaUser,
-			PasswordHash: string(bcryptHash),
-			UserRoles:    []string{user.KibanaSystemUserBuiltinRole},
-		},
-		Status: estype.UserStatus{
-			Phase: estype.UserPending,
+		Data: map[string][]byte{
+			user.UserName:     []byte(username),
+			user.PasswordHash: bcryptHash,
+			user.UserRoles:    []byte(user.KibanaSystemUserBuiltinRole),
 		},
 	}
 
-	reconciledUser := estype.User{}
+	reconciledEsSecret := corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
 		Owner:      &kibana, // user is owned by the Kibana resource
-		Expected:   expectedUser,
-		Reconciled: &reconciledUser,
+		Expected:   expectedESUser,
+		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {
-			return !hasExpectedLabels(expectedUser, &reconciledUser) ||
-				expectedUser.Spec.Name != reconciledUser.Spec.Name ||
-				!reflect.DeepEqual(expectedUser.Spec.UserRoles, reconciledUser.Spec.UserRoles) ||
-				bcrypt.CompareHashAndPassword([]byte(reconciledUser.Spec.PasswordHash), reconciledPw) != nil
+			return !hasExpectedLabels(expectedESUser, &reconciledEsSecret) ||
+				!bytes.Equal(expectedESUser.Data["Name"], reconciledEsSecret.Data["Name"]) ||
+				!bytes.Equal(expectedESUser.Data["UserRoles"], reconciledEsSecret.Data["UserRoles"]) ||
+				bcrypt.CompareHashAndPassword([]byte(reconciledEsSecret.Data["PasswordHash"]), reconciledPw) != nil
 		},
 		UpdateReconciled: func() {
-			setExpectedLabels(expectedUser, &reconciledUser)
-			reconciledUser.Spec = expectedUser.Spec
+			setExpectedLabels(expectedESUser, &reconciledEsSecret)
+			reconciledEsSecret.Data = expectedESUser.Data
 		},
 	})
-
 }

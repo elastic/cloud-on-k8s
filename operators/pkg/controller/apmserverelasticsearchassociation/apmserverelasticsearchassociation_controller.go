@@ -271,22 +271,5 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 			}
 		}
 	}
-
-	var users estype.UserList
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
-		return err
-	}
-	expectedUserKey := userKey(apm)
-	if expectedUserKey == nil {
-		return nil
-	}
-	for _, u := range users.Items {
-		if k8s.ExtractNamespacedName(&u) != *expectedUserKey {
-			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
-			if err := c.Delete(&u); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }

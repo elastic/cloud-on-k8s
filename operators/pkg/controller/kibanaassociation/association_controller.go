@@ -255,8 +255,6 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
-	hasESRef := kibana.Spec.ElasticsearchRef.Name != ""
-
 	var secrets corev1.SecretList
 	selector := NewResourceSelector(kibana.Name)
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
@@ -265,24 +263,9 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	for _, s := range secrets.Items {
 		// look for association secrets owned by this kibana instance
 		// which should not exist since no ES referenced in the spec
-		if metav1.IsControlledBy(&s, &kibana) && !hasESRef {
+		if metav1.IsControlledBy(&s, &kibana) && kibana.Spec.ElasticsearchRef.Name == "" {
 			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 			if err := c.Delete(&s); err != nil {
-				return err
-			}
-		}
-	}
-
-	var users estype.UserList
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
-		return err
-	}
-	for _, u := range users.Items {
-		// look for users owned by this Kibana instance
-		// which should not exist since no ES referenced in the spec
-		if metav1.IsControlledBy(&u, &kibana) && !hasESRef {
-			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
-			if err := c.Delete(&u); err != nil {
 				return err
 			}
 		}
