@@ -24,13 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var c k8s.Client
 
 var licenseKey = types.NamespacedName{Name: "foo", Namespace: "elastic-system"}
-var expectedRequest = reconcile.Request{NamespacedName: licenseKey}
 
 func validateStatus(
 	t *testing.T,
@@ -63,11 +61,6 @@ func deleteTrial() error {
 	if err := c.Get(licenseKey, &trialLicense); err != nil {
 		return err
 	}
-	// Delete the trial license
-	trialLicense.Finalizers = nil
-	if err := c.Update(&trialLicense); err != nil {
-		return err
-	}
 	return c.Delete(&trialLicense)
 }
 
@@ -92,6 +85,16 @@ func TestReconcile(t *testing.T) {
 
 	stopMgr, mgrStopped := StartTestManager(mgr, t)
 
+	go func() {
+		for {
+			select {
+			case <-requests:
+			case <-stopMgr:
+				return
+			}
+		}
+	}()
+
 	defer func() {
 		close(stopMgr)
 		mgrStopped.Wait()
@@ -99,15 +102,11 @@ func TestReconcile(t *testing.T) {
 	// Create the EnterpriseLicense object
 	assert.NoError(t, c.Create(trialLicense.DeepCopy()))
 	// license is invalid because we did not ack the Eula
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	var createdLicense v1alpha1.EnterpriseLicense
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
 	// accept EULA and update
 	createdLicense.Spec.Eula.Accepted = true
 	assert.NoError(t, c.Update(&createdLicense))
-
-	// expecting 3 cycles: resource update, status update, noop because controller updates spec
-	test.CheckReconcileCalledIn(t, requests, expectedRequest, 3, 3)
 
 	// test trial initialisation on create
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
@@ -122,7 +121,6 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
 	trialStatus.Data[license.TrialPubkeyKey] = []byte("foobar")
 	require.NoError(t, c.Update(&trialStatus))
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	test.RetryUntilSuccess(t, func() error {
 		require.NoError(t, c.Get(trialStatusKey, &trialStatus))
 		if bytes.Equal(trialStatus.Data[license.TrialPubkeyKey], []byte("foobar")) {
@@ -133,10 +131,8 @@ func TestReconcile(t *testing.T) {
 
 	// Delete the trial license
 	require.NoError(t, deleteTrial())
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// recreate it
 	require.NoError(t, c.Create(trialLicense))
-	test.CheckReconcileCalled(t, requests, expectedRequest)
 	// expect an invalid license
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
 
