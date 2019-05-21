@@ -21,7 +21,7 @@ check-license-header:
 
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
-	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
+	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
 	vault read \
 		-address=$(VAULT_ADDR) \
 		-field=service-account \
@@ -92,5 +92,6 @@ ci-e2e: vault-gke-creds
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
 		-e "GKE_CLUSTER_NAME=e2e-qa-$(shell date +'%Y%m%d-%H%M%S')" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
