@@ -96,7 +96,7 @@ func waitForContainerReady(t *testing.T) {
 }
 
 func getProcessPID(t *testing.T) string {
-	out, err := bash("docker exec %s ps -eo pid,cmd | grep java | awk '{print $1}'", containerName).Output()
+	out, err := bash("docker exec %s ps -eo pid,cmd | grep org.elasticsearch.bootstrap.Elasticsearch | awk '{print $1}'", containerName).Output()
 	assert.NoError(t, err)
 	return string(out)
 }
