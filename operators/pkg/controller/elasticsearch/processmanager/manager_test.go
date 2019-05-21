@@ -43,8 +43,8 @@ func setup() {
 		"-f", "tests/Dockerfile",
 		"-t", imageName, "../../../..").Run()
 	if err != nil {
-		log.Error(err, "Failed to build docker image")
-		os.Exit(1)
+		fmt.Println("Failed to build docker image. Is Docker available?")
+		panic(err)
 	}
 }
 

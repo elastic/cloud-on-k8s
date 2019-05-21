@@ -143,7 +143,6 @@ generate-crds:
 
 generate-all-in-one:
 	$(MAKE) --no-print-directory -s generate-crds > config/all-in-one.yaml
-	# TODO: replace the image name with the final released name (docker.elastic.co/k8s-operators/k8s-operators ?)
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-all-in-one >> config/all-in-one.yaml
