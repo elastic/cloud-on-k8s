@@ -64,6 +64,7 @@ func suffix(name string, sfx string) string {
 
 // NewPodName returns a unique name to be used for the pod name and the
 // Elasticsearch cluster node name.
+// The generated pod name follows the pattern "{esName}-es-[{nodeSpec.Name}-]{random suffix}".
 func NewPodName(esName string, nodeSpec v1alpha1.NodeSpec) string {
 	var sfx strings.Builder
 
