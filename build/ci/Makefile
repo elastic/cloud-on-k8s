@@ -13,9 +13,9 @@ VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
-VAULT_AWS_CREDS ?= qwerty
-VAULT_AWS_ACCESS_KEY_FILE ?= abc
-VAULT_AWS_SECRET_KEY_FILE ?= xyz
+VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
+VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
+VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
 
 DOCKER_LOGIN ?= cloudadmin
 
@@ -49,9 +49,9 @@ vault-docker-creds:
 # reads AWS creds for yaml upload
 vault-aws-creds:
 	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-    	vault read -address=$(VAULT_ADDR) -field=1 $(VAULT_AWS_CREDS) > $(VAULT_AWS_ACCESS_KEY_FILE)
+    	vault read -address=$(VAULT_ADDR) -field=access-key-id $(VAULT_AWS_CREDS) > $(VAULT_AWS_ACCESS_KEY_FILE)
 	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-        vault read -address=$(VAULT_ADDR) -field=2 $(VAULT_AWS_CREDS) > $(VAULT_AWS_SECRET_KEY_FILE)
+        vault read -address=$(VAULT_ADDR) -field=secret-access-key $(VAULT_AWS_CREDS) > $(VAULT_AWS_SECRET_KEY_FILE)
 
 ## -- Job executed on all PRs
 
