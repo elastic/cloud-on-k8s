@@ -22,49 +22,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
-
-var c k8s.Client
 
 var licenseKey = types.NamespacedName{Name: "foo", Namespace: "elastic-system"}
 
-func validateStatus(
-	t *testing.T,
-	key types.NamespacedName,
-	createdLicense *v1alpha1.EnterpriseLicense,
-	expected v1alpha1.LicenseStatus,
-) {
-	// test trial initialisation on create
-	test.RetryUntilSuccess(t, func() error {
-		err := c.Get(key, createdLicense)
-		if err != nil {
-			return err
-		}
-		if createdLicense.Status != expected {
-			return fmt.Errorf("expected %v license but was %v", expected, createdLicense.Status)
-		}
-		return nil
-	})
-}
-
-func validateTrialDuration(t *testing.T, license v1alpha1.EnterpriseLicense, now time.Time, precision time.Duration) {
-	startDelta := license.StartDate().Sub(now)
-	assert.True(t, startDelta <= precision, "start date should be within %v, but was %v", precision, startDelta)
-	endDelta := license.ExpiryDate().Sub(now.Add(30 * 24 * time.Hour))
-	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)
-}
-
-func deleteTrial() error {
-	var trialLicense v1alpha1.EnterpriseLicense
-	if err := c.Get(licenseKey, &trialLicense); err != nil {
-		return err
-	}
-	return c.Delete(&trialLicense)
+func TestMain(m *testing.M) {
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
 }
 
 func TestReconcile(t *testing.T) {
+	// start the test manager & controller
+	c, stop := test.StartTestController(t, Add, operator.Parameters{})
+	defer stop()
 
 	now := time.Now()
 
@@ -74,31 +43,7 @@ func TestReconcile(t *testing.T) {
 			Type: v1alpha1.LicenseTypeEnterpriseTrial,
 		},
 	}
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(test.Config, manager.Options{})
-	assert.NoError(t, err)
-	c = k8s.WrapClient(mgr.GetClient())
 
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	assert.NoError(t, add(mgr, recFn))
-
-	stopMgr, mgrStopped := StartTestManager(mgr, t)
-
-	go func() {
-		for {
-			select {
-			case <-requests:
-			case <-stopMgr:
-				return
-			}
-		}
-	}()
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
 	// Create the EnterpriseLicense object
 	assert.NoError(t, c.Create(trialLicense.DeepCopy()))
 	// license is invalid because we did not ack the Eula
@@ -137,4 +82,39 @@ func TestReconcile(t *testing.T) {
 	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
 
 	// ClusterLicense should be GC'ed but can't be tested here
+}
+
+func validateStatus(
+	t *testing.T,
+	c k8s.Client,
+	key types.NamespacedName,
+	createdLicense *v1alpha1.EnterpriseLicense,
+	expected v1alpha1.LicenseStatus,
+) {
+	// test trial initialisation on create
+	test.RetryUntilSuccess(t, func() error {
+		err := c.Get(key, createdLicense)
+		if err != nil {
+			return err
+		}
+		if createdLicense.Status != expected {
+			return fmt.Errorf("expected %v license but was %v", expected, createdLicense.Status)
+		}
+		return nil
+	})
+}
+
+func validateTrialDuration(t *testing.T, license v1alpha1.EnterpriseLicense, now time.Time, precision time.Duration) {
+	startDelta := license.StartDate().Sub(now)
+	assert.True(t, startDelta <= precision, "start date should be within %v, but was %v", precision, startDelta)
+	endDelta := license.ExpiryDate().Sub(now.Add(30 * 24 * time.Hour))
+	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)
+}
+
+func deleteTrial(c k8s.Client) error {
+	var trialLicense v1alpha1.EnterpriseLicense
+	if err := c.Get(licenseKey, &trialLicense); err != nil {
+		return err
+	}
+	return c.Delete(&trialLicense)
 }

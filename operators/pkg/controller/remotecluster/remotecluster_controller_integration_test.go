@@ -33,26 +33,17 @@ var (
 var expectedRequest = reconcile.Request{NamespacedName: key}
 
 const timeout = time.Second * 5
+func TestMain(m *testing.M) {
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
+}
 
 func TestReconcile(t *testing.T) {
 
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(test.Config, manager.Options{})
-	client := mgr.GetClient()
-	c = k8s.WrapClient(client)
-	rec := newReconciler(mgr, "default")
-	require.NoError(t, err)
-	recFn, requests := SetupTestReconcile(rec)
-	controller, err := add(mgr, recFn)
-	assert.NoError(t, err)
-	assert.NoError(t, addWatches(controller, rec))
-
-	stopMgr, mgrStopped := StartTestManager(mgr, t)
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
+	// start the test manager & controller
+	c, stop := test.StartTestController(t, Add, operator.Parameters{
+		OperatorNamespace: operatorNamespace, // trial license will be installed in that namespace
+	})
+	defer stop()
 
 	instance := newRemoteInCluster(
 		"remotecluster-sample-1-2",

@@ -27,36 +27,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var c k8s.Client
-
-var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: "foo", Namespace: "default"}}
-
-func listClusterLicenses(t *testing.T, c k8s.Client) []v1alpha1.ClusterLicense {
-	clusterLicenses := v1alpha1.ClusterLicenseList{}
-	assert.NoError(t, c.List(&client.ListOptions{}, &clusterLicenses))
-	return clusterLicenses.Items
-}
-
-func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {
-	metaObj, err := meta.Accessor(obj)
-	if err != nil {
-		return err
-	}
-	owners := metaObj.GetOwnerReferences()
-	if len(owners) != 1 {
-		return fmt.Errorf("expected exactly 1 owner, got %d", len(owners))
-	}
-
-	ownerName := owners[0].Name
-	ownerKind := owners[0].Kind
-	expectedKind := "Elasticsearch"
-	if ownerName != cluster.Name || ownerKind != expectedKind {
-		return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
-	}
-	return nil
+func TestMain(m *testing.M) {
+	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
 }
 
 func TestReconcile(t *testing.T) {
+	// start the test manager & controller
+	c, stop := test.StartTestController(t, Add, operator.Parameters{})
+	defer stop()
 
 	thirtyDays := 30 * 24 * time.Hour
 	now := time.Now()
@@ -98,22 +76,6 @@ func TestReconcile(t *testing.T) {
 			"sig": []byte("blah"),
 		},
 	}
-
-	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
-	// channel when it is finished.
-	mgr, err := manager.New(test.Config, manager.Options{})
-	assert.NoError(t, err)
-	c = k8s.WrapClient(mgr.GetClient())
-
-	recFn, requests := SetupTestReconcile(newReconciler(mgr))
-	assert.NoError(t, add(mgr, recFn))
-
-	stopMgr, mgrStopped := StartTestManager(mgr, t)
-
-	defer func() {
-		close(stopMgr)
-		mgrStopped.Wait()
-	}()
 
 	// Create the EnterpriseLicense object
 	assert.NoError(t, c.Create(enterpriseLicense))
