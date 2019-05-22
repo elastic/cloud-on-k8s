@@ -10,14 +10,14 @@ import (
 	"math"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 type esClusterChecks struct {
@@ -117,7 +117,13 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				for i, topoElem := range expectedTopology {
 					cfg, err := topoElem.Config.Unpack()
 					require.NoError(t, err)
-					if cfg.Node == nodeRoles && compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) {
+
+					podNameExample := name.NewPodName(es.Name, topoElem)
+
+					if cfg.Node == nodeRoles &&
+						compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) &&
+						// compare the base names of the pod and topology to ensure they're from the same nodespec
+						name.Basename(node.Name) == name.Basename(podNameExample) {
 						// no need to match this topology anymore
 						expectedTopology = append(expectedTopology[:i], expectedTopology[i+1:]...)
 						break
