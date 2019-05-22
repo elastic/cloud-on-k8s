@@ -36,8 +36,10 @@ func readSampleStack() stack.Builder {
 	sampleStack.Elasticsearch = es
 	sampleStack.Kibana = kb
 
-	// set namespace
-	return sampleStack.WithNamespace(params.Namespace)
+	// set namespace and version
+	return sampleStack.
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion)
 }
 
 // TestStackSample runs a test suite using the sample stack
