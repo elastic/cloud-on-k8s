@@ -26,6 +26,11 @@ var log = logf.Log.WithName("integration-test")
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
+	if err := apis.AddToScheme(scheme.Scheme); err != nil {
+		fmt.Println("fail to add scheme")
+		panic(err)
+	}
+
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
@@ -34,10 +39,13 @@ func RunWithK8s(m *testing.M, crdPath string) {
 
 	var err error
 	if Config, err = t.Start(); err != nil {
-		log.Error(err, "failed to start")
+		fmt.Println("failed to start test environment:", err.Error())
+		panic(err)
 	}
 
 	code := m.Run()
-	t.Stop()
+	if err := t.Stop(); err != nil {
+		fmt.Println("failed to stop test environment:", err.Error())
+	}
 	os.Exit(code)
 }
