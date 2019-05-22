@@ -94,12 +94,10 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		switch {
-		case len(trustRelationship1.Spec.CaCert) == 0:
-			return errors.New("Not reconciled yet")
-		default:
-			return nil
+		if len(trustRelationship2.Spec.CaCert) == 0 {
+			return errors.New("no ca cert reconciled yet")
 		}
+		return nil
 	})
 
 	// Check if state is PROPAGATED
