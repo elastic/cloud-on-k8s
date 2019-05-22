@@ -8,14 +8,17 @@ package license
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,8 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 func TestMain(m *testing.M) {
@@ -78,12 +79,10 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Create the EnterpriseLicense object
-	assert.NoError(t, c.Create(enterpriseLicense))
-	defer c.Delete(enterpriseLicense)
+	require.NoError(t, c.Create(enterpriseLicense))
 
 	// Create the linked secret
-	assert.NoError(t, c.Create(controllerSecret))
-	defer c.Delete(controllerSecret)
+	require.NoError(t, c.Create(controllerSecret))
 
 	varFalse := false
 	cluster := &v1alpha1.Elasticsearch{
@@ -101,8 +100,7 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, c.Create(cluster))
-	test.CheckReconcileCalled(t, requests, expectedRequest)
+	require.NoError(t, c.Create(cluster))
 
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
@@ -111,8 +109,7 @@ func TestReconcile(t *testing.T) {
 		if numLicenses != 1 {
 			return fmt.Errorf("expected exactly 1 cluster license got %d", numLicenses)
 		}
-		validateOwnerRef(&licenses[0], cluster.ObjectMeta)
-		return nil
+		return validateOwnerRef(&licenses[0], cluster.ObjectMeta)
 	})
 
 	test.RetryUntilSuccess(t, func() error {
@@ -121,14 +118,33 @@ func TestReconcile(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		validateOwnerRef(&secret, cluster.ObjectMeta)
-		return nil
+		return validateOwnerRef(&secret, cluster.ObjectMeta)
 	})
+}
 
-	// Delete the cluster and expect Reconcile to be called for cluster deletion
-	test.DeleteIfExists(t, c, cluster)
-	test.CheckReconcileCalled(t, requests, expectedRequest)
-	// ClusterLicense should be GC'ed but can't be tested here
+func listClusterLicenses(t *testing.T, c k8s.Client) []v1alpha1.ClusterLicense {
+	clusterLicenses := v1alpha1.ClusterLicenseList{}
+	assert.NoError(t, c.List(&client.ListOptions{}, &clusterLicenses))
+	return clusterLicenses.Items
+}
+
+func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {
+	metaObj, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	owners := metaObj.GetOwnerReferences()
+	if len(owners) != 1 {
+		return fmt.Errorf("expected exactly 1 owner, got %d", len(owners))
+	}
+
+	ownerName := owners[0].Name
+	ownerKind := owners[0].Kind
+	expectedKind := "Elasticsearch"
+	if ownerName != cluster.Name || ownerKind != expectedKind {
+		return fmt.Errorf("expected owner %s (%s), got %s (%s)", cluster.Name, expectedKind, ownerName, ownerKind)
+	}
+	return nil
 }
 
 // purpose of this test is mostly to understand and document the delaying queue behaviour
@@ -214,5 +230,4 @@ func TestDelayingQueueInvariants(t *testing.T) {
 			assert.Equal(t, tt.expectedObservations, seen)
 		})
 	}
-
 }

@@ -9,11 +9,13 @@ package trial
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
@@ -45,16 +47,18 @@ func TestReconcile(t *testing.T) {
 	}
 
 	// Create the EnterpriseLicense object
-	assert.NoError(t, c.Create(trialLicense.DeepCopy()))
+	require.NoError(t, c.Create(trialLicense.DeepCopy()))
+
 	// license is invalid because we did not ack the Eula
 	var createdLicense v1alpha1.EnterpriseLicense
-	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
+	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
+
 	// accept EULA and update
 	createdLicense.Spec.Eula.Accepted = true
-	assert.NoError(t, c.Update(&createdLicense))
+	require.NoError(t, c.Update(&createdLicense))
 
 	// test trial initialisation on create
-	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
+	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
 	validateTrialDuration(t, createdLicense, now, time.Minute)
 
 	// tamper with the trial status
@@ -75,11 +79,11 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete the trial license
-	require.NoError(t, deleteTrial())
+	require.NoError(t, deleteTrial(c))
 	// recreate it
 	require.NoError(t, c.Create(trialLicense))
 	// expect an invalid license
-	validateStatus(t, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
+	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
 
 	// ClusterLicense should be GC'ed but can't be tested here
 }
