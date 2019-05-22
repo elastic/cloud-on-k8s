@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 // CheckReconcileCalledIn waits up to Timeout to receive the expected request on requests.
@@ -60,18 +60,4 @@ func DeleteIfExists(t *testing.T, c k8s.Client, obj runtime.Object) {
 		// If the resource is already deleted, we don't care, but any other error is important
 		assert.NoError(t, err)
 	}
-}
-
-// CheckResourceDeletionTriggersReconcile deletes the given resource and tests for recreation.
-func CheckResourceDeletionTriggersReconcile(
-	t *testing.T,
-	c k8s.Client,
-	requests chan reconcile.Request,
-	objKey types.NamespacedName,
-	obj runtime.Object,
-	expected reconcile.Request,
-) {
-	assert.NoError(t, c.Delete(obj))
-	CheckReconcileCalled(t, requests, expected)
-	RetryUntilSuccess(t, func() error { return c.Get(objKey, obj) })
 }
