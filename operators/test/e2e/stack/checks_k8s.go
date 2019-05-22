@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -86,7 +87,7 @@ func CheckKibanaDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestStep
 		Test: helpers.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
-				Namespace: helpers.DefaultNamespace,
+				Namespace: params.Namespace,
 				Name:      stack.Kibana.Name + "-kibana",
 			}, &dep)
 			if stack.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {

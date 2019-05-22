@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -131,7 +132,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 				Test: func(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
-						Namespace: helpers.DefaultNamespace,
+						Namespace: params.Namespace,
 						Name:      s.Kibana.Name + "-kibana",
 					}, &dep)
 					require.NoError(t, err)
@@ -179,7 +180,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				Name: "Delete elastic user secret",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: helpers.DefaultNamespace,
+						Namespace: params.Namespace,
 						Name:      s.Elasticsearch.Name + "-elastic-user",
 					}
 					var secret corev1.Secret
@@ -201,7 +202,7 @@ func TestDeleteCACert(t *testing.T) {
 				Name: "Delete CA cert",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: helpers.DefaultNamespace,
+						Namespace: params.Namespace,
 						Name:      s.Elasticsearch.Name + "-ca", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret

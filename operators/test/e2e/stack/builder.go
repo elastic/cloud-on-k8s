@@ -5,34 +5,16 @@
 package stack
 
 import (
-	"flag"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
-
-const defaultElasticStackVersion = "7.1.0"
-
-var (
-	log = logf.Log.WithName("e2e-stack-builder")
-
-	ElasticStackVersion string
-)
-
-func init() {
-	flag.StringVar(&ElasticStackVersion, "version", defaultElasticStackVersion, "Elastic Stack version")
-	flag.Parse()
-	logf.SetLogger(logf.ZapLogger(true))
-	log.Info("Elastic stack", "version", ElasticStackVersion)
-}
 
 var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
@@ -64,23 +46,23 @@ type Builder struct {
 func NewStackBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: helpers.DefaultNamespace,
+		Namespace: params.Namespace,
 	}
 
 	return Builder{
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				Version: ElasticStackVersion,
+				Version: params.ElasticStackVersion,
 			},
 		},
 		Kibana: kbtype.Kibana{
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
-				Version: ElasticStackVersion,
+				Version: params.ElasticStackVersion,
 				ElasticsearchRef: commonv1alpha1.ObjectSelector{
 					Name:      name,
-					Namespace: helpers.DefaultNamespace,
+					Namespace: params.Namespace,
 				},
 			},
 		},

@@ -6,7 +6,9 @@ package apm
 
 import (
 	"fmt"
+
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -32,7 +34,7 @@ func CheckApmServerDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestS
 		Test: helpers.Eventually(func() error {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
-				Namespace: helpers.DefaultNamespace,
+				Namespace: params.Namespace,
 				Name:      stack.ApmServer.Name + "-apm-server",
 			}, &dep)
 			if stack.ApmServer.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {

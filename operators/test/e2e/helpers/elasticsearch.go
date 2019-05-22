@@ -5,12 +5,12 @@
 package helpers
 
 import (
-	"flag"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
@@ -19,10 +19,6 @@ import (
 // if `--auto-port-forward` is passed to `go test`, then use a custom
 // dialer that sets up port-forwarding to services running within k8s
 // (useful when running tests on a dev env instead of as a batch job)
-var autoPortForward = flag.Bool(
-	"auto-port-forward", false,
-	"enables automatic port-forwarding (for dev use only as it exposes "+
-		"k8s resources on ephemeral ports to localhost)")
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
 func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Client, error) {
@@ -37,7 +33,7 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Cli
 	}
 	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", es.Name, es.Namespace)
 	var dialer net.Dialer
-	if *autoPortForward {
+	if params.AutoPortForward {
 		dialer = portforward.NewForwardingDialer()
 	}
 	v, err := version.Parse(es.Spec.Version)

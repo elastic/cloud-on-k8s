@@ -9,12 +9,12 @@ import (
 	"os"
 	"testing"
 
-	"k8s.io/apimachinery/pkg/util/yaml"
-
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Re-use the sample stack for e2e tests.
@@ -37,7 +37,7 @@ func readSampleStack() stack.Builder {
 	sampleStack.Kibana = kb
 
 	// set namespace
-	return sampleStack.WithNamespace(helpers.DefaultNamespace)
+	return sampleStack.WithNamespace(params.Namespace)
 }
 
 // TestStackSample runs a test suite using the sample stack

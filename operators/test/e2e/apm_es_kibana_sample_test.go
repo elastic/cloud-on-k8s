@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
+
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
@@ -37,11 +39,11 @@ func TestApmEsKibanaSample(t *testing.T) {
 
 	// set namespace and version
 	sampleStack = sampleStack.
-		WithNamespace(helpers.DefaultNamespace).
-		WithVersion(stack.ElasticStackVersion)
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion)
 	sampleApm = sampleApm.
-		WithNamespace(helpers.DefaultNamespace).
-		WithVersion(stack.ElasticStackVersion)
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion)
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
