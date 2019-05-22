@@ -51,8 +51,6 @@ func TestApmEsKibanaSample(t *testing.T) {
 		WithSteps(apm.InitTestSteps(sampleApm, k)...).
 		WithSteps(stack.CreationTestSteps(sampleStack, k)...).
 		WithSteps(apm.CreationTestSteps(sampleApm, sampleStack.Elasticsearch, k)...).
-		WithSteps(stack.CheckStackSteps(sampleStack, k)...).
-		WithSteps(apm.CheckStackSteps(sampleApm, sampleStack.Elasticsearch, k)...).
 		WithSteps(stack.DeletionTestSteps(sampleStack, k)...).
 		WithSteps(apm.DeletionTestSteps(sampleApm, k)...).
 		RunSequential(t)
