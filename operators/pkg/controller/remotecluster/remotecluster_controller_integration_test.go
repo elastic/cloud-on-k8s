@@ -34,8 +34,7 @@ func TestMain(m *testing.M) {
 func TestReconcile(t *testing.T) {
 	operatorNamespace := "operator-namespace"
 
-	// start the test manager & controller
-	c, stop := test.StartTestController(t, Add, operator.Parameters{
+	c, stop := test.StartManager(t, Add, operator.Parameters{
 		OperatorNamespace: operatorNamespace, // trial license will be installed in that namespace
 	})
 	defer stop()
