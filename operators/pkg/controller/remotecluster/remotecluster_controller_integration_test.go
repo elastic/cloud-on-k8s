@@ -113,7 +113,7 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete one of the CA
-	test.DeleteIfExists(t, c, ca1)
+	require.NoError(t, c.Delete(ca1))
 
 	// Ensure association goes back to pending if one of the CA is deleted.
 	test.RetryUntilSuccess(t, func() error {
