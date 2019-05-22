@@ -121,7 +121,7 @@ func assertProcessStatus(t *testing.T, client Client, expectedState ProcessState
 			return err
 		}
 		if expectedState.String() != status.State.String() {
-			return errors.New("container should be exited")
+			return errors.New("container should have exited")
 		}
 		if status.State == Started {
 			if getProcessPID(t) == "" {
