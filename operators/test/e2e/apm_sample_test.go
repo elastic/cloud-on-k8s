@@ -9,11 +9,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"k8s.io/apimachinery/pkg/util/yaml"
+
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
-	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Re-use the sample stack for e2e tests.
@@ -38,22 +38,6 @@ func TestEsApmServerSample(t *testing.T) {
 	// set namespace
 	namespacedSampleStack := sampleStack.WithNamespace(helpers.DefaultNamespace)
 	namespacedSampleApm := sampleApm.WithNamespace(helpers.DefaultNamespace)
-
-	// override version to 7.0.1 until 7.1.0 is out
-	// TODO remove once 7.1.0 is out
-	namespacedSampleStack.Elasticsearch.Spec.Version = "7.0.1"
-	namespacedSampleStack.Kibana.Spec.Version = "7.0.1"
-	namespacedSampleApm.ApmServer.Spec.Version = "7.0.1"
-	// use a trial license until 7.1.0 is out
-	// TODO remove once 7.1.0 is out
-	for i, n := range namespacedSampleStack.Elasticsearch.Spec.Nodes {
-		config := n.Config
-		if config == nil {
-			config = &v1alpha1.Config{}
-		}
-		config.Data["xpack.license.self_generated.type"] = "trial"
-		namespacedSampleStack.Elasticsearch.Spec.Nodes[i].Config = config
-	}
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.

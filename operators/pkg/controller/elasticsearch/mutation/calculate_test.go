@@ -8,20 +8,33 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var defaultCPULimit = "800m"
 var defaultImage = "image"
 var defaultPodSpecCtxV2 = ESPodSpecContext(defaultImage, "1000m")
 
+var es = v1alpha1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "elasticsearch",
+	},
+}
+
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
 	return pod.PodWithConfig{
-		Pod: corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
+		Pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+			},
+			Spec: ESPodSpecContext(image, cpuLimit).PodSpec,
+		},
 	}
 }
 
@@ -140,7 +153,7 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
+			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
 				return corev1.Pod{}, nil // TODO: fix
 			})
 			assert.NoError(t, err)

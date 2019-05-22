@@ -7,6 +7,7 @@ package mutation
 import (
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation/comparison"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -26,7 +27,12 @@ type PodComparisonResult struct {
 }
 
 // CalculateChanges returns Changes to perform by comparing actual pods to expected pods spec
-func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.ResourcesState, podBuilder PodBuilder) (Changes, error) {
+func CalculateChanges(
+	es v1alpha1.Elasticsearch,
+	expectedPodSpecCtxs []pod.PodSpecContext,
+	state reconcile.ResourcesState,
+	podBuilder PodBuilder,
+) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
 	copy(expectedCopy, expectedPodSpecCtxs)
@@ -35,10 +41,11 @@ func CalculateChanges(expectedPodSpecCtxs []pod.PodSpecContext, state reconcile.
 	deletingCopy := make(pod.PodsWithConfig, len(state.DeletingPods))
 	copy(deletingCopy, state.DeletingPods)
 
-	return mutableCalculateChanges(expectedCopy, actualCopy, state, podBuilder, deletingCopy)
+	return mutableCalculateChanges(es, expectedCopy, actualCopy, state, podBuilder, deletingCopy)
 }
 
 func mutableCalculateChanges(
+	es v1alpha1.Elasticsearch,
 	expectedPodSpecCtxs []pod.PodSpecContext,
 	actualPods pod.PodsWithConfig,
 	state reconcile.ResourcesState,
@@ -50,7 +57,7 @@ func mutableCalculateChanges(
 	for _, expectedPodSpecCtx := range expectedPodSpecCtxs {
 
 		// look for a matching pod in the current ones
-		actualComparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, actualPods, state)
+		actualComparisonResult, err := getAndRemoveMatchingPod(es, expectedPodSpecCtx, actualPods, state)
 		if err != nil {
 			return changes, err
 		}
@@ -63,7 +70,7 @@ func mutableCalculateChanges(
 		}
 
 		// look for a matching pod in the ones that are being deleted
-		deletingComparisonResult, err := getAndRemoveMatchingPod(expectedPodSpecCtx, deletingPods, state)
+		deletingComparisonResult, err := getAndRemoveMatchingPod(es, expectedPodSpecCtx, deletingPods, state)
 		if err != nil {
 			return changes, err
 		}
@@ -96,13 +103,18 @@ func mutableCalculateChanges(
 	return changes, nil
 }
 
-func getAndRemoveMatchingPod(podSpecCtx pod.PodSpecContext, podsWithConfig pod.PodsWithConfig, state reconcile.ResourcesState) (PodComparisonResult, error) {
+func getAndRemoveMatchingPod(
+	es v1alpha1.Elasticsearch,
+	podSpecCtx pod.PodSpecContext,
+	podsWithConfig pod.PodsWithConfig,
+	state reconcile.ResourcesState,
+) (PodComparisonResult, error) {
 	mismatchReasonsPerPod := map[string][]string{}
 
 	for i, podWithConfig := range podsWithConfig {
 		pod := podWithConfig.Pod
 
-		isMatch, mismatchReasons, err := comparison.PodMatchesSpec(podWithConfig, podSpecCtx, state)
+		isMatch, mismatchReasons, err := comparison.PodMatchesSpec(es, podWithConfig, podSpecCtx, state)
 		if err != nil {
 			return PodComparisonResult{}, err
 		}
