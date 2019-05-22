@@ -16,10 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 )
 
-// if `--auto-port-forward` is passed to `go test`, then use a custom
-// dialer that sets up port-forwarding to services running within k8s
-// (useful when running tests on a dev env instead of as a batch job)
-
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
 func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Client, error) {
 	password, err := k.GetElasticPassword(es.Name)
