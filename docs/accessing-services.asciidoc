@@ -3,7 +3,7 @@
 
 All Elastic Stack resources deployed by the ECK Operator are secured by default, which means it sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
 
-Elasticsearch and Kibana are then accessible using native Kubernetes services that are not reachable from the internet by default.
+Elasticsearch and Kibana are then accessible using native Kubernetes services that are not reachable from the public Internet by default.
 
 [id="{p}-kubernetes-service"]
 == Kubernetes service for each resource
@@ -37,19 +37,12 @@ QLYL4zLEby3vRxq65+xofVBJAaM=
 [id="{p}-authentication"]
 == Authentication
 
-Users are managed by the operator to access to Elasticsearch and Kibana. Their passwords are stored in `Secrets` named `<name>-<kind>-user`.
+A user with the `superuser` role is managed by the operator to access to Elasticsearch and Kibana. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
 [source,sh]
 ----
-> kubectl get secrets | grep '-user '
-hulk-elastic-user           Opaque                                1      43m
-hulk-kibana-user            Opaque                                1      43m
-
 > kubectl get secret hulk-elastic-user -o go-template='{{.data.elastic | base64decode }}'
 5abc6x1234bb7vbabc4xyz42
-
-> kubectl get secret hulk-kibana-user -o go-template='{{index .data "kibana-user" | base64decode}}'
-4jpabc7rq6cznabctmc426cf
 ----
 
 [id="{p}-allow-public-access"]
@@ -84,7 +77,7 @@ hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/T
 [id="{p}-static-ip-custom-domain"]
 == Static IP and custom domain
 
-To use a custom domain name, you may have to reserve a static IP and use an Ingress instead of a `LoadBalancer` `Service` depending your needs and what your cloud provider provides. Whatever is used, the DNS must be added to the certificate SAN:
+To use a custom domain name, you may have to reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service` depending your needs and what your cloud provider provides. Whatever is used, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
 
 
 [source,yaml]
@@ -110,12 +103,11 @@ have to retrieve the CA certificate, the IP of the service and the password of t
 ----
 NAME=hulk
 
-kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
-
+CA=$(kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}') > ca.pem
 IP=$(kubectl get svc "$NAME-es" -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-PASSWORD=$(kubectl get secret $NAME-elastic-user -o go-template='{{.data.elastic | base64decode }}')
+PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
 
-curl --cacert ca.pem -u elastic:$PASSWORD https://$IP:9200/
+curl --cacert ca.pem -u elastic:$PW https://$IP:9200/
 ----
 
 At this stage, you should encounter this issue:
