@@ -38,7 +38,7 @@ const (
 	cAPrivateKeySecretSuffix    = "-ca-private-key"
 	elasticUserSecretSuffix     = "-elastic-user"
 	esRolesUsersSecretSuffix    = "-es-roles-users"
-	extraFilesSecretSuffix      = "-extrafiles"
+	clusterSecretsSecretSuffix  = "-secrets"
 	internalUsersSecretSuffix   = "-internal-users"
 	unicastHostsConfigMapSuffix = "-unicast-hosts"
 )
@@ -141,8 +141,8 @@ func EsRolesUsersSecret(esName string) string {
 	return suffix(esName, esRolesUsersSecretSuffix)
 }
 
-func ExtraFilesSecret(esName string) string {
-	return suffix(esName, extraFilesSecretSuffix)
+func ClusterSecretsSecret(esName string) string {
+	return suffix(esName, clusterSecretsSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {

@@ -7,6 +7,7 @@
 package watches
 
 import (
+	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -112,7 +113,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	assert.NoError(t, c.Create(testObject1))
 
 	// Expect no reconcile requests as we don't have registered the watch yet
-	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+	CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Add a watch for the first object
 	assert.NoError(t, eventHandler.AddHandler(NamedWatch{
@@ -125,7 +126,7 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	testLabels := map[string]string{"test": "label"}
 	testObject1.Labels = testLabels
 	assert.NoError(t, c.Update(testObject1))
-	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
+	CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Now register a second watch for the other object
 	watch := NamedWatch{
@@ -136,26 +137,26 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	assert.NoError(t, eventHandler.AddHandler(watch))
 	// ... and create the second object and expect a corresponding reconcile request
 	assert.NoError(t, c.Create(testObject2))
-	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+	CheckReconcileCalled(t, requests, watcherReconcileRequest)
 
 	// Remove the watch for object 1 again
 	eventHandler.RemoveHandlerForKey("test-watch-1")
 	// trigger another update but don't expect any requests as we have unregistered the watch
 	assert.NoError(t, c.Update(testObject1))
-	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+	CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// The second watch should still work
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(testObject2))
 	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
-	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
+	CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Until we remove it
 	eventHandler.RemoveHandler(watch)
 	// update object 2 again and don't expect a request
 	testObject2.Labels = map[string]string{}
 	assert.NoError(t, c.Update(testObject2))
-	test.CheckReconcileNotCalledWithin(t, requests, oneSecond)
+	CheckReconcileNotCalledWithin(t, requests, oneSecond)
 
 	// Owner watches should work as before
 	ownerWatch := &OwnerWatch{
@@ -170,18 +171,55 @@ func TestDynamicEnqueueRequest(t *testing.T) {
 	assert.NoError(t, controllerutil.SetControllerReference(testObject2, testObject1, scheme.Scheme))
 	assert.NoError(t, c.Update(testObject1))
 	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
-	test.CheckReconcileCalledIn(t, requests, reconcile.Request{NamespacedName: watched2}, 1, 2)
+	CheckReconcileCalledIn(t, requests, reconcile.Request{NamespacedName: watched2}, 1, 2)
 
 	// We should be able to use both labeled watches and owner watches
 	assert.NoError(t, eventHandler.AddHandler(watch))
 	testObject2.Labels = testLabels
 	assert.NoError(t, c.Update(testObject2))
 	// Depending on the scheduling of the test execution the two reconcile.Requests might be coalesced into one
-	test.CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
+	CheckReconcileCalledIn(t, requests, watcherReconcileRequest, 1, 2)
 
 	// Delete requests should be observable as well
 	assert.NoError(t, c.Delete(testObject1))
-	test.CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
+	CheckReconcileCalled(t, requests, reconcile.Request{NamespacedName: watched2})
 	assert.NoError(t, c.Delete(testObject2))
-	test.CheckReconcileCalled(t, requests, watcherReconcileRequest)
+	CheckReconcileCalled(t, requests, watcherReconcileRequest)
+}
+
+// CheckReconcileCalledIn waits up to Timeout to receive the expected request on requests.
+func CheckReconcileCalledIn(t *testing.T, requests chan reconcile.Request, expected reconcile.Request, min, max int) {
+	var seen int
+	for seen < max {
+		select {
+		case req := <-requests:
+			seen++
+			assert.Equal(t, req, expected)
+		case <-time.After(test.Timeout / time.Duration(max)):
+			if seen < min {
+				assert.Fail(t, fmt.Sprintf("No request received after %s", test.Timeout))
+			}
+			return
+		}
+	}
+}
+
+// CheckReconcileCalled waits up to Timeout to receive the expected request on requests.
+func CheckReconcileCalled(t *testing.T, requests chan reconcile.Request, expected reconcile.Request) {
+	select {
+	case req := <-requests:
+		assert.Equal(t, expected, req)
+	case <-time.After(test.Timeout):
+		assert.Fail(t, fmt.Sprintf("No request received after %s", test.Timeout))
+	}
+}
+
+// CheckReconcileNotCalled ensures that no reconcile requests are currently pending
+func CheckReconcileNotCalledWithin(t *testing.T, requests chan reconcile.Request, duration time.Duration) {
+	select {
+	case req := <-requests:
+		assert.Fail(t, fmt.Sprintf("No request expected but got %v", req))
+	case <-time.After(duration):
+		//no request received, OK moving on
+	}
 }

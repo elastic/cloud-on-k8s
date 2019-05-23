@@ -9,6 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
+
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
@@ -21,9 +23,9 @@ import (
 // Path is relative to the e2e directory.
 const sampleEsApmFile = "../../config/samples/apm/apm_es_kibana.yaml"
 
-// TestEsApmServerSample runs a test suite using the sample es + apm server resources
-func TestEsApmServerSample(t *testing.T) {
-	// build stack from yaml sample
+// TestApmEsKibanaSample runs a test suite using the sample apm server + es + kibana resources
+func TestApmEsKibanaSample(t *testing.T) {
+	// build resources from yaml sample
 	var sampleStack stack.Builder
 	var sampleApm apm.Builder
 
@@ -35,18 +37,22 @@ func TestEsApmServerSample(t *testing.T) {
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
 
-	// set namespace
-	namespacedSampleStack := sampleStack.WithNamespace(helpers.DefaultNamespace)
-	namespacedSampleApm := sampleApm.WithNamespace(helpers.DefaultNamespace)
+	// set namespace and version
+	sampleStack = sampleStack.
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion)
+	sampleApm = sampleApm.
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion)
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.InitTestSteps(namespacedSampleApm, k)...).
-		WithSteps(stack.CreationTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.CreationTestSteps(namespacedSampleApm, namespacedSampleStack.Elasticsearch, k)...).
-		WithSteps(stack.DeletionTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.DeletionTestSteps(namespacedSampleApm, k)...).
+		WithSteps(stack.InitTestSteps(sampleStack, k)...).
+		WithSteps(apm.InitTestSteps(sampleApm, k)...).
+		WithSteps(stack.CreationTestSteps(sampleStack, k)...).
+		WithSteps(apm.CreationTestSteps(sampleApm, sampleStack.Elasticsearch, k)...).
+		WithSteps(stack.DeletionTestSteps(sampleStack, k)...).
+		WithSteps(apm.DeletionTestSteps(sampleApm, k)...).
 		RunSequential(t)
 
 	// TODO: is it possible to verify that it would also show up properly in Kibana?
