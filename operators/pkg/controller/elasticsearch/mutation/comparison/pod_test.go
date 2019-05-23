@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/stretchr/testify/assert"
@@ -18,9 +19,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var es = v1alpha1.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "elasticsearch",
+	},
+}
+
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
 	return pod.PodWithConfig{
-		Pod: corev1.Pod{Spec: ESPodSpecContext(image, cpuLimit).PodSpec},
+		Pod: corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+			},
+			Spec: ESPodSpecContext(image, cpuLimit).PodSpec,
+		},
 	}
 }
 
@@ -143,6 +155,52 @@ func Test_PodMatchesSpec(t *testing.T) {
 			expectedMismatches: []string{"Docker image mismatch: expected another-image, actual image"},
 		},
 		{
+			name: "Spec has different NodeSpec.Name",
+			args: args{
+				pod: pod.PodWithConfig{
+					Pod: corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{
+								Name: "foo",
+							}),
+						},
+						Spec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					},
+				},
+				spec: pod.PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					NodeSpec: v1alpha1.NodeSpec{
+						Name: "bar",
+					},
+				},
+			},
+			want:               false,
+			wantErr:            nil,
+			expectedMismatches: []string{"Pod base name mismatch: expected elasticsearch-es-bar, actual elasticsearch-es-foo"},
+		},
+		{
+			name: "Pod has empty NodeSpec.Name",
+			args: args{
+				pod: pod.PodWithConfig{
+					Pod: corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+						},
+						Spec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					},
+				},
+				spec: pod.PodSpecContext{
+					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					NodeSpec: v1alpha1.NodeSpec{
+						Name: "bar",
+					},
+				},
+			},
+			want:               false,
+			wantErr:            nil,
+			expectedMismatches: []string{"Pod base name mismatch: expected elasticsearch-es-bar, actual elasticsearch-es"},
+		},
+		{
 			name: "Spec has extra env var",
 			args: args{
 				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
@@ -160,6 +218,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 			args: args{
 				pod: pod.PodWithConfig{
 					Pod: corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+						},
 						Spec: withEnv(
 							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 							ESPodSpecContext(defaultImage, defaultCPULimit),
@@ -177,6 +238,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 			args: args{
 				pod: pod.PodWithConfig{
 					Pod: corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+						},
 						Spec: withEnv(
 							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
 							ESPodSpecContext(defaultImage, defaultCPULimit),
@@ -382,7 +446,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			match, mismatchReasons, err := PodMatchesSpec(tt.args.pod, tt.args.spec, tt.args.state)
+			match, mismatchReasons, err := PodMatchesSpec(es, tt.args.pod, tt.args.spec, tt.args.state)
 			if tt.wantErr != nil {
 				assert.Error(t, err, tt.wantErr.Error())
 			} else {
