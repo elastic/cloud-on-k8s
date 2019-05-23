@@ -5,13 +5,21 @@
 package test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const (
@@ -26,6 +34,11 @@ var log = logf.Log.WithName("integration-test")
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
+	if err := apis.AddToScheme(scheme.Scheme); err != nil {
+		fmt.Println("fail to add scheme")
+		panic(err)
+	}
+
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
@@ -34,10 +47,39 @@ func RunWithK8s(m *testing.M, crdPath string) {
 
 	var err error
 	if Config, err = t.Start(); err != nil {
-		log.Error(err, "failed to start")
+		fmt.Println("failed to start test environment:", err.Error())
+		panic(err)
 	}
 
 	code := m.Run()
-	t.Stop()
+	if err := t.Stop(); err != nil {
+		fmt.Println("failed to stop test environment:", err.Error())
+	}
 	os.Exit(code)
+}
+
+// StartManager sets up a manager and controller to perform reconciliations in background.
+// It must be stopped by calling the returned function.
+func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
+	mgr, err := manager.New(Config, manager.Options{})
+	require.NoError(t, err)
+
+	err = addToMgrFunc(mgr, parameters)
+	require.NoError(t, err)
+
+	stopChan := make(chan struct{})
+	stopped := make(chan error)
+	// run the manager in background, until stopped
+	go func() {
+		stopped <- mgr.Start(stopChan)
+	}()
+
+	client := k8s.WrapClient(mgr.GetClient())
+	stopFunc := func() {
+		// stop the manager and wait until stopped
+		close(stopChan)
+		require.NoError(t, <-stopped)
+	}
+
+	return client, stopFunc
 }
