@@ -14,7 +14,7 @@ The operator manages a Kubernetes service for each resource (`Elasticsearch` or 
 ----
 > kubectl get svc
 
-NAME                  TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+NAME                TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
 hulk-es             ClusterIP      10.19.252.160   <none>           9200:32361/TCP   25m
 hulk-kibana         ClusterIP      10.19.247.151   <none>           5601:32567/TCP   25m
 ----
@@ -69,7 +69,7 @@ spec:
 ----
 > kubectl get svc
 
-NAME                  TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+NAME                TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
 hulk-es             LoadBalancer   10.19.252.160   35.198.131.115   9200:32361/TCP   25m
 hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/TCP   25m
 ----
