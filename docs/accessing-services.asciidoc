@@ -8,7 +8,7 @@ Elasticsearch and Kibana are then accessible using native Kubernetes services th
 [id="{p}-kubernetes-service"]
 == Kubernetes service for each resource
 
-The operator manages a Kubernetes service for each resource (`Elasticsearch` or `Kibana`),  named `<name>-<kind>`, of `ClusterIP` type by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from within the cluster.
+The operator manages a Kubernetes service for each resource (`Elasticsearch` or `Kibana`),  named `<name>-<kind>`, of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from within the cluster.
 
 [source,sh]
 ----
@@ -77,7 +77,7 @@ hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/T
 [id="{p}-static-ip-custom-domain"]
 == Static IP and custom domain
 
-To use a custom domain name, you may have to reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service` depending your needs and what your cloud provider provides. Whatever is used, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
+To use a custom domain name, you may have to reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service` depending your needs and what your cloud provider offers. Whatever is used, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
 
 
 [source,yaml]
