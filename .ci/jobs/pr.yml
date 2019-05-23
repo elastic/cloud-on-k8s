@@ -14,10 +14,11 @@
         - git:
             url: https://github.com/elastic/cloud-on-k8s
             branches:
-              - master
+              - ${sha1}
             credentials-id: 'f3af1bfb-d48e-48d1-82a2-acca009c1b23'
+            refspec: '+refs/pull/${ghprbPullId}/*:refs/remotes/origin/pr/${ghprbPullId}/*'
       script-path: build/ci/pr/Jenkinsfile
-      lightweight-checkout: true
+      lightweight-checkout: false
     triggers:
       - github-pull-request:
           org-list:
