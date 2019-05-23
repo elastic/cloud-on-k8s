@@ -5,7 +5,6 @@
 package settings
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -74,12 +73,9 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslCertificate:            path.Join(volume.NodeCertificatesSecretVolumeMountPath, nodecerts.CertFileName),
 		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.NodeCertificatesSecretVolumeMountPath, certificates.CAFileName),
 
-		// TODO: it would be great if we could move this out of "generic extra files" and into a more scoped secret
-		//       alternatively, we could rename extra files to be a bit more specific and make it more of a
-		//       reusable component somehow.
-		XPackSecurityTransportSslTrustRestrictionsPath: fmt.Sprintf(
-			"%s/%s",
-			volume.ClusterSecretsVolumeMountPath,
+		// x-pack security transport ssl trust restrictions settings
+		XPackSecurityTransportSslTrustRestrictionsPath: path.Join(
+			volume.NodeCertificatesSecretVolumeMountPath,
 			nodecerts.TrustRestrictionsFilename,
 		),
 	}

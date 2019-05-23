@@ -7,6 +7,7 @@ package nodecerts
 import (
 	"bytes"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -46,6 +47,7 @@ func ReconcileNodeCertificateSecrets(
 ) (reconcile.Result, error) {
 	log.Info("Reconciling node certificate secrets")
 
+	// load additional trusted CAs from the trustrelationships
 	additionalCAs := make([][]byte, 0, len(trustRelationships))
 	for _, trustRelationship := range trustRelationships {
 		if trustRelationship.Spec.CaCert == "" {
@@ -53,6 +55,19 @@ func ReconcileNodeCertificateSecrets(
 		}
 
 		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
+	}
+
+	// build the trust.yml file
+	trustRootCfg := NewTrustRootConfig(es.Name, es.Namespace)
+
+	// include the trust restrictions from the trust relationships into the trust restrictions config
+	for _, trustRelationship := range trustRelationships {
+		trustRootCfg.Include(trustRelationship.Spec.TrustRestrictions)
+	}
+
+	trustRootCfgData, err := json.Marshal(&trustRootCfg)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
 
 	// get all existing secrets for this cluster
@@ -102,7 +117,7 @@ func ReconcileNodeCertificateSecrets(
 		switch certificateType {
 		case LabelNodeCertificateTypeElasticsearchAll:
 			if res, err := doReconcile(
-				c, secret, pod, csrClient, es, services, ca, additionalCAs, nodeCertValidity, nodeCertRotateBefore,
+				c, secret, pod, csrClient, es, services, ca, additionalCAs, trustRootCfgData, nodeCertValidity, nodeCertRotateBefore,
 			); err != nil {
 				return res, err
 			}
@@ -127,6 +142,7 @@ func doReconcile(
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
+	trustRootCfgData []byte,
 	nodeCertValidity time.Duration,
 	nodeCertReconcileBefore time.Duration,
 ) (reconcile.Result, error) {
@@ -204,7 +220,12 @@ func doReconcile(
 		secret.Data[certificates.CAFileName] = trusted
 	}
 
-	if issueNewCertificate || updateTrustedCACerts {
+	updateTrustRestrictions := !bytes.Equal(trustRootCfgData, secret.Data[TrustRestrictionsFilename])
+	if updateTrustRestrictions {
+		secret.Data[TrustRestrictionsFilename] = trustRootCfgData
+	}
+
+	if issueNewCertificate || updateTrustedCACerts || updateTrustRestrictions {
 		log.Info("Updating node certificate secret", "secret", secret.Name)
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
