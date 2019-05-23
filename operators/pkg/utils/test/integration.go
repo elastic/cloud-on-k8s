@@ -58,7 +58,7 @@ func RunWithK8s(m *testing.M, crdPath string) {
 	os.Exit(code)
 }
 
-// StarTestController sets up a manager and controller to perform reconciliations in background.
+// StartManager sets up a manager and controller to perform reconciliations in background.
 // It must be stopped by calling the returned function.
 func StartManager(t *testing.T, addToMgrFunc func(manager.Manager, operator.Parameters) error, parameters operator.Parameters) (k8s.Client, func()) {
 	mgr, err := manager.New(Config, manager.Options{})
