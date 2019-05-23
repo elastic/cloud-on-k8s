@@ -5,18 +5,20 @@
 package test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const (
@@ -31,6 +33,11 @@ var log = logf.Log.WithName("integration-test")
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {
+	if err := apis.AddToScheme(scheme.Scheme); err != nil {
+		fmt.Println("fail to add scheme")
+		panic(err)
+	}
+
 	logf.SetLogger(logf.ZapLogger(true))
 	t := &envtest.Environment{
 		CRDDirectoryPaths:        []string{crdPath},
@@ -39,11 +46,14 @@ func RunWithK8s(m *testing.M, crdPath string) {
 
 	var err error
 	if Config, err = t.Start(); err != nil {
-		log.Error(err, "failed to start")
+		fmt.Println("failed to start test environment:", err.Error())
+		panic(err)
 	}
 
 	code := m.Run()
-	t.Stop()
+	if err := t.Stop(); err != nil {
+		fmt.Println("failed to stop test environment:", err.Error())
+	}
 	os.Exit(code)
 }
 

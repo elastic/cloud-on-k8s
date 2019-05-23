@@ -6,7 +6,9 @@ package name
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	"k8s.io/apimachinery/pkg/util/rand"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -36,7 +38,7 @@ const (
 	cAPrivateKeySecretSuffix    = "-ca-private-key"
 	elasticUserSecretSuffix     = "-elastic-user"
 	esRolesUsersSecretSuffix    = "-es-roles-users"
-	extraFilesSecretSuffix      = "-extrafiles"
+	clusterSecretsSecretSuffix  = "-secrets"
 	internalUsersSecretSuffix   = "-internal-users"
 	unicastHostsConfigMapSuffix = "-unicast-hosts"
 )
@@ -62,13 +64,33 @@ func suffix(name string, sfx string) string {
 
 // NewPodName returns a unique name to be used for the pod name and the
 // Elasticsearch cluster node name.
-func NewPodName(esName string) string {
-	sfx := stringsutil.Concat(
-		string(podSuffix),
-		"-",
-		rand.String(podRandomSuffixLength),
-	)
-	return suffix(esName, sfx)
+// The generated pod name follows the pattern "{esName}-es-[{nodeSpec.Name}-]{random suffix}".
+func NewPodName(esName string, nodeSpec v1alpha1.NodeSpec) string {
+	var sfx strings.Builder
+
+	// it's safe to ignore the result here as strings.Builder cannot error on sfx.WriteString
+	sfx.WriteString(podSuffix) // #nosec G104
+	sfx.WriteString("-")       // #nosec G104
+
+	if nodeSpec.Name != "" {
+		sfx.WriteString(nodeSpec.Name) // #nosec G104
+		sfx.WriteString("-")           // #nosec G104
+	}
+
+	sfx.WriteString(rand.String(podRandomSuffixLength)) // #nosec G104
+
+	return suffix(esName, sfx.String())
+}
+
+// Basename returns the base name (without the random suffix) for the provided pod.
+// E.g: A pod named foo-bar-baz-{suffix} has a basename of "foo-bar-baz".
+func Basename(podName string) string {
+	idx := strings.LastIndex(podName, "-")
+	if idx == -1 {
+		// no segments in the provided pod name, so return the full pod name
+		return podName
+	}
+	return podName[0:idx]
 }
 
 // NewPVCName returns a unique PVC name given a pod name and a PVC template name.
@@ -119,8 +141,8 @@ func EsRolesUsersSecret(esName string) string {
 	return suffix(esName, esRolesUsersSecretSuffix)
 }
 
-func ExtraFilesSecret(esName string) string {
-	return suffix(esName, extraFilesSecretSuffix)
+func ClusterSecretsSecret(esName string) string {
+	return suffix(esName, clusterSecretsSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {

@@ -65,7 +65,7 @@ func NewExpectedPodSpecs(
 				Resources:            esContainerResources,
 				UsersSecretVolume:    paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:      paramsTmpl.ConfigMapVolume,
-				ExtraFilesRef:        paramsTmpl.ExtraFilesRef,
+				ClusterSecretsRef:    paramsTmpl.ClusterSecretsRef,
 				ProbeUser:            paramsTmpl.ProbeUser,
 				ReloadCredsUser:      paramsTmpl.ReloadCredsUser,
 				UnicastHostsVolume:   paramsTmpl.UnicastHostsVolume,
@@ -114,10 +114,10 @@ func podSpec(
 		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
 	)
 
-	extraFilesSecretVolume := volume.NewSecretVolumeWithMountPath(
-		p.ExtraFilesRef.Name,
-		"extrafiles",
-		volume.ExtraFilesSecretVolumeMountPath,
+	clusterSecretsSecretVolume := volume.NewSecretVolumeWithMountPath(
+		p.ClusterSecretsRef.Name,
+		"secrets",
+		volume.ClusterSecretsVolumeMountPath,
 	)
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
@@ -169,7 +169,7 @@ func podSpec(
 				p.ConfigMapVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
-				extraFilesSecretVolume.VolumeMount(),
+				clusterSecretsSecretVolume.VolumeMount(),
 				nodeCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
@@ -185,7 +185,7 @@ func podSpec(
 			p.ConfigMapVolume.Volume(),
 			p.UnicastHostsVolume.Volume(),
 			probeSecret.Volume(),
-			extraFilesSecretVolume.Volume(),
+			clusterSecretsSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			secureSettingsVolume.Volume(),
 		),
@@ -239,7 +239,7 @@ func NewPod(
 
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name.NewPodName(es.Name),
+			Name:        name.NewPodName(es.Name, podSpecCtx.NodeSpec),
 			Namespace:   es.Namespace,
 			Labels:      labels,
 			Annotations: podSpecCtx.NodeSpec.PodTemplate.Annotations,

@@ -13,16 +13,21 @@ VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
 VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
+VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
+VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
+VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
 
 DOCKER_LOGIN ?= cloudadmin
+
+VAULT_TOKEN ?= $(shell vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID))
 
 check-license-header:
 	./../check-license-header.sh
 
 # login to vault and retrieve gke creds into $GKE_CREDS_FILE
 vault-gke-creds:
-	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-	vault read \
+	@ VAULT_TOKEN=$(VAULT_TOKEN) \
+		vault read \
 		-address=$(VAULT_ADDR) \
 		-field=service-account \
 		$(VAULT_GKE_CREDS_SECRET) \
@@ -30,8 +35,8 @@ vault-gke-creds:
 
 # reads Elastic public key from Vault into $PUBLIC_KEY_FILE
 vault-public-key:
-	VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-	vault read \
+	@ VAULT_TOKEN=$(VAULT_TOKEN) \
+	 	vault read \
 		-address=$(VAULT_ADDR) \
 		-field=pubkey \
 		$(VAULT_PUBLIC_KEY) \
@@ -40,8 +45,27 @@ vault-public-key:
 
 # reads Docker password from Vault
 vault-docker-creds:
-	@ VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id=$(VAULT_ROLE_ID) secret_id=$(VAULT_SECRET_ID)) \
-		vault read -address=$(VAULT_ADDR) -field=password $(VAULT_DOCKER_CREDENTIALS) > $(DOCKER_CREDENTIALS_FILE)
+	@ VAULT_TOKEN=$(VAULT_TOKEN) \
+	 	vault read \
+		-address=$(VAULT_ADDR) \
+		-field=password \
+		$(VAULT_DOCKER_CREDENTIALS) \
+		> $(DOCKER_CREDENTIALS_FILE)
+
+# reads AWS creds for yaml upload
+vault-aws-creds:
+	@ VAULT_TOKEN=$(VAULT_TOKEN) \
+		vault read \
+		-address=$(VAULT_ADDR) \
+		-field=access-key-id \
+		$(VAULT_AWS_CREDS) \
+		> $(VAULT_AWS_ACCESS_KEY_FILE)
+	@ VAULT_TOKEN=$(VAULT_TOKEN) \
+		vault read \
+		-address=$(VAULT_ADDR) \
+		-field=secret-access-key \
+		$(VAULT_AWS_CREDS) \
+		> $(VAULT_AWS_SECRET_KEY_FILE)
 
 ## -- Job executed on all PRs
 
@@ -77,6 +101,13 @@ ci-release: vault-public-key vault-docker-creds
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
+yaml-upload: vault-aws-creds
+	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
+		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
+		aws s3 cp \
+		$(ROOT_DIR)/operators/config/all-in-one.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml
+
 ## -- End-to-end tests job
 
 # Spawn a k8s cluster, and run e2e tests against it
@@ -92,5 +123,6 @@ ci-e2e: vault-gke-creds
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
 		-e "GKE_CLUSTER_NAME=e2e-qa-$(shell date +'%Y%m%d-%H%M%S')" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"

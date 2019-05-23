@@ -83,8 +83,8 @@ type NewPodSpecParams struct {
 	UsersSecretVolume volume.SecretVolume
 	// ConfigMapVolume is a volume containing a config map with configuration files
 	ConfigMapVolume volume.ConfigMapVolume
-	// ExtraFilesRef is a reference to a secret containing generic extra resources for the pod.
-	ExtraFilesRef types.NamespacedName
+	// ClusterSecretsRef is a reference to a secret containing generic secrets shared between pods in the cluster.
+	ClusterSecretsRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
 	// ReloadCredsUser is the user that should be used for reloading the credentials.

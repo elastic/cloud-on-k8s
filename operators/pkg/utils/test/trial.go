@@ -14,11 +14,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func StartTrial(t *testing.T, c k8s.Client) {
+func StartTrial(t *testing.T, c k8s.Client, namespace string) {
 	l := v1alpha1.EnterpriseLicense{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "trial-license",
-			Namespace: "default",
+			Namespace: namespace,
 		},
 		Spec: v1alpha1.EnterpriseLicenseSpec{
 			Type: v1alpha1.LicenseTypeEnterpriseTrial,
