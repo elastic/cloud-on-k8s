@@ -23,8 +23,8 @@ import (
 type VersionWideResources struct {
 	// ClusterSecrets contains possible user-defined secret files we want to have access to in the containers.
 	ClusterSecrets corev1.Secret
-	// GenericUnecryptedConfigurationFiles contains non-secret files Pods with this version should have access to.
-	GenericUnecryptedConfigurationFiles corev1.ConfigMap
+	// GenericUnencryptedConfigurationFiles contains non-secret files Pods with this version should have access to.
+	GenericUnencryptedConfigurationFiles corev1.ConfigMap
 }
 
 func reconcileVersionWideResources(
@@ -80,7 +80,7 @@ func reconcileVersionWideResources(
 	}
 
 	return &VersionWideResources{
-		GenericUnecryptedConfigurationFiles: expectedConfigMap,
-		ClusterSecrets:                      reconciledClusterSecretsSecret,
+		GenericUnencryptedConfigurationFiles: expectedConfigMap,
+		ClusterSecrets:                       reconciledClusterSecretsSecret,
 	}, nil
 }

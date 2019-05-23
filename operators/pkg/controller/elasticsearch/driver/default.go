@@ -526,7 +526,7 @@ func (d *defaultDriver) calculateChanges(
 			ClusterSecretsRef:  k8s.ExtractNamespacedName(&versionWideResources.ClusterSecrets),
 			ProbeUser:          internalUsers.ProbeUser.Auth(),
 			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnencryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
 		},
 		d.OperatorImage,
