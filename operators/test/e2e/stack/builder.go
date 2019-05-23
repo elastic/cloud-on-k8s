@@ -9,14 +9,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-const defaultVersion = "7.1.0"
 
 var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
@@ -48,23 +46,23 @@ type Builder struct {
 func NewStackBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: helpers.DefaultNamespace,
+		Namespace: params.Namespace,
 	}
 
 	return Builder{
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				Version: defaultVersion,
+				Version: params.ElasticStackVersion,
 			},
 		},
 		Kibana: kbtype.Kibana{
 			ObjectMeta: meta,
 			Spec: kbtype.KibanaSpec{
-				Version: defaultVersion,
+				Version: params.ElasticStackVersion,
 				ElasticsearchRef: commonv1alpha1.ObjectSelector{
 					Name:      name,
-					Namespace: helpers.DefaultNamespace,
+					Namespace: params.Namespace,
 				},
 			},
 		},
