@@ -25,9 +25,9 @@ import (
 
 // VersionWideResources are resources that are tied to a version, but no specific pod within that version
 type VersionWideResources struct {
-	// ExtraFilesSecret contains some extra files we want to have access to in the containers, but had nowhere we wanted
+	// ClusterSecrets contains some extra files we want to have access to in the containers, but had nowhere we wanted
 	// it to call home, so they ended up here.
-	ExtraFilesSecret corev1.Secret
+	ClusterSecrets corev1.Secret
 	// GenericUnecryptedConfigurationFiles contains non-secret files Pods with this version should have access to.
 	GenericUnecryptedConfigurationFiles corev1.ConfigMap
 }
@@ -56,35 +56,35 @@ func reconcileVersionWideResources(
 		return nil, err
 	}
 
-	expectedExtraFilesSecret := corev1.Secret{
+	expectedClusterSecretsSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
-			Name:      name.ExtraFilesSecret(es.Name),
+			Name:      name.ClusterSecretsSecret(es.Name),
 		},
 		Data: map[string][]byte{
 			nodecerts.TrustRestrictionsFilename: trustRootCfgData,
 		},
 	}
 
-	var reconciledExtraFilesSecret corev1.Secret
+	var reconciledClusterSecretsSecret corev1.Secret
 
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme,
 		Owner:      &es,
-		Expected:   &expectedExtraFilesSecret,
-		Reconciled: &reconciledExtraFilesSecret,
+		Expected:   &expectedClusterSecretsSecret,
+		Reconciled: &reconciledClusterSecretsSecret,
 		NeedsUpdate: func() bool {
 			// .Data might be nil in the secret, so make sure to initialize it
-			if reconciledExtraFilesSecret.Data == nil {
-				reconciledExtraFilesSecret.Data = make(map[string][]byte, 1)
+			if reconciledClusterSecretsSecret.Data == nil {
+				reconciledClusterSecretsSecret.Data = make(map[string][]byte, 1)
 			}
-			currentTrustConfig, ok := reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename]
+			currentTrustConfig, ok := reconciledClusterSecretsSecret.Data[nodecerts.TrustRestrictionsFilename]
 
 			return !ok || !bytes.Equal(currentTrustConfig, trustRootCfgData)
 		},
 		UpdateReconciled: func() {
-			reconciledExtraFilesSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
+			reconciledClusterSecretsSecret.Data[nodecerts.TrustRestrictionsFilename] = trustRootCfgData
 		},
 		PostUpdate: func() {
 			annotation.MarkPodsAsUpdated(c,
@@ -99,6 +99,6 @@ func reconcileVersionWideResources(
 
 	return &VersionWideResources{
 		GenericUnecryptedConfigurationFiles: expectedConfigMap,
-		ExtraFilesSecret:                    reconciledExtraFilesSecret,
+		ClusterSecrets:                      reconciledClusterSecretsSecret,
 	}, nil
 }

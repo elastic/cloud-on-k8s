@@ -25,7 +25,7 @@ const (
 	SecureSettingsVolumeName      = "secure-settings"
 	SecureSettingsVolumeMountPath = "/mnt/elastic/secure-settings"
 
-	ExtraFilesSecretVolumeMountPath = "/usr/share/elasticsearch/config/extrafiles"
+	ClusterSecretsVolumeMountPath = "/usr/share/elasticsearch/config/secrets"
 
 	UnicastHostsVolumeMountPath = "/mnt/elastic/unicast-hosts"
 	UnicastHostsFile            = "unicast_hosts.txt"

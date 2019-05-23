@@ -79,7 +79,7 @@ func xpackConfig() *CanonicalConfig {
 		//       reusable component somehow.
 		XPackSecurityTransportSslTrustRestrictionsPath: fmt.Sprintf(
 			"%s/%s",
-			volume.ExtraFilesSecretVolumeMountPath,
+			volume.ClusterSecretsVolumeMountPath,
 			nodecerts.TrustRestrictionsFilename,
 		),
 	}
