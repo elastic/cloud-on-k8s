@@ -27,6 +27,7 @@ const (
 	// in kubebuilder integration tests.
 	// It is set at a relatively high value due to low resources in continuous integration.
 	ControlPlaneStartTimeout = 2 * time.Minute
+	BootstrapTestEnvRetries  = 3
 )
 
 var Config *rest.Config
@@ -45,10 +46,22 @@ func RunWithK8s(m *testing.M, crdPath string) {
 		ControlPlaneStartTimeout: ControlPlaneStartTimeout,
 	}
 
-	var err error
-	if Config, err = t.Start(); err != nil {
-		fmt.Println("failed to start test environment:", err.Error())
-		panic(err)
+	// attempt to start the k8s test environment
+	// this happens to fail for various reasons, let's retry up to BootstrapTestEnvRetries times
+	retry := 1
+	for {
+		if retry > BootstrapTestEnvRetries {
+			fmt.Printf("failed to start test environment after %d attempts, exiting.\n", BootstrapTestEnvRetries)
+			os.Exit(1)
+		}
+		var err error
+		Config, err = t.Start()
+		if err == nil {
+			break // test environment successfully started
+		}
+		fmt.Printf("failed to start test environment (attempt %d/%d): %s\n", retry, BootstrapTestEnvRetries, err.Error())
+		retry++
+		continue
 	}
 
 	code := m.Run()
