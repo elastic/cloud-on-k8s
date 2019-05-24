@@ -206,6 +206,16 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
+	/*userSecretKey := KibanaUserKey(kibana, esRef.Namespace)
+	// watch the user secret in the ES namespace
+	if err := r.watches.ElasticsearchClusters.AddHandler(watches.NamedWatch{
+		Name:    elasticsearchWatchName(kibanaKey),
+		Watched: userSecretKey,
+		Watcher: kibanaKey,
+	}); err != nil {
+		return commonv1alpha1.AssociationFailed, err
+	}*/
+
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
 		if apierrors.IsNotFound(err) {
