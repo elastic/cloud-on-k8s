@@ -100,8 +100,12 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	# to a volume, to be used by the ES container
 	mv_start=$(date +%s)
 	{{range .SharedVolumes.Array}}
-		echo "Moving {{.EsContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-		mv {{.EsContainerMountPath}}/* {{.InitContainerMountPath}}/
+		if [[ -z "$(ls -A {{.EsContainerMountPath}})" ]]; then
+			echo "Empty dir {{.EsContainerMountPath}}"
+		else
+			echo "Moving {{.EsContainerMountPath}}/* to {{.InitContainerMountPath}}/"
+			mv {{.EsContainerMountPath}}/* {{.InitContainerMountPath}}/
+		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."
 
