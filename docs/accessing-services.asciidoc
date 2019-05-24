@@ -3,7 +3,7 @@
 
 All Elastic Stack resources deployed by the ECK Operator are secured by default, which means it sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
 
-Elasticsearch and Kibana are then accessible using native Kubernetes services that are not reachable from the public Internet by default.
+Elasticsearch and Kibana are accessible using native Kubernetes services that are not reachable from the public Internet by default.
 
 [id="{p}-kubernetes-service"]
 == Kubernetes service for each resource
@@ -22,7 +22,7 @@ hulk-kibana         ClusterIP      10.19.247.151   <none>           5601:32567/T
 [id="{p}-tls-certificates"]
 == TLS Certificates
 
-The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates is on the roadmap link:https://github.com/elastic/cloud-on-k8s/issues/776[#776].
+The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates will arrive in the future.
 
 [source,sh]
 ----
@@ -79,7 +79,6 @@ hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/T
 
 To use a custom domain name, you may have to reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service` depending your needs and what your cloud provider offers. Whatever is used, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
 
-
 [source,yaml]
 ----
 spec:
@@ -96,8 +95,8 @@ spec:
 [id="{p}-request-elasticsearch-endpoint"]
 == Request the Elasticsearch endpoint
 
-To request the Elasticsearch endpoint using basic authentication and certificate validation with the CA, you
-have to retrieve the CA certificate, the IP of the service and the password of the elastic user:
+To request the Elasticsearch endpoint using a `LoadBalancer` `Service`, basic authentication and certificate validation with the CA,
+you have to retrieve the CA certificate, the IP of the service and the password of the elastic user:
 
 [source,sh]
 ----
@@ -110,7 +109,7 @@ PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | b
 curl --cacert ca.pem -u elastic:$PW https://$IP:9200/
 ----
 
-At this stage, you should encounter this issue:
+At this stage, you should get this message:
 
 [source,sh]
 ----
@@ -118,7 +117,7 @@ curl: (51) SSL: no alternative certificate subject name matches target host name
 
 ----
 
-This is corrected by adding the external IP of the service to the SANs of the certificate (link:https://github.com/elastic/cloud-on-k8s/issues/910[until this is done automatically]):
+Add the external IP of the service to the SANs of the certificate:
 
 [source,yaml]
 ----
