@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 )
 
 // NewHTTPClient creates a new HTTP client that is aware of any port forwarding configuration.
@@ -16,7 +17,7 @@ func NewHTTPClient() http.Client {
 	client := http.Client{
 		Timeout: 60 * time.Second,
 	}
-	if *autoPortForward {
+	if params.AutoPortForward {
 		client.Transport = &http.Transport{
 			DialContext: portforward.NewForwardingDialer().DialContext,
 		}

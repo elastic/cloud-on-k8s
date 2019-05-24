@@ -8,6 +8,7 @@ package processmanager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,7 +75,7 @@ func startContainer(t *testing.T, cmd string) Client {
 		"-e", "PM_KEYSTORE_UPDATER=false",
 		imageName).Start()
 	assert.NoError(t, err)
-	time.Sleep(1 * time.Second)
+	waitForContainerReady(t)
 
 	client := NewClient(fmt.Sprintf("http://%s:%s", "localhost", port), nil, nil)
 	assertProcessStatus(t, client, Started)
@@ -84,34 +86,54 @@ func startContainer(t *testing.T, cmd string) Client {
 func restartContainer(t *testing.T) {
 	err := bash("docker start %s", containerName).Run()
 	assert.NoError(t, err)
+	waitForContainerReady(t)
+}
+
+func waitForContainerReady(t *testing.T) {
+	test.RetryUntilSuccess(t, func() error {
+		return bash("docker exec %s sh -c exit", containerName).Run()
+	})
 }
 
 func getProcessPID(t *testing.T) string {
-	out, err := bash("docker exec %s ps -eo pid,cmd | grep java | awk '{print $1}'", containerName).Output()
+	out, err := bash("docker exec %s ps -eo pid,cmd | grep org.elasticsearch.bootstrap.Elasticsearch | awk '{print $1}'", containerName).Output()
 	assert.NoError(t, err)
 	return string(out)
 }
 
 func assertContainerExited(t *testing.T) {
-	time.Sleep(1 * time.Second)
-
-	out, err := bash(`docker ps --all --filter=name=%s --format="{{.Status}}"`, containerName).Output()
-	assert.NoError(t, err)
-	assert.True(t, strings.Contains(string(out), "Exited"))
+	test.RetryUntilSuccess(t, func() error {
+		out, err := bash(`docker ps --all --filter=name=%s --format="{{.Status}}"`, containerName).Output()
+		if err != nil {
+			return err
+		}
+		if !strings.Contains(string(out), "Exited") {
+			return errors.New("container should be exited")
+		}
+		return nil
+	})
 }
 
 func assertProcessStatus(t *testing.T, client Client, expectedState ProcessState) {
-	time.Sleep(1 * time.Second)
-
-	status, err := client.Status(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, expectedState.String(), status.State.String())
-
-	if status.State == Started {
-		assert.NotEmpty(t, getProcessPID(t))
-	} else {
-		assert.Empty(t, getProcessPID(t))
-	}
+	test.RetryUntilSuccess(t, func() error {
+		status, err := client.Status(context.Background())
+		if err != nil {
+			return err
+		}
+		if expectedState.String() != status.State.String() {
+			return errors.New("container should have exited")
+		}
+		if status.State == Started {
+			if getProcessPID(t) == "" {
+				return errors.New("PID should not be empty")
+			}
+		} else {
+			if getProcessPID(t) != "" {
+				return errors.New("PID should be empty")
+			}
+		}
+		return nil
+	})
 }
 
 // -- Tests

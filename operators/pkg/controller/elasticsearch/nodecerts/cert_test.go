@@ -393,6 +393,7 @@ func Test_doReconcile(t *testing.T) {
 				testCluster,
 				[]corev1.Service{testSvc},
 				testCA, tt.additionalTrustedCAsPemEncoded,
+				nil,
 				certificates.DefaultCertValidity,
 				certificates.DefaultRotateBefore,
 			)

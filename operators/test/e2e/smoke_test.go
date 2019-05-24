@@ -11,6 +11,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -27,8 +28,8 @@ func TestSmoke(t *testing.T) {
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
 
-	namespacedSampleStack := sampleStack.WithNamespace(helpers.DefaultNamespace)
-	namespacedSampleApm := sampleApm.WithNamespace(helpers.DefaultNamespace)
+	namespacedSampleStack := sampleStack.WithNamespace(params.Namespace)
+	namespacedSampleApm := sampleApm.WithNamespace(params.Namespace)
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
