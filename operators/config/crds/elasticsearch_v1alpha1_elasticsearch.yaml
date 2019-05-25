@@ -134,8 +134,9 @@ spec:
                     type: integer
                   podTemplate:
                     description: PodTemplate can be used to propagate configuration
-                      to Elasticsearch pods. So far, only labels, Affinity and `Containers["elasticsearch"].Resources.Limits`
-                      are applied.
+                      to Elasticsearch pods. This allows specifying custom annotations,
+                      labels, environment variables, volumes, affinity, resources,
+                      etc. to the pod.
                     type: object
                   volumeClaimTemplates:
                     description: 'VolumeClaimTemplates is a list of claims that pods

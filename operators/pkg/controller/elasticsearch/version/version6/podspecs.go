@@ -94,13 +94,12 @@ func newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
+	heapSize int,
 	nodeCertificatesVolume volume.SecretVolume,
 	privateKeySecretVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
-	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
-
 	vars := []corev1.EnvVar{
 		// inject pod name and IP as environment variables dynamically,
 		// to be referenced in elasticsearch configuration file

@@ -32,6 +32,7 @@ var testObjectMeta = metav1.ObjectMeta{
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
+		heapSize               int
 		nodeCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
 		reloadCredsUserVolume  volume.SecretVolume
@@ -50,6 +51,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 					ReloadCredsUser: testReloadCredsUser,
 					Version:         "6",
 				},
+				heapSize:               1024,
 				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
@@ -83,7 +85,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
+			got := newEnvironmentVars(tt.args.p, tt.args.heapSize, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
 				tt.args.reloadCredsUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})

@@ -70,7 +70,8 @@ type NodeSpec struct {
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
-	// So far, only labels, Affinity and `Containers["elasticsearch"].Resources.Limits` are applied.
+	// This allows specifying custom annotations, labels, environment variables,
+	// volumes, affinity, resources, etc. to the pod.
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
