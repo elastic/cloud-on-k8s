@@ -19,8 +19,11 @@ const (
 	ReloadCredsUserSecretMountPath = "/mnt/elastic/reload-creds-user"
 	ReloadCredsUserVolumeName      = "reload-creds-user"
 
-	NodeCertificatesSecretVolumeName      = "node-certificates"
-	NodeCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/node-certs"
+	TransportCertificatesSecretVolumeName      = "transport-certificates"
+	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
+
+	HTTPCertificatesSecretVolumeName      = "http-certificates"
+	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs"
 
 	SecureSettingsVolumeName      = "secure-settings"
 	SecureSettingsVolumeMountPath = "/mnt/elastic/secure-settings"

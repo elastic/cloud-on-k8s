@@ -34,7 +34,7 @@ func TestNamer_WithDefaultSuffixes(t *testing.T) {
 			},
 		},
 		{
-			name:  "should add suffixes when there is no suffix to begin with",
+			name: "should add suffixes when there is no suffix to begin with",
 			namer: Namer{
 				MaxSuffixLength: 27,
 			},

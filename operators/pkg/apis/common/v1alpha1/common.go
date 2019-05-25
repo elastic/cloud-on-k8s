@@ -36,7 +36,7 @@ func (s ObjectSelector) NamespacedName() types.NamespacedName {
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
 	Service HTTPService `json:"service,omitempty"`
-	// TLS describe additional options to consider when generating nodes TLS certificates.
+	// TLS describe additional options to consider when generating HTTP TLS certificates.
 	TLS TLSOptions `json:"tls,omitempty"`
 }
 
@@ -47,7 +47,7 @@ type TLSOptions struct {
 }
 
 type SelfSignedCertificate struct {
-	// SubjectAlternativeNames is a list of SANs to include in the nodes certificates.
+	// SubjectAlternativeNames is a list of SANs to include in the HTTP TLS certificates.
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 }

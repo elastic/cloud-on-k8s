@@ -7,6 +7,8 @@ package name
 import (
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -32,8 +34,8 @@ const (
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 
-	cASecretSuffix           = "ca"
-	cAPrivateKeySecretSuffix = "ca-private-key"
+	certsPublicSecretName   = "certs-public"
+	certsInternalSecretName = "certs-internal"
 )
 
 // ESNamer is a Namer that is configured with the defaults for resources related to an ES cluster.
@@ -91,7 +93,7 @@ func SecureSettingsSecret(esName string) string {
 	return ESNamer.Suffix(esName, secureSettingsSecretSuffix)
 }
 
-func CertsSecret(podName string) string {
+func TransportCertsSecret(podName string) string {
 	return esNoDefaultSuffixesNamer.Suffix(podName, certsSecretSuffix)
 }
 
@@ -101,14 +103,6 @@ func Service(esName string) string {
 
 func DiscoveryService(esName string) string {
 	return ESNamer.Suffix(esName, discoveryServiceSuffix)
-}
-
-func CASecret(esName string) string {
-	return ESNamer.Suffix(esName, cASecretSuffix)
-}
-
-func CAPrivateKeySecret(esName string) string {
-	return ESNamer.Suffix(esName, cAPrivateKeySecretSuffix)
 }
 
 func ElasticUserSecret(esName string) string {
@@ -130,4 +124,12 @@ func InternalUsersSecret(esName string) string {
 // UnicastHostsConfigMap returns the name of the ConfigMap that holds the list of seed nodes for a given cluster.
 func UnicastHostsConfigMap(esName string) string {
 	return ESNamer.Suffix(esName, unicastHostsConfigMapSuffix)
+}
+
+func HTTPCertsInternalSecretName(esName string) string {
+	return ESNamer.Suffix(esName, string(certificates.HTTPCAType), certsInternalSecretName)
+}
+
+func CertsPublicSecretName(esName string, caType certificates.CAType) string {
+	return ESNamer.Suffix(esName, string(caType), certsPublicSecretName)
 }

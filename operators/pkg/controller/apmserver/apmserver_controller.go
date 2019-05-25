@@ -297,7 +297,6 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	certificateAuthoritiesSecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthoritiesSecret
 	if certificateAuthoritiesSecretName != nil {
 		// TODO: use apmServerCa to generate cert for deployment
-		// to do that, EnsureNodeCertificateSecretExists needs a deployment variant.
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
 		esCertsVolume := volume.NewSecretVolumeWithMountPath(

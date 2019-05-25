@@ -75,7 +75,7 @@ func BindEnvToFlags(cmd *cobra.Command) error {
 	cmd.Flags().StringP(esPasswordFlag, "p", "", "Elasticsearch password to reload credentials")
 	cmd.Flags().StringP(esEndpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
 	cmd.Flags().String(esVersionFlag, "", "Elasticsearch version")
-	cmd.Flags().StringP(esCaCertsPathFlag, "c", path.Join("/volume/node-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
+	cmd.Flags().StringP(esCaCertsPathFlag, "c", path.Join("/volume/http-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
 
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err

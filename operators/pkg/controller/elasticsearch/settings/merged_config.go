@@ -9,8 +9,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
@@ -62,21 +62,20 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslVerificationMode: "certificate",
 
 		// x-pack security http settings
-		XPackSecurityHttpSslEnabled:                "true",
-		XPackSecurityHttpSslKey:                    path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
-		XPackSecurityHttpSslCertificate:            path.Join(volume.NodeCertificatesSecretVolumeMountPath, nodecerts.CertFileName),
-		XPackSecurityHttpSslCertificateAuthorities: path.Join(volume.NodeCertificatesSecretVolumeMountPath, certificates.CAFileName),
+		XPackSecurityHttpSslEnabled:     "true",
+		XPackSecurityHttpSslKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
+		XPackSecurityHttpSslCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 
 		// x-pack security transport settings
 		XPackSecurityTransportSslEnabled:                "true",
 		XPackSecurityTransportSslKey:                    path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
-		XPackSecurityTransportSslCertificate:            path.Join(volume.NodeCertificatesSecretVolumeMountPath, nodecerts.CertFileName),
-		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.NodeCertificatesSecretVolumeMountPath, certificates.CAFileName),
+		XPackSecurityTransportSslCertificate:            path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
 
 		// x-pack security transport ssl trust restrictions settings
 		XPackSecurityTransportSslTrustRestrictionsPath: path.Join(
-			volume.NodeCertificatesSecretVolumeMountPath,
-			nodecerts.TrustRestrictionsFilename,
+			volume.TransportCertificatesSecretVolumeMountPath,
+			transport.TrustRestrictionsFilename,
 		),
 	}
 

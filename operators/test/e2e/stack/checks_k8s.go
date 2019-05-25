@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -45,16 +46,18 @@ func CheckCertificateAuthority(stack Builder, k *helpers.K8sHelper) helpers.Test
 	return helpers.TestStep{
 		Name: "Certificate Authority should be set and deployed",
 		Test: helpers.Eventually(func() error {
-			// Check if the private CA is there
-			_, err := k.GetCACert(stack.Elasticsearch.Name)
+			// Check that the Transport CA may be loaded
+			_, err := k.GetCA(stack.Elasticsearch.Name, certificates.TransportCAType)
 			if err != nil {
 				return err
 			}
-			// Check if the private key is here
-			_, err = k.GetCAPrivateKey(stack.Elasticsearch.Name)
+
+			// Check that the HTTP CA may be loaded
+			_, err = k.GetCA(stack.Elasticsearch.Name, certificates.HTTPCAType)
 			if err != nil {
 				return err
 			}
+
 			return nil
 		}),
 	}
@@ -70,7 +73,7 @@ func CheckPodCertificates(stack Builder, k *helpers.K8sHelper) helpers.TestStep 
 				return err
 			}
 			for _, pod := range pods {
-				_, _, err := k.GetNodeCert(pod.Name)
+				_, _, err := k.GetTransportCert(pod.Name)
 				if err != nil {
 					return err
 				}

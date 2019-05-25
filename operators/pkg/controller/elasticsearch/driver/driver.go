@@ -70,9 +70,6 @@ func NewDriver(opts Options) (Driver, error) {
 	driver := &defaultDriver{
 		Options: opts,
 
-		genericResourcesReconciler: reconcileGenericResources,
-		nodeCertificatesReconciler: reconcileNodeCertificates,
-
 		versionWideResourcesReconciler: reconcileVersionWideResources,
 
 		observedStateResolver:  opts.Observers.ObservedStateResolver,

@@ -164,7 +164,7 @@ samples:
 
 # Display elasticsearch credentials of the first stack
 show-credentials:
-	@ echo "elastic:$$(kubectl get secret elasticsearch-sample-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
+	@ echo "elastic:$$(kubectl get secret elasticsearch-sample-es-elastic-user -o json | jq -r '.data.elastic' | base64 -D)"
 
 
 ##########################################

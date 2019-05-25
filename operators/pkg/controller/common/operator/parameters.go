@@ -22,8 +22,8 @@ type Parameters struct {
 	CACertValidity time.Duration
 	// CACertRotateBefore defines how long before expiration CA certificates should be rotated
 	CACertRotateBefore time.Duration
-	// NodeCertValidity is the validity duration of a newly created node cert
-	NodeCertValidity time.Duration
-	// NodeCertRotateBefore defines how long before expiration nodes certificates should be rotated
-	NodeCertRotateBefore time.Duration
+	// CertValidity is the validity duration of a newly created certificate
+	CertValidity time.Duration
+	// CertRotateBefore defines how long before expiration certificates should be rotated
+	CertRotateBefore time.Duration
 }

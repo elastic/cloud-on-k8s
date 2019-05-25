@@ -4,7 +4,7 @@
 
 //+ build integration
 
-package nodecerts
+package transport
 
 import (
 	"testing"

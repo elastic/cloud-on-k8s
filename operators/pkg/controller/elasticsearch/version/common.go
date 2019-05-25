@@ -34,9 +34,9 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, certs volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -92,9 +92,9 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, certs volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 
 	elasticsearchImage := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
@@ -122,20 +122,22 @@ func podSpec(
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		volume.NodeCertificatesSecretVolumeName,
-		volume.NodeCertificatesSecretVolumeMountPath,
+		volume.TransportCertificatesSecretVolumeName,
+		volume.TransportCertificatesSecretVolumeMountPath,
 	)
-	privateKeyVolume := volume.NewSecretVolumeWithMountPath(
-		initcontainer.PrivateKeySharedVolume.Name,
-		initcontainer.PrivateKeySharedVolume.Volume().Name,
-		initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount().MountPath)
 
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.ClusterName),
 		volume.SecureSettingsVolumeName,
 		volume.SecureSettingsVolumeMountPath,
+	)
+
+	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.HTTPCertsInternalSecretName(p.ClusterName),
+		volume.HTTPCertificatesSecretVolumeName,
+		volume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
 	resourceLimits := corev1.ResourceList{
@@ -150,7 +152,7 @@ func podSpec(
 	podSpec := corev1.PodSpec{
 		Affinity: p.Affinity,
 		Containers: []corev1.Container{{
-			Env:             newEnvironmentVarsFn(p, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume),
+			Env:             newEnvironmentVarsFn(p, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume),
 			Image:           elasticsearchImage,
 			ImagePullPolicy: corev1.PullIfNotPresent,
 			Name:            v1alpha1.ElasticsearchContainerName,
@@ -170,9 +172,10 @@ func podSpec(
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				clusterSecretsSecretVolume.VolumeMount(),
-				nodeCertificatesVolume.VolumeMount(),
+				transportCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
+				httpCertificatesVolume.VolumeMount(),
 			),
 			Command: []string{processmanager.CommandPath},
 		}},
@@ -188,12 +191,13 @@ func podSpec(
 			clusterSecretsSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			secureSettingsVolume.Volume(),
+			httpCertificatesVolume.Volume(),
 		),
 		AutomountServiceAccountToken: &automountServiceAccountToken,
 	}
 
 	// Setup init containers
-	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
+	initContainers, err := newInitContainersFn(elasticsearchImage, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
 		return corev1.PodSpec{}, nil, err
 	}
