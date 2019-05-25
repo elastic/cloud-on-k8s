@@ -45,9 +45,9 @@ func TestReconcile(t *testing.T) {
 		"default", "trust-two-es",
 	)
 
-	ca1 := newCASecret("default", "trust-one-es-ca", ca1)
+	ca1 := newCASecret("default", "trust-one-es-es-ca", ca1)
 	require.NoError(t, c.Create(ca1))
-	ca2 := newCASecret("default", "trust-two-es-ca", ca2)
+	ca2 := newCASecret("default", "trust-two-es-es-ca", ca2)
 	require.NoError(t, c.Create(ca2))
 
 	// Create the RemoteCluster object

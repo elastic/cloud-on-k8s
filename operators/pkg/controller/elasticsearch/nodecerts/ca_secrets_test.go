@@ -18,11 +18,11 @@ import (
 )
 
 func Test_CACertSecretName(t *testing.T) {
-	require.Equal(t, "mycluster-ca", CACertSecretName(testName))
+	require.Equal(t, "mycluster-es-ca", CACertSecretName(testName))
 }
 
 func Test_CAPrivateKeySecretName(t *testing.T) {
-	require.Equal(t, "mycluster-ca-private-key", caPrivateKeySecretName(testName))
+	require.Equal(t, "mycluster-es-ca-private-key", caPrivateKeySecretName(testName))
 }
 
 func Test_secretsForCA(t *testing.T) {
@@ -36,12 +36,12 @@ func Test_secretsForCA(t *testing.T) {
 	privateKeySecret, certSecret := secretsForCA(*testCa, cluster)
 
 	assert.Equal(t, testNamespace, privateKeySecret.Namespace)
-	assert.Equal(t, testName+"-ca", certSecret.Name)
+	assert.Equal(t, testName+"-es-ca", certSecret.Name)
 	assert.Len(t, certSecret.Data, 1)
 	assert.NotEmpty(t, certSecret.Data[certificates.CAFileName])
 
 	assert.Equal(t, cluster.Namespace, privateKeySecret.Namespace)
-	assert.Equal(t, testName+"-ca-private-key", privateKeySecret.Name)
+	assert.Equal(t, testName+"-es-ca-private-key", privateKeySecret.Name)
 	assert.Len(t, privateKeySecret.Data, 1)
 	assert.NotEmpty(t, privateKeySecret.Data[CAPrivateKeyFileName])
 

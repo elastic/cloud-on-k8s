@@ -124,8 +124,8 @@ func Test_apply(t *testing.T) {
 			args: args{
 				rca: &ReconcileRemoteCluster{
 					Client: newFakeClient(t, []runtime.Object{
-						newCASecret("default", "trust-one-es-ca", ca1),
-						newCASecret("default", "trust-two-es-ca", ca2),
+						newCASecret("default", "trust-one-es-es-ca", ca1),
+						newCASecret("default", "trust-two-es-es-ca", ca2),
 						newRemoteInCluster(
 							"remotecluster-sample-1-2",
 							"default", "trust-one-es",
