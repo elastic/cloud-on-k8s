@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
@@ -57,7 +56,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						},
 					},
 				},
-				&estype.User{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
@@ -94,7 +93,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						},
 					},
 				},
-				&estype.User{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
@@ -124,7 +123,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Namespace,
 					Name:      userName,
-				}, &estype.User{}))
+				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
 					Name:      userSecretName,
@@ -155,7 +154,7 @@ func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: esFixture.Namespace,
 		Name:      userName,
-	}, &estype.User{}))
+	}, &corev1.Secret{}))
 	// user secret should be in Kibana namespace
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: kibanaFixture.Namespace,
