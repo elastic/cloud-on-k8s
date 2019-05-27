@@ -119,7 +119,7 @@ func TestReconcile(t *testing.T) {
 	})
 	// delete user: it should be recreated
 	kibanaUserKey := KibanaUserKey(kb, es.Namespace)
-	checkResourceRecreated(t, &esv1alpha1.User{
+	checkResourceRecreated(t, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kibanaUserKey.Name,
 			Namespace: kibanaUserKey.Namespace,
