@@ -75,6 +75,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(apm.Name)
+	secretLabels[AssociationLabelName] = apm.Name
 	// add ES labels
 	for k, v := range label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName()) {
 		secretLabels[k] = v
@@ -121,6 +122,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := commonuser.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
+	userLabels[AssociationLabelName] = apm.Name
 	expectedESUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,

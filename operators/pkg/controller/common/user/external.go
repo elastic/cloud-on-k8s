@@ -12,6 +12,8 @@ const (
 	UserName     = "name"
 	PasswordHash = "passwordHash"
 	UserRoles    = "userRoles"
+
+	fieldNotFound = "field %s not found in secret %s/%s"
 )
 
 type ProvidedUser struct {
@@ -29,10 +31,14 @@ func NewFromSecret(secret v1.Secret) (ProvidedUser, error) {
 
 	if username, ok := secret.Data[UserName]; ok && len(username) > 0 {
 		user.name = string(username)
+	} else {
+		return user, fmt.Errorf(fieldNotFound, UserName, secret.Namespace, secret.Name)
 	}
 
 	if password, ok := secret.Data[PasswordHash]; ok && len(password) > 0 {
 		user.password = password
+	} else {
+		return user, fmt.Errorf(fieldNotFound, PasswordHash, secret.Namespace, secret.Name)
 	}
 
 	if roles, ok := secret.Data[UserRoles]; ok && len(roles) > 0 {

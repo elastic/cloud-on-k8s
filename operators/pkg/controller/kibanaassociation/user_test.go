@@ -5,7 +5,6 @@
 package kibanaassociation
 
 import (
-	"strings"
 	"testing"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
@@ -70,29 +69,6 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	return sc
 }
 
-func getSecret(list corev1.SecretList, namespace, name string) *corev1.Secret {
-	for _, secret := range list.Items {
-		if secret.Namespace == namespace && secret.Name == name {
-			return &secret
-		}
-	}
-	return nil
-}
-
-// checktKibanaEsUser checks that a secret contains the required fields expected by the user reconciler.
-func checktKibanaEsUser(t *testing.T, secret *corev1.Secret, expectedUsername string, expectedRoles []string) {
-	assert.NotNil(t, secret)
-	currentUsername, ok := secret.Data["name"]
-	assert.True(t, ok)
-	assert.Equal(t, expectedUsername, string(currentUsername))
-	passwordHash, ok := secret.Data["passwordHash"]
-	assert.True(t, ok)
-	assert.NotEmpty(t, passwordHash)
-	currentRoles, ok := secret.Data["userRoles"]
-	assert.True(t, ok)
-	assert.ElementsMatch(t, expectedRoles, strings.Split(string(currentRoles), ","))
-}
-
 func Test_reconcileEsUser(t *testing.T) {
 	sc := setupScheme(t)
 
@@ -144,15 +120,15 @@ func Test_reconcileEsUser(t *testing.T) {
 				list := corev1.SecretList{}
 				assert.NoError(t, c.List(&client.ListOptions{}, &list))
 				assert.Equal(t, 3, len(list.Items))
-				s := getSecret(list, "other", userSecretName)
+				s := user.GetSecret(list, "other", userSecretName)
 				assert.NotNil(t, s)
-				s = getSecret(list, esFixture.Namespace, userSecretName)
+				s = user.GetSecret(list, esFixture.Namespace, userSecretName)
 				assert.NotNil(t, s)
 				password, passwordIsSet := s.Data[userName]
 				assert.True(t, passwordIsSet)
 				assert.NotEmpty(t, password)
-				s = getSecret(list, esFixture.Namespace, userName) // secret on the ES side
-				checktKibanaEsUser(t, s, userName, []string{"kibana_system"})
+				s = user.GetSecret(list, esFixture.Namespace, userName) // secret on the ES side
+				user.ChecksUser(t, s, userName, []string{"kibana_system"})
 			},
 		},
 		{
