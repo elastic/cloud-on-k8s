@@ -64,7 +64,7 @@ dep-vendor-only:
 generate:
 	go generate -tags='$(GO_TAGS)' ./pkg/... ./cmd/...
 	go run vendor/sigs.k8s.io/controller-tools/cmd/controller-gen/main.go all
-	$(MAKE) --no-print-directory generate-all-in-one
+	$(MAKE) --no-print-directory generate-all-in-one generate-global generate-namespace
 
 elastic-operator: generate
 	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
