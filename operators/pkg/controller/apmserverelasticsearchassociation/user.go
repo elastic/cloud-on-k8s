@@ -33,8 +33,8 @@ func apmUserObjectName(assocName string) string {
 	return assocName + "-" + InternalApmServerUserName
 }
 
-// apmUserKey is the namespaced name to identify the customer user resource created by the controller.
-func apmUserKey(apm apmtype.ApmServer) *types.NamespacedName {
+// userKey is the namespaced name to identify the customer user resource created by the controller.
+func userKey(apm apmtype.ApmServer) *types.NamespacedName {
 
 	ref := apm.Spec.Output.Elasticsearch.ElasticsearchRef
 	if ref == nil {
@@ -42,11 +42,11 @@ func apmUserKey(apm apmtype.ApmServer) *types.NamespacedName {
 	}
 	return &types.NamespacedName{
 		Namespace: ref.Namespace,
-		Name:      apmUserName(apm),
+		Name:      userName(apm),
 	}
 }
 
-func apmUserName(apm apmtype.ApmServer) string {
+func userName(apm apmtype.ApmServer) string {
 	return apm.Namespace + "-" + apm.Name + "-" + apmUser
 }
 
@@ -60,7 +60,7 @@ func secretKey(apm apmtype.ApmServer) types.NamespacedName {
 
 // creates a SecretKeySelector selecting the Apm user secret for the given association
 func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector {
-	usrKey := apmUserKey(apm)
+	usrKey := userKey(apm)
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: apmUserObjectName(apm.Name),
@@ -81,7 +81,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 		secretLabels[k] = v
 	}
 	secKey := secretKey(apm)
-	usrKey := apmUserKey(apm)
+	usrKey := userKey(apm)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,

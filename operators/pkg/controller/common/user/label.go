@@ -16,7 +16,7 @@ const (
 )
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by
-// NewLabels for the provided cluster name.
+// NewLabels for the provided cluster name and of for a resource of type "user"
 func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) labels.Selector {
 	return labels.SelectorFromSet(
 		map[string]string{
@@ -25,7 +25,7 @@ func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) labels.Selector
 		})
 }
 
-// NewLabels constructs a new set of labels from an Elasticsearch definition.
+// NewLabels constructs a new set of labels from an Elasticsearch definition for a resource of type "user".
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{
 		label.ClusterNameLabelName: es.Name,
@@ -34,7 +34,7 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewToRequestsFuncFromClusterNameLabel creates a watch handler function that creates reconcile requests based on the
-// the cluster name label on the watched resource.
+// the cluster name label if the resource if of type "user".
 func NewToRequestsFuncFromClusterNameLabel() handler.ToRequestsFunc {
 	return handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 		labels := obj.Meta.GetLabels()
