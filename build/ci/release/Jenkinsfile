@@ -12,6 +12,7 @@ pipeline {
         REPOSITORY = 'eck'
         IMG_NAME = 'eck-operator'
         IMG_SUFFIX = ''
+        LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
     }
 
     options {
@@ -34,9 +35,11 @@ pipeline {
     post {
         success {
             script {
-                def msg = "docker.elastic.co/" + env.REPOSITORY + "/" + env.IMG_NAME + ":" + env.TAG_NAME + " was pushed \r\n" +
-                          + "https://download.elastic.co/downloads/eck/" + env.TAG_NAME + "/all-in-one.yaml was uploaded \r\n" +
-                          + "Congratulations!"
+                def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
+                          "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
+                          "https://download.elastic.co/downloads/eck/${TAG_NAME}/global.yaml was uploaded \r\n" +
+                          "https://download.elastic.co/downloads/eck/${TAG_NAME}/namespace.yaml was uploaded \r\n" +
+                          "Congratulations!"
                 slackSend botUser: true,
                     channel: '#cloud-k8s',
                     color: 'good',
@@ -46,7 +49,7 @@ pipeline {
         }
         unsuccessful {
             script {
-                def msg = "Release job failed!\r\n" + env.BUILD_URL
+                def msg = "Release job failed!\r\n ${BUILD_URL}"
                 slackSend botUser: true,
                     channel: '#cloud-k8s',
                     color: 'danger',
