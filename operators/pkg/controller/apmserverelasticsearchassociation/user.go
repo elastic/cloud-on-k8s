@@ -121,7 +121,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := common.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
 	userLabels[AssociationLabelName] = apm.Name
-	expectedESUser := &corev1.Secret{
+	expectedEsUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
 			Namespace: usrKey.Namespace,
@@ -140,17 +140,17 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 		Client:     c,
 		Scheme:     s,
 		Owner:      &apm,
-		Expected:   expectedESUser,
+		Expected:   expectedEsUser,
 		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {
-			return !hasExpectedLabels(expectedESUser, &reconciledSecret) ||
-				!bytes.Equal(expectedESUser.Data["Name"], reconciledEsSecret.Data["Name"]) ||
-				!bytes.Equal(expectedESUser.Data["UserRoles"], reconciledEsSecret.Data["UserRoles"]) ||
+			return !hasExpectedLabels(expectedEsUser, &reconciledSecret) ||
+				!bytes.Equal(expectedEsUser.Data["Name"], reconciledEsSecret.Data["Name"]) ||
+				!bytes.Equal(expectedEsUser.Data["UserRoles"], reconciledEsSecret.Data["UserRoles"]) ||
 				bcrypt.CompareHashAndPassword(reconciledPw, []byte(reconciledEsSecret.Data["PasswordHash"])) == nil
 		},
 		UpdateReconciled: func() {
-			setExpectedLabels(expectedESUser, &reconciledEsSecret)
-			reconciledEsSecret.Data = expectedESUser.Data
+			setExpectedLabels(expectedEsUser, &reconciledEsSecret)
+			reconciledEsSecret.Data = expectedEsUser.Data
 		},
 	})
 }
