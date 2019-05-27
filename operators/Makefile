@@ -42,7 +42,7 @@ GLOBAL_OPERATOR_NAMESPACE ?= elastic-system
 # namespace in which the namespace operator is deployed (see config/namespace-operator)
 NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
 # namespace in which the namespace operator should watch resources
-export MANAGED_NAMESPACE ?= default
+MANAGED_NAMESPACE ?= default
 
 
 #####################################
@@ -157,6 +157,7 @@ generate-namespace:
 	$(MAKE) --no-print-directory -s generate-crds > config/namespace.yaml
 	OPERATOR_IMAGE=$(LATEST_RELEASED_IMG) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
+	MANAGED_NAMESPACE=$(MANAGED_NAMESPACE) \
     	$(MAKE) --no-print-directory -sC config/operator generate-namespace >> config/namespace.yaml
 
 # Deploy an all in one operator against the current k8s cluster
