@@ -27,7 +27,6 @@ import (
 )
 
 const (
-	//resourceNameFixture = "as-elastic-internal-apm"
 	userName       = "default-as-apm-user"
 	userSecretName = "as-elastic-internal-apm"
 )

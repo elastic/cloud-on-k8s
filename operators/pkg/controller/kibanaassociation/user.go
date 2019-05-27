@@ -26,7 +26,7 @@ const (
 	kibanaUser = "kibana-user"
 )
 
-// KibanaUserObjectName identifies the Kibana user.
+// KibanaUserName identifies the Kibana user.
 func KibanaUserName(kibana types.NamespacedName) string {
 	// must be namespace-aware since we might have several kibanas running in
 	// different namespaces with the same name: we need one user for each
@@ -53,7 +53,7 @@ func KibanaUserSecretObjectName(kibana types.NamespacedName) string {
 	return kibana.Name + "-" + kibanaUser
 }
 
-// KibanaUserSecret is the namespaced name to identify the secret containing the password for the Kibana user.
+// KibanaUserSecretKey is the namespaced name to identify the secret containing the password for the Kibana user.
 // It uses the same resource name as the Kibana user.
 func KibanaUserSecretKey(kibana types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
@@ -62,7 +62,7 @@ func KibanaUserSecretKey(kibana types.NamespacedName) types.NamespacedName {
 	}
 }
 
-// KibanaUserSelector creates a SecretKeySelector for the Kibana user secret
+// KibanaUserSecretSelector creates a SecretKeySelector for the Kibana user secret
 func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{

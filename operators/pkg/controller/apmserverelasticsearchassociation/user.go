@@ -33,7 +33,7 @@ func apmUserObjectName(assocName string) string {
 	return assocName + "-" + InternalApmServerUserName
 }
 
-// userKey is the namespaced name to identify the customer user resource created by the controller.
+// apmUserKey is the namespaced name to identify the customer user resource created by the controller.
 func apmUserKey(apm apmtype.ApmServer) *types.NamespacedName {
 
 	ref := apm.Spec.Output.Elasticsearch.ElasticsearchRef

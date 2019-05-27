@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// GetSecret gets the first secret in a list that matches the namespace and the name.
 func GetSecret(list corev1.SecretList, namespace, name string) *corev1.Secret {
 	for _, secret := range list.Items {
 		if secret.Namespace == namespace && secret.Name == name {
@@ -17,7 +18,7 @@ func GetSecret(list corev1.SecretList, namespace, name string) *corev1.Secret {
 	return nil
 }
 
-// CheckEsUser checks that a secret contains the required fields expected by the user reconciler.
+// ChecksUser checks that a secret contains the required fields expected by the user reconciler.
 func ChecksUser(t *testing.T, secret *corev1.Secret, expectedUsername string, expectedRoles []string) {
 	assert.NotNil(t, secret)
 	currentUsername, ok := secret.Data["name"]

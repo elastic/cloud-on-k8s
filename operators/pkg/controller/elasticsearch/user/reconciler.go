@@ -58,7 +58,7 @@ func aggregateAllUsers(customUsers corev1.SecretList, defaultUsers ...ClearTextC
 	}
 
 	for _, s := range customUsers.Items {
-		usr, err := user.NewFromSecret(s)
+		usr, err := user.NewProvidedUserFromSecret(s)
 		if err != nil {
 			return nil, err
 		}

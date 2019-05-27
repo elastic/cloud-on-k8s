@@ -13,21 +13,26 @@ import (
 )
 
 const (
-	UserName     = "name"
+	// UserName is the field in the secret that contains the username.
+	UserName = "name"
+	// PasswordHash is the field in the secret that contains the hash of the password.
 	PasswordHash = "passwordHash"
-	UserRoles    = "userRoles"
+	// UserRoles contains the roles for the user as a comma separated list of strings.
+	UserRoles = "userRoles"
 
 	fieldNotFound = "field %s not found in secret %s/%s"
 )
 
+// ProvidedUser represents a user that is not created or managed by Elasticsearch.
+// For example in the case of Kibana a user with the right role is created by the Kibana association controller.
 type ProvidedUser struct {
 	name     string
 	password []byte
 	roles    []string
 }
 
-// FromSecret creates a user from a secret.
-func NewFromSecret(secret v1.Secret) (ProvidedUser, error) {
+// NewProvidedUserFromSecret reads a provided user from a secret.
+func NewProvidedUserFromSecret(secret v1.Secret) (ProvidedUser, error) {
 	user := ProvidedUser{}
 	if len(secret.Data) == 0 {
 		return user, fmt.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
