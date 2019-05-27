@@ -71,7 +71,7 @@ type NodeSpec struct {
 
 	// PodTemplate can be used to propagate configuration to Elasticsearch pods.
 	// This allows specifying custom annotations, labels, environment variables,
-	// volumes, affinity, resources, etc. to the pod.
+	// volumes, affinity, resources, etc. for the pods created from this NodeSpec.
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 

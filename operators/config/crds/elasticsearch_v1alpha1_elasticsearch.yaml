@@ -136,7 +136,7 @@ spec:
                     description: PodTemplate can be used to propagate configuration
                       to Elasticsearch pods. This allows specifying custom annotations,
                       labels, environment variables, volumes, affinity, resources,
-                      etc. to the pod.
+                      etc. for the pods created from this NodeSpec.
                     type: object
                   volumeClaimTemplates:
                     description: 'VolumeClaimTemplates is a list of claims that pods
