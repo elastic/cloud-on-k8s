@@ -10,7 +10,7 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	commonuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
@@ -70,7 +70,7 @@ func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
-	pw := commonuser.RandomPasswordBytes()
+	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(apm.Name)
 	secretLabels[AssociationLabelName] = apm.Name
@@ -119,7 +119,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := commonuser.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
+	userLabels := common.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
 	userLabels[AssociationLabelName] = apm.Name
 	expectedESUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -128,10 +128,10 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 			Labels:    userLabels,
 		},
 		Data: map[string][]byte{
-			commonuser.UserName:     []byte(usrKey.Name),
-			commonuser.PasswordHash: bcryptHash,
+			common.UserName:     []byte(usrKey.Name),
+			common.PasswordHash: bcryptHash,
 			// TODO: lower privileges, but requires specifying a custom role
-			commonuser.UserRoles: []byte("superuser"),
+			common.UserRoles: []byte("superuser"),
 		},
 	}
 
