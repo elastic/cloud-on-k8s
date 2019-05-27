@@ -231,15 +231,6 @@ func Test_podSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "custom image",
-			params: pod.NewPodSpecParams{
-				CustomImageName: "customImageName",
-			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
-				require.Equal(t, "customImageName", podSpec.Containers[0].Image)
-			},
-		},
-		{
 			name: "custom termination grace period & automount sa token",
 			params: pod.NewPodSpecParams{
 				NodeSpec: v1alpha1.NodeSpec{
