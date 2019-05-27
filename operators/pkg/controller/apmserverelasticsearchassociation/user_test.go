@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	userName       = "default-as-apm-user"
+	esUserName     = "default-as-apm-user"
 	userSecretName = "as-elastic-internal-apm"
 )
 
@@ -84,7 +84,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			},
 			postCondition: func(c k8s.Client) {
 				userKey := types.NamespacedName{
-					Name:      userName,
+					Name:      esUserName,
 					Namespace: "default",
 				}
 				assert.NoError(t, c.Get(userKey, &corev1.Secret{}))
@@ -115,11 +115,11 @@ func Test_reconcileEsUser(t *testing.T) {
 				assert.NotNil(t, s)
 				s = user.GetSecret(list, apmFixture.Namespace, userSecretName)
 				assert.NotNil(t, s)
-				password, passwordIsSet := s.Data[userName]
+				password, passwordIsSet := s.Data[esUserName]
 				assert.True(t, passwordIsSet)
 				assert.NotEmpty(t, password)
-				s = user.GetSecret(list, apmFixture.Namespace, userName) // secret on the ES side
-				user.ChecksUser(t, s, userName, []string{"superuser"})
+				s = user.GetSecret(list, apmFixture.Namespace, esUserName) // secret on the ES side
+				user.ChecksUser(t, s, esUserName, []string{"superuser"})
 			},
 		},
 		{
@@ -137,7 +137,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			postCondition: func(c k8s.Client) {
 				var s corev1.Secret
 				assert.NoError(t, c.Get(types.NamespacedName{Name: userSecretName, Namespace: "default"}, &s))
-				password, ok := s.Data[userName]
+				password, ok := s.Data[esUserName]
 				assert.True(t, ok)
 				assert.NotEmpty(t, password)
 			},

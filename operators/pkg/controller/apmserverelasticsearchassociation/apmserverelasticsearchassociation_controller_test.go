@@ -57,7 +57,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      userName,
+						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
 						OwnerReferences: []metav1.OwnerReference{
 							ownerRefFixture,
@@ -97,7 +97,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      userName,
+						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
 							AssociationLabelName: apmFixture.Name,
@@ -113,7 +113,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: "other-ns",
-					Name:      userName,
+					Name:      esUserName,
 				}, &corev1.Secret{}))
 
 			},
@@ -142,6 +142,6 @@ func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// secret should be in Kibana namespace
 	require.NoError(t, c.Get(types.NamespacedName{
 		Namespace: apmFixture.Namespace,
-		Name:      userName,
+		Name:      esUserName,
 	}, &corev1.Secret{}))
 }

@@ -10,12 +10,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-	UserName     = "name"
-	PasswordHash = "passwordHash"
-	UserRoles    = "userRoles"
-)
-
 // User captures Elasticsearch user credentials.
 type User struct {
 	name     string

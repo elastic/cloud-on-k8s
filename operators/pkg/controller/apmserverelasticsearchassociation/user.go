@@ -10,10 +10,8 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	commonuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -72,7 +70,7 @@ func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
-	pw := common.RandomPasswordBytes()
+	pw := commonuser.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(apm.Name)
 	secretLabels[AssociationLabelName] = apm.Name
@@ -130,10 +128,10 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 			Labels:    userLabels,
 		},
 		Data: map[string][]byte{
-			user.UserName:     []byte(usrKey.Name),
-			user.PasswordHash: bcryptHash,
+			commonuser.UserName:     []byte(usrKey.Name),
+			commonuser.PasswordHash: bcryptHash,
 			// TODO: lower privileges, but requires specifying a custom role
-			user.UserRoles: []byte("superuser"),
+			commonuser.UserRoles: []byte("superuser"),
 		},
 	}
 

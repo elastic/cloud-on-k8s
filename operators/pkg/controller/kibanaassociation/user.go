@@ -131,9 +131,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 			Labels:    userLabels,
 		},
 		Data: map[string][]byte{
-			user.UserName:     []byte(username),
-			user.PasswordHash: bcryptHash,
-			user.UserRoles:    []byte(user.KibanaSystemUserBuiltinRole),
+			commonuser.UserName:     []byte(username),
+			commonuser.PasswordHash: bcryptHash,
+			commonuser.UserRoles:    []byte(user.KibanaSystemUserBuiltinRole),
 		},
 	}
 
