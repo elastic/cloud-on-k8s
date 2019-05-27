@@ -311,10 +311,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		// updating the CA file contents without restarting the process.
 		caChecksum := ""
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{
-			Namespace: as.Spec.Output.Elasticsearch.ElasticsearchRef.Namespace,
-			Name:      *certificateAuthoritiesSecretName,
-		}
+		key := types.NamespacedName{Namespace: as.Namespace, Name: *certificateAuthoritiesSecretName}
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return state, err
 		}
