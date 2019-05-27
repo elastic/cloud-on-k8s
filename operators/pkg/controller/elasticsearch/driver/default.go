@@ -81,7 +81,6 @@ type defaultDriver struct {
 		c k8s.Client,
 		scheme *runtime.Scheme,
 		es v1alpha1.Elasticsearch,
-		trustRelationships []v1alpha1.TrustRelationship,
 	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
@@ -224,7 +223,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es, trustRelationships)
+	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -524,10 +523,10 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ExtraFilesRef:      k8s.ExtractNamespacedName(&versionWideResources.ExtraFilesSecret),
+			ClusterSecretsRef:  k8s.ExtractNamespacedName(&versionWideResources.ClusterSecrets),
 			ProbeUser:          internalUsers.ProbeUser.Auth(),
 			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnecryptedConfigurationFiles.Name, settings.ManagedConfigPath),
+			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnencryptedConfigurationFiles.Name, settings.ManagedConfigPath),
 			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
 		},
 		d.OperatorImage,
@@ -537,6 +536,7 @@ func (d *defaultDriver) calculateChanges(
 	}
 
 	changes, err := mutation.CalculateChanges(
+		es,
 		expectedPodSpecCtxs,
 		resourcesState,
 		func(ctx pod.PodSpecContext) (corev1.Pod, error) {

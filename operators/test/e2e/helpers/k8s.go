@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,8 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
-
-const DefaultNamespace = "e2e"
 
 type K8sHelper struct {
 	Client k8s.Client
@@ -94,7 +93,7 @@ func (k *K8sHelper) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {
 
 func (k *K8sHelper) GetPod(name string) (corev1.Pod, error) {
 	var pod corev1.Pod
-	if err := k.Client.Get(types.NamespacedName{Namespace: DefaultNamespace, Name: name}, &pod); err != nil {
+	if err := k.Client.Get(types.NamespacedName{Namespace: params.Namespace, Name: name}, &pod); err != nil {
 		return corev1.Pod{}, err
 	}
 	return pod, nil
@@ -119,7 +118,7 @@ func (k *K8sHelper) CheckPodCount(listOpts client.ListOptions, expectedCount int
 func (k *K8sHelper) GetService(name string) (*corev1.Service, error) {
 	var service corev1.Service
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &service); err != nil {
@@ -131,7 +130,7 @@ func (k *K8sHelper) GetService(name string) (*corev1.Service, error) {
 func (k *K8sHelper) GetEndpoints(name string) (*corev1.Endpoints, error) {
 	var endpoints corev1.Endpoints
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      name,
 	}
 	if err := k.Client.Get(key, &endpoints); err != nil {
@@ -145,7 +144,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      secretName,
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -162,7 +161,7 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	secretName := nodecerts.CACertSecretName(stackName)
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      secretName,
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -179,7 +178,7 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 func (k *K8sHelper) GetCAPrivateKey(stackName string) (*rsa.PrivateKey, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      name.CAPrivateKeySecret(stackName),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
@@ -196,7 +195,7 @@ func (k *K8sHelper) GetCAPrivateKey(stackName string) (*rsa.PrivateKey, error) {
 func (k *K8sHelper) GetNodeCert(podName string) (caCert, nodeCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		Name:      name.CertsSecret(podName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
@@ -265,7 +264,7 @@ func (k *K8sHelper) Exec(pod types.NamespacedName, cmd []string) (string, string
 
 func ESPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:       label.Type,
 			label.ClusterNameLabelName: stackName,
@@ -274,7 +273,7 @@ func ESPodListOptions(stackName string) client.ListOptions {
 
 func KibanaPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			kibana.KibanaNameLabelName: stackName,
 		}))}
@@ -282,7 +281,7 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 
 func ApmServerPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
-		Namespace: DefaultNamespace,
+		Namespace: params.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:             apmserver.Type,
 			apmserver.ApmServerNameLabelName: stackName,
