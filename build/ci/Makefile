@@ -107,17 +107,20 @@ yaml-upload: vault-aws-creds
 		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
 		aws s3 cp \
 		$(ROOT_DIR)/operators/config/all-in-one.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml \
+		--only-show-errors
 	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
 		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
 		aws s3 cp \
 		$(ROOT_DIR)/operators/config/global.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/global.yaml
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/global.yaml \
+		--only-show-errors
 	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
 		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
 		aws s3 cp \
 		$(ROOT_DIR)/operators/config/namespace.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/namespace.yaml
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/namespace.yaml \
+		--only-show-errors
 
 ## -- End-to-end tests job
 
