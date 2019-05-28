@@ -22,7 +22,7 @@ func envWithName(t *testing.T, name string, container corev1.Container) corev1.E
 	return corev1.EnvVar{}
 }
 
-func TestNewPodSpec(t *testing.T) {
+func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
 		name       string
 		kb         v1alpha1.Kibana

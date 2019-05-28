@@ -40,7 +40,7 @@ func Test_imageWithVersion(t *testing.T) {
 	}
 }
 
-func TestNewPodSpec(t *testing.T) {
+func TestNewPodTemplateSpec(t *testing.T) {
 	testSelector := &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: "secret-name",
