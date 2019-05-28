@@ -18,7 +18,7 @@ func NewInitContainers(
 	operatorImage string,
 	linkedFiles LinkedFilesArray,
 	setVMMaxMapCount *bool,
-	certificatesVolume volume.SecretVolume,
+	transportCertificatesVolume volume.SecretVolume,
 	additional ...corev1.Container,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
@@ -35,7 +35,7 @@ func NewInitContainers(
 		return nil, err
 	}
 
-	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, certificatesVolume)
+	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, transportCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}

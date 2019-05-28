@@ -79,26 +79,25 @@ func newInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
 	setVMMaxMapCount *bool,
-	certificatesVolume volume.SecretVolume,
+	transportCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
 		elasticsearchImage,
 		operatorImage,
 		linkedFiles6,
 		setVMMaxMapCount,
-		certificatesVolume,
+		transportCertificatesVolume,
 	)
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
+	heapSize int,
 	httpCertificatesVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
-	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
-
 	vars := []corev1.EnvVar{
 		// inject pod name and IP as environment variables dynamically,
 		// to be referenced in elasticsearch configuration file

@@ -62,11 +62,6 @@ type NewPodSpecParams struct {
 	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
-	// Config is the user provided Elasticsearch configuration.
-	Config v1alpha1.Config
-
-	// Affinity is the pod's scheduling constraints
-	Affinity *corev1.Affinity
 
 	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
 	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
@@ -74,8 +69,8 @@ type NewPodSpecParams struct {
 	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
 	SetVMMaxMapCount *bool
 
-	// Resources is the memory/cpu resources the pod wants
-	Resources corev1.ResourceRequirements
+	// NodeSpec is the user-provided spec to apply on the target pod
+	NodeSpec v1alpha1.NodeSpec
 
 	// ESConfigVolume is the secret volume that contains elasticsearch.yml configuration
 	ESConfigVolume volume.SecretVolume
