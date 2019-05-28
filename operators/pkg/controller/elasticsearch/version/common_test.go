@@ -377,6 +377,48 @@ func Test_podSpec(t *testing.T) {
 				}, podSpec.Containers[0].Env)
 			},
 		},
+		{
+			name: "user-provided environment overrides",
+			params: pod.NewPodSpecParams{
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: v1alpha1.ElasticsearchContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "var1",
+											Value: "user-overridden-var-1",
+										},
+										{
+											Name:  "user-env-2",
+											Value: "user-env-2-value",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, []corev1.EnvVar{
+					{
+						Name:  "var1",
+						Value: "user-overridden-var-1",
+					},
+					{
+						Name:  "user-env-2",
+						Value: "user-env-2-value",
+					},
+					{
+						Name:  "var2",
+						Value: "value2",
+					},
+				}, podSpec.Containers[0].Env)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
