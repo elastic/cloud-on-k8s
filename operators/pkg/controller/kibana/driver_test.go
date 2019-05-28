@@ -29,85 +29,89 @@ func expectedDeploymentParams() *DeploymentParams {
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
 		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
-		PodLabels: map[string]string{
-			"common.k8s.elastic.co/type":            "kibana",
-			"kibana.k8s.elastic.co/name":            "kb",
-			"kibana.k8s.elastic.co/config-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
-		},
-		Replicas: 1,
-		PodSpec: corev1.PodSpec{
-			Volumes: []corev1.Volume{
-				{
-					Name: "elasticsearch-certs",
-					VolumeSource: corev1.VolumeSource{
-						Secret: &corev1.SecretVolumeSource{
-							SecretName: "es-ca-secret",
-							Optional:   &false,
-						},
-					},
+		Replicas:  1,
+		PodTemplateSpec: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"common.k8s.elastic.co/type":            "kibana",
+					"kibana.k8s.elastic.co/name":            "kb",
+					"kibana.k8s.elastic.co/config-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
 				},
 			},
-			Containers: []corev1.Container{{
-				Resources: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-				},
-				VolumeMounts: []corev1.VolumeMount{
+			Spec: corev1.PodSpec{
+				Volumes: []corev1.Volume{
 					{
-						Name:      "elasticsearch-certs",
-						ReadOnly:  true,
-						MountPath: "/usr/share/kibana/config/elasticsearch-certs",
-					},
-				},
-				Env: []corev1.EnvVar{
-					{
-						Name:  "ELASTICSEARCH_HOSTS",
-						Value: "https://localhost:9200",
-					},
-					{
-						Name:  "ELASTICSEARCH_USERNAME",
-						Value: "kibana-user",
-					},
-					{
-						Name: "ELASTICSEARCH_PASSWORD",
-						ValueFrom: &corev1.EnvVarSource{
-							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "kb-auth",
-								},
-								Key: "kibana-user",
+						Name: "elasticsearch-certs",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "es-ca-secret",
+								Optional:   &false,
 							},
 						},
 					},
-					{
-						Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-						Value: "/usr/share/kibana/config/elasticsearch-certs/ca.pem",
-					},
-					{
-						Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-						Value: "certificate",
-					},
 				},
-				Image: "my-image",
-				Name:  kbtype.KibanaContainerName,
-				Ports: []corev1.ContainerPort{
-					{Name: "http", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
-				},
-				ReadinessProbe: &corev1.Probe{
-					FailureThreshold:    3,
-					InitialDelaySeconds: 10,
-					PeriodSeconds:       10,
-					SuccessThreshold:    1,
-					TimeoutSeconds:      5,
-					Handler: corev1.Handler{
-						HTTPGet: &corev1.HTTPGetAction{
-							Port:   intstr.FromInt(5601),
-							Path:   "/",
-							Scheme: corev1.URISchemeHTTP,
+				Containers: []corev1.Container{{
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+					},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "elasticsearch-certs",
+							ReadOnly:  true,
+							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
 					},
-				},
-			}},
-			AutomountServiceAccountToken: &false,
+					Env: []corev1.EnvVar{
+						{
+							Name:  "ELASTICSEARCH_HOSTS",
+							Value: "https://localhost:9200",
+						},
+						{
+							Name:  "ELASTICSEARCH_USERNAME",
+							Value: "kibana-user",
+						},
+						{
+							Name: "ELASTICSEARCH_PASSWORD",
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "kb-auth",
+									},
+									Key: "kibana-user",
+								},
+							},
+						},
+						{
+							Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
+							Value: "/usr/share/kibana/config/elasticsearch-certs/ca.pem",
+						},
+						{
+							Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
+							Value: "certificate",
+						},
+					},
+					Image: "my-image",
+					Name:  kbtype.KibanaContainerName,
+					Ports: []corev1.ContainerPort{
+						{Name: "http", ContainerPort: int32(5601), Protocol: corev1.ProtocolTCP},
+					},
+					ReadinessProbe: &corev1.Probe{
+						FailureThreshold:    3,
+						InitialDelaySeconds: 10,
+						PeriodSeconds:       10,
+						SuccessThreshold:    1,
+						TimeoutSeconds:      5,
+						Handler: corev1.Handler{
+							HTTPGet: &corev1.HTTPGetAction{
+								Port:   intstr.FromInt(5601),
+								Path:   "/",
+								Scheme: corev1.URISchemeHTTP,
+							},
+						},
+					},
+				}},
+				AutomountServiceAccountToken: &false,
+			},
 		},
 	}
 
@@ -223,10 +227,10 @@ func Test_driver_deploymentParams(t *testing.T) {
 			},
 			want: func() *DeploymentParams {
 				p := expectedDeploymentParams()
-				p.PodLabels["mylabel"] = "value"
-				for i, c := range p.PodSpec.Containers {
+				p.PodTemplateSpec.Labels["mylabel"] = "value"
+				for i, c := range p.PodTemplateSpec.Spec.Containers {
 					if c.Name == kbtype.KibanaContainerName {
-						p.PodSpec.Containers[i].Resources = customResourceLimits
+						p.PodTemplateSpec.Spec.Containers[i].Resources = customResourceLimits
 					}
 				}
 				return p
@@ -260,7 +264,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			},
 			want: func() *DeploymentParams {
 				p := expectedDeploymentParams()
-				p.PodLabels = map[string]string{
+				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "kb",
 					"kibana.k8s.elastic.co/config-checksum": "5d26adcdb6e5e6be930802dc6639233ece8c2a3bc2cf8b8dffa69602",
@@ -281,7 +285,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			},
 			want: func() *DeploymentParams {
 				p := expectedDeploymentParams()
-				p.PodSpec.Containers[0].Env[0].Name = "ELASTICSEARCH_URL"
+				p.PodTemplateSpec.Spec.Containers[0].Env[0].Name = "ELASTICSEARCH_URL"
 				return p
 			}(),
 			wantErr: false,

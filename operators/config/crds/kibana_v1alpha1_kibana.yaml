@@ -162,8 +162,9 @@ spec:
               type: integer
             podTemplate:
               description: PodTemplate can be used to propagate configuration to Kibana
-                pods. So far, only labels, Affinity and `Containers["kibana"].Resources.Limits`
-                are applied.
+                pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
               type: object
             version:
               description: Version represents the version of Kibana

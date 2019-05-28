@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -26,26 +25,29 @@ func envWithName(t *testing.T, name string, container corev1.Container) corev1.E
 func TestNewPodSpec(t *testing.T) {
 	tests := []struct {
 		name       string
-		args       pod.SpecParams
-		assertions func(corev1.PodSpec)
+		kb         v1alpha1.Kibana
+		assertions func(corev1.PodTemplateSpec)
 	}{
 		{
 			name: "happy path",
-			args: pod.SpecParams{
-				Version:          "7.0.0",
-				ElasticsearchUrl: "http://localhost:9200",
-				CustomImageName:  "img",
-				User:             v1alpha1.ElasticsearchAuth{},
+			kb: v1alpha1.Kibana{
+				Spec: v1alpha1.KibanaSpec{
+					Version: "7.0.0",
+					Image:   "img",
+					Elasticsearch: v1alpha1.BackendElasticsearch{
+						URL: "http://localhost:9200",
+					},
+				},
 			},
-			assertions: func(spec corev1.PodSpec) {
-				url := envWithName(t, ElasticsearchHosts, spec.Containers[0])
+			assertions: func(pod corev1.PodTemplateSpec) {
+				url := envWithName(t, ElasticsearchHosts, pod.Spec.Containers[0])
 				assert.Equal(t, url.Value, "http://localhost:9200")
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.assertions(NewPodSpec(tt.args))
+			tt.assertions(NewPodTemplateSpec(tt.kb))
 		})
 	}
 }

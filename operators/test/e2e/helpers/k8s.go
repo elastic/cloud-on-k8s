@@ -21,7 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
@@ -275,7 +275,7 @@ func KibanaPodListOptions(stackName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: params.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			kibana.KibanaNameLabelName: stackName,
+			kblabel.KibanaNameLabelName: stackName,
 		}))}
 }
 
