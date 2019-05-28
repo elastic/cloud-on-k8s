@@ -113,9 +113,8 @@ func TestNewPod(t *testing.T) {
 							Name:      "should-be-ignored",
 							Namespace: "should-be-ignored",
 							Labels: map[string]string{
-								"foo":                      "bar",
-								"bar":                      "baz",
-								label.ClusterNameLabelName: "will-be-overridden",
+								"foo": "bar",
+								"bar": "baz",
 							},
 							Annotations: map[string]string{
 								"annotation1": "foo",
@@ -143,6 +142,48 @@ func TestNewPod(t *testing.T) {
 					Annotations: map[string]string{
 						"annotation1": "foo",
 						"annotation2": "bar",
+					},
+				},
+				Spec: podSpec,
+			},
+		},
+		{
+			name:    "with podTemplate: should not override user-provided labels",
+			version: version.MustParse("7.1.0"),
+			es: v1alpha1.Elasticsearch{
+				ObjectMeta: esMeta,
+			},
+			podSpecCtx: pod.PodSpecContext{
+				PodSpec: podSpec,
+				Config:  masterCfg,
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "should-be-ignored",
+							Namespace: "should-be-ignored",
+							Labels: map[string]string{
+								label.ClusterNameLabelName: "override-operator-value",
+								"foo":                      "bar",
+								"bar":                      "baz",
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: esMeta.Namespace,
+					Name:      esMeta.Name,
+					Labels: map[string]string{
+						common.TypeLabelName:                   label.Type,
+						label.ClusterNameLabelName:             "override-operator-value",
+						string(label.NodeTypesDataLabelName):   "false",
+						string(label.NodeTypesIngestLabelName): "false",
+						string(label.NodeTypesMasterLabelName): "true",
+						string(label.NodeTypesMLLabelName):     "false",
+						string(label.VersionLabelName):         "7.1.0",
+						"foo":                                  "bar",
+						"bar":                                  "baz",
 					},
 				},
 				Spec: podSpec,

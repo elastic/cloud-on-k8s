@@ -18,7 +18,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
@@ -262,20 +261,17 @@ func NewPod(
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
-	// add (or override) with our own labels
-	for k, v := range label.NewLabels(k8s.ExtractNamespacedName(&es)) {
-		objectMeta.Labels[k] = v
-	}
-	objectMeta.Labels[label.VersionLabelName] = version.String()
-	// set labels for node types
 	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}
-	label.NodeTypesMasterLabelName.Set(cfg.Node.Master, objectMeta.Labels)
-	label.NodeTypesDataLabelName.Set(cfg.Node.Data, objectMeta.Labels)
-	label.NodeTypesIngestLabelName.Set(cfg.Node.Ingest, objectMeta.Labels)
-	label.NodeTypesMLLabelName.Set(cfg.Node.ML, objectMeta.Labels)
+	for k, v := range label.NewPodLabels(es, version, cfg) {
+		// don't override user-provided labels
+		// this may lead to issues but we consider users know what they are doing at this point.
+		if _, exists := objectMeta.Labels[k]; !exists {
+			objectMeta.Labels[k] = v
+		}
+	}
 
 	return corev1.Pod{
 		ObjectMeta: objectMeta,
