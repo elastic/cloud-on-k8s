@@ -12,6 +12,7 @@ ROOT_DIR = $(shell dirname $(CURDIR))
 export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
+GKE_CLUSTER_VERSION ?= 1.11
 
 ## -- Docker image
 
@@ -206,7 +207,7 @@ set-context-gke: require-gcloud-project
 	$(eval KUBECTL_CLUSTER=$(shell hack/gke-cluster.sh name))
 
 bootstrap-gke: require-gcloud-project
-	./hack/gke-cluster.sh create
+	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
