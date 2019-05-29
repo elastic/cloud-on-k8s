@@ -207,13 +207,15 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			}
 			// verify that a cluster license was created
 			// with the same name as the cluster
-			var license v1alpha1.ClusterLicense
-			err = client.Get(nsn, &license)
+			licenseNsn := nsn
+			licenseNsn.Name = licenseNsn.Name + "-license"
+			var license corev1.Secret
+			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {
 				require.True(t, apierrors.IsNotFound(err))
 			} else {
 				require.NoError(t, err)
-				require.NotEmpty(t, license.Spec.Type)
+				require.NotEmpty(t, license.Data)
 			}
 		})
 	}
