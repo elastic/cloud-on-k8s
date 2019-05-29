@@ -126,6 +126,7 @@ ci-e2e: vault-gke-creds
 		-e "GKE_CLUSTER_NAME=$(shell cat $(K8S_E2E_CLUSTER_FILE))" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
+		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
 
