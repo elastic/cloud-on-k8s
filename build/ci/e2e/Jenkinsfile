@@ -9,7 +9,11 @@ pipeline {
     }
 
     environment {
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
         REGISTRY = "eu.gcr.io"
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
     }
 
     stages {
@@ -20,14 +24,7 @@ pipeline {
         }
         stage("Run E2E tests") {
             steps {
-                withCredentials([
-                    string(credentialsId: 'vault-addr', variable: 'VAULT_ADDR'),
-                    string(credentialsId: 'vault-role-id', variable: 'VAULT_ROLE_ID'),
-                    string(credentialsId: 'vault-secret-id', variable: 'VAULT_SECRET_ID'),
-                    string(credentialsId: 'k8s-operators-gcloud-project', variable: 'GCLOUD_PROJECT'),
-                ]) {
-                    sh 'make -C build/ci ci-e2e'
-                }
+                sh 'make -C build/ci ci-e2e'
             }
         }
     }
@@ -44,6 +41,7 @@ pipeline {
             }
         }
         cleanup {
+            sh 'make -C build/ci ci-e2e-delete-cluster'
             cleanWs()
         }
     }
