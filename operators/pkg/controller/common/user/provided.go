@@ -69,8 +69,6 @@ func (u ProvidedUser) PasswordHash() ([]byte, error) {
 
 // PasswordMatches compares the given hash with the password of this user.
 func (u *ProvidedUser) PasswordMatches(hash []byte) bool {
-	// this is tricky: we don't have password at hand so the hash has to match byte for byte. This might lead to false
-	// negatives where the hash matches the password but a different salt or work factor was used.
 	return bytes.Equal([]byte(u.password), hash)
 }
 
