@@ -108,7 +108,7 @@ func TestNewProvidedUserFromSecret(t *testing.T) {
 				t.Errorf("NewProvidedUserFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if err != nil && !reflect.DeepEqual(got, tt.want) {
+			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewProvidedUserFromSecret() = %v, want %v", got, tt.want)
 			}
 		})
