@@ -24,7 +24,7 @@ const (
 )
 
 // ProvidedUser represents a user that is not created or managed by Elasticsearch.
-// For example in the case of Kibana a user with the right role is created by the Kibana association controller.
+// For example in the case of Kibana a user with the right role is provided by the Kibana association controller.
 type ProvidedUser struct {
 	name     string
 	password []byte

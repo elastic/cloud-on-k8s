@@ -38,7 +38,7 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewToRequestsFuncFromClusterNameLabel creates a watch handler function that creates reconcile requests based on the
-// the cluster name label if the resource if of type "user".
+// the cluster name label if the resource is of type "user".
 func NewToRequestsFuncFromClusterNameLabel() handler.ToRequestsFunc {
 	return handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
 		labels := obj.Meta.GetLabels()
