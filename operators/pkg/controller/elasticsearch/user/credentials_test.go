@@ -20,7 +20,7 @@ import (
 
 var (
 	testES = types.NamespacedName{
-		Name:      "my-es",
+		Name:      "my-cluster",
 		Namespace: "default",
 	}
 	testUser = []user.User{New("foo", Password("bar"), Roles("role1"))}
@@ -40,17 +40,17 @@ func TestNewUserSecrets(t *testing.T) {
 	}{
 		{
 			subject:      NewInternalUserCredentials(testES),
-			expectedName: "my-es-internal-users",
+			expectedName: "my-cluster-es-internal-users",
 			expectedKeys: []string{InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
-			expectedName: "my-es-elastic-user",
+			expectedName: "my-cluster-es-elastic-user",
 			expectedKeys: []string{ExternalUserName},
 		},
 		{
 			subject:      elasticUsers,
-			expectedName: "my-es-es-roles-users",
+			expectedName: "my-cluster-es-roles-users",
 			expectedKeys: []string{ElasticRolesFile, ElasticUsersFile, ElasticUsersRolesFile},
 		},
 	}

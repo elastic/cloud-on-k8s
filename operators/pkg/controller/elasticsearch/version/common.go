@@ -34,9 +34,9 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -82,9 +82,9 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 	// build on top of the user-provided pod template spec
 	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
@@ -125,20 +125,22 @@ func podSpec(
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		volume.NodeCertificatesSecretVolumeName,
-		volume.NodeCertificatesSecretVolumeMountPath,
+		volume.TransportCertificatesSecretVolumeName,
+		volume.TransportCertificatesSecretVolumeMountPath,
 	)
-	privateKeyVolume := volume.NewSecretVolumeWithMountPath(
-		initcontainer.PrivateKeySharedVolume.Name,
-		initcontainer.PrivateKeySharedVolume.Volume().Name,
-		initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount().MountPath)
 
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.ClusterName),
 		volume.SecureSettingsVolumeName,
 		volume.SecureSettingsVolumeMountPath,
+	)
+
+	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.HTTPCertsInternalSecretName(p.ClusterName),
+		volume.HTTPCertificatesSecretVolumeName,
+		volume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
 	// append our volumes to user-provided ones
@@ -155,11 +157,12 @@ func podSpec(
 			clusterSecretsSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			secureSettingsVolume.Volume(),
+			httpCertificatesVolume.Volume(),
 		)...,
 	)
 
 	// append out init containers to user-provided ones
-	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
+	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
 		return corev1.PodSpec{}, nil, err
 	}
@@ -182,7 +185,7 @@ func podSpec(
 	// augment user-provided env vars with our own
 	// TODO: deal with conflicts here (eg. JVM_OPTIONS)
 	heapSize := MemoryLimitsToHeapSize(*containerSpec.Resources.Limits.Memory())
-	containerSpec.Env = append(containerSpec.Env, newEnvironmentVarsFn(p, heapSize, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume)...)
+	containerSpec.Env = append(containerSpec.Env, newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
 
 	// set the container image to our own if not provided by the user
 	if containerSpec.Image == "" {
@@ -209,9 +212,10 @@ func podSpec(
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				clusterSecretsSecretVolume.VolumeMount(),
-				nodeCertificatesVolume.VolumeMount(),
+				transportCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
+				httpCertificatesVolume.VolumeMount(),
 			}...,
 		)...,
 	)

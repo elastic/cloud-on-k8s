@@ -14,10 +14,7 @@ spec:
       secret:
         name: secret-name
         key: user # key is the user, value is the password for that user
-    caCertSecret: my-ca-cert # reference to a secret containing a pem certificate at key "ca.pem"
-  featureFlags:
-    nodeCertificates:
-      enabled: true
+    caCertSecret: my-ca-cert # reference to a secret containing a pem certificate at key "ca.crt"
   nodeCount: 1
   #http:
   #  service:

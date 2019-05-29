@@ -31,7 +31,7 @@ var PrivateKeySharedVolume = SharedVolume{
 // NewCertInitializerContainer creates an init container to handle TLS cert initialization,
 // by reusing an executable provided in the given image.
 // See cmd/cert-initializer/README.md for more details.
-func NewCertInitializerContainer(imageName string, nodeCertificatesVolume volume.SecretVolume) (corev1.Container, error) {
+func NewCertInitializerContainer(imageName string, transportCertificatesVolume volume.SecretVolume) (corev1.Container, error) {
 	privileged := false
 	initContainerRunAsUser := defaultInitContainerRunAsUser
 	container := corev1.Container{
@@ -47,8 +47,8 @@ func NewCertInitializerContainer(imageName string, nodeCertificatesVolume volume
 		},
 		Command: []string{CertInitializerExecutable},
 		VolumeMounts: []corev1.VolumeMount{
-			// access node-certs that will also be mounted in ES container
-			nodeCertificatesVolume.VolumeMount(),
+			// access to transport-certificates that will also be mounted in ES container
+			transportCertificatesVolume.VolumeMount(),
 			// create (or reuse) private key for the ES container
 			PrivateKeySharedVolume.InitContainerVolumeMount(),
 		},

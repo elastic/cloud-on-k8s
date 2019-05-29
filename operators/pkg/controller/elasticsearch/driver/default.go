@@ -7,13 +7,12 @@ package driver
 import (
 	"crypto/x509"
 	"fmt"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
@@ -21,7 +20,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -47,27 +45,6 @@ type defaultDriver struct {
 
 	// supportedVersions verifies whether we can support upgrading from the current pods.
 	supportedVersions esversion.LowestHighestSupportedVersions
-
-	// genericResourcesReconciler reconciles non-version specific resources.
-	genericResourcesReconciler func(
-		c k8s.Client,
-		scheme *runtime.Scheme,
-		es v1alpha1.Elasticsearch,
-	) (*GenericResources, error)
-
-	// nodeCertificatesReconciler reconciles node certificates
-	nodeCertificatesReconciler func(
-		c k8s.Client,
-		scheme *runtime.Scheme,
-		csrClient certificates.CSRClient,
-		es v1alpha1.Elasticsearch,
-		services []corev1.Service,
-		trustRelationships []v1alpha1.TrustRelationship,
-		caCertValidity time.Duration,
-		caCertRotateBefore time.Duration,
-		nodeCertValidity time.Duration,
-		nodeCertRotateBefore time.Duration,
-	) (*x509.Certificate, time.Time, error)
 
 	// usersReconciler reconciles external and internal users and returns the current internal users.
 	usersReconciler func(
@@ -151,35 +128,29 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	genericResources, err := d.genericResourcesReconciler(d.Client, d.Scheme, es)
-	if err != nil {
-		return results.WithError(err)
+	genericResources, res := reconcileGenericResources(
+		d.Client,
+		d.Scheme,
+		es,
+	)
+	if results.WithResults(res).HasError() {
+		return results
 	}
 
-	trustRelationships, err := nodecerts.LoadTrustRelationships(d.Client, es.Name, es.Namespace)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	caCert, caExpiration, err := d.nodeCertificatesReconciler(
+	certificateResources, res := certificates.Reconcile(
 		d.Client,
 		d.Scheme,
 		d.CSRClient,
 		es,
-		[]corev1.Service{genericResources.ExternalService, genericResources.DiscoveryService},
-		trustRelationships,
+		[]corev1.Service{genericResources.DiscoveryService, genericResources.ExternalService},
 		d.Parameters.CACertValidity,
 		d.Parameters.CACertRotateBefore,
-		d.Parameters.NodeCertValidity,
-		d.Parameters.NodeCertRotateBefore,
+		d.Parameters.CertValidity,
+		d.Parameters.CertRotateBefore,
 	)
-	if err != nil {
-		return results.WithError(err)
+	if results.WithResults(res).HasError() {
+		return results
 	}
-	// make sure to requeue before the CA cert expires
-	results.WithResult(controller.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), caExpiration, d.Parameters.CACertRotateBefore),
-	})
 
 	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
 		return results.WithError(err)
@@ -202,14 +173,15 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
+	// TODO: support user-supplied certificate (non-ca)
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		[]*x509.Certificate{caCert},
+		[]*x509.Certificate{certificateResources.HTTPCA.Cert},
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
 			*min,
-			caCert,
+			certificateResources.HTTPCA.Cert,
 		))
 
 	// always update the elasticsearch state bits
@@ -228,11 +200,12 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
+	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
-		caCert,
+		certificateResources.HTTPCA.Cert,
 	)
 	defer esClient.Close()
 

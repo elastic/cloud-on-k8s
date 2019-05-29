@@ -165,7 +165,7 @@ func TestNewPod(t *testing.T) {
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides
 	// setup mocks for env vars func, es config func and init-containers func
-	newEnvVarsFn := func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar {
+	newEnvVarsFn := func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar {
 		return []corev1.EnvVar{
 			{
 				Name:  "var1",

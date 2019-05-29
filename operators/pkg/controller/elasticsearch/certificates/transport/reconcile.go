@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package nodecerts
+package transport
 
 import (
 	"bytes"
@@ -16,36 +16,32 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.KBLog.WithName("nodecerts")
+var log = logf.KBLog.WithName("transport")
 
-// Node certificates
-//
-// For each elasticsearch pod, we sign one certificate with the cluster CA (see `ca.go`).
-// The certificate is passed to the pod through a secret volume mount.
-// The corresponding private key stays in the ES pod: we request a CSR from the pod,
-// and never access the private key directly.
-
-// ReconcileNodeCertificateSecrets reconciles certificate secrets for nodes
+// ReconcileTransportCertificateSecrets reconciles certificate secrets for nodes
 // of the given es cluster.
-func ReconcileNodeCertificateSecrets(
+func ReconcileTransportCertificateSecrets(
 	c k8s.Client,
 	ca *certificates.CA,
 	csrClient certificates.CSRClient,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
-	nodeCertValidity time.Duration,
-	nodeCertRotateBefore time.Duration,
+	certValidity time.Duration,
+	certRotateBefore time.Duration,
 ) (reconcile.Result, error) {
-	log.Info("Reconciling node certificate secrets")
+	log.Info("Reconciling transport certificate secrets")
 
 	// load additional trusted CAs from the trustrelationships
 	additionalCAs := make([][]byte, 0, len(trustRelationships))
@@ -70,13 +66,13 @@ func ReconcileNodeCertificateSecrets(
 		return reconcile.Result{}, err
 	}
 
-	// get all existing secrets for this cluster
-	nodeCertificateSecrets, err := findNodeCertificateSecrets(c, es)
+	// get all existing transport certificate secrets for this cluster
+	certificateSecrets, err := findTransportCertificateSecrets(c, es)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	for _, secret := range nodeCertificateSecrets {
+	for _, secret := range certificateSecrets {
 		// retrieve pod associated to this secret
 		podName, ok := secret.Labels[LabelAssociatedPod]
 		if !ok {
@@ -108,23 +104,23 @@ func ReconcileNodeCertificateSecrets(
 			continue
 		}
 
-		certificateType, ok := secret.Labels[LabelNodeCertificateType]
+		certificateType, ok := secret.Labels[LabelTransportCertificateType]
 		if !ok {
 			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
 			continue
 		}
 
 		switch certificateType {
-		case LabelNodeCertificateTypeElasticsearchAll:
-			if res, err := doReconcile(
-				c, secret, pod, csrClient, es, services, ca, additionalCAs, trustRootCfgData, nodeCertValidity, nodeCertRotateBefore,
+		case LabelTransportCertificateTypeElasticsearchAll:
+			if res, err := doReconcileTransportCertificateSecret(
+				c, secret, pod, csrClient, es, services, ca, additionalCAs, trustRootCfgData, certValidity, certRotateBefore,
 			); err != nil {
 				return res, err
 			}
 		default:
 			log.Error(
 				errors.New("unsupported certificate type"),
-				fmt.Sprintf("Unsupported cerificate type: %s found in %s, ignoring", certificateType, secret.Name),
+				fmt.Sprintf("Unsupported certificate type: %s found in %s, ignoring", certificateType, secret.Name),
 			)
 		}
 	}
@@ -132,8 +128,29 @@ func ReconcileNodeCertificateSecrets(
 	return reconcile.Result{}, nil
 }
 
-// doReconcile ensures that the node certificate secret has the correct content.
-func doReconcile(
+// findTransportCertificateSecrets returns all Secrets containing transport certificates.
+func findTransportCertificateSecrets(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+) ([]corev1.Secret, error) {
+	var certificateSecrets corev1.SecretList
+
+	listOptions := client.ListOptions{
+		Namespace: es.Namespace,
+		LabelSelector: labels.Set(map[string]string{
+			label.ClusterNameLabelName: es.Name,
+			LabelSecretUsage:           LabelSecretUsageTransportCertificates,
+		}).AsSelector(),
+	}
+	if err := c.List(&listOptions, &certificateSecrets); err != nil {
+		return nil, err
+	}
+
+	return certificateSecrets.Items, nil
+}
+
+// doReconcileTransportCertificateSecret ensures that the transport certificate secret has the correct content.
+func doReconcileTransportCertificateSecret(
 	c k8s.Client,
 	secret corev1.Secret,
 	pod corev1.Pod,
@@ -143,8 +160,8 @@ func doReconcile(
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
 	trustRootCfgData []byte,
-	nodeCertValidity time.Duration,
-	nodeCertReconcileBefore time.Duration,
+	certValidity time.Duration,
+	certReconcileBefore time.Duration,
 ) (reconcile.Result, error) {
 	// a placeholder secret may have nil entries, create them if needed
 	if secret.Data == nil {
@@ -154,11 +171,11 @@ func doReconcile(
 		secret.Annotations = make(map[string]string)
 	}
 
-	csr := secret.Data[CSRFileName]                              // may be nil
+	csr := secret.Data[certificates.CSRFileName]                 // may be nil
 	lastCSRUpdate := secret.Annotations[LastCSRUpdateAnnotation] // may be empty
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(cluster, svcs, secret, ca, pod, nodeCertReconcileBefore)
+	issueNewCertificate := shouldIssueNewCertificate(cluster, svcs, secret, ca, pod, certReconcileBefore)
 
 	// if needed, replace the CSR by a fresh one
 	newCSR, err := maybeRequestCSR(pod, csrClient, lastCSRUpdate)
@@ -191,7 +208,7 @@ func doReconcile(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, cluster, svcs, parsedCSR, nodeCertValidity)
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, cluster, svcs, parsedCSR, certValidity)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -202,8 +219,8 @@ func doReconcile(
 		}
 
 		// store CSR and signed certificate in a secret mounted into the pod
-		secret.Data[CSRFileName] = csr
-		secret.Data[CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
+		secret.Data[certificates.CSRFileName] = csr
+		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 		// store last CSR update in the pod annotations
 		secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 	}
@@ -226,7 +243,7 @@ func doReconcile(
 	}
 
 	if issueNewCertificate || updateTrustedCACerts || updateTrustRestrictions {
-		log.Info("Updating node certificate secret", "secret", secret.Name)
+		log.Info("Updating transport certificate secret", "secret", secret.Name)
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -236,8 +253,9 @@ func doReconcile(
 	return reconcile.Result{}, nil
 }
 
-func extractNodeCert(secret corev1.Secret, commonName string) *x509.Certificate {
-	certData, ok := secret.Data[CertFileName]
+// extractTransportCert extracts the transport certificate with the commonName from the Secret
+func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certificate {
+	certData, ok := secret.Data[certificates.CertFileName]
 	if !ok {
 		return nil
 	}
@@ -248,7 +266,7 @@ func extractNodeCert(secret corev1.Secret, commonName string) *x509.Certificate 
 		return nil
 	}
 
-	// look for the node certificate
+	// look for the certificate based on the CommonName
 	for _, c := range certs {
 		if c.Subject.CommonName == commonName {
 			return c
@@ -259,14 +277,29 @@ func extractNodeCert(secret corev1.Secret, commonName string) *x509.Certificate 
 }
 
 // shouldIssueNewCertificate returns true if we should issue a new certificate.
+//
 // Reasons for reissuing a certificate:
 // - no certificate yet
 // - certificate has the wrong format
 // - certificate is invalid or expired
 // - certificate SAN and IP does not match pod SAN and IP
-func shouldIssueNewCertificate(cluster v1alpha1.Elasticsearch, svcs []corev1.Service, secret corev1.Secret, ca *certificates.CA, pod corev1.Pod, nodeCertReconcileBefore time.Duration) bool {
+func shouldIssueNewCertificate(
+	cluster v1alpha1.Elasticsearch,
+	svcs []corev1.Service,
+	secret corev1.Secret,
+	ca *certificates.CA,
+	pod corev1.Pod,
+	certReconcileBefore time.Duration,
+) bool {
 	certCommonName := buildCertificateCommonName(pod, cluster.Name, cluster.Namespace)
-	cert := extractNodeCert(secret, certCommonName)
+
+	generalNames, err := buildGeneralNames(cluster, svcs, pod)
+	if err != nil {
+		log.Error(err, "Cannot create GeneralNames for the TLS certificate", "pod", pod.Name)
+		return true
+	}
+
+	cert := extractTransportCert(secret, certCommonName)
 	if cert == nil {
 		return true
 	}
@@ -274,7 +307,7 @@ func shouldIssueNewCertificate(cluster v1alpha1.Elasticsearch, svcs []corev1.Ser
 	pool := x509.NewCertPool()
 	pool.AddCert(ca.Cert)
 	verifyOpts := x509.VerifyOptions{
-		DNSName:       pod.Name,
+		DNSName:       certCommonName,
 		Roots:         pool,
 		Intermediates: pool,
 	}
@@ -288,15 +321,15 @@ func shouldIssueNewCertificate(cluster v1alpha1.Elasticsearch, svcs []corev1.Ser
 		return true
 	}
 
-	if time.Now().After(cert.NotAfter.Add(-nodeCertReconcileBefore)) {
+	if time.Now().After(cert.NotAfter.Add(-certReconcileBefore)) {
 		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
 		return true
 	}
 
 	// compare actual vs. expected SANs
-	expected, err := createSubjectAltNameExt(cluster, svcs, pod)
+	expected, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
-		log.Error(err, "Cannot create subject alternative names", "pod", pod.Name)
+		log.Error(err, "Cannot marshal subject alternative names", "secret", secret.Name)
 		return true
 	}
 	extraExtensionFound := false

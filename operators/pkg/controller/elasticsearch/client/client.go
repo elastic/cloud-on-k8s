@@ -9,9 +9,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/cryptutil"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
@@ -115,7 +118,24 @@ func NewElasticsearchClient(dialer net.Dialer, esURL string, esUser UserAuth, v 
 	transportConfig := http.Transport{
 		TLSClientConfig: &tls.Config{
 			RootCAs: certPool,
+
+			// go requires either ServerName or InsecureSkipVerify (or both) when handshaking as a client since 1.3:
+			// https://github.com/golang/go/commit/fca335e91a915b6aae536936a7694c4a2a007a60
+			// we opt to skip verifying here because we're not validating based on DNS names or IP addresses, which means
+			// we have to do our verification in the VerifyPeerCertificate instead.
+			InsecureSkipVerify: true,
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+				return errors.New("tls: verify peer certificate not setup")
+			},
 		},
+	}
+
+	transportConfig.TLSClientConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		if verifiedChains != nil {
+			return errors.New("tls: non-nil verifiedChains argument breaks crypto/tls.Config.VerifyPeerCertificate contract")
+		}
+		_, _, err := cryptutil.VerifyCertificateExceptServerName(rawCerts, transportConfig.TLSClientConfig)
+		return err
 	}
 
 	// use the custom dialer if provided

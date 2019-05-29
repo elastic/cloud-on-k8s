@@ -5,16 +5,18 @@
 package remotecluster
 
 import (
+	"errors"
 	"reflect"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/kubernetes/scheme"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 // associatedCluster represents a cluster that is part of an association in a RemoteCluster object.
@@ -27,14 +29,35 @@ type associatedCluster struct {
 
 // newAssociatedCluster creates an associatedCluster from an object selector.
 func newAssociatedCluster(c k8s.Client, selector commonv1alpha1.ObjectSelector) (associatedCluster, error) {
-	ca, err := nodecerts.GetCA(c, selector.NamespacedName())
-	if err != nil {
+	var publicTransportCertsSecret v1.Secret
+	if err := c.Get(
+		transport.PublicCertsSecretRef(selector.NamespacedName()),
+		&publicTransportCertsSecret,
+	); err != nil {
+		if apierrors.IsNotFound(err) {
+			// public certs secret not created yet, return a nil CA for now
+			return associatedCluster{
+				Selector: selector,
+			}, nil
+		}
 		return associatedCluster{}, err
 	}
-	return associatedCluster{
-		Selector: selector,
-		CA:       ca,
-	}, nil
+
+	if publicTransportCertsSecret.Data == nil {
+		// public certs secret do not contain the CA yet, return a nil CA for now
+		return associatedCluster{
+			Selector: selector,
+		}, nil
+	}
+
+	if caData, ok := publicTransportCertsSecret.Data[certificates.CAFileName]; ok {
+		return associatedCluster{
+			Selector: selector,
+			CA:       caData,
+		}, nil
+	}
+
+	return associatedCluster{}, errors.New("no ca file found in public transport certs secret")
 }
 
 // reconcileTrustRelationShip creates a TrustRelationShip from a local cluster to a remote one.
