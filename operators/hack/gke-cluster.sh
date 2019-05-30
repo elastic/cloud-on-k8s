@@ -17,7 +17,7 @@ set -eu
 : "${GKE_CLUSTER_NAME:=${USER//_}-dev-cluster}"
 : "${GKE_CLUSTER_REGION:=europe-west3}"
 : "${GKE_ADMIN_USERNAME:=admin}"
-: "${GKE_CLUSTER_VERSION:=1.11}"
+: "${GKE_CLUSTER_VERSION}"
 : "${GKE_MACHINE_TYPE:=n1-highmem-4}"
 : "${GKE_LOCAL_SSD_COUNT:=1}"
 : "${GKE_NODE_COUNT_PER_ZONE:=1}"

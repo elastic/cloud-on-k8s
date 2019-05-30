@@ -6,11 +6,12 @@ package restart
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"net"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -22,14 +23,34 @@ type pmClientFactory func(restartContext RestartContext, pod corev1.Pod) (proces
 func createProcessManagerClient(restartContext RestartContext, pod corev1.Pod) (processmanager.Client, error) {
 	podIP := net.ParseIP(pod.Status.PodIP)
 	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	rawCA, err := nodecerts.GetCA(restartContext.K8sClient, k8s.ExtractNamespacedName(&restartContext.Cluster))
-	if err != nil {
+
+	var publicCertsSecret corev1.Secret
+	if err := restartContext.K8sClient.Get(
+		http.PublicCertsSecretRef(k8s.ExtractNamespacedName(&restartContext.Cluster)),
+		&publicCertsSecret,
+	); err != nil {
 		return nil, err
 	}
-	certs, err := certificates.ParsePEMCerts(rawCA)
-	if err != nil {
-		return nil, err
+
+	certs := make([]*x509.Certificate, 0)
+
+	if caCertsData, ok := publicCertsSecret.Data[certificates.CAFileName]; ok {
+		caCerts, err := certificates.ParsePEMCerts(caCertsData)
+		if err != nil {
+			return nil, err
+		}
+		certs = append(certs, caCerts...)
 	}
+
+	// TODO: is this the right thing to do? it conflates CA certs and leaf certs
+	if certsData, ok := publicCertsSecret.Data[certificates.CertFileName]; ok {
+		publicCerts, err := certificates.ParsePEMCerts(certsData)
+		if err != nil {
+			return nil, err
+		}
+		certs = append(certs, publicCerts...)
+	}
+
 	return processmanager.NewClient(url, certs, restartContext.Dialer), nil
 }
 

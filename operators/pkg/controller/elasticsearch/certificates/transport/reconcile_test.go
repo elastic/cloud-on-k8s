@@ -2,31 +2,28 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build integration
-
-package nodecerts
+package transport
 
 import (
 	cryptorand "crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // fixtures
@@ -136,7 +133,7 @@ func init() {
 	}
 
 	if testCA, err = certificates.NewSelfSignedCA(certificates.CABuilderOptions{
-		CommonName: "test",
+		Subject:    pkix.Name{CommonName: "test-common-name"},
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
@@ -160,7 +157,6 @@ func init() {
 }
 
 func Test_shouldIssueNewCertificate(t *testing.T) {
-	sanDNS := "my.dns.com"
 	type args struct {
 		secret       corev1.Secret
 		pod          corev1.Pod
@@ -187,7 +183,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: []byte("invalid"),
+						certificates.CertFileName: []byte("invalid"),
 					},
 				},
 				pod:          testPod,
@@ -201,7 +197,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						certificates.CertFileName: pemCert,
 					},
 				},
 				pod:          corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
@@ -215,7 +211,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						certificates.CertFileName: pemCert,
 					},
 				},
 				pod:          corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "different"}},
@@ -229,7 +225,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						certificates.CertFileName: pemCert,
 					},
 				},
 				pod:          testPod,
@@ -243,41 +239,12 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 			args: args{
 				secret: corev1.Secret{
 					Data: map[string][]byte{
-						CertFileName: pemCert,
+						certificates.CertFileName: pemCert,
 					},
 				},
 				pod:          testPod,
 				cluster:      testCluster,
 				rotateBefore: certificates.DefaultCertValidity, // rotate before the same duration as total validity
-			},
-			want: true,
-		},
-		{
-			name: "different SANs",
-			args: args{
-				secret: corev1.Secret{
-					Data: map[string][]byte{
-						CertFileName: pemCert,
-					},
-				},
-				pod: testPod,
-				cluster: v1alpha1.Elasticsearch{
-					ObjectMeta: testCluster.ObjectMeta,
-					Spec: v1alpha1.ElasticsearchSpec{
-						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: commonv1alpha1.TLSOptions{
-								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
-										{
-											DNS: sanDNS,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				rotateBefore: certificates.DefaultRotateBefore,
 			},
 			want: true,
 		},
@@ -291,11 +258,12 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	}
 }
 
-func Test_doReconcile(t *testing.T) {
+func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 	objMeta := metav1.ObjectMeta{
 		Namespace: "namespace",
 		Name:      "secret",
 	}
+
 	tests := []struct {
 		name                            string
 		secret                          corev1.Secret
@@ -309,9 +277,9 @@ func Test_doReconcile(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName:            pemCert,
-					CSRFileName:             testCSRBytes,
-					certificates.CAFileName: certificates.EncodePEMCert(testCA.Cert.Raw),
+					certificates.CertFileName: pemCert,
+					certificates.CSRFileName:  testCSRBytes,
+					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
 			additionalTrustedCAsPemEncoded:  additionalCA,
@@ -345,7 +313,7 @@ func Test_doReconcile(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: pemCert,
+					certificates.CertFileName: pemCert,
 				},
 			},
 			pod:                             podWithTerminatedCertInitializer,
@@ -357,7 +325,7 @@ func Test_doReconcile(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName: pemCert,
+					certificates.CertFileName: pemCert,
 				},
 			},
 			pod:                             podWithRunningCertInitializer,
@@ -369,9 +337,9 @@ func Test_doReconcile(t *testing.T) {
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
-					CertFileName:            pemCert,
-					CSRFileName:             testCSRBytes,
-					certificates.CAFileName: certificates.EncodePEMCert(testCA.Cert.Raw),
+					certificates.CertFileName: pemCert,
+					certificates.CSRFileName:  testCSRBytes,
+					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
 			pod:                             podWithRunningCertInitializer,
@@ -385,7 +353,7 @@ func Test_doReconcile(t *testing.T) {
 			err := fakeClient.Create(&tt.pod)
 			require.NoError(t, err)
 
-			_, err = doReconcile(
+			_, err = doReconcileTransportCertificateSecret(
 				fakeClient,
 				*tt.secret.DeepCopy(), // We need a deepcopy to not update the original data slice
 				tt.pod,
@@ -410,8 +378,8 @@ func Test_doReconcile(t *testing.T) {
 			require.Equal(t, tt.wantSecretUpdated, isUpdated)
 			if tt.wantSecretUpdated {
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
-				assert.NotEmpty(t, updatedSecret.Data[CSRFileName])
-				assert.NotEmpty(t, updatedSecret.Data[CertFileName])
+				assert.NotEmpty(t, updatedSecret.Data[certificates.CSRFileName])
+				assert.NotEmpty(t, updatedSecret.Data[certificates.CertFileName])
 				if tt.wantCertUpdateAnnotationUpdated {
 					// check that the CSR annotation has been updated
 					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])

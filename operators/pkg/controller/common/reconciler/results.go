@@ -18,6 +18,21 @@ type Results struct {
 	errors  []error
 }
 
+// HasError returns true if Results contains one or more errors.
+func (r *Results) HasError() bool {
+	if len(r.errors) > 0 {
+		return true
+	}
+	return false
+}
+
+// WithResults appends the results and error from the other Results.
+func (r *Results) WithResults(other *Results) *Results {
+	r.results = append(r.results, other.results...)
+	r.errors = append(r.errors, other.errors...)
+	return r
+}
+
 // WithError adds an error to the results.
 func (r *Results) WithError(err error) *Results {
 	if err != nil {

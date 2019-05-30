@@ -5,6 +5,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -60,4 +62,10 @@ func GetPods(
 	}
 
 	return podList.Items, nil
+}
+
+// GetServiceFullyQualifiedHostname returns the fully qualified DNS name for a service
+func GetServiceFullyQualifiedHostname(svc corev1.Service) string {
+	// TODO: cluster.local suffix should be configurable
+	return fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
 }

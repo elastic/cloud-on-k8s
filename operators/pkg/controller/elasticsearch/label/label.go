@@ -10,6 +10,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,6 +71,21 @@ func NewLabels(es types.NamespacedName) map[string]string {
 		ClusterNameLabelName: es.Name,
 		common.TypeLabelName: Type,
 	}
+}
+
+// NewPodLabels returns labels to apply for a new Elasticsearch pod.
+func NewPodLabels(es v1alpha1.Elasticsearch, version version.Version, cfg v1alpha1.ElasticsearchSettings) map[string]string {
+	// cluster name based labels
+	labels := NewLabels(k8s.ExtractNamespacedName(&es))
+	// version label
+	labels[VersionLabelName] = version.String()
+	// node types labels
+	NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
+	NodeTypesDataLabelName.Set(cfg.Node.Data, labels)
+	NodeTypesIngestLabelName.Set(cfg.Node.Ingest, labels)
+	NodeTypesMLLabelName.Set(cfg.Node.ML, labels)
+
+	return labels
 }
 
 // NewLabelSelectorForElasticsearch returns a labels.Selector that matches the labels as constructed by NewLabels

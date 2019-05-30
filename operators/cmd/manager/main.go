@@ -36,10 +36,10 @@ const (
 	AutoPortForwardFlagName = "auto-port-forward"
 	NamespaceFlagName       = "namespace"
 
-	CACertValidityFlag       = "ca-cert-validity"
-	CACertRotateBeforeFlag   = "ca-cert-rotate-before"
-	NodeCertValidityFlag     = "node-cert-validity"
-	NodeCertRotateBeforeFlag = "node-cert-rotate-before"
+	CACertValidityFlag     = "ca-cert-validity"
+	CACertRotateBeforeFlag = "ca-cert-rotate-before"
+	CertValidityFlag       = "cert-validity"
+	CertRotateBeforeFlag   = "cert-rotate-before"
 
 	AutoInstallWebhooksFlag = "auto-install-webhooks"
 	OperatorNamespaceFlag   = "operator-namespace"
@@ -103,14 +103,14 @@ func init() {
 		"Duration representing how long before expiration CA certificates should be reissued",
 	)
 	Cmd.Flags().Duration(
-		NodeCertValidityFlag,
+		CertValidityFlag,
 		certificates.DefaultCertValidity,
-		"Duration representing how long before a newly created node cert expires",
+		"Duration representing how long before a newly created TLS certificate expires",
 	)
 	Cmd.Flags().Duration(
-		NodeCertRotateBeforeFlag,
+		CertRotateBeforeFlag,
 		certificates.DefaultRotateBefore,
-		"Duration representing how long before expiration nodes certificates should be reissued",
+		"Duration representing how long before expiration TLS certificates should be reissued",
 	)
 	Cmd.Flags().Bool(
 		AutoInstallWebhooksFlag,
@@ -226,7 +226,7 @@ func execute() {
 
 	// Verify cert validity options
 	caCertValidity, caCertRotateBefore := ValidateCertExpirationFlags(CACertValidityFlag, CACertRotateBeforeFlag)
-	nodeCertValidity, nodeCertRotateBefore := ValidateCertExpirationFlags(NodeCertValidityFlag, NodeCertRotateBeforeFlag)
+	certValidity, certRotateBefore := ValidateCertExpirationFlags(CertValidityFlag, CertRotateBeforeFlag)
 	// Setup all Controllers
 	roles := viper.GetStringSlice(operator.RoleFlag)
 	err = operator.ValidateRoles(roles)
@@ -237,13 +237,13 @@ func execute() {
 	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
-		Dialer:               dialer,
-		OperatorImage:        operatorImage,
-		OperatorNamespace:    operatorNamespace,
-		CACertValidity:       caCertValidity,
-		CACertRotateBefore:   caCertRotateBefore,
-		NodeCertValidity:     nodeCertValidity,
-		NodeCertRotateBefore: nodeCertRotateBefore,
+		Dialer:             dialer,
+		OperatorImage:      operatorImage,
+		OperatorNamespace:  operatorNamespace,
+		CACertValidity:     caCertValidity,
+		CACertRotateBefore: caCertRotateBefore,
+		CertValidity:       certValidity,
+		CertRotateBefore:   certRotateBefore,
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)

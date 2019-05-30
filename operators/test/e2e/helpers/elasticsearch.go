@@ -7,13 +7,12 @@ package helpers
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 )
 
 // NewElasticsearchClient returns an ES client for the given stack's ES cluster
@@ -23,7 +22,8 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Cli
 		return nil, err
 	}
 	esUser := client.UserAuth{Name: "elastic", Password: password}
-	caCert, err := k.GetCACert(es.Name)
+
+	caCert, err := k.GetHTTPCaCert(es.Name)
 	if err != nil {
 		return nil, err
 	}

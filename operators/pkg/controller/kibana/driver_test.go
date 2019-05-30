@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -80,7 +81,7 @@ func expectedDeploymentParams() *DeploymentParams {
 					},
 					{
 						Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-						Value: "/usr/share/kibana/config/elasticsearch-certs/ca.pem",
+						Value: "/usr/share/kibana/config/elasticsearch-certs/" + certificates.CAFileName,
 					},
 					{
 						Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
@@ -172,7 +173,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				"ca.pem": nil,
+				certificates.CAFileName: nil,
 			},
 		},
 		&corev1.Secret{
@@ -244,7 +245,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							"ca.pem": nil,
+							certificates.CAFileName: nil,
 						},
 					},
 					&corev1.Secret{

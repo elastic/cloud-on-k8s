@@ -1,5 +1,7 @@
 # Dynamic provisioner for local volumes
 
+**Important**: this is an experimental project, not intended for production use cases. There is no public Docker image release available.
+
 This projects allows the creation of PersistentVolumeClaim (PVC) for local volumes.
 A PersistentVolume (PV) corresponding to this PVC will dynamically be created.
 A filesystem volume will dynamically be created and mounted on the host where the pod is scheduled.

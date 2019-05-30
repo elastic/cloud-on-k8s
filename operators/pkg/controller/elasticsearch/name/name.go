@@ -5,17 +5,13 @@
 package name
 
 import (
-	"fmt"
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	"k8s.io/apimachinery/pkg/util/rand"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-)
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 
-var (
-	log = logf.Log.WithName("name")
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 const (
@@ -23,44 +19,32 @@ const (
 	MaxLabelLength = 63
 	// Elasticsearch name, used as prefix, is limited to 36 characters,
 	MaxElasticsearchNameLength = 36
-	// so it leaves 27 characters for a suffix.
+	// this leaves 63 - 36 = 27 characters for a suffix.
 	MaxSuffixLength = MaxLabelLength - MaxElasticsearchNameLength
 	// podRandomSuffixLength represents the length of the random suffix that is appended in NewPodName.
 	podRandomSuffixLength = 10
 
-	podSuffix                   = "-es"
-	configSecretSuffix          = "-config"
-	secureSettingsSecretSuffix  = "-secure-settings"
-	certsSecretSuffix           = "-certs"
-	serviceSuffix               = "-es"
-	discoveryServiceSuffix      = "-es-discovery"
-	cASecretSuffix              = "-ca"
-	cAPrivateKeySecretSuffix    = "-ca-private-key"
-	elasticUserSecretSuffix     = "-elastic-user"
-	esRolesUsersSecretSuffix    = "-es-roles-users"
-	clusterSecretsSecretSuffix  = "-secrets"
-	internalUsersSecretSuffix   = "-internal-users"
-	unicastHostsConfigMapSuffix = "-unicast-hosts"
+	configSecretSuffix          = "config"
+	secureSettingsSecretSuffix  = "secure-settings"
+	certsSecretSuffix           = "certs"
+	discoveryServiceSuffix      = "discovery"
+	elasticUserSecretSuffix     = "elastic-user"
+	esRolesUsersSecretSuffix    = "roles-users"
+	clusterSecretsSecretSuffix  = "secrets"
+	internalUsersSecretSuffix   = "internal-users"
+	unicastHostsConfigMapSuffix = "unicast-hosts"
+
+	certsPublicSecretName   = "certs-public"
+	certsInternalSecretName = "certs-internal"
 )
 
-// Suffix a resource name.
-// Panic if the suffix exceeds the limits below.
-// Trim the name if it exceeds the limits below.
-func suffix(name string, sfx string) string {
-	// This should never happen because we control all the suffixes!
-	if len(sfx) > MaxSuffixLength {
-		panic(fmt.Errorf("suffix should not exceed %d characters: %s", MaxSuffixLength, sfx))
-	}
-	// This should never happen because the name length should have been validated.
-	// Trim the name and log an error as fallback.
-	maxPrefixLength := MaxLabelLength - len(sfx)
-	if len(name) > maxPrefixLength {
-		name = name[:maxPrefixLength]
-		log.Error(fmt.Errorf("name should not exceed %d characters: %s", maxPrefixLength, name),
-			"Failed to suffix resource")
-	}
-	return stringsutil.Concat(name, sfx)
+// ESNamer is a Namer that is configured with the defaults for resources related to an ES cluster.
+var ESNamer = name.Namer{
+	MaxSuffixLength: MaxSuffixLength,
+	DefaultSuffixes: []string{"es"},
 }
+
+var esNoDefaultSuffixesNamer = ESNamer.WithDefaultSuffixes()
 
 // NewPodName returns a unique name to be used for the pod name and the
 // Elasticsearch cluster node name.
@@ -69,9 +53,6 @@ func NewPodName(esName string, nodeSpec v1alpha1.NodeSpec) string {
 	var sfx strings.Builder
 
 	// it's safe to ignore the result here as strings.Builder cannot error on sfx.WriteString
-	sfx.WriteString(podSuffix) // #nosec G104
-	sfx.WriteString("-")       // #nosec G104
-
 	if nodeSpec.Name != "" {
 		sfx.WriteString(nodeSpec.Name) // #nosec G104
 		sfx.WriteString("-")           // #nosec G104
@@ -79,7 +60,7 @@ func NewPodName(esName string, nodeSpec v1alpha1.NodeSpec) string {
 
 	sfx.WriteString(rand.String(podRandomSuffixLength)) // #nosec G104
 
-	return suffix(esName, sfx.String())
+	return ESNamer.Suffix(esName, sfx.String())
 }
 
 // Basename returns the base name (without the random suffix) for the provided pod.
@@ -98,58 +79,57 @@ func Basename(podName string) string {
 // The PVC template name is trimmed so that the PVC name does not exceed the max
 // length for a label.
 func NewPVCName(podName string, pvcTemplateName string) string {
-	sfx := stringsutil.Concat("-", pvcTemplateName)
-	if len(sfx) > MaxSuffixLength {
-		sfx = sfx[:MaxSuffixLength]
+	if len(pvcTemplateName) > MaxSuffixLength {
+		pvcTemplateName = pvcTemplateName[:MaxSuffixLength-1]
 	}
-	return suffix(podName, sfx)
+	return esNoDefaultSuffixesNamer.Suffix(podName, pvcTemplateName)
 }
 
 func ConfigSecret(podName string) string {
-	return suffix(podName, configSecretSuffix)
+	return esNoDefaultSuffixesNamer.Suffix(podName, configSecretSuffix)
 }
 
 func SecureSettingsSecret(esName string) string {
-	return suffix(esName, secureSettingsSecretSuffix)
+	return ESNamer.Suffix(esName, secureSettingsSecretSuffix)
 }
 
-func CertsSecret(podName string) string {
-	return suffix(podName, certsSecretSuffix)
+func TransportCertsSecret(podName string) string {
+	return esNoDefaultSuffixesNamer.Suffix(podName, certsSecretSuffix)
 }
 
 func Service(esName string) string {
-	return suffix(esName, serviceSuffix)
+	return ESNamer.Suffix(esName)
 }
 
 func DiscoveryService(esName string) string {
-	return suffix(esName, discoveryServiceSuffix)
-}
-
-func CASecret(esName string) string {
-	return suffix(esName, cASecretSuffix)
-}
-
-func CAPrivateKeySecret(esName string) string {
-	return suffix(esName, cAPrivateKeySecretSuffix)
+	return ESNamer.Suffix(esName, discoveryServiceSuffix)
 }
 
 func ElasticUserSecret(esName string) string {
-	return suffix(esName, elasticUserSecretSuffix)
+	return ESNamer.Suffix(esName, elasticUserSecretSuffix)
 }
 
 func EsRolesUsersSecret(esName string) string {
-	return suffix(esName, esRolesUsersSecretSuffix)
+	return ESNamer.Suffix(esName, esRolesUsersSecretSuffix)
 }
 
 func ClusterSecretsSecret(esName string) string {
-	return suffix(esName, clusterSecretsSecretSuffix)
+	return ESNamer.Suffix(esName, clusterSecretsSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {
-	return suffix(esName, internalUsersSecretSuffix)
+	return ESNamer.Suffix(esName, internalUsersSecretSuffix)
 }
 
 // UnicastHostsConfigMap returns the name of the ConfigMap that holds the list of seed nodes for a given cluster.
 func UnicastHostsConfigMap(esName string) string {
-	return suffix(esName, unicastHostsConfigMapSuffix)
+	return ESNamer.Suffix(esName, unicastHostsConfigMapSuffix)
+}
+
+func HTTPCertsInternalSecretName(esName string) string {
+	return ESNamer.Suffix(esName, string(certificates.HTTPCAType), certsInternalSecretName)
+}
+
+func CertsPublicSecretName(esName string, caType certificates.CAType) string {
+	return ESNamer.Suffix(esName, string(caType), certsPublicSecretName)
 }
