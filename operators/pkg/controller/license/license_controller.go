@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -147,19 +148,19 @@ func reconcileSecret(
 	c k8s.Client,
 	cluster v1alpha1.Elasticsearch,
 	clusterLicense v1alpha1.ClusterLicenseSpec,
-	ns string,
+	enterpriseLicense metav1.ObjectMeta,
 ) error {
-	secretName := cluster.Name + "-license"
-	secretKey := "sig"
+	secretName := esname.LicenseSecretName(cluster.Name)
+	secretKey := "license"
 
 	// fetch the user created secret from the controllers (global) namespace
 	var globalSecret corev1.Secret
-	err := c.Get(types.NamespacedName{Namespace: ns, Name: clusterLicense.SignatureRef.Name}, &globalSecret)
+	err := c.Get(types.NamespacedName{Namespace: enterpriseLicense.Namespace, Name: clusterLicense.SignatureRef.Name}, &globalSecret)
 	if err != nil {
 		return err
 	}
 
-	license := esclient.License{
+	l := esclient.License{
 		UID:                clusterLicense.UID,
 		Type:               string(clusterLicense.Type),
 		IssueDateInMillis:  clusterLicense.IssueDateInMillis,
@@ -170,7 +171,7 @@ func reconcileSecret(
 		StartDateInMillis:  clusterLicense.StartDateInMillis,
 		Signature:          string(globalSecret.Data[clusterLicense.SignatureRef.Key]),
 	}
-	licenseBytes, err := json.Marshal(license)
+	licenseBytes, err := json.Marshal(l)
 	if err != nil {
 		return err
 	}
@@ -179,7 +180,9 @@ func reconcileSecret(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: cluster.Namespace,
-			// TODO labels
+			Labels: map[string]string{
+				license.EnterpriseLicenseLabelName: enterpriseLicense.Name,
+			},
 		},
 		Data: map[string][]byte{
 			secretKey: licenseBytes,
@@ -218,7 +221,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		return noResult, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
-	err = reconcileSecret(r, cluster, matchingSpec, parent.Namespace)
+	err = reconcileSecret(r, cluster, matchingSpec, parent)
 	if err != nil {
 		return noResult, err
 	}
