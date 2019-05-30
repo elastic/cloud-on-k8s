@@ -6,12 +6,14 @@ package license
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -20,13 +22,20 @@ import (
 func applyLinkedLicense(
 	c k8s.Client,
 	esCluster types.NamespacedName,
-	updater func(license v1alpha1.ClusterLicense) error,
+	updater func(license esclient.License) error,
 ) error {
-	var license v1alpha1.ClusterLicense
+	var license corev1.Secret
 	// the underlying assumption here is that either a user or a
 	// license controller has created a cluster license in the
-	// namespace of this cluster with the same name as the cluster
-	err := c.Get(esCluster, &license)
+	// namespace of this cluster following the cluster-license naming
+	// convention
+	err := c.Get(
+		types.NamespacedName{
+			Namespace: esCluster.Namespace,
+			Name:      name.LicenseSecretName(esCluster.Name),
+		},
+		&license,
+	)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// no license linked to this cluster. Expected for clusters running on basic or trial.
@@ -34,54 +43,31 @@ func applyLinkedLicense(
 		}
 		return err
 	}
-	if license.IsEmpty() {
+	if len(license.Data) == 0 {
 		return errors.New("empty license linked to this cluster")
 	}
-	return updater(license)
-}
-
-func secretRefResolver(c k8s.Client, ns string, ref corev1.SecretKeySelector) func() (string, error) {
-	return func() (string, error) {
-		var secret corev1.Secret
-		err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &secret)
-		if err != nil {
-			return "", err
+	for _, v := range license.Data {
+		var lic esclient.License
+		err = json.Unmarshal(v, &lic)
+		if err == nil {
+			return updater(lic)
 		}
-		bytes, ok := secret.Data[ref.Key]
-		if !ok {
-			return "", fmt.Errorf("requested secret key could not be found in secret %v", ref)
-		}
-		return string(bytes), nil
 	}
+	return pkgerrors.Wrap(err, "No valid license found in license secret")
 }
 
+// updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.
 func updateLicense(
 	c esclient.Client,
 	current *esclient.License,
-	desired v1alpha1.ClusterLicense,
-	sigResolver func() (string, error),
+	desired esclient.License,
 ) error {
-	if current != nil && current.UID == desired.Spec.UID {
+	if current != nil && current.UID == desired.UID {
 		return nil // we are done already applied
-	}
-	sig, err := sigResolver()
-	if err != nil {
-		return err
 	}
 	request := esclient.LicenseUpdateRequest{
 		Licenses: []esclient.License{
-			{
-
-				UID:                desired.Spec.UID,
-				Type:               string(desired.Spec.Type),
-				IssueDateInMillis:  desired.Spec.IssueDateInMillis,
-				ExpiryDateInMillis: desired.Spec.ExpiryDateInMillis,
-				MaxNodes:           desired.Spec.MaxNodes,
-				IssuedTo:           desired.Spec.IssuedTo,
-				Issuer:             desired.Spec.Issuer,
-				StartDateInMillis:  desired.Spec.StartDateInMillis,
-				Signature:          sig,
-			},
+			desired,
 		},
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
