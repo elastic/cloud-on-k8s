@@ -109,14 +109,6 @@ func TestReconcile(t *testing.T) {
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)
 	})
 
-	test.RetryUntilSuccess(t, func() error {
-		var secret corev1.Secret
-		err := c.Get(types.NamespacedName{Name: "foo-license", Namespace: "default"}, &secret)
-		if err != nil {
-			return err
-		}
-		return validateOwnerRef(&secret, cluster.ObjectMeta)
-	})
 }
 
 func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {

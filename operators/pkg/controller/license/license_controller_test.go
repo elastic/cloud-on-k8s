@@ -184,7 +184,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v1alpha1.AddToScheme(scheme.Scheme)
+			require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
 			r := &ReconcileLicenses{
 				Client: client,
@@ -206,7 +206,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				require.NotZero(t, res.RequeueAfter)
 			}
 			// verify that a cluster license was created
-			// with the same name as the cluster
+			// following the es naming convention
 			licenseNsn := nsn
 			licenseNsn.Name = licenseNsn.Name + "-es-license"
 			var license corev1.Secret
