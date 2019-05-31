@@ -17,8 +17,8 @@ import (
 const (
 	// HTTPPort is the (default) port used by Kibana
 	HTTPPort                             = 5601
-	elasticsearchUsername                = "ELASTICSEARCH_USERNAME"
-	elasticsearchPassword                = "ELASTICSEARCH_PASSWORD"
+	elasticsearchUsernameEnvVar          = "ELASTICSEARCH_USERNAME"
+	elasticsearchPasswordEnvVar          = "ELASTICSEARCH_PASSWORD"
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
@@ -32,15 +32,15 @@ func ApplyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.E
 	if auth.Inline != nil {
 		env = append(
 			env,
-			corev1.EnvVar{Name: elasticsearchUsername, Value: auth.Inline.Username},
-			corev1.EnvVar{Name: elasticsearchPassword, Value: auth.Inline.Password},
+			corev1.EnvVar{Name: elasticsearchUsernameEnvVar, Value: auth.Inline.Username},
+			corev1.EnvVar{Name: elasticsearchPasswordEnvVar, Value: auth.Inline.Password},
 		)
 	}
 	if auth.SecretKeyRef != nil {
 		env = append(
 			env,
-			corev1.EnvVar{Name: elasticsearchUsername, Value: auth.SecretKeyRef.Key},
-			corev1.EnvVar{Name: elasticsearchPassword, ValueFrom: &corev1.EnvVarSource{
+			corev1.EnvVar{Name: elasticsearchUsernameEnvVar, Value: auth.SecretKeyRef.Key},
+			corev1.EnvVar{Name: elasticsearchPasswordEnvVar, ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: auth.SecretKeyRef,
 			}})
 	}
@@ -53,7 +53,7 @@ func imageWithVersion(image string, version string) string {
 
 type EnvFactory func(kibana v1alpha1.Kibana) []corev1.EnvVar
 
-func NewPodTemplateSpec(kb v1alpha1.Kibana, env EnvFactory) corev1.PodTemplateSpec {
+func NewPodTemplateSpec(kb v1alpha1.Kibana) corev1.PodTemplateSpec {
 	// inherit from the user-provided podTemplateSpec
 	objectMeta := kb.Spec.PodTemplate.ObjectMeta.DeepCopy()
 	spec := kb.Spec.PodTemplate.Spec.DeepCopy()
@@ -109,9 +109,6 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, env EnvFactory) corev1.PodTemplateSp
 	if len(kibanaContainer.Resources.Limits) == 0 && len(kibanaContainer.Resources.Requests) == 0 {
 		kibanaContainer.Resources = DefaultResources
 	}
-
-	// append our own environment to the user-provided environment
-	kibanaContainer.Env = append(kibanaContainer.Env, env(kb)...)
 
 	// set our ports to the Kibana container
 	kibanaContainer.Ports = []corev1.ContainerPort{

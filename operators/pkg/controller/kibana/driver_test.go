@@ -26,17 +26,17 @@ import (
 func expectedDeploymentParams() *DeploymentParams {
 	false := false
 	return &DeploymentParams{
-		Name:      "kb-kibana",
+		Name:      "test-kibana",
 		Namespace: "default",
-		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
-		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
+		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
+		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Replicas:  1,
 		PodTemplateSpec: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
-					"kibana.k8s.elastic.co/name":            "kb",
-					"kibana.k8s.elastic.co/config-checksum": "d14a028c2a3a2bc9476102bb288234c415a2b01f828ea62ac5b3e42f",
+					"kibana.k8s.elastic.co/name":            "test",
+					"kibana.k8s.elastic.co/config-checksum": "e86782ca82c59410c1f57e426184b07194f9981965c2e4ffd0adad97",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -46,6 +46,15 @@ func expectedDeploymentParams() *DeploymentParams {
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "es-ca-secret",
+								Optional:   &false,
+							},
+						},
+					},
+					{
+						Name: "config",
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "test-kb-config",
 								Optional:   &false,
 							},
 						},
@@ -61,34 +70,10 @@ func expectedDeploymentParams() *DeploymentParams {
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config/elasticsearch-certs",
 						},
-					},
-					Env: []corev1.EnvVar{
 						{
-							Name:  "ELASTICSEARCH_HOSTS",
-							Value: "https://localhost:9200",
-						},
-						{
-							Name:  "ELASTICSEARCH_USERNAME",
-							Value: "kibana-user",
-						},
-						{
-							Name: "ELASTICSEARCH_PASSWORD",
-							ValueFrom: &corev1.EnvVarSource{
-								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "kb-auth",
-									},
-									Key: "kibana-user",
-								},
-							},
-						},
-						{
-							Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-							Value: "/usr/share/kibana/config/elasticsearch-certs/" + certificates.CAFileName,
-						},
-						{
-							Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-							Value: "certificate",
+							Name:      "config",
+							ReadOnly:  true,
+							MountPath: "/usr/share/kibana/config",
 						},
 					},
 					Image: "my-image",
@@ -115,7 +100,6 @@ func expectedDeploymentParams() *DeploymentParams {
 			},
 		},
 	}
-
 }
 
 func Test_driver_deploymentParams(t *testing.T) {
@@ -127,7 +111,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 	caSecret := "es-ca-secret"
 	kibanaFixture := kbtype.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "kb",
+			Name:      "test",
 			Namespace: "default",
 		},
 		Spec: kbtype.KibanaSpec{
@@ -139,7 +123,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				Auth: kbtype.ElasticsearchAuth{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "kb-auth",
+							Name: "test-auth",
 						},
 						Key: "kibana-user",
 					},
@@ -182,11 +166,20 @@ func Test_driver_deploymentParams(t *testing.T) {
 		},
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "kb-auth",
+				Name:      "test-auth",
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
 				"kibana-user": nil,
+			},
+		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-kb-config",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"kibana.yml": []byte("server.name: kb"),
 			},
 		},
 	}
@@ -254,11 +247,20 @@ func Test_driver_deploymentParams(t *testing.T) {
 					},
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "kb-auth",
+							Name:      "test-auth",
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
 							"kibana-user": []byte("some-secret"),
+						},
+					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-kb-config",
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							"kibana.yml": []byte("server.name: kb"),
 						},
 					},
 				},
@@ -267,8 +269,8 @@ func Test_driver_deploymentParams(t *testing.T) {
 				p := expectedDeploymentParams()
 				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
-					"kibana.k8s.elastic.co/name":            "kb",
-					"kibana.k8s.elastic.co/config-checksum": "5d26adcdb6e5e6be930802dc6639233ece8c2a3bc2cf8b8dffa69602",
+					"kibana.k8s.elastic.co/name":            "test",
+					"kibana.k8s.elastic.co/config-checksum": "d29f978e782f79f72bceae3da9dd662992ad2114c79df715619971a2",
 				}
 				return p
 			}(),
@@ -286,7 +288,6 @@ func Test_driver_deploymentParams(t *testing.T) {
 			},
 			want: func() *DeploymentParams {
 				p := expectedDeploymentParams()
-				p.PodTemplateSpec.Spec.Containers[0].Env[0].Name = "ELASTICSEARCH_URL"
 				return p
 			}(),
 			wantErr: false,
@@ -309,11 +310,13 @@ func Test_driver_deploymentParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 			w := watches.NewDynamicWatches()
-			w.Secrets.InjectScheme(scheme.Scheme)
-			version, err := version.Parse(tt.args.kb.Spec.Version)
+			err := w.Secrets.InjectScheme(scheme.Scheme)
 			assert.NoError(t, err)
-			d, err := newDriver(client, s, *version, w)
+			kbVersion, err := version.Parse(tt.args.kb.Spec.Version)
 			assert.NoError(t, err)
+			d, err := newDriver(client, s, *kbVersion, w)
+			assert.NoError(t, err)
+
 			got, err := d.deploymentParams(tt.args.kb)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("driver.deploymentParams() error = %v, wantErr %v", err, tt.wantErr)
