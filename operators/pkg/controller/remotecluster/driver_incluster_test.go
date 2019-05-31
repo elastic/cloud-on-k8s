@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -124,8 +125,8 @@ func Test_apply(t *testing.T) {
 			args: args{
 				rca: &ReconcileRemoteCluster{
 					Client: newFakeClient(t, []runtime.Object{
-						newCASecret("default", "trust-one-es-ca", ca1),
-						newCASecret("default", "trust-two-es-ca", ca2),
+						newCASecret("default", esname.CertsPublicSecretName("trust-one-es", certificates.TransportCAType), ca1),
+						newCASecret("default", esname.CertsPublicSecretName("trust-two-es", certificates.TransportCAType), ca2),
 						newRemoteInCluster(
 							"remotecluster-sample-1-2",
 							"default", "trust-one-es",

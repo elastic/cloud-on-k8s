@@ -10,7 +10,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -110,7 +110,7 @@ func addCertificatesAuthorityWatches(
 	// Watch the CA secret of Elasticsearch clusters which are involved in a association.
 	err := reconcileClusterAssociation.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    watchName(clusterAssociation, cluster),
-		Watched: nodecerts.GetCASecretNamespacedName(cluster.NamespacedName()),
+		Watched: transport.PublicCertsSecretRef(cluster.NamespacedName()),
 		Watcher: k8s.ExtractNamespacedName(&clusterAssociation),
 	})
 	if err != nil {

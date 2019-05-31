@@ -131,7 +131,7 @@ spec:
                   type: object
                 tls:
                   description: TLS describe additional options to consider when generating
-                    nodes TLS certificates.
+                    HTTP TLS certificates.
                   properties:
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
@@ -139,8 +139,8 @@ spec:
                       properties:
                         subjectAltNames:
                           description: 'SubjectAlternativeNames is a list of SANs
-                            to include in the nodes certificates. For example: a wildcard
-                            DNS to expose the cluster.'
+                            to include in the HTTP TLS certificates. For example:
+                            a wildcard DNS to expose the cluster.'
                           items:
                             properties:
                               dns:

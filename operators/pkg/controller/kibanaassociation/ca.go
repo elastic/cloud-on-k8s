@@ -7,23 +7,22 @@ package kibanaassociation
 import (
 	"reflect"
 
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
-	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
-// ElasticsearchCASecretSuffix is used as suffix for CACertSecretName
-const ElasticsearchCASecretSuffix = "es-ca"
+// ElasticsearchCASecretSuffix is used as suffix for CAPublicCertSecretName
+const ElasticsearchCASecretSuffix = "kb-es-ca"
 
-// CACertSecretName returns the name of the secret holding Elasticsearch CA for this Kibana deployment
+// CAPublicCertSecretName returns the name of the secret holding Elasticsearch CA for this Kibana deployment
 func CACertSecretName(kibanaName string) string {
 	return kibanaName + "-" + ElasticsearchCASecretSuffix
 }
@@ -32,15 +31,12 @@ func CACertSecretName(kibanaName string) string {
 // The CA secret content is copied over from ES CA secret into a dedicated secret for Kibana.
 func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
 	kibanaKey := k8s.ExtractNamespacedName(&kibana)
-	publicCACertSecretKey := types.NamespacedName{
-		Namespace: es.Namespace,
-		Name:      nodecerts.CACertSecretName(es.Name),
-	}
+	publicCertsSecretKey := http.PublicCertsSecretRef(es)
 
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: publicCACertSecretKey,
+		Watched: publicCertsSecretKey,
 		Watcher: kibanaKey,
 	}); err != nil {
 		return "", err
@@ -48,7 +44,7 @@ func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.
 
 	// retrieve the CA from ES namespace
 	var publicCACertSecret corev1.Secret
-	if err := r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
+	if err := r.Get(publicCertsSecretKey, &publicCACertSecret); err != nil {
 		if apierrors.IsNotFound(err) {
 			return "", nil // probably not created yet, we'll be notified to reconcile later
 		}

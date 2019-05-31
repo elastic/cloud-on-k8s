@@ -6,7 +6,6 @@ package helpers
 
 import (
 	"bytes"
-	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -18,9 +17,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
@@ -140,7 +139,7 @@ func (k *K8sHelper) GetEndpoints(name string) (*corev1.Endpoints, error) {
 }
 
 func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
-	secretName := stackName + "-elastic-user"
+	secretName := stackName + "-es-elastic-user"
 	elasticUserKey := "elastic"
 	var secret corev1.Secret
 	key := types.NamespacedName{
@@ -152,21 +151,26 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 	}
 	password, exists := secret.Data[elasticUserKey]
 	if !exists {
-		return "", fmt.Errorf("No %s value found for secret %s", elasticUserKey, secretName)
+		return "", fmt.Errorf("no %s value found for secret %s", elasticUserKey, secretName)
 	}
 	return string(password), nil
 }
 
-func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
-	secretName := nodecerts.CACertSecretName(stackName)
+func (k *K8sHelper) GetHTTPCaCert(stackName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
-	key := types.NamespacedName{
-		Namespace: params.Namespace,
-		Name:      secretName,
-	}
-	if err := k.Client.Get(key, &secret); err != nil {
+
+	if err := k.Client.Get(
+		http.PublicCertsSecretRef(
+			types.NamespacedName{
+				Namespace: params.Namespace,
+				Name:      stackName,
+			},
+		),
+		&secret,
+	); err != nil {
 		return nil, err
 	}
+
 	caCert, exists := secret.Data[certificates.CAFileName]
 	if !exists {
 		return nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
@@ -174,29 +178,48 @@ func (k *K8sHelper) GetCACert(stackName string) ([]*x509.Certificate, error) {
 	return certificates.ParsePEMCerts(caCert)
 }
 
-// GetCAPrivateKey returns the private key of the given stack
-func (k *K8sHelper) GetCAPrivateKey(stackName string) (*rsa.PrivateKey, error) {
+// GetCA returns the CA of the given stack
+func (k *K8sHelper) GetCA(stackName string, caType certificates.CAType) (*certificates.CA, error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: params.Namespace,
-		Name:      name.CAPrivateKeySecret(stackName),
+		Name:      certificates.CAInternalSecretName(name.ESNamer, stackName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
 	}
-	pKeyBytes, exists := secret.Data[nodecerts.CAPrivateKeyFileName]
-	if !exists || len(pKeyBytes) == 0 {
-		return nil, fmt.Errorf("no value found for secret %s", nodecerts.CAPrivateKeyFileName)
+
+	caCertsData, exists := secret.Data[certificates.CertFileName]
+	if !exists {
+		return nil, fmt.Errorf("no value found for cert in secret %s", certificates.CertFileName)
 	}
-	return certificates.ParsePEMPrivateKey(pKeyBytes)
+	caCerts, err := certificates.ParsePEMCerts(caCertsData)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(caCerts) != 1 {
+		return nil, fmt.Errorf("found multiple ca certificates in secret %s", key)
+	}
+
+	pKeyBytes, exists := secret.Data[certificates.KeyFileName]
+	if !exists || len(pKeyBytes) == 0 {
+		return nil, fmt.Errorf("no value found for private key in secret %s", key)
+	}
+	pKey, err := certificates.ParsePEMPrivateKey(pKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return certificates.NewCA(pKey, caCerts[0]), nil
 }
 
-// GetNodeCert retrieves the certificate of the CA and the node certificate
-func (k *K8sHelper) GetNodeCert(podName string) (caCert, nodeCert []*x509.Certificate, err error) {
+// GetTransportCert retrieves the certificate of the CA and the transport certificate
+func (k *K8sHelper) GetTransportCert(podName string) (caCert, transportCert []*x509.Certificate, err error) {
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: params.Namespace,
-		Name:      name.CertsSecret(podName),
+		Name:      name.TransportCertsSecret(podName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err
@@ -209,11 +232,11 @@ func (k *K8sHelper) GetNodeCert(podName string) (caCert, nodeCert []*x509.Certif
 	if err != nil {
 		return nil, nil, err
 	}
-	nodeCertBytes, exists := secret.Data[nodecerts.CertFileName]
-	if !exists || len(nodeCertBytes) == 0 {
-		return nil, nil, fmt.Errorf("no value found for secret %s", nodecerts.CertFileName)
+	transportCertBytes, exists := secret.Data[certificates.CertFileName]
+	if !exists || len(transportCertBytes) == 0 {
+		return nil, nil, fmt.Errorf("no value found for secret %s", certificates.CertFileName)
 	}
-	nodeCert, err = certificates.ParsePEMCerts(nodeCertBytes)
+	transportCert, err = certificates.ParsePEMCerts(transportCertBytes)
 	if err != nil {
 		return nil, nil, err
 	}

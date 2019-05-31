@@ -8,8 +8,6 @@ import (
 	"fmt"
 	"path"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
@@ -21,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -80,27 +79,25 @@ func newInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
 	setVMMaxMapCount *bool,
-	nodeCertificatesVolume volume.SecretVolume,
+	transportCertificatesVolume volume.SecretVolume,
 ) ([]corev1.Container, error) {
 	return initcontainer.NewInitContainers(
 		elasticsearchImage,
 		operatorImage,
 		linkedFiles6,
 		setVMMaxMapCount,
-		nodeCertificatesVolume,
+		transportCertificatesVolume,
 	)
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	nodeCertificatesVolume volume.SecretVolume,
-	privateKeySecretVolume volume.SecretVolume,
+	heapSize int,
+	httpCertificatesVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
-	heapSize := version.MemoryLimitsToHeapSize(*p.Resources.Limits.Memory())
-
 	vars := []corev1.EnvVar{
 		// inject pod name and IP as environment variables dynamically,
 		// to be referenced in elasticsearch configuration file
@@ -119,13 +116,13 @@ func newEnvironmentVars(
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
 
-	vars = append(vars, processmanager.NewEnvVars(nodeCertificatesVolume, privateKeySecretVolume)...)
+	vars = append(vars, processmanager.NewEnvVars(httpCertificatesVolume)...)
 	vars = append(vars, keystore.NewEnvVars(
 		keystore.NewEnvVarsParams{
 			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
 			ESUsername:         p.ReloadCredsUser.Name,
 			ESPasswordFilepath: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, p.ReloadCredsUser.Name),
-			ESCaCertPath:       path.Join(nodeCertificatesVolume.VolumeMount().MountPath, certificates.CAFileName),
+			ESCaCertPath:       path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
 			ESVersion:          p.Version,
 		})...)
 

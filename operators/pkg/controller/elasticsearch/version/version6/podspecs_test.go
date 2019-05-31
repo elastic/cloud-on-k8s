@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
@@ -32,7 +33,8 @@ var testObjectMeta = metav1.ObjectMeta{
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
-		nodeCertificatesVolume volume.SecretVolume
+		heapSize               int
+		httpCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
 		reloadCredsUserVolume  volume.SecretVolume
 		secureSettingsVolume   volume.SecretVolume
@@ -50,7 +52,8 @@ func TestNewEnvironmentVars(t *testing.T) {
 					ReloadCredsUser: testReloadCredsUser,
 					Version:         "6",
 				},
-				nodeCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
+				heapSize:               1024,
+				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
 				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
@@ -69,13 +72,13 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
 				{Name: processmanager.EnvTLS, Value: "true"},
-				{Name: processmanager.EnvCertPath, Value: "/certs/cert.pem"},
-				{Name: processmanager.EnvKeyPath, Value: "/key/node.key"},
+				{Name: processmanager.EnvCertPath, Value: path.Join("/certs", certificates.CertFileName)},
+				{Name: processmanager.EnvKeyPath, Value: path.Join("/certs", certificates.KeyFileName)},
 				{Name: keystore.EnvSourceDir, Value: "/secure-settings"},
 				{Name: keystore.EnvReloadCredentials, Value: "true"},
 				{Name: keystore.EnvEsUsername, Value: "username2"},
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
-				{Name: keystore.EnvEsCaCertsPath, Value: "/certs/ca.pem"},
+				{Name: keystore.EnvEsCaCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
 				{Name: keystore.EnvEsVersion, Value: "6"},
 			},
@@ -83,7 +86,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.nodeCertificatesVolume, tt.args.privateKeyVolume,
+			got := newEnvironmentVars(tt.args.p, tt.args.heapSize, tt.args.httpCertificatesVolume,
 				tt.args.reloadCredsUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
@@ -180,7 +183,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 14, len(esPodSpec.Volumes))
+	assert.Equal(t, 15, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -188,7 +191,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
-	// volume mounts is one less than volumes because we're not mounting the node certs secret until pod creation time
-	assert.Equal(t, 15, len(esContainer.VolumeMounts))
+	// volume mounts is one less than volumes because we're not mounting the transport certs secret until pod creation
+	// time
+	assert.Equal(t, 16, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

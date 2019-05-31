@@ -8,8 +8,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,11 +42,11 @@ func BindEnvFromFlags(cmd *cobra.Command) error {
 		"Path to the private key file",
 	)
 	cmd.Flags().String(CertPathFlag,
-		path.Join(volume.NodeCertificatesSecretVolumeMountPath, nodecerts.CertFileName),
+		path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		"Path to the cert file",
 	)
 	cmd.Flags().String(CSRPathFlag,
-		path.Join(volume.NodeCertificatesSecretVolumeMountPath, nodecerts.CSRFileName),
+		path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CSRFileName),
 		"Path to the CSR file",
 	)
 
