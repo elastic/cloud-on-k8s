@@ -23,7 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -184,9 +184,9 @@ func Test_reconcileEsUser(t *testing.T) {
 							Namespace: "default",
 							Name:      userSecretName,
 							Labels: map[string]string{
-								kibana.KibanaNameLabelName: kibanaFixture.Name,
-								common.TypeLabelName:       kibana.Type,
-								AssociationLabelName:       kibanaFixture.Name,
+								kblabel.KibanaNameLabelName: kibanaFixture.Name,
+								common.TypeLabelName:        kblabel.Type,
+								AssociationLabelName:        kibanaFixture.Name,
 							},
 						},
 						Data: map[string][]byte{
