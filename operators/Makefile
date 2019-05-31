@@ -213,7 +213,7 @@ bootstrap-gke: require-gcloud-project
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
 delete-gke: require-gcloud-project
-	./hack/gke-cluster.sh delete
+	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
 
 ## -- registry in the cluster
 
