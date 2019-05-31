@@ -23,7 +23,7 @@ import (
 )
 
 func TestSecureSettingsSecret(t *testing.T) {
-	require.Equal(t, "es-cluster-secure-settings", name.SecureSettingsSecret("es-cluster"))
+	require.Equal(t, "es-cluster-es-secure-settings", name.SecureSettingsSecret("es-cluster"))
 }
 
 func TestReconcileSecureSettings(t *testing.T) {

@@ -2,9 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build integration
-
-package nodecerts
+package transport
 
 import (
 	"crypto/x509"
@@ -13,14 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 )
 
 type FakeCSRClient struct {
@@ -105,7 +100,12 @@ func Test_maybeRequestCSR(t *testing.T) {
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
-	validatedCert, err := CreateValidatedCertificateTemplate(testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
+	// we expect this name to be used for both the common name as well as the es othername
+	cn := "test-pod-name.node.test-es-name.test-namespace.es.cluster.local"
+
+	validatedCert, err := CreateValidatedCertificateTemplate(
+		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+	)
 	require.NoError(t, err)
 
 	// roundtrip the certificate
@@ -114,21 +114,13 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	require.NotNil(t, certRT, "roundtripped certificate should not be nil")
 
 	// regular dns names and ip addresses should be present in the cert
-	assert.Contains(t, certRT.DNSNames, testPod.Name)
+	assert.Contains(t, certRT.DNSNames, cn)
 	assert.Contains(t, certRT.IPAddresses, net.ParseIP(testIP).To4())
 	assert.Contains(t, certRT.IPAddresses, net.ParseIP("127.0.0.1").To4())
-
-	// service ip and hosts should be present in the cert
-	assert.Contains(t, certRT.IPAddresses, net.ParseIP(testSvc.Spec.ClusterIP).To4())
-	assert.Contains(t, certRT.DNSNames, testSvc.Name)
-	assert.Contains(t, certRT.DNSNames, getServiceFullyQualifiedHostname(testSvc))
 
 	// es specific othernames is a bit more difficult to get to, but should be present:
 	otherNames, err := certificates.ParseSANGeneralNamesOtherNamesOnly(certRT)
 	require.NoError(t, err)
-
-	// we expect this name to be used for both the common name as well as the es othername
-	cn := "test-pod-name.node.test-es-name.test-namespace.es.cluster.local"
 
 	otherName, err := (&certificates.UTF8StringValuedOtherName{
 		OID:   certificates.CommonNameObjectIdentifier,
@@ -147,10 +139,7 @@ func Test_buildGeneralNames(t *testing.T) {
 		Value: expectedCommonName,
 	}).ToOtherName()
 	require.NoError(t, err)
-	sanDNS1 := "my.dns.com"
-	sanDNS2 := "my.second.dns.com"
-	sanIP1 := "4.4.6.7"
-	sanIPv6 := "2001:db8:0:85a3:0:0:ac1f:8001"
+
 	type args struct {
 		cluster v1alpha1.Elasticsearch
 		svcs    []corev1.Service
@@ -171,65 +160,8 @@ func Test_buildGeneralNames(t *testing.T) {
 			want: []certificates.GeneralName{
 				{OtherName: *otherName},
 				{DNSName: expectedCommonName},
-				{DNSName: testPod.Name},
 				{IPAddress: net.ParseIP(testIP).To4()},
 				{IPAddress: net.ParseIP("127.0.0.1").To4()},
-			},
-		},
-		{
-			name: "with svcs and user-provided SANs",
-			args: args{
-				cluster: v1alpha1.Elasticsearch{
-					ObjectMeta: testCluster.ObjectMeta,
-					Spec: v1alpha1.ElasticsearchSpec{
-						HTTP: commonv1alpha1.HTTPConfig{
-							TLS: commonv1alpha1.TLSOptions{
-								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
-									SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{
-										{
-											DNS: sanDNS1,
-										},
-										{
-											DNS: sanDNS2,
-										},
-										{
-											IP: sanIP1,
-										},
-										{
-											IP: sanIPv6,
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				svcs: []corev1.Service{
-					{
-						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "svc-namespace",
-							Name:      "svc-name",
-						},
-						Spec: corev1.ServiceSpec{
-							ClusterIP: "10.11.12.13",
-						},
-					},
-				},
-				pod: testPod,
-			},
-			want: []certificates.GeneralName{
-				{OtherName: *otherName},
-				{DNSName: expectedCommonName},
-				{DNSName: testPod.Name},
-				{IPAddress: net.ParseIP(testIP).To4()},
-				{IPAddress: net.ParseIP("127.0.0.1").To4()},
-				{DNSName: "my.dns.com"},
-				{DNSName: "my.second.dns.com"},
-				{IPAddress: net.ParseIP(sanIP1).To4()},
-				{IPAddress: net.ParseIP(sanIPv6)},
-				{IPAddress: net.ParseIP("10.11.12.13").To4()},
-				{DNSName: "svc-name"},
-				{DNSName: "svc-name.svc-namespace.svc.cluster.local"},
 			},
 		},
 	}

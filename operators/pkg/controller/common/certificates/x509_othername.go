@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	log = logf.Log.WithName("certutil")
+	log = logf.Log.WithName("certificates")
 
 	// SubjectAlternativeNamesObjectIdentifier is the OID for the Subject Alternative Name x509 extension
 	SubjectAlternativeNamesObjectIdentifier = asn1.ObjectIdentifier{2, 5, 29, 17}

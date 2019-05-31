@@ -113,9 +113,8 @@ func TestNewPod(t *testing.T) {
 							Name:      "should-be-ignored",
 							Namespace: "should-be-ignored",
 							Labels: map[string]string{
-								"foo":                      "bar",
-								"bar":                      "baz",
-								label.ClusterNameLabelName: "will-be-overridden",
+								"foo": "bar",
+								"bar": "baz",
 							},
 							Annotations: map[string]string{
 								"annotation1": "foo",
@@ -148,6 +147,48 @@ func TestNewPod(t *testing.T) {
 				Spec: podSpec,
 			},
 		},
+		{
+			name:    "with podTemplate: should not override user-provided labels",
+			version: version.MustParse("7.1.0"),
+			es: v1alpha1.Elasticsearch{
+				ObjectMeta: esMeta,
+			},
+			podSpecCtx: pod.PodSpecContext{
+				PodSpec: podSpec,
+				Config:  masterCfg,
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "should-be-ignored",
+							Namespace: "should-be-ignored",
+							Labels: map[string]string{
+								label.ClusterNameLabelName: "override-operator-value",
+								"foo":                      "bar",
+								"bar":                      "baz",
+							},
+						},
+					},
+				},
+			},
+			want: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: esMeta.Namespace,
+					Name:      esMeta.Name,
+					Labels: map[string]string{
+						common.TypeLabelName:                   label.Type,
+						label.ClusterNameLabelName:             "override-operator-value",
+						string(label.NodeTypesDataLabelName):   "false",
+						string(label.NodeTypesIngestLabelName): "false",
+						string(label.NodeTypesMasterLabelName): "true",
+						string(label.NodeTypesMLLabelName):     "false",
+						string(label.VersionLabelName):         "7.1.0",
+						"foo":                                  "bar",
+						"bar":                                  "baz",
+					},
+				},
+				Spec: podSpec,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -165,7 +206,7 @@ func TestNewPod(t *testing.T) {
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides
 	// setup mocks for env vars func, es config func and init-containers func
-	newEnvVarsFn := func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar {
+	newEnvVarsFn := func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar {
 		return []corev1.EnvVar{
 			{
 				Name:  "var1",

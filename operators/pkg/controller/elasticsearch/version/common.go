@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
@@ -35,9 +34,9 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -83,9 +82,9 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, key, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, *settings.CanonicalConfig, error) {
 	// build on top of the user-provided pod template spec
 	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
@@ -126,20 +125,22 @@ func podSpec(
 
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	nodeCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		volume.NodeCertificatesSecretVolumeName,
-		volume.NodeCertificatesSecretVolumeMountPath,
+		volume.TransportCertificatesSecretVolumeName,
+		volume.TransportCertificatesSecretVolumeMountPath,
 	)
-	privateKeyVolume := volume.NewSecretVolumeWithMountPath(
-		initcontainer.PrivateKeySharedVolume.Name,
-		initcontainer.PrivateKeySharedVolume.Volume().Name,
-		initcontainer.PrivateKeySharedVolume.EsContainerVolumeMount().MountPath)
 
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.ClusterName),
 		volume.SecureSettingsVolumeName,
 		volume.SecureSettingsVolumeMountPath,
+	)
+
+	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.HTTPCertsInternalSecretName(p.ClusterName),
+		volume.HTTPCertificatesSecretVolumeName,
+		volume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
 	// append our volumes to user-provided ones
@@ -156,11 +157,12 @@ func podSpec(
 			clusterSecretsSecretVolume.Volume(),
 			reloadCredsSecret.Volume(),
 			secureSettingsVolume.Volume(),
+			httpCertificatesVolume.Volume(),
 		)...,
 	)
 
 	// append out init containers to user-provided ones
-	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, nodeCertificatesVolume)
+	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
 		return corev1.PodSpec{}, nil, err
 	}
@@ -186,7 +188,7 @@ func podSpec(
 	// ...that we augment with our own.
 	// if a user-provided var has the same name as one of ours, we keep the user's version.
 	// this may break the deployment, but we consider users know what they are doing at this point.
-	envBuilder.AddIfMissing(newEnvironmentVarsFn(p, heapSize, nodeCertificatesVolume, privateKeyVolume, reloadCredsSecret, secureSettingsVolume)...)
+	envBuilder.AddIfMissing(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
 	containerSpec.Env = envBuilder.GetEnvVars()
 
 	// set the container image to our own if not provided by the user
@@ -214,9 +216,10 @@ func podSpec(
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				clusterSecretsSecretVolume.VolumeMount(),
-				nodeCertificatesVolume.VolumeMount(),
+				transportCertificatesVolume.VolumeMount(),
 				reloadCredsSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
+				httpCertificatesVolume.VolumeMount(),
 			}...,
 		)...,
 	)
@@ -267,20 +270,17 @@ func NewPod(
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
-	// add (or override) with our own labels
-	for k, v := range label.NewLabels(k8s.ExtractNamespacedName(&es)) {
-		objectMeta.Labels[k] = v
-	}
-	objectMeta.Labels[label.VersionLabelName] = version.String()
-	// set labels for node types
 	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}
-	label.NodeTypesMasterLabelName.Set(cfg.Node.Master, objectMeta.Labels)
-	label.NodeTypesDataLabelName.Set(cfg.Node.Data, objectMeta.Labels)
-	label.NodeTypesIngestLabelName.Set(cfg.Node.Ingest, objectMeta.Labels)
-	label.NodeTypesMLLabelName.Set(cfg.Node.ML, objectMeta.Labels)
+	for k, v := range label.NewPodLabels(es, version, cfg) {
+		// don't override user-provided labels
+		// this may lead to issues but we consider users know what they are doing at this point.
+		if _, exists := objectMeta.Labels[k]; !exists {
+			objectMeta.Labels[k] = v
+		}
+	}
 
 	return corev1.Pod{
 		ObjectMeta: objectMeta,

@@ -21,11 +21,11 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 )
 
 func tmpConfig() Config {
-	privateKeyTmpFile, err := ioutil.TempFile("", "private.key")
+	privateKeyTmpFile, err := ioutil.TempFile("", certificates.KeyFileName)
 	exitOnErr(err)
 	csrTmpFile, err := ioutil.TempFile("", "csr")
 	exitOnErr(err)
@@ -66,7 +66,7 @@ func createAndStoreCert(csrBytes []byte, path string) error {
 		},
 	}
 	svcs := []corev1.Service{}
-	validatedCertificateTemplate, err := nodecerts.CreateValidatedCertificateTemplate(pod, cluster, svcs, csr, certificates.DefaultCertValidity)
+	validatedCertificateTemplate, err := transport.CreateValidatedCertificateTemplate(pod, cluster, svcs, csr, certificates.DefaultCertValidity)
 	if err != nil {
 		return err
 	}

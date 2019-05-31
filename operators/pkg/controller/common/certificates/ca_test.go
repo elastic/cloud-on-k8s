@@ -54,15 +54,15 @@ func init() {
 	}
 
 	if testCA, err = NewSelfSignedCA(CABuilderOptions{
-		CommonName: "test",
+		Subject:    pkix.Name{CommonName: "test"},
 		PrivateKey: testRSAPrivateKey,
 	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
 }
 
-func TestCA_CreateCertificateForValidatedCertificateTemplate(t *testing.T) {
-	// create a certificate template for the csr
+func TestCA_CreateCertificate(t *testing.T) {
+	// create a validated certificate template for the csr
 	cn := "test-cn"
 	certificateTemplate := ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
@@ -100,14 +100,16 @@ func TestNewSelfSignedCA(t *testing.T) {
 
 	// with options, should use them
 	expireIn := 1 * time.Hour
-	ca, err = NewSelfSignedCA(CABuilderOptions{
-		CommonName: "common-name",
+	opts := CABuilderOptions{
+		Subject:    pkix.Name{CommonName: "test-common-name"},
 		PrivateKey: testRSAPrivateKey,
 		ExpireIn:   &expireIn,
-	})
+	}
+
+	ca, err = NewSelfSignedCA(opts)
 	require.NoError(t, err)
 	require.NotNil(t, ca)
-	require.Equal(t, ca.Cert.Subject.CommonName, "common-name")
+	require.Equal(t, ca.Cert.Subject.CommonName, opts.Subject.CommonName)
 	require.Equal(t, testRSAPrivateKey, ca.PrivateKey)
 	require.True(t, ca.Cert.NotBefore.Before(time.Now().Add(2*time.Hour)))
 }

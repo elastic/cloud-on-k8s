@@ -13,12 +13,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/util/rand"
-)
-
-const (
-	// CAFileName is used for the CA Certificates inside a secret
-	CAFileName = "ca.pem"
 )
 
 var (
@@ -48,8 +42,8 @@ func NewCA(privateKey *rsa.PrivateKey, cert *x509.Certificate) *CA {
 
 // CABuilderOptions are options to build a self-signed CA
 type CABuilderOptions struct {
-	// CommonName of the CA to build.
-	CommonName string
+	// Subject of the CA to build.
+	Subject pkix.Name
 	// PrivateKey to be used for signing certificates (auto-generated if not provided).
 	PrivateKey *rsa.PrivateKey
 	// ExpireIn defines in how much time will the CA expire (defaults to DefaultCertValidity if not provided).
@@ -78,11 +72,8 @@ func NewSelfSignedCA(options CABuilderOptions) (*CA, error) {
 	}
 
 	certificateTemplate := x509.Certificate{
-		SerialNumber: serial,
-		Subject: pkix.Name{
-			CommonName:         options.CommonName,
-			OrganizationalUnit: []string{rand.String(16)},
-		},
+		SerialNumber:          serial,
+		Subject:               options.Subject,
 		NotBefore:             time.Now().Add(-1 * time.Minute),
 		NotAfter:              notAfter,
 		SignatureAlgorithm:    x509.SHA256WithRSA,
