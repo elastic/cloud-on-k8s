@@ -34,6 +34,17 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 		want reconcile.Result
 	}{
 		{
+			name: "no expiry found, retry after ",
+			args: args{
+				expiry: time.Time{},
+				safety: 30 * 24 * time.Hour,
+			},
+			want: reconcile.Result{
+				Requeue:      true,
+				RequeueAfter: minimumRetryInternval,
+			},
+		},
+		{
 			name: "remaining time too short: requeue immediately ",
 			args: args{
 				expiry: chrono.MustParseTime("2019-02-02"),
