@@ -189,7 +189,7 @@ func TestStartTrial(t *testing.T) {
 			},
 			assertions: func(license estype.EnterpriseLicense) {
 				assert.Equal(t, license.ExpiryDate().UTC(), time.Date(2019, 02, 21, 0, 0, 0, 0, time.UTC))
-				assert.Equal(t, license.StartDate().UTC(), dateFixture)
+				assert.Equal(t, license.StartTime().UTC(), dateFixture)
 			},
 		},
 	}

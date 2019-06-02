@@ -42,7 +42,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 	true := true
 
 	type args struct {
-		license        types.NamespacedName
+		license        string
 		initialObjects []runtime.Object
 	}
 	tests := []struct {
@@ -55,10 +55,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				license: types.NamespacedName{
-					Namespace: "default",
-					Name:      "enterprise-license",
-				},
+				license: "enterprise-license",
 				initialObjects: []runtime.Object{
 					&v1alpha1.ClusterLicense{
 						ObjectMeta: v1.ObjectMeta{
@@ -66,7 +63,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",
 							Labels: map[string]string{
-								license.EnterpriseLicenseLabelName: "enterprise-license",
+								license.LicenseLabelName: "enterprise-license",
 							},
 						},
 					},
@@ -83,10 +80,7 @@ func Test_listAffectedLicenses(t *testing.T) {
 		{
 			name: "list error",
 			args: args{
-				license: types.NamespacedName{
-					Namespace: "default",
-					Name:      "bar",
-				},
+				license: "bar",
 			},
 			injectedError: errors.New("listing failed"),
 			wantErr:       true,

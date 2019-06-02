@@ -6,15 +6,24 @@ package license
 
 import (
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 )
 
-// EnterpriseLicenseLabelName is a label pointing to the name of the source enterprise license.
-const EnterpriseLicenseLabelName = "license.k8s.elastic.co/name"
+const (
+	// LicenseLabelName is a label pointing to the name of the source enterprise license.
+	LicenseLabelName  = "license.k8s.elastic.co/name"
+	LicenseLabelType  = "license.k8s.elastic.co/type"
+	LicenseLabelState = "license.k8s.elastic.co/state"
+)
 
-// NewLicenseSelector is a list selector to filter by a label containing the license name.
-func NewLicenseSelector(license types.NamespacedName) labels.Selector {
+// NewLicenseByNameSelector is a list selector to filter by a label containing the license name.
+func NewLicenseByNameSelector(licenseName string) labels.Selector {
 	return labels.Set(map[string]string{
-		EnterpriseLicenseLabelName: license.Name,
+		LicenseLabelName: licenseName,
+	}).AsSelector()
+}
+
+func NewLicenseByTypeSelector(licenseType string) labels.Selector {
+	return labels.Set(map[string]string{
+		LicenseLabelType: licenseType,
 	}).AsSelector()
 }

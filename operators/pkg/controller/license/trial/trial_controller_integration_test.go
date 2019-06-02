@@ -108,7 +108,7 @@ func validateStatus(
 }
 
 func validateTrialDuration(t *testing.T, license v1alpha1.EnterpriseLicense, now time.Time, precision time.Duration) {
-	startDelta := license.StartDate().Sub(now)
+	startDelta := license.StartTime().Sub(now)
 	assert.True(t, startDelta <= precision, "start date should be within %v, but was %v", precision, startDelta)
 	endDelta := license.ExpiryDate().Sub(now.Add(30 * 24 * time.Hour))
 	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)

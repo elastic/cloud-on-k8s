@@ -14,7 +14,7 @@ import (
 
 // License common interface for licenses.
 type License interface {
-	StartDate() time.Time
+	StartTime() time.Time
 	ExpiryDate() time.Time
 }
 
@@ -78,19 +78,19 @@ type LicenseMeta struct {
 	StartDateInMillis  int64  `json:"startDateInMillis,omitempty"`
 }
 
-// StartDate is the date as of which this license is valid.
-func (l LicenseMeta) StartDate() time.Time {
+// StartTime is the date as of which this license is valid.
+func (l LicenseMeta) StartTime() time.Time {
 	return time.Unix(0, l.StartDateInMillis*int64(time.Millisecond))
 }
 
-// ExpiryDate is the date as of which the license is no longer valid.
+// ExpiryTime is the date as of which the license is no longer valid.
 func (l LicenseMeta) ExpiryDate() time.Time {
 	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
 }
 
 // IsValid returns true if the license is still valid at the given point in time.
 func (l LicenseMeta) IsValid(instant time.Time) bool {
-	return (l.StartDate().Equal(instant) || l.StartDate().Before(instant)) &&
+	return (l.StartTime().Equal(instant) || l.StartTime().Before(instant)) &&
 		l.ExpiryDate().After(instant)
 }
 
@@ -128,12 +128,12 @@ type ClusterLicense struct {
 	Spec ClusterLicenseSpec `json:"spec,omitempty"`
 }
 
-// StartDate is the date as of which this license is valid.
-func (l *ClusterLicense) StartDate() time.Time {
-	return l.Spec.StartDate()
+// StartTime is the date as of which this license is valid.
+func (l *ClusterLicense) StartTime() time.Time {
+	return l.Spec.StartTime()
 }
 
-// ExpiryDate is the date as of which the license is no longer valid.
+// ExpiryTime is the date as of which the license is no longer valid.
 func (l *ClusterLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
 }

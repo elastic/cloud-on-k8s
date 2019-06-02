@@ -201,7 +201,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 				return nil
 			}
 			labels := obj.Meta.GetLabels()
-			licenseName, ok := labels[licensing.EnterpriseLicenseLabelName]
+			licenseName, ok := labels[licensing.LicenseLabelName]
 			if !ok {
 				return nil
 			}

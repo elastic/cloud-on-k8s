@@ -52,12 +52,12 @@ type EnterpriseLicense struct {
 	Status LicenseStatus         `json:"status,omitempty"`
 }
 
-// StartDate is the date as of which this license is valid.
-func (l *EnterpriseLicense) StartDate() time.Time {
-	return l.Spec.StartDate()
+// StartTime is the date as of which this license is valid.
+func (l *EnterpriseLicense) StartTime() time.Time {
+	return l.Spec.StartTime()
 }
 
-// ExpiryDate is the date as of which the license is no longer valid.
+// ExpiryTime is the date as of which the license is no longer valid.
 func (l *EnterpriseLicense) ExpiryDate() time.Time {
 	return l.Spec.ExpiryDate()
 }

@@ -5,11 +5,14 @@
 package license
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonlicense "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -77,47 +80,33 @@ var cluster = &v1alpha1.Elasticsearch{
 	},
 }
 
-func enterpriseLicense(licenseType v1alpha1.LicenseType, maxNodes int, expired bool) *v1alpha1.EnterpriseLicense {
+func enterpriseLicense(t *testing.T, licenseType v1alpha1.LicenseType, maxNodes int, expired bool) *corev1.Secret {
 	expiry := time.Now().Add(31 * 24 * time.Hour)
 	if expired {
 		expiry = time.Now().Add(-24 * time.Hour)
 	}
-	licenseMeta := v1alpha1.LicenseMeta{
-		ExpiryDateInMillis: expiry.Unix() * 1000,
-		StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
-	}
-	return &v1alpha1.EnterpriseLicense{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "enterprise-license",
-			Namespace: "namespace",
-		},
-		Spec: v1alpha1.EnterpriseLicenseSpec{
-			LicenseMeta: licenseMeta,
-			ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
+	license := commonlicense.SourceEnterpriseLicense{
+		Data: commonlicense.SourceLicenseData{
+			ExpiryDateInMillis: expiry.Unix() * 1000,
+			StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
+			ClusterLicenses: []commonlicense.SourceClusterLicense{
 				{
-					LicenseMeta: licenseMeta,
-					Type:        licenseType,
-					MaxNodes:    maxNodes,
-					SignatureRef: corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "license-secret",
-						},
-						Key: "sig",
+					License: client.License{
+						ExpiryDateInMillis: expiry.Unix() * 1000,
+						StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
+						Type:               string(licenseType),
+						MaxNodes:           maxNodes,
+						Signature:          "blah",
 					},
 				},
 			},
 		},
 	}
-}
-
-func licenseSigSecret() *corev1.Secret {
+	bytes, err := json.Marshal(license)
+	require.NoError(t, err)
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "license-secret",
-			Namespace: "namespace",
-		},
 		Data: map[string][]byte{
-			"sig": []byte("secret data here"),
+			"_": bytes,
 		},
 	}
 }
@@ -145,8 +134,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing gold matching license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(v1alpha1.LicenseTypeGold, 1, false),
-				licenseSigSecret(),
+				enterpriseLicense(t, v1alpha1.LicenseTypeGold, 1, false),
 				cluster,
 			},
 			wantErr:          "",
@@ -158,8 +146,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing platinum matching license",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, false),
-				licenseSigSecret(),
+				enterpriseLicense(t, v1alpha1.LicenseTypePlatinum, 1, false),
 				cluster,
 			},
 			wantErr:          "",
@@ -171,8 +158,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			name:    "existing license expired",
 			cluster: cluster,
 			k8sResources: []runtime.Object{
-				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, true),
-				licenseSigSecret(),
+				enterpriseLicense(t, v1alpha1.LicenseTypePlatinum, 1, true),
 				cluster,
 			},
 			wantErr:          "no matching license found",
@@ -180,22 +166,10 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			wantRequeue:      false,
 			wantRequeueAfter: false,
 		},
-		{
-			name:    "license sig does not exist (yet)",
-			cluster: cluster,
-			k8sResources: []runtime.Object{
-				enterpriseLicense(v1alpha1.LicenseTypePlatinum, 1, false),
-				cluster,
-			},
-			wantErr:          "secrets \"license-secret\" not found",
-			wantNewLicense:   false,
-			wantRequeue:      true,
-			wantRequeueAfter: false,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v1alpha1.AddToScheme(scheme.Scheme)
+			require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
 			r := &ReconcileLicenses{
 				Client: client,

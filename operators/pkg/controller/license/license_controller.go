@@ -5,6 +5,7 @@
 package license
 
 import (
+	"fmt"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -13,12 +14,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -111,14 +113,36 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			requests, err := listAffectedLicenses(
-				k8s.WrapClient(mgr.GetClient()), k8s.ExtractNamespacedName(object.Meta),
-			)
+			licenseType := object.Meta.GetLabels()[license.LicenseLabelType]
+			if licenseType != string(v1alpha1.LicenseTypeEnterprise) {
+				// some other secret not containing an enterprise license
+				return nil
+			}
+			secret, ok := object.Object.(*corev1.Secret)
+			if !ok {
+				log.Error(
+					fmt.Errorf("unexpected object type %T in watch handler, expected Secret", object.Object),
+					"Dropping watch event due to error in handler")
+				return nil
+			}
+			licenses, err := license.ParseEnterpriseLicenses(secret.Data)
 			if err != nil {
-				// dropping the event(s) at this point
-				log.Error(err, "failed to list affected clusters in enterprise license watch")
+				log.Error(err, "ignoring invalid or unparseable license in watch handler")
+				return nil
+			}
+			var requests []reconcile.Request
+			for _, l := range licenses {
+				rs, err := listAffectedLicenses(
+					k8s.WrapClient(mgr.GetClient()), l.Data.UID,
+				)
+				if err != nil {
+					// dropping the event(s) at this point
+					log.Error(err, "failed to list affected clusters in enterprise license watch")
+					continue
+				}
+				requests = append(requests, rs...)
 			}
 			return requests
 		}),
@@ -139,21 +163,31 @@ type ReconcileLicenses struct {
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client) (v1alpha1.ClusterLicenseSpec, metav1.ObjectMeta, bool, error) {
-	licenseList := v1alpha1.EnterpriseLicenseList{}
-	err := c.List(&client.ListOptions{}, &licenseList)
+func findLicense(c k8s.Client) (esclient.License, string, bool, error) {
+	licenseList := corev1.SecretList{}
+	err := c.List(&client.ListOptions{
+		LabelSelector: license.NewLicenseByTypeSelector(string(v1alpha1.LicenseTypeEnterprise)),
+	}, &licenseList)
 	if err != nil {
-		return v1alpha1.ClusterLicenseSpec{}, metav1.ObjectMeta{}, false, err
+		return esclient.License{}, "", false, err
 	}
-	return license.BestMatch(licenseList.Items)
+	var licenses []license.SourceEnterpriseLicense
+	for _, ls := range licenseList.Items {
+		parsed, err := license.ParseEnterpriseLicenses(ls.Data)
+		if err != nil {
+			return esclient.License{}, "", false,
+				pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls))
+		}
+		licenses = append(licenses, parsed...)
+	}
+	return license.BestMatch(licenses)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
 func reconcileSecret(
 	c k8s.Client,
 	cluster v1alpha1.Elasticsearch,
-	ref corev1.SecretKeySelector,
-	ns string,
+	license esclient.License,
 ) (corev1.SecretKeySelector, error) {
 	secretName := cluster.Name + "-license"
 	secretKey := "sig"
@@ -164,25 +198,18 @@ func reconcileSecret(
 		Key: secretKey,
 	}
 
-	// fetch the user created secret from the controllers (global) namespace
-	var globalSecret corev1.Secret
-	err := c.Get(types.NamespacedName{Namespace: ns, Name: ref.Name}, &globalSecret)
-	if err != nil {
-		return selector, err
-	}
-
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
 			Namespace: cluster.Namespace,
 		},
 		Data: map[string][]byte{
-			secretKey: globalSecret.Data[ref.Key],
+			secretKey: []byte(license.Signature),
 		},
 	}
 	// create/update a secret in the cluster's namespace containing the same data
 	var reconciled corev1.Secret
-	err = reconciler.ReconcileResource(reconciler.Params{
+	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme.Scheme,
 		Owner:      &cluster,
@@ -214,16 +241,27 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		return noResult, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
-	selector, err := reconcileSecret(r, cluster, matchingSpec.SignatureRef, parent.Namespace)
+	selector, err := reconcileSecret(r, cluster, matchingSpec)
 	if err != nil {
 		return noResult, err
 	}
 	// reconcile the corresponding ClusterLicense also in the cluster's namespace
 	toAssign := &v1alpha1.ClusterLicense{
 		ObjectMeta: k8s.ToObjectMeta(clusterName), // use the cluster name as license name
-		Spec:       matchingSpec,
+		Spec: v1alpha1.ClusterLicenseSpec{
+			LicenseMeta: v1alpha1.LicenseMeta{
+				UID:                matchingSpec.UID,
+				IssueDateInMillis:  matchingSpec.IssueDateInMillis,
+				ExpiryDateInMillis: matchingSpec.ExpiryDateInMillis,
+				IssuedTo:           matchingSpec.IssuedTo,
+				Issuer:             matchingSpec.Issuer,
+				StartDateInMillis:  matchingSpec.StartDateInMillis,
+			},
+			MaxNodes: matchingSpec.MaxNodes,
+			Type:     v1alpha1.LicenseType(matchingSpec.Type),
+		},
 	}
-	toAssign.Labels = map[string]string{license.EnterpriseLicenseLabelName: parent.Name}
+	toAssign.Labels = map[string]string{license.LicenseLabelName: parent}
 	toAssign.Spec.SignatureRef = selector
 	var reconciled v1alpha1.ClusterLicense
 	err = reconciler.ReconcileResource(reconciler.Params{
@@ -239,13 +277,13 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 			reconciled.Spec = toAssign.Spec
 		},
 		PreCreate: func() {
-			log.Info("Assigning license", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
+			log.Info("Assigning license", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryTime())
 		},
 		PreUpdate: func() {
-			log.Info("Updating license to", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryDate())
+			log.Info("Updating license to", "cluster", clusterName, "license", matchingSpec.UID, "expiry", matchingSpec.ExpiryTime())
 		},
 	})
-	return matchingSpec.ExpiryDate(), err
+	return matchingSpec.ExpiryTime(), err
 }
 
 func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconcile.Result, error) {

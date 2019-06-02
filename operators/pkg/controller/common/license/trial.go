@@ -36,7 +36,7 @@ func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error
 	if err := populateTrialLicense(l); err != nil {
 		return nil, pkgerrors.Wrap(err, "Failed to populate trial license")
 	}
-	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
+	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryDate())
 	rnd := rand.Reader
 	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
@@ -57,7 +57,7 @@ func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error
 			Namespace: l.Namespace,
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
-				EnterpriseLicenseLabelName: l.Name,
+				LicenseLabelName: l.Name,
 			},
 		},
 		Data: map[string][]byte{

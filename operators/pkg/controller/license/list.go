@@ -13,12 +13,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func listAffectedLicenses(c k8s.Client, enterpriseLicense types.NamespacedName) ([]reconcile.Request, error) {
+func listAffectedLicenses(c k8s.Client, licenseName string) ([]reconcile.Request, error) {
 	var requests []reconcile.Request
 	var list = v1alpha1.ClusterLicenseList{}
 	// list all cluster licenses referencing the given enterprise license
 	err := c.List(&client.ListOptions{
-		LabelSelector: license.NewLicenseSelector(enterpriseLicense),
+		LabelSelector: license.NewLicenseByNameSelector(licenseName),
 	}, &list)
 	if err != nil {
 		return requests, err
