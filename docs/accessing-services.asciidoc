@@ -22,7 +22,7 @@ hulk-kibana         ClusterIP      10.19.247.151   <none>           5601:32567/T
 [id="{p}-tls-certificates"]
 == TLS Certificates
 
-The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates will arrive in the future.
+The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates will be added in a future release.
 
 [source,sh]
 ----
