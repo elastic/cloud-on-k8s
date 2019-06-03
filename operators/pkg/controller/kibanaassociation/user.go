@@ -19,7 +19,7 @@ import (
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
-	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -80,7 +80,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
-	secretLabels := kbctl.NewLabels(kibana.Name)
+	secretLabels := kblabel.NewLabels(kibana.Name)
 	secretLabels[AssociationLabelName] = kibana.Name
 	secKey := KibanaUserSecretKey(k8s.ExtractNamespacedName(&kibana))
 	expectedSecret := corev1.Secret{

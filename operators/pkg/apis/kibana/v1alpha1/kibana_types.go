@@ -37,7 +37,8 @@ type KibanaSpec struct {
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to Kibana pods.
-	// So far, only labels, Affinity and `Containers["kibana"].Resources.Limits` are applied.
+	// This allows specifying custom annotations, labels, environment variables,
+	// affinity, resources, etc. for the pods created from this NodeSpec.
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 

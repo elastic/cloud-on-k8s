@@ -9,29 +9,32 @@ import (
 	"fmt"
 	"path"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"k8s.io/apimachinery/pkg/runtime"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type driver struct {
-	client         k8s.Client
-	scheme         *runtime.Scheme
-	newPodSpec     func(params pod.SpecParams) corev1.PodSpec
-	dynamicWatches watches.DynamicWatches
+	client             k8s.Client
+	scheme             *runtime.Scheme
+	newPodTemplateSpec func(kb kbtype.Kibana) corev1.PodTemplateSpec
+	dynamicWatches     watches.DynamicWatches
 }
 
 func secretWatchKey(kibana kbtype.Kibana) string {
@@ -49,26 +52,7 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 }
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
-	kibanaPodSpecParams := pod.SpecParams{
-		Version:          kb.Spec.Version,
-		CustomImageName:  kb.Spec.Image,
-		ElasticsearchUrl: kb.Spec.Elasticsearch.URL,
-		User:             kb.Spec.Elasticsearch.Auth,
-		PodTemplate:      kb.Spec.PodTemplate,
-	}
-
-	kibanaPodSpec := d.newPodSpec(kibanaPodSpecParams)
-
-	labels := NewLabels(kb.Name)
-	podLabels := map[string]string{}
-	// set any user-provided label to the pods (could be overriden by our own)
-	for key, value := range kb.Spec.PodTemplate.Labels {
-		podLabels[key] = value
-	}
-	// also apply Kibana labels to the pods
-	for key, value := range NewLabels(kb.Name) {
-		podLabels[key] = value
-	}
+	kibanaPodSpec := d.newPodTemplateSpec(*kb)
 
 	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
 	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support
@@ -122,41 +106,40 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			configChecksum.Write(capem)
 		}
 
-		kibanaPodSpec.Volumes = append(kibanaPodSpec.Volumes, esCertsVolume.Volume())
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, esCertsVolume.Volume())
 
-		for i, container := range kibanaPodSpec.InitContainers {
-			kibanaPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+		for i, container := range kibanaPodSpec.Spec.InitContainers {
+			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
 		}
 
-		for i, container := range kibanaPodSpec.Containers {
-			kibanaPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
-
-			kibanaPodSpec.Containers[i].Env = append(
-				kibanaPodSpec.Containers[i].Env,
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-					Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
-				},
-				corev1.EnvVar{
-					Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-					Value: "certificate",
-				},
-			)
-		}
+		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, esCertsVolume.VolumeMount())
+		kibanaContainer.Env = append(
+			kibanaContainer.Env,
+			corev1.EnvVar{
+				Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
+				Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
+			},
+			corev1.EnvVar{
+				Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
+				Value: "certificate",
+			},
+		)
 	}
 	// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
-	podLabels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+
+	deploymentLabels := label.NewLabels(kb.Name)
 
 	return &DeploymentParams{
 		// TODO: revisit naming?
-		Name:      PseudoNamespacedResourceName(*kb),
-		Namespace: kb.Namespace,
-		Replicas:  kb.Spec.NodeCount,
-		Selector:  labels,
-		Labels:    labels,
-		PodLabels: podLabels,
-		PodSpec:   kibanaPodSpec,
+		Name:            PseudoNamespacedResourceName(*kb),
+		Namespace:       kb.Namespace,
+		Replicas:        kb.Spec.NodeCount,
+		Selector:        deploymentLabels,
+		Labels:          deploymentLabels,
+		PodTemplateSpec: kibanaPodSpec,
 	}, nil
 }
 
@@ -204,12 +187,12 @@ func newDriver(
 		switch {
 		case version.Minor >= 6:
 			// 6.6 docker container already defaults to v7 settings
-			d.newPodSpec = version7.NewPodSpec
+			d.newPodTemplateSpec = version7.NewPodTemplateSpec
 		default:
-			d.newPodSpec = version6.NewPodSpec
+			d.newPodTemplateSpec = version6.NewPodTemplateSpec
 		}
 	case 7:
-		d.newPodSpec = version7.NewPodSpec
+		d.newPodTemplateSpec = version7.NewPodTemplateSpec
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", version)
 	}
