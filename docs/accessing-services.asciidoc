@@ -117,7 +117,7 @@ curl: (51) SSL: no alternative certificate subject name matches target host name
 
 ----
 
-Add the external IP of the service to the SANs of the certificate:
+Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used for creating the cluster and apply it again using `kubectl`:
 
 [source,yaml]
 ----
