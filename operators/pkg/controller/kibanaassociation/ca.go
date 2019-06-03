@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
-	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -52,7 +52,7 @@ func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.
 	}
 
 	// CA data should be copied over a secret in Kibana namespace
-	labels := kbctl.NewLabels(kibana.Name)
+	labels := kblabel.NewLabels(kibana.Name)
 	labels[AssociationLabelName] = kibana.Name
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

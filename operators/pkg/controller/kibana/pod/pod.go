@@ -6,6 +6,7 @@ package pod
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
@@ -46,27 +47,50 @@ func ApplyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.E
 	return env
 }
 
-type SpecParams struct {
-	Version          string
-	ElasticsearchUrl string
-	CustomImageName  string
-	User             v1alpha1.ElasticsearchAuth
-	PodTemplate      corev1.PodTemplateSpec
-}
-
 func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-type EnvFactory func(p SpecParams) []corev1.EnvVar
+type EnvFactory func(kibana v1alpha1.Kibana) []corev1.EnvVar
 
-func NewSpec(p SpecParams, env EnvFactory) corev1.PodSpec {
-	imageName := p.CustomImageName
-	if p.CustomImageName == "" {
-		imageName = imageWithVersion(defaultImageRepositoryAndName, p.Version)
+func NewPodTemplateSpec(kb v1alpha1.Kibana, env EnvFactory) corev1.PodTemplateSpec {
+	// inherit from the user-provided podTemplateSpec
+	objectMeta := kb.Spec.PodTemplate.ObjectMeta.DeepCopy()
+	spec := kb.Spec.PodTemplate.Spec.DeepCopy()
+
+	// add (or override) our labels on top of user-provided ones
+	if objectMeta.Labels == nil {
+		objectMeta.Labels = map[string]string{}
+	}
+	for k, v := range label.NewLabels(kb.Name) {
+		objectMeta.Labels[k] = v
 	}
 
-	probe := &corev1.Probe{
+	// disable service account token automount unless enabled by the user
+	varFalse := false
+	if spec.AutomountServiceAccountToken == nil {
+		spec.AutomountServiceAccountToken = &varFalse
+	}
+
+	userProvidedContainerSpec := true
+	kibanaContainer := GetKibanaContainer(kb.Spec.PodTemplate.Spec).DeepCopy()
+	if kibanaContainer == nil {
+		userProvidedContainerSpec = false
+		kibanaContainer = &corev1.Container{Name: v1alpha1.KibanaContainerName}
+	}
+
+	// set Docker image name if not user-provided
+	imageName := imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)
+	if kb.Spec.Image != "" {
+		imageName = kb.Spec.Image
+	}
+	if kibanaContainer.Image != "" {
+		imageName = kibanaContainer.Image
+	}
+	kibanaContainer.Image = imageName
+
+	// set readiness probe
+	kibanaContainer.ReadinessProbe = &corev1.Probe{
 		FailureThreshold:    3,
 		InitialDelaySeconds: 10,
 		PeriodSeconds:       10,
@@ -81,31 +105,44 @@ func NewSpec(p SpecParams, env EnvFactory) corev1.PodSpec {
 		},
 	}
 
-	automountServiceAccountToken := false
+	// set resource requirements if not user-provided
+	if len(kibanaContainer.Resources.Limits) == 0 && len(kibanaContainer.Resources.Requests) == 0 {
+		kibanaContainer.Resources = DefaultResources
+	}
 
-	return corev1.PodSpec{
-		Affinity: p.PodTemplate.Spec.Affinity,
-		Containers: []corev1.Container{{
-			Resources: resourceRequirements(p.PodTemplate),
-			Env:       env(p),
-			Image:     imageName,
-			Name:      v1alpha1.KibanaContainerName,
-			Ports: []corev1.ContainerPort{
-				{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-			},
-			ReadinessProbe: probe,
-		}},
-		AutomountServiceAccountToken: &automountServiceAccountToken,
+	// append our own environment to the user-provided environment
+	kibanaContainer.Env = append(kibanaContainer.Env, env(kb)...)
+
+	// set our ports to the Kibana container
+	kibanaContainer.Ports = []corev1.ContainerPort{
+		{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
+	}
+
+	// set the modified Kibana container back into the spec
+	if userProvidedContainerSpec {
+		for i, c := range spec.Containers {
+			if c.Name == v1alpha1.KibanaContainerName {
+				spec.Containers[i] = *kibanaContainer
+			}
+		}
+	} else {
+		spec.Containers = append(spec.Containers, *kibanaContainer)
+	}
+
+	return corev1.PodTemplateSpec{
+		ObjectMeta: *objectMeta,
+		Spec:       *spec,
 	}
 }
 
-// resourceRequirements parses the given podTemplate to return Kibana container resource requirements.
-// If not set in the podTemplate, returns the default ones.
-func resourceRequirements(podTemplate corev1.PodTemplateSpec) corev1.ResourceRequirements {
-	for _, c := range podTemplate.Spec.Containers {
-		if c.Name == v1alpha1.KibanaContainerName && (len(c.Resources.Limits) > 0 || len(c.Resources.Requests) > 0) {
-			return c.Resources
+// GetKibanaContainer returns the Kibana container from the given podSpec.
+// It returns nil if the container does not exist.
+// Warning: this function returns a pointer to the object that can then be mutated.
+func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
+	for i, c := range podSpec.Containers {
+		if c.Name == v1alpha1.KibanaContainerName {
+			return &podSpec.Containers[i]
 		}
 	}
-	return DefaultResources
+	return nil
 }
