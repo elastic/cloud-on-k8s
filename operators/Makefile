@@ -203,8 +203,8 @@ ifndef GCLOUD_PROJECT
 endif
 
 set-context-gke: require-gcloud-project
-	kubectl config use-context $(shell hack/gke-cluster.sh name)
-	$(eval KUBECTL_CLUSTER=$(shell hack/gke-cluster.sh name))
+	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
+	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
 
 bootstrap-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
