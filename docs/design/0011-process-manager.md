@@ -95,6 +95,8 @@ How to perform cluster restart?
 
 PID 1 zombie reaping problem?
 * Inject a process manager to properly handle signals and reap orphaned zombie processes
+* Use [pid namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/#understanding-process-namespace-sharing)
+    * -- it is off by default in the versions of Kubernetes we support (controlled via `--docker-disable-shared-pid=false`) and there is an experimental new way of doing it in 1.14+ which again we don't know if people are using it
 
 ## Decision Outcome
 
