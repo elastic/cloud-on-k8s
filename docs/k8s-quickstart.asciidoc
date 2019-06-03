@@ -119,22 +119,7 @@ NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
 quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
-. Get access to Elasticsearch.
-+
-From the Kubernetes cluster, use this URL:
-+
-[source,sh]
-----
-https://quickstart-es:9200
-----
-+
-From your local workstation, use the following command:
-+
-[source,sh]
-----
-kubectl port-forward service/quickstart-es 9200
-----
-. Get the credentials and request the Elasticsearch endpoint.
+. Get the credentials.
 +
 A default user named `elastic` is automatically created. Its password is stored as a Kubernetes secret:
 +
@@ -143,7 +128,23 @@ A default user named `elastic` is automatically created. Its password is stored 
 PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ----
 
-. Request the Elasticsearch endpoint:
+. Request the Elasticsearch endpoint.
++
+From inside the Kubernetes cluster:
++
+[source,sh]
+----
+curl -u "elastic:$PASSWORD" -k "https://quickstart:9200"
+----
++
+From your local workstation, use the following command in a separate terminal:
++
+[source,sh]
+----
+kubectl port-forward service/quickstart-es 9200
+----
++
+Then request `localhost`:
 +
 [source,sh]
 ----
