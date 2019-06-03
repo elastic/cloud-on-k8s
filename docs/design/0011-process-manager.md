@@ -80,7 +80,7 @@ How to perform cluster restart?
 * Destroy the pod and recreate it
     * -- depending on storage class we might not be able to recreate the pod where the volume resides. Only recovery at this point is manual restore from snapshot.
 * Inject a process manager into the standard Elasticsearch container/image
-    * ++ would allow us to restart without recreating the pod unless we need to change the image at the same time (e.g. on major version upgrade) in which case the above applies
+    * ++ would allow us to restart without recreating the pod, unless we need to change pod resources or environment variables, in which case the above applies
     * ~ has the disadvantage of being fairly intrusive and complex (copying binaries via initcontainers, overriding command etc)
 * Use a liveness probe to make Kubernetes restart the container
     * -- hard to coordinate across an ES cluster
