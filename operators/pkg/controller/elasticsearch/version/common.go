@@ -277,6 +277,14 @@ func NewPod(
 		}
 	}
 
+	if podSpecCtx.PodSpec.Hostname == "" {
+		podSpecCtx.PodSpec.Hostname = objectMeta.Name
+	}
+
+	if podSpecCtx.PodSpec.Subdomain == "" {
+		podSpecCtx.PodSpec.Subdomain = es.Name
+	}
+
 	return corev1.Pod{
 		ObjectMeta: objectMeta,
 		Spec:       podSpecCtx.PodSpec,
