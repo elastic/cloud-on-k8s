@@ -14,7 +14,7 @@ set -eu
 IMG="$1" # Docker image name
 TESTS_MATCH="$2" # Expression to match go test names (can be "")
 
-JOB_NAME="elastic-operators-e2e-tests"
+JOB_NAME="elastic-operators-e2e-tests-$(date +'%Y%m%d-%H%M%S')"
 NAMESPACE="e2e"
 
 # exit early if another job already exists
@@ -28,6 +28,7 @@ set -e
 sed \
     -e "s;\$IMG;$IMG;g" \
     -e "s;\$TESTS_MATCH;$TESTS_MATCH;g" \
+    -e "s;\$JOB_NAME;$JOB_NAME;g" \
     config/e2e/batch_job.yaml | \
     kubectl apply -f -
 
