@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -33,8 +34,8 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommonsettings volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (*commonsettings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -82,9 +83,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (*commonsettings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, *settings.CanonicalConfig, error) {
+) (corev1.PodSpec, *commonsettings.CanonicalConfig, error) {
 	// build on top of the user-provided pod template spec
 	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
 
@@ -265,10 +266,13 @@ func NewPod(
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
-	cfg, err := podSpecCtx.Config.Unpack()
+
+	cfg := v1alpha1.DefaultCfg
+	err := podSpecCtx.Config.Unpack(&cfg)
 	if err != nil {
 		return corev1.Pod{}, err
 	}
+
 	for k, v := range label.NewPodLabels(es, version, cfg) {
 		// don't override user-provided labels
 		// this may lead to issues but we consider users know what they are doing at this point.

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/require"
 )
@@ -18,17 +19,17 @@ func Test_compareConfigs(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(`{"b": [1, 2, 3]}`), &intSlice))
 	tests := []struct {
 		name     string
-		expected *settings.CanonicalConfig
-		actual   *settings.CanonicalConfig
+		expected *commonsettings.CanonicalConfig
+		actual   *commonsettings.CanonicalConfig
 		want     Comparison
 	}{
 		{
 			name: "same config",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
@@ -36,11 +37,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "different config item",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "eee",
 			}),
@@ -48,12 +49,12 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "one more item in expected",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 				"e": "f",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
@@ -61,11 +62,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "one more item in actual",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": "b",
 				"c": "d",
 				"e": "f",
@@ -74,14 +75,14 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "some fields should be ignored",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "expected-node",
 				settings.DiscoveryZenMinimumMasterNodes: 1,
 				settings.ClusterInitialMasterNodes:      []string{"x"},
 				settings.NetworkPublishHost:             "1.2.3.4",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "actual-node",
 				settings.DiscoveryZenMinimumMasterNodes: 12,
@@ -92,14 +93,14 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "some fields should be ignored but should not prevent mismatch",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "b",
 				settings.NodeName:                       "expected-node",
 				settings.DiscoveryZenMinimumMasterNodes: 1,
 				settings.ClusterInitialMasterNodes:      []string{"x"},
 				settings.NetworkPublishHost:             "1.2.3.4",
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a":                                     "mismatch",
 				settings.NodeName:                       "actual-node",
 				settings.DiscoveryZenMinimumMasterNodes: 12,
@@ -110,11 +111,11 @@ func Test_compareConfigs(t *testing.T) {
 		},
 		{
 			name: "int config",
-			expected: settings.MustCanonicalConfig(map[string]interface{}{
+			expected: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": intSlice,
 				"b": 2,
 			}),
-			actual: settings.MustCanonicalConfig(map[string]interface{}{
+			actual: commonsettings.MustCanonicalConfig(map[string]interface{}{
 				"a": intSlice,
 				"b": 3,
 			}),

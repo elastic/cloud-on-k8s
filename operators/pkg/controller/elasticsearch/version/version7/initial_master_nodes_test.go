@@ -7,11 +7,12 @@ package version7
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,12 +32,13 @@ func newPod(name string, master bool) pod.PodWithConfig {
 
 	label.NodeTypesMasterLabelName.Set(master, p.Labels)
 
-	return pod.PodWithConfig{Pod: p, Config: settings.NewCanonicalConfig()}
+	return pod.PodWithConfig{Pod: p, Config: commonsettings.NewCanonicalConfig()}
 }
 
 func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
 	for _, change := range changes.ToCreate {
-		cfg, err := change.PodSpecCtx.Config.Unpack()
+		cfg := v1alpha1.DefaultCfg
+		err := change.PodSpecCtx.Config.Unpack(&cfg)
 		require.NoError(t, err)
 		nodes := cfg.Cluster.InitialMasterNodes
 		if !label.IsMasterNode(change.Pod) {
@@ -69,7 +71,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
 							PodSpecCtx: pod.PodSpecContext{
-								Config: settings.NewCanonicalConfig(),
+								Config: commonsettings.NewCanonicalConfig(),
 							},
 						}},
 					},
@@ -90,7 +92,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
 							PodSpecCtx: pod.PodSpecContext{
-								Config: settings.NewCanonicalConfig(),
+								Config: commonsettings.NewCanonicalConfig(),
 							},
 						}},
 					},
@@ -112,32 +114,32 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 							{
 								Pod: newPod("b", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 							{
 								Pod: newPod("c", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 							{
 								Pod: newPod("d", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 							{
 								Pod: newPod("e", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 							// f is not master, so masters should not be informed of it
 							{
 								Pod: newPod("f", false).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 						},

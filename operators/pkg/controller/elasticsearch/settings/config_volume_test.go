@@ -8,16 +8,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-
-	"k8s.io/client-go/kubernetes/scheme"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -52,14 +51,14 @@ func TestGetESConfigContent(t *testing.T) {
 		name    string
 		client  k8s.Client
 		esPod   types.NamespacedName
-		want    *CanonicalConfig
+		want    *commonsettings.CanonicalConfig
 		wantErr bool
 	}{
 		{
 			name:    "valid config exists",
 			client:  k8s.WrapClient(fake.NewFakeClient(&secret)),
 			esPod:   pod,
-			want:    MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 			wantErr: false,
 		},
 		{
@@ -105,7 +104,7 @@ func TestReconcileConfig(t *testing.T) {
 			Name:      "pod",
 		},
 	}
-	config := MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})
+	config := commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
@@ -126,7 +125,7 @@ func TestReconcileConfig(t *testing.T) {
 		client  k8s.Client
 		cluster v1alpha1.Elasticsearch
 		pod     corev1.Pod
-		config  *CanonicalConfig
+		config  *commonsettings.CanonicalConfig
 		wantErr bool
 	}{
 		{
@@ -150,7 +149,7 @@ func TestReconcileConfig(t *testing.T) {
 			client:  k8s.WrapClient(fake.NewFakeClient(&configSecret)),
 			cluster: cluster,
 			pod:     pod,
-			config:  MustCanonicalConfig(map[string]string{"a": "b", "c": "different"}),
+			config:  commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"}),
 			wantErr: false,
 		},
 	}

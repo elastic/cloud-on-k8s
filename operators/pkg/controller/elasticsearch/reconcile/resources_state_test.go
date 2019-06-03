@@ -8,22 +8,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
@@ -65,7 +62,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			DeletionTimestamp: &deletionTimestamp,
 		},
 	}
-	config := settings.MustNewSingleValue("a", "b")
+	config := commonsettings.MustNewSingleValue("a", "b")
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
@@ -101,7 +98,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is terminating: continue with a dummy config",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &deletingPod)),
 			es:   cluster,
-			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: settings.MustNewSingleValue(
+			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: commonsettings.MustNewSingleValue(
 				"pod.deletion", "in.progress",
 			)}},
 			wantErr: "",
@@ -117,7 +114,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is old: should be associated a dummy config for replacement",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &oldPod)),
 			es:   cluster,
-			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: settings.MustNewSingleValue(
+			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: commonsettings.MustNewSingleValue(
 				"error.pod.to.replace", "no configuration secret volume found for that pod, scheduling it for deletion",
 			)}},
 			wantErr: "",

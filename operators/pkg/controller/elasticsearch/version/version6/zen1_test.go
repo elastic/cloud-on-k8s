@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -127,7 +128,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master2", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 						},
@@ -160,7 +161,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master5", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.NewCanonicalConfig(),
+									Config: commonsettings.NewCanonicalConfig(),
 								},
 							},
 						},
@@ -199,7 +200,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			// Check the mmn in the new pods
 			for _, newPod := range tt.args.performableChanges.ToCreate {
 				expectedConfiguration :=
-					settings.MustNewSingleValue(settings.DiscoveryZenMinimumMasterNodes, tt.expectedMinimumMasterNode)
+					commonsettings.MustNewSingleValue(settings.DiscoveryZenMinimumMasterNodes, tt.expectedMinimumMasterNode)
 				if diff := newPod.PodSpecCtx.Config.Diff(expectedConfiguration, nil); diff != nil {
 					t.Errorf("zen1.UpdateZen1Discovery() = %v, want %v", diff, tt.want)
 				}

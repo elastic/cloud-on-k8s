@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -19,8 +20,8 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	userConfig v1alpha1.Config,
-) (*CanonicalConfig, error) {
-	config, err := NewCanonicalConfigFrom(userConfig)
+) (*commonsettings.CanonicalConfig, error) {
+	config, err := commonsettings.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -35,8 +36,8 @@ func NewMergedESConfig(
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string) *CanonicalConfig {
-	return MustCanonicalConfig(map[string]interface{}{
+func baseConfig(clusterName string) *commonsettings.CanonicalConfig {
+	return commonsettings.MustCanonicalConfig(map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -53,7 +54,7 @@ func baseConfig(clusterName string) *CanonicalConfig {
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig() *CanonicalConfig {
+func xpackConfig() *commonsettings.CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -79,5 +80,5 @@ func xpackConfig() *CanonicalConfig {
 		),
 	}
 
-	return MustCanonicalConfig(cfg)
+	return commonsettings.MustCanonicalConfig(cfg)
 }

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
@@ -68,7 +69,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 		if n.Config == nil {
 			continue
 		}
-		config, err := settings.NewCanonicalConfigFrom(*n.Config)
+		config, err := commonsettings.NewCanonicalConfigFrom(n.Config.Data)
 		if err != nil {
 			violations[i] = map[string]struct{}{
 				cfgInvalidMsg: {},

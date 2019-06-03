@@ -10,11 +10,11 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 
 	"github.com/stretchr/testify/require"
@@ -68,7 +68,8 @@ func TestNewPod(t *testing.T) {
 		return *s
 	}
 
-	masterCfg := settings.MustCanonicalConfig(map[string]interface{}{
+	masterCfg := commonsettings.MustCanonicalConfig(map[string]interface{}{
+
 		"node.master": true,
 		"node.data":   false,
 		"node.ingest": false,
@@ -227,7 +228,7 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error) {
+	newESConfigFn := func(clusterName string, config v1alpha1.Config) (*commonsettings.CanonicalConfig, error) {
 		return nil, nil
 	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error) {

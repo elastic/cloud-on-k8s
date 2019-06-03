@@ -6,10 +6,10 @@ package pod
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +35,7 @@ var (
 // PodWithConfig contains a pod and its configuration
 type PodWithConfig struct {
 	Pod    corev1.Pod
-	Config *settings.CanonicalConfig
+	Config *commonsettings.CanonicalConfig
 }
 
 // PodsWithConfig is simply a list of PodWithConfig
@@ -92,7 +92,7 @@ type NewPodSpecParams struct {
 type PodSpecContext struct {
 	PodSpec  corev1.PodSpec
 	NodeSpec v1alpha1.NodeSpec
-	Config   *settings.CanonicalConfig
+	Config   *commonsettings.CanonicalConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

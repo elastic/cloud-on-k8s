@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -43,7 +44,7 @@ func ConfigSecretVolume(podName string) volume.SecretVolume {
 
 // GetESConfigContent retrieves the configuration secret of the given pod,
 // and returns the corresponding CanonicalConfig.
-func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (*CanonicalConfig, error) {
+func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (*commonsettings.CanonicalConfig, error) {
 	secret, err := GetESConfigSecret(client, esPod)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (*Canonic
 		return nil, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
 	}
 
-	return ParseConfig(content)
+	return commonsettings.ParseConfig(content)
 }
 
 // GetESConfigSecret returns the secret holding the ES configuration for the given pod
@@ -72,7 +73,7 @@ func GetESConfigSecret(client k8s.Client, esPod types.NamespacedName) (corev1.Se
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config *CanonicalConfig) error {
+func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config *commonsettings.CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err
