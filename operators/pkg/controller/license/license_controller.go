@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -182,6 +183,7 @@ func reconcileSecret(
 			Namespace: cluster.Namespace,
 			Labels: map[string]string{
 				license.EnterpriseLicenseLabelName: enterpriseLicense.Name,
+				common.TypeLabelName:               license.ClusterLicenseType,
 			},
 		},
 		Data: map[string][]byte{
