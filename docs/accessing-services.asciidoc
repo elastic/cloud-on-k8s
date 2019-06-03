@@ -102,7 +102,7 @@ you have to retrieve the CA certificate, the IP of the service and the password 
 ----
 NAME=hulk
 
-CA=$(kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}') > ca.pem
+kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
 IP=$(kubectl get svc "$NAME-es" -o jsonpath='{.status.loadBalancer.ingress[].ip}')
 PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
 
