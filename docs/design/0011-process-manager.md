@@ -69,7 +69,7 @@ Where to run the keystore updater?
 * run it inside a process manager injected into the standard Elasticsearch container
     * ++ easy to serve an API to report the keystore updater status
     * ~ share cpu and memories with the ES process
-    * ~ we can be extremely conservative with resource usage
+    * ~ we have to be extremely conservative with resource usage
 * run the process manager in a sidecar with [process namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/#understanding-process-namespace-sharing)
     * ++ easy to serve an API
     * -- request more cpu and memory to the k8s cluster compared to run the keystore updater in the Elasticsearch container
@@ -98,7 +98,7 @@ PID 1 zombie reaping problem?
 
 ## Decision Outcome
 
-To cover this three problems we decided to inject our own process manager into the standard Elasticsearch container 
+To cover these three problems we decided to inject our own process manager into the standard Elasticsearch container 
 to run the keystore updater and manage the Elasticsearch process in one container.
 
 ### Process manager overview
@@ -127,5 +127,5 @@ to run the keystore updater and manage the Elasticsearch process in one containe
 
 ## Links
 
-- [https://github.com/elastic/cloud-on-k8s/issues/485] Lightweight process manager issue
+* [https://github.com/elastic/cloud-on-k8s/issues/485] Lightweight process manager issue
 * [https://github.com/elastic/cloud-on-k8s/issues/454] Full cluster restart issue 
