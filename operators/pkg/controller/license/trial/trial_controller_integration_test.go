@@ -42,20 +42,16 @@ func TestReconcile(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "elastic-system"},
 		Spec: v1alpha1.EnterpriseLicenseSpec{
 			Type: v1alpha1.LicenseTypeEnterpriseTrial,
+			Eula: v1alpha1.EulaState{
+				Accepted: true,
+			},
 		},
 	}
 
 	// Create the EnterpriseLicense object
 	require.NoError(t, c.Create(trialLicense.DeepCopy()))
 
-	// license is invalid because we did not ack the Eula
 	var createdLicense v1alpha1.EnterpriseLicense
-	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
-
-	// accept EULA and update
-	createdLicense.Spec.Eula.Accepted = true
-	require.NoError(t, c.Update(&createdLicense))
-
 	// test trial initialisation on create
 	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
 	validateTrialDuration(t, createdLicense, now, time.Minute)
@@ -82,7 +78,7 @@ func TestReconcile(t *testing.T) {
 	// recreate it
 	require.NoError(t, c.Create(trialLicense))
 	// expect an invalid license
-	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusInvalid)
+	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusExpired /*validity information was lost on delete*/)
 
 	// ClusterLicense should be GC'ed but can't be tested here
 }

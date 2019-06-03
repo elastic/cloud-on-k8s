@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -29,6 +30,7 @@ type Verifier struct {
 
 // Valid checks the validity of the given Enterprise license.
 func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte, now time.Time) v1alpha1.LicenseStatus {
+	log.Info(fmt.Sprintf("now: [%s] , started [%s,] ends [%s]", now, l.StartTime(), l.ExpiryDate()))
 	if !l.IsValid(now) {
 		return v1alpha1.LicenseStatusExpired
 	}

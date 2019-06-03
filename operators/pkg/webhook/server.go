@@ -7,7 +7,6 @@ package webhook
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/license"
 	admission "k8s.io/api/admissionregistration/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -35,15 +34,6 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		return err
 	}
 
-	licWh, err := builder.NewWebhookBuilder().
-		Name("validation.license.elastic.co").
-		Validating().
-		FailurePolicy(admission.Fail).
-		ForType(&v1alpha1.EnterpriseLicense{}).
-		Handlers(&license.ValidationHandler{}).
-		WithManager(mgr).
-		Build()
-
 	disabled := !params.AutoInstall
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
 		CertDir:                       "/tmp/cert",
@@ -53,5 +43,5 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	if err != nil {
 		return err
 	}
-	return svr.Register(esWh, licWh)
+	return svr.Register(esWh)
 }

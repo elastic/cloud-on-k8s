@@ -18,7 +18,6 @@ import (
 	licensing "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	commonvalidation "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -76,12 +75,6 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	if !license.DeletionTimestamp.IsZero() || !license.IsTrial() {
 		// license is not a trial or being deleted nothing to do
 		return reconcile.Result{}, nil
-	}
-
-	violations := validation.Validate(license)
-	if len(violations) > 0 {
-		r.record(license, violations)
-		return reconcile.Result{}, r.updateStatus(license, v1alpha1.LicenseStatusInvalid)
 	}
 
 	// 1. fetch trial status secret
