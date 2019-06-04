@@ -110,13 +110,13 @@ A ClusterIP Service is automatically created for your cluster:
 
 [source,sh]
 ----
-kubectl get service quickstart-es
+kubectl get service quickstart-es-http
 ----
 
 [source,sh]
 ----
-NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-quickstart-es   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+quickstart-es-http   ClusterIP   10.15.251.145   <none>        9200/TCP   34m
 ----
 
 . Get the credentials.
@@ -134,14 +134,14 @@ From inside the Kubernetes cluster:
 +
 [source,sh]
 ----
-curl -u "elastic:$PASSWORD" -k "https://quickstart:9200"
+curl -u "elastic:$PASSWORD" -k "https://quickstart-es-http:9200"
 ----
 +
 From your local workstation, use the following command in a separate terminal:
 +
 [source,sh]
 ----
-kubectl port-forward service/quickstart-es 9200
+kubectl port-forward service/quickstart-es-http 9200
 ----
 +
 Then request `localhost`:

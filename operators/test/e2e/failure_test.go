@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
@@ -161,7 +162,7 @@ func TestDeleteServices(t *testing.T) {
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Elasticsearch.Name + "-es")
+					s, err := k.GetService(name.HTTPService(s.Elasticsearch.Name))
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)

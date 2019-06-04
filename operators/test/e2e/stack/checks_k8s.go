@@ -10,6 +10,7 @@ import (
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -281,7 +282,7 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
 				stack.Elasticsearch.Name + "-es-discovery",
-				stack.Elasticsearch.Name + "-es",
+				name.HTTPService(stack.Elasticsearch.Name),
 				stack.Kibana.Name + "-kibana",
 			} {
 				if _, err := k.GetService(s); err != nil {
@@ -301,7 +302,7 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 			for endpointName, addrCount := range map[string]int{
 				stack.Elasticsearch.Name + "-es-discovery": int(stack.Elasticsearch.Spec.NodeCount()),
 				stack.Kibana.Name + "-kibana":              int(stack.Kibana.Spec.NodeCount),
-				stack.Elasticsearch.Name + "-es":           int(stack.Elasticsearch.Spec.NodeCount()),
+				name.HTTPService(stack.Elasticsearch.Name): int(stack.Elasticsearch.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this stack
