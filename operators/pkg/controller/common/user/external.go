@@ -76,3 +76,5 @@ func (u *ExternalUser) PasswordMatches(hash []byte) bool {
 func (u *ExternalUser) Roles() []string {
 	return u.roles
 }
+
+var _ User = &ExternalUser{}

@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	// UserType is used to annotate a secret and described it as a provided user.
+	// UserType is used to annotate a secret and described it as an external user.
 	UserType = "user"
 )
 
