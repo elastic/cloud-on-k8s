@@ -29,7 +29,7 @@ func NewLabelSelectorForElasticsearch(es v1alpha1.Elasticsearch) labels.Selector
 		})
 }
 
-// NewLabels constructs a new set of labels from an Elasticsearch definition for a resource of type "user".
+// NewLabels constructs a new set of labels from an Elasticsearch cluster name for a resource of type "user".
 func NewLabels(es types.NamespacedName) map[string]string {
 	return map[string]string{
 		label.ClusterNameLabelName: es.Name,
