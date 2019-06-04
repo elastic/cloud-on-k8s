@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
@@ -134,7 +135,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
 						Namespace: params.Namespace,
-						Name:      s.Kibana.Name + "-kibana",
+						Name:      kbname.Deployment(s.Kibana.Name),
 					}, &dep)
 					require.NoError(t, err)
 					err = k.Client.Delete(&dep)

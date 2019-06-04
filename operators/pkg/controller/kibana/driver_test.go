@@ -26,7 +26,7 @@ import (
 func expectedDeploymentParams() *DeploymentParams {
 	false := false
 	return &DeploymentParams{
-		Name:      "kb-kibana",
+		Name:      "kb-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},
 		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "kb"},

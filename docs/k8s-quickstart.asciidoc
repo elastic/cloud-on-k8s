@@ -219,14 +219,14 @@ A `ClusterIP` Service is automatically created for Kibana:
 +
 [source,sh]
 ----
-kubectl get service quickstart-kibana
+kubectl get service quickstart-kb-http
 ----
 +
 Use `kubectl port-forward` to access Kibana from your local workstation:
 +
 [source,sh]
 ----
-kubectl port-forward service/quickstart-kibana 5601
+kubectl port-forward service/quickstart-kb-http 5601
 ----
 +
 Open `http://localhost:5601` in your browser.
