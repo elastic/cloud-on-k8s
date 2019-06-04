@@ -45,15 +45,14 @@ when the Elasticsearch process terminates.
 
 ### Save CPU and memory resources
 
-Having a keystore sidecar container implies allocating more cpu and memories compared to run the keystore-updater process in the
+Having a keystore sidecar container implies allocating more cpu and memory compared to running the keystore-updater process in the
 Elasticsearch container.
 
 ### Init process
 
 Controlling the init process has been identified as interesting for these benefits:
-- handle the PID 1 zombie reaping problem
-- gives better control on what defines "healthy" and "ready" for the ES process (this is defined in the sidecar and 
-we won't have to expose ES urls to k8s for that)
+- handles the PID 1 zombie reaping problem
+- gives better control on what defines "healthy" and "ready" for the ES process without exposing ES urls to k8s for that
 - makes it easier to perform "nominal restarts" of the ES process without having k8s notice about it
 
 ### Full Elasticsearch cluster restart to reuse pods
@@ -65,20 +64,22 @@ It must be possible to perform a "full cluster restart" and reuse existing pods.
 Where to run the keystore updater?
 * run it in a sidecar container using the standard Elasticsearch image
     * ++ easy to serve an API to report the keystore updater status
-    * -- request more cpu and memory to the k8s cluster compared to run the keystore updater in the Elasticsearch container
+    * -- request more cpu and memory to the k8s cluster compared to running the keystore updater in the Elasticsearch container
 * run it inside a process manager injected into the standard Elasticsearch container
     * ++ easy to serve an API to report the keystore updater status
     * ~ share cpu and memories with the ES process
     * ~ we have to be extremely conservative with resource usage
 * run the process manager in a sidecar with [process namespace sharing](https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/#understanding-process-namespace-sharing)
     * ++ easy to serve an API
-    * -- request more cpu and memory to the k8s cluster compared to run the keystore updater in the Elasticsearch container
+    * -- request more cpu and memory to the k8s cluster compared to running the keystore updater in the Elasticsearch container
 * run it using an off the shelf process manager into the standard Elasticsearch container
     * -- more processes to run an API, the keystore updater and the ES process
 
 How to perform cluster restart?
 * Destroy the pod and recreate it
-    * -- depending on storage class we might not be able to recreate the pod where the volume resides. Only recovery at this point is manual restore from snapshot.
+    * -- depending on storage class we might not be able to recreate the pod where the volume resides. Only recovery at this point is manual restore from snapshot. 
+    Considering volumes local to a node: during the interval between the pod being delete and a new pod being scheduled to reuse the same volume, there is no guarantee
+    that no other pod will be scheduled on that node, taking up all resources available on the node, preventing the replacing pod to be scheduled.
 * Inject a process manager into the standard Elasticsearch container/image
     * ++ would allow us to restart without recreating the pod, unless we need to change pod resources or environment variables, in which case the above applies
     * ~ has the disadvantage of being fairly intrusive and complex (copying binaries via initcontainers, overriding command etc)
@@ -108,7 +109,7 @@ to run the keystore updater and manage the Elasticsearch process in one containe
 - Custom binary injected into the standard Elasticsearch container using an init container
 - Run the keystore updater in a goroutine inside the process manager process
 - Expose HTTPS API to report the keystore updater and the ES statuses
-- Expose HTTPS APIto perform start, stop and kill of the ES process
+- Expose HTTPS API to perform start, stop and kill of the ES process
 - Secure HTTPS API using a dedicated CA
 - Handle the ES process termination to recreate the container to avoid any issue with memory non released
 - Do not restart the ES process after container recreated only if the stop is scheduled using the /stop endpoint
