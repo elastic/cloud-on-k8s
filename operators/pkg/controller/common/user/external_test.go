@@ -12,14 +12,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestNewProvidedUserFromSecret(t *testing.T) {
+func TestNewExternalUserFromSecret(t *testing.T) {
 	type args struct {
 		secret v1.Secret
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    ProvidedUser
+		want    ExternalUser
 		wantErr bool
 	}{
 		{
@@ -38,7 +38,7 @@ func TestNewProvidedUserFromSecret(t *testing.T) {
 					},
 				},
 			},
-			want: ProvidedUser{
+			want: ExternalUser{
 				name:     "ns2-kibana-sample-kibana-user",
 				password: []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
 				roles:    []string{"kibana_system"},
@@ -60,7 +60,7 @@ func TestNewProvidedUserFromSecret(t *testing.T) {
 					},
 				},
 			},
-			want: ProvidedUser{
+			want: ExternalUser{
 				name:     "ns2-kibana-sample-kibana-user",
 				password: []byte("$2a$10$D6q/zdYfGJsJxipsZ4Jioul8tWIcL.o.Mhx/as1nlNdOX6EgqRRRS"),
 				roles:    []string{"kibana_system1", "kibana_system2", "kibana_system3"},
@@ -81,7 +81,7 @@ func TestNewProvidedUserFromSecret(t *testing.T) {
 					},
 				},
 			},
-			want: ProvidedUser{},
+			want: ExternalUser{},
 		},
 		{
 			name:    "Password is missing",
@@ -98,18 +98,18 @@ func TestNewProvidedUserFromSecret(t *testing.T) {
 					},
 				},
 			},
-			want: ProvidedUser{},
+			want: ExternalUser{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewProvidedUserFromSecret(tt.args.secret)
+			got, err := NewExternalUserFromSecret(tt.args.secret)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewProvidedUserFromSecret() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewExternalUserFromSecret() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if err == nil && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewProvidedUserFromSecret() = %v, want %v", got, tt.want)
+				t.Errorf("NewExternalUserFromSecret() = %v, want %v", got, tt.want)
 			}
 		})
 	}

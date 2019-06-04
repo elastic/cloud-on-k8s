@@ -23,17 +23,17 @@ const (
 	fieldNotFound = "field %s not found in secret %s/%s"
 )
 
-// ProvidedUser represents a user that is not created or managed by Elasticsearch.
+// ExternalUser represents a user that is not created or managed by Elasticsearch.
 // For example in the case of Kibana a user with the right role is provided by the Kibana association controller.
-type ProvidedUser struct {
+type ExternalUser struct {
 	name     string
 	password []byte
 	roles    []string
 }
 
-// NewProvidedUserFromSecret reads a provided user from a secret.
-func NewProvidedUserFromSecret(secret v1.Secret) (ProvidedUser, error) {
-	user := ProvidedUser{}
+// NewExternalUserFromSecret reads an external user from a secret.
+func NewExternalUserFromSecret(secret v1.Secret) (ExternalUser, error) {
+	user := ExternalUser{}
 	if len(secret.Data) == 0 {
 		return user, fmt.Errorf("user secret %s/%s is empty", secret.Namespace, secret.Name)
 	}
@@ -58,21 +58,21 @@ func NewProvidedUserFromSecret(secret v1.Secret) (ProvidedUser, error) {
 }
 
 // Id is the user id.
-func (u ProvidedUser) Id() string {
+func (u ExternalUser) Id() string {
 	return u.name
 }
 
 // PasswordHash is the password hash and returns it or error.
-func (u ProvidedUser) PasswordHash() ([]byte, error) {
+func (u ExternalUser) PasswordHash() ([]byte, error) {
 	return u.password, nil
 }
 
 // PasswordMatches compares the given hash with the password of this user.
-func (u *ProvidedUser) PasswordMatches(hash []byte) bool {
+func (u *ExternalUser) PasswordMatches(hash []byte) bool {
 	return bytes.Equal([]byte(u.password), hash)
 }
 
 // Roles are any Elasticsearch roles associated with this user
-func (u *ProvidedUser) Roles() []string {
+func (u *ExternalUser) Roles() []string {
 	return u.roles
 }
