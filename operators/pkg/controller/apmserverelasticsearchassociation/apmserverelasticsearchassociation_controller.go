@@ -264,10 +264,9 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 		return err
 	}
 
-	esRefIsEmpty := apm.Spec.Output.Elasticsearch.ElasticsearchRef == nil || apm.Spec.Output.Elasticsearch.ElasticsearchRef.Name == ""
 	for _, s := range secrets.Items {
 		controlledBy := metav1.IsControlledBy(&s, &apm)
-		if controlledBy && esRefIsEmpty {
+		if controlledBy && !apm.Spec.Output.Elasticsearch.ElasticsearchRef.IsDefined() {
 			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 			if err := c.Delete(&s); err != nil {
 				return err

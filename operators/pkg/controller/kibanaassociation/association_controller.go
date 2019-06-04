@@ -272,7 +272,7 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	}
 	for _, s := range secrets.Items {
 		if metav1.IsControlledBy(&s, &kibana) {
-			if kibana.Spec.ElasticsearchRef.Name == "" {
+			if !kibana.Spec.ElasticsearchRef.IsDefined() {
 				// look for association secrets owned by this kibana instance
 				// which should not exist since no ES referenced in the spec
 				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
