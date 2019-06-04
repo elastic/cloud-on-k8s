@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -270,12 +271,21 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 		return err
 	}
 	for _, s := range secrets.Items {
-		// look for association secrets owned by this kibana instance
-		// which should not exist since no ES referenced in the spec
-		if metav1.IsControlledBy(&s, &kibana) && kibana.Spec.ElasticsearchRef.Name == "" {
-			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
-			if err := c.Delete(&s); err != nil {
-				return err
+		if metav1.IsControlledBy(&s, &kibana) {
+			if kibana.Spec.ElasticsearchRef.Name == "" {
+				// look for association secrets owned by this kibana instance
+				// which should not exist since no ES referenced in the spec
+				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
+				kibana.Spec.ElasticsearchRef.Namespace != s.Namespace {
+				// User secret may live in an other namespace, check if it has changed
+				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
 			}
 		}
 	}
