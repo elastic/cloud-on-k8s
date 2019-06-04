@@ -13,53 +13,49 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var licenseKey = types.NamespacedName{Name: "foo", Namespace: "elastic-system"}
+const operatorNs = "elastic-system"
 
 func TestMain(m *testing.M) {
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "..", "config", "crds"))
 }
 
 func TestReconcile(t *testing.T) {
-	c, stop := test.StartManager(t, Add, operator.Parameters{})
+	c, stop := test.StartManager(t, Add, operator.Parameters{
+		OperatorNamespace: operatorNs,
+		TrialMode:         true,
+	})
 	defer stop()
 
 	now := time.Now()
 
-	trialLicense := &v1alpha1.EnterpriseLicense{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "elastic-system"},
-		Spec: v1alpha1.EnterpriseLicenseSpec{
-			Type: v1alpha1.LicenseTypeEnterpriseTrial,
-			Eula: v1alpha1.EulaState{
-				Accepted: true,
-			},
-		},
-	}
-
-	// Create the EnterpriseLicense object
-	require.NoError(t, c.Create(trialLicense.DeepCopy()))
-
-	var createdLicense v1alpha1.EnterpriseLicense
+	// Create trial initialisation is controlled via config
+	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
-	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusValid)
-	validateTrialDuration(t, createdLicense, now, time.Minute)
+	validateTrialStatus(t, checker, true)
+	licenses, err := license.EnterpriseLicenseList(c)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(licenses))
+	trialLicense := licenses[0]
+	require.True(t, trialLicense.IsTrial())
+
+	validateTrialDuration(t, trialLicense, now, time.Minute)
 
 	// tamper with the trial status
 	var trialStatus corev1.Secret
 	trialStatusKey := types.NamespacedName{
-		Namespace: "elastic-system",
+		Namespace: operatorNs,
 		Name:      license.TrialStatusSecretKey,
 	}
 	require.NoError(t, c.Get(trialStatusKey, &trialStatus))
@@ -74,45 +70,42 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete the trial license
-	require.NoError(t, deleteTrial(c))
-	// recreate it
-	require.NoError(t, c.Create(trialLicense))
+	require.NoError(t, deleteTrial(c, trialLicense.Data.UID))
+	// recreate it with modified validity + 1 year
+	trialLicense.Data.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
+	require.NoError(t, license.CreateEnterpriseLicense(c, types.NamespacedName{
+		Namespace: operatorNs,
+		Name:      trialLicense.Data.UID,
+	}, trialLicense))
 	// expect an invalid license
-	validateStatus(t, c, licenseKey, &createdLicense, v1alpha1.LicenseStatusExpired /*validity information was lost on delete*/)
-
+	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here
 }
 
-func validateStatus(
-	t *testing.T,
-	c k8s.Client,
-	key types.NamespacedName,
-	createdLicense *v1alpha1.EnterpriseLicense,
-	expected v1alpha1.LicenseStatus,
-) {
+func validateTrialStatus(t *testing.T, checker *license.Checker, expected bool) {
 	// test trial initialisation on create
 	test.RetryUntilSuccess(t, func() error {
-		err := c.Get(key, createdLicense)
+		trialEnabled, err := checker.EnterpriseFeaturesEnabled()
 		if err != nil {
 			return err
 		}
-		if createdLicense.Status != expected {
-			return fmt.Errorf("expected %v license but was %v", expected, createdLicense.Status)
+		if trialEnabled != expected {
+			return fmt.Errorf("expected licensed features to be enabled [%v] but was [%v]", expected, trialEnabled)
 		}
 		return nil
 	})
 }
 
-func validateTrialDuration(t *testing.T, license v1alpha1.EnterpriseLicense, now time.Time, precision time.Duration) {
+func validateTrialDuration(t *testing.T, license license.SourceEnterpriseLicense, now time.Time, precision time.Duration) {
 	startDelta := license.StartTime().Sub(now)
 	assert.True(t, startDelta <= precision, "start date should be within %v, but was %v", precision, startDelta)
-	endDelta := license.ExpiryDate().Sub(now.Add(30 * 24 * time.Hour))
+	endDelta := license.ExpiryTime().Sub(now.Add(30 * 24 * time.Hour))
 	assert.True(t, endDelta <= precision, "end date should be within %v, but was %v", precision, endDelta)
 }
 
-func deleteTrial(c k8s.Client) error {
-	var trialLicense v1alpha1.EnterpriseLicense
-	if err := c.Get(licenseKey, &trialLicense); err != nil {
+func deleteTrial(c k8s.Client, name string) error {
+	var trialLicense corev1.Secret
+	if err := c.Get(types.NamespacedName{Namespace: operatorNs, Name: name}, &trialLicense); err != nil {
 		return err
 	}
 	return c.Delete(&trialLicense)

@@ -14,7 +14,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -31,19 +30,19 @@ func (failingClient) Create(o runtime.Object) error {
 func TestInitTrial(t *testing.T) {
 	require.NoError(t, estype.AddToScheme(scheme.Scheme))
 
-	licenseFixture := estype.EnterpriseLicense{
-		Spec: estype.EnterpriseLicenseSpec{
-			Type: estype.LicenseTypeEnterpriseTrial,
+	licenseFixture := SourceEnterpriseLicense{
+		Data: SourceLicenseData{
+			Type: string(estype.LicenseTypeEnterpriseTrial),
 		},
 	}
 	type args struct {
 		c k8s.Client
-		l *estype.EnterpriseLicense
+		l *SourceEnterpriseLicense
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    func(*estype.EnterpriseLicense, *rsa.PublicKey)
+		want    func(*SourceEnterpriseLicense, *rsa.PublicKey)
 		wantErr bool
 	}{
 		{
@@ -58,25 +57,14 @@ func TestInitTrial(t *testing.T) {
 			name: "failing client",
 			args: args{
 				c: failingClient{},
-				l: &estype.EnterpriseLicense{
-					ObjectMeta: v1.ObjectMeta{
-						Name: "failing client test",
-					},
-					Spec: estype.EnterpriseLicenseSpec{
-						Type: estype.LicenseTypeEnterpriseTrial,
+				l: &SourceEnterpriseLicense{
+					Data: SourceLicenseData{
+						Type: string(estype.LicenseTypeEnterpriseTrial),
 					},
 				},
 			},
-			want: func(_ *estype.EnterpriseLicense, key *rsa.PublicKey) {
+			want: func(_ *SourceEnterpriseLicense, key *rsa.PublicKey) {
 				require.Nil(t, key)
-			},
-			wantErr: true,
-		},
-		{
-			name: "deleted/non-existing license",
-			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient()),
-				l: &licenseFixture,
 			},
 			wantErr: true,
 		},
@@ -84,10 +72,10 @@ func TestInitTrial(t *testing.T) {
 			name: "not a trial license",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				l: &estype.EnterpriseLicense{},
+				l: &SourceEnterpriseLicense{},
 			},
-			want: func(l *estype.EnterpriseLicense, k *rsa.PublicKey) {
-				require.Equal(t, *l, estype.EnterpriseLicense{})
+			want: func(l *SourceEnterpriseLicense, k *rsa.PublicKey) {
+				require.Equal(t, *l, SourceEnterpriseLicense{})
 				require.Nil(t, k)
 			},
 			wantErr: true,
@@ -95,10 +83,10 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "successful trial start",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient(&licenseFixture)),
+				c: k8s.WrapClient(fake.NewFakeClient()),
 				l: &licenseFixture,
 			},
-			want: func(l *estype.EnterpriseLicense, k *rsa.PublicKey) {
+			want: func(l *SourceEnterpriseLicense, k *rsa.PublicKey) {
 				require.NotNil(t, k)
 				require.NoError(t, l.IsMissingFields())
 			},
@@ -107,7 +95,11 @@ func TestInitTrial(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := InitTrial(tt.args.c, tt.args.l)
+			got, err := InitTrial(
+				tt.args.c,
+				"elastic-system",
+				tt.args.l,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("InitTrial() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -121,20 +113,20 @@ func TestInitTrial(t *testing.T) {
 
 func TestPopulateTrialLicense(t *testing.T) {
 	type args struct {
-		l *estype.EnterpriseLicense
+		l *SourceEnterpriseLicense
 	}
 	tests := []struct {
 		name       string
 		args       args
-		assertions func(estype.EnterpriseLicense)
+		assertions func(SourceEnterpriseLicense)
 		wantErr    bool
 	}{
 		{
 			name: "non-trial FAIL",
 			args: args{
-				l: &estype.EnterpriseLicense{
-					Spec: estype.EnterpriseLicenseSpec{
-						Type: estype.LicenseTypeEnterprise,
+				l: &SourceEnterpriseLicense{
+					Data: SourceLicenseData{
+						Type: string(estype.LicenseTypeEnterprise),
 					},
 				},
 			},
@@ -143,16 +135,13 @@ func TestPopulateTrialLicense(t *testing.T) {
 		{
 			name: "trial license OK",
 			args: args{
-				l: &estype.EnterpriseLicense{
-					ObjectMeta: v1.ObjectMeta{
-						UID: "this-would-come-from-the-api-server",
-					},
-					Spec: estype.EnterpriseLicenseSpec{
-						Type: estype.LicenseTypeEnterpriseTrial,
+				l: &SourceEnterpriseLicense{
+					Data: SourceLicenseData{
+						Type: string(estype.LicenseTypeEnterpriseTrial),
 					},
 				},
 			},
-			assertions: func(l estype.EnterpriseLicense) {
+			assertions: func(l SourceEnterpriseLicense) {
 				require.NoError(t, l.IsMissingFields())
 			},
 			wantErr: false,
@@ -174,21 +163,21 @@ func TestStartTrial(t *testing.T) {
 	dateFixture := time.Date(2019, 01, 22, 0, 0, 0, 0, time.UTC)
 	type args struct {
 		start time.Time
-		l     *estype.EnterpriseLicense
+		l     *SourceEnterpriseLicense
 	}
 	tests := []struct {
 		name       string
 		args       args
-		assertions func(estype.EnterpriseLicense)
+		assertions func(SourceEnterpriseLicense)
 	}{
 		{
 			name: "trial is 30 days",
 			args: args{
 				start: dateFixture,
-				l:     &estype.EnterpriseLicense{},
+				l:     &SourceEnterpriseLicense{},
 			},
-			assertions: func(license estype.EnterpriseLicense) {
-				assert.Equal(t, license.ExpiryDate().UTC(), time.Date(2019, 02, 21, 0, 0, 0, 0, time.UTC))
+			assertions: func(license SourceEnterpriseLicense) {
+				assert.Equal(t, license.ExpiryTime().UTC(), time.Date(2019, 02, 21, 0, 0, 0, 0, time.UTC))
 				assert.Equal(t, license.StartTime().UTC(), dateFixture)
 			},
 		},

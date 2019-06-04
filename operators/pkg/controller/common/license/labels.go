@@ -5,6 +5,7 @@
 package license
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -13,7 +14,23 @@ const (
 	LicenseLabelName  = "license.k8s.elastic.co/name"
 	LicenseLabelType  = "license.k8s.elastic.co/type"
 	LicenseLabelState = "license.k8s.elastic.co/state"
+	Type              = "license"
 )
+
+// LicenseType is the type of license a resource is describing.
+type LicenseType string
+
+const (
+	LicenseTypeEnterprise LicenseType = "enterprise"
+	LicenseTypeCluster    LicenseType = "cluster"
+)
+
+func LabelsForType(licenseType LicenseType) map[string]string {
+	return map[string]string{
+		common.TypeLabelName: Type,
+		LicenseLabelType:     string(licenseType),
+	}
+}
 
 // NewLicenseByNameSelector is a list selector to filter by a label containing the license name.
 func NewLicenseByNameSelector(licenseName string) labels.Selector {

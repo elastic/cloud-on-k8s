@@ -31,36 +31,26 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "valid license: OK",
 			fields: fields{
-				initialObjects:    withSignature(licenseFixture, signatureFixture),
+				initialObjects:    asRuntimeObjects(licenseFixture, signatureFixture),
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},
 			want: true,
 		},
 		{
-			name: "no secret: FAIL",
+			name: "invalid signature: FAIL",
 			fields: fields{
-				initialObjects:    withSignature(licenseFixture, signatureFixture)[:1],
+				initialObjects:    asRuntimeObjects(licenseFixture, []byte{}),
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},
 			want:    false,
-			wantErr: true,
-		},
-		{
-			name: "wrong namespace: FAIL",
-			fields: fields{
-				initialObjects:    withSignature(licenseFixture, signatureFixture),
-				operatorNamespace: "another-ns",
-				publicKey:         publicKeyBytesFixture(t),
-			},
-			want:    false,
-			wantErr: true,
+			wantErr: false,
 		},
 		{
 			name: "no public key: FAIL",
 			fields: fields{
-				initialObjects:    withSignature(licenseFixture, signatureFixture),
+				initialObjects:    asRuntimeObjects(licenseFixture, signatureFixture),
 				operatorNamespace: "test-system",
 			},
 			want: false,

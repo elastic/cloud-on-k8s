@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Checker contains parameters for license checks.
@@ -33,26 +32,22 @@ func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
 
 // EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
 func (lc *Checker) EnterpriseFeaturesEnabled() (bool, error) {
-	var licenses v1alpha1.EnterpriseLicenseList
-	err := lc.k8sClient.List(&client.ListOptions{}, &licenses)
+	licenses, err := EnterpriseLicenseList(lc.k8sClient)
 	if err != nil {
-		return false, errors.Wrap(err, "while reading licenses")
+		return false, errors.Wrap(err, "failed to list enterprise licenses")
 	}
 
-	for _, l := range licenses.Items {
-		sigRef := l.Spec.SignatureRef
-		var signatureSec corev1.Secret
-
-		err := lc.k8sClient.Get(types.NamespacedName{
-			Namespace: lc.operatorNamespace,
-			Name:      sigRef.Name,
-		}, &signatureSec)
-		if err != nil {
-			return false, errors.Wrap(err, "while loading signature secret")
-		}
-
+	for _, l := range licenses {
 		pk := lc.publicKey
-		if l.Spec.Type == v1alpha1.LicenseTypeEnterpriseTrial {
+		if l.IsTrial() {
+			var signatureSec corev1.Secret
+			err := lc.k8sClient.Get(types.NamespacedName{
+				Namespace: lc.operatorNamespace,
+				Name:      TrialStatusSecretKey,
+			}, &signatureSec)
+			if err != nil {
+				return false, errors.Wrap(err, "while loading signature secret")
+			}
 			pk = signatureSec.Data[TrialPubkeyKey]
 		}
 		verifier, err := NewVerifier(pk)
@@ -60,7 +55,7 @@ func (lc *Checker) EnterpriseFeaturesEnabled() (bool, error) {
 			log.Error(err, "while creating license verifier")
 			continue
 		}
-		status := verifier.Valid(l, signatureSec.Data[sigRef.Key], time.Now())
+		status := verifier.Valid(l, time.Now())
 		if status == v1alpha1.LicenseStatusValid {
 			return true, nil
 		}

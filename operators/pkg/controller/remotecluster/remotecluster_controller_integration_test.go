@@ -36,6 +36,7 @@ func TestReconcile(t *testing.T) {
 
 	c, stop := test.StartManager(t, Add, operator.Parameters{
 		OperatorNamespace: operatorNamespace, // trial license will be installed in that namespace
+		TrialMode:         true,
 	})
 	defer stop()
 

@@ -16,13 +16,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -164,23 +162,13 @@ type ReconcileLicenses struct {
 
 // findLicense tries to find the best license available.
 func findLicense(c k8s.Client) (esclient.License, string, bool, error) {
-	licenseList := corev1.SecretList{}
-	err := c.List(&client.ListOptions{
-		LabelSelector: license.NewLicenseByTypeSelector(string(v1alpha1.LicenseTypeEnterprise)),
-	}, &licenseList)
+	// TODO be tolerant of errors
+	licenseList, err := license.EnterpriseLicenseList(c)
 	if err != nil {
 		return esclient.License{}, "", false, err
 	}
-	var licenses []license.SourceEnterpriseLicense
-	for _, ls := range licenseList.Items {
-		parsed, err := license.ParseEnterpriseLicenses(ls.Data)
-		if err != nil {
-			return esclient.License{}, "", false,
-				pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls))
-		}
-		licenses = append(licenses, parsed...)
-	}
-	return license.BestMatch(licenses)
+	// TODO actually verify the license
+	return license.BestMatch(licenseList)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.

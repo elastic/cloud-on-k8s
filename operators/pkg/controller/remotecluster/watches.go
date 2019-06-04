@@ -9,6 +9,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -39,14 +40,10 @@ func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 	if err := c.Watch(&source.Kind{Type: &v1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
-
 	// Watch licenses in order to enable functionality if license status changes
-	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: reconcileAllRemoteClusters(r.Client),
-	}); err != nil {
+	if err := r.watches.Secrets.AddHandler(license.NewWatch(reconcileAllRemoteClusters(r.Client))); err != nil {
 		return err
 	}
-
 	return nil
 }
 

@@ -7,8 +7,10 @@
 package license
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
@@ -50,4 +52,36 @@ func (l SourceEnterpriseLicense) ExpiryTime() time.Time {
 func (l SourceEnterpriseLicense) IsValid(instant time.Time) bool {
 	return (l.StartTime().Equal(instant) || l.StartTime().Before(instant)) &&
 		l.ExpiryTime().After(instant)
+}
+
+// IsTrial returns true if this is a self-generated trial license.
+func (l SourceEnterpriseLicense) IsTrial() bool {
+	return l.Data.Type == string(v1alpha1.LicenseTypeEnterpriseTrial)
+}
+
+// IsMissingFields returns an error if any of the required fields are missing. Expected state on trial licenses.
+func (l SourceEnterpriseLicense) IsMissingFields() error {
+	var missing []string
+	if l.Data.Issuer == "" {
+		missing = append(missing, "spec.issuer")
+	}
+	if l.Data.IssuedTo == "" {
+		missing = append(missing, "spec.issued_to")
+	}
+	if l.Data.ExpiryDateInMillis == 0 {
+		missing = append(missing, "spec.expiry_date_in_millis")
+	}
+	if l.Data.StartDateInMillis == 0 {
+		missing = append(missing, "spec.start_date_in_millis")
+	}
+	if l.Data.IssueDateInMillis == 0 {
+		missing = append(missing, "spec.issue_date_in_millis")
+	}
+	if l.Data.UID == "" {
+		missing = append(missing, "spec.uid")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("required fields are missing: %v", missing)
+	}
+	return nil
 }
