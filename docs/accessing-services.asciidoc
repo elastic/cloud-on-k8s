@@ -107,8 +107,27 @@ spec:
 [id="{p}-request-elasticsearch-endpoint"]
 == Requesting the Elasticsearch endpoint
 
-To request the Elasticsearch endpoint using a `LoadBalancer` `Service`, basic authentication and certificate validation with the CA,
-you have to retrieve the CA certificate, the IP of the service and the password of the elastic user:
+[id="{p}-from-within-kubernetes-cluster"]
+=== From within the Kubernetes cluster
+
+To request the Elasticsearch endpoint from within the Kubernetes cluster,
+you have to retrieve the CA certificate and the password of the `elastic` user.
+
+[source,sh]
+----
+NAME=hulk
+
+kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
+PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
+
+curl --cacert ca.pem -u elastic:$PW https://$NAME-es:9200/
+----
+
+[id="{p}-from-outside-kubernetes-cluster"]
+=== From outside the Kubernetes cluster
+
+To request the Elasticsearch endpoint from outside the Kubernetes cluster,
+you have to retrieve the CA certificate, the password of the `elastic` user and the IP of the `LoadBalancer` `Service`.
 
 [source,sh]
 ----
