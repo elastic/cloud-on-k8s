@@ -18,8 +18,6 @@ import (
 type GenericResources struct {
 	// ExternalService is the user-facing service
 	ExternalService corev1.Service
-	// DiscoveryService is the service used by ES for discovery purposes
-	DiscoveryService corev1.Service
 }
 
 // reconcileGenericResources reconciles the expected generic resources of a cluster.
@@ -32,20 +30,13 @@ func reconcileGenericResources(
 	// TODO: consider removing the "res" bits of the ReconcileService signature?
 	results := &reconciler.Results{}
 
-	discoveryService := services.NewDiscoveryService(es)
-	_, err := common.ReconcileService(c, scheme, discoveryService, &es)
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
 	externalService := services.NewExternalService(es)
-	_, err = common.ReconcileService(c, scheme, externalService, &es)
+	_, err := common.ReconcileService(c, scheme, externalService, &es)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 
 	return &GenericResources{
-		DiscoveryService: *discoveryService,
-		ExternalService:  *externalService,
+		ExternalService: *externalService,
 	}, results
 }

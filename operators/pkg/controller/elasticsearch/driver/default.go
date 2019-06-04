@@ -142,7 +142,7 @@ func (d *defaultDriver) Reconcile(
 		d.Scheme,
 		d.CSRClient,
 		es,
-		[]corev1.Service{genericResources.DiscoveryService, genericResources.ExternalService},
+		[]corev1.Service{genericResources.ExternalService},
 		d.Parameters.CACertValidity,
 		d.Parameters.CACertRotateBefore,
 		d.Parameters.CertValidity,

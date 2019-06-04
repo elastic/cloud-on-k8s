@@ -23,41 +23,6 @@ const (
 	globalServiceSuffix = ".svc.cluster.local"
 )
 
-// DiscoveryServiceName returns the name for the discovery service
-// associated to this cluster
-func DiscoveryServiceName(esName string) string {
-	return name.DiscoveryService(esName)
-}
-
-// NewDiscoveryService returns the discovery service associated to the given cluster
-// It is used by nodes to talk to each other.
-func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
-	nsn := k8s.ExtractNamespacedName(&es)
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      DiscoveryServiceName(es.Name),
-			Labels:    label.NewLabels(nsn),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(nsn),
-			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.TransportPort,
-				},
-			},
-			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
-			ClusterIP:       "None",
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            corev1.ServiceTypeClusterIP,
-			// Nodes need to discover themselves before the pod is considered ready,
-			// otherwise minimum master nodes would never be reached
-			PublishNotReadyAddresses: true,
-		},
-	}
-}
-
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
@@ -67,11 +32,6 @@ func ExternalServiceName(esName string) string {
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
 func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
 	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
-}
-
-// ExternalDiscoveryServiceHostname returns the hostname used to reach Elasticsearch's discovery endpoint.
-func ExternalDiscoveryServiceHostname(es types.NamespacedName) string {
-	return stringsutil.Concat(DiscoveryServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
 }
 
 // NewExternalService returns the external service associated to the given cluster

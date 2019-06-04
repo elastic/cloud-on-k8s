@@ -282,7 +282,6 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Name: "Services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
-				stack.Elasticsearch.Name + "-es-discovery",
 				esname.HTTPService(stack.Elasticsearch.Name),
 				kbname.HTTPService(stack.Kibana.Name),
 			} {
@@ -301,7 +300,6 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 		Name: "Services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				stack.Elasticsearch.Name + "-es-discovery":   int(stack.Elasticsearch.Spec.NodeCount()),
 				kbname.HTTPService(stack.Kibana.Name):        int(stack.Kibana.Spec.NodeCount),
 				esname.HTTPService(stack.Elasticsearch.Name): int(stack.Elasticsearch.Spec.NodeCount()),
 			} {
