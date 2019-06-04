@@ -1,0 +1,169 @@
+[id="{p}-accessing-elastic-services"]
+	= How to access Elastic Stack services
+
+To access the Elastic Stack services, make sure you have: 
+
+  - basic authentication (Elastic user password)
+  - certificate validation with the CA (Certificate Authority)
+  - IP of the service
+
+  [id="{p}-security"]
+	== Security
+  
+  All Elastic Stack resources deployed by the ECK Operator are secured by default. The operator sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
+	
+  [id="{p}-tls-certificates"]
+	=== TLS Certificates
+	
+	The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates will be added in a future release.
+	
+	[source,sh]
+	----
+	> kubectl get secret hulk-es-ca -o go-template='{{index .data "ca.pem" | base64decode }}'
+	-----BEGIN CERTIFICATE-----
+	MIIDQDCCAiigAwIBAgIQHC4O/RWX15a3/P3upsm3djANBgkqhkiG9w0BAQsFADA6
+	...
+	QLYL4zLEby3vRxq65+xofVBJAaM=
+	-----END CERTIFICATE-----
+	----
+	
+	[id="{p}-authentication"]
+	
+  === Authentication
+	
+	To access Elasticsearch and Kibana, the operator manages a user with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
+	
+	[source,sh]
+	----
+	> kubectl get secret hulk-elastic-user -o go-template='{{.data.elastic | base64decode }}'
+	5abc6x1234bb7vbabc4xyz42
+	----
+  
+  [id="{p}-services"]
+	== Services
+  
+  You can access Elasticsearch and Kibana by using native Kubernetes services that are not reachable from the public Internet by default.
+	
+	[id="{p}-kubernetes-service"]
+	=== Managing Kubernetes services
+	
+	For each resource, `Elasticsearch` or `Kibana`, the operator manages a Kubernetes service named `<name>-<kind>`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
+	
+	[source,sh]
+	----
+	> kubectl get svc
+	
+	NAME                TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+	hulk-es             ClusterIP      10.19.252.160   <none>           9200:32361/TCP   25m
+	hulk-kibana         ClusterIP      10.19.247.151   <none>           5601:32567/TCP   25m
+	----
+	
+	[id="{p}-allow-public-access"]
+	=== Allowing public access
+	
+	You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of a resource manifest.
+	On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur charges.
+	
+	[source,yaml]
+	----
+	apiVersion: <kind>.k8s.elastic.co/v1alpha1
+	kind: <Kind>
+	metadata:
+	  name: hulk
+	spec:
+	  version: 7.1.0
+	  http:
+	    service:
+	      spec:
+	        type: LoadBalancer
+	----
+	
+	[source,sh]
+	----
+	> kubectl get svc
+	
+	NAME                TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)          AGE
+	hulk-es             LoadBalancer   10.19.252.160   35.198.131.115   9200:32361/TCP   25m
+	hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/TCP   25m
+	----
+	
+	[id="{p}-static-ip-custom-domain"]
+	=== Reserving Static IP and custom domain
+	
+	To use a custom domain name, you can reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service`. Whatever you use, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
+	
+	[source,yaml]
+	----
+	spec:
+	  http:
+	    service:
+	      spec:
+	        type: LoadBalancer
+	    tls:
+	      selfSignedCertificate:
+	        subjectAltNames:
+	        - dns: hulk.example.com
+	----
+	
+	[id="{p}-request-elasticsearch-endpoint"]
+	== Requesting the Elasticsearch endpoint
+	
+	To request the Elasticsearch endpoint using a `LoadBalancer` `Service`, basic authentication and certificate validation with the CA,
+	you have to retrieve the CA certificate, the IP of the service and the password of the elastic user:
+	
+	[source,sh]
+	----
+	NAME=hulk
+	
+	kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
+	IP=$(kubectl get svc "$NAME-es" -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+	PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
+	
+	curl --cacert ca.pem -u elastic:$PW https://$IP:9200/
+	----
+	
+	At this stage, you should get this message:
+	
+	[source,sh]
+	----
+	curl: (51) SSL: no alternative certificate subject name matches target host name '35.198.131.115'
+	
+	----
+	
+	Add the external IP of the service to the SANs of the certificate in the same Elasticsearch resource YAML manifest used for creating the cluster and apply it again using `kubectl`:
+	
+	[source,yaml]
+	----
+	spec:
+	  http:
+	    service:
+	      spec:
+	        type: LoadBalancer
+	    tls:
+	      selfSignedCertificate:
+	        subjectAltNames:
+	        - ip: 35.198.131.115
+	----
+	
+	You can now reach Elasticsearch:
+	
+	[source,sh]
+	----
+	> curl --cacert ca.pem -u elastic:$PASSWORD https://$IP:9200/
+	{
+	  "name" : "hulk-es-4qk62zd928",
+	  "cluster_name" : "hulk",
+	  "cluster_uuid" : "q6itjqFqRqW576FXF0uohg",
+	  "version" : {
+	    "number" : "7.1.0",
+	    "build_flavor" : "default",
+	    "build_type" : "docker",
+	    "build_hash" : "606a173",
+	    "build_date" : "2019-05-16T00:43:15.323135Z",
+	    "build_snapshot" : false,
+	    "lucene_version" : "8.0.0",
+	    "minimum_wire_compatibility_version" : "6.8.0",
+	    "minimum_index_compatibility_version" : "6.0.0-beta1"
+	  },
+	  "tagline" : "You Know, for Search"
+	}
