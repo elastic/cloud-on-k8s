@@ -42,7 +42,21 @@ func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 
 	// Watch licenses in order to enable functionality if license status changes
 	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: reconcileAllRemoteClusters(r.Client),
+		ToRequests: allRemoteClustersMapper(r.Client),
+	}); err != nil {
+		return err
+	}
+
+	// Watch licenses in order to enable functionality if license status changes
+	if err := c.Watch(&source.Kind{Type: &v1alpha1.EnterpriseLicense{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: allRemoteClustersMapper(r.Client),
+	}); err != nil {
+		return err
+	}
+
+	// Watch Service resources in order to reconcile related remote clusters if it changes.
+	if err := c.Watch(&source.Kind{Type: &v1.Service{}}, &handler.EnqueueRequestsFromMapFunc{
+		ToRequests: allRemoteClustersWithMatchingSeedServiceMapper(r.Client),
 	}); err != nil {
 		return err
 	}
@@ -50,12 +64,63 @@ func addWatches(c controller.Controller, r *ReconcileRemoteCluster) error {
 	return nil
 }
 
-// reconcileAllRemoteClusters creates a reconcile request for each currently existing remote cluster resource.
-func reconcileAllRemoteClusters(c k8s.Client) handler.ToRequestsFunc {
+func allRemoteClustersWithMatchingSeedServiceMapper(c k8s.Client) handler.Mapper {
 	return handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
+		// if it's a remote cluster seed service, we need to enqueue requests for any relevant remote clusters
+
+		labels := object.Meta.GetLabels()
+		if labels == nil {
+			// not a remote cluster seed service, safe to ignore
+			return nil
+		}
+
+		if _, ok := labels[RemoteClusterSeedServiceForLabelName]; !ok {
+			// not a remote cluster seed service, safe to ignore
+			return nil
+		}
+
+		svcNamespace := object.Meta.GetNamespace()
+		svcName := object.Meta.GetName()
+
 		var list v1alpha1.RemoteClusterList
 		if err := c.List(&client.ListOptions{}, &list); err != nil {
-			log.Error(err, "failed to list remote clusters in watch handler for enterprise licenses")
+			log.Error(err, "failed to list remote clusters in watch handler")
+			// dropping any errors on the floor here
+			return nil
+		}
+
+		var reqs []reconcile.Request
+		for _, rc := range list.Items {
+			// compare service name
+			if remoteClusterSeedServiceName(rc.Spec.Remote.K8sLocalRef.Name) != svcName {
+				continue
+			}
+
+			// compare service namespace, defaulting the remote service namespace to the remote cluster resource ns
+			ns := rc.Spec.Remote.K8sLocalRef.Namespace
+			if ns == "" {
+				ns = rc.Namespace
+			}
+			if ns != svcNamespace {
+				// service and remote namespace in different namespaces, so not relevant
+				continue
+			}
+
+			log.Info("Synthesizing reconcile for ", "resource", k8s.ExtractNamespacedName(&rc))
+			reqs = append(reqs, reconcile.Request{
+				NamespacedName: k8s.ExtractNamespacedName(&rc),
+			})
+		}
+		return reqs
+	})
+}
+
+// allRemoteClustersMapper creates a reconcile request for each currently existing remote cluster resource.
+func allRemoteClustersMapper(c k8s.Client) handler.Mapper {
+	return handler.ToRequestsFunc(func(_ handler.MapObject) []reconcile.Request {
+		var list v1alpha1.RemoteClusterList
+		if err := c.List(&client.ListOptions{}, &list); err != nil {
+			log.Error(err, "failed to list remote clusters in watch handler")
 			// dropping any errors on the floor here
 			return nil
 		}

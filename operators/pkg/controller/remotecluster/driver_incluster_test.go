@@ -153,13 +153,18 @@ func Test_apply(t *testing.T) {
 					},
 					RemoteTrustRelationship: "rcr-remotecluster-sample-1-2-default",
 				},
-				SeedHosts: []string{"trust-two-es-es-discovery.default.svc.cluster.local:9300"},
+				SeedHosts: []string{"trust-two-es-es-remote-cluster-seed.default.svc:9300"},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.NoError(t, tt.args.rca.watches.InjectScheme(sc))
+			if tt.args.rca.scheme == nil {
+				tt.args.rca.scheme = sc
+			}
+
+			assert.NoError(t, tt.args.rca.watches.InjectScheme(tt.args.rca.scheme))
+
 			got, err := doReconcile(tt.args.rca, tt.args.remoteCluster)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("apply() error = %v, wantErr %v", err, tt.wantErr)
