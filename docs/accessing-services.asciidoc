@@ -30,7 +30,7 @@ QLYL4zLEby3vRxq65+xofVBJAaM=
 [id="{p}-authentication"]
 === Authentication
 
-To access Elasticsearch and Kibana, the operator manages a user with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
+To access Elasticsearch and Kibana, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
 [source,sh]
 ----
@@ -41,7 +41,7 @@ To access Elasticsearch and Kibana, the operator manages a user with the `superu
 [id="{p}-services"]
 == Services
 
-You can access Elasticsearch and Kibana by using native Kubernetes services that are not reachable from the public Internet by default.
+You can access Elasticsearch and Kibana by using native Kubernetes services, that are not reachable from the public Internet by default.
 
 [id="{p}-kubernetes-service"]
 === Managing Kubernetes services
@@ -89,7 +89,7 @@ hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/T
 [id="{p}-static-ip-custom-domain"]
 === Reserving Static IP and custom domain
 
-To use a custom domain name, you can reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service`. Whatever you use, your DNS must be added to the certificate SAN in the `spec` of your Elastic resources manifest:
+To use a custom domain name, you can reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service`. Whatever you use, your DNS must be added to the certificate SAN in the `spec` of your Elastic resource manifest:
 
 [source,yaml]
 ----
