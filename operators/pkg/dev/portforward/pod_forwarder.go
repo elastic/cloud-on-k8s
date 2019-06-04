@@ -97,7 +97,7 @@ func newDefaultKubernetesClientset() (*kubernetes.Clientset, error) {
 	return kubernetes.NewForConfig(cfg)
 }
 
-// podDNSRegex matches pods FQDN such as {name}.{namespace}.pod.cluster.local.
+// podDNSRegex matches pods FQDN such as {name}.{namespace}.pod
 var podDNSRegex = regexp.MustCompile(`^.+\..+\..*$`)
 
 // podIPRegex matches any ipv4 address.

@@ -51,7 +51,7 @@ status:
     remoteTrustRelationship: rcr-remotecluster-sample-1-2-default
   localTrustRelationship: rc-remotecluster-sample-1-2
   seedHosts:
-  - trust-two-es-discovery.default.svc.cluster.local:9300
+  - trust-two-es-discovery.default.svc:9300
   state: Propagated
 ```
 

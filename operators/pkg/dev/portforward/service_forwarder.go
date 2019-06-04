@@ -66,7 +66,7 @@ func NewServiceForwarder(client client.Client, network, addr string) (*serviceFo
 
 // parseServiceAddr parses the service name and namespace from a connection address
 func parseServiceAddr(addr string) (*types.NamespacedName, error) {
-	// services generally look like this (as FQDN): {name}.{namespace}.svc.cluster.local
+	// services generally look like this (as FQDN): {name}.{namespace}.svc
 	parts := strings.SplitN(addr, ".", 3)
 
 	if len(parts) <= 2 {
@@ -157,7 +157,7 @@ func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	pod := podTargets[rand.Intn(len(podTargets))]
 
 	// this should match a supported format of parsePodAddr(addr string)
-	podAddr := fmt.Sprintf("%s.%s.pod.cluster.local:%s", pod.Name, pod.Namespace, targetPort.String())
+	podAddr := fmt.Sprintf("%s.%s.pod:%s", pod.Name, pod.Namespace, targetPort.String())
 	forwarder, err := f.store.GetOrCreateForwarder(f.network, podAddr, f.podForwarderFactory)
 	if err != nil {
 		return nil, err
