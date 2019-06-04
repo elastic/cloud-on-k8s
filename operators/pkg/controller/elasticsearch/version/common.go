@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -45,11 +44,10 @@ func NewExpectedPodSpecs(
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
 				// cluster-wide params
-				Version:              es.Spec.Version,
-				CustomImageName:      es.Spec.Image,
-				ClusterName:          es.Name,
-				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
+				Version:          es.Spec.Version,
+				CustomImageName:  es.Spec.Image,
+				ClusterName:      es.Name,
+				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:    paramsTmpl.ConfigMapVolume,

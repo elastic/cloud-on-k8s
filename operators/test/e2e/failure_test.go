@@ -150,15 +150,6 @@ func TestDeleteServices(t *testing.T) {
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
-				Name: "Delete discovery service",
-				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Elasticsearch.Name + "-es-discovery")
-					require.NoError(t, err)
-					err = k.Client.Delete(s)
-					require.NoError(t, err)
-				},
-			},
-			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
 					s, err := k.GetService(s.Elasticsearch.Name + "-es")
