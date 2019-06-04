@@ -9,23 +9,30 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
 	LocalTrustRelationshipPrefix  = "rc"
 	RemoteTrustRelationshipPrefix = "rcr"
+
+	// remoteClusterSeedServiceSuffix is the suffix used for the remote cluster seed service
+	remoteClusterSeedServiceSuffix = "remote-cluster-seed"
 )
 
 func doReconcile(
 	r *ReconcileRemoteCluster,
 	remoteCluster v1alpha1.RemoteCluster,
 ) (v1alpha1.RemoteClusterStatus, error) {
-
 	// Get the previous remote associated cluster, if the remote namespace has been updated by the user we must
 	// delete the remote relationship from the old namespace and recreate it in the new namespace.
 	if len(remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace) > 0 &&
@@ -72,8 +79,12 @@ func doReconcile(
 		remoteCluster,
 		localClusterSelector,
 		remoteCluster.Spec.Remote.K8sLocalRef,
-		r.watches)
-	err := h.Handle(&remoteCluster, watchFinalizer)
+		r.watches,
+	)
+
+	seedServiceFinalizer := seedServiceFinalizer(r.Client, remoteCluster)
+
+	err := h.Handle(&remoteCluster, watchFinalizer, seedServiceFinalizer)
 	if err != nil {
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
@@ -143,18 +154,63 @@ func doReconcile(
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
+	// Create remote service for seeding
+	svc, err := reconcileRemoteService(r.Client, r.scheme, remoteCluster)
+	if err != nil {
+		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
+	}
+
 	// Build status
 	status := v1alpha1.RemoteClusterStatus{
 		Phase:                  v1alpha1.RemoteClusterPropagated,
 		ClusterName:            localClusterSelector.Name,
 		LocalTrustRelationship: localRelationshipName,
-		SeedHosts:              []string{services.ExternalDiscoveryServiceHostname(remote.Selector.NamespacedName())},
+		SeedHosts:              seedHostsFromService(svc),
 		K8SLocalStatus: v1alpha1.LocalRefStatus{
 			RemoteSelector:          remote.Selector,
 			RemoteTrustRelationship: remoteRelationshipName,
 		},
 	}
 	return status, nil
+}
+
+// reconcileRemoteService reconciles a Service that we can use to in the remote cluster seed hosts.
+//
+// This service is shared between all remote clusters configured this way, and is deleted whenever any of them are
+// deleted in a finalizer. There's a watch that re-creates it if it's still in use.
+func reconcileRemoteService(
+	c k8s.Client,
+	scheme *runtime.Scheme,
+	remoteCluster v1alpha1.RemoteCluster,
+) (*v1.Service, error) {
+	service := v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: remoteCluster.Spec.Remote.K8sLocalRef.Namespace,
+			Name:      remoteClusterSeedServiceName(remoteCluster.Spec.Remote.K8sLocalRef.Name),
+			Labels: map[string]string{
+				label.ClusterNameLabelName: remoteCluster.Spec.Remote.K8sLocalRef.Name,
+			},
+		},
+		Spec: v1.ServiceSpec{
+			PublishNotReadyAddresses: true,
+			Ports: []v1.ServicePort{
+				{Protocol: v1.ProtocolTCP, Port: 9300, TargetPort: intstr.FromInt(9300)},
+			},
+			Selector: map[string]string{
+				common.TypeLabelName:       label.Type,
+				label.ClusterNameLabelName: remoteCluster.Spec.Remote.K8sLocalRef.Name,
+			},
+		},
+	}
+	if service.Namespace == "" {
+		service.Namespace = remoteCluster.Namespace
+	}
+
+	if _, err := common.ReconcileService(c, scheme, &service, nil); err != nil {
+		return nil, err
+	}
+
+	return &service, nil
 }
 
 func caCertMissingError(location string, selector commonv1alpha1.ObjectSelector) string {
@@ -173,4 +229,14 @@ func updateStatusWithPhase(
 	status := remoteCluster.Status.DeepCopy()
 	status.Phase = phase
 	return *status
+}
+
+// remoteClusterSeedServiceName returns the name of the remote cluster seed service.
+func remoteClusterSeedServiceName(esName string) string {
+	return esname.ESNamer.Suffix(esName, remoteClusterSeedServiceSuffix)
+}
+
+// seedHostsFromService returns the seed hosts to use for a given service.
+func seedHostsFromService(svc *v1.Service) []string {
+	return []string{fmt.Sprintf("%s.%s.svc:9300", svc.Name, svc.Namespace)}
 }

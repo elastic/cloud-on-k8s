@@ -14,6 +14,8 @@ import (
 const (
 	// RemoteClusterDynamicWatchesFinalizer designates a finalizer to clean up unused watches.
 	RemoteClusterDynamicWatchesFinalizer = "dynamic-watches.remotecluster.k8s.elastic.co"
+	// RemoteClusterSeedServiceFinalizer designates a finalizer to clean up a seed Service.
+	RemoteClusterSeedServiceFinalizer = "seed-service.remotecluster.k8s.elastic.co"
 	// RemoteClusterNamespaceLabelName used to represent the namespace of the RemoteCluster in a TrustRelationship.
 	RemoteClusterNamespaceLabelName = "remotecluster.k8s.elastic.co/namespace"
 	// RemoteClusterNameLabelName used to represent the name of the RemoteCluster in a TrustRelationship.
