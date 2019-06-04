@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -75,7 +76,7 @@ func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 				SSL: TLSConfig{
 					Enabled: true,
 					// TODO: hardcoded path
-					CertificateAuthorities: []string{"config/elasticsearch-certs/ca.pem"},
+					CertificateAuthorities: []string{"config/elasticsearch-certs/" + certificates.CAFileName},
 				},
 				// TODO: include indices? or will they be defaulted fine?
 			},

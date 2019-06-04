@@ -11,7 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	commonuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
-	kbctl "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana"
+	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"golang.org/x/crypto/bcrypt"
 	corev1 "k8s.io/api/core/v1"
@@ -74,8 +74,8 @@ func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
 func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es types.NamespacedName) error {
-	// this secret will be on the Kibana side of the association so we are applying the Kibana labels here
-	secretLabels := kbctl.NewLabels(kibana.Name)
+	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
+	secretLabels := kblabel.NewLabels(kibana.Name)
 	secretLabels[AssociationLabelName] = kibana.Name
 	secKey := KibanaUserSecretKey(k8s.ExtractNamespacedName(&kibana))
 	pw := commonuser.RandomPasswordBytes()

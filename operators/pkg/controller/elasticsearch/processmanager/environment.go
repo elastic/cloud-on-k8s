@@ -7,8 +7,7 @@ package processmanager
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -29,12 +28,12 @@ const (
 	ElasticsearchCommand = "/usr/local/bin/docker-entrypoint.sh"
 )
 
-func NewEnvVars(nodeCertsSecretVolume, privateKeySecretVolume volume.VolumeLike) []corev1.EnvVar {
+func NewEnvVars(httpCertsSecretVolume volume.VolumeLike) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: EnvProcName, Value: "es"},
 		{Name: EnvProcCmd, Value: ElasticsearchCommand},
 		{Name: EnvTLS, Value: "true"},
-		{Name: EnvCertPath, Value: path.Join(nodeCertsSecretVolume.VolumeMount().MountPath, nodecerts.CertFileName)},
-		{Name: EnvKeyPath, Value: path.Join(privateKeySecretVolume.VolumeMount().MountPath, initcontainer.PrivateKeyFileName)},
+		{Name: EnvCertPath, Value: path.Join(httpCertsSecretVolume.VolumeMount().MountPath, certificates.CertFileName)},
+		{Name: EnvKeyPath, Value: path.Join(httpCertsSecretVolume.VolumeMount().MountPath, certificates.KeyFileName)},
 	}
 }

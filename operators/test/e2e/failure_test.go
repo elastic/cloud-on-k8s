@@ -172,7 +172,7 @@ func TestDeleteServices(t *testing.T) {
 }
 
 func TestDeleteElasticUserSecret(t *testing.T) {
-	s := stack.NewStackBuilder("test-delete-elastic-user-secret").
+	s := stack.NewStackBuilder("test-delete-es-elastic-user-secret").
 		WithESMasterDataNodes(1, stack.DefaultResources)
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
@@ -181,7 +181,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: params.Namespace,
-						Name:      s.Elasticsearch.Name + "-elastic-user",
+						Name:      s.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)
@@ -203,7 +203,7 @@ func TestDeleteCACert(t *testing.T) {
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
 						Namespace: params.Namespace,
-						Name:      s.Elasticsearch.Name + "-ca", // ~that's the CA cert secret name \o/~ ... oops not anymore
+						Name:      s.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
 					err := k.Client.Get(key, &secret)

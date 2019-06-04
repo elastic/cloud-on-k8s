@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -224,14 +224,16 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	var expectedEsConfig apmtype.ElasticsearchOutput
 	expectedEsConfig.ElasticsearchRef = apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
 
-	// TODO: look up CA name from the ES cluster resource
-	var publicCACertSecret corev1.Secret
-	publicCACertSecretKey := types.NamespacedName{Namespace: es.Namespace, Name: nodecerts.CACertSecretName(es.Name)}
-	if err = r.Get(publicCACertSecretKey, &publicCACertSecret); err != nil {
+	// TODO: look up public certs secret name from the ES cluster resource instead of relying on naming convention
+	var publicCertsSecret corev1.Secret
+	publicCertsSecretKey := http.PublicCertsSecretRef(
+		elasticsearchRef.NamespacedName(),
+	)
+	if err = r.Get(publicCertsSecretKey, &publicCertsSecret); err != nil {
 		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
 	// TODO this is currently limiting the association to the same namespace
-	expectedEsConfig.SSL.CertificateAuthoritiesSecret = &publicCACertSecret.Name
+	expectedEsConfig.SSL.CertificateAuthoritiesSecret = &publicCertsSecret.Name
 	expectedEsConfig.Hosts = []string{services.ExternalServiceURL(es)}
 	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(apmServer)
 

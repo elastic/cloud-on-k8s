@@ -90,7 +90,7 @@ spec:
                   type: object
                 tls:
                   description: TLS describe additional options to consider when generating
-                    nodes TLS certificates.
+                    HTTP TLS certificates.
                   properties:
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
@@ -98,8 +98,8 @@ spec:
                       properties:
                         subjectAltNames:
                           description: 'SubjectAlternativeNames is a list of SANs
-                            to include in the nodes certificates. For example: a wildcard
-                            DNS to expose the cluster.'
+                            to include in the HTTP TLS certificates. For example:
+                            a wildcard DNS to expose the cluster.'
                           items:
                             properties:
                               dns:
@@ -134,8 +134,9 @@ spec:
                     type: integer
                   podTemplate:
                     description: PodTemplate can be used to propagate configuration
-                      to Elasticsearch pods. So far, only labels, Affinity and `Containers["elasticsearch"].Resources.Limits`
-                      are applied.
+                      to Elasticsearch pods. This allows specifying custom annotations,
+                      labels, environment variables, volumes, affinity, resources,
+                      etc. for the pods created from this NodeSpec.
                     type: object
                   volumeClaimTemplates:
                     description: 'VolumeClaimTemplates is a list of claims that pods

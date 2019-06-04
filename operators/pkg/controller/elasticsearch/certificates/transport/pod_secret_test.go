@@ -2,9 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build integration
-
-package nodecerts
+package transport
 
 import (
 	"testing"
@@ -18,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestEnsureNodeCertificateSecretExists(t *testing.T) {
+func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "pod",
@@ -31,12 +29,12 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 	}
 
 	type args struct {
-		c                   k8s.Client
-		scheme              *runtime.Scheme
-		owner               metav1.Object
-		pod                 corev1.Pod
-		nodeCertificateType string
-		labels              map[string]string
+		c               k8s.Client
+		scheme          *runtime.Scheme
+		owner           metav1.Object
+		pod             corev1.Pod
+		certificateType string
+		labels          map[string]string
 	}
 	tests := []struct {
 		name    string
@@ -47,13 +45,13 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 		{
 			name: "should create a secret if it does not already exist",
 			args: args{
-				c:                   k8s.WrapClient(fake.NewFakeClient()),
-				nodeCertificateType: LabelNodeCertificateTypeElasticsearchAll,
-				pod:                 pod,
+				c:               k8s.WrapClient(fake.NewFakeClient()),
+				certificateType: LabelTransportCertificateTypeElasticsearchAll,
+				pod:             pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
-				assert.Contains(t, secret.Labels, LabelNodeCertificateType)
-				assert.Equal(t, secret.Labels[LabelNodeCertificateType], LabelNodeCertificateTypeElasticsearchAll)
+				assert.Contains(t, secret.Labels, LabelTransportCertificateType)
+				assert.Equal(t, secret.Labels[LabelTransportCertificateType], LabelTransportCertificateTypeElasticsearchAll)
 				assert.Equal(t, "pod-certs", secret.Name)
 			},
 		},
@@ -78,9 +76,9 @@ func TestEnsureNodeCertificateSecretExists(t *testing.T) {
 				tt.args.owner = &pod
 			}
 
-			got, err := EnsureNodeCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.nodeCertificateType, tt.args.labels)
+			got, err := EnsureTransportCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.certificateType, tt.args.labels)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("EnsureNodeCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			tt.want(t, got)

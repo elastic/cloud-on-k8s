@@ -5,21 +5,23 @@
 package version6
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	corev1 "k8s.io/api/core/v1"
+
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 )
 
 const ElasticsearchURL = "ELASTICSEARCH_URL"
 
 // NewEnv returns environment variables for a 6.x Kibana.
-func NewEnv(p pod.SpecParams) []corev1.EnvVar {
+func NewEnv(kibana kbtype.Kibana) []corev1.EnvVar {
 	env := []corev1.EnvVar{
-		{Name: ElasticsearchURL, Value: p.ElasticsearchUrl},
+		{Name: ElasticsearchURL, Value: kibana.Spec.Elasticsearch.URL},
 	}
-	return pod.ApplyToEnv(p.User, env)
+	return pod.ApplyToEnv(kibana.Spec.Elasticsearch.Auth, env)
 }
 
-// NewPodSpec returns a pod spec for a 6.x Kibana.
-func NewPodSpec(p pod.SpecParams) corev1.PodSpec {
-	return pod.NewSpec(p, pod.EnvFactory(NewEnv))
+// NewPodTemplateSpec returns a pod spec for a 6.x Kibana.
+func NewPodTemplateSpec(kibana kbtype.Kibana) corev1.PodTemplateSpec {
+	return pod.NewPodTemplateSpec(kibana, pod.EnvFactory(NewEnv))
 }

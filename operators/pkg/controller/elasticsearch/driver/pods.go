@@ -7,9 +7,9 @@ package driver
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodecerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -89,30 +89,30 @@ func createElasticsearchPod(
 		)
 	}
 
-	// create the node certificates secret for this pod, which is our promise that we will sign a CSR
+	// create the transport certificates secret for this pod, which is our promise that we will sign a CSR
 	// originating from the pod after it has started and produced a CSR
-	log.Info("Ensuring that node certificate secret exists for pod", "pod", pod.Name)
-	nodeCertificatesSecret, err := nodecerts.EnsureNodeCertificateSecretExists(
+	log.Info("Ensuring that transport certificate secret exists for pod", "pod", pod.Name)
+	transportCertificatesSecret, err := transport.EnsureTransportCertificateSecretExists(
 		c,
 		scheme,
 		&es,
 		pod,
-		nodecerts.LabelNodeCertificateTypeElasticsearchAll,
-		// add the cluster name label so we select all the node certificates secrets associated with a cluster easily
+		transport.LabelTransportCertificateTypeElasticsearchAll,
+		// add the cluster name label so we select all the transport certificates secrets associated with a cluster easily
 		map[string]string{label.ClusterNameLabelName: es.Name},
 	)
 	if err != nil {
 		return err
 	}
 
-	// we finally have the node certificates secret made, so we can inject the secret volume into the pod
-	nodeCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
-		nodeCertificatesSecret.Name,
-		volume.NodeCertificatesSecretVolumeName,
-		volume.NodeCertificatesSecretVolumeMountPath,
+	// we finally have the transport certificates secret made, so we can inject the secret volume into the pod
+	transportCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
+		transportCertificatesSecret.Name,
+		volume.TransportCertificatesSecretVolumeName,
+		volume.TransportCertificatesSecretVolumeMountPath,
 	)
-	// add the node certificates volume to volumes
-	pod.Spec.Volumes = append(pod.Spec.Volumes, nodeCertificatesSecretVolume.Volume())
+	// add the transport certificates volume to volumes
+	pod.Spec.Volumes = append(pod.Spec.Volumes, transportCertificatesSecretVolume.Volume())
 
 	// create the config volume for this pod, now that we have a proper name for the pod
 	if err := settings.ReconcileConfig(c, es, pod, podSpecCtx.Config); err != nil {
