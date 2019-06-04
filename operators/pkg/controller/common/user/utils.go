@@ -8,14 +8,16 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // GetSecret gets the first secret in a list that matches the namespace and the name.
-func GetSecret(list corev1.SecretList, namespace, name string) *corev1.Secret {
+func GetSecret(list corev1.SecretList, namespacedName types.NamespacedName) *corev1.Secret {
 	for _, secret := range list.Items {
-		if secret.Namespace == namespace && secret.Name == name {
+		if secret.Namespace == namespacedName.Namespace && secret.Name == namespacedName.Name {
 			return &secret
 		}
 	}

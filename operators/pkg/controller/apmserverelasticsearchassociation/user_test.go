@@ -111,14 +111,14 @@ func Test_reconcileEsUser(t *testing.T) {
 				list := corev1.SecretList{}
 				assert.NoError(t, c.List(&client.ListOptions{}, &list))
 				assert.Equal(t, 3, len(list.Items))
-				s := user.GetSecret(list, "other", userSecretName)
+				s := user.GetSecret(list, types.NamespacedName{"other", userSecretName})
 				assert.NotNil(t, s)
-				s = user.GetSecret(list, apmFixture.Namespace, userSecretName)
+				s = user.GetSecret(list, types.NamespacedName{apmFixture.Namespace, userSecretName})
 				assert.NotNil(t, s)
 				password, passwordIsSet := s.Data[esUserName]
 				assert.True(t, passwordIsSet)
 				assert.NotEmpty(t, password)
-				s = user.GetSecret(list, apmFixture.Namespace, esUserName) // secret on the ES side
+				s = user.GetSecret(list, types.NamespacedName{apmFixture.Namespace, esUserName}) // secret on the ES side
 				user.ChecksUser(t, s, esUserName, []string{"superuser"})
 			},
 		},
