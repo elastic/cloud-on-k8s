@@ -10,7 +10,6 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	v1 "k8s.io/api/core/v1"
@@ -130,16 +129,14 @@ func doReconcile(
 	}
 
 	// Create local relationship
-	localSubject := transport.GetSubjectName(remote.Selector.Name, remote.Selector.Namespace)
 	localRelationshipName := fmt.Sprintf("%s-%s", LocalTrustRelationshipPrefix, remoteCluster.Name)
-	if err := reconcileTrustRelationShip(r.Client, remoteCluster, localRelationshipName, local, remote, localSubject); err != nil {
+	if err := reconcileTrustRelationship(r.Client, remoteCluster, localRelationshipName, local, remote); err != nil {
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 
 	// Create remote relationship
-	remoteSubject := transport.GetSubjectName(local.Selector.Name, local.Selector.Namespace)
 	remoteRelationshipName := fmt.Sprintf("%s-%s-%s", RemoteTrustRelationshipPrefix, remoteCluster.Name, remoteCluster.Namespace)
-	if err := reconcileTrustRelationShip(r.Client, remoteCluster, remoteRelationshipName, remote, local, remoteSubject); err != nil {
+	if err := reconcileTrustRelationship(r.Client, remoteCluster, remoteRelationshipName, remote, local); err != nil {
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), err
 	}
 

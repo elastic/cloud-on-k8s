@@ -29,7 +29,6 @@ const (
 	XPackSecurityTransportSslCertificateAuthorities = "xpack.security.transport.ssl.certificate_authorities"
 	XPackSecurityTransportSslEnabled                = "xpack.security.transport.ssl.enabled"
 	XPackSecurityTransportSslKey                    = "xpack.security.transport.ssl.key"
-	XPackSecurityTransportSslTrustRestrictionsPath  = "xpack.security.transport.ssl.trust_restrictions.path"
 	XPackSecurityTransportSslVerificationMode       = "xpack.security.transport.ssl.verification_mode"
 )
 
@@ -52,6 +51,5 @@ var Blacklist = []string{
 	XPackSecurityTransportSslCertificateAuthorities,
 	XPackSecurityTransportSslEnabled,
 	XPackSecurityTransportSslKey,
-	XPackSecurityTransportSslTrustRestrictionsPath,
 	XPackSecurityTransportSslVerificationMode,
 }
