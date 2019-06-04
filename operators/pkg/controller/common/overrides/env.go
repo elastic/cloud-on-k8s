@@ -11,13 +11,13 @@ import (
 // EnvBuilder helps with building a list of environment variables while
 // dealing with name conflicts.
 type EnvBuilder struct {
-	byName  map[string]corev1.EnvVar
-	envVars []corev1.EnvVar // duplicates the map data, but preserves order
+	byName  map[string]struct{} // indicates existence
+	envVars []corev1.EnvVar     // contains the actual value, preserving order
 }
 
 // NewEnvBuilder returns an EnvBuilder initialized with the given vars.
 func NewEnvBuilder(vars ...corev1.EnvVar) *EnvBuilder {
-	byName := make(map[string]corev1.EnvVar, len(vars))
+	byName := make(map[string]struct{}, len(vars))
 	envVars := make([]corev1.EnvVar, 0, len(vars))
 	envBuilder := EnvBuilder{byName: byName, envVars: envVars}
 	envBuilder.AddOrOverride(vars...)
@@ -36,7 +36,7 @@ func (e *EnvBuilder) AddIfMissing(vars ...corev1.EnvVar) {
 			// a variable with the same name already exists, keep the existing one
 			continue
 		}
-		e.byName[v.Name] = v
+		e.byName[v.Name] = struct{}{}
 		e.envVars = append(e.envVars, v)
 	}
 }
@@ -61,6 +61,6 @@ func (e *EnvBuilder) AddOrOverride(vars ...corev1.EnvVar) {
 		} else {
 			e.envVars = append(e.envVars, v)
 		}
-		e.byName[v.Name] = v
+		e.byName[v.Name] = struct{}{}
 	}
 }
