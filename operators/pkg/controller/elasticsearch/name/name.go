@@ -33,6 +33,7 @@ const (
 	clusterSecretsSecretSuffix  = "secrets"
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
+	licenseSecretSuffix         = "license"
 
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
@@ -128,4 +129,8 @@ func HTTPCertsInternalSecretName(esName string) string {
 
 func CertsPublicSecretName(esName string, caType certificates.CAType) string {
 	return ESNamer.Suffix(esName, string(caType), certsPublicSecretName)
+}
+
+func LicenseSecretName(esName string) string {
+	return ESNamer.Suffix(esName, licenseSecretSuffix)
 }

@@ -9,8 +9,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// EnterpriseLicenseLabelName is a label pointing to the name of the source enterprise license.
-const EnterpriseLicenseLabelName = "license.k8s.elastic.co/name"
+const (
+	// EnterpriseLicenseLabelName is a label pointing to the name of the source enterprise license.
+	EnterpriseLicenseLabelName = "license.k8s.elastic.co/name"
+	ElasticsearchLicenseType   = "elasticsearch-license"
+)
 
 // NewLicenseSelector is a list selector to filter by a label containing the license name.
 func NewLicenseSelector(license types.NamespacedName) labels.Selector {

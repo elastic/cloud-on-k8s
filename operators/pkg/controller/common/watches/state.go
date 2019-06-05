@@ -16,7 +16,6 @@ func NewDynamicWatches() DynamicWatches {
 		Pods:                  NewDynamicEnqueueRequest(),
 		ElasticsearchClusters: NewDynamicEnqueueRequest(),
 		Kibanas:               NewDynamicEnqueueRequest(),
-		ClusterLicense:        NewDynamicEnqueueRequest(),
 	}
 }
 
@@ -27,7 +26,6 @@ type DynamicWatches struct {
 	Pods                  *DynamicEnqueueRequest
 	ElasticsearchClusters *DynamicEnqueueRequest
 	Kibanas               *DynamicEnqueueRequest
-	ClusterLicense        *DynamicEnqueueRequest
 }
 
 // InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and

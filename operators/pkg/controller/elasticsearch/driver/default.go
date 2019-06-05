@@ -283,7 +283,6 @@ func (d *defaultDriver) Reconcile(
 		func() (controller.Result, error) {
 			err := license.Reconcile(
 				d.Client,
-				d.DynamicWatches,
 				es,
 				esClient,
 				observedState.ClusterLicense,
