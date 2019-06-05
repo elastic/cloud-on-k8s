@@ -33,7 +33,6 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 		scheme          *runtime.Scheme
 		owner           metav1.Object
 		pod             corev1.Pod
-		certificateType string
 		labels          map[string]string
 	}
 	tests := []struct {
@@ -46,12 +45,12 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 			name: "should create a secret if it does not already exist",
 			args: args{
 				c:               k8s.WrapClient(fake.NewFakeClient()),
-				certificateType: LabelTransportCertificateTypeElasticsearchAll,
 				pod:             pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
-				assert.Contains(t, secret.Labels, LabelTransportCertificateType)
-				assert.Equal(t, secret.Labels[LabelTransportCertificateType], LabelTransportCertificateTypeElasticsearchAll)
+				if assert.Contains(t, secret.Labels, LabelCertificateType) {
+					assert.Equal(t, secret.Labels[LabelCertificateType], LabelCertificateTypeTransport)
+				}
 				assert.Equal(t, "pod-certs", secret.Name)
 			},
 		},
@@ -76,7 +75,7 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 				tt.args.owner = &pod
 			}
 
-			got, err := EnsureTransportCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.certificateType, tt.args.labels)
+			got, err := EnsureTransportCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.labels)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

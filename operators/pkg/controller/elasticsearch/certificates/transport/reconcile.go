@@ -7,7 +7,6 @@ package transport
 import (
 	"bytes"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"reflect"
 	"time"
@@ -60,9 +59,9 @@ func ReconcileTransportCertificateSecrets(
 
 	for _, secret := range certificateSecrets {
 		// retrieve pod associated to this secret
-		podName, ok := secret.Labels[LabelAssociatedPod]
+		podName, ok := secret.Labels[label.PodNameLabelName]
 		if !ok {
-			return reconcile.Result{}, fmt.Errorf("Cannot find pod name in labels of secret %s", secret.Name)
+			return reconcile.Result{}, fmt.Errorf("cannot find pod name in labels of secret %s", secret.Name)
 		}
 
 		var pod corev1.Pod
@@ -71,17 +70,8 @@ func ReconcileTransportCertificateSecrets(
 				return reconcile.Result{}, err
 			}
 
-			// pod does not exist anymore, garbage-collect the secret
-			// give some leniency in pods showing up only after a while
-			if secret.CreationTimestamp.Add(5 * time.Minute).Before(time.Now()) {
-				// if the secret has existed for too long without an associated pod, it's time to GC it
-				log.Info("Unable to find pod associated with secret, GCing", "secret", secret.Name)
-				if err := c.Delete(&secret); err != nil {
-					return reconcile.Result{}, err
-				}
-			} else {
-				log.Info("Unable to find pod associated with secret, but secret is too young for GC", "secret", secret.Name)
-			}
+			// pod does not exist yet, or has been deleted and this secret will be garbage collected by the cleanup
+			// package
 			continue
 		}
 
@@ -90,24 +80,10 @@ func ReconcileTransportCertificateSecrets(
 			continue
 		}
 
-		certificateType, ok := secret.Labels[LabelTransportCertificateType]
-		if !ok {
-			log.Error(errors.New("missing certificate type"), "No certificate type found", "secret", secret.Name)
-			continue
-		}
-
-		switch certificateType {
-		case LabelTransportCertificateTypeElasticsearchAll:
-			if res, err := doReconcileTransportCertificateSecret(
-				c, secret, pod, csrClient, es, services, ca, additionalCAs, certValidity, certRotateBefore,
-			); err != nil {
-				return res, err
-			}
-		default:
-			log.Error(
-				errors.New("unsupported certificate type"),
-				fmt.Sprintf("Unsupported certificate type: %s found in %s, ignoring", certificateType, secret.Name),
-			)
+		if res, err := doReconcileTransportCertificateSecret(
+			c, secret, pod, csrClient, es, services, ca, additionalCAs, certValidity, certRotateBefore,
+		); err != nil {
+			return res, err
 		}
 	}
 
@@ -125,7 +101,7 @@ func findTransportCertificateSecrets(
 		Namespace: es.Namespace,
 		LabelSelector: labels.Set(map[string]string{
 			label.ClusterNameLabelName: es.Name,
-			LabelSecretUsage:           LabelSecretUsageTransportCertificates,
+			LabelCertificateType:       LabelCertificateTypeTransport,
 		}).AsSelector(),
 	}
 	if err := c.List(&listOptions, &certificateSecrets); err != nil {

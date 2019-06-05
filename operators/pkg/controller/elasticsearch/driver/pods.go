@@ -97,7 +97,6 @@ func createElasticsearchPod(
 		scheme,
 		&es,
 		pod,
-		transport.LabelTransportCertificateTypeElasticsearchAll,
 		// add the cluster name label so we select all the transport certificates secrets associated with a cluster easily
 		map[string]string{label.ClusterNameLabelName: es.Name},
 	)
