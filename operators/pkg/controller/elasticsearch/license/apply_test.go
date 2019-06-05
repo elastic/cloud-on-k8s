@@ -9,9 +9,11 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -119,11 +121,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-license",
+						Name:      name.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						"_": []byte(fixtures.LicenseSample),
+						license.FileName: []byte(fixtures.LicenseSample),
 					},
 				},
 			},
@@ -138,7 +140,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-license",
+						Name:      name.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 				},
@@ -150,11 +152,11 @@ func Test_applyLinkedLicense(t *testing.T) {
 			initialObjs: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-es-license",
+						Name:      name.LicenseSecretName("test"),
 						Namespace: "default",
 					},
 					Data: map[string][]byte{
-						"_": {},
+						license.FileName: {},
 					},
 				},
 			},
@@ -165,7 +167,7 @@ func Test_applyLinkedLicense(t *testing.T) {
 			errors: map[client.ObjectKey]error{
 				types.NamespacedName{
 					Namespace: clusterName.Namespace,
-					Name:      "test-es-license",
+					Name:      name.LicenseSecretName("test"),
 				}: errors.New("boom"),
 			},
 		},

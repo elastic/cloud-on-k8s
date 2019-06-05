@@ -14,6 +14,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/stretchr/testify/assert"
@@ -102,8 +103,7 @@ func TestReconcile(t *testing.T) {
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
 		var clusterLicense corev1.Secret
-		err := c.Get(types.NamespacedName{Namespace: "default", Name: "foo-es-license"}, &clusterLicense)
-		if err != nil {
+		if err := c.Get(types.NamespacedName{Namespace: "default", Name: esname.LicenseSecretName("foo")}, &clusterLicense); err != nil {
 			return err
 		}
 		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)

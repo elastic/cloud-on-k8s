@@ -152,7 +152,6 @@ func reconcileSecret(
 	enterpriseLicense metav1.ObjectMeta,
 ) error {
 	secretName := esname.LicenseSecretName(cluster.Name)
-	secretKey := "license"
 
 	// fetch the user created secret from the controllers (global) namespace
 	var globalSecret corev1.Secret
@@ -183,11 +182,11 @@ func reconcileSecret(
 			Namespace: cluster.Namespace,
 			Labels: map[string]string{
 				license.EnterpriseLicenseLabelName: enterpriseLicense.Name,
-				common.TypeLabelName:               license.ClusterLicenseType,
+				common.TypeLabelName:               license.ElasticsearchLicenseType,
 			},
 		},
 		Data: map[string][]byte{
-			secretKey: licenseBytes,
+			license.FileName: licenseBytes,
 		},
 	}
 	// create/update a secret in the cluster's namespace containing the same data
@@ -223,8 +222,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 		return noResult, nil
 	}
 	// make sure the signature secret is created in the cluster's namespace
-	err = reconcileSecret(r, cluster, matchingSpec, parent)
-	if err != nil {
+	if err = reconcileSecret(r, cluster, matchingSpec, parent); err != nil {
 		return noResult, err
 	}
 	return matchingSpec.ExpiryDate(), err

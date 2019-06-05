@@ -7,9 +7,9 @@ package license
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
+	common_license "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -43,17 +43,19 @@ func applyLinkedLicense(
 		}
 		return err
 	}
-	if len(license.Data) == 0 {
-		return errors.New("empty license linked to this cluster")
+	if len(license.Data) != 1 {
+		return fmt.Errorf(
+			"linked Elasticsearch license secret needs to contain exactly one file called %s",
+			common_license.FileName,
+		)
 	}
-	for _, v := range license.Data {
-		var lic esclient.License
-		err = json.Unmarshal(v, &lic)
-		if err == nil {
-			return updater(lic)
-		}
+	bytes := license.Data[common_license.FileName]
+	var lic esclient.License
+	err = json.Unmarshal(bytes, &lic)
+	if err != nil {
+		return pkgerrors.Wrap(err, "no valid license found in license secret")
 	}
-	return pkgerrors.Wrap(err, "No valid license found in license secret")
+	return updater(lic)
 }
 
 // updateLicense make the call to Elasticsearch to set the license. This function exists mainly to facilitate testing.

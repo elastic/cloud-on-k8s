@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -208,7 +209,7 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			// verify that a cluster license was created
 			// following the es naming convention
 			licenseNsn := nsn
-			licenseNsn.Name = licenseNsn.Name + "-es-license"
+			licenseNsn.Name = esname.LicenseSecretName(licenseNsn.Name)
 			var license corev1.Secret
 			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {
