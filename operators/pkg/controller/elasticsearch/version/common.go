@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/overrides"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -181,10 +182,14 @@ func podSpec(
 	// we do not override resource Requests here in order to end up in the qosClass of Guaranteed by default
 	// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 
-	// augment user-provided env vars with our own
-	// TODO: deal with conflicts here (eg. JVM_OPTIONS)
 	heapSize := MemoryLimitsToHeapSize(*containerSpec.Resources.Limits.Memory())
-	containerSpec.Env = append(containerSpec.Env, newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+	// inherit user-provided environment...
+	envBuilder := overrides.NewEnvBuilder(containerSpec.Env...)
+	// ...that we augment with our own.
+	// if a user-provided var has the same name as one of ours, we keep the user's version.
+	// this may break the deployment, but we consider users know what they are doing at this point.
+	envBuilder.AddIfMissing(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+	containerSpec.Env = envBuilder.GetEnvVars()
 
 	// set the container image to our own if not provided by the user
 	if containerSpec.Image == "" {

@@ -26,7 +26,7 @@ import (
 func expectedDeploymentParams() *DeploymentParams {
 	false := false
 	return &DeploymentParams{
-		Name:      "test-kibana",
+		Name:      "test-kb",
 		Namespace: "default",
 		Selector:  map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
 		Labels:    map[string]string{"common.k8s.elastic.co/type": "kibana", "kibana.k8s.elastic.co/name": "test"},
@@ -36,7 +36,7 @@ func expectedDeploymentParams() *DeploymentParams {
 				Labels: map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "e86782ca82c59410c1f57e426184b07194f9981965c2e4ffd0adad97",
+					"kibana.k8s.elastic.co/config-checksum": "c530a02188193a560326ce91e34fc62dcbd5722b45534a3f60957663",
 				},
 			},
 			Spec: corev1.PodSpec{
@@ -179,7 +179,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				"kibana.yml": []byte("server.name: kb"),
+				"kibana.yml": []byte("server.name: test"),
 			},
 		},
 	}
@@ -260,7 +260,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							"kibana.yml": []byte("server.name: kb"),
+							"kibana.yml": []byte("server.name: test"),
 						},
 					},
 				},
@@ -270,7 +270,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "d29f978e782f79f72bceae3da9dd662992ad2114c79df715619971a2",
+					"kibana.k8s.elastic.co/config-checksum": "ab47b5621ae80a23a5fa881f8c8affcf511dfc1f007ffd883be9ad83",
 				}
 				return p
 			}(),

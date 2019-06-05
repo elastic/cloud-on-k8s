@@ -8,6 +8,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
+
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -17,8 +19,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/config"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/escerts"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
@@ -98,7 +100,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		}
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCertsVolume := escerts.SecretVolume(*kb)
+		esCertsVolume := es.CaCertSecretVolume(*kb)
 		configVolume := config.SecretVolume(*kb)
 
 		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes,
@@ -131,8 +133,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	deploymentLabels := label.NewLabels(kb.Name)
 
 	return &DeploymentParams{
-		// TODO: revisit naming?
-		Name:            PseudoNamespacedResourceName(*kb),
+		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.NodeCount,
 		Selector:        deploymentLabels,
