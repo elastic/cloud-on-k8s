@@ -13,7 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -53,15 +52,4 @@ func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings Can
 		return err
 	}
 	return nil
-}
-
-// getConfigSecret returns the Kibana config secret for the given Kibana resource.
-func getConfigSecret(client k8s.Client, kb v1alpha1.Kibana) (*corev1.Secret, error) {
-	var secret corev1.Secret
-	esAuthSecret := types.NamespacedName{Name: kb.Spec.Elasticsearch.Auth.SecretKeyRef.Name, Namespace: kb.Namespace}
-	err := client.Get(esAuthSecret, &secret)
-	if err != nil {
-		return nil, err
-	}
-	return &secret, nil
 }

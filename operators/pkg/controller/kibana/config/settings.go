@@ -10,7 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/escerts"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -53,7 +53,7 @@ func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	}
 }
 func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
-	esCertsVolumeMountPath := escerts.SecretVolume(kb).VolumeMount().MountPath
+	esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
 	return map[string]interface{}{
 		ElasticsearchSslCertificateAuthorities: path.Join(esCertsVolumeMountPath, certificates.CAFileName),
 		ElasticsearchSslVerificationMode:       "certificate",
@@ -70,7 +70,7 @@ func elasticsearchAuthSettings(client k8s.Client, kb v1alpha1.Kibana) (map[strin
 		}
 	}
 	if auth.SecretKeyRef != nil {
-		secret, err := getConfigSecret(client, kb)
+		secret, err := es.GetAuthSecret(client, kb)
 		if err != nil {
 			return nil, err
 		}
