@@ -62,7 +62,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			DeletionTimestamp: &deletionTimestamp,
 		},
 	}
-	config := settings.CanonicalConfig{common.MustNewSingleValue("a", "b")}
+	config := settings.CanonicalConfig{CanonicalConfig: common.MustNewSingleValue("a", "b")}
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
@@ -98,7 +98,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is terminating: continue with a dummy config",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &deletingPod)),
 			es:   cluster,
-			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: settings.CanonicalConfig{common.MustNewSingleValue(
+			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: settings.CanonicalConfig{CanonicalConfig: common.MustNewSingleValue(
 				"pod.deletion", "in.progress",
 			)}}},
 			wantErr: "",
@@ -114,7 +114,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is old: should be associated a dummy config for replacement",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &oldPod)),
 			es:   cluster,
-			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: settings.CanonicalConfig{common.MustNewSingleValue(
+			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: settings.CanonicalConfig{CanonicalConfig: common.MustNewSingleValue(
 				"error.pod.to.replace", "no configuration secret volume found for that pod, scheduling it for deletion",
 			)}}},
 			wantErr: "",

@@ -33,7 +33,7 @@ func newPod(name string, master bool) pod.PodWithConfig {
 
 	label.NodeTypesMasterLabelName.Set(master, p.Labels)
 
-	return pod.PodWithConfig{Pod: p, Config: settings.CanonicalConfig{common.NewCanonicalConfig()}}
+	return pod.PodWithConfig{Pod: p, Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()}}
 }
 
 func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges, shouldBeSet bool, nodeNames ...string) {
@@ -71,7 +71,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
 							PodSpecCtx: pod.PodSpecContext{
-								Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+								Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 							},
 						}},
 					},
@@ -92,7 +92,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 						ToCreate: []mutation.PodToCreate{{
 							Pod: newPod("b", true).Pod,
 							PodSpecCtx: pod.PodSpecContext{
-								Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+								Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 							},
 						}},
 					},
@@ -114,32 +114,32 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 							{
 								Pod: newPod("b", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 							{
 								Pod: newPod("c", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 							{
 								Pod: newPod("d", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 							{
 								Pod: newPod("e", true).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 							// f is not master, so masters should not be informed of it
 							{
 								Pod: newPod("f", false).Pod,
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 						},

@@ -68,7 +68,7 @@ func TestNewPod(t *testing.T) {
 		return *s
 	}
 
-	masterCfg := settings.CanonicalConfig{csettings.MustCanonicalConfig(map[string]interface{}{
+	masterCfg := settings.CanonicalConfig{CanonicalConfig: csettings.MustCanonicalConfig(map[string]interface{}{
 		"node.master": true,
 		"node.data":   false,
 		"node.ingest": false,

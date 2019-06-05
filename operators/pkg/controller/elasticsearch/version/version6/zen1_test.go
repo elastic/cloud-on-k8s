@@ -128,7 +128,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master2", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 						},
@@ -161,7 +161,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 							{
 								Pod: newMasterPod("master5", "ns1"),
 								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{common.NewCanonicalConfig()},
+									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
 							},
 						},
