@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -34,8 +33,8 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommonsettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*commonsettings.CanonicalConfig, error),
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -83,9 +82,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*commonsettings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, *commonsettings.CanonicalConfig, error) {
+) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// build on top of the user-provided pod template spec
 	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
 
@@ -164,7 +163,7 @@ func podSpec(
 	// append out init containers to user-provided ones
 	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
-		return corev1.PodSpec{}, nil, err
+		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 	podSpec.InitContainers = append(podSpec.InitContainers, initContainers...)
 
@@ -243,7 +242,7 @@ func podSpec(
 	}
 	esConfig, err := newESConfigFn(p.ClusterName, *config)
 	if err != nil {
-		return corev1.PodSpec{}, nil, err
+		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 
 	return *podSpec, esConfig, nil
@@ -267,8 +266,7 @@ func NewPod(
 		objectMeta.Labels = map[string]string{}
 	}
 
-	cfg := v1alpha1.DefaultCfg
-	err := podSpecCtx.Config.Unpack(&cfg)
+	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}

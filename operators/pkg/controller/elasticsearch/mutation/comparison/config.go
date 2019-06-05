@@ -7,13 +7,12 @@ package comparison
 import (
 	"fmt"
 
-	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 )
 
-func compareConfigs(actual *commonsettings.CanonicalConfig, expected *commonsettings.CanonicalConfig) Comparison {
+func compareConfigs(actual settings.CanonicalConfig, expected settings.CanonicalConfig) Comparison {
 	// check for settings in actual that do not match expected
-	diff := actual.Diff(expected, toIgnore)
+	diff := actual.Diff(expected.CanonicalConfig, toIgnore)
 	if len(diff) == 0 {
 		return ComparisonMatch
 	}

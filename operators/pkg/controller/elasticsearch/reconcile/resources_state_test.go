@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
@@ -62,7 +62,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			DeletionTimestamp: &deletionTimestamp,
 		},
 	}
-	config := commonsettings.MustNewSingleValue("a", "b")
+	config := settings.CanonicalConfig{common.MustNewSingleValue("a", "b")}
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
@@ -98,9 +98,9 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is terminating: continue with a dummy config",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &deletingPod)),
 			es:   cluster,
-			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: commonsettings.MustNewSingleValue(
+			wantDeletingPods: pod.PodsWithConfig{{Pod: deletingPod, Config: settings.CanonicalConfig{common.MustNewSingleValue(
 				"pod.deletion", "in.progress",
-			)}},
+			)}}},
 			wantErr: "",
 		},
 		{
@@ -114,9 +114,9 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 			name: "no configuration found, pod is old: should be associated a dummy config for replacement",
 			c:    k8s.WrapClient(fake.NewFakeClient(&cluster, &externalService, &oldPod)),
 			es:   cluster,
-			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: commonsettings.MustNewSingleValue(
+			wantCurrentPods: pod.PodsWithConfig{{Pod: oldPod, Config: settings.CanonicalConfig{common.MustNewSingleValue(
 				"error.pod.to.replace", "no configuration secret volume found for that pod, scheduling it for deletion",
-			)}},
+			)}}},
 			wantErr: "",
 		},
 	}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +19,7 @@ import (
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
 // This managed secret is mounted into each pod of the Kibana deployment.
-func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings *settings.CanonicalConfig) error {
+func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings CanonicalConfig) error {
 	settingsYamlBytes, err := kbSettings.Render()
 	if err != nil {
 		return err

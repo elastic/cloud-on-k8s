@@ -107,7 +107,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			}
 			k8sClient := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...))
 
-			err := ReconcileConfigSecret(k8sClient, tt.args.kb, settings.NewCanonicalConfig())
+			err := ReconcileConfigSecret(k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()})
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList

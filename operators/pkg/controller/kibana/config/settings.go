@@ -17,25 +17,31 @@ import (
 // Kibana configuration settings file
 const settingsFilename = "kibana.yml"
 
+// CanonicalConfig contains configuration for Kibana ("kibana.yml"),
+// as a hierarchical key-value configuration.
+type CanonicalConfig struct {
+	*settings.CanonicalConfig
+}
+
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
-func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (*settings.CanonicalConfig, error) {
-	kbSettings := settings.NewCanonicalConfig()
+func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, error) {
+	cfg := settings.NewCanonicalConfig()
 
 	esAuthSettings, err := elasticsearchAuthSettings(client, kb)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
 
-	err = kbSettings.MergeWith(
+	err = cfg.MergeWith(
 		settings.MustCanonicalConfig(baseSettings(kb)),
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(esAuthSettings),
 	)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
 
-	return kbSettings, nil
+	return CanonicalConfig{cfg}, nil
 }
 
 func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {

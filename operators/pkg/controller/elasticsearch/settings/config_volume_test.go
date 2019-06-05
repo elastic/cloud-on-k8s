@@ -9,9 +9,10 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,28 +52,28 @@ func TestGetESConfigContent(t *testing.T) {
 		name    string
 		client  k8s.Client
 		esPod   types.NamespacedName
-		want    *commonsettings.CanonicalConfig
+		want    CanonicalConfig
 		wantErr bool
 	}{
 		{
 			name:    "valid config exists",
 			client:  k8s.WrapClient(fake.NewFakeClient(&secret)),
 			esPod:   pod,
-			want:    commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
+			want:    CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})},
 			wantErr: false,
 		},
 		{
 			name:    "config does not exist",
 			client:  k8s.WrapClient(fake.NewFakeClient()),
 			esPod:   pod,
-			want:    nil,
+			want:    CanonicalConfig{},
 			wantErr: true,
 		},
 		{
 			name:    "stored config is invalid",
 			client:  k8s.WrapClient(fake.NewFakeClient(&secretInvalid)),
 			esPod:   pod,
-			want:    nil,
+			want:    CanonicalConfig{},
 			wantErr: true,
 		},
 	}
@@ -91,7 +92,8 @@ func TestGetESConfigContent(t *testing.T) {
 }
 
 func TestReconcileConfig(t *testing.T) {
-	v1alpha1.AddToScheme(scheme.Scheme)
+	err := v1alpha1.AddToScheme(scheme.Scheme)
+	assert.NoError(t, err)
 	cluster := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "namespace",
@@ -104,7 +106,7 @@ func TestReconcileConfig(t *testing.T) {
 			Name:      "pod",
 		},
 	}
-	config := commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})
+	config := CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})}
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
@@ -125,7 +127,7 @@ func TestReconcileConfig(t *testing.T) {
 		client  k8s.Client
 		cluster v1alpha1.Elasticsearch
 		pod     corev1.Pod
-		config  *commonsettings.CanonicalConfig
+		config  CanonicalConfig
 		wantErr bool
 	}{
 		{
@@ -149,7 +151,7 @@ func TestReconcileConfig(t *testing.T) {
 			client:  k8s.WrapClient(fake.NewFakeClient(&configSecret)),
 			cluster: cluster,
 			pod:     pod,
-			config:  commonsettings.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"}),
+			config:  CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"})},
 			wantErr: false,
 		},
 	}

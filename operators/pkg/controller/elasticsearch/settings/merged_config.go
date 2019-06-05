@@ -9,7 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	commonsettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -20,24 +20,24 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	userConfig v1alpha1.Config,
-) (*commonsettings.CanonicalConfig, error) {
-	config, err := commonsettings.NewCanonicalConfigFrom(userConfig.Data)
+) (CanonicalConfig, error) {
+	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
 	err = config.MergeWith(
-		baseConfig(clusterName),
-		xpackConfig(),
+		baseConfig(clusterName).CanonicalConfig,
+		xpackConfig().CanonicalConfig,
 	)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
-	return config, nil
+	return CanonicalConfig{config}, nil
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
-func baseConfig(clusterName string) *commonsettings.CanonicalConfig {
-	return commonsettings.MustCanonicalConfig(map[string]interface{}{
+func baseConfig(clusterName string) *CanonicalConfig {
+	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -50,11 +50,12 @@ func baseConfig(clusterName string) *commonsettings.CanonicalConfig {
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
-	})
+	}
+	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
-func xpackConfig() *commonsettings.CanonicalConfig {
+func xpackConfig() *CanonicalConfig {
 	// enable x-pack security, including TLS
 	cfg := map[string]interface{}{
 		// x-pack security general settings
@@ -79,6 +80,5 @@ func xpackConfig() *commonsettings.CanonicalConfig {
 			transport.TrustRestrictionsFilename,
 		),
 	}
-
-	return commonsettings.MustCanonicalConfig(cfg)
+	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

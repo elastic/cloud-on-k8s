@@ -4,8 +4,20 @@
 
 package settings
 
+import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+)
+
+// CanonicalConfig contains configuration for Elasticsearch ("elasticsearch.yml"),
+// as a hierarchical key-value configuration.
+type CanonicalConfig struct {
+	*common.CanonicalConfig
+}
+
 // Unpack returns a typed subset of Elasticsearch settings.
-/*func Unpack(c *settings.CanonicalConfig) (v1alpha1.ElasticsearchSettings, error) {
+func (c CanonicalConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
 	cfg := v1alpha1.DefaultCfg
-	return cfg, c.AsUCfg().Unpack(&cfg, settings.Options...)
-}*/
+	err := c.CanonicalConfig.Unpack(&cfg)
+	return cfg, err
+}
