@@ -746,22 +746,6 @@ spec:
               description: CaCert contains the PEM-encoded CA certificate for the
                 remote cluster.
               type: string
-            trustRestrictions:
-              description: TrustRestrictions contains configuration for the trust
-                restrictions feature of Elasticsearch for this relationship
-              properties:
-                trust:
-                  description: Trust contains configuration for the Elasticsearch
-                    trust restrictions.
-                  properties:
-                    subjectName:
-                      description: SubjectName is a list of patterns that incoming
-                        TLS client certificates must match.
-                      items:
-                        type: string
-                      type: array
-                  type: object
-              type: object
           type: object
   version: v1alpha1
 status:

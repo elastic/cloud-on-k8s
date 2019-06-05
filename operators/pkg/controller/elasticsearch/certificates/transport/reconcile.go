@@ -7,7 +7,6 @@ package transport
 import (
 	"bytes"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -51,19 +50,6 @@ func ReconcileTransportCertificateSecrets(
 		}
 
 		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
-	}
-
-	// build the trust.yml file
-	trustRootCfg := NewTrustRootConfig(es.Name, es.Namespace)
-
-	// include the trust restrictions from the trust relationships into the trust restrictions config
-	for _, trustRelationship := range trustRelationships {
-		trustRootCfg.Include(trustRelationship.Spec.TrustRestrictions)
-	}
-
-	trustRootCfgData, err := json.Marshal(&trustRootCfg)
-	if err != nil {
-		return reconcile.Result{}, err
 	}
 
 	// get all existing transport certificate secrets for this cluster
@@ -113,7 +99,7 @@ func ReconcileTransportCertificateSecrets(
 		switch certificateType {
 		case LabelTransportCertificateTypeElasticsearchAll:
 			if res, err := doReconcileTransportCertificateSecret(
-				c, secret, pod, csrClient, es, services, ca, additionalCAs, trustRootCfgData, certValidity, certRotateBefore,
+				c, secret, pod, csrClient, es, services, ca, additionalCAs, certValidity, certRotateBefore,
 			); err != nil {
 				return res, err
 			}
@@ -159,7 +145,6 @@ func doReconcileTransportCertificateSecret(
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
-	trustRootCfgData []byte,
 	certValidity time.Duration,
 	certReconcileBefore time.Duration,
 ) (reconcile.Result, error) {
@@ -237,12 +222,7 @@ func doReconcileTransportCertificateSecret(
 		secret.Data[certificates.CAFileName] = trusted
 	}
 
-	updateTrustRestrictions := !bytes.Equal(trustRootCfgData, secret.Data[TrustRestrictionsFilename])
-	if updateTrustRestrictions {
-		secret.Data[TrustRestrictionsFilename] = trustRootCfgData
-	}
-
-	if issueNewCertificate || updateTrustedCACerts || updateTrustRestrictions {
+	if issueNewCertificate || updateTrustedCACerts {
 		log.Info("Updating transport certificate secret", "secret", secret.Name)
 		if err := c.Update(&secret); err != nil {
 			return reconcile.Result{}, err
