@@ -13,10 +13,13 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -41,47 +44,42 @@ func TestReconcile(t *testing.T) {
 	startDate := now.Add(-thirtyDays)
 	expiryDate := now.Add(thirtyDays)
 
-	enterpriseLicense := &v1alpha1.EnterpriseLicense{
-		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "elastic-system"},
-		Spec: v1alpha1.EnterpriseLicenseSpec{
-			LicenseMeta: v1alpha1.LicenseMeta{
-				UID:                "test",
-				ExpiryDateInMillis: chrono.ToMillis(expiryDate),
-			},
-			Type:         "enterprise",
-			SignatureRef: corev1.SecretKeySelector{},
-			ClusterLicenseSpecs: []v1alpha1.ClusterLicenseSpec{
+	enterpriseLicense := license.SourceEnterpriseLicense{
+		Data: license.SourceLicenseData{
+			UID:                "test",
+			ExpiryDateInMillis: chrono.ToMillis(expiryDate),
+			Type:               "enterprise",
+			ClusterLicenses: []license.SourceClusterLicense{
 				{
-					LicenseMeta: v1alpha1.LicenseMeta{
+					License: esclient.License{
 						ExpiryDateInMillis: chrono.ToMillis(expiryDate),
 						StartDateInMillis:  chrono.ToMillis(startDate),
-					},
-					Type: v1alpha1.LicenseTypePlatinum,
-					SignatureRef: corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "ctrl-secret",
-						},
-						Key: "sig",
+						Type:               string(v1alpha1.LicenseTypePlatinum),
+						Signature:          "blah",
 					},
 				},
 			},
 		},
 	}
-	controllerSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ctrl-secret",
-			Namespace: "elastic-system",
-		},
-		Data: map[string][]byte{
-			"sig": []byte("blah"),
-		},
-	}
 
 	// Create the EnterpriseLicense object
-	require.NoError(t, c.Create(enterpriseLicense))
-
-	// Create the linked secret
-	require.NoError(t, c.Create(controllerSecret))
+	require.NoError(t, license.CreateEnterpriseLicense(
+		c,
+		types.NamespacedName{Name: "foo", Namespace: "elastic-system"},
+		enterpriseLicense,
+	))
+	// give the client some time to sync up
+	test.RetryUntilSuccess(t, func() error {
+		var secs corev1.SecretList
+		err := c.List(&client.ListOptions{}, &secs)
+		if err != nil {
+			return err
+		}
+		if len(secs.Items) == 0 {
+			return errors.New("no secrets")
+		}
+		return nil
+	})
 
 	varFalse := false
 	cluster := &v1alpha1.Elasticsearch{

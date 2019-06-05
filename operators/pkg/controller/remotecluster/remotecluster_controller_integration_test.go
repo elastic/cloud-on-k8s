@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,6 +31,16 @@ var (
 
 func TestMain(m *testing.M) {
 	test.RunWithK8s(m, filepath.Join("..", "..", "..", "config", "crds"))
+}
+
+func StartTrial(t *testing.T, c k8s.Client, namespace string) {
+	l := license.SourceEnterpriseLicense{
+		Data: license.SourceLicenseData{
+			Type: string(v1alpha1.LicenseTypeEnterpriseTrial),
+		},
+	}
+	_, err := license.InitTrial(c, namespace, &l)
+	require.NoError(t, err)
 }
 
 func TestReconcile(t *testing.T) {
@@ -72,7 +84,7 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// start a trial license to enable the feature
-	test.StartTrial(t, c, operatorNamespace)
+	StartTrial(t, c, operatorNamespace)
 
 	// expect the creation of the first TrustRelationship
 	trustRelationship1 := &v1alpha1.TrustRelationship{}
