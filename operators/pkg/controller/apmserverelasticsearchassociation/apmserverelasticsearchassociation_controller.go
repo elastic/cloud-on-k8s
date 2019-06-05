@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
@@ -130,7 +131,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	handler := finalizer.NewHandler(r)
-	err = handler.Handle(&apmServer, watchFinalizer(k8s.ExtractNamespacedName(&apmServer), r.watches))
+	err = handler.Handle(
+		&apmServer,
+		watchFinalizer(k8s.ExtractNamespacedName(&apmServer), r.watches),
+		user.UserFinalizer(r.Client, NewUserLabelSelector(k8s.ExtractNamespacedName(&apmServer))),
+	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
@@ -216,7 +221,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	// TODO reconcile external user CRD here
-	err = reconcileEsUser(r.Client, r.scheme, apmServer)
+	err = reconcileEsUser(r.Client, r.scheme, apmServer, es)
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
 	}

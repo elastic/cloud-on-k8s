@@ -8,6 +8,7 @@ import (
 	"bytes"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -68,7 +69,7 @@ func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer, es v1alpha1.Elasticsearch) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
@@ -121,6 +122,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
 	userLabels := common.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
 	userLabels[AssociationLabelName] = apm.Name
+	userLabels[AssociationLabelNamespace] = apm.Namespace
 	expectedEsUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
@@ -139,7 +141,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &apm,
+		Owner:      &es,
 		Expected:   expectedEsUser,
 		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {
