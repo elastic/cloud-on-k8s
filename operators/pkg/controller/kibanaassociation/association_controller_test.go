@@ -7,6 +7,8 @@ package kibanaassociation
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -25,7 +27,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	tests := []struct {
 		name           string
 		kibana         kbtype.Kibana
-		es             types.NamespacedName
+		es             v1alpha1.Elasticsearch
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool

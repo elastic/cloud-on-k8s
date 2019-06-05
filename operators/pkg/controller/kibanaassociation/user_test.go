@@ -30,9 +30,11 @@ import (
 const userName = "default-kibana-foo-kibana-user"
 const userSecretName = "kibana-foo-kibana-user"
 
-var esFixture = types.NamespacedName{
-	Name:      "es-foo",
-	Namespace: "default",
+var esFixture = estype.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "es-foo",
+		Namespace: "default",
+	},
 }
 
 var kibanaFixture = kbtype.Kibana{
@@ -75,7 +77,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	type args struct {
 		initialObjects []runtime.Object
 		kibana         kbtype.Kibana
-		es             types.NamespacedName
+		es             estype.Elasticsearch
 	}
 	tests := []struct {
 		name          string
@@ -205,6 +207,7 @@ func Test_reconcileEsUser(t *testing.T) {
 							Namespace: "default",
 							Labels: map[string]string{
 								AssociationLabelName:       kibanaFixture.Name,
+								AssociationLabelNamespace:  kibanaFixture.Namespace,
 								common.TypeLabelName:       user.UserType,
 								label.ClusterNameLabelName: esFixture.Name,
 							},

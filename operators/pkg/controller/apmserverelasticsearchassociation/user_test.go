@@ -49,6 +49,13 @@ var apmFixture = apmtype.ApmServer{
 	},
 }
 
+var esFixture = estype.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "es",
+		Namespace: "default",
+	},
+}
+
 func setupScheme(t *testing.T) *runtime.Scheme {
 	sc := scheme.Scheme
 	if err := assoctype.SchemeBuilder.AddToScheme(sc); err != nil {
@@ -208,7 +215,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	for _, tt := range tests {
 		c := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reconcileEsUser(c, sc, tt.args.apm); (err != nil) != tt.wantErr {
+			if err := reconcileEsUser(c, sc, tt.args.apm, esFixture); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postCondition(c)
