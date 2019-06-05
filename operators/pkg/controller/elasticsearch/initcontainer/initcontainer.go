@@ -30,12 +30,7 @@ func NewInitContainers(
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, linkedFiles)
-	if err != nil {
-		return nil, err
-	}
-
-	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, transportCertificatesVolume)
+	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, linkedFiles, transportCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +40,7 @@ func NewInitContainers(
 		return nil, err
 	}
 
-	containers = append(containers, prepareFsContainer, injectProcessManager, certInitializerContainer)
+	containers = append(containers, prepareFsContainer, injectProcessManager)
 	containers = append(containers, additional...)
 	return containers, nil
 }

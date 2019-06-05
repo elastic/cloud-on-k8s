@@ -6,6 +6,8 @@ package transport
 
 import (
 	"bytes"
+	cryptorand "crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"reflect"
@@ -31,7 +33,6 @@ func ReconcileTransportCertificateSecrets(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	ca *certificates.CA,
-	csrClient certificates.CSRClient,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
@@ -64,7 +65,7 @@ func ReconcileTransportCertificateSecrets(
 		}
 
 		if res, err := doReconcileTransportCertificateSecret(
-			c, scheme, es, pod, csrClient, services, ca, additionalCAs, certValidity, certRotateBefore,
+			c, scheme, es, pod, services, ca, additionalCAs, certValidity, certRotateBefore,
 		); err != nil {
 			return res, err
 		}
@@ -79,7 +80,6 @@ func doReconcileTransportCertificateSecret(
 	scheme *runtime.Scheme,
 	es v1alpha1.Elasticsearch,
 	pod corev1.Pod,
-	csrClient certificates.CSRClient,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
@@ -99,42 +99,51 @@ func doReconcileTransportCertificateSecret(
 		secret.Annotations = make(map[string]string)
 	}
 
-	csr := secret.Data[certificates.CSRFileName]                 // may be nil
-	lastCSRUpdate := secret.Annotations[LastCSRUpdateAnnotation] // may be empty
+	// verify that the secret contains a parsable private key, create if it does not exist
+	var privateKey *rsa.PrivateKey
+	needsNewPrivateKey := true
+	if privateKeyData, ok := secret.Data[certificates.KeyFileName]; ok {
+		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
+		if err != nil {
+			log.Error(err, "Unable to parse stored private key", "secret", secret.Name)
+		} else {
+			needsNewPrivateKey = false
+			privateKey = storedPrivateKey
+		}
+	}
+
+	// if we need a new private key, generate it
+	if needsNewPrivateKey {
+		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		privateKey = generatedPrivateKey
+		secret.Data[certificates.KeyFileName] = certificates.EncodePEMPrivateKey(*privateKey)
+	}
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, ca, pod, certReconcileBefore)
-
-	// if needed, replace the CSR by a fresh one
-	newCSR, err := maybeRequestCSR(pod, csrClient, lastCSRUpdate)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	if len(newCSR) > 0 && !bytes.Equal(csr, newCSR) {
-		// pod issued a new CSR, probably generated from a new private key
-		// we should issue a new cert for this CSR
-		csr = newCSR
-		issueNewCertificate = true
-		lastCSRUpdate = time.Now().Format(time.RFC3339)
-	}
-
-	if len(csr) == 0 {
-		// no csr yet, let's requeue until cert-initializer is available
-		return reconcile.Result{}, nil
-	}
+	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, privateKey, ca, pod, certReconcileBefore)
 
 	if issueNewCertificate {
 		log.Info(
 			"Issuing new certificate",
 			"pod", pod.Name,
-			"cluster", k8s.ExtractNamespacedName(&es),
+			"es", k8s.ExtractNamespacedName(&es),
 		)
+
+		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		// create a cert from the csr
 		parsedCSR, err := x509.ParseCertificateRequest(csr)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+
 		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, certValidity)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -145,11 +154,8 @@ func doReconcileTransportCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		// store CSR and signed certificate in a secret mounted into the pod
-		secret.Data[certificates.CSRFileName] = csr
+		// store the issued certificate in a secret mounted into the pod
 		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
-		// store last CSR update in the pod annotations
-		secret.Annotations[LastCSRUpdateAnnotation] = lastCSRUpdate
 	}
 
 	// prepare trusted CA certs: CA of this node + additional CA certs from trustrelationships
@@ -164,7 +170,7 @@ func doReconcileTransportCertificateSecret(
 		secret.Data[certificates.CAFileName] = trusted
 	}
 
-	if issueNewCertificate || updateTrustedCACerts {
+	if needsNewPrivateKey || issueNewCertificate || updateTrustedCACerts {
 		log.Info("Updating transport certificate secret", "secret", secret.Name)
 		if err := c.Update(secret); err != nil {
 			return reconcile.Result{}, err
@@ -209,6 +215,7 @@ func shouldIssueNewCertificate(
 	cluster v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
 	secret corev1.Secret,
+	privateKey *rsa.PrivateKey,
 	ca *certificates.CA,
 	pod corev1.Pod,
 	certReconcileBefore time.Duration,
@@ -223,6 +230,17 @@ func shouldIssueNewCertificate(
 
 	cert := extractTransportCert(secret, certCommonName)
 	if cert == nil {
+		return true
+	}
+
+	publicKey, publicKeyOk := cert.PublicKey.(*rsa.PublicKey)
+	if !publicKeyOk || publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
+		log.Info(
+			"Certificate belongs do a different public key, should issue new",
+			"subject", cert.Subject,
+			"issuer", cert.Issuer,
+			"current_ca_subject", ca.Cert.Subject,
+		)
 		return true
 	}
 

@@ -19,7 +19,6 @@ import (
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -63,7 +62,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder(name),
 
-		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
 		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
@@ -166,8 +164,6 @@ type ReconcileElasticsearch struct {
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
 
-	csrClient certificates.CSRClient
-
 	esObservers *observer.Manager
 
 	finalizers finalizer.Handler
@@ -257,7 +253,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		CSRClient:        r.csrClient,
 		Observers:        r.esObservers,
 		DynamicWatches:   r.dynamicWatches,
 		PodsExpectations: r.podsExpectations,

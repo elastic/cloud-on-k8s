@@ -140,7 +140,6 @@ func (d *defaultDriver) Reconcile(
 	certificateResources, res := certificates.Reconcile(
 		d.Client,
 		d.Scheme,
-		d.CSRClient,
 		es,
 		[]corev1.Service{genericResources.ExternalService},
 		d.Parameters.CACertValidity,

@@ -13,7 +13,4 @@ const (
 
 	// KeyFileName is used for Private Keys inside a secret
 	KeyFileName = "tls.key"
-
-	// CSRFileName is used for the CSR inside a secret
-	CSRFileName = "tls.csr"
 )
