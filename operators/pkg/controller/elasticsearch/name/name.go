@@ -28,7 +28,6 @@ const (
 	secureSettingsSecretSuffix  = "secure-settings"
 	certsSecretSuffix           = "certs"
 	httpServiceSuffix           = "http"
-	discoveryServiceSuffix      = "discovery"
 	elasticUserSecretSuffix     = "elastic-user"
 	esRolesUsersSecretSuffix    = "roles-users"
 	clusterSecretsSecretSuffix  = "secrets"
@@ -100,10 +99,6 @@ func TransportCertsSecret(podName string) string {
 
 func HTTPService(esName string) string {
 	return ESNamer.Suffix(esName, httpServiceSuffix)
-}
-
-func DiscoveryService(esName string) string {
-	return ESNamer.Suffix(esName, discoveryServiceSuffix)
 }
 
 func ElasticUserSecret(esName string) string {
