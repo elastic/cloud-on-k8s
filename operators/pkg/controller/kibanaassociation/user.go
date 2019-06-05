@@ -7,6 +7,8 @@ package kibanaassociation
 import (
 	"bytes"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	commonuser "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -73,7 +75,7 @@ func KibanaUserSecretSelector(kibana kbtype.Kibana) *corev1.SecretKeySelector {
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es types.NamespacedName) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es v1alpha1.Elasticsearch) error {
 	// the secret will be on the Kibana side of the association so we are applying the Kibana labels here
 	secretLabels := kblabel.NewLabels(kibana.Name)
 	secretLabels[AssociationLabelName] = kibana.Name
@@ -120,8 +122,9 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	// analogous to the Kibana secret: a user Secret goes on the Elasticsearch side of the association
 	// we apply the ES cluster labels ("user belongs to that ES cluster")
 	// and the association label ("for that Kibana association")
-	userLabels := commonuser.NewLabels(es)
+	userLabels := commonuser.NewLabels(k8s.ExtractNamespacedName(&es))
 	userLabels[AssociationLabelName] = kibana.Name
+	userLabels[AssociationLabelNamespace] = kibana.Namespace
 	usrKey := KibanaUserKey(kibana, es.Namespace)
 
 	expectedEsUser := &corev1.Secret{
@@ -141,7 +144,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, kibana kbtype.Kibana, es t
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &kibana, // user is owned by the Kibana resource
+		Owner:      &es, // user is owned by the ES resource
 		Expected:   expectedEsUser,
 		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {

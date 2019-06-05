@@ -127,7 +127,11 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 	// register or execute watch finalizers
 	h := finalizer.NewHandler(r)
-	err = h.Handle(&kibana, watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches))
+	err = h.Handle(
+		&kibana,
+		watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches),
+		user.UserFinalizer(r.Client, NewUserLabelSelector(k8s.ExtractNamespacedName(&kibana))),
+	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while handling finalizer")
@@ -236,7 +240,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	if err := reconcileEsUser(r.Client, r.scheme, kibana, esRefKey); err != nil {
+	if err := reconcileEsUser(r.Client, r.scheme, kibana, es); err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
 
