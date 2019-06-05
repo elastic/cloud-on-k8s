@@ -23,7 +23,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	commonversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
@@ -142,20 +141,12 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
 		return err
 	}
-	if err := r.dynamicWatches.Secrets.AddHandlers(
-		&watches.OwnerWatch{
-			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-				IsController: true,
-				OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
-			},
+	if err := r.dynamicWatches.Secrets.AddHandler(&watches.OwnerWatch{
+		EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
 		},
-		&watches.FuncMapWatch{
-			Name: "user-secret-watch",
-			EnqueueRequestsFromMapFunc: handler.EnqueueRequestsFromMapFunc{
-				ToRequests: user.NewToRequestsFuncFromClusterNameLabel(),
-			},
-		},
-	); err != nil {
+	}); err != nil {
 		return err
 	}
 
