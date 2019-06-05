@@ -17,9 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -31,6 +29,7 @@ var log = logf.KBLog.WithName("transport")
 // of the given es cluster.
 func ReconcileTransportCertificateSecrets(
 	c k8s.Client,
+	scheme *runtime.Scheme,
 	ca *certificates.CA,
 	csrClient certificates.CSRClient,
 	es v1alpha1.Elasticsearch,
@@ -51,37 +50,21 @@ func ReconcileTransportCertificateSecrets(
 		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
 	}
 
-	// get all existing transport certificate secrets for this cluster
-	certificateSecrets, err := findTransportCertificateSecrets(c, es)
-	if err != nil {
+	var pods corev1.PodList
+	if err := c.List(&client.ListOptions{
+		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+	}, &pods); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	for _, secret := range certificateSecrets {
-		// retrieve pod associated to this secret
-		podName, ok := secret.Labels[label.PodNameLabelName]
-		if !ok {
-			return reconcile.Result{}, fmt.Errorf("cannot find pod name in labels of secret %s", secret.Name)
-		}
-
-		var pod corev1.Pod
-		if err := c.Get(types.NamespacedName{Namespace: secret.Namespace, Name: podName}, &pod); err != nil {
-			if !apierrors.IsNotFound(err) {
-				return reconcile.Result{}, err
-			}
-
-			// pod does not exist yet, or has been deleted and this secret will be garbage collected by the cleanup
-			// package
-			continue
-		}
-
+	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
-			log.Info("Skipping secret because associated pod has no pod ip", "secret", secret.Name)
+			log.Info("Skipping pod because it has no IP yet", "pod", pod.Name)
 			continue
 		}
 
 		if res, err := doReconcileTransportCertificateSecret(
-			c, secret, pod, csrClient, es, services, ca, additionalCAs, certValidity, certRotateBefore,
+			c, scheme, es, pod, csrClient, services, ca, additionalCAs, certValidity, certRotateBefore,
 		); err != nil {
 			return res, err
 		}
@@ -90,40 +73,24 @@ func ReconcileTransportCertificateSecrets(
 	return reconcile.Result{}, nil
 }
 
-// findTransportCertificateSecrets returns all Secrets containing transport certificates.
-func findTransportCertificateSecrets(
-	c k8s.Client,
-	es v1alpha1.Elasticsearch,
-) ([]corev1.Secret, error) {
-	var certificateSecrets corev1.SecretList
-
-	listOptions := client.ListOptions{
-		Namespace: es.Namespace,
-		LabelSelector: labels.Set(map[string]string{
-			label.ClusterNameLabelName: es.Name,
-			LabelCertificateType:       LabelCertificateTypeTransport,
-		}).AsSelector(),
-	}
-	if err := c.List(&listOptions, &certificateSecrets); err != nil {
-		return nil, err
-	}
-
-	return certificateSecrets.Items, nil
-}
-
 // doReconcileTransportCertificateSecret ensures that the transport certificate secret has the correct content.
 func doReconcileTransportCertificateSecret(
 	c k8s.Client,
-	secret corev1.Secret,
+	scheme *runtime.Scheme,
+	es v1alpha1.Elasticsearch,
 	pod corev1.Pod,
 	csrClient certificates.CSRClient,
-	cluster v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
 	certValidity time.Duration,
 	certReconcileBefore time.Duration,
 ) (reconcile.Result, error) {
+	secret, err := EnsureTransportCertificateSecretExists(c, scheme, es, pod)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// a placeholder secret may have nil entries, create them if needed
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
@@ -136,7 +103,7 @@ func doReconcileTransportCertificateSecret(
 	lastCSRUpdate := secret.Annotations[LastCSRUpdateAnnotation] // may be empty
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(cluster, svcs, secret, ca, pod, certReconcileBefore)
+	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, ca, pod, certReconcileBefore)
 
 	// if needed, replace the CSR by a fresh one
 	newCSR, err := maybeRequestCSR(pod, csrClient, lastCSRUpdate)
@@ -159,9 +126,8 @@ func doReconcileTransportCertificateSecret(
 	if issueNewCertificate {
 		log.Info(
 			"Issuing new certificate",
-			"secret", secret.Name,
-			"clusterName", cluster.Name,
-			"namespace", cluster.Namespace,
+			"pod", pod.Name,
+			"cluster", k8s.ExtractNamespacedName(&es),
 		)
 
 		// create a cert from the csr
@@ -169,7 +135,7 @@ func doReconcileTransportCertificateSecret(
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, cluster, svcs, parsedCSR, certValidity)
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, certValidity)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -200,7 +166,7 @@ func doReconcileTransportCertificateSecret(
 
 	if issueNewCertificate || updateTrustedCACerts {
 		log.Info("Updating transport certificate secret", "secret", secret.Name)
-		if err := c.Update(&secret); err != nil {
+		if err := c.Update(secret); err != nil {
 			return reconcile.Result{}, err
 		}
 		annotation.MarkPodAsUpdated(c, pod)

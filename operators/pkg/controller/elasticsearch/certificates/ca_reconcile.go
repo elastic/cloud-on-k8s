@@ -110,6 +110,7 @@ func Reconcile(
 	// reconcile transport certificates
 	result, err := transport.ReconcileTransportCertificateSecrets(
 		c,
+		scheme,
 		transportCA,
 		csrClient,
 		es,

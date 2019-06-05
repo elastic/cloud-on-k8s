@@ -5,6 +5,9 @@
 package transport
 
 import (
+	"reflect"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
@@ -12,7 +15,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 )
 
 const (
@@ -30,9 +32,8 @@ const (
 func EnsureTransportCertificateSecretExists(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	owner metav1.Object,
+	es v1alpha1.Elasticsearch,
 	pod corev1.Pod,
-	labels map[string]string,
 ) (*corev1.Secret, error) {
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -42,14 +43,12 @@ func EnsureTransportCertificateSecretExists(
 			Labels: map[string]string{
 				// a label that allows us to list secrets of this type
 				LabelCertificateType: LabelCertificateTypeTransport,
-				// a label that references the pod so we can look up the pod from this secret
+				// a label referencing the related pod so we can look up the pod from this secret
 				label.PodNameLabelName: pod.Name,
+				// a label showing which cluster this pod belongs to
+				label.ClusterNameLabelName: es.Name,
 			},
 		},
-	}
-	// apply any provided labels
-	for key, value := range labels {
-		expected.Labels[key] = value
 	}
 
 	// reconcile the secret resource
@@ -57,7 +56,7 @@ func EnsureTransportCertificateSecretExists(
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme,
-		Owner:      owner,
+		Owner:      &es,
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {

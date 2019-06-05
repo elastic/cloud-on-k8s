@@ -7,6 +7,7 @@ package transport
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -27,13 +28,18 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 			Name: "pod-certs",
 		},
 	}
+	es := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "test-es",
+		},
+	}
 
 	type args struct {
-		c               k8s.Client
-		scheme          *runtime.Scheme
-		owner           metav1.Object
-		pod             corev1.Pod
-		labels          map[string]string
+		c      k8s.Client
+		scheme *runtime.Scheme
+		owner  v1alpha1.Elasticsearch
+		pod    corev1.Pod
+		labels map[string]string
 	}
 	tests := []struct {
 		name    string
@@ -44,8 +50,9 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 		{
 			name: "should create a secret if it does not already exist",
 			args: args{
-				c:               k8s.WrapClient(fake.NewFakeClient()),
-				pod:             pod,
+				c:     k8s.WrapClient(fake.NewFakeClient()),
+				owner: es,
+				pod:   pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				if assert.Contains(t, secret.Labels, LabelCertificateType) {
@@ -57,8 +64,9 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 		{
 			name: "should not create a new secret if it already exists",
 			args: args{
-				c:   k8s.WrapClient(fake.NewFakeClient(preExistingSecret)),
-				pod: pod,
+				c:     k8s.WrapClient(fake.NewFakeClient(preExistingSecret)),
+				owner: es,
+				pod:   pod,
 			},
 			want: func(t *testing.T, secret *corev1.Secret) {
 				assert.Equal(t, preExistingSecret, secret)
@@ -71,11 +79,7 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 				tt.args.scheme = scheme.Scheme
 			}
 
-			if tt.args.owner == nil {
-				tt.args.owner = &pod
-			}
-
-			got, err := EnsureTransportCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod, tt.args.labels)
+			got, err := EnsureTransportCertificateSecretExists(tt.args.c, tt.args.scheme, tt.args.owner, tt.args.pod)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EnsureTransportCertificateSecretExists() error = %v, wantErr %v", err, tt.wantErr)
 				return

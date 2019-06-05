@@ -95,10 +95,8 @@ func createElasticsearchPod(
 	transportCertificatesSecret, err := transport.EnsureTransportCertificateSecretExists(
 		c,
 		scheme,
-		&es,
+		es,
 		pod,
-		// add the cluster name label so we select all the transport certificates secrets associated with a cluster easily
-		map[string]string{label.ClusterNameLabelName: es.Name},
 	)
 	if err != nil {
 		return err
