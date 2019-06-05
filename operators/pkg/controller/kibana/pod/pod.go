@@ -17,34 +17,12 @@ import (
 const (
 	// HTTPPort is the (default) port used by Kibana
 	HTTPPort                             = 5601
-	elasticsearchUsernameEnvVar          = "ELASTICSEARCH_USERNAME"
-	elasticsearchPasswordEnvVar          = "ELASTICSEARCH_PASSWORD"
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
 // DefaultResources are resource limits to apply to Kibana container by default
 var DefaultResources = corev1.ResourceRequirements{
 	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-}
-
-// ApplyToEnv applies any auth information in auth to the variables in env.
-func ApplyToEnv(auth v1alpha1.ElasticsearchAuth, env []corev1.EnvVar) []corev1.EnvVar {
-	if auth.Inline != nil {
-		env = append(
-			env,
-			corev1.EnvVar{Name: elasticsearchUsernameEnvVar, Value: auth.Inline.Username},
-			corev1.EnvVar{Name: elasticsearchPasswordEnvVar, Value: auth.Inline.Password},
-		)
-	}
-	if auth.SecretKeyRef != nil {
-		env = append(
-			env,
-			corev1.EnvVar{Name: elasticsearchUsernameEnvVar, Value: auth.SecretKeyRef.Key},
-			corev1.EnvVar{Name: elasticsearchPasswordEnvVar, ValueFrom: &corev1.EnvVarSource{
-				SecretKeyRef: auth.SecretKeyRef,
-			}})
-	}
-	return env
 }
 
 func imageWithVersion(image string, version string) string {
