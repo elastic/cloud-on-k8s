@@ -32,7 +32,7 @@ func Test_parseServiceAddr(t *testing.T) {
 	}{
 		{
 			name: "service with namespace",
-			args: args{addr: "foo.bar.svc.cluster.local"},
+			args: args{addr: "foo.bar.svc"},
 			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
@@ -79,7 +79,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 			name: "should forward to a ready endpoint address with Kind=Pod",
 			fields: fields{
 				network: "tcp",
-				addr:    "foo.bar.svc.cluster.local:9200",
+				addr:    "foo.bar.svc:9200",
 				client: fake.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{
@@ -126,13 +126,13 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 					}, nil
 				}
 			},
-			wantErr: errors.New("would dial: some-pod-name.bar.pod.cluster.local:9200"),
+			wantErr: errors.New("would dial: some-pod-name.bar.pod:9200"),
 		},
 		{
 			name: "should fail if the service is not listening on the specified port",
 			fields: fields{
 				network: "tcp",
-				addr:    "foo.bar.svc.cluster.local:1234",
+				addr:    "foo.bar.svc:1234",
 				client: fake.NewFakeClient(
 					&corev1.Service{
 						ObjectMeta: metav1.ObjectMeta{

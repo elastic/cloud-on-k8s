@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	globalServiceSuffix = ".svc.cluster.local"
+	globalServiceSuffix = ".svc"
 )
 
 // ExternalServiceName returns the name for the external service

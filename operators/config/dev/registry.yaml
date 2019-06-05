@@ -89,7 +89,7 @@ spec:
             memory: 50Mi
         env:
         - name: REGISTRY_HOST
-          value: kube-registry.kube-system.svc.cluster.local
+          value: kube-registry.kube-system.svc
         - name: REGISTRY_PORT
           value: "5000"
         ports:

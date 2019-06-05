@@ -39,7 +39,7 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: helpers.Eventually(func() error {
-			resp, err := check.client.Get(fmt.Sprintf("http://%s.%s.svc.cluster.local:5601", name.HTTPService(kb.Name), kb.Namespace))
+			resp, err := check.client.Get(fmt.Sprintf("http://%s.%s.svc:5601", name.HTTPService(kb.Name), kb.Namespace))
 			if err != nil {
 				return err
 			}
