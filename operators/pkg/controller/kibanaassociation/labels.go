@@ -28,11 +28,11 @@ func NewResourceSelector(name string) labels.Selector {
 }
 
 func hasBeenCreatedBy(object metav1.Object, kibana v1alpha1.Kibana) bool {
-	label := object.GetLabels()
-	if name, ok := label[AssociationLabelName]; !ok || name != kibana.Name {
+	labels := object.GetLabels()
+	if name, ok := labels[AssociationLabelName]; !ok || name != kibana.Name {
 		return false
 	}
-	if ns, ok := label[AssociationLabelNamespace]; !ok || ns != kibana.Namespace {
+	if ns, ok := labels[AssociationLabelNamespace]; !ok || ns != kibana.Namespace {
 		return false
 	}
 	return true
