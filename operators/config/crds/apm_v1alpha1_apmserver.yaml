@@ -70,6 +70,18 @@ spec:
                   description: TLS describe additional options to consider when generating
                     HTTP TLS certificates.
                   properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contain
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      required:
+                      - secretName
+                      type: object
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
                         self-signed certificate managed by the operator.

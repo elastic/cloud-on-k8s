@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"crypto/x509"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -21,8 +22,8 @@ import (
 )
 
 type CertificateResources struct {
-	// HTTPCA is the CA used for HTTP certificates
-	HTTPCA *certificates.CA
+	// TrustedHTTPCertificates contains the latest HTTP certificates that should be trusted.
+	TrustedHTTPCertificates []*x509.Certificate
 
 	// TransportCA is the CA used for Transport certificates
 	TransportCA *certificates.CA
@@ -59,8 +60,8 @@ func Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), httpCA.Cert.NotAfter, caCertRotateBefore),
 	})
 
-	// discover and maybe reconcile for the http certificate to use
-	httpCertificate, err := http.ReconcileHTTPCertificate(
+	// discover and maybe reconcile for the http certificates to use
+	httpCertificates, err := http.ReconcileHTTPCertificates(
 		c,
 		scheme,
 		es,
@@ -74,7 +75,7 @@ func Reconcile(
 	}
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, es, httpCertificate, httpCA); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, es, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -121,9 +122,14 @@ func Reconcile(
 		return nil, results
 	}
 
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCertificates.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
 	return &CertificateResources{
-		HTTPCA:      httpCA,
-		TransportCA: transportCA,
+		TrustedHTTPCertificates: trustedHTTPCertificates,
+		TransportCA:             transportCA,
 	}, results
 }
 

@@ -95,8 +95,8 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		if err := d.client.Get(key, &esPublicCASecret); err != nil {
 			return nil, err
 		}
-		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
-			configChecksum.Write(capem)
+		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
+			configChecksum.Write(certPem)
 		}
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits

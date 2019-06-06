@@ -156,26 +156,27 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 	return string(password), nil
 }
 
-func (k *K8sHelper) GetHTTPCaCert(stackName string) ([]*x509.Certificate, error) {
+func (k *K8sHelper) GetHTTPCerts(stackName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
+	secretNSN := http.PublicCertsSecretRef(
+		types.NamespacedName{
+			Namespace: params.Namespace,
+			Name:      stackName,
+		},
+	)
 
 	if err := k.Client.Get(
-		http.PublicCertsSecretRef(
-			types.NamespacedName{
-				Namespace: params.Namespace,
-				Name:      stackName,
-			},
-		),
+		secretNSN,
 		&secret,
 	); err != nil {
 		return nil, err
 	}
 
-	caCert, exists := secret.Data[certificates.CAFileName]
+	certData, exists := secret.Data[certificates.CertFileName]
 	if !exists {
-		return nil, fmt.Errorf("no value found for secret %s", certificates.CAFileName)
+		return nil, fmt.Errorf("no certificates found in secret %s", secretNSN)
 	}
-	return certificates.ParsePEMCerts(caCert)
+	return certificates.ParsePEMCerts(certData)
 }
 
 // GetCA returns the CA of the given stack

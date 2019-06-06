@@ -161,7 +161,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
-				certificates.CAFileName: nil,
+				certificates.CertFileName: nil,
 			},
 		},
 		&corev1.Secret{
@@ -242,7 +242,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 							Namespace: "default",
 						},
 						Data: map[string][]byte{
-							certificates.CAFileName: nil,
+							certificates.CertFileName: nil,
 						},
 					},
 					&corev1.Secret{

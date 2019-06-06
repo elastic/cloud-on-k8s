@@ -17,9 +17,12 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const (
@@ -60,6 +63,10 @@ var (
 )
 
 func init() {
+	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -92,6 +99,78 @@ func init() {
 	}
 
 	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
+}
+
+func TestReconcileHTTPCertificates(t *testing.T) {
+	type args struct {
+		c                k8s.Client
+		es               v1alpha1.Elasticsearch
+		ca               *certificates.CA
+		services         []corev1.Service
+		certValidity     time.Duration
+		certRotateBefore time.Duration
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    func(t *testing.T, cs *CertificatesSecret)
+		wantErr bool
+	}{
+		{
+			name: "should generate new certificates if none exists",
+			args: args{
+				c:  k8s.WrapClient(fake.NewFakeClient()),
+				es: testES,
+				ca: testCA,
+			},
+			want: func(t *testing.T, cs *CertificatesSecret) {
+				assert.Contains(t, cs.Data, certificates.KeyFileName)
+				assert.Contains(t, cs.Data, certificates.CertFileName)
+			},
+		},
+		{
+			name: "should use custom certificates if provided",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+					ObjectMeta: v1.ObjectMeta{Name: "my-cert", Namespace: "test-namespace"},
+					Data: map[string][]byte{
+						certificates.CertFileName: []byte("cert-data"),
+						certificates.KeyFileName:  []byte("key-data"),
+					},
+				})),
+				es: v1alpha1.Elasticsearch{
+					ObjectMeta: v1.ObjectMeta{Name: "test-es-name", Namespace: "test-namespace"},
+					Spec: v1alpha1.ElasticsearchSpec{
+						HTTP: commonv1alpha1.HTTPConfig{
+							TLS: commonv1alpha1.TLSOptions{
+								Certificate: commonv1alpha1.SecretRef{
+									SecretName: "my-cert",
+								},
+							},
+						},
+					},
+				},
+				ca: testCA,
+			},
+			want: func(t *testing.T, cs *CertificatesSecret) {
+				assert.Equal(t, cs.Data[certificates.KeyFileName], []byte("key-data"))
+				assert.Equal(t, cs.Data[certificates.CertFileName], []byte("cert-data"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ReconcileHTTPCertificates(
+				tt.args.c, scheme.Scheme, tt.args.es, tt.args.ca, tt.args.services,
+				certificates.DefaultCertValidity, certificates.DefaultRotateBefore,
+			)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ReconcileHTTPCertificates() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			tt.want(t, got)
+		})
+	}
 }
 
 func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {

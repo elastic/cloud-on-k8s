@@ -307,7 +307,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 			"/usr/share/apm-server/config/elasticsearch-certs",
 		)
 
-		// build a checksum of the ca file used by ES, which we can use to cause the Deployment to roll the Apm Server
+		// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
 		// instances in the deployment when the ca file contents change. this is done because Apm Server do not support
 		// updating the CA file contents without restarting the process.
 		caChecksum := ""
@@ -316,7 +316,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		if err := r.Get(key, &esPublicCASecret); err != nil {
 			return state, err
 		}
-		if capem, ok := esPublicCASecret.Data[certificates.CAFileName]; ok {
+		if capem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
 			caChecksum = fmt.Sprintf("%x", sha256.Sum224(capem))
 		}
 		// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template

@@ -172,15 +172,14 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
-	// TODO: support user-supplied certificate (non-ca)
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		[]*x509.Certificate{certificateResources.HTTPCA.Cert},
+		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
 			*min,
-			certificateResources.HTTPCA.Cert,
+			certificateResources.TrustedHTTPCertificates,
 		))
 
 	// always update the elasticsearch state bits
@@ -204,7 +203,7 @@ func (d *defaultDriver) Reconcile(
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
-		certificateResources.HTTPCA.Cert,
+		certificateResources.TrustedHTTPCertificates,
 	)
 	defer esClient.Close()
 
@@ -521,7 +520,7 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
-	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, []*x509.Certificate{caCert})
+	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, caCerts)
 }

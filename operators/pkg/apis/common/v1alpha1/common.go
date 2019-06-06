@@ -52,6 +52,14 @@ type TLSOptions struct {
 	// SelfSignedCertificate define options to apply to self-signed certificate
 	// managed by the operator.
 	SelfSignedCertificate *SelfSignedCertificate `json:"selfSignedCertificate,omitempty"`
+
+	// Certificate is a reference to a secret that contain the certificate and private key to be used.
+	//
+	// The secret should have the following content:
+	//
+	// - `tls.crt`: The certificate (or a chain).
+	// - `tls.key`: The private key to the first certificate in the certificate chain.
+	Certificate SecretRef `json:"certificate,omitempty"`
 }
 
 type SelfSignedCertificate struct {
