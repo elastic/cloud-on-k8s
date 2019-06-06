@@ -5,20 +5,20 @@
 package kibana
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func NewService(kb kibanav1alpha1.Kibana) *corev1.Service {
 	var svc = corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   kb.Namespace,
-			Name:        PseudoNamespacedResourceName(kb),
+			Name:        kbname.HTTPService(kb.Name),
 			Labels:      label.NewLabels(kb.Name),
 			Annotations: kb.Spec.HTTP.Service.Metadata.Annotations,
 		},

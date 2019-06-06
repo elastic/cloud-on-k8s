@@ -40,7 +40,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *K8sHelper) (*ApmClient, error) 
 	}
 
 	inClusterURL := fmt.Sprintf(
-		"http://%s.%s.svc.cluster.local:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
+		"http://%s.%s.svc:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
 	)
 
 	client := NewHTTPClient()

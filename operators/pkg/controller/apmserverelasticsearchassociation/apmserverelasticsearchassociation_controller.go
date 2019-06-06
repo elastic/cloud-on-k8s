@@ -15,13 +15,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -130,7 +131,11 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	handler := finalizer.NewHandler(r)
-	err = handler.Handle(&apmServer, watchFinalizer(k8s.ExtractNamespacedName(&apmServer), r.watches))
+	err = handler.Handle(
+		&apmServer,
+		watchFinalizer(k8s.ExtractNamespacedName(&apmServer), r.watches),
+		user.UserFinalizer(r.Client, NewUserLabelSelector(k8s.ExtractNamespacedName(&apmServer))),
+	)
 	if err != nil {
 		// failed to prepare finalizer or run finalizer: retry
 		return defaultRequeue, err
@@ -216,7 +221,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	// TODO reconcile external user CRD here
-	err = reconcileEsUser(r.Client, r.scheme, apmServer)
+	err = reconcileEsUser(r.Client, r.scheme, apmServer, es)
 	if err != nil {
 		return commonv1alpha1.AssociationPending, err // TODO distinguish conflicts and non-recoverable errors here
 	}
@@ -259,32 +264,16 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 // combinations and deletes them.
 func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	var secrets corev1.SecretList
-	selector := kibanaassociation.NewResourceSelector(apm.Name)
+	selector := NewResourceSelector(apm.Name)
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
 		return err
 	}
-	expectedSecretKey := secretKey(apm)
+
 	for _, s := range secrets.Items {
-		if k8s.ExtractNamespacedName(&s) != expectedSecretKey {
+		controlledBy := metav1.IsControlledBy(&s, &apm)
+		if controlledBy && !apm.Spec.Output.Elasticsearch.ElasticsearchRef.IsDefined() {
 			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 			if err := c.Delete(&s); err != nil {
-				return err
-			}
-		}
-	}
-
-	var users estype.UserList
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
-		return err
-	}
-	expectedUserKey := userKey(apm)
-	if expectedUserKey == nil {
-		return nil
-	}
-	for _, u := range users.Items {
-		if k8s.ExtractNamespacedName(&u) != *expectedUserKey {
-			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
-			if err := c.Delete(&u); err != nil {
 				return err
 			}
 		}

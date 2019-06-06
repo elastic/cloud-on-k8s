@@ -39,7 +39,7 @@ func NewForwardingDialer() *ForwardingDialer {
 // defaultForwarderFactory is the default podForwarder factory used outside of tests
 var defaultForwarderFactory = ForwardingDialerForwarderFactory(
 	func(client client.Client, network, addr string) (Forwarder, error) {
-		if strings.Contains(addr, ".svc.cluster.local:") {
+		if strings.Contains(addr, ".svc:") || strings.Contains(addr, ".svc.") {
 			// it looks like a service url, so forward as a service
 			return NewServiceForwarder(client, network, addr)
 		}

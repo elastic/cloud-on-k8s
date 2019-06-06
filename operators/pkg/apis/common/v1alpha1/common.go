@@ -32,6 +32,11 @@ func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
+// IsDefined checks if the object selector is not nil and has both a name and a namespace.
+func (s *ObjectSelector) IsDefined() bool {
+	return s != nil && s.Name != "" && s.Namespace != ""
+}
+
 // HTTPConfig configures a HTTP-based service.
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service

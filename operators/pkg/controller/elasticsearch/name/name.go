@@ -27,12 +27,13 @@ const (
 	configSecretSuffix          = "config"
 	secureSettingsSecretSuffix  = "secure-settings"
 	certsSecretSuffix           = "certs"
-	discoveryServiceSuffix      = "discovery"
+	httpServiceSuffix           = "http"
 	elasticUserSecretSuffix     = "elastic-user"
 	esRolesUsersSecretSuffix    = "roles-users"
 	clusterSecretsSecretSuffix  = "secrets"
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
+	licenseSecretSuffix         = "license"
 
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
@@ -97,12 +98,8 @@ func TransportCertsSecret(podName string) string {
 	return esNoDefaultSuffixesNamer.Suffix(podName, certsSecretSuffix)
 }
 
-func Service(esName string) string {
-	return ESNamer.Suffix(esName)
-}
-
-func DiscoveryService(esName string) string {
-	return ESNamer.Suffix(esName, discoveryServiceSuffix)
+func HTTPService(esName string) string {
+	return ESNamer.Suffix(esName, httpServiceSuffix)
 }
 
 func ElasticUserSecret(esName string) string {
@@ -132,4 +129,8 @@ func HTTPCertsInternalSecretName(esName string) string {
 
 func CertsPublicSecretName(esName string, caType certificates.CAType) string {
 	return ESNamer.Suffix(esName, string(caType), certsPublicSecretName)
+}
+
+func LicenseSecretName(esName string) string {
+	return ESNamer.Suffix(esName, licenseSecretSuffix)
 }

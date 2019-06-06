@@ -35,7 +35,7 @@ var (
 // PodWithConfig contains a pod and its configuration
 type PodWithConfig struct {
 	Pod    corev1.Pod
-	Config *settings.CanonicalConfig
+	Config settings.CanonicalConfig
 }
 
 // PodsWithConfig is simply a list of PodWithConfig
@@ -58,8 +58,6 @@ type NewPodSpecParams struct {
 	CustomImageName string
 	// ClusterName is the name of the Elasticsearch cluster
 	ClusterName string
-	// DiscoveryServiceName is the name of the Service that should be used for discovery.
-	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
 
@@ -92,7 +90,7 @@ type NewPodSpecParams struct {
 type PodSpecContext struct {
 	PodSpec  corev1.PodSpec
 	NodeSpec v1alpha1.NodeSpec
-	Config   *settings.CanonicalConfig
+	Config   settings.CanonicalConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

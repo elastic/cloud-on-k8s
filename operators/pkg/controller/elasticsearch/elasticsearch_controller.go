@@ -27,7 +27,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -146,18 +145,6 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 			IsController: true,
 			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
 		},
-	}); err != nil {
-		return err
-	}
-
-	// ClusterLicense
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
-		return err
-	}
-
-	// Users
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.User{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
 	}); err != nil {
 		return err
 	}
@@ -309,6 +296,5 @@ func (r *ReconcileElasticsearch) finalizersFor(
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		settings.SecureSettingsFinalizer(clusterName, watched),
-		license.Finalizer(clusterName, watched),
 	}
 }

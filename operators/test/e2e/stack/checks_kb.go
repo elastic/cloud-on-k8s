@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/pkg/errors"
 )
@@ -38,7 +39,7 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: helpers.Eventually(func() error {
-			resp, err := check.client.Get(fmt.Sprintf("http://%s-kibana.%s.svc.cluster.local:5601", kb.Name, kb.Namespace))
+			resp, err := check.client.Get(fmt.Sprintf("http://%s.%s.svc:5601", name.HTTPService(kb.Name), kb.Namespace))
 			if err != nil {
 				return err
 			}

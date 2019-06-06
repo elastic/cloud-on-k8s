@@ -62,7 +62,7 @@ func Test_podForwarder_DialContext(t *testing.T) {
 	}{
 		{
 			name:      "pod should be forwarded",
-			forwarder: NewPodForwarderWithTest(t, "tcp", "foo.bar.pod.cluster.local:9200"),
+			forwarder: NewPodForwarderWithTest(t, "tcp", "foo.bar.pod:9200"),
 			tweaks: func(t *testing.T, f *podForwarder) {
 				f.ephemeralPortFinder = func() (string, error) {
 					return "12345", nil
@@ -140,7 +140,7 @@ func Test_parsePodAddr(t *testing.T) {
 	}{
 		{
 			name: "pod DNS without subdomain",
-			args: args{addr: "foo.bar.pod.cluster.local:1234"},
+			args: args{addr: "foo.bar.pod:1234"},
 			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
@@ -186,7 +186,7 @@ func Test_podIPv4Regex(t *testing.T) {
 		},
 		{
 			name: "dns",
-			addr: "name.namespace.pod.cluster.local",
+			addr: "name.namespace.pod",
 			want: false,
 		},
 	}

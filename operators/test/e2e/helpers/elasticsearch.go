@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
@@ -27,7 +28,7 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *K8sHelper) (client.Cli
 	if err != nil {
 		return nil, err
 	}
-	inClusterURL := fmt.Sprintf("https://%s-es.%s.svc.cluster.local:9200", es.Name, es.Namespace)
+	inClusterURL := fmt.Sprintf("https://%s.%s.svc:9200", name.HTTPService(es.Name), es.Namespace)
 	var dialer net.Dialer
 	if params.AutoPortForward {
 		dialer = portforward.NewForwardingDialer()
