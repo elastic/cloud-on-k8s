@@ -5,6 +5,7 @@
 package kibanaassociation
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,6 +25,17 @@ func NewResourceSelector(name string) labels.Selector {
 	return labels.Set(map[string]string{
 		AssociationLabelName: name,
 	}).AsSelector()
+}
+
+func hasBeenCreatedBy(object metav1.Object, kibana v1alpha1.Kibana) bool {
+	label := object.GetLabels()
+	if name, ok := label[AssociationLabelName]; !ok || name != kibana.Name {
+		return false
+	}
+	if ns, ok := label[AssociationLabelNamespace]; !ok || ns != kibana.Namespace {
+		return false
+	}
+	return true
 }
 
 func NewUserLabelSelector(

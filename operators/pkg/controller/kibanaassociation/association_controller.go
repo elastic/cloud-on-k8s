@@ -274,8 +274,17 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
 		return err
 	}
+
+	// Namespace in reference can be empty, in that case we compare it with the namespace of Kibana
+	var esRefNamespace string
+	if kibana.Spec.ElasticsearchRef.IsDefined() && kibana.Spec.ElasticsearchRef.Namespace != "" {
+		esRefNamespace = kibana.Spec.ElasticsearchRef.Namespace
+	} else {
+		esRefNamespace = kibana.Namespace
+	}
+
 	for _, s := range secrets.Items {
-		if metav1.IsControlledBy(&s, &kibana) {
+		if metav1.IsControlledBy(&s, &kibana) || hasBeenCreatedBy(&s, kibana) {
 			if !kibana.Spec.ElasticsearchRef.IsDefined() {
 				// look for association secrets owned by this kibana instance
 				// which should not exist since no ES referenced in the spec
@@ -284,7 +293,7 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 					return err
 				}
 			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
-				kibana.Spec.ElasticsearchRef.Namespace != s.Namespace {
+				esRefNamespace != s.Namespace {
 				// User secret may live in an other namespace, check if it has changed
 				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
 				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
