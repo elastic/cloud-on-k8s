@@ -50,6 +50,17 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 	if expected.Spec.ClusterIP == "" {
 		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
+
+	// Type may be defaulted by the api server
+	if expected.Spec.Type == "" {
+		expected.Spec.Type = reconciled.Spec.Type
+	}
+
+	// SessionAffinity may be defaulted by the api server
+	if expected.Spec.SessionAffinity == "" {
+		expected.Spec.SessionAffinity = reconciled.Spec.SessionAffinity
+	}
+
 	// same for the target port and node port
 	if len(expected.Spec.Ports) == len(reconciled.Spec.Ports) {
 		for i := range expected.Spec.Ports {
@@ -62,6 +73,7 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 			}
 		}
 	}
+
 	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
 }
 
