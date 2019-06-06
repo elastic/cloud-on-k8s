@@ -149,13 +149,6 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// Users
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.User{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
-	}); err != nil {
-		return err
-	}
-
 	// Trigger a reconciliation when observers report a cluster health change
 	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler()); err != nil {
 		return err

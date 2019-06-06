@@ -12,6 +12,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -25,7 +26,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-const resourceNameFixture = "as-elastic-internal-apm"
+const (
+	esUserName     = "default-as-apm-user"
+	userSecretName = "as-elastic-internal-apm"
+)
 
 // apmFixture is a shared test fixture
 var apmFixture = apmtype.ApmServer{
@@ -42,6 +46,13 @@ var apmFixture = apmtype.ApmServer{
 				},
 			},
 		},
+	},
+}
+
+var esFixture = estype.Elasticsearch{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "es",
+		Namespace: "default",
 	},
 }
 
@@ -79,12 +90,16 @@ func Test_reconcileEsUser(t *testing.T) {
 				apm:            apmFixture,
 			},
 			postCondition: func(c k8s.Client) {
-				key := types.NamespacedName{
-					Name:      resourceNameFixture,
+				userKey := types.NamespacedName{
+					Name:      esUserName,
 					Namespace: "default",
 				}
-				assert.NoError(t, c.Get(key, &estype.User{}))
-				assert.NoError(t, c.Get(key, &corev1.Secret{}))
+				assert.NoError(t, c.Get(userKey, &corev1.Secret{}))
+				secretKey := types.NamespacedName{
+					Name:      userSecretName,
+					Namespace: "default",
+				}
+				assert.NoError(t, c.Get(secretKey, &corev1.Secret{}))
 			},
 			wantErr: false,
 		},
@@ -93,7 +108,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			args: args{
 				initialObjects: []runtime.Object{&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: "other",
 					}}},
 				apm: apmFixture,
@@ -102,10 +117,16 @@ func Test_reconcileEsUser(t *testing.T) {
 			postCondition: func(c k8s.Client) {
 				list := corev1.SecretList{}
 				assert.NoError(t, c.List(&client.ListOptions{}, &list))
-				assert.Equal(t, 2, len(list.Items))
-				for _, s := range list.Items {
-					assert.Equal(t, resourceNameFixture, s.Name)
-				}
+				assert.Equal(t, 3, len(list.Items))
+				s := user.GetSecret(list, types.NamespacedName{Namespace: "other", Name: userSecretName})
+				assert.NotNil(t, s)
+				s = user.GetSecret(list, types.NamespacedName{Namespace: apmFixture.Namespace, Name: userSecretName})
+				assert.NotNil(t, s)
+				password, passwordIsSet := s.Data[esUserName]
+				assert.True(t, passwordIsSet)
+				assert.NotEmpty(t, password)
+				s = user.GetSecret(list, types.NamespacedName{Namespace: apmFixture.Namespace, Name: esUserName}) // secret on the ES side
+				user.ChecksUser(t, s, esUserName, []string{"superuser"})
 			},
 		},
 		{
@@ -113,7 +134,7 @@ func Test_reconcileEsUser(t *testing.T) {
 			args: args{
 				initialObjects: []runtime.Object{&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: "default",
 					},
 				}},
@@ -122,8 +143,8 @@ func Test_reconcileEsUser(t *testing.T) {
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
 				var s corev1.Secret
-				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &s))
-				password, ok := s.Data[InternalApmServerUserName]
+				assert.NoError(t, c.Get(types.NamespacedName{Name: userSecretName, Namespace: "default"}, &s))
+				password, ok := s.Data[esUserName]
 				assert.True(t, ok)
 				assert.NotEmpty(t, password)
 			},
@@ -131,9 +152,9 @@ func Test_reconcileEsUser(t *testing.T) {
 		{
 			name: "Reconcile updates existing labels",
 			args: args{
-				initialObjects: []runtime.Object{&estype.User{
+				initialObjects: []runtime.Object{&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: "default",
 						Labels: map[string]string{
 							kibanaassociation.AssociationLabelName: apmFixture.Name,
@@ -144,8 +165,8 @@ func Test_reconcileEsUser(t *testing.T) {
 			},
 			wantErr: false,
 			postCondition: func(c k8s.Client) {
-				var u estype.User
-				assert.NoError(t, c.Get(types.NamespacedName{Name: resourceNameFixture, Namespace: "default"}, &u))
+				var u corev1.Secret
+				assert.NoError(t, c.Get(types.NamespacedName{Name: userSecretName, Namespace: "default"}, &u))
 				expectedLabels := map[string]string{
 					kibanaassociation.AssociationLabelName: apmFixture.Name,
 					common.TypeLabelName:                   label.Type,
@@ -181,12 +202,12 @@ func Test_reconcileEsUser(t *testing.T) {
 				// user CR should be in ES namespace
 				assert.NoError(t, c.Get(types.NamespacedName{
 					Namespace: "ns-1",
-					Name:      resourceNameFixture,
-				}, &estype.User{}))
+					Name:      "ns-2-as-apm-user",
+				}, &corev1.Secret{}))
 				// secret should be in Apm namespace
 				assert.NoError(t, c.Get(types.NamespacedName{
 					Namespace: "ns-2",
-					Name:      resourceNameFixture,
+					Name:      userSecretName,
 				}, &corev1.Secret{}))
 			},
 		},
@@ -194,7 +215,7 @@ func Test_reconcileEsUser(t *testing.T) {
 	for _, tt := range tests {
 		c := k8s.WrapClient(fake.NewFakeClient(tt.args.initialObjects...))
 		t.Run(tt.name, func(t *testing.T) {
-			if err := reconcileEsUser(c, sc, tt.args.apm); (err != nil) != tt.wantErr {
+			if err := reconcileEsUser(c, sc, tt.args.apm, esFixture); (err != nil) != tt.wantErr {
 				t.Errorf("reconcileEsUser() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			tt.postCondition(c)

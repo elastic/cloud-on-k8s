@@ -7,16 +7,19 @@ package kibanaassociation
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 func Test_deleteOrphanedResources(t *testing.T) {
@@ -24,11 +27,68 @@ func Test_deleteOrphanedResources(t *testing.T) {
 	tests := []struct {
 		name           string
 		kibana         kbtype.Kibana
-		es             types.NamespacedName
+		es             v1alpha1.Elasticsearch
 		initialObjects []runtime.Object
 		postCondition  func(c k8s.Client)
 		wantErr        bool
 	}{
+		{
+			name: "ES namespace has changed ",
+			kibana: kbtype.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "kibana-foo",
+					Namespace: "default",
+				},
+				Spec: kbtype.KibanaSpec{
+					ElasticsearchRef: commonv1alpha1.ObjectSelector{
+						Name:      esFixture.Name,
+						Namespace: "ns2", // Kibana does not reference the default namespace anymore
+					},
+				},
+			},
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      userSecretName,
+						Namespace: kibanaFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      CACertSecretName(kibanaFixture.Name),
+						Namespace: kibanaFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      userName,
+						Namespace: "default", // but we still have a user secret in default
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+						Labels: map[string]string{
+							AssociationLabelName: kibanaFixture.Name,
+							common.TypeLabelName: user.UserType,
+						},
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				// user CR should be in ES namespace
+				assert.Error(t, c.Get(types.NamespacedName{
+					Namespace: esFixture.Namespace,
+					Name:      userName,
+				}, &corev1.Secret{}),
+					"Previous user secret should have been removed")
+			},
+			wantErr: false,
+		},
 		{
 			name:    "nothing to delete",
 			kibana:  kbtype.Kibana{},
@@ -57,7 +117,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						},
 					},
 				},
-				&estype.User{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
@@ -94,7 +154,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						},
 					},
 				},
-				&estype.User{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
@@ -124,7 +184,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Namespace,
 					Name:      userName,
-				}, &estype.User{}))
+				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: kibanaFixture.Spec.ElasticsearchRef.Namespace,
 					Name:      userSecretName,
@@ -155,7 +215,7 @@ func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: esFixture.Namespace,
 		Name:      userName,
-	}, &estype.User{}))
+	}, &corev1.Secret{}))
 	// user secret should be in Kibana namespace
 	assert.NoError(t, c.Get(types.NamespacedName{
 		Namespace: kibanaFixture.Namespace,

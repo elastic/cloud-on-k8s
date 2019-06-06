@@ -28,15 +28,7 @@ func addWatches(c controller.Controller, r *ReconcileAssociation) error {
 	}
 
 	// Dynamically watch Elasticsearch public CA secrets for referenced ES clusters
-	if err := c.Watch(&source.Kind{Type: &estype.Elasticsearch{}}, r.watches.Secrets); err != nil {
-		return err
-	}
-
-	// Watch Users owned by a Kibana resource
-	if err := c.Watch(&source.Kind{Type: &estype.User{}}, &handler.EnqueueRequestForOwner{
-		OwnerType:    &kbtype.Kibana{},
-		IsController: true,
-	}); err != nil {
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.watches.Secrets); err != nil {
 		return err
 	}
 
