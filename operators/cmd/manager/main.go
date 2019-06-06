@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -255,8 +255,11 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// Start the Cmd
-	log.Info("Starting the Cmd.")
+	info.Setup(operatorNamespace, cfg)
+	eck := info.Get()
+
+	log.Info("Starting the manager",
+		"version", eck.Version.Number, "build_hash", eck.Version.BuildHash, "namespace", eck.Namespace)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)

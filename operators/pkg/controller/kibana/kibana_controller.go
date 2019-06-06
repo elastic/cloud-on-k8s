@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -130,9 +131,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
+	err := info.ReconcileOperatorUUID(r, r.scheme)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
-	err := r.Get(request.NamespacedName, kb)
+	err = r.Get(request.NamespacedName, kb)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.

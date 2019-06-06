@@ -122,9 +122,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if err != nil {
 		return nil, err
 	}
-	for key := range configSecret.Data {
-		configChecksum.Write(configSecret.Data[key])
-	}
+	configChecksum.Write(configSecret.Data[config.SettingsFilename])
 
 	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)

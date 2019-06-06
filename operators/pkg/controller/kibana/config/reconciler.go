@@ -32,7 +32,8 @@ func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings Can
 			},
 		},
 		Data: map[string][]byte{
-			settingsFilename: settingsYamlBytes,
+			SettingsFilename:  settingsYamlBytes,
+			telemetryFilename: getTelemetryYamlBytes(),
 		},
 	}
 	reconciled := corev1.Secret{}

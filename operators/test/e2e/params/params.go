@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultElasticStackVersion = "7.1.0"
+	defaultElasticStackVersion = "7.1.1"
 	defaultNamespace           = "e2e"
 )
 

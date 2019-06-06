@@ -5,7 +5,12 @@
 package stack
 
 import (
+	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"path"
 
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -355,4 +360,39 @@ func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			return nil
 		}),
 	}
+}
+
+// KibanaDoReq executes an HTTP request against a Kibana instance.
+func KibanaDoReq(stack Builder, method string, uri string, body []byte) ([]byte, error) {
+	password, err := helpers.NewK8sClientOrFatal().GetElasticPassword(stack.Elasticsearch.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := url.Parse(fmt.Sprintf("http://%s.%s.svc:5601", kbname.HTTPService(stack.Kibana.Name), stack.Kibana.Namespace))
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path = path.Join(u.Path, uri)
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+
+	req.SetBasicAuth("elastic", password)
+	req.Header.Set("kbn-version", stack.Kibana.Spec.Version)
+	req.Header.Set("Content-Type", "application/json")
+	client := helpers.NewHTTPClient()
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return nil, fmt.Errorf("fail to request %s, status is %d)", uri, resp.StatusCode)
+	}
+
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
 }

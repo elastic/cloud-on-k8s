@@ -5,25 +5,18 @@
 package config
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/ghodss/yaml"
 )
 
-const TelemetryFilename = "telemetry.yml"
+const telemetryFilename = "telemetry.yml"
 
-type Telemetry struct {
-	Eck Eck `json:"eck"`
-}
-
-type Eck struct {
-	Version string `json:"version"`
-}
-
+// getTelemetryYamlBytes returns the YAML bytes for the information on ECK.
 func getTelemetryYamlBytes() []byte {
-	t := Telemetry{
-		Eck{
-			"0.8.0",
-		},
-	}
-	bytes, _ := yaml.Marshal(t)
+	bytes, _ := yaml.Marshal(struct {
+		ECK info.Info `json:"eck"`
+	}{
+		info.Get(),
+	})
 	return bytes
 }
