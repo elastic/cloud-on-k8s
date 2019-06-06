@@ -89,8 +89,8 @@ func createElasticsearchPod(
 		)
 	}
 
-	// create the transport certificates secret for this pod, which is our promise that we will sign a CSR
-	// originating from the pod after it has started and produced a CSR
+	// create the transport certificates secret for this pod because it must exist before we're able to create the
+	// pod
 	log.Info("Ensuring that transport certificate secret exists for pod", "pod", pod.Name)
 	transportCertificatesSecret, err := transport.EnsureTransportCertificateSecretExists(
 		c,

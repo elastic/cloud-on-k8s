@@ -25,6 +25,8 @@ type TemplateParams struct {
 	LinkedFiles LinkedFilesArray
 	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
 	ChownToElasticsearch []string
+	// TransportCertificatesKeyPath is a path that should exist when the transport certificates have been reconciled.
+	TransportCertificatesKeyPath string
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -120,6 +122,19 @@ var scriptTemplate = template.Must(template.New("").Parse(
 		chown -v elasticsearch:elasticsearch {{.}}
 	{{end}}
 	echo "chown duration: $(duration $chown_start) sec."
+
+	######################
+	#  Wait for certs    #
+	######################
+
+	# wait for the transport certificates to show up
+	echo "waiting for the transport certificates"
+	wait_start=$(date +%s)
+	while [ ! -f {{ .TransportCertificatesKeyPath }} ]
+	do
+	  sleep 0.2
+	done
+	echo "wait duration: $(duration wait_start) sec."
 
 	######################
 	#         End        #
