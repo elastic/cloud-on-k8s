@@ -34,9 +34,10 @@ func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
-// IsDefined checks if the object selector is not nil and has both a name and a namespace.
+// IsDefined checks if the object selector is not nil and has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
 func (s *ObjectSelector) IsDefined() bool {
-	return s != nil && s.Name != "" && s.Namespace != ""
+	return s != nil && s.Name != ""
 }
 
 // HTTPConfig configures a HTTP-based service.

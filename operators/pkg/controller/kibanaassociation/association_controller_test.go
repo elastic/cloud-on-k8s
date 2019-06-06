@@ -7,9 +7,8 @@ package kibanaassociation
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -33,12 +32,58 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		wantErr        bool
 	}{
 		{
+			name: "Do not delete if there's no namespace in the ref",
+			kibana: kbtype.Kibana{
+				ObjectMeta: kibanaFixtureObjectMeta,
+				Spec: kbtype.KibanaSpec{
+					ElasticsearchRef: commonv1alpha1.ObjectSelector{ // ElasticsearchRef without a namespace
+						Name: esFixture.Name,
+						//Namespace: esFixture.Namespace, No namespace on purpose
+					},
+				},
+			},
+			initialObjects: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      userSecretName,
+						Namespace: kibanaFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      CACertSecretName(kibanaFixture.Name),
+						Namespace: kibanaFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
+					},
+				},
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      userName,
+						Namespace: "default",
+						OwnerReferences: []metav1.OwnerReference{
+							esRefFixture,
+						},
+						Labels: map[string]string{
+							AssociationLabelName: kibanaFixture.Name,
+							common.TypeLabelName: user.UserType,
+						},
+					},
+				},
+			},
+			postCondition: func(c k8s.Client) {
+				assertExpectObjectsExist(t, c) // all objects must be exist
+			},
+			wantErr: false,
+		},
+		{
 			name: "ES namespace has changed ",
 			kibana: kbtype.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "kibana-foo",
-					Namespace: "default",
-				},
+				ObjectMeta: kibanaFixtureObjectMeta,
 				Spec: kbtype.KibanaSpec{
 					ElasticsearchRef: commonv1alpha1.ObjectSelector{
 						Name:      esFixture.Name,
@@ -70,11 +115,12 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      userName,
 						Namespace: "default", // but we still have a user secret in default
 						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
+							esRefFixture,
 						},
 						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
-							common.TypeLabelName: user.UserType,
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
+							common.TypeLabelName:      user.UserType,
 						},
 					},
 				},
@@ -122,7 +168,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
 						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
+							esRefFixture,
 						},
 					},
 				},
@@ -135,10 +181,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 		{
 			name: "No more es ref in Kibana, orphan user & CA for previous es ref exist",
 			kibana: kbtype.Kibana{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "kibana-foo",
-					Namespace: "default",
-				},
+				ObjectMeta: kibanaFixtureObjectMeta,
 			},
 			es: esFixture,
 			initialObjects: []runtime.Object{
@@ -159,10 +202,11 @@ func Test_deleteOrphanedResources(t *testing.T) {
 						Name:      userName,
 						Namespace: kibanaFixture.Namespace,
 						Labels: map[string]string{
-							AssociationLabelName: kibanaFixture.Name,
+							AssociationLabelName:      kibanaFixture.Name,
+							AssociationLabelNamespace: kibanaFixture.Namespace,
 						},
 						OwnerReferences: []metav1.OwnerReference{
-							ownerRefFixture,
+							esRefFixture,
 						},
 					},
 				},

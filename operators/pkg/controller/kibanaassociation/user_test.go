@@ -34,14 +34,28 @@ var esFixture = estype.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "es-foo",
 		Namespace: "default",
+		UID:       "f8d564d9-885e-11e9-896d-08002703f062",
 	},
+}
+var esRefFixture = metav1.OwnerReference{
+	APIVersion:         "elasticsearch.k8s.elastic.co/v1alpha1",
+	Kind:               "Elasticsearch",
+	Name:               "es-foo",
+	UID:                "f8d564d9-885e-11e9-896d-08002703f062",
+	Controller:         &t,
+	BlockOwnerDeletion: &t,
+}
+
+var kibanaFixtureUID types.UID = "82257b19-8862-11e9-896d-08002703f062"
+
+var kibanaFixtureObjectMeta = metav1.ObjectMeta{
+	Name:      "kibana-foo",
+	Namespace: "default",
+	UID:       kibanaFixtureUID,
 }
 
 var kibanaFixture = kbtype.Kibana{
-	ObjectMeta: metav1.ObjectMeta{
-		Name:      "kibana-foo",
-		Namespace: "default",
-	},
+	ObjectMeta: kibanaFixtureObjectMeta,
 	Spec: kbtype.KibanaSpec{
 		ElasticsearchRef: commonv1alpha1.ObjectSelector{
 			Name:      esFixture.Name,
@@ -55,7 +69,7 @@ var ownerRefFixture = metav1.OwnerReference{
 	APIVersion:         "kibana.k8s.elastic.co/v1alpha1",
 	Kind:               "Kibana",
 	Name:               "foo",
-	UID:                "",
+	UID:                kibanaFixtureUID,
 	Controller:         &t,
 	BlockOwnerDeletion: &t,
 }
