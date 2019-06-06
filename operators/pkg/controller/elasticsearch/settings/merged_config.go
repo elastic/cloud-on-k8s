@@ -9,7 +9,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
@@ -71,12 +70,6 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslKey:                    path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		XPackSecurityTransportSslCertificate:            path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
-
-		// x-pack security transport ssl trust restrictions settings
-		XPackSecurityTransportSslTrustRestrictionsPath: path.Join(
-			volume.TransportCertificatesSecretVolumeMountPath,
-			transport.TrustRestrictionsFilename,
-		),
 	}
 
 	return MustCanonicalConfig(cfg)

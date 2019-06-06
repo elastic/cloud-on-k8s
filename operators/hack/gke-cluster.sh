@@ -15,7 +15,7 @@ set -eu
 
 : "${GCLOUD_PROJECT}"
 : "${GKE_CLUSTER_NAME:=${USER//_}-dev-cluster}"
-: "${GKE_CLUSTER_REGION:=europe-west3}"
+: "${GKE_CLUSTER_REGION:=europe-west1}"
 : "${GKE_ADMIN_USERNAME:=admin}"
 : "${GKE_CLUSTER_VERSION}"
 : "${GKE_MACHINE_TYPE:=n1-highmem-4}"

@@ -13,7 +13,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -60,8 +61,8 @@ func Test_listAffectedLicenses(t *testing.T) {
 					Name:      "enterprise-license",
 				},
 				initialObjects: []runtime.Object{
-					&v1alpha1.ClusterLicense{
-						ObjectMeta: v1.ObjectMeta{
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo-cluster",
 							Namespace: "default",
 							SelfLink:  "/apis/elasticsearch.k8s.elastic.co/",

@@ -6,16 +6,18 @@ package license
 
 import (
 	"net/http"
-	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client/test_fixtures"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,92 +27,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func Test_secretRefResolver(t *testing.T) {
-	tests := []struct {
-		name        string
-		initialObjs []runtime.Object
-		want        string
-		wantErr     bool
-	}{
-		{
-			name: "happy-path: exactly one sig",
-			initialObjs: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"k": []byte("v"),
-					},
-				},
-			},
-			want:    "v",
-			wantErr: false,
-		},
-		{
-			name:    "happy-path: multiple keys in secret",
-			wantErr: false,
-			want:    "v",
-			initialObjs: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-					Data: map[string][]byte{
-						"k":     []byte("v"),
-						"other": []byte("other"),
-					},
-				},
-			},
-		},
-		{
-			name:    "error: no secret found",
-			wantErr: true,
-		},
-
-		{
-			name:    "error: empty secret",
-			wantErr: true,
-			initialObjs: []runtime.Object{
-				&corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "default",
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := k8s.WrapClient(fake.NewFakeClient(tt.initialObjs...))
-			ref := corev1.SecretKeySelector{
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "test",
-				},
-				Key: "k",
-			}
-			got, err := secretRefResolver(c, "default", ref)()
-			if (err != nil && !tt.wantErr) || err == nil && tt.wantErr {
-				t.Errorf("secretRefResolver() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if err == nil && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("secretRefResolver() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func Test_updateLicense(t *testing.T) {
-	defaultSigResolver := func() (string, error) {
-		return "signature", nil
-	}
 	type args struct {
-		current     *esclient.License
-		desired     v1alpha1.ClusterLicense
-		sigResolver func() (string, error)
+		current *esclient.License
+		desired esclient.License
 	}
 	tests := []struct {
 		name    string
@@ -119,23 +39,11 @@ func Test_updateLicense(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "error: no signature",
-			wantErr: true,
-			args: args{
-				current: nil,
-				desired: v1alpha1.ClusterLicense{},
-				sigResolver: func() (s string, e error) {
-					return "", errors.New("boom")
-				},
-			},
-		},
-		{
 			name:    "error: HTTP error",
 			wantErr: true,
 			args: args{
-				current:     nil,
-				desired:     v1alpha1.ClusterLicense{},
-				sigResolver: defaultSigResolver,
+				current: nil,
+				desired: esclient.License{},
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(400, req, "")
@@ -145,9 +53,8 @@ func Test_updateLicense(t *testing.T) {
 			name:    "error: ES error",
 			wantErr: true,
 			args: args{
-				current:     nil,
-				desired:     v1alpha1.ClusterLicense{},
-				sigResolver: defaultSigResolver,
+				current: nil,
+				desired: esclient.License{},
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -160,9 +67,8 @@ func Test_updateLicense(t *testing.T) {
 		{
 			name: "happy path",
 			args: args{
-				current:     nil,
-				desired:     v1alpha1.ClusterLicense{},
-				sigResolver: defaultSigResolver,
+				current: nil,
+				desired: esclient.License{},
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				return esclient.NewMockResponse(
@@ -178,14 +84,9 @@ func Test_updateLicense(t *testing.T) {
 				current: &esclient.License{
 					UID: "this-is-a-uid",
 				},
-				desired: v1alpha1.ClusterLicense{
-					Spec: v1alpha1.ClusterLicenseSpec{
-						LicenseMeta: v1alpha1.LicenseMeta{
-							UID: "this-is-a-uid",
-						},
-					},
+				desired: esclient.License{
+					UID: "this-is-a-uid",
 				},
-				sigResolver: defaultSigResolver,
 			},
 			reqFn: func(req *http.Request) *http.Response {
 				panic("this should never be called")
@@ -196,8 +97,96 @@ func Test_updateLicense(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			c := esclient.NewMockClient(version.MustParse("6.7.0"), tt.reqFn)
-			if err := updateLicense(c, tt.args.current, tt.args.desired, tt.args.sigResolver); (err != nil) != tt.wantErr {
+			if err := updateLicense(c, tt.args.current, tt.args.desired); (err != nil) != tt.wantErr {
 				t.Errorf("updateLicense() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_applyLinkedLicense(t *testing.T) {
+	clusterName := types.NamespacedName{
+		Name:      "test",
+		Namespace: "default",
+	}
+	tests := []struct {
+		name        string
+		initialObjs []runtime.Object
+		errors      map[client.ObjectKey]error
+		wantErr     bool
+	}{
+		{
+			name:    "happy path",
+			wantErr: false,
+			initialObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name.LicenseSecretName("test"),
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						license.FileName: []byte(fixtures.LicenseSample),
+					},
+				},
+			},
+		},
+		{
+			name:    "no error: no license found",
+			wantErr: false,
+		},
+		{
+			name:    "error: empty license",
+			wantErr: true,
+			initialObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name.LicenseSecretName("test"),
+						Namespace: "default",
+					},
+				},
+			},
+		},
+		{
+			name:    "error: invalid license json",
+			wantErr: true,
+			initialObjs: []runtime.Object{
+				&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name.LicenseSecretName("test"),
+						Namespace: "default",
+					},
+					Data: map[string][]byte{
+						license.FileName: {},
+					},
+				},
+			},
+		},
+		{
+			name:    "error: request error",
+			wantErr: true,
+			errors: map[client.ObjectKey]error{
+				types.NamespacedName{
+					Namespace: clusterName.Namespace,
+					Name:      name.LicenseSecretName("test"),
+				}: errors.New("boom"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &fakeClient{
+				Client: k8s.WrapClient(fake.NewFakeClientWithScheme(registerScheme(t), tt.initialObjs...)),
+				errors: tt.errors,
+			}
+			if err := applyLinkedLicense(
+				c,
+				clusterName,
+				func(license esclient.License) error {
+					require.Equal(t, "893361dc-9749-4997-93cb-802e3d7fa4xx", license.UID) // test UID from fixture
+					return nil
+				},
+			); (err != nil) != tt.wantErr {
+				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -224,73 +213,4 @@ func registerScheme(t *testing.T) *runtime.Scheme {
 		assert.Fail(t, "failed to build custom scheme")
 	}
 	return sc
-}
-
-func Test_applyLinkedLicense(t *testing.T) {
-	clusterName := types.NamespacedName{
-		Name:      "test-license",
-		Namespace: "default",
-	}
-	tests := []struct {
-		name        string
-		initialObjs []runtime.Object
-		errors      map[client.ObjectKey]error
-		wantErr     bool
-	}{
-		{
-			name:    "happy path",
-			wantErr: false,
-			initialObjs: []runtime.Object{
-				&v1alpha1.ClusterLicense{
-					ObjectMeta: k8s.ToObjectMeta(clusterName),
-					Spec: v1alpha1.ClusterLicenseSpec{
-						LicenseMeta: v1alpha1.LicenseMeta{
-							UID: "some-uid",
-						},
-						Type: v1alpha1.LicenseTypePlatinum,
-					},
-				},
-			},
-		},
-		{
-			name:    "no error: no license found",
-			wantErr: false,
-		},
-		{
-			name:    "error: empty license",
-			wantErr: true,
-			initialObjs: []runtime.Object{
-				&v1alpha1.ClusterLicense{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test-license",
-						Namespace: "default",
-					},
-				},
-			},
-		},
-		{
-			name:    "error: request error",
-			wantErr: true,
-			errors: map[client.ObjectKey]error{
-				clusterName: errors.New("boom"),
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &fakeClient{
-				Client: k8s.WrapClient(fake.NewFakeClientWithScheme(registerScheme(t), tt.initialObjs...)),
-				errors: tt.errors,
-			}
-			if err := applyLinkedLicense(
-				c,
-				clusterName,
-				func(license v1alpha1.ClusterLicense) error {
-					return nil
-				},
-			); (err != nil) != tt.wantErr {
-				t.Errorf("applyLinkedLicense() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
 }

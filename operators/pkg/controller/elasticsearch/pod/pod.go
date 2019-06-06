@@ -58,8 +58,6 @@ type NewPodSpecParams struct {
 	CustomImageName string
 	// ClusterName is the name of the Elasticsearch cluster
 	ClusterName string
-	// DiscoveryServiceName is the name of the Service that should be used for discovery.
-	DiscoveryServiceName string
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
 

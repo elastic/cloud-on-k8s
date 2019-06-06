@@ -44,7 +44,7 @@ func Test_getCredentials(t *testing.T) {
 					Spec: v1alpha1.ApmServerSpec{
 						Output: v1alpha1.Output{
 							Elasticsearch: v1alpha1.ElasticsearchOutput{
-								Hosts: []string{"https://elasticsearch-sample-es.default.svc.cluster.local:9200"},
+								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
 								Auth: v1alpha1.ElasticsearchAuth{
 									SecretKeyRef: &corev1.SecretKeySelector{
 										Key: "elastic-internal-apm",
