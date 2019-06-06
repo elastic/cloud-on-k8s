@@ -14,51 +14,82 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
+type Checker interface {
+	EnterpriseFeaturesEnabled() (bool, error)
+	Valid(l SourceEnterpriseLicense) (bool, error)
+}
+
 // Checker contains parameters for license checks.
-type Checker struct {
+type checker struct {
 	k8sClient         k8s.Client
 	operatorNamespace string
 	publicKey         []byte
 }
 
 // NewLicenseChecker creates a new license checker.
-func NewLicenseChecker(client k8s.Client, operatorNamespace string) *Checker {
-	return &Checker{
+func NewLicenseChecker(client k8s.Client, operatorNamespace string) Checker {
+	return &checker{
 		k8sClient:         client,
 		operatorNamespace: operatorNamespace,
 		publicKey:         publicKeyBytes,
 	}
 }
 
+func (lc *checker) publicKeyFor(l SourceEnterpriseLicense) ([]byte, error) {
+	if !l.IsTrial() {
+		return lc.publicKey, nil
+	}
+	var signatureSec corev1.Secret
+	return signatureSec.Data[TrialPubkeyKey], lc.k8sClient.Get(types.NamespacedName{
+		Namespace: lc.operatorNamespace,
+		Name:      TrialStatusSecretKey,
+	}, &signatureSec)
+}
+
 // EnterpriseFeaturesEnabled returns true if a valid enterprise license is installed.
-func (lc *Checker) EnterpriseFeaturesEnabled() (bool, error) {
-	licenses, err := EnterpriseLicenseList(lc.k8sClient)
+func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
+	licenses, err := EnterpriseLicenses(lc.k8sClient)
 	if err != nil {
 		return false, errors.Wrap(err, "failed to list enterprise licenses")
 	}
 
 	for _, l := range licenses {
-		pk := lc.publicKey
-		if l.IsTrial() {
-			var signatureSec corev1.Secret
-			err := lc.k8sClient.Get(types.NamespacedName{
-				Namespace: lc.operatorNamespace,
-				Name:      TrialStatusSecretKey,
-			}, &signatureSec)
-			if err != nil {
-				return false, errors.Wrap(err, "while loading signature secret")
-			}
-			pk = signatureSec.Data[TrialPubkeyKey]
-		}
-		verifier, err := NewVerifier(pk)
+		valid, err := lc.Valid(l)
 		if err != nil {
-			log.Error(err, "while creating license verifier")
-			continue
+			return false, err
 		}
-		status := verifier.Valid(l, time.Now())
-		if status == v1alpha1.LicenseStatusValid {
+		if valid {
 			return true, nil
 		}
 	}
 	return false, nil
 }
+
+func (lc *checker) Valid(l SourceEnterpriseLicense) (bool, error) {
+	pk, err := lc.publicKeyFor(l)
+	if err != nil {
+		return false, errors.Wrap(err, "while loading signature secret")
+	}
+	verifier, err := NewVerifier(pk)
+	if err != nil {
+		log.Error(err, "while creating license verifier")
+		return false, nil
+	}
+	status := verifier.Valid(l, time.Now())
+	if status == v1alpha1.LicenseStatusValid {
+		return true, nil
+	}
+	return false, nil
+}
+
+type MockChecker struct{}
+
+func (MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
+	return true, nil
+}
+
+func (MockChecker) Valid(l SourceEnterpriseLicense) (bool, error) {
+	return true, nil
+}
+
+var _ Checker = MockChecker{}

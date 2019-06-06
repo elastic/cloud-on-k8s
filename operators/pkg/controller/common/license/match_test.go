@@ -37,6 +37,10 @@ func license(l client.License, t v1alpha1.LicenseType) client.License {
 	return l
 }
 
+func noopFilter(_ SourceEnterpriseLicense) (bool, error) {
+	return true, nil
+}
+
 func Test_bestMatchAt(t *testing.T) {
 	type args struct {
 		licenses []SourceEnterpriseLicense
@@ -174,7 +178,8 @@ func Test_bestMatchAt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, found, err := bestMatchAt(now, tt.args.licenses)
+
+			got, _, found, err := bestMatchAt(now, tt.args.licenses, noopFilter)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("bestMatchAt() error = %v, wantErr %v, got %v", err, tt.wantErr, got)
 				return
@@ -238,7 +243,7 @@ func Test_filterValidForType(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := filterValid(now, tt.args.licenses); !reflect.DeepEqual(got, tt.want) {
+			if got := filterValid(now, tt.args.licenses, noopFilter); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("filterValidForType expected %v, got %v", tt.want, got)
 			}
 		})

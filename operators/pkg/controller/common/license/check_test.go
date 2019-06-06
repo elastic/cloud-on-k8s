@@ -58,7 +58,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			lc := &Checker{
+			lc := &checker{
 				k8sClient:         k8s.WrapClient(fake.NewFakeClientWithScheme(scheme.Scheme, tt.fields.initialObjects...)),
 				operatorNamespace: tt.fields.operatorNamespace,
 				publicKey:         tt.fields.publicKey,

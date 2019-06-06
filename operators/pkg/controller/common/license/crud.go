@@ -15,30 +15,40 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	util_errors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func EnterpriseLicenseList(c k8s.Client) ([]SourceEnterpriseLicense, error) {
+// EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
+func EnterpriseLicensesOrErrors(c k8s.Client) ([]SourceEnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
 	err := c.List(&client.ListOptions{
 		LabelSelector: NewLicenseByTypeSelector(string(v1alpha1.LicenseTypeEnterprise)),
 	}, &licenseList)
 	if err != nil {
-		return nil, err
+		return nil, []error{err}
 	}
 	var licenses []SourceEnterpriseLicense
+	var errors []error
 	for _, ls := range licenseList.Items {
 		parsed, err := ParseEnterpriseLicenses(ls.Data)
 		if err != nil {
-			return nil, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls))
+			errors = append(errors, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls)))
+		} else {
+			licenses = append(licenses, parsed...)
 		}
-		licenses = append(licenses, parsed...)
 	}
-	return licenses, nil
+	return licenses, errors
+}
+
+// EnterpriseLicenses lists all Enterprise licenses or an aggregate error
+func EnterpriseLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
+	licenses, errors := EnterpriseLicensesOrErrors(c)
+	return licenses, util_errors.NewAggregate(errors)
 }
 
 func TrialLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
-	licenses, err := EnterpriseLicenseList(c)
+	licenses, err := EnterpriseLicenses(c)
 	if err != nil {
 		return nil, err
 	}
@@ -51,6 +61,7 @@ func TrialLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
 	return trials, nil
 }
 
+// CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
 func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l SourceEnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {

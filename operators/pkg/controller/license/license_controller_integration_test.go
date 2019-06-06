@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func TestMain(m *testing.M) {
@@ -36,7 +37,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestReconcile(t *testing.T) {
-	c, stop := test.StartManager(t, Add, operator.Parameters{})
+	c, stop := test.StartManager(t, func(mgr manager.Manager, p operator.Parameters) error {
+		return add(mgr, &ReconcileLicenses{
+			Client:  k8s.WrapClient(mgr.GetClient()),
+			scheme:  mgr.GetScheme(),
+			checker: license.MockChecker{},
+		})
+	}, operator.Parameters{})
 	defer stop()
 
 	thirtyDays := 30 * 24 * time.Hour

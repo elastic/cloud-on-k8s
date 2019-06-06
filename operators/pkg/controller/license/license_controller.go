@@ -64,14 +64,18 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 
 // Add creates a new EnterpriseLicense Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	return add(mgr, newReconciler(mgr))
+func Add(mgr manager.Manager, p operator.Parameters) error {
+	return add(mgr, newReconciler(mgr, p.OperatorNamespace))
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager, ns string) reconcile.Reconciler {
 	c := k8s.WrapClient(mgr.GetClient())
-	return &ReconcileLicenses{Client: c, scheme: mgr.GetScheme()}
+	return &ReconcileLicenses{
+		Client:  c,
+		scheme:  mgr.GetScheme(),
+		checker: license.NewLicenseChecker(c, ns),
+	}
 }
 
 func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {
@@ -158,17 +162,16 @@ type ReconcileLicenses struct {
 	scheme *runtime.Scheme
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
+	checker   license.Checker
 }
 
 // findLicense tries to find the best license available.
-func findLicense(c k8s.Client) (esclient.License, string, bool, error) {
-	// TODO be tolerant of errors
-	licenseList, err := license.EnterpriseLicenseList(c)
-	if err != nil {
-		return esclient.License{}, "", false, err
+func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool, error) {
+	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
+	if len(errs) > 0 {
+		log.Info("Ignoring invalid license objects", "errors", errs)
 	}
-	// TODO actually verify the license
-	return license.BestMatch(licenseList)
+	return license.BestMatch(licenseList, checker.Valid)
 }
 
 // reconcileSecret upserts a secret in the namespace of the Elasticsearch cluster containing the signature of its license.
@@ -220,7 +223,7 @@ func (r *ReconcileLicenses) reconcileClusterLicense(
 ) (time.Time, error) {
 	var noResult time.Time
 	clusterName := k8s.ExtractNamespacedName(&cluster)
-	matchingSpec, parent, found, err := findLicense(r)
+	matchingSpec, parent, found, err := findLicense(r, r.checker)
 	if err != nil {
 		return noResult, err
 	}

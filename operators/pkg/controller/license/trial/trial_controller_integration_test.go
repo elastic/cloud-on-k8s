@@ -44,7 +44,7 @@ func TestReconcile(t *testing.T) {
 	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
 	validateTrialStatus(t, checker, true)
-	licenses, err := license.EnterpriseLicenseList(c)
+	licenses, err := license.EnterpriseLicenses(c)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(licenses))
 	trialLicense := licenses[0]
@@ -82,7 +82,7 @@ func TestReconcile(t *testing.T) {
 	// ClusterLicense should be GC'ed but can't be tested here
 }
 
-func validateTrialStatus(t *testing.T, checker *license.Checker, expected bool) {
+func validateTrialStatus(t *testing.T, checker license.Checker, expected bool) {
 	// test trial initialisation on create
 	test.RetryUntilSuccess(t, func() error {
 		trialEnabled, err := checker.EnterpriseFeaturesEnabled()

@@ -23,13 +23,15 @@ type licenseWithTimeLeft struct {
 // desired license type and the remaining validity period of the license.
 func BestMatch(
 	licenses []SourceEnterpriseLicense,
+	filter func(SourceEnterpriseLicense) (bool, error),
 ) (client.License, string, bool, error) {
-	return bestMatchAt(time.Now(), licenses)
+	return bestMatchAt(time.Now(), licenses, filter)
 }
 
 func bestMatchAt(
 	now time.Time,
 	licenses []SourceEnterpriseLicense,
+	filter func(SourceEnterpriseLicense) (bool, error),
 ) (client.License, string, bool, error) {
 	var license client.License
 	var parentMeta string
@@ -37,7 +39,7 @@ func bestMatchAt(
 		// no license at all
 		return license, parentMeta, false, nil
 	}
-	valid := filterValid(now, licenses)
+	valid := filterValid(now, licenses, filter)
 	if len(valid) == 0 {
 		return license, parentMeta, false, errors.New("no matching license found")
 	}
@@ -54,10 +56,18 @@ func bestMatchAt(
 	return best.license, best.parentUID, true, nil
 }
 
-func filterValid(now time.Time, licenses []SourceEnterpriseLicense) []licenseWithTimeLeft {
+func filterValid(now time.Time, licenses []SourceEnterpriseLicense, filter func(SourceEnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
 	filtered := make([]licenseWithTimeLeft, 0)
 	for _, el := range licenses {
 		if el.IsValid(now) {
+			ok, err := filter(el)
+			if err != nil {
+				log.Error(err, "while checking license validity")
+				continue
+			}
+			if !ok {
+				continue
+			}
 			for _, l := range el.Data.ClusterLicenses {
 				if l.License.IsValid(now) {
 					filtered = append(filtered, licenseWithTimeLeft{

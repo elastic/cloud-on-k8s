@@ -172,8 +172,9 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 			require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 			client := k8s.WrapClient(fake.NewFakeClient(tt.k8sResources...))
 			r := &ReconcileLicenses{
-				Client: client,
-				scheme: scheme.Scheme,
+				Client:  client,
+				scheme:  scheme.Scheme,
+				checker: commonlicense.MockChecker{},
 			}
 			nsn := k8s.ExtractNamespacedName(tt.cluster)
 			res, err := r.reconcileInternal(reconcile.Request{NamespacedName: nsn})
