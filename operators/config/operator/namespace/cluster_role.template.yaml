@@ -50,7 +50,6 @@ rules:
   resources:
   - elasticsearches
   - elasticsearches/status
-  - clusterlicenses
   - trustrelationships
   - users
   - users/status

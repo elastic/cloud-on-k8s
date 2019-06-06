@@ -78,7 +78,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 		name   string
 		client k8s.Client
 		kibana kbtype.Kibana
-		es     types.NamespacedName
+		es     estype.Elasticsearch
 		want   string
 		wantCA *corev1.Secret
 	}{
@@ -116,7 +116,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 				watches: w,
 			}
 
-			got, err := r.reconcileCASecret(tt.kibana, tt.es)
+			got, err := r.reconcileCASecret(tt.kibana, k8s.ExtractNamespacedName(&tt.es))
 			require.NoError(t, err)
 
 			require.Equal(t, tt.want, got)

@@ -9,7 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
@@ -19,24 +19,24 @@ import (
 func NewMergedESConfig(
 	clusterName string,
 	userConfig v1alpha1.Config,
-) (*CanonicalConfig, error) {
-	config, err := NewCanonicalConfigFrom(userConfig)
+) (CanonicalConfig, error) {
+	config, err := common.NewCanonicalConfigFrom(userConfig.Data)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
 	err = config.MergeWith(
-		baseConfig(clusterName),
-		xpackConfig(),
+		baseConfig(clusterName).CanonicalConfig,
+		xpackConfig().CanonicalConfig,
 	)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
-	return config, nil
+	return CanonicalConfig{config}, nil
 }
 
 // baseConfig returns the base ES configuration to apply for the given cluster
 func baseConfig(clusterName string) *CanonicalConfig {
-	return MustCanonicalConfig(map[string]interface{}{
+	cfg := map[string]interface{}{
 		// derive node name dynamically from the pod name, injected as env var
 		NodeName:    "${" + EnvPodName + "}",
 		ClusterName: clusterName,
@@ -49,7 +49,8 @@ func baseConfig(clusterName string) *CanonicalConfig {
 
 		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
 		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
-	})
+	}
+	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
 
 // xpackConfig returns the configuration bit related to XPack settings
@@ -71,13 +72,6 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslKey:                    path.Join(initcontainer.PrivateKeySharedVolume.EsContainerMountPath, initcontainer.PrivateKeyFileName),
 		XPackSecurityTransportSslCertificate:            path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
-
-		// x-pack security transport ssl trust restrictions settings
-		XPackSecurityTransportSslTrustRestrictionsPath: path.Join(
-			volume.TransportCertificatesSecretVolumeMountPath,
-			transport.TrustRestrictionsFilename,
-		),
 	}
-
-	return MustCanonicalConfig(cfg)
+	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

@@ -5,10 +5,10 @@
 package apmserverelasticsearchassociation
 
 import (
-	"reflect"
+	"bytes"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
@@ -24,6 +24,7 @@ import (
 const (
 	// InternalPamServerUserName is a user to be used by the Apm server when interacting with ES.
 	InternalApmServerUserName = "elastic-internal-apm"
+	apmUser                   = "apm-user"
 )
 
 // name to identify the Apm user object (secret/user CRD)
@@ -40,8 +41,12 @@ func userKey(apm apmtype.ApmServer) *types.NamespacedName {
 	}
 	return &types.NamespacedName{
 		Namespace: ref.Namespace,
-		Name:      apmUserObjectName(apm.Name),
+		Name:      userName(apm),
 	}
+}
+
+func userName(apm apmtype.ApmServer) string {
+	return apm.Namespace + "-" + apm.Name + "-" + apmUser
 }
 
 // secretKey is the namespaced name to identify the secret containing the password for the Apm user.
@@ -54,21 +59,28 @@ func secretKey(apm apmtype.ApmServer) types.NamespacedName {
 
 // creates a SecretKeySelector selecting the Apm user secret for the given association
 func clearTextSecretKeySelector(apm apmtype.ApmServer) *corev1.SecretKeySelector {
+	usrKey := userKey(apm)
 	return &corev1.SecretKeySelector{
 		LocalObjectReference: corev1.LocalObjectReference{
 			Name: apmUserObjectName(apm.Name),
 		},
-		Key: InternalApmServerUserName,
+		Key: usrKey.Name,
 	}
 }
 
 // reconcileEsUser creates a User resource and a corresponding secret or updates those as appropriate.
-func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) error {
+func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer, es v1alpha1.Elasticsearch) error {
 	// TODO: more flexible user-name (suffixed-trimmed?) so multiple associations do not conflict
 	pw := common.RandomPasswordBytes()
 	// the secret will be on the Apm side of the association so we are applying the Apm labels here
 	secretLabels := apmserver.NewLabels(apm.Name)
+	secretLabels[AssociationLabelName] = apm.Name
+	// add ES labels
+	for k, v := range label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName()) {
+		secretLabels[k] = v
+	}
 	secKey := secretKey(apm)
+	usrKey := userKey(apm)
 	expectedSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secKey.Name,
@@ -76,7 +88,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 			Labels:    secretLabels,
 		},
 		Data: map[string][]byte{
-			InternalApmServerUserName: pw,
+			usrKey.Name: pw,
 		},
 	}
 
@@ -88,7 +100,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 		Expected:   &expectedSecret,
 		Reconciled: &reconciledSecret,
 		NeedsUpdate: func() bool {
-			_, ok := reconciledSecret.Data[InternalApmServerUserName]
+			_, ok := reconciledSecret.Data[usrKey.Name]
 			return !ok || !hasExpectedLabels(&expectedSecret, &reconciledSecret)
 		},
 		UpdateReconciled: func() {
@@ -101,48 +113,48 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer) err
 	}
 	expectedSecret.Data = reconciledSecret.Data // make sure we don't constantly update the password
 
-	bcryptHash, err := bcrypt.GenerateFromPassword(expectedSecret.Data[InternalApmServerUserName], bcrypt.DefaultCost)
+	reconciledPw := expectedSecret.Data[usrKey.Name]
+	bcryptHash, err := bcrypt.GenerateFromPassword(reconciledPw, bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
-	usrKey := userKey(apm)
-	expectedUser := &estype.User{
+	userLabels := common.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
+	userLabels[AssociationLabelName] = apm.Name
+	userLabels[AssociationLabelNamespace] = apm.Namespace
+	expectedEsUser := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      usrKey.Name,
 			Namespace: usrKey.Namespace,
 			Labels:    userLabels,
 		},
-		Spec: estype.UserSpec{
-			Name:         InternalApmServerUserName,
-			PasswordHash: string(bcryptHash),
+		Data: map[string][]byte{
+			common.UserName:     []byte(usrKey.Name),
+			common.PasswordHash: bcryptHash,
 			// TODO: lower privileges, but requires specifying a custom role
-			UserRoles: []string{"superuser"},
-		},
-		Status: estype.UserStatus{
-			Phase: estype.UserPending,
+			common.UserRoles: []byte("superuser"),
 		},
 	}
 
-	reconciledUser := estype.User{}
+	reconciledEsSecret := corev1.Secret{}
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     s,
-		Owner:      &apm,
-		Expected:   expectedUser,
-		Reconciled: &reconciledUser,
+		Owner:      &es,
+		Expected:   expectedEsUser,
+		Reconciled: &reconciledEsSecret,
 		NeedsUpdate: func() bool {
-			return !hasExpectedLabels(expectedUser, &reconciledSecret) ||
-				!reflect.DeepEqual(expectedUser.Spec, reconciledUser.Spec)
+			return !hasExpectedLabels(expectedEsUser, &reconciledSecret) ||
+				!bytes.Equal(expectedEsUser.Data["Name"], reconciledEsSecret.Data["Name"]) ||
+				!bytes.Equal(expectedEsUser.Data["UserRoles"], reconciledEsSecret.Data["UserRoles"]) ||
+				bcrypt.CompareHashAndPassword(reconciledPw, []byte(reconciledEsSecret.Data["PasswordHash"])) == nil
 		},
 		UpdateReconciled: func() {
-			setExpectedLabels(expectedUser, &reconciledUser)
-			reconciledUser.Spec = expectedUser.Spec
+			setExpectedLabels(expectedEsUser, &reconciledEsSecret)
+			reconciledEsSecret.Data = expectedEsUser.Data
 		},
 	})
-
 }
 
 // hasExpectedLabels does a left-biased comparison ensuring all key/value pairs in expected exist in actual.

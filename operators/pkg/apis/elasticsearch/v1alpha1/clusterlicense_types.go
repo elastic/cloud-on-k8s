@@ -9,7 +9,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // License common interface for licenses.
@@ -113,52 +112,4 @@ type ClusterLicenseSpec struct {
 // IsEmpty returns true if this spec is empty.
 func (cls ClusterLicenseSpec) IsEmpty() bool {
 	return cls == ClusterLicenseSpec{}
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ClusterLicense is the Schema for the clusterlicenses API
-// +kubebuilder:resource:shortName=cl
-// +k8s:openapi-gen=true
-type ClusterLicense struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec ClusterLicenseSpec `json:"spec,omitempty"`
-}
-
-// StartDate is the date as of which this license is valid.
-func (l *ClusterLicense) StartDate() time.Time {
-	return l.Spec.StartDate()
-}
-
-// ExpiryDate is the date as of which the license is no longer valid.
-func (l *ClusterLicense) ExpiryDate() time.Time {
-	return l.Spec.ExpiryDate()
-}
-
-// IsEmpty returns true if this license has an empty spec.
-func (l ClusterLicense) IsEmpty() bool {
-	return l.Spec.IsEmpty()
-}
-
-// IsValid returns true if the license is still valid at the given point in time.
-func (l ClusterLicense) IsValid(instant time.Time) bool {
-	return l.Spec.IsValid(instant)
-}
-
-var _ License = &ClusterLicense{}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ClusterLicenseList contains a list of ClusterLicense
-type ClusterLicenseList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ClusterLicense `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ClusterLicense{}, &ClusterLicenseList{})
 }

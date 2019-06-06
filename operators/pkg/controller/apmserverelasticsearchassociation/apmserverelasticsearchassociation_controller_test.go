@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibanaassociation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,6 +17,16 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+var t = true
+var ownerRefFixture = metav1.OwnerReference{
+	APIVersion:         "apmserver.k8s.elastic.co/v1alpha1",
+	Kind:               "ApmServer",
+	Name:               "as",
+	UID:                "",
+	Controller:         &t,
+	BlockOwnerDeletion: &t,
+}
 
 func Test_deleteOrphanedResources(t *testing.T) {
 	s := setupScheme(t)
@@ -40,14 +48,20 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: apmFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
-				&estype.User{
+				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      esUserName,
 						Namespace: apmFixture.Namespace,
+						OwnerReferences: []metav1.OwnerReference{
+							ownerRefFixture,
+						},
 					},
 				},
 			},
@@ -57,56 +71,49 @@ func Test_deleteOrphanedResources(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Orpaned objects exist",
-			args: apmFixture,
+			name: "Orphaned objects exist",
+			args: apmtype.ApmServer{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "as",
+					Namespace: "default",
+				},
+				Spec: apmtype.ApmServerSpec{
+					Output: apmtype.Output{
+						Elasticsearch: apmtype.ElasticsearchOutput{
+							ElasticsearchRef: nil,
+						},
+					},
+				},
+			},
 			initialObjects: []runtime.Object{
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
+						Name:      userSecretName,
 						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: apmFixture.Name,
-						},
-					},
-				},
-				&estype.User{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: apmFixture.Namespace,
-						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: apmFixture.Name,
+							AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: "other-ns",
+						Name:      esUserName,
+						Namespace: apmFixture.Namespace,
 						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: apmFixture.Name,
-						},
-					},
-				},
-				&estype.User{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceNameFixture,
-						Namespace: "other-ns",
-						Labels: map[string]string{
-							kibanaassociation.AssociationLabelName: apmFixture.Name,
+							AssociationLabelName: apmFixture.Name,
 						},
 					},
 				},
 			},
 			postCondition: func(c k8s.Client) {
-				assertExpectObjectsExist(t, c)
 				// This works even without labels because mock client currently ignores labels
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: "other-ns",
-					Name:      resourceNameFixture,
-				}, &estype.User{}))
+					Name:      userSecretName,
+				}, &corev1.Secret{}))
 				assert.Error(t, c.Get(types.NamespacedName{
 					Namespace: "other-ns",
-					Name:      resourceNameFixture,
+					Name:      esUserName,
 				}, &corev1.Secret{}))
 
 			},
@@ -130,11 +137,11 @@ func assertExpectObjectsExist(t *testing.T, c k8s.Client) {
 	// user CR should be in ES namespace
 	require.NoError(t, c.Get(types.NamespacedName{
 		Namespace: apmFixture.Namespace,
-		Name:      resourceNameFixture,
-	}, &estype.User{}))
+		Name:      userSecretName,
+	}, &corev1.Secret{}))
 	// secret should be in Kibana namespace
 	require.NoError(t, c.Get(types.NamespacedName{
 		Namespace: apmFixture.Namespace,
-		Name:      resourceNameFixture,
+		Name:      esUserName,
 	}, &corev1.Secret{}))
 }

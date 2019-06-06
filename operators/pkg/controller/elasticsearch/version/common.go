@@ -8,13 +8,13 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/overrides"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -33,8 +33,8 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, secureSettings volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -44,11 +44,10 @@ func NewExpectedPodSpecs(
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
 				// cluster-wide params
-				Version:              es.Spec.Version,
-				CustomImageName:      es.Spec.Image,
-				ClusterName:          es.Name,
-				DiscoveryServiceName: services.DiscoveryServiceName(es.Name),
-				SetVMMaxMapCount:     es.Spec.SetVMMaxMapCount,
+				Version:          es.Spec.Version,
+				CustomImageName:  es.Spec.Image,
+				ClusterName:      es.Name,
+				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
 				ConfigMapVolume:    paramsTmpl.ConfigMapVolume,
@@ -82,9 +81,9 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, *settings.CanonicalConfig, error) {
+) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// build on top of the user-provided pod template spec
 	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
 
@@ -163,7 +162,7 @@ func podSpec(
 	// append out init containers to user-provided ones
 	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
-		return corev1.PodSpec{}, nil, err
+		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 	podSpec.InitContainers = append(podSpec.InitContainers, initContainers...)
 
@@ -181,10 +180,14 @@ func podSpec(
 	// we do not override resource Requests here in order to end up in the qosClass of Guaranteed by default
 	// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
 
-	// augment user-provided env vars with our own
-	// TODO: deal with conflicts here (eg. JVM_OPTIONS)
 	heapSize := MemoryLimitsToHeapSize(*containerSpec.Resources.Limits.Memory())
-	containerSpec.Env = append(containerSpec.Env, newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+	// inherit user-provided environment...
+	envBuilder := overrides.NewEnvBuilder(containerSpec.Env...)
+	// ...that we augment with our own.
+	// if a user-provided var has the same name as one of ours, we keep the user's version.
+	// this may break the deployment, but we consider users know what they are doing at this point.
+	envBuilder.AddIfMissing(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+	containerSpec.Env = envBuilder.GetEnvVars()
 
 	// set the container image to our own if not provided by the user
 	if containerSpec.Image == "" {
@@ -242,7 +245,7 @@ func podSpec(
 	}
 	esConfig, err := newESConfigFn(p.ClusterName, *config)
 	if err != nil {
-		return corev1.PodSpec{}, nil, err
+		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 
 	return *podSpec, esConfig, nil
@@ -265,16 +268,26 @@ func NewPod(
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
+
 	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}
+
 	for k, v := range label.NewPodLabels(es, version, cfg) {
 		// don't override user-provided labels
 		// this may lead to issues but we consider users know what they are doing at this point.
 		if _, exists := objectMeta.Labels[k]; !exists {
 			objectMeta.Labels[k] = v
 		}
+	}
+
+	if podSpecCtx.PodSpec.Hostname == "" {
+		podSpecCtx.PodSpec.Hostname = objectMeta.Name
+	}
+
+	if podSpecCtx.PodSpec.Subdomain == "" {
+		podSpecCtx.PodSpec.Subdomain = es.Name
 	}
 
 	return corev1.Pod{

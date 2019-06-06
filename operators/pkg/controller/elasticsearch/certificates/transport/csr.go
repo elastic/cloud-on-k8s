@@ -12,13 +12,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	netutil "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // CSRRequestDelay limits the number of CSR requests we do in consecutive reconciliations
@@ -131,7 +130,6 @@ func buildGeneralNames(
 }
 
 // buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
-// this needs to be kept in sync with the usage of trust_restrictions (see elasticsearch.TrustConfig)
 func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) string {
 	return fmt.Sprintf("%s.node.%s.%s.es.cluster.local", pod.Name, clusterName, namespace)
 }
