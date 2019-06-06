@@ -14,7 +14,7 @@ set -eu
 IMG="$1" # Docker image name
 TESTS_MATCH="$2" # Expression to match go test names (can be "")
 
-JOB_NAME="elastic-operators-e2e-tests-$(date +'%Y%m%d-%H%M%S')"
+JOB_NAME="eck-e2e-tests-$(LC_CTYPE=C tr -dc 'a-z0-9' < /dev/urandom | fold -w 6 | head -n 1)"
 NAMESPACE="e2e"
 
 # exit early if another job already exists
