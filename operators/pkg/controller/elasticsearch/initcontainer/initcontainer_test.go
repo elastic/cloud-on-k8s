@@ -19,7 +19,6 @@ func TestNewInitContainers(t *testing.T) {
 		operatorImage      string
 		linkedFiles        LinkedFilesArray
 		SetVMMaxMapCount   *bool
-		certsVolume        volume.SecretVolume
 	}
 	tests := []struct {
 		name                       string
@@ -33,9 +32,8 @@ func TestNewInitContainers(t *testing.T) {
 				operatorImage:      "op-image",
 				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   &varTrue,
-				certsVolume:        volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 4,
+			expectedNumberOfContainers: 3,
 		},
 		{
 			name: "with SetVMMaxMapCount unspecified",
@@ -44,9 +42,8 @@ func TestNewInitContainers(t *testing.T) {
 				operatorImage:      "op-image",
 				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   nil,
-				certsVolume:        volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 4,
+			expectedNumberOfContainers: 3,
 		},
 		{
 			name: "with SetVMMaxMapCount disabled",
@@ -55,14 +52,19 @@ func TestNewInitContainers(t *testing.T) {
 				operatorImage:      "op-image",
 				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   &varFalse,
-				certsVolume:        volume.SecretVolume{},
 			},
-			expectedNumberOfContainers: 3,
+			expectedNumberOfContainers: 2,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			containers, err := NewInitContainers(tt.args.elasticsearchImage, tt.args.operatorImage, tt.args.linkedFiles, tt.args.SetVMMaxMapCount, tt.args.certsVolume)
+			containers, err := NewInitContainers(
+				tt.args.elasticsearchImage,
+				tt.args.operatorImage,
+				tt.args.linkedFiles,
+				tt.args.SetVMMaxMapCount,
+				volume.SecretVolume{},
+			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))
 		})

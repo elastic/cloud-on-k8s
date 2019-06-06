@@ -32,7 +32,6 @@ type CertificateResources struct {
 func Reconcile(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	csrClient certificates.CSRClient,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	caCertValidity, caCertRotateBefore, certValidity, certRotateBefore time.Duration,
@@ -112,7 +111,6 @@ func Reconcile(
 		c,
 		scheme,
 		transportCA,
-		csrClient,
 		es,
 		services,
 		trustRelationships,

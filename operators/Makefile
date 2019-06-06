@@ -50,7 +50,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager cert-initializer check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager check-license-header
 
 ## -- build
 
@@ -72,9 +72,6 @@ elastic-operator: generate
 
 process-manager:
 	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
-
-cert-initializer:
-	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd

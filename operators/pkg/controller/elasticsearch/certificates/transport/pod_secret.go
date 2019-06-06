@@ -22,9 +22,6 @@ const (
 	LabelCertificateType = "certificates.elasticsearch.k8s.elastic.co/type"
 	// LabelCertificateTypeTransport is the LabelCertificateType value used for transport certificates
 	LabelCertificateTypeTransport = "transport"
-
-	// LastCSRUpdateAnnotation is an annotation key to indicate the last time this secret's CSR was updated
-	LastCSRUpdateAnnotation = "transport.certificates.elasticsearch.k8s.elastic.co/last-csr-update"
 )
 
 // EnsureTransportCertificateSecretExists ensures the existence and Labels of the corev1.Secret that at a later point
