@@ -18,7 +18,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("stack-controller")
+var log = logf.Log.WithName("common")
 
 func ReconcileService(
 	c k8s.Client,
@@ -63,4 +63,9 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 		}
 	}
 	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
+}
+
+// hasNodePort returns for a given service type, if the service ports have a NodePort or not.
+func hasNodePort(svcType corev1.ServiceType) bool {
+	return svcType == corev1.ServiceTypeNodePort || svcType == corev1.ServiceTypeLoadBalancer
 }

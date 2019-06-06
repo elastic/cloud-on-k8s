@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -59,11 +61,14 @@ type SubjectAlternativeName struct {
 
 // HTTPService contains defaults for a HTTP service.
 type HTTPService struct {
-	// Metadata is metadata for the HTTP Service.
-	Metadata HTTPServiceObjectMeta `json:"metadata,omitempty"`
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
+	// +optional
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// Spec contains user-provided settings for the HTTP Service.
-	Spec HTTPServiceSpec `json:"spec,omitempty"`
+	// Spec defines the behavior of the service.
+	// +optional
+	Spec v1.ServiceSpec `json:"spec,omitempty"`
 }
 
 // HTTPServiceObjectMeta is metadata for HTTP Service.
