@@ -5,47 +5,102 @@
 package common
 
 import (
-	"reflect"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/api/core/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGetServiceType(t *testing.T) {
+func TestSetServiceDefaults(t *testing.T) {
+	sampleSvc := v1.Service{
+		ObjectMeta: v12.ObjectMeta{
+			Labels: map[string]string{
+				"foo": "bar",
+			},
+		},
+		Spec: v1.ServiceSpec{
+			Selector: map[string]string{
+				"foo": "bar",
+			},
+			Ports: []v1.ServicePort{
+				{Name: "foo"},
+			},
+		},
+	}
+
+	sampleSvcWith := func(setter func(svc *v1.Service)) *v1.Service {
+		svc := sampleSvc.DeepCopy()
+		setter(svc)
+		return svc
+	}
+
 	type args struct {
-		s string
+		svc             *v1.Service
+		defaultLabels   map[string]string
+		defaultSelector map[string]string
+		defaultPorts    []v1.ServicePort
 	}
 	tests := []struct {
 		name string
 		args args
-		want corev1.ServiceType
+		want *v1.Service
 	}{
 		{
-			name: "Empty Type means ClusterIP service type",
-			args: args{s: ""},
-			want: corev1.ServiceTypeClusterIP,
+			name: "with empty defaults",
+			args: args{
+				svc: sampleSvc.DeepCopy(),
+			},
+			want: &sampleSvc,
 		},
 		{
-			name: "Type with a correct value returns it",
-			args: args{s: "NodePort"},
-			want: corev1.ServiceTypeNodePort,
+			name: "should not overwrite, but add labels",
+			args: args{
+				svc: sampleSvc.DeepCopy(),
+				defaultLabels: map[string]string{
+					// this should be ignored
+					"foo": "foo",
+					// this should be added
+					"bar": "baz",
+				},
+			},
+			want: sampleSvcWith(func(svc *v1.Service) {
+				svc.Labels["bar"] = "baz"
+			}),
 		},
 		{
-			name: "Type with a correct value returns it",
-			args: args{s: "LoadBalancer"},
-			want: corev1.ServiceTypeLoadBalancer,
+			name: "should use default selector",
+			args: args{
+				svc:             &v1.Service{},
+				defaultSelector: map[string]string{"foo": "foo"},
+			},
+			want: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Selector: map[string]string{"foo": "foo"},
+				},
+			},
 		},
 		{
-			name: "Type with a correct value returns it",
-			args: args{s: "ClusterIP"},
-			want: corev1.ServiceTypeClusterIP,
+			name: "should use default ports",
+			args: args{
+				svc: &v1.Service{},
+				defaultPorts: []v1.ServicePort{
+					{Name: "bar"},
+				},
+			},
+			want: &v1.Service{
+				Spec: v1.ServiceSpec{
+					Ports: []v1.ServicePort{
+						{Name: "bar"},
+					},
+				},
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetServiceType(tt.args.s); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetServiceType() = %v, want %v", got, tt.want)
-			}
+			got := SetServiceDefaults(tt.args.svc, tt.args.defaultLabels, tt.args.defaultSelector, tt.args.defaultPorts)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

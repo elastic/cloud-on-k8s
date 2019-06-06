@@ -15,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -38,30 +37,25 @@ func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
-	var svc = corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        ExternalServiceName(es.Name),
-			Labels:      label.NewLabels(nsn),
-			Annotations: es.Spec.HTTP.Service.Metadata.Annotations,
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(nsn),
-			Ports: []corev1.ServicePort{
-				{
-					Name:     "https",
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.HTTPPort,
-				},
-			},
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(es.Spec.HTTP.Service.Spec.Type),
+
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.HTTP.Service.ObjectMeta,
+		Spec:       es.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = ExternalServiceName(es.Name)
+
+	labels := label.NewLabels(nsn)
+	ports := []corev1.ServicePort{
+		{
+			Name:     "https",
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.HTTPPort,
 		},
 	}
-	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
-		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
-	}
-	return &svc
+
+	return common.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.
