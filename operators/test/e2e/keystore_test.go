@@ -2,21 +2,19 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-// +build flaky
-
 package e2e
 
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestUpdateSecureSettings(t *testing.T) {
@@ -27,7 +25,7 @@ func TestUpdateSecureSettings(t *testing.T) {
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
-			Namespace: helpers.DefaultNamespace,
+			Namespace: params.Namespace,
 		},
 		Data: map[string][]byte{
 			"key.without.prefix":        []byte("string value"),
