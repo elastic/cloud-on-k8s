@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
@@ -241,6 +242,11 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 	objMeta := metav1.ObjectMeta{
 		Namespace: "namespace",
 		Name:      name.TransportCertsSecret(testPod.Name),
+		Labels: map[string]string{
+			LabelCertificateType:       LabelCertificateTypeTransport,
+			label.PodNameLabelName:     testPod.Name,
+			label.ClusterNameLabelName: testCluster.Name,
+		},
 	}
 
 	tests := []struct {
