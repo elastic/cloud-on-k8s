@@ -18,11 +18,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -126,6 +128,10 @@ DMO3GhRADFpMz3vjHA2rHA4AQ6nC8N4lIYTw0AF1VAOC0SDntf6YEgrhRKRFAUY=
 )
 
 func init() {
+	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -261,7 +267,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 	objMeta := metav1.ObjectMeta{
 		Namespace: "namespace",
-		Name:      "secret",
+		Name:      name.TransportCertsSecret(testPod.Name),
 	}
 
 	tests := []struct {
@@ -349,16 +355,17 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := k8s.WrapClient(fake.NewFakeClient(&tt.secret))
+			secret := tt.secret.DeepCopy()
+			fakeClient := k8s.WrapClient(fake.NewFakeClient(secret))
 			err := fakeClient.Create(&tt.pod)
 			require.NoError(t, err)
 
 			_, err = doReconcileTransportCertificateSecret(
 				fakeClient,
-				*tt.secret.DeepCopy(), // We need a deepcopy to not update the original data slice
+				scheme.Scheme,
+				testCluster,
 				tt.pod,
 				fakeCSRClient,
-				testCluster,
 				[]corev1.Service{testSvc},
 				testCA, tt.additionalTrustedCAsPemEncoded,
 				certificates.DefaultCertValidity,
@@ -374,7 +381,7 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 			err = fakeClient.Get(k8s.ExtractNamespacedName(&tt.pod), &updatedPod)
 
 			isUpdated := !reflect.DeepEqual(tt.secret, updatedSecret)
-			require.Equal(t, tt.wantSecretUpdated, isUpdated)
+			require.Equal(t, tt.wantSecretUpdated, isUpdated, "want secret updated")
 			if tt.wantSecretUpdated {
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CSRFileName])
