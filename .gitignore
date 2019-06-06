@@ -27,3 +27,5 @@ vendor/
 
 # Elastic public key
 license.key
+
+operators/config/all-in-one.yaml
