@@ -10,7 +10,9 @@ import (
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
@@ -91,7 +93,7 @@ func CheckKibanaDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestStep
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: params.Namespace,
-				Name:      stack.Kibana.Name + "-kibana",
+				Name:      kbname.Deployment(stack.Kibana.Name),
 			}, &dep)
 			if stack.Kibana.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
 				return nil
@@ -280,9 +282,8 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Name: "Services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
-				stack.Elasticsearch.Name + "-es-discovery",
-				stack.Elasticsearch.Name + "-es",
-				stack.Kibana.Name + "-kibana",
+				esname.HTTPService(stack.Elasticsearch.Name),
+				kbname.HTTPService(stack.Kibana.Name),
 			} {
 				if _, err := k.GetService(s); err != nil {
 					return err
@@ -299,9 +300,8 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 		Name: "Services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				stack.Elasticsearch.Name + "-es-discovery": int(stack.Elasticsearch.Spec.NodeCount()),
-				stack.Kibana.Name + "-kibana":              int(stack.Kibana.Spec.NodeCount),
-				stack.Elasticsearch.Name + "-es":           int(stack.Elasticsearch.Spec.NodeCount()),
+				kbname.HTTPService(stack.Kibana.Name):        int(stack.Kibana.Spec.NodeCount),
+				esname.HTTPService(stack.Elasticsearch.Name): int(stack.Elasticsearch.Spec.NodeCount()),
 			} {
 				if addrCount == 0 {
 					continue // maybe no Kibana in this stack

@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
@@ -133,7 +135,7 @@ func TestKillKibanaDeployment(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
 						Namespace: params.Namespace,
-						Name:      s.Kibana.Name + "-kibana",
+						Name:      kbname.Deployment(s.Kibana.Name),
 					}, &dep)
 					require.NoError(t, err)
 					err = k.Client.Delete(&dep)
@@ -150,18 +152,9 @@ func TestDeleteServices(t *testing.T) {
 	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
-				Name: "Delete discovery service",
-				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Elasticsearch.Name + "-es-discovery")
-					require.NoError(t, err)
-					err = k.Client.Delete(s)
-					require.NoError(t, err)
-				},
-			},
-			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
-					s, err := k.GetService(s.Elasticsearch.Name + "-es")
+					s, err := k.GetService(name.HTTPService(s.Elasticsearch.Name))
 					require.NoError(t, err)
 					err = k.Client.Delete(s)
 					require.NoError(t, err)

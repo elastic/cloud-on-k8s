@@ -21,18 +21,13 @@ func newTrustRelationship(namespace, name, caCert string, subjectName []string) 
 			Namespace: namespace,
 		},
 		Spec: v1alpha1.TrustRelationshipSpec{
-			TrustRestrictions: v1alpha1.TrustRestrictions{
-				Trust: v1alpha1.Trust{
-					SubjectName: subjectName,
-				},
-			},
 			CaCert: caCert,
 		},
 	}
 }
 
 func Test_ensureTrustRelationshipIsDeleted(t *testing.T) {
-	trustRelationShip1 := newTrustRelationship("ns1", "trustrelationship1", ca1, []string{})
+	tr1 := newTrustRelationship("ns1", "trustrelationship1", ca1, []string{})
 	type args struct {
 		c       k8s.Client
 		name    string
@@ -47,7 +42,7 @@ func Test_ensureTrustRelationshipIsDeleted(t *testing.T) {
 		{
 			name: "Delete a trust relationship that does exist",
 			args: args{
-				c:     newFakeClient(t, []runtime.Object{&trustRelationShip1}),
+				c:     newFakeClient(t, []runtime.Object{&tr1}),
 				name:  "trustrelationship1",
 				owner: newRemoteInCluster("remotecluster-sample", "ns1", "es1", "ns2", "es2"),
 				cluster: commonv1alpha1.ObjectSelector{

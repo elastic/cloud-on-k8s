@@ -6,7 +6,6 @@ package version
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -47,17 +46,28 @@ func Test_quantityToMegabytes(t *testing.T) {
 }
 
 func TestNewPod(t *testing.T) {
+	esMeta := metav1.ObjectMeta{
+		Namespace: "ns",
+		Name:      "name",
+	}
+
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
 				Name: "container1",
 			},
 		},
+		Subdomain: esMeta.Namespace,
+		Hostname:  esMeta.Name,
 	}
-	esMeta := metav1.ObjectMeta{
-		Namespace: "ns",
-		Name:      "name",
+
+	// configurePodSpec is a helper method to set attributes on a pod spec without modifying the original
+	configurePodSpec := func(spec corev1.PodSpec, configure func(*corev1.PodSpec)) corev1.PodSpec {
+		s := spec.DeepCopy()
+		configure(s)
+		return *s
 	}
+
 	masterCfg := settings.MustCanonicalConfig(map[string]interface{}{
 		"node.master": true,
 		"node.data":   false,
@@ -99,19 +109,19 @@ func TestNewPod(t *testing.T) {
 			},
 		},
 		{
-			name:    "with podTemplate: should propagate labels and annotations",
+			name:    "with podTemplate: should propagate labels, annotations and subdomain",
 			version: version.MustParse("7.1.0"),
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: esMeta,
 			},
 			podSpecCtx: pod.PodSpecContext{
-				PodSpec: podSpec,
-				Config:  masterCfg,
+				PodSpec: configurePodSpec(podSpec, func(spec *corev1.PodSpec) {
+					spec.Subdomain = "my-subdomain"
+				}),
+				Config: masterCfg,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "should-be-ignored",
-							Namespace: "should-be-ignored",
 							Labels: map[string]string{
 								"foo": "bar",
 								"bar": "baz",
@@ -144,7 +154,9 @@ func TestNewPod(t *testing.T) {
 						"annotation2": "bar",
 					},
 				},
-				Spec: podSpec,
+				Spec: configurePodSpec(podSpec, func(spec *corev1.PodSpec) {
+					spec.Subdomain = "my-subdomain"
+				}),
 			},
 		},
 		{
@@ -159,8 +171,6 @@ func TestNewPod(t *testing.T) {
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      "should-be-ignored",
-							Namespace: "should-be-ignored",
 							Labels: map[string]string{
 								label.ClusterNameLabelName: "override-operator-value",
 								"foo":                      "bar",
@@ -196,9 +206,8 @@ func TestNewPod(t *testing.T) {
 			require.NoError(t, err)
 			// since the name is random, don't test its equality and inject it to the expected output
 			tt.want.Name = got.Name
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewPod() = %v, want %v", got, tt.want)
-			}
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -410,6 +419,48 @@ func Test_podSpec(t *testing.T) {
 					{
 						Name:  "var1",
 						Value: "value1",
+					},
+					{
+						Name:  "var2",
+						Value: "value2",
+					},
+				}, podSpec.Containers[0].Env)
+			},
+		},
+		{
+			name: "user-provided environment overrides",
+			params: pod.NewPodSpecParams{
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: v1alpha1.ElasticsearchContainerName,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "var1",
+											Value: "user-overridden-var-1",
+										},
+										{
+											Name:  "user-env-2",
+											Value: "user-env-2-value",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, []corev1.EnvVar{
+					{
+						Name:  "var1",
+						Value: "user-overridden-var-1",
+					},
+					{
+						Name:  "user-env-2",
+						Value: "user-env-2-value",
 					},
 					{
 						Name:  "var2",

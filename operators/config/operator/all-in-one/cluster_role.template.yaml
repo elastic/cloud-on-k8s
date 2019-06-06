@@ -54,7 +54,6 @@ rules:
   resources:
   - elasticsearches
   - elasticsearches/status
-  - clusterlicenses
   - enterpriselicenses
   - enterpriselicenses/status
   - trustrelationships

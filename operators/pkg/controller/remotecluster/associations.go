@@ -60,17 +60,16 @@ func newAssociatedCluster(c k8s.Client, selector commonv1alpha1.ObjectSelector) 
 	return associatedCluster{}, errors.New("no ca file found in public transport certs secret")
 }
 
-// reconcileTrustRelationShip creates a TrustRelationShip from a local cluster to a remote one.
-func reconcileTrustRelationShip(
+// reconcileTrustRelationship creates a TrustRelationship from a local cluster to a remote one.
+func reconcileTrustRelationship(
 	c k8s.Client,
 	owner v1alpha1.RemoteCluster,
 	name string,
 	local, remote associatedCluster,
-	subjectName []string,
 ) error {
 
 	log.V(1).Info(
-		"Reconcile TrustRelationShip",
+		"Reconcile TrustRelationship",
 		"name", name,
 		"local-namespace", local.Selector.Namespace,
 		"local-name", local.Selector.Name,
@@ -83,11 +82,6 @@ func reconcileTrustRelationShip(
 		ObjectMeta: trustRelationshipObjectMeta(name, owner, local.Selector),
 		Spec: v1alpha1.TrustRelationshipSpec{
 			CaCert: string(remote.CA),
-			TrustRestrictions: v1alpha1.TrustRestrictions{
-				Trust: v1alpha1.Trust{
-					SubjectName: subjectName,
-				},
-			},
 		},
 	}
 
@@ -113,15 +107,15 @@ func ensureTrustRelationshipIsDeleted(
 	owner v1alpha1.RemoteCluster,
 	cluster commonv1alpha1.ObjectSelector,
 ) error {
-	trustRelationShip := &v1alpha1.TrustRelationship{}
-	trustRelationShipObjectMeta := trustRelationshipObjectMeta(name, owner, cluster)
-	log.Info("Deleting TrustRelationShip", "namespace", trustRelationShipObjectMeta.Namespace, "name", trustRelationShipObjectMeta.Name)
-	err := c.Get(k8s.ExtractNamespacedName(&trustRelationShipObjectMeta), trustRelationShip)
+	tr := &v1alpha1.TrustRelationship{}
+	trObjectMeta := trustRelationshipObjectMeta(name, owner, cluster)
+	log.Info("Deleting TrustRelationship", "namespace", trObjectMeta.Namespace, "name", trObjectMeta.Name)
+	err := c.Get(k8s.ExtractNamespacedName(&trObjectMeta), tr)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	return c.Delete(trustRelationShip)
+	return c.Delete(tr)
 }

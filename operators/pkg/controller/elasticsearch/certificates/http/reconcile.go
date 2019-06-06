@@ -290,7 +290,8 @@ func createValidatedHTTPCertificateTemplate(
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
-	certCommonName := fmt.Sprintf("%s.%s.es.local", es.Name, es.Namespace)
+	// add .cluster.local to the certificate name to avoid issuing certificates signed for .es by default
+	certCommonName := fmt.Sprintf("%s.%s.es.cluster.local", es.Name, es.Namespace)
 
 	dnsNames := []string{
 		certCommonName,
@@ -298,7 +299,7 @@ func createValidatedHTTPCertificateTemplate(
 	var ipAddresses []net.IP
 
 	for _, svc := range svcs {
-		dnsNames = append(dnsNames, k8s.GetServiceFullyQualifiedHostname(svc))
+		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc))
 	}
 
 	if selfSignedCerts := es.Spec.HTTP.TLS.SelfSignedCertificate; selfSignedCerts != nil {
