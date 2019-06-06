@@ -36,12 +36,15 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana) corev1.PodTemplateSpec {
 	objectMeta := kb.Spec.PodTemplate.ObjectMeta.DeepCopy()
 	spec := kb.Spec.PodTemplate.Spec.DeepCopy()
 
-	// add (or override) our labels on top of user-provided ones
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
+	// add our labels on top of user-provided ones,
+	// only if not already specified by the user
 	for k, v := range label.NewLabels(kb.Name) {
-		objectMeta.Labels[k] = v
+		if _, exists := objectMeta.Labels[k]; !exists {
+			objectMeta.Labels[k] = v
+		}
 	}
 
 	// disable service account token automount unless enabled by the user

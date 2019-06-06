@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_imageWithVersion(t *testing.T) {
@@ -90,6 +93,31 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
+			},
+		},
+		{
+			name: "with user-provided labels",
+			kb: v1alpha1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: v1alpha1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"label1":                  "value1",
+								"label2":                  "value2",
+								label.KibanaNameLabelName: "overridden-kibana-name",
+							},
+						},
+					},
+				}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				labels := label.NewLabels("kibana-name")
+				labels["label1"] = "value1"
+				labels["label2"] = "value2"
+				labels[label.KibanaNameLabelName] = "overridden-kibana-name"
+				assert.Equal(t, labels, pod.Labels)
 			},
 		},
 		{
