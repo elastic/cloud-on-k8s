@@ -7,16 +7,18 @@ package kibana
 import (
 	"crypto/sha256"
 	"fmt"
-	"path"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
@@ -29,10 +31,10 @@ import (
 )
 
 type driver struct {
-	client             k8s.Client
-	scheme             *runtime.Scheme
-	newPodTemplateSpec func(kb kbtype.Kibana) corev1.PodTemplateSpec
-	dynamicWatches     watches.DynamicWatches
+	client          k8s.Client
+	scheme          *runtime.Scheme
+	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
+	dynamicWatches  watches.DynamicWatches
 }
 
 func secretWatchKey(kibana kbtype.Kibana) string {
@@ -50,7 +52,7 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 }
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
-	kibanaPodSpec := d.newPodTemplateSpec(*kb)
+	kibanaPodSpec := pod.NewPodTemplateSpec(*kb)
 
 	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
 	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support
@@ -79,13 +81,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if kb.Spec.Elasticsearch.CaCertSecret != "" {
 		// TODO: use kibanaCa to generate cert for deployment
 
-		// TODO: this is a little ugly as it reaches into the ES controller bits
-		esCertsVolume := volume.NewSecretVolumeWithMountPath(
-			kb.Spec.Elasticsearch.CaCertSecret,
-			"elasticsearch-certs",
-			"/usr/share/kibana/config/elasticsearch-certs",
-		)
-
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CaCertSecret}
 		// watch for changes in the CA secret
@@ -104,27 +99,34 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			configChecksum.Write(capem)
 		}
 
-		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, esCertsVolume.Volume())
+		// TODO: this is a little ugly as it reaches into the ES controller bits
+		esCertsVolume := es.CaCertSecretVolume(*kb)
+		configVolume := config.SecretVolume(*kb)
+
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes,
+			esCertsVolume.Volume(), configVolume.Volume())
 
 		for i, container := range kibanaPodSpec.Spec.InitContainers {
-			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts,
+				esCertsVolume.VolumeMount())
 		}
 
 		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
-		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, esCertsVolume.VolumeMount())
-		kibanaContainer.Env = append(
-			kibanaContainer.Env,
-			corev1.EnvVar{
-				Name:  "ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES",
-				Value: path.Join(esCertsVolume.VolumeMount().MountPath, certificates.CAFileName),
-			},
-			corev1.EnvVar{
-				Name:  "ELASTICSEARCH_SSL_VERIFICATIONMODE",
-				Value: "certificate",
-			},
-		)
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts,
+			esCertsVolume.VolumeMount(), configVolume.VolumeMount())
 	}
-	// we add the checksum to a label for the deployment and its pods (the important bit is that the pod template
+
+	// get config secret to add its content to the config checksum
+	configSecret := corev1.Secret{}
+	err := d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	if err != nil {
+		return nil, err
+	}
+	for key := range configSecret.Data {
+		configChecksum.Write(configSecret.Data[key])
+	}
+
+	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
@@ -148,6 +150,21 @@ func (d *driver) Reconcile(
 	if !kb.Spec.Elasticsearch.IsConfigured() {
 		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
 		return &results
+	}
+
+	kbSettings, err := config.NewConfigSettings(d.client, *kb)
+	if err != nil {
+		return results.WithError(err)
+	}
+	err = kbSettings.MergeWith(
+		settings.MustCanonicalConfig(d.settingsFactory(*kb)),
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	params, err := d.deploymentParams(kb)
@@ -184,15 +201,14 @@ func newDriver(
 		switch {
 		case version.Minor >= 6:
 			// 6.6 docker container already defaults to v7 settings
-			d.newPodTemplateSpec = version7.NewPodTemplateSpec
+			d.settingsFactory = version7.SettingsFactory
 		default:
-			d.newPodTemplateSpec = version6.NewPodTemplateSpec
+			d.settingsFactory = version6.SettingsFactory
 		}
 	case 7:
-		d.newPodTemplateSpec = version7.NewPodTemplateSpec
+		d.settingsFactory = version7.SettingsFactory
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", version)
 	}
 	return &d, nil
-
 }

@@ -10,13 +10,13 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	csettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -68,12 +68,12 @@ func TestNewPod(t *testing.T) {
 		return *s
 	}
 
-	masterCfg := settings.MustCanonicalConfig(map[string]interface{}{
+	masterCfg := settings.CanonicalConfig{CanonicalConfig: csettings.MustCanonicalConfig(map[string]interface{}{
 		"node.master": true,
 		"node.data":   false,
 		"node.ingest": false,
 		"node.ml":     false,
-	})
+	})}
 	tests := []struct {
 		name       string
 		version    version.Version
@@ -227,8 +227,8 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config v1alpha1.Config) (*settings.CanonicalConfig, error) {
-		return nil, nil
+	newESConfigFn := func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error) {
+		return settings.CanonicalConfig{}, nil
 	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error) {
 		return []corev1.Container{
