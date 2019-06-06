@@ -76,13 +76,7 @@ func Test_deleteOrphanedResources(t *testing.T) {
 				},
 			},
 			postCondition: func(c k8s.Client) {
-				assertExpectObjectsExist(t, c)
-				// user CR should be in ES namespace
-				/*assert.NoError(t, c.Get(types.NamespacedName{
-					Namespace: esFixture.Namespace,
-					Name:      userName,
-				}, &corev1.Secret{}),
-					"Elasticsearch should not be deleted")*/
+				assertExpectObjectsExist(t, c) // all objects must be exist
 			},
 			wantErr: false,
 		},
