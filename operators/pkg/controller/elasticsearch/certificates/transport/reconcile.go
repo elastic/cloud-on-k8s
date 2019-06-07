@@ -54,6 +54,7 @@ func ReconcileTransportCertificateSecrets(
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
 		LabelSelector: label.NewLabelSelectorForElasticsearch(es),
+		Namespace:     es.Namespace,
 	}, &pods); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -185,6 +186,7 @@ func doReconcileTransportCertificateSecret(
 func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certificate {
 	certData, ok := secret.Data[certificates.CertFileName]
 	if !ok {
+		log.Info("No tls certificate found in secret", "secret", secret.Name)
 		return nil
 	}
 
@@ -195,11 +197,15 @@ func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certifi
 	}
 
 	// look for the certificate based on the CommonName
+	var names []string
 	for _, c := range certs {
 		if c.Subject.CommonName == commonName {
 			return c
 		}
+		names = append(names, c.Subject.CommonName)
 	}
+
+	log.Info("Did not found a certificate with the expected common name", "secret", secret.Name, "expected", commonName, "found", names)
 
 	return nil
 }
