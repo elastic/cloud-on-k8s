@@ -5,8 +5,6 @@
 package transport
 
 import (
-	"reflect"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -57,8 +55,17 @@ func EnsureTransportCertificateSecretExists(
 		Expected:   &expected,
 		Reconciled: &reconciled,
 		NeedsUpdate: func() bool {
-			// we only care about labels, not contents
-			return reflect.DeepEqual(expected.Labels, reconciled.Labels)
+			// we only care about labels, not contents at this point, and we can allow additional labels
+			if reconciled.Labels == nil {
+				return true
+			}
+
+			for k, v := range expected.Labels {
+				if rv, ok := reconciled.Labels[k]; !ok || rv != v {
+					return true
+				}
+			}
+			return false
 		},
 		UpdateReconciled: func() {
 			if reconciled.Labels == nil {
