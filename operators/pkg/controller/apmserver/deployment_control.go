@@ -21,13 +21,12 @@ var (
 )
 
 type DeploymentParams struct {
-	Name      string
-	Namespace string
-	Selector  map[string]string
-	Labels    map[string]string
-	PodLabels map[string]string
-	Replicas  int32
-	PodSpec   corev1.PodSpec
+	Name            string
+	Namespace       string
+	Selector        map[string]string
+	Labels          map[string]string
+	PodTemplateSpec corev1.PodTemplateSpec
+	Replicas        int32
 }
 
 // NewDeployment creates a Deployment API struct with the given PodSpec.
@@ -43,12 +42,7 @@ func NewDeployment(params DeploymentParams) appsv1.Deployment {
 			Selector: &metav1.LabelSelector{
 				MatchLabels: params.Selector,
 			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: params.PodLabels,
-				},
-				Spec: params.PodSpec,
-			},
+			Template: params.PodTemplateSpec,
 			Replicas: &params.Replicas,
 		},
 	}
