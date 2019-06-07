@@ -30,7 +30,7 @@ type NewEnvVarsParams struct {
 	ESUsername         string
 	ESPasswordFilepath string
 	ESVersion          string
-	ESCaCertPath       string
+	ESCertsPath        string
 }
 
 // NewEnvVars returns the environments variables required by the keystore updater.
@@ -41,7 +41,7 @@ func NewEnvVars(params NewEnvVarsParams) []corev1.EnvVar {
 		{Name: EnvReloadCredentials, Value: "true"},
 		{Name: EnvEsUsername, Value: params.ESUsername},
 		{Name: EnvEsPasswordFile, Value: params.ESPasswordFilepath},
-		{Name: EnvEsCertsPath, Value: params.ESCaCertPath},
+		{Name: EnvEsCertsPath, Value: params.ESCertsPath},
 		{Name: EnvEsEndpoint, Value: esEndpoint},
 		{Name: EnvEsVersion, Value: params.ESVersion},
 	}

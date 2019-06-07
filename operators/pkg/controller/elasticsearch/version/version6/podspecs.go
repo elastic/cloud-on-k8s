@@ -122,7 +122,7 @@ func newEnvironmentVars(
 			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
 			ESUsername:         p.ReloadCredsUser.Name,
 			ESPasswordFilepath: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, p.ReloadCredsUser.Name),
-			ESCaCertPath:       path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
+			ESCertsPath:        path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
 			ESVersion:          p.Version,
 		})...)
 
