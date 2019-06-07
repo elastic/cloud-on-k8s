@@ -27,24 +27,24 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticUsersFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticUsersFile),
+				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersFile),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticRolesFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticRolesFile),
+				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticRolesFile),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticRolesFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.DefaultSecretMountPath, "/", user.ElasticUsersRolesFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", user.ElasticUsersRolesFile),
+				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersRolesFile),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersRolesFile),
 			},
 			{
 				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", settings.ConfigFileName),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", settings.ConfigFileName),
 			},
 			{
 				Source: stringsutil.Concat(volume.UnicastHostsVolumeMountPath, "/", volume.UnicastHostsFile),
-				Target: stringsutil.Concat("/usr/share/elasticsearch/config", "/", volume.UnicastHostsFile),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", volume.UnicastHostsFile),
 			},
 		},
 	}
@@ -56,12 +56,11 @@ func ExpectedPodSpecs(
 	paramsTmpl pod.NewPodSpecParams,
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
-	// we mount the elastic users secret over at /secrets, which needs to match the "linkedFiles" in the init-container
-	// creation below.
-	// TODO: make this association clearer.
-	paramsTmpl.UsersSecretVolume = volume.NewSecretVolume(
+	// the contents of the file realm volume needs to be symlinked into place
+	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
 		user.ElasticUsersRolesSecretName(es.Name),
-		"users",
+		volume.XPackFileRealmVolumeName,
+		volume.XPackFileRealmVolumeMountPath,
 	)
 
 	return version.NewExpectedPodSpecs(
@@ -95,7 +94,7 @@ func newEnvironmentVars(
 	p pod.NewPodSpecParams,
 	heapSize int,
 	httpCertificatesVolume volume.SecretVolume,
-	reloadCredsUserSecretVolume volume.SecretVolume,
+	keystoreUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
@@ -109,7 +108,7 @@ func newEnvironmentVars(
 		}},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
+		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
@@ -120,8 +119,8 @@ func newEnvironmentVars(
 	vars = append(vars, keystore.NewEnvVars(
 		keystore.NewEnvVarsParams{
 			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
-			ESUsername:         p.ReloadCredsUser.Name,
-			ESPasswordFilepath: path.Join(reloadCredsUserSecretVolume.VolumeMount().MountPath, p.ReloadCredsUser.Name),
+			ESUsername:         p.KeystoreUser.Name,
+			ESPasswordFilepath: path.Join(keystoreUserSecretVolume.VolumeMount().MountPath, p.KeystoreUser.Name),
 			ESCaCertPath:       path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
 			ESVersion:          p.Version,
 		})...)

@@ -18,8 +18,8 @@ const (
 )
 
 var ProcessManagerVolume = SharedVolume{
-	Name:                   "local-bin-volume",
-	InitContainerMountPath: "/volume/bin",
+	Name:                   "elastic-internal-process-manager",
+	InitContainerMountPath: volume.ProcessManagerEmptyDirMountPath,
 	EsContainerMountPath:   volume.ProcessManagerEmptyDirMountPath,
 }
 

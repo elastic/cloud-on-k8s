@@ -5,70 +5,8 @@ metadata:
   name: elasticsearch-sample
 spec:
   version: "7.1.0"
-  updateStrategy:
-    groups:
-    # give each failure domain a chance to reconcile failures before regular changes:
-    - selector:
-        matchLabels:
-          failure-domain.beta.kubernetes.io/zone: europe-west3-a
-    - selector:
-        matchLabels:
-          failure-domain.beta.kubernetes.io/zone: europe-west3-b
-    - selector:
-        matchLabels:
-          failure-domain.beta.kubernetes.io/zone: europe-west3-c
-    changeBudget:
-      # this is the equivalent of the default change budget
-      maxSurge: 1
-      maxUnavailable: 1
   nodes:
-  - config:
-      node.master: true
-      node.data: true
-      node.attr.attr_name: attr_value
-    # this shows how to customize the Elasticsearch pod
-    # with labels and resource limits
-    podTemplate:
-      metadata:
-        labels:
-          foo: bar
-      spec:
-        containers:
-          - name: elasticsearch
-            resources:
-              limits:
-                memory: 2Gi
-                cpu: 1
-    nodeCount: 3
-    ## this shows how to request 2Gi of persistent data storage for pods in this topology element
-    #volumeClaimTemplates:
-    #- metadata:
-    #    name: data
-    #  spec:
-    #    accessModes:
-    #    - ReadWriteOnce
-    #    resources:
-    #      requests:
-    #        storage: 2Gi
-    #    storageClassName: elastic-local # or eg. gcePersistentDisk
-  # dedicated masters:
-  - config:
-      node.master: true
-      node.data: false
-      node.ingest: false
-      node.attr.attr_name: attr_value
-    nodeCount: 0
-  # dedicated data nodes
-  - config:
-      node.master: false
-      node.data: true
-      node.ingest: false
-      node.attr.attr_name: attr_value
-    nodeCount: 0
-  #http:
-  #  service:
-  #    spec:
-  #      type: LoadBalancer
+  - nodeCount: 1
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana

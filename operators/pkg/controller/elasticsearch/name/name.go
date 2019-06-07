@@ -30,7 +30,6 @@ const (
 	httpServiceSuffix           = "http"
 	elasticUserSecretSuffix     = "elastic-user"
 	esRolesUsersSecretSuffix    = "roles-users"
-	clusterSecretsSecretSuffix  = "secrets"
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 	licenseSecretSuffix         = "license"
@@ -108,10 +107,6 @@ func ElasticUserSecret(esName string) string {
 
 func EsRolesUsersSecret(esName string) string {
 	return ESNamer.Suffix(esName, esRolesUsersSecretSuffix)
-}
-
-func ClusterSecretsSecret(esName string) string {
-	return ESNamer.Suffix(esName, clusterSecretsSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {

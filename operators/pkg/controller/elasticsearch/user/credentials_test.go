@@ -41,7 +41,7 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-cluster-es-internal-users",
-			expectedKeys: []string{InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName},
+			expectedKeys: []string{InternalControllerUserName, InternalKeystoreUserName, InternalProbeUserName},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
