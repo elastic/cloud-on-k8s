@@ -35,3 +35,8 @@ RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${
   && tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 \
                  -C /usr/local/bin docker/docker \
   && rm docker-${DOCKER_VERSION}.tgz
+
+# Install AWS CLI
+RUN curl -O https://bootstrap.pypa.io/get-pip.py && \
+    python get-pip.py && \
+    pip install awscli --upgrade
