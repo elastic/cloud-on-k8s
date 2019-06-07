@@ -151,8 +151,9 @@ spec:
               type: object
             podTemplate:
               description: PodTemplate can be used to propagate configuration to APM
-                pods. So far, only labels, Affinity and `Containers["apm"].Resources.Limits`
-                are applied.
+                Server pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
               type: object
             version:
               description: Version represents the version of the APM Server

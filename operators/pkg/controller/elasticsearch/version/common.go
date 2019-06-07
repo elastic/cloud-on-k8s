@@ -8,7 +8,7 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/overrides"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -84,43 +84,20 @@ func podSpec(
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
-	// build on top of the user-provided pod template spec
-	podSpec := p.NodeSpec.PodTemplate.Spec.DeepCopy()
-
-	// build image name from version, or use custom user-provided one
-	image := stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)
-	if p.CustomImageName != "" {
-		image = p.CustomImageName
-	}
-
-	// override pod spec fields with our defaults if not provided by the user
-	if podSpec.TerminationGracePeriodSeconds == nil {
-		period := pod.DefaultTerminationGracePeriodSeconds
-		podSpec.TerminationGracePeriodSeconds = &period
-	}
-	if podSpec.AutomountServiceAccountToken == nil {
-		automountSA := false
-		podSpec.AutomountServiceAccountToken = &automountSA
-	}
-
 	// setup volumes
-
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
-
 	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
 		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
 	)
-
 	clusterSecretsSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ClusterSecretsRef.Name,
 		"secrets",
 		volume.ClusterSecretsVolumeMountPath,
 	)
-
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
 	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
@@ -128,84 +105,54 @@ func podSpec(
 		volume.TransportCertificatesSecretVolumeName,
 		volume.TransportCertificatesSecretVolumeMountPath,
 	)
-
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.ClusterName),
 		volume.SecureSettingsVolumeName,
 		volume.SecureSettingsVolumeMountPath,
 	)
-
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		name.HTTPCertsInternalSecretName(p.ClusterName),
 		volume.HTTPCertificatesSecretVolumeName,
 		volume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
-	// append our volumes to user-provided ones
-	podSpec.Volumes = append(
-		podSpec.Volumes,
-		append(
-			initcontainer.PrepareFsSharedVolumes.Volumes(),
-			initcontainer.ProcessManagerVolume.Volume(),
-			p.UsersSecretVolume.Volume(),
-			p.ConfigMapVolume.Volume(),
-			p.UnicastHostsVolume.Volume(),
-			probeSecret.Volume(),
-			clusterSecretsSecretVolume.Volume(),
-			reloadCredsSecret.Volume(),
-			secureSettingsVolume.Volume(),
-			httpCertificatesVolume.Volume(),
-		)...,
-	)
+	// build on top of the user-provided pod template spec
+	builder := defaults.NewPodTemplateBuilder(p.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
+		WithDockerImage(p.CustomImageName, stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)).
+		WithTerminationGracePeriod(pod.DefaultTerminationGracePeriodSeconds).
+		WithPorts(pod.DefaultContainerPorts).
+		WithReadinessProbe(*pod.NewReadinessProbe()).
+		WithCommand([]string{processmanager.CommandPath}).
+		// enforce a memory resource limits if not provided by the user, since we need to compute JVM heap size
+		// we do not set resource Requests here in order to end up in the qosClass of Guaranteed by default
+		// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
+		WithMemoryLimit(DefaultMemoryLimits)
 
-	// append out init containers to user-provided ones
-	initContainers, err := newInitContainersFn(image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
+	// setup heap size based on memory limits
+	heapSize := MemoryLimitsToHeapSize(*builder.Container.Resources.Limits.Memory())
+	builder = builder.WithEnv(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+
+	// setup init containers
+	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
 	if err != nil {
 		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
-	podSpec.InitContainers = append(podSpec.InitContainers, initContainers...)
 
-	// build on top of the user-provided ES container spec, or create a new one
-	containerSpec := p.NodeSpec.GetESContainerTemplate().DeepCopy()
-	userProvidedContainerSpec := containerSpec != nil
-	if !userProvidedContainerSpec {
-		containerSpec = &corev1.Container{
-			Name: v1alpha1.ElasticsearchContainerName,
-		}
-	}
-
-	// set memory resource limits if not provided by the user
-	containerSpec.Resources.Limits = buildResourceLimits(containerSpec)
-	// we do not override resource Requests here in order to end up in the qosClass of Guaranteed by default
-	// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
-
-	heapSize := MemoryLimitsToHeapSize(*containerSpec.Resources.Limits.Memory())
-	// inherit user-provided environment...
-	envBuilder := overrides.NewEnvBuilder(containerSpec.Env...)
-	// ...that we augment with our own.
-	// if a user-provided var has the same name as one of ours, we keep the user's version.
-	// this may break the deployment, but we consider users know what they are doing at this point.
-	envBuilder.AddIfMissing(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
-	containerSpec.Env = envBuilder.GetEnvVars()
-
-	// set the container image to our own if not provided by the user
-	if containerSpec.Image == "" {
-		containerSpec.Image = image
-	}
-	// ImagePullPolicy is kept either user-provided or defaulted
-
-	// override ports
-	containerSpec.Ports = pod.DefaultContainerPorts
-
-	// override readiness probe
-	containerSpec.ReadinessProbe = pod.NewReadinessProbe()
-
-	// append our volume mounts to user-provided ones
-	containerSpec.VolumeMounts = append(
-		containerSpec.VolumeMounts,
-		append(
-			initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
-			[]corev1.VolumeMount{
+	builder = builder.
+		WithVolumes(
+			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
+				initcontainer.ProcessManagerVolume.Volume(),
+				p.UsersSecretVolume.Volume(),
+				p.ConfigMapVolume.Volume(),
+				p.UnicastHostsVolume.Volume(),
+				probeSecret.Volume(),
+				clusterSecretsSecretVolume.Volume(),
+				reloadCredsSecret.Volume(),
+				secureSettingsVolume.Volume(),
+				httpCertificatesVolume.Volume(),
+			)...).
+		WithVolumeMounts(
+			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.ConfigMapVolume.VolumeMount(),
@@ -216,24 +163,8 @@ func podSpec(
 				reloadCredsSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
-			}...,
-		)...,
-	)
-
-	// override command
-	containerSpec.Command = []string{processmanager.CommandPath}
-
-	// set the container spec back into the podSpec container list
-	if userProvidedContainerSpec {
-		// replace existing one
-		for i, c := range podSpec.Containers {
-			if c.Name == v1alpha1.ElasticsearchContainerName {
-				podSpec.Containers[i] = *containerSpec
-			}
-		}
-	} else {
-		podSpec.Containers = append(podSpec.Containers, *containerSpec)
-	}
+			)...).
+		WithInitContainers(initContainers...)
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
@@ -246,7 +177,7 @@ func podSpec(
 		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 
-	return *podSpec, esConfig, nil
+	return builder.PodTemplate.Spec, esConfig, nil
 }
 
 // NewPod constructs a pod from the given parameters.
@@ -256,21 +187,21 @@ func NewPod(
 	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
 	// build on top of user-provided objectMeta to reuse labels, annotations, etc.
-	objectMeta := podSpecCtx.NodeSpec.PodTemplate.ObjectMeta
+	builder := defaults.NewPodTemplateBuilder(podSpecCtx.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName)
 
 	// set our own name & namespace
-	objectMeta.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	objectMeta.Namespace = es.Namespace
+	builder.PodTemplate.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
+	builder.PodTemplate.Namespace = es.Namespace
 
 	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}
-	// add labels on top of user-provided ones, but don't override them
-	objectMeta.Labels = overrides.SetDefaultLabels(objectMeta.Labels, label.NewPodLabels(es, version, cfg))
+
+	builder = builder.WithLabels(label.NewPodLabels(es, version, cfg))
 
 	if podSpecCtx.PodSpec.Hostname == "" {
-		podSpecCtx.PodSpec.Hostname = objectMeta.Name
+		podSpecCtx.PodSpec.Hostname = builder.PodTemplate.Name
 	}
 
 	if podSpecCtx.PodSpec.Subdomain == "" {
@@ -278,7 +209,7 @@ func NewPod(
 	}
 
 	return corev1.Pod{
-		ObjectMeta: objectMeta,
+		ObjectMeta: builder.PodTemplate.ObjectMeta,
 		Spec:       podSpecCtx.PodSpec,
 	}, nil
 }
@@ -286,27 +217,10 @@ func NewPod(
 // MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
 func MemoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
 	// use half the available memory as heap
-	return quantityToMegabytes(nonZeroQuantityOrDefault(memoryLimit, DefaultMemoryLimits)) / 2
-}
-
-// nonZeroQuantityOrDefault returns q if it is nonzero, defaultQuantity otherwise
-func nonZeroQuantityOrDefault(q, defaultQuantity resource.Quantity) resource.Quantity {
-	if q.IsZero() {
-		return defaultQuantity
-	}
-	return q
+	return quantityToMegabytes(memoryLimit) / 2
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
 	return int(q.Value()) / 1024 / 1024
-}
-
-func buildResourceLimits(esContainer *corev1.Container) corev1.ResourceList {
-	resourceLimits := corev1.ResourceList{}
-	if esContainer != nil && esContainer.Resources.Limits != nil {
-		resourceLimits = esContainer.Resources.Limits
-	}
-	resourceLimits[corev1.ResourceMemory] = nonZeroQuantityOrDefault(*resourceLimits.Memory(), DefaultMemoryLimits)
-	return resourceLimits
 }
