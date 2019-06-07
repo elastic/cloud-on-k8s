@@ -78,13 +78,13 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ParseEnterpriseLicenses(tt.args.raw)
+			got, err := ParseEnterpriseLicense(tt.args.raw)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseEnterpriseLicenses() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseEnterpriseLicense() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseEnterpriseLicenses() = %v, want %v", got, tt.want)
+				t.Errorf("ParseEnterpriseLicense() = %v, want %v", got, tt.want)
 			}
 		})
 	}

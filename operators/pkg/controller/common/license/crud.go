@@ -8,7 +8,9 @@ package license
 
 import (
 	"encoding/json"
+	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -30,11 +32,11 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	var licenses []EnterpriseLicense
 	var errors []error
 	for _, ls := range licenseList.Items {
-		parsed, err := ParseEnterpriseLicenses(ls.Data)
+		parsed, err := ParseEnterpriseLicense(ls.Data)
 		if err != nil {
 			errors = append(errors, pkgerrors.Wrapf(err, "unparseable license in %v", k8s.ExtractNamespacedName(&ls)))
 		} else {
-			licenses = append(licenses, parsed...)
+			licenses = append(licenses, parsed)
 		}
 	}
 	return licenses, errors
@@ -46,18 +48,45 @@ func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	return licenses, util_errors.NewAggregate(errors)
 }
 
-func TrialLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
-	licenses, err := EnterpriseLicenses(c)
+func TrialLicense(c k8s.Client, nsn types.NamespacedName) (EnterpriseLicense, error) {
+	var secret corev1.Secret
+	err := c.Get(nsn, &secret)
 	if err != nil {
-		return nil, err
+		return EnterpriseLicense{}, err
 	}
-	var trials []EnterpriseLicense
-	for i, l := range licenses {
-		if l.IsTrial() {
-			trials = append(trials, licenses[i])
-		}
+	if len(secret.Data) == 0 {
+		// new trial license
+		return EnterpriseLicense{
+			License: LicenseSpec{
+				Type: LicenseTypeEnterpriseTrial,
+			},
+		}, nil
 	}
-	return trials, nil
+
+	license, err := ParseEnterpriseLicense(secret.Data)
+	if err != nil {
+		return EnterpriseLicense{}, err
+	}
+	if !license.IsTrial() {
+		return EnterpriseLicense{}, fmt.Errorf("%v is not a trial license", nsn)
+	}
+	return license, nil
+}
+
+// CreateTrialLicense create en empty secret with the correct meta data to start an enterprise trial
+func CreateTrialLicense(c k8s.Client, namespace string) error {
+	return c.Create(&corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      string(LicenseTypeEnterpriseTrial),
+			Namespace: namespace,
+			Labels: map[string]string{
+				common.TypeLabelName: Type,
+			},
+			Annotations: map[string]string{
+				"elastic.co/eula": "accepted",
+			},
+		},
+	})
 }
 
 // CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
@@ -66,15 +95,32 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l Enterpris
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal license")
 	}
-	licenseSecret := corev1.Secret{
+	return c.Create(&corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: key.Namespace,
 			Name:      key.Name,
 			Labels:    LabelsForType(LicenseLabelEnterprise),
 		},
 		Data: map[string][]byte{
-			key.Name: bytes,
+			LicenseFileName: bytes,
 		},
+	})
+}
+
+// UpdateEnterpriseLicense creates an Enterprise license wrapped in a secret.
+func UpdateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l EnterpriseLicense) error {
+	bytes, err := json.Marshal(l)
+	if err != nil {
+		return pkgerrors.Wrap(err, "failed to marshal license")
 	}
-	return c.Create(&licenseSecret)
+	var secret corev1.Secret
+	err = c.Get(key, &secret)
+	if err != nil {
+		return pkgerrors.Wrap(err, "failed to fetch license secret")
+	}
+	secret.Data = map[string][]byte{
+		LicenseFileName: bytes,
+	}
+	secret.Labels = LabelsForType(LicenseLabelEnterprise)
+	return c.Update(&secret)
 }

@@ -26,7 +26,7 @@ const (
 	TrialPubkeyKey       = "pubkey"
 )
 
-func InitTrial(c k8s.Client, namespace string, l *EnterpriseLicense) (*rsa.PublicKey, error) {
+func InitTrial(c k8s.Client, nsn types.NamespacedName, l *EnterpriseLicense) (*rsa.PublicKey, error) {
 	if l == nil {
 		return nil, errors.New("license is nil")
 	}
@@ -52,7 +52,7 @@ func InitTrial(c k8s.Client, namespace string, l *EnterpriseLicense) (*rsa.Publi
 	}
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: namespace,
+			Namespace: nsn.Namespace,
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
 				LicenseLabelName: l.License.UID,
@@ -69,12 +69,9 @@ func InitTrial(c k8s.Client, namespace string, l *EnterpriseLicense) (*rsa.Publi
 	l.License.Signature = string(sig)
 	// return pub key to retain in memory for later iterations
 	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
-		CreateEnterpriseLicense(
+		UpdateEnterpriseLicense(
 			c,
-			types.NamespacedName{
-				Namespace: namespace,
-				Name:      l.License.UID,
-			},
+			nsn,
 			*l,
 		),
 		"Failed to update trial license",

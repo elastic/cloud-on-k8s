@@ -16,8 +16,6 @@ type Parameters struct {
 	OperatorImage string
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
-	// TrialMode indicates that the user wants to trial Enterprise features of the operator.
-	TrialMode bool
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
 	// CACertValidity is the validity duration of a newly created CA cert

@@ -15,7 +15,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/pkg/errors"
@@ -32,15 +31,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestReconcile(t *testing.T) {
-	c, stop := test.StartManager(t, Add, operator.Parameters{
-		OperatorNamespace: operatorNs,
-		TrialMode:         true,
-	})
+	c, stop := test.StartManager(t, Add, operator.Parameters{})
 	defer stop()
 
 	now := time.Now()
 
 	// Create trial initialisation is controlled via config
+	require.NoError(t, license.CreateTrialLicense(c, operatorNs))
 	checker := license.NewLicenseChecker(c, operatorNs)
 	// test trial initialisation on create
 	validateTrialStatus(t, checker, true)
@@ -70,13 +67,14 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete the trial license
-	require.NoError(t, deleteTrial(c, trialLicense.License.UID))
+	require.NoError(t, deleteTrial(c, string(license.LicenseTypeEnterpriseTrial)))
 	// recreate it with modified validity + 1 year
-	trialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
-	require.NoError(t, license.CreateEnterpriseLicense(c, types.NamespacedName{
-		Namespace: operatorNs,
-		Name:      trialLicense.License.UID,
-	}, trialLicense))
+	license.CreateTrialLicense(c, operatorNs)
+	// trialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
+	// require.NoError(t, license.UpdateEnterpriseLicense(c, types.NamespacedName{
+	// 	Namespace: operatorNs,
+	// 	Name:      string(license.LicenseTypeEnterpriseTrial),
+	// }, trialLicense))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here

@@ -22,11 +22,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -48,10 +46,6 @@ type ReconcileTrials struct {
 	// iteration is the number of times this controller has run its Reconcile method.
 	iteration   int64
 	trialPubKey *rsa.PublicKey
-	// trialMode reflects user intent to trial Enterprise features.
-	trialMode bool
-	// operatorNamespace is the namespace the operator is running in.
-	operatorNamespace string
 }
 
 // Reconcile watches a trial status secret. If it finds a trial license it checks whether a trial has been started.
@@ -66,20 +60,9 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	licenses, err := licensing.TrialLicenses(r)
+	license, err := licensing.TrialLicense(r, request.NamespacedName)
 	if err != nil {
-		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial licenses")
-	}
-
-	var license licensing.EnterpriseLicense
-	if len(licenses) == 0 {
-		license = licensing.EnterpriseLicense{
-			License: licensing.LicenseSpec{
-				Type: licensing.LicenseTypeEnterpriseTrial,
-			},
-		}
-	} else {
-		license = licenses[0] // just take the first one
+		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
 	}
 
 	// 1. fetch trial status secret
@@ -87,7 +70,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.Get(types.NamespacedName{Namespace: request.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		// 2. if not present create one + finalizer
-		err := r.initTrial(request.Namespace, license)
+		err := r.initTrial(request.NamespacedName, license)
 		if err != nil {
 			return reconcile.Result{}, pkgerrors.Wrap(err, "failed to init trial")
 		}
@@ -107,13 +90,13 @@ func (r *ReconcileTrials) isTrialRunning() bool {
 	return r.trialPubKey != nil
 }
 
-func (r *ReconcileTrials) initTrial(namespace string, l licensing.EnterpriseLicense) error {
+func (r *ReconcileTrials) initTrial(nsn types.NamespacedName, l licensing.EnterpriseLicense) error {
 	if r.isTrialRunning() {
 		// silent NOOP
 		return nil
 	}
 
-	trialPubKey, err := licensing.InitTrial(r, namespace, &l)
+	trialPubKey, err := licensing.InitTrial(r, nsn, &l)
 	if err != nil {
 		return err
 	}
@@ -149,13 +132,11 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 
 }
 
-func newReconciler(mgr manager.Manager, p operator.Parameters) *ReconcileTrials {
+func newReconciler(mgr manager.Manager, _ operator.Parameters) *ReconcileTrials {
 	return &ReconcileTrials{
-		Client:            k8s.WrapClient(mgr.GetClient()),
-		scheme:            mgr.GetScheme(),
-		recorder:          mgr.GetRecorder(name),
-		trialMode:         p.TrialMode,
-		operatorNamespace: p.OperatorNamespace,
+		Client:   k8s.WrapClient(mgr.GetClient()),
+		scheme:   mgr.GetScheme(),
+		recorder: mgr.GetRecorder(name),
 	}
 }
 
@@ -166,9 +147,21 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 		return err
 	}
 
-	// Watch the trial status secret
-	evtHandler := &handler.EnqueueRequestsFromMapFunc{
+	// Watch the trial status secret and the enterprise trial licenses as well
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
+			//rely on naming convention for now TODO: label?
+			if obj.Meta.GetName() == string(licensing.LicenseTypeEnterpriseTrial) {
+				return []reconcile.Request{
+					{
+						NamespacedName: types.NamespacedName{
+							Namespace: obj.Meta.GetNamespace(),
+							Name:      obj.Meta.GetName(),
+						},
+					},
+				}
+			}
+
 			if obj.Meta.GetName() != licensing.TrialStatusSecretKey {
 				return nil
 			}
@@ -176,29 +169,12 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 				{
 					NamespacedName: types.NamespacedName{
 						Namespace: obj.Meta.GetNamespace(),
-						Name:      licensing.TrialStatusSecretKey,
+						Name:      string(licensing.LicenseTypeEnterpriseTrial),
 					},
 				},
 			}
 		}),
-	}
-	// TODO introduce config file and watch that. For now just bootstrap the controller with a generic event based on flag
-	configSrc := func(h handler.EventHandler, q workqueue.RateLimitingInterface, _ ...predicate.Predicate) error {
-		q.Add(reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Namespace: r.operatorNamespace,
-				Name:      licensing.TrialStatusSecretKey,
-			},
-		})
-		return nil
-
-	}
-
-	if err := c.Watch(source.Func(configSrc), evtHandler); err != nil {
-		return err
-	}
-
-	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, evtHandler); err != nil {
+	}); err != nil {
 		return err
 	}
 	return nil

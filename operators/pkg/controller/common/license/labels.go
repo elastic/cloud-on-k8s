@@ -15,6 +15,7 @@ const (
 	LicenseLabelType  = "license.k8s.elastic.co/type"
 	LicenseLabelState = "license.k8s.elastic.co/state"
 	Type              = "license"
+	LicenseFileName   = "license"
 )
 
 // LicenseType is the type of license a resource is describing.

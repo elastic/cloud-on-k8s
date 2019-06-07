@@ -129,24 +129,21 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 					"Dropping watch event due to error in handler")
 				return nil
 			}
-			licenses, err := license.ParseEnterpriseLicenses(secret.Data)
+			license, err := license.ParseEnterpriseLicense(secret.Data)
 			if err != nil {
 				log.Error(err, "ignoring invalid or unparseable license in watch handler")
 				return nil
 			}
-			var requests []reconcile.Request
-			for _, l := range licenses {
-				rs, err := listAffectedLicenses(
-					k8s.WrapClient(mgr.GetClient()), l.License.UID,
-				)
-				if err != nil {
-					// dropping the event(s) at this point
-					log.Error(err, "failed to list affected clusters in enterprise license watch")
-					continue
-				}
-				requests = append(requests, rs...)
+
+			rs, err := listAffectedLicenses(
+				k8s.WrapClient(mgr.GetClient()), license.License.UID,
+			)
+			if err != nil {
+				// dropping the event(s) at this point
+				log.Error(err, "failed to list affected clusters in enterprise license watch")
+				return nil
 			}
-			return requests
+			return rs
 		}),
 	}); err != nil {
 		return err

@@ -34,12 +34,15 @@ func TestMain(m *testing.M) {
 }
 
 func StartTrial(t *testing.T, c k8s.Client, namespace string) {
-	l := license.EnterpriseLicense{
-		License: license.LicenseSpec{
-			Type: license.LicenseTypeEnterpriseTrial,
-		},
-	}
-	_, err := license.InitTrial(c, namespace, &l)
+	require.NoError(t, license.CreateTrialLicense(c, namespace))
+	trialKey := types.NamespacedName{Namespace: namespace, Name: string(license.LicenseTypeEnterpriseTrial)}
+	var el license.EnterpriseLicense
+	test.RetryUntilSuccess(t, func() error {
+		l, err := license.TrialLicense(c, trialKey)
+		el = l
+		return err
+	})
+	_, err := license.InitTrial(c, trialKey, &el)
 	require.NoError(t, err)
 }
 
@@ -48,7 +51,6 @@ func TestReconcile(t *testing.T) {
 
 	c, stop := test.StartManager(t, Add, operator.Parameters{
 		OperatorNamespace: operatorNamespace, // trial license will be installed in that namespace
-		TrialMode:         true,
 	})
 	defer stop()
 

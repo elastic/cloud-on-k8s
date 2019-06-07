@@ -12,15 +12,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ParseEnterpriseLicenses(raw map[string][]byte) ([]EnterpriseLicense, error) {
-	var licenses []EnterpriseLicense
-	for k, v := range raw {
-		var license EnterpriseLicense
-		err := json.Unmarshal(v, &license)
-		if err != nil {
-			return nil, errors.Wrapf(err, "License %s cannot be unmarshalled", k)
-		}
-		licenses = append(licenses, license)
+func ParseEnterpriseLicense(raw map[string][]byte) (EnterpriseLicense, error) {
+	var license EnterpriseLicense
+	err := json.Unmarshal(raw[LicenseFileName], &license)
+	if err != nil {
+		return EnterpriseLicense{}, errors.Wrapf(err, "License cannot be unmarshalled")
 	}
-	return licenses, nil
+	return license, nil
 }
