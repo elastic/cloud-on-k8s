@@ -50,7 +50,7 @@ func TestNewUserSecrets(t *testing.T) {
 		},
 		{
 			subject:      elasticUsers,
-			expectedName: "my-cluster-es-roles-users",
+			expectedName: "my-cluster-es-xpack-file-realm",
 			expectedKeys: []string{ElasticRolesFile, ElasticUsersFile, ElasticUsersRolesFile},
 		},
 	}

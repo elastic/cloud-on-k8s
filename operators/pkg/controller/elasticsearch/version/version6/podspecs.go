@@ -58,7 +58,7 @@ func ExpectedPodSpecs(
 ) ([]pod.PodSpecContext, error) {
 	// the contents of the file realm volume needs to be symlinked into place
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
-		user.ElasticUsersRolesSecretName(es.Name),
+		user.XPackFileRealmSecretName(es.Name),
 		volume.XPackFileRealmVolumeName,
 		volume.XPackFileRealmVolumeMountPath,
 	)
