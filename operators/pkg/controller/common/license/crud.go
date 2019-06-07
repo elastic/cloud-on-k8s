@@ -48,15 +48,15 @@ func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	return licenses, util_errors.NewAggregate(errors)
 }
 
-func TrialLicense(c k8s.Client, nsn types.NamespacedName) (EnterpriseLicense, error) {
+func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, EnterpriseLicense, error) {
 	var secret corev1.Secret
 	err := c.Get(nsn, &secret)
 	if err != nil {
-		return EnterpriseLicense{}, err
+		return corev1.Secret{}, EnterpriseLicense{}, err
 	}
 	if len(secret.Data) == 0 {
 		// new trial license
-		return EnterpriseLicense{
+		return secret, EnterpriseLicense{
 			License: LicenseSpec{
 				Type: LicenseTypeEnterpriseTrial,
 			},
@@ -65,12 +65,12 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (EnterpriseLicense, er
 
 	license, err := ParseEnterpriseLicense(secret.Data)
 	if err != nil {
-		return EnterpriseLicense{}, err
+		return secret, EnterpriseLicense{}, err
 	}
 	if !license.IsTrial() {
-		return EnterpriseLicense{}, fmt.Errorf("%v is not a trial license", nsn)
+		return secret, EnterpriseLicense{}, fmt.Errorf("%v is not a trial license", nsn)
 	}
-	return license, nil
+	return secret, license, nil
 }
 
 // CreateTrialLicense create en empty secret with the correct meta data to start an enterprise trial
@@ -108,15 +108,10 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l Enterpris
 }
 
 // UpdateEnterpriseLicense creates an Enterprise license wrapped in a secret.
-func UpdateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l EnterpriseLicense) error {
+func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal license")
-	}
-	var secret corev1.Secret
-	err = c.Get(key, &secret)
-	if err != nil {
-		return pkgerrors.Wrap(err, "failed to fetch license secret")
 	}
 	secret.Data = map[string][]byte{
 		LicenseFileName: bytes,

@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -37,12 +38,14 @@ func StartTrial(t *testing.T, c k8s.Client, namespace string) {
 	require.NoError(t, license.CreateTrialLicense(c, namespace))
 	trialKey := types.NamespacedName{Namespace: namespace, Name: string(license.LicenseTypeEnterpriseTrial)}
 	var el license.EnterpriseLicense
+	var secret v1.Secret
 	test.RetryUntilSuccess(t, func() error {
-		l, err := license.TrialLicense(c, trialKey)
+		s, l, err := license.TrialLicense(c, trialKey)
 		el = l
+		secret = s
 		return err
 	})
-	_, err := license.InitTrial(c, trialKey, &el)
+	_, err := license.InitTrial(c, secret, &el)
 	require.NoError(t, err)
 }
 

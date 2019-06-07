@@ -10,6 +10,7 @@ import (
 	"time"
 
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -105,9 +105,14 @@ func TestInitTrial(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := InitTrial(
 				tt.args.c,
-				types.NamespacedName{
-					Namespace: "elastic-system",
-					Name:      string(LicenseTypeEnterpriseTrial),
+				corev1.Secret{
+					ObjectMeta: v1.ObjectMeta{
+						Namespace: "elastic-system",
+						Name:      string(LicenseTypeEnterpriseTrial),
+						Labels: map[string]string{
+							common.TypeLabelName: Type,
+						},
+					},
 				},
 				tt.args.l,
 			)

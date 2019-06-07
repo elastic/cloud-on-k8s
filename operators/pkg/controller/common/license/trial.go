@@ -17,7 +17,6 @@ import (
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
 )
 
@@ -26,7 +25,7 @@ const (
 	TrialPubkeyKey       = "pubkey"
 )
 
-func InitTrial(c k8s.Client, nsn types.NamespacedName, l *EnterpriseLicense) (*rsa.PublicKey, error) {
+func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
 	if l == nil {
 		return nil, errors.New("license is nil")
 	}
@@ -52,7 +51,7 @@ func InitTrial(c k8s.Client, nsn types.NamespacedName, l *EnterpriseLicense) (*r
 	}
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: nsn.Namespace,
+			Namespace: secret.Namespace,
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
 				LicenseLabelName: l.License.UID,
@@ -71,7 +70,7 @@ func InitTrial(c k8s.Client, nsn types.NamespacedName, l *EnterpriseLicense) (*r
 	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
 		UpdateEnterpriseLicense(
 			c,
-			nsn,
+			secret,
 			*l,
 		),
 		"Failed to update trial license",

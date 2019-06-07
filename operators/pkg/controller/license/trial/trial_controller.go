@@ -15,7 +15,9 @@ import (
 
 	licensing "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	license_validation "github.com/elastic/cloud-on-k8s/operators/pkg/webhook/license"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,9 +62,19 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	license, err := licensing.TrialLicense(r, request.NamespacedName)
+	secret, license, err := licensing.TrialLicense(r, request.NamespacedName)
 	if err != nil {
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial license")
+	}
+
+	violations := validation.Validate(secret)
+	if len(violations) > 0 {
+		if secret.Annotations == nil {
+			secret.Annotations = map[string]string{}
+		}
+		res := license_validation.Aggregate(violations)
+		secret.Annotations[licensing.LicenseInvalidAnnotation] = res.Response.Result.Status
+		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license) //todo label/annotate as invalid
 	}
 
 	// 1. fetch trial status secret
@@ -70,7 +82,7 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	err = r.Get(types.NamespacedName{Namespace: request.Namespace, Name: licensing.TrialStatusSecretKey}, &trialStatus)
 	if errors.IsNotFound(err) {
 		// 2. if not present create one + finalizer
-		err := r.initTrial(request.NamespacedName, license)
+		err := r.initTrial(secret, license)
 		if err != nil {
 			return reconcile.Result{}, pkgerrors.Wrap(err, "failed to init trial")
 		}
@@ -90,13 +102,13 @@ func (r *ReconcileTrials) isTrialRunning() bool {
 	return r.trialPubKey != nil
 }
 
-func (r *ReconcileTrials) initTrial(nsn types.NamespacedName, l licensing.EnterpriseLicense) error {
+func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.EnterpriseLicense) error {
 	if r.isTrialRunning() {
 		// silent NOOP
 		return nil
 	}
 
-	trialPubKey, err := licensing.InitTrial(r, nsn, &l)
+	trialPubKey, err := licensing.InitTrial(r, secret, &l)
 	if err != nil {
 		return err
 	}
