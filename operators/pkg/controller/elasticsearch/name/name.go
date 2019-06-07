@@ -29,7 +29,7 @@ const (
 	certsSecretSuffix           = "certs"
 	httpServiceSuffix           = "http"
 	elasticUserSecretSuffix     = "elastic-user"
-	esRolesUsersSecretSuffix    = "roles-users"
+	xpackFileRealmSecretSuffix  = "xpack-file-realm"
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 	licenseSecretSuffix         = "license"
@@ -105,8 +105,8 @@ func ElasticUserSecret(esName string) string {
 	return ESNamer.Suffix(esName, elasticUserSecretSuffix)
 }
 
-func EsRolesUsersSecret(esName string) string {
-	return ESNamer.Suffix(esName, esRolesUsersSecretSuffix)
+func XPackFileRealmSecret(esName string) string {
+	return ESNamer.Suffix(esName, xpackFileRealmSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {
