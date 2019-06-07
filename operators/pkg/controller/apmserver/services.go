@@ -6,7 +6,8 @@ package apmserver
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -27,5 +28,5 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 		},
 	}
 
-	return common.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }

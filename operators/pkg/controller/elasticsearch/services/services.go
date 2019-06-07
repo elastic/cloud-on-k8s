@@ -7,15 +7,16 @@ package services
 import (
 	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -55,7 +56,7 @@ func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 		},
 	}
 
-	return common.SetServiceDefaults(&svc, labels, labels, ports)
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.
