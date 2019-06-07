@@ -8,9 +8,9 @@ package license
 
 import (
 	"io/ioutil"
-	"reflect"
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,53 +26,35 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []EnterpriseLicense
+		want    EnterpriseLicense
 		wantErr bool
 	}{
 		{
 			name: "single license",
 			args: args{
 				raw: map[string][]byte{
-					"_": good,
+					LicenseFileName: good,
 				},
 			},
-			want: []EnterpriseLicense{
-				expectedLicenseSpec,
-			},
-			wantErr: false,
-		},
-		{
-			name: "multiple licenses",
-			args: args{
-				raw: map[string][]byte{
-					"1": good,
-					"2": good,
-				},
-			},
-			want: []EnterpriseLicense{
-				expectedLicenseSpec,
-				expectedLicenseSpec,
-			},
+			want:    expectedLicenseSpec,
 			wantErr: false,
 		},
 		{
 			name: "malformed license",
 			args: args{
 				raw: map[string][]byte{
-					"_": bad,
+					LicenseFileName: bad,
 				},
 			},
 			wantErr: true,
 		},
 		{
-			name: "mixed good/bad: all or nothing",
+			name: "wrong key",
 			args: args{
 				raw: map[string][]byte{
-					"1": good,
-					"2": bad,
+					"_": good,
 				},
 			},
-			want:    nil,
 			wantErr: true,
 		},
 	}
@@ -83,8 +65,8 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 				t.Errorf("ParseEnterpriseLicense() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ParseEnterpriseLicense() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

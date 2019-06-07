@@ -106,7 +106,7 @@ func enterpriseLicense(t *testing.T, licenseType v1alpha1.LicenseType, maxNodes 
 	require.NoError(t, err)
 	return &corev1.Secret{
 		Data: map[string][]byte{
-			"_": bytes,
+			commonlicense.LicenseFileName: bytes,
 		},
 	}
 }

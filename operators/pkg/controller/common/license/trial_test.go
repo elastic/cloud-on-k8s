@@ -14,7 +14,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -83,7 +86,12 @@ func TestInitTrial(t *testing.T) {
 		{
 			name: "successful trial start",
 			args: args{
-				c: k8s.WrapClient(fake.NewFakeClient()),
+				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+					ObjectMeta: v1.ObjectMeta{
+						Namespace: "elastic-system",
+						Name:      string(LicenseTypeEnterpriseTrial),
+					},
+				})),
 				l: &licenseFixture,
 			},
 			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
@@ -97,7 +105,10 @@ func TestInitTrial(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := InitTrial(
 				tt.args.c,
-				"elastic-system",
+				types.NamespacedName{
+					Namespace: "elastic-system",
+					Name:      string(LicenseTypeEnterpriseTrial),
+				},
 				tt.args.l,
 			)
 			if (err != nil) != tt.wantErr {
