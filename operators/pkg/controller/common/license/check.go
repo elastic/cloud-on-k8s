@@ -65,6 +65,7 @@ func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
 	return false, nil
 }
 
+// Valid returns true if the given Enterprise license is valid or an error if any.
 func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {

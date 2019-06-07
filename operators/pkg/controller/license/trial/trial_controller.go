@@ -73,8 +73,8 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 			secret.Annotations = map[string]string{}
 		}
 		res := license_validation.Aggregate(violations)
-		secret.Annotations[licensing.LicenseInvalidAnnotation] = res.Response.Result.Status
-		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license) //todo label/annotate as invalid
+		secret.Annotations[licensing.LicenseInvalidAnnotation] = string(res.Response.Result.Reason)
+		return reconcile.Result{}, licensing.UpdateEnterpriseLicense(r, secret, license)
 	}
 
 	// 1. fetch trial status secret
@@ -115,17 +115,6 @@ func (r *ReconcileTrials) initTrial(secret corev1.Secret, l licensing.Enterprise
 	// retain pub key in memory for later iterations
 	r.trialPubKey = trialPubKey
 	return nil
-}
-
-func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.Verifier, error) {
-	if r.isTrialRunning() {
-		// prefer in memory version of the public key
-		return &licensing.Verifier{
-			PublicKey: r.trialPubKey,
-		}, nil
-	}
-	// after operator restart fall back to persisted trial status
-	return licensing.NewVerifier(trialStatus.Data[licensing.TrialPubkeyKey])
 }
 
 func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {

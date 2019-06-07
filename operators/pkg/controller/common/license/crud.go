@@ -48,6 +48,7 @@ func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	return licenses, util_errors.NewAggregate(errors)
 }
 
+// TrialLicense returns the trial license, its containing secret or an error
 func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, EnterpriseLicense, error) {
 	var secret corev1.Secret
 	err := c.Get(nsn, &secret)
@@ -73,7 +74,7 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 	return secret, license, nil
 }
 
-// CreateTrialLicense create en empty secret with the correct meta data to start an enterprise trial
+// CreateTrialLicense create en empty secret w`ith the correct meta data to start an enterprise trial
 func CreateTrialLicense(c k8s.Client, namespace string) error {
 	return c.Create(&corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
@@ -107,7 +108,7 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l Enterpris
 	})
 }
 
-// UpdateEnterpriseLicense creates an Enterprise license wrapped in a secret.
+// UpdateEnterpriseLicense updates an Enterprise license wrapped in a secret.
 func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {

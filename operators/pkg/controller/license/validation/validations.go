@@ -24,7 +24,7 @@ func eulaAccepted(ctx Context) validation.Result {
 	}
 
 	if ctx.Proposed.Annotations[license.EULAAnnotation] != license.EULAAcceptedValue {
-		return validation.Result{Allowed: false, Reason: "Please set the field eula.accepted to true to accept the EULA"}
+		return validation.Result{Allowed: false, Reason: "Please set the annotation elastic.co/eula to accepted to accept the EULA"}
 	}
 	return validation.OK
 }
