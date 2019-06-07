@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -709,6 +710,106 @@ func TestPodTemplateBuilder_WithTerminationGracePeriod(t *testing.T) {
 	}
 }
 
+func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
+	defaultVolumeMount := corev1.VolumeMount{
+		Name:      "default-volume-mount",
+		MountPath: "/default",
+	}
+	defaultVolumeMounts := []corev1.VolumeMount{defaultVolumeMount}
+
+	tests := []struct {
+		name        string
+		PodTemplate corev1.PodTemplateSpec
+		want        []corev1.Container
+	}{
+		{
+			name:        "no containers to default on",
+			PodTemplate: corev1.PodTemplateSpec{},
+			want:        nil,
+		},
+		{
+			name: "default but dont override image and volume mounts",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name:  "user-init-container1",
+							Image: "user-image",
+						},
+						{
+							Name: "user-init-container2",
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "foo",
+								MountPath: "/foo",
+							}},
+						},
+						{
+							Name: "user-init-container3",
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      "bar",
+								MountPath: defaultVolumeMount.MountPath,
+							}},
+						},
+						{
+							Name: "user-init-container4",
+							VolumeMounts: []corev1.VolumeMount{{
+								Name:      defaultVolumeMount.Name,
+								MountPath: "/baz",
+							}},
+						},
+					},
+				},
+			},
+
+			want: []corev1.Container{
+				{
+					Name:         "user-init-container1",
+					Image:        "user-image",
+					VolumeMounts: defaultVolumeMounts,
+				},
+				{
+					Name:  "user-init-container2",
+					Image: "default-image",
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "foo",
+						MountPath: "/foo",
+					}, defaultVolumeMount,
+					},
+				},
+				{
+					Name:  "user-init-container3",
+					Image: "default-image",
+					// uses the same mount path as a default mount, so default mount should not be used
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      "bar",
+						MountPath: defaultVolumeMount.MountPath,
+					}},
+				},
+				{
+					Name:  "user-init-container4",
+					Image: "default-image",
+					// uses the same name as a default mount, so default mount should not be used
+					VolumeMounts: []corev1.VolumeMount{{
+						Name:      defaultVolumeMount.Name,
+						MountPath: "/baz",
+					}},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, "main").
+				WithDockerImage("", "default-image").
+				WithVolumeMounts(defaultVolumeMounts...)
+
+			got := b.WithInitContainerDefaults().PodTemplate.Spec.InitContainers
+
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -767,13 +868,48 @@ func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "prepend provided init containers",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					InitContainers: []corev1.Container{
+						{
+							Name: "user-init-container1",
+						},
+						{
+							Name: "user-init-container2",
+						},
+					},
+				},
+			},
+			initContainers: []corev1.Container{
+				{
+					Name:  "init-container1",
+					Image: "init-image",
+				},
+			},
+			want: []corev1.Container{
+				{
+					Name:  "init-container1",
+					Image: "init-image",
+				},
+				{
+					Name: "user-init-container1",
+				},
+				{
+					Name: "user-init-container2",
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewPodTemplateBuilder(tt.PodTemplate, "")
-			if got := b.WithInitContainers(tt.initContainers...).PodTemplate.Spec.InitContainers; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PodTemplateBuilder.WithInitContainers() = %v, want %v", got, tt.want)
-			}
+			b := NewPodTemplateBuilder(tt.PodTemplate, "main")
+
+			got := b.WithInitContainers(tt.initContainers...).PodTemplate.Spec.InitContainers
+
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

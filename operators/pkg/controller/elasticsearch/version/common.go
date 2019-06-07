@@ -164,6 +164,7 @@ func podSpec(
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 			)...).
+		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
 
 	// generate the configuration

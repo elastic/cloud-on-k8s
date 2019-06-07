@@ -354,10 +354,15 @@ func Test_podSpec(t *testing.T) {
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{
-									Name: "user-init-container-1",
+									Name:  "user-init-container-1",
+									Image: "my-custom-image",
 								},
 								{
 									Name: "user-init-container-2",
+									VolumeMounts: []corev1.VolumeMount{{
+										Name:      "foo",
+										MountPath: "/foo",
+									}},
 								},
 							},
 						},
@@ -367,16 +372,26 @@ func Test_podSpec(t *testing.T) {
 			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "user-init-container-1",
-					},
-					{
-						Name: "user-init-container-2",
-					},
-					{
 						Name: "init-container1",
 					},
 					{
 						Name: "init-container2",
+					},
+					{
+						Name:         "user-init-container-1",
+						Image:        "my-custom-image",
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
+					},
+					{
+						Name:  "user-init-container-2",
+						Image: podSpec.Containers[0].Image,
+						VolumeMounts: append(
+							[]corev1.VolumeMount{{
+								Name:      "foo",
+								MountPath: "/foo",
+							}},
+							podSpec.Containers[0].VolumeMounts...,
+						),
 					},
 				}, podSpec.InitContainers)
 			},
