@@ -70,12 +70,12 @@ func TestReconcile(t *testing.T) {
 	})
 
 	// Delete the trial license
-	require.NoError(t, deleteTrial(c, trialLicense.Data.UID))
+	require.NoError(t, deleteTrial(c, trialLicense.License.UID))
 	// recreate it with modified validity + 1 year
-	trialLicense.Data.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
+	trialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
 	require.NoError(t, license.CreateEnterpriseLicense(c, types.NamespacedName{
 		Namespace: operatorNs,
-		Name:      trialLicense.Data.UID,
+		Name:      trialLicense.License.UID,
 	}, trialLicense))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
@@ -96,7 +96,7 @@ func validateTrialStatus(t *testing.T, checker license.Checker, expected bool) {
 	})
 }
 
-func validateTrialDuration(t *testing.T, license license.SourceEnterpriseLicense, now time.Time, precision time.Duration) {
+func validateTrialDuration(t *testing.T, license license.EnterpriseLicense, now time.Time, precision time.Duration) {
 	startDelta := license.StartTime().Sub(now)
 	assert.True(t, startDelta <= precision, "start date should be within %v, but was %v", precision, startDelta)
 	endDelta := license.ExpiryTime().Sub(now.Add(30 * 24 * time.Hour))

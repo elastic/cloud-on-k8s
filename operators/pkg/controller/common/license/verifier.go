@@ -28,7 +28,7 @@ type Verifier struct {
 }
 
 // Valid checks the validity of the given Enterprise license.
-func (v *Verifier) Valid(l SourceEnterpriseLicense, now time.Time) v1alpha1.LicenseStatus {
+func (v *Verifier) Valid(l EnterpriseLicense, now time.Time) v1alpha1.LicenseStatus {
 	if !l.IsValid(now) {
 		return v1alpha1.LicenseStatusExpired
 	}
@@ -40,9 +40,9 @@ func (v *Verifier) Valid(l SourceEnterpriseLicense, now time.Time) v1alpha1.Lice
 }
 
 // ValidSignature checks signature of the given Enterprise license. Returns nil if valid.
-func (v *Verifier) ValidSignature(l SourceEnterpriseLicense) error {
-	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(l.Data.Signature)))
-	_, err := base64.StdEncoding.Decode(allParts, []byte(l.Data.Signature))
+func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
+	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(l.License.Signature)))
+	_, err := base64.StdEncoding.Decode(allParts, []byte(l.License.Signature))
 	if err != nil {
 		return errors2.Wrap(err, "failed to base64 decode signature")
 	}
@@ -132,7 +132,7 @@ func NewSigner(privKey *rsa.PrivateKey) *signer {
 }
 
 // Sign signs the given Enterprise license.
-func (s *signer) Sign(l SourceEnterpriseLicense) ([]byte, error) {
+func (s *signer) Sign(l EnterpriseLicense) ([]byte, error) {
 	spec := toVerifiableSpec(l)
 	toSign, err := json.Marshal(spec)
 	if err != nil {
@@ -204,16 +204,16 @@ type licenseSpec struct {
 	Issuer             string `json:"issuer"`
 }
 
-func toVerifiableSpec(l SourceEnterpriseLicense) licenseSpec {
+func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
 	return licenseSpec{
-		Uid:                l.Data.UID,
-		LicenseType:        string(l.Data.Type),
-		IssueDateInMillis:  l.Data.IssueDateInMillis,
-		StartDateInMillis:  l.Data.StartDateInMillis,
-		ExpiryDateInMillis: l.Data.ExpiryDateInMillis,
-		MaxInstances:       l.Data.MaxInstances,
-		IssuedTo:           l.Data.IssuedTo,
-		Issuer:             l.Data.Issuer,
+		Uid:                l.License.UID,
+		LicenseType:        string(l.License.Type),
+		IssueDateInMillis:  l.License.IssueDateInMillis,
+		StartDateInMillis:  l.License.StartDateInMillis,
+		ExpiryDateInMillis: l.License.ExpiryDateInMillis,
+		MaxInstances:       l.License.MaxInstances,
+		IssuedTo:           l.License.IssuedTo,
+		Issuer:             l.License.Issuer,
 	}
 }
 

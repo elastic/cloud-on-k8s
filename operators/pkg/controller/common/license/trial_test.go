@@ -30,19 +30,19 @@ func (failingClient) Create(o runtime.Object) error {
 func TestInitTrial(t *testing.T) {
 	require.NoError(t, estype.AddToScheme(scheme.Scheme))
 
-	licenseFixture := SourceEnterpriseLicense{
-		Data: SourceLicenseData{
-			Type: string(estype.LicenseTypeEnterpriseTrial),
+	licenseFixture := EnterpriseLicense{
+		License: LicenseSpec{
+			Type: LicenseTypeEnterpriseTrial,
 		},
 	}
 	type args struct {
 		c k8s.Client
-		l *SourceEnterpriseLicense
+		l *EnterpriseLicense
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    func(*SourceEnterpriseLicense, *rsa.PublicKey)
+		want    func(*EnterpriseLicense, *rsa.PublicKey)
 		wantErr bool
 	}{
 		{
@@ -57,13 +57,13 @@ func TestInitTrial(t *testing.T) {
 			name: "failing client",
 			args: args{
 				c: failingClient{},
-				l: &SourceEnterpriseLicense{
-					Data: SourceLicenseData{
-						Type: string(estype.LicenseTypeEnterpriseTrial),
+				l: &EnterpriseLicense{
+					License: LicenseSpec{
+						Type: LicenseTypeEnterpriseTrial,
 					},
 				},
 			},
-			want: func(_ *SourceEnterpriseLicense, key *rsa.PublicKey) {
+			want: func(_ *EnterpriseLicense, key *rsa.PublicKey) {
 				require.Nil(t, key)
 			},
 			wantErr: true,
@@ -72,10 +72,10 @@ func TestInitTrial(t *testing.T) {
 			name: "not a trial license",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient()),
-				l: &SourceEnterpriseLicense{},
+				l: &EnterpriseLicense{},
 			},
-			want: func(l *SourceEnterpriseLicense, k *rsa.PublicKey) {
-				require.Equal(t, *l, SourceEnterpriseLicense{})
+			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
+				require.Equal(t, *l, EnterpriseLicense{})
 				require.Nil(t, k)
 			},
 			wantErr: true,
@@ -86,7 +86,7 @@ func TestInitTrial(t *testing.T) {
 				c: k8s.WrapClient(fake.NewFakeClient()),
 				l: &licenseFixture,
 			},
-			want: func(l *SourceEnterpriseLicense, k *rsa.PublicKey) {
+			want: func(l *EnterpriseLicense, k *rsa.PublicKey) {
 				require.NotNil(t, k)
 				require.NoError(t, l.IsMissingFields())
 			},
@@ -113,20 +113,20 @@ func TestInitTrial(t *testing.T) {
 
 func TestPopulateTrialLicense(t *testing.T) {
 	type args struct {
-		l *SourceEnterpriseLicense
+		l *EnterpriseLicense
 	}
 	tests := []struct {
 		name       string
 		args       args
-		assertions func(SourceEnterpriseLicense)
+		assertions func(EnterpriseLicense)
 		wantErr    bool
 	}{
 		{
 			name: "non-trial FAIL",
 			args: args{
-				l: &SourceEnterpriseLicense{
-					Data: SourceLicenseData{
-						Type: string(estype.LicenseTypeEnterprise),
+				l: &EnterpriseLicense{
+					License: LicenseSpec{
+						Type: LicenseTypeEnterprise,
 					},
 				},
 			},
@@ -135,13 +135,13 @@ func TestPopulateTrialLicense(t *testing.T) {
 		{
 			name: "trial license OK",
 			args: args{
-				l: &SourceEnterpriseLicense{
-					Data: SourceLicenseData{
-						Type: string(estype.LicenseTypeEnterpriseTrial),
+				l: &EnterpriseLicense{
+					License: LicenseSpec{
+						Type: LicenseTypeEnterpriseTrial,
 					},
 				},
 			},
-			assertions: func(l SourceEnterpriseLicense) {
+			assertions: func(l EnterpriseLicense) {
 				require.NoError(t, l.IsMissingFields())
 			},
 			wantErr: false,
@@ -163,20 +163,20 @@ func TestStartTrial(t *testing.T) {
 	dateFixture := time.Date(2019, 01, 22, 0, 0, 0, 0, time.UTC)
 	type args struct {
 		start time.Time
-		l     *SourceEnterpriseLicense
+		l     *EnterpriseLicense
 	}
 	tests := []struct {
 		name       string
 		args       args
-		assertions func(SourceEnterpriseLicense)
+		assertions func(EnterpriseLicense)
 	}{
 		{
 			name: "trial is 30 days",
 			args: args{
 				start: dateFixture,
-				l:     &SourceEnterpriseLicense{},
+				l:     &EnterpriseLicense{},
 			},
-			assertions: func(license SourceEnterpriseLicense) {
+			assertions: func(license EnterpriseLicense) {
 				assert.Equal(t, license.ExpiryTime().UTC(), time.Date(2019, 02, 21, 0, 0, 0, 0, time.UTC))
 				assert.Equal(t, license.StartTime().UTC(), dateFixture)
 			},

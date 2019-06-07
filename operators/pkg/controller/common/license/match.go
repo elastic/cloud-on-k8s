@@ -22,16 +22,16 @@ type licenseWithTimeLeft struct {
 // BestMatch tries to find the best matching license given a list of enterprise licenses based on the
 // desired license type and the remaining validity period of the license.
 func BestMatch(
-	licenses []SourceEnterpriseLicense,
-	filter func(SourceEnterpriseLicense) (bool, error),
+	licenses []EnterpriseLicense,
+	filter func(EnterpriseLicense) (bool, error),
 ) (client.License, string, bool, error) {
 	return bestMatchAt(time.Now(), licenses, filter)
 }
 
 func bestMatchAt(
 	now time.Time,
-	licenses []SourceEnterpriseLicense,
-	filter func(SourceEnterpriseLicense) (bool, error),
+	licenses []EnterpriseLicense,
+	filter func(EnterpriseLicense) (bool, error),
 ) (client.License, string, bool, error) {
 	var license client.License
 	var parentMeta string
@@ -56,7 +56,7 @@ func bestMatchAt(
 	return best.license, best.parentUID, true, nil
 }
 
-func filterValid(now time.Time, licenses []SourceEnterpriseLicense, filter func(SourceEnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
+func filterValid(now time.Time, licenses []EnterpriseLicense, filter func(EnterpriseLicense) (bool, error)) []licenseWithTimeLeft {
 	filtered := make([]licenseWithTimeLeft, 0)
 	for _, el := range licenses {
 		if el.IsValid(now) {
@@ -68,11 +68,11 @@ func filterValid(now time.Time, licenses []SourceEnterpriseLicense, filter func(
 			if !ok {
 				continue
 			}
-			for _, l := range el.Data.ClusterLicenses {
+			for _, l := range el.License.ClusterLicenses {
 				if l.License.IsValid(now) {
 					filtered = append(filtered, licenseWithTimeLeft{
 						license:   l.License,
-						parentUID: el.Data.UID,
+						parentUID: el.License.UID,
 						remaining: l.License.ExpiryTime().Sub(now),
 					})
 				}

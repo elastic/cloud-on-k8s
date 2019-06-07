@@ -118,7 +118,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
 			licenseType := object.Meta.GetLabels()[license.LicenseLabelType]
-			if licenseType != string(v1alpha1.LicenseTypeEnterprise) {
+			if licenseType != string(license.LicenseTypeEnterprise) {
 				// some other secret not containing an enterprise license
 				return nil
 			}
@@ -137,7 +137,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			var requests []reconcile.Request
 			for _, l := range licenses {
 				rs, err := listAffectedLicenses(
-					k8s.WrapClient(mgr.GetClient()), l.Data.UID,
+					k8s.WrapClient(mgr.GetClient()), l.License.UID,
 				)
 				if err != nil {
 					// dropping the event(s) at this point

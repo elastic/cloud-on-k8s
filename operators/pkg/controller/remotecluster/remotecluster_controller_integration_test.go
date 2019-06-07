@@ -34,9 +34,9 @@ func TestMain(m *testing.M) {
 }
 
 func StartTrial(t *testing.T, c k8s.Client, namespace string) {
-	l := license.SourceEnterpriseLicense{
-		Data: license.SourceLicenseData{
-			Type: string(v1alpha1.LicenseTypeEnterpriseTrial),
+	l := license.EnterpriseLicense{
+		License: license.LicenseSpec{
+			Type: license.LicenseTypeEnterpriseTrial,
 		},
 	}
 	_, err := license.InitTrial(c, namespace, &l)

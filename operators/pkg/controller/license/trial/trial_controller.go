@@ -13,11 +13,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	licensing "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	commonvalidation "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -74,11 +71,11 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, pkgerrors.Wrap(err, "while fetching trial licenses")
 	}
 
-	var license licensing.SourceEnterpriseLicense
+	var license licensing.EnterpriseLicense
 	if len(licenses) == 0 {
-		license = licensing.SourceEnterpriseLicense{
-			Data: licensing.SourceLicenseData{
-				Type: string(v1alpha1.LicenseTypeEnterpriseTrial),
+		license = licensing.EnterpriseLicense{
+			License: licensing.LicenseSpec{
+				Type: licensing.LicenseTypeEnterpriseTrial,
 			},
 		}
 	} else {
@@ -110,7 +107,7 @@ func (r *ReconcileTrials) isTrialRunning() bool {
 	return r.trialPubKey != nil
 }
 
-func (r *ReconcileTrials) initTrial(namespace string, l licensing.SourceEnterpriseLicense) error {
+func (r *ReconcileTrials) initTrial(namespace string, l licensing.EnterpriseLicense) error {
 	if r.isTrialRunning() {
 		// silent NOOP
 		return nil
@@ -136,16 +133,6 @@ func (r *ReconcileTrials) trialVerifier(trialStatus corev1.Secret) (*licensing.V
 	return licensing.NewVerifier(trialStatus.Data[licensing.TrialPubkeyKey])
 }
 
-func (r *ReconcileTrials) updateStatus(l v1alpha1.EnterpriseLicense, status v1alpha1.LicenseStatus) error {
-	if l.Status == status {
-		// nothing to do
-		return nil
-	}
-	log.Info("trial status update", "status", status)
-	l.Status = status
-	return r.Status().Update(&l)
-}
-
 func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error {
 	if !r.isTrialRunning() {
 		return nil
@@ -160,12 +147,6 @@ func (r *ReconcileTrials) reconcileTrialStatus(trialStatus corev1.Secret) error 
 	trialStatus.Data[licensing.TrialPubkeyKey] = pubkeyBytes
 	return r.Update(&trialStatus)
 
-}
-
-func (r *ReconcileTrials) record(l v1alpha1.EnterpriseLicense, results []commonvalidation.Result) {
-	for _, v := range results {
-		r.recorder.Event(&l, corev1.EventTypeWarning, events.EventReasonValidation, v.Reason)
-	}
 }
 
 func newReconciler(mgr manager.Manager, p operator.Parameters) *ReconcileTrials {

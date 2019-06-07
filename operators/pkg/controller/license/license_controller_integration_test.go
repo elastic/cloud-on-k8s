@@ -51,12 +51,12 @@ func TestReconcile(t *testing.T) {
 	startDate := now.Add(-thirtyDays)
 	expiryDate := now.Add(thirtyDays)
 
-	enterpriseLicense := license.SourceEnterpriseLicense{
-		Data: license.SourceLicenseData{
+	enterpriseLicense := license.EnterpriseLicense{
+		License: license.LicenseSpec{
 			UID:                "test",
 			ExpiryDateInMillis: chrono.ToMillis(expiryDate),
 			Type:               "enterprise",
-			ClusterLicenses: []license.SourceClusterLicense{
+			ClusterLicenses: []license.ElasticsearchLicense{
 				{
 					License: esclient.License{
 						ExpiryDateInMillis: chrono.ToMillis(expiryDate),

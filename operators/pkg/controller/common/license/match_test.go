@@ -37,13 +37,13 @@ func license(l client.License, t v1alpha1.LicenseType) client.License {
 	return l
 }
 
-func noopFilter(_ SourceEnterpriseLicense) (bool, error) {
+func noopFilter(_ EnterpriseLicense) (bool, error) {
 	return true, nil
 }
 
 func Test_bestMatchAt(t *testing.T) {
 	type args struct {
-		licenses []SourceEnterpriseLicense
+		licenses []EnterpriseLicense
 	}
 	tests := []struct {
 		name      string
@@ -60,8 +60,8 @@ func Test_bestMatchAt(t *testing.T) {
 		{
 			name: "error: only expired enterprise license",
 			args: args{
-				licenses: []SourceEnterpriseLicense{{
-					Data: SourceLicenseData{
+				licenses: []EnterpriseLicense{{
+					License: LicenseSpec{
 						ExpiryDateInMillis: chrono.MustMillis("2017-12-31"),
 						StartDateInMillis:  chrono.MustMillis("2017-01-01"),
 						Type:               "enterprise",
@@ -74,12 +74,12 @@ func Test_bestMatchAt(t *testing.T) {
 		{
 			name: "error: only expired nested licenses",
 			args: args{
-				licenses: []SourceEnterpriseLicense{
+				licenses: []EnterpriseLicense{
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2019-12-31"),
 							StartDateInMillis:  chrono.MustMillis("2018-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{
 									License: client.License{
 										ExpiryDateInMillis: chrono.MustMillis("2018-12-31"),
@@ -98,12 +98,12 @@ func Test_bestMatchAt(t *testing.T) {
 		{
 			name: "success: longest valid platinum",
 			args: args{
-				licenses: []SourceEnterpriseLicense{
+				licenses: []EnterpriseLicense{
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(oneMonth, platinum)},
 								{License: license(twoMonth, platinum)},
 								{License: license(twelveMonth, platinum)},
@@ -119,22 +119,22 @@ func Test_bestMatchAt(t *testing.T) {
 		{
 			name: "success: longest valid from multiple enterprise licenses",
 			args: args{
-				licenses: []SourceEnterpriseLicense{
+				licenses: []EnterpriseLicense{
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2019-03-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(oneMonth, platinum)},
 								{License: license(twoMonth, platinum)},
 							},
 						},
 					},
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(twelveMonth, platinum)},
 							},
 						},
@@ -148,22 +148,22 @@ func Test_bestMatchAt(t *testing.T) {
 		{
 			name: "success: best license",
 			args: args{
-				licenses: []SourceEnterpriseLicense{
+				licenses: []EnterpriseLicense{
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2019-03-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(oneMonth, gold)},
 								{License: license(twoMonth, platinum)},
 							},
 						},
 					},
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-31"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{License: license(twoMonth, platinum)},
 								{License: license(twelveMonth, gold)},
 							},
@@ -196,7 +196,7 @@ func Test_bestMatchAt(t *testing.T) {
 
 func Test_filterValidForType(t *testing.T) {
 	type args struct {
-		licenses []SourceEnterpriseLicense
+		licenses []EnterpriseLicense
 	}
 	tests := []struct {
 		name string
@@ -211,12 +211,12 @@ func Test_filterValidForType(t *testing.T) {
 		{
 			name: "single match",
 			args: args{
-				licenses: []SourceEnterpriseLicense{
+				licenses: []EnterpriseLicense{
 					{
-						Data: SourceLicenseData{
+						License: LicenseSpec{
 							ExpiryDateInMillis: chrono.MustMillis("2020-01-01"),
 							StartDateInMillis:  chrono.MustMillis("2019-01-01"),
-							ClusterLicenses: []SourceClusterLicense{
+							ClusterLicenses: []ElasticsearchLicense{
 								{
 									License: client.License{
 										Type:               string(v1alpha1.LicenseTypePlatinum),

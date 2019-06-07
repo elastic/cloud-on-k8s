@@ -84,8 +84,8 @@ func TestLicense_IsValidAt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			l := SourceEnterpriseLicense{
-				Data: SourceLicenseData{
+			l := EnterpriseLicense{
+				License: LicenseSpec{
 					ExpiryDateInMillis: tt.fields.expiryMillis,
 					StartDateInMillis:  tt.fields.startMillis,
 				},
@@ -97,8 +97,8 @@ func TestLicense_IsValidAt(t *testing.T) {
 	}
 }
 
-var expectedLicenseSpec = SourceEnterpriseLicense{
-	Data: SourceLicenseData{
+var expectedLicenseSpec = EnterpriseLicense{
+	License: LicenseSpec{
 		UID:                "840F0DB6-1906-452E-98C7-6F94E6012CD7",
 		IssueDateInMillis:  1548115200000,
 		ExpiryDateInMillis: 1561247999999,
@@ -108,7 +108,7 @@ var expectedLicenseSpec = SourceEnterpriseLicense{
 		Type:               "enterprise",
 		MaxInstances:       40,
 		Signature:          "test signature",
-		ClusterLicenses: []SourceClusterLicense{
+		ClusterLicenses: []ElasticsearchLicense{
 			{
 				License: client.License{
 					UID:                "73117B2A-FEEA-4FEC-B8F6-49D764E9F1DA",
@@ -148,7 +148,7 @@ func Test_unmarshalModel(t *testing.T) {
 		name      string
 		args      args
 		wantErr   bool
-		assertion func(el SourceEnterpriseLicense)
+		assertion func(el EnterpriseLicense)
 	}{
 		{
 			name: "invalid input: FAIL",
@@ -163,7 +163,7 @@ func Test_unmarshalModel(t *testing.T) {
 				licenseFile: "testdata/test-license.json",
 			},
 			wantErr: false,
-			assertion: func(el SourceEnterpriseLicense) {
+			assertion: func(el EnterpriseLicense) {
 				if diff := deep.Equal(el, expectedLicenseSpec); diff != nil {
 					t.Error(diff)
 				}
@@ -173,7 +173,7 @@ func Test_unmarshalModel(t *testing.T) {
 	for _, tt := range tests {
 
 		t.Run(tt.name, func(t *testing.T) {
-			var license SourceEnterpriseLicense
+			var license EnterpriseLicense
 			bytes, err := ioutil.ReadFile(tt.args.licenseFile)
 			require.NoError(t, err)
 

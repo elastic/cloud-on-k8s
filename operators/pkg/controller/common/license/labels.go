@@ -21,8 +21,8 @@ const (
 type LicenseType string
 
 const (
-	LicenseTypeEnterprise LicenseType = "enterprise"
-	LicenseTypeCluster    LicenseType = "cluster"
+	LicenseLabelEnterprise    LicenseType = "enterprise"
+	LicenseLabelElasticsearch LicenseType = "elasticsearch"
 )
 
 func LabelsForType(licenseType LicenseType) map[string]string {

@@ -85,11 +85,11 @@ func enterpriseLicense(t *testing.T, licenseType v1alpha1.LicenseType, maxNodes 
 	if expired {
 		expiry = time.Now().Add(-24 * time.Hour)
 	}
-	license := commonlicense.SourceEnterpriseLicense{
-		Data: commonlicense.SourceLicenseData{
+	license := commonlicense.EnterpriseLicense{
+		License: commonlicense.LicenseSpec{
 			ExpiryDateInMillis: expiry.Unix() * 1000,
 			StartDateInMillis:  time.Now().Add(-1*time.Minute).Unix() * 1000,
-			ClusterLicenses: []commonlicense.SourceClusterLicense{
+			ClusterLicenses: []commonlicense.ElasticsearchLicense{
 				{
 					License: client.License{
 						ExpiryDateInMillis: expiry.Unix() * 1000,

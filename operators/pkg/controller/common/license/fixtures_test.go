@@ -16,8 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var licenseFixture = SourceEnterpriseLicense{
-	Data: SourceLicenseData{
+var licenseFixture = EnterpriseLicense{
+	License: LicenseSpec{
 		UID:                "1A3E10B3-78AD-459B-86B9-230A53B3F282",
 		IssueDateInMillis:  1548115200000,
 		ExpiryDateInMillis: 1561247999999,
@@ -30,12 +30,12 @@ var licenseFixture = SourceEnterpriseLicense{
 	},
 }
 
-func withSignature(l SourceEnterpriseLicense, sig []byte) SourceEnterpriseLicense {
-	l.Data.Signature = string(sig)
+func withSignature(l EnterpriseLicense, sig []byte) EnterpriseLicense {
+	l.License.Signature = string(sig)
 	return l
 }
 
-func asRuntimeObjects(l SourceEnterpriseLicense, sig []byte) []runtime.Object {
+func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 	bytes, err := json.Marshal(withSignature(l, sig))
 	if err != nil {
 		panic(err)

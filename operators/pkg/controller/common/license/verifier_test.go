@@ -26,8 +26,8 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		args        SourceEnterpriseLicense
-		verifyInput func(SourceEnterpriseLicense) SourceEnterpriseLicense
+		args        EnterpriseLicense
+		verifyInput func(EnterpriseLicense) EnterpriseLicense
 		wantErr     bool
 	}{
 		{
@@ -38,8 +38,8 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 		{
 			name: "tampered license",
 			args: licenseFixture,
-			verifyInput: func(l SourceEnterpriseLicense) SourceEnterpriseLicense {
-				l.Data.MaxInstances = 1
+			verifyInput: func(l EnterpriseLicense) EnterpriseLicense {
+				l.License.MaxInstances = 1
 				return l
 			},
 			wantErr: true,
@@ -84,7 +84,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 			name: "Detects tampered license",
 			want: func(v *Verifier) {
 				l := licenseFixture
-				l.Data.Issuer = "me"
+				l.License.Issuer = "me"
 				require.Error(t, v.ValidSignature(l))
 			},
 		},
@@ -92,7 +92,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 			name: "Detects empty signature",
 			want: func(v *Verifier) {
 				l := licenseFixture
-				l.Data.Signature = ""
+				l.License.Signature = ""
 				require.Error(t, v.ValidSignature(l))
 			},
 		},
@@ -143,7 +143,7 @@ func TestVerifier_Valid(t *testing.T) {
 		PublicKey *rsa.PublicKey
 	}
 	type args struct {
-		l   SourceEnterpriseLicense
+		l   EnterpriseLicense
 		now time.Time
 	}
 	tests := []struct {

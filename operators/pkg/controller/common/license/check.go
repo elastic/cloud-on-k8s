@@ -16,7 +16,7 @@ import (
 
 type Checker interface {
 	EnterpriseFeaturesEnabled() (bool, error)
-	Valid(l SourceEnterpriseLicense) (bool, error)
+	Valid(l EnterpriseLicense) (bool, error)
 }
 
 // Checker contains parameters for license checks.
@@ -35,7 +35,7 @@ func NewLicenseChecker(client k8s.Client, operatorNamespace string) Checker {
 	}
 }
 
-func (lc *checker) publicKeyFor(l SourceEnterpriseLicense) ([]byte, error) {
+func (lc *checker) publicKeyFor(l EnterpriseLicense) ([]byte, error) {
 	if !l.IsTrial() {
 		return lc.publicKey, nil
 	}
@@ -65,7 +65,7 @@ func (lc *checker) EnterpriseFeaturesEnabled() (bool, error) {
 	return false, nil
 }
 
-func (lc *checker) Valid(l SourceEnterpriseLicense) (bool, error) {
+func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	pk, err := lc.publicKeyFor(l)
 	if err != nil {
 		return false, errors.Wrap(err, "while loading signature secret")
@@ -88,7 +88,7 @@ func (MockChecker) EnterpriseFeaturesEnabled() (bool, error) {
 	return true, nil
 }
 
-func (MockChecker) Valid(l SourceEnterpriseLicense) (bool, error) {
+func (MockChecker) Valid(l EnterpriseLicense) (bool, error) {
 	return true, nil
 }
 

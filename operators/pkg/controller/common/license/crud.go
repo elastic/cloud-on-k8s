@@ -9,7 +9,6 @@ package license
 import (
 	"encoding/json"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -20,15 +19,15 @@ import (
 )
 
 // EnterpriseLicensesOrErrors lists all Enterprise licenses and all errors encountered during retrieval.
-func EnterpriseLicensesOrErrors(c k8s.Client) ([]SourceEnterpriseLicense, []error) {
+func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 	licenseList := corev1.SecretList{}
 	err := c.List(&client.ListOptions{
-		LabelSelector: NewLicenseByTypeSelector(string(v1alpha1.LicenseTypeEnterprise)),
+		LabelSelector: NewLicenseByTypeSelector(string(LicenseTypeEnterprise)),
 	}, &licenseList)
 	if err != nil {
 		return nil, []error{err}
 	}
-	var licenses []SourceEnterpriseLicense
+	var licenses []EnterpriseLicense
 	var errors []error
 	for _, ls := range licenseList.Items {
 		parsed, err := ParseEnterpriseLicenses(ls.Data)
@@ -42,17 +41,17 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]SourceEnterpriseLicense, []erro
 }
 
 // EnterpriseLicenses lists all Enterprise licenses or an aggregate error
-func EnterpriseLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
+func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	licenses, errors := EnterpriseLicensesOrErrors(c)
 	return licenses, util_errors.NewAggregate(errors)
 }
 
-func TrialLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
+func TrialLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	licenses, err := EnterpriseLicenses(c)
 	if err != nil {
 		return nil, err
 	}
-	var trials []SourceEnterpriseLicense
+	var trials []EnterpriseLicense
 	for i, l := range licenses {
 		if l.IsTrial() {
 			trials = append(trials, licenses[i])
@@ -62,7 +61,7 @@ func TrialLicenses(c k8s.Client) ([]SourceEnterpriseLicense, error) {
 }
 
 // CreateEnterpriseLicense creates an Enterprise license wrapped in a secret.
-func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l SourceEnterpriseLicense) error {
+func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l EnterpriseLicense) error {
 	bytes, err := json.Marshal(l)
 	if err != nil {
 		return pkgerrors.Wrap(err, "failed to marshal license")
@@ -71,7 +70,7 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l SourceEnt
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: key.Namespace,
 			Name:      key.Name,
-			Labels:    LabelsForType(LicenseTypeEnterprise),
+			Labels:    LabelsForType(LicenseLabelEnterprise),
 		},
 		Data: map[string][]byte{
 			key.Name: bytes,

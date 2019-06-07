@@ -26,7 +26,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []SourceEnterpriseLicense
+		want    []EnterpriseLicense
 		wantErr bool
 	}{
 		{
@@ -36,7 +36,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 					"_": good,
 				},
 			},
-			want: []SourceEnterpriseLicense{
+			want: []EnterpriseLicense{
 				expectedLicenseSpec,
 			},
 			wantErr: false,
@@ -49,7 +49,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 					"2": good,
 				},
 			},
-			want: []SourceEnterpriseLicense{
+			want: []EnterpriseLicense{
 				expectedLicenseSpec,
 				expectedLicenseSpec,
 			},
