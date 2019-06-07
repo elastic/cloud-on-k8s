@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package overrides
+package defaults
 
 // SetDefaultLabels append labels from defaults into existing. If a label already exists,
 // its value is not overridden from the one in defaults.
