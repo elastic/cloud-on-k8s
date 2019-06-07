@@ -233,6 +233,10 @@ func (r *ReconcileElasticsearch) internalReconcile(
 		return results
 	}
 
+	if err := r.handleDynamicWatches(es); err != nil {
+		return results.WithError(err)
+	}
+
 	ver, err := commonversion.Parse(es.Spec.Version)
 	if err != nil {
 		return results.WithError(err)
@@ -291,5 +295,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		settings.SecureSettingsFinalizer(clusterName, watched),
+		r.dynamicWatchesFinalizerFor(es),
 	}
 }
