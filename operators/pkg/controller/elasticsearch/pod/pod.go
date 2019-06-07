@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -74,12 +73,11 @@ type NewPodSpecParams struct {
 	ESConfigVolume volume.SecretVolume
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume volume.SecretVolume
-	// ClusterSecretsRef is a reference to a secret containing generic secrets shared between pods in the cluster.
-	ClusterSecretsRef types.NamespacedName
+
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
-	// ReloadCredsUser is the user that should be used for reloading the credentials.
-	ReloadCredsUser client.UserAuth
+	// KeystoreUser is the user that should be used for reloading the credentials.
+	KeystoreUser client.UserAuth
 	// UnicastHostsVolume contains a file with the seed hosts.
 	UnicastHostsVolume volume.ConfigMapVolume
 }
