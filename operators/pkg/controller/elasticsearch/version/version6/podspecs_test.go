@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -174,7 +175,12 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	}
 	podSpec, err := ExpectedPodSpecs(
 		es,
-		pod.NewPodSpecParams{ProbeUser: testProbeUser},
+		pod.NewPodSpecParams{
+			ProbeUser:          testProbeUser,
+			UsersSecretVolume:  volume.NewSecretVolumeWithMountPath("", "user-secret-vol", "/mount/path"),
+			ConfigMapVolume:    volume.NewConfigMapVolume("config-map-volume", settings.ManagedConfigPath),
+			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
+		},
 		"operator-image-dummy",
 	)
 	assert.NoError(t, err)
