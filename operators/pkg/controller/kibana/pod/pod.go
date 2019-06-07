@@ -6,6 +6,7 @@ package pod
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/overrides"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
@@ -36,13 +37,11 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana) corev1.PodTemplateSpec {
 	objectMeta := kb.Spec.PodTemplate.ObjectMeta.DeepCopy()
 	spec := kb.Spec.PodTemplate.Spec.DeepCopy()
 
-	// add (or override) our labels on top of user-provided ones
+	// add our labels on top of user-provided ones (but don't override)
 	if objectMeta.Labels == nil {
 		objectMeta.Labels = map[string]string{}
 	}
-	for k, v := range label.NewLabels(kb.Name) {
-		objectMeta.Labels[k] = v
-	}
+	objectMeta.Labels = overrides.SetDefaultLabels(objectMeta.Labels, label.NewLabels(kb.Name))
 
 	// disable service account token automount unless enabled by the user
 	varFalse := false
