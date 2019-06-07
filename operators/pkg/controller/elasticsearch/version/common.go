@@ -262,23 +262,12 @@ func NewPod(
 	objectMeta.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
 	objectMeta.Namespace = es.Namespace
 
-	// build labels on top of user-provided ones
-	if objectMeta.Labels == nil {
-		objectMeta.Labels = map[string]string{}
-	}
-
 	cfg, err := podSpecCtx.Config.Unpack()
 	if err != nil {
 		return corev1.Pod{}, err
 	}
-
-	for k, v := range label.NewPodLabels(es, version, cfg) {
-		// don't override user-provided labels
-		// this may lead to issues but we consider users know what they are doing at this point.
-		if _, exists := objectMeta.Labels[k]; !exists {
-			objectMeta.Labels[k] = v
-		}
-	}
+	// add labels on top of user-provided ones, but don't override them
+	objectMeta.Labels = overrides.SetDefaultLabels(objectMeta.Labels, label.NewPodLabels(es, version, cfg))
 
 	if podSpecCtx.PodSpec.Hostname == "" {
 		podSpecCtx.PodSpec.Hostname = objectMeta.Name
