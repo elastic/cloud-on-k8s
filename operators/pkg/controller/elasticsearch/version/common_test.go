@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	csettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
@@ -227,7 +228,7 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error) {
+	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
 		return settings.CanonicalConfig{}, nil
 	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error) {
