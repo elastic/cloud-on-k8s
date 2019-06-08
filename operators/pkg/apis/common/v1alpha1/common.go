@@ -6,8 +6,10 @@ package v1alpha1
 
 import (
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // ReconcilerStatus represents status information about desired/available nodes.
@@ -83,4 +85,19 @@ type ServiceTemplate struct {
 	// Spec defines the behavior of the service.
 	// +optional
 	Spec v1.ServiceSpec `json:"spec,omitempty"`
+}
+
+// DefaultPodDisruptionBudgetMaxUnavailable is the default max unavailable pods in a PDB.
+var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
+
+// PodDisruptionBudgetTemplate contains a template for creating a PodDisruptionBudget.
+type PodDisruptionBudgetTemplate struct {
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
+	// +optional
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec of the desired behavior of the PodDisruptionBudget
+	// +optional
+	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }

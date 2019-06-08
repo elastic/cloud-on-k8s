@@ -172,6 +172,11 @@ func (in *ElasticsearchSpec) DeepCopyInto(out *ElasticsearchSpec) {
 		}
 	}
 	in.UpdateStrategy.DeepCopyInto(&out.UpdateStrategy)
+	if in.PodDisruptionBudget != nil {
+		in, out := &in.PodDisruptionBudget, &out.PodDisruptionBudget
+		*out = new(commonv1alpha1.PodDisruptionBudgetTemplate)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.SecureSettings != nil {
 		in, out := &in.SecureSettings, &out.SecureSettings
 		*out = new(commonv1alpha1.SecretRef)

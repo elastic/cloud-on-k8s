@@ -38,6 +38,13 @@ type ElasticsearchSpec struct {
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
+	// PodDisruptionBudget allows full control of the default pod disruption budget.
+	//
+	// The default budget selects all cluster pods and sets maxUnavailable to 1.
+	// To disable it entirely, set to the empty value (`{}` in YAML).
+	// +optional
+	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
+
 	// SecureSettings reference a secret containing secure settings, to be injected
 	// into Elasticsearch keystore on each node.
 	// Each individual key/value entry in the referenced secret is considered as an
