@@ -13,7 +13,6 @@ const (
 	// LicenseLabelName is a label pointing to the name of the source enterprise license.
 	LicenseLabelName         = "license.k8s.elastic.co/name"
 	LicenseLabelType         = "license.k8s.elastic.co/type"
-	LicenseLabelState        = "license.k8s.elastic.co/state"
 	Type                     = "license"
 	LicenseFileName          = "license"
 	EULAAnnotation           = "elastic.co/eula"
@@ -29,6 +28,7 @@ const (
 	LicenseLabelElasticsearch LicenseType = "elasticsearch"
 )
 
+// LabelsForType creates a map of labels for the given type of either enterprise or Elasticsearch license.
 func LabelsForType(licenseType LicenseType) map[string]string {
 	return map[string]string{
 		common.TypeLabelName: Type,
