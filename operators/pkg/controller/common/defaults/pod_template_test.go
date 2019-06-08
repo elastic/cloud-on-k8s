@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -269,56 +268,6 @@ func TestPodTemplateBuilder_WithReadinessProbe(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
 			if got := b.WithReadinessProbe(tt.readinessProbe).Container.ReadinessProbe; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithReadinessProbe() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPodTemplateBuilder_WithResources(t *testing.T) {
-	containerName := "mycontainer"
-	tests := []struct {
-		name        string
-		PodTemplate corev1.PodTemplateSpec
-		resources   corev1.ResourceRequirements
-		want        corev1.ResourceRequirements
-	}{
-		{
-			name:        "set default resources",
-			PodTemplate: corev1.PodTemplateSpec{},
-			resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-			},
-			want: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-			},
-		},
-		{
-			name: "don't override user-provided resource",
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: containerName,
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
-							},
-						},
-					},
-				},
-			},
-			resources: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-			},
-			want: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("2Gi")},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithResources(tt.resources).Container.Resources; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -773,84 +722,6 @@ func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, "")
 			if got := b.WithInitContainers(tt.initContainers...).PodTemplate.Spec.InitContainers; !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PodTemplateBuilder.WithInitContainers() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestPodTemplateBuilder_WithMemoryLimit(t *testing.T) {
-	containerName := "mycontainer"
-	tests := []struct {
-		name        string
-		PodTemplate corev1.PodTemplateSpec
-		limit       resource.Quantity
-		want        corev1.ResourceRequirements
-	}{
-		{
-			name:        "no resource provided, set defaults",
-			PodTemplate: corev1.PodTemplateSpec{},
-			limit:       resource.MustParse("2Gi"),
-			want: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
-			},
-		},
-		{
-			name: "cpu limit provided, but not memory, set defaults but keep cpu",
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: containerName,
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU: resource.MustParse("1"),
-								},
-							},
-						},
-					},
-				},
-			},
-			limit: resource.MustParse("2Gi"),
-			want: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
-			},
-		},
-		{
-			name: "resources provided by the user, don't override",
-			PodTemplate: corev1.PodTemplateSpec{
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name: containerName,
-							Resources: corev1.ResourceRequirements{
-								Limits: corev1.ResourceList{
-									corev1.ResourceCPU:    resource.MustParse("1"),
-									corev1.ResourceMemory: resource.MustParse("2Gi"),
-								},
-							},
-						},
-					},
-				},
-			},
-			limit: resource.MustParse("3Gi"),
-			want: corev1.ResourceRequirements{
-				Limits: corev1.ResourceList{
-					corev1.ResourceCPU:    resource.MustParse("1"),
-					corev1.ResourceMemory: resource.MustParse("2Gi"),
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithMemoryLimit(tt.limit).Container.Resources; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PodTemplateBuilder.WithMemoryLimit() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -93,7 +93,6 @@ func newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	heapSize int,
 	httpCertificatesVolume volume.SecretVolume,
 	reloadCredsUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
@@ -107,9 +106,7 @@ func newEnvironmentVars(
 		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
-
-		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
+		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Djava.security.properties=%s", version.SecurityPropsFile)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},

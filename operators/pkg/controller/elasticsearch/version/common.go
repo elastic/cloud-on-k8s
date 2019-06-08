@@ -19,21 +19,19 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 var (
-	DefaultMemoryLimits = resource.MustParse("2Gi")
-	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
+	SecurityPropsFile = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
@@ -80,7 +78,7 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
@@ -123,14 +121,7 @@ func podSpec(
 		WithPorts(pod.DefaultContainerPorts).
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
-		// enforce a memory resource limits if not provided by the user, since we need to compute JVM heap size
-		// we do not set resource Requests here in order to end up in the qosClass of Guaranteed by default
-		// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
-		WithMemoryLimit(DefaultMemoryLimits)
-
-	// setup heap size based on memory limits
-	heapSize := MemoryLimitsToHeapSize(*builder.Container.Resources.Limits.Memory())
-	builder = builder.WithEnv(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
@@ -212,12 +203,6 @@ func NewPod(
 		ObjectMeta: builder.PodTemplate.ObjectMeta,
 		Spec:       podSpecCtx.PodSpec,
 	}, nil
-}
-
-// MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
-func MemoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
-	// use half the available memory as heap
-	return quantityToMegabytes(memoryLimit) / 2
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity

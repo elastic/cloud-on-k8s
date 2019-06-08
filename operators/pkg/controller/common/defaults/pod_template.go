@@ -6,7 +6,6 @@ package defaults
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // PodTemplateBuilder helps with building a pod template inheriting values
@@ -83,26 +82,6 @@ func (b *PodTemplateBuilder) WithReadinessProbe(readinessProbe corev1.Probe) *Po
 	if b.Container.ReadinessProbe == nil {
 		// no user-provided probe, use our own
 		b.Container.ReadinessProbe = &readinessProbe
-	}
-	return b
-}
-
-// WithResources sets up the given resources, unless already provided in the template.
-func (b *PodTemplateBuilder) WithResources(resources corev1.ResourceRequirements) *PodTemplateBuilder {
-	if len(b.Container.Resources.Limits) == 0 && len(b.Container.Resources.Requests) == 0 {
-		b.Container.Resources = resources
-	}
-	return b
-}
-
-// WithMemoryLimit sets up the memory limit to the given value, unless already provided in the template.
-// If the template value specified is zero, it will also be overridden.
-func (b *PodTemplateBuilder) WithMemoryLimit(limit resource.Quantity) *PodTemplateBuilder {
-	if b.Container.Resources.Limits == nil {
-		b.Container.Resources.Limits = map[corev1.ResourceName]resource.Quantity{}
-	}
-	if b.Container.Resources.Limits.Memory().IsZero() {
-		b.Container.Resources.Limits[corev1.ResourceMemory] = limit
 	}
 	return b
 }

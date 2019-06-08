@@ -90,6 +90,8 @@ type Client interface {
 	ReloadSecureSettings(ctx context.Context) error
 	// GetNodes calls the _nodes api to return a map(nodeName -> Node)
 	GetNodes(ctx context.Context) (Nodes, error)
+	// GetNodesStats calls the _nodes api to return a map(nodeName -> NodeStats)
+	GetNodesStats(ctx context.Context) (NodesStats, error)
 	// GetLicense returns the currently applied license. Can be empty.
 	GetLicense(ctx context.Context) (License, error)
 	// UpdateLicense attempts to update cluster license with the given licenses.
