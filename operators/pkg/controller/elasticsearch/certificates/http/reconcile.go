@@ -113,7 +113,7 @@ func reconcileHTTPInternalCertificatesSecret(
 			secret.Data = customCertificates.Data
 		}
 	} else {
-		selfSignedNeedsUpdate, err := verifyInternalSelfSignedCertificateSecret(
+		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
 			&secret, es, svcs, ca, certValidity, certReconcileBefore,
 		)
 		if err != nil {
@@ -140,9 +140,11 @@ func reconcileHTTPInternalCertificatesSecret(
 	return &result, nil
 }
 
-// verifyInternalSelfSignedCertificateSecret verifies the contents of a secret containing self-signed certificates.
-// Returns true if the secret needs to be updated.
-func verifyInternalSelfSignedCertificateSecret(
+// ensureInternalSelfSignedCertificateSecretContents ensures that contents of a secret containing self-signed
+// certificates is valid. The provided secret is updated in-place.
+//
+// Returns true if the secret was changed.
+func ensureInternalSelfSignedCertificateSecretContents(
 	secret *corev1.Secret,
 	es v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
@@ -150,7 +152,7 @@ func verifyInternalSelfSignedCertificateSecret(
 	certValidity time.Duration,
 	certReconcileBefore time.Duration,
 ) (bool, error) {
-	needsUpdate := false
+	secretWasChanged := false
 
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
@@ -167,22 +169,18 @@ func verifyInternalSelfSignedCertificateSecret(
 
 	// if we need a new private key, generate it
 	if needsNewPrivateKey {
-		needsUpdate = true
 		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 		if err != nil {
-			return needsUpdate, err
+			return secretWasChanged, err
 		}
 
 		privateKey = generatedPrivateKey
+		secretWasChanged = true
 		secret.Data[certificates.KeyFileName] = certificates.EncodePEMPrivateKey(*privateKey)
 	}
 
-	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore)
-
-	if issueNewCertificate {
-		needsUpdate = true
-
+	// check if the existing cert should be re-issued
+	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"secret", secret.Name,
@@ -191,13 +189,13 @@ func verifyInternalSelfSignedCertificateSecret(
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
 		if err != nil {
-			return needsUpdate, err
+			return secretWasChanged, err
 		}
 
 		// create a cert from the csr
 		parsedCSR, err := x509.ParseCertificateRequest(csr)
 		if err != nil {
-			return needsUpdate, err
+			return secretWasChanged, err
 		}
 
 		// validate the csr
@@ -205,19 +203,20 @@ func verifyInternalSelfSignedCertificateSecret(
 			es, svcs, parsedCSR, certValidity,
 		)
 		if err != nil {
-			return needsUpdate, err
+			return secretWasChanged, err
 		}
 		// sign the certificate
 		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
 		if err != nil {
-			return needsUpdate, err
+			return secretWasChanged, err
 		}
 
-		// store CSR and signed certificate in a secret mounted into the pod
+		secretWasChanged = true
+		// store certificate and signed certificate in a secret mounted into the pod
 		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
-	return needsUpdate, nil
+	return secretWasChanged, nil
 }
 
 // shouldIssueNewHTTPCertificate returns true if we should issue a new HTTP certificate.
