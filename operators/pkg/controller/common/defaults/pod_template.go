@@ -107,6 +107,15 @@ func (b *PodTemplateBuilder) WithMemoryLimit(limit resource.Quantity) *PodTempla
 	return b
 }
 
+// WithAffinity sets a default affinity, unless already provided in the template.
+// An empty affinity in the spec is not overridden.
+func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplateBuilder {
+	if b.PodTemplate.Spec.Affinity == nil {
+		b.PodTemplate.Spec.Affinity = affinity
+	}
+	return b
+}
+
 // portExists checks if a port with the given name already exists in the Container.
 func (b *PodTemplateBuilder) portExists(name string) bool {
 	for _, p := range b.Container.Ports {

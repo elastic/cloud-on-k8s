@@ -115,7 +115,8 @@ func podSpec(
 		// enforce a memory resource limits if not provided by the user, since we need to compute JVM heap size
 		// we do not set resource Requests here in order to end up in the qosClass of Guaranteed by default
 		// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
-		WithMemoryLimit(DefaultMemoryLimits)
+		WithMemoryLimit(DefaultMemoryLimits).
+		WithAffinity(pod.DefaultAffinity(p.ClusterName))
 
 	// setup heap size based on memory limits
 	heapSize := MemoryLimitsToHeapSize(*builder.Container.Resources.Limits.Memory())
