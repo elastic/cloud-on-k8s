@@ -17,8 +17,10 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -160,8 +162,11 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			w := watches.NewDynamicWatches()
+			require.NoError(t, w.InjectScheme(scheme.Scheme))
+
 			got, err := ReconcileHTTPCertificates(
-				tt.args.c, scheme.Scheme, tt.args.es, tt.args.ca, tt.args.services,
+				tt.args.c, scheme.Scheme, w, tt.args.es, tt.args.ca, tt.args.services,
 				certificates.DefaultCertValidity, certificates.DefaultRotateBefore,
 			)
 			if (err != nil) != tt.wantErr {

@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package elasticsearch
+package http
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ func httpCertificateWatchKey(es v1alpha1.Elasticsearch) string {
 	return fmt.Sprintf("%s-%s-http-certificate", es.Namespace, es.Name)
 }
 
-// handleDynamicWatches reconciles the dynamic watches needed by the resource.
-func (r *ReconcileElasticsearch) handleDynamicWatches(es v1alpha1.Elasticsearch) error {
+// reconcileDynamicWatches reconciles the dynamic watches needed by the HTTP certificates.
+func reconcileDynamicWatches(dynamicWatches watches.DynamicWatches, es v1alpha1.Elasticsearch) error {
 	// watch the Secret specified in es.Spec.HTTP.TLS.Certificate because if it changes we should reconcile the new
 	// user provided certificates.
 	httpCertificateWatch := watches.NamedWatch{
@@ -33,24 +33,24 @@ func (r *ReconcileElasticsearch) handleDynamicWatches(es v1alpha1.Elasticsearch)
 	}
 
 	if es.Spec.HTTP.TLS.Certificate.SecretName != "" {
-		if err := r.dynamicWatches.Secrets.AddHandler(httpCertificateWatch); err != nil {
+		if err := dynamicWatches.Secrets.AddHandler(httpCertificateWatch); err != nil {
 			return err
 		}
 	} else {
 		// remove the watch if no longer configured.
-		r.dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatch.Key())
+		dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatch.Key())
 	}
 
 	return nil
 }
 
-// dynamicWatchesFinalizerFor returns a Finalizer for dynamic watches related to a specific resource
-func (r *ReconcileElasticsearch) dynamicWatchesFinalizerFor(es v1alpha1.Elasticsearch) finalizer.Finalizer {
+// DynamicWatchesFinalizer returns a Finalizer for dynamic watches related to http certificates
+func DynamicWatchesFinalizer(dynamicWatches watches.DynamicWatches, es v1alpha1.Elasticsearch) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "dynamic-watches.finalizers.elasticsearch.k8s.elastic.co",
+		Name: "dynamic-watches.finalizers.elasticsearch.k8s.elastic.co/http-certificates",
 		Execute: func() error {
 			// es resource is being finalized, so we no longer need the dynamic watch
-			r.dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatchKey(es))
+			dynamicWatches.Secrets.RemoveHandlerForKey(httpCertificateWatchKey(es))
 			return nil
 		},
 	}

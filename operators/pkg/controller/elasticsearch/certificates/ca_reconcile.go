@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -33,6 +34,7 @@ type CertificateResources struct {
 func Reconcile(
 	c k8s.Client,
 	scheme *runtime.Scheme,
+	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	caCertValidity, caCertRotateBefore, certValidity, certRotateBefore time.Duration,
@@ -64,6 +66,7 @@ func Reconcile(
 	httpCertificates, err := http.ReconcileHTTPCertificates(
 		c,
 		scheme,
+		watches,
 		es,
 		httpCA,
 		services,

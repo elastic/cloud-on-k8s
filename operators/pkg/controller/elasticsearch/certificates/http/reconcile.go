@@ -16,6 +16,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -36,6 +37,7 @@ var (
 func ReconcileHTTPCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
+	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
 	ca *certificates.CA,
 	services []corev1.Service,
@@ -44,6 +46,10 @@ func ReconcileHTTPCertificates(
 ) (*CertificatesSecret, error) {
 	customCertificates, err := GetCustomCertificates(c, es)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := reconcileDynamicWatches(watches, es); err != nil {
 		return nil, err
 	}
 
