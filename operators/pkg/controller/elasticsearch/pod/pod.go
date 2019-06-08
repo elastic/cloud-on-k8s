@@ -12,6 +12,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -28,6 +30,25 @@ var (
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
 		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
+	}
+
+	// DefaultVolumeClaimsTemplates is the default volume claim templates for Elasticsearch pods
+	DefaultVolumeClaimsTemplates = []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "elasticsearch-data",
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Gi"),
+					},
+				},
+			},
+		},
 	}
 )
 

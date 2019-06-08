@@ -478,3 +478,88 @@ func Test_podSpec(t *testing.T) {
 		})
 	}
 }
+
+func Test_shouldAddDefaultPVCToNodeSpec(t *testing.T) {
+	foo := corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "foo",
+		},
+	}
+
+	type args struct {
+		defaultPVC corev1.PersistentVolumeClaim
+		node       v1alpha1.NodeSpec
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "volume of pvc type already exists",
+			args: args{
+				defaultPVC: foo,
+				node: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Volumes: []corev1.Volume{
+								{
+									Name:         "foo",
+									VolumeSource: corev1.VolumeSource{
+										PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "volume of non-pvc type already exists",
+			args: args{
+				defaultPVC: foo,
+				node: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Volumes: []corev1.Volume{
+								{
+									Name:         "foo",
+									VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "volume of non-pvc type already exists with different name",
+			args: args{
+				defaultPVC: foo,
+				node: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Volumes: []corev1.Volume{
+								{
+									Name:         "bar",
+									VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := shouldAddDefaultPVCToNodeSpec(tt.args.defaultPVC, tt.args.node); got != tt.want {
+				t.Errorf("shouldAddDefaultPVCToNodeSpec() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
