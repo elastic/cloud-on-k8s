@@ -76,7 +76,7 @@ spec:
                     HTTP TLS certificates.
                   properties:
                     certificate:
-                      description: 'Certificate is a reference to a secret that contain
+                      description: 'Certificate is a reference to a secret that contains
                         the certificate and private key to be used.  The secret should
                         have the following content:  - `tls.crt`: The certificate
                         (or a chain). - `tls.key`: The private key to the first certificate
@@ -84,8 +84,6 @@ spec:
                       properties:
                         secretName:
                           type: string
-                      required:
-                      - secretName
                       type: object
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
@@ -156,8 +154,6 @@ spec:
               properties:
                 secretName:
                   type: string
-              required:
-              - secretName
               type: object
             setVmMaxMapCount:
               description: SetVMMaxMapCount indicates whether an init container should

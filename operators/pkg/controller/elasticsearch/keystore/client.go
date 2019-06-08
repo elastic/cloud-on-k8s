@@ -31,7 +31,7 @@ type esClient struct {
 
 func NewEsClient(cfg Config) EsClient {
 	return esClient{
-		cfg.EsCACertsPath,
+		cfg.EsCertsPath,
 		cfg.EsEndpoint,
 		cfg.EsUser,
 		cfg.EsVersion,

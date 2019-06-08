@@ -78,11 +78,11 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
 
-	if kb.Spec.Elasticsearch.CaCertSecret != "" {
+	if kb.Spec.Elasticsearch.CertificateAuthorities.SecretName != "" {
 		// TODO: use kibanaCa to generate cert for deployment
 
 		var esPublicCASecret corev1.Secret
-		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CaCertSecret}
+		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CertificateAuthorities.SecretName}
 		// watch for changes in the CA secret
 		if err := d.dynamicWatches.Secrets.AddHandler(watches.NamedWatch{
 			Name:    secretWatchKey(*kb),

@@ -17,7 +17,7 @@ type ReconcilerStatus struct {
 
 // SecretRef reference a secret by name.
 type SecretRef struct {
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // ObjectSelector allows to specify a reference to an object across namespace boundaries.
@@ -53,7 +53,7 @@ type TLSOptions struct {
 	// managed by the operator.
 	SelfSignedCertificate *SelfSignedCertificate `json:"selfSignedCertificate,omitempty"`
 
-	// Certificate is a reference to a secret that contain the certificate and private key to be used.
+	// Certificate is a reference to a secret that contains the certificate and private key to be used.
 	//
 	// The secret should have the following content:
 	//

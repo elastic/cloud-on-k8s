@@ -27,8 +27,9 @@ func CACertSecretName(kibanaName string) string {
 	return kibanaName + "-" + ElasticsearchCASecretSuffix
 }
 
-// reconcileCASecret ensures a secret exists in Kibana namespace, containing the Elasticsearch CA public cert.
-// The CA secret content is copied over from ES CA secret into a dedicated secret for Kibana.
+// reconcileCASecret ensures a secret exists in Kibana namespace, containing the Elasticsearch public HTTP certs.
+//
+// The CA secret content is copied over from ES public HTTP certificate secret into a dedicated secret for Kibana.
 func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
 	kibanaKey := k8s.ExtractNamespacedName(&kibana)
 	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(es)

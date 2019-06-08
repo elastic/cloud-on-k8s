@@ -238,7 +238,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 		return commonv1alpha1.AssociationPending, err // maybe not created yet
 	}
 	// TODO this is currently limiting the association to the same namespace
-	expectedEsConfig.SSL.CertificateAuthoritiesSecret = &publicCertsSecret.Name
+	expectedEsConfig.SSL.CertificateAuthorities = commonv1alpha1.SecretRef{SecretName: publicCertsSecret.Name}
 	expectedEsConfig.Hosts = []string{services.ExternalServiceURL(es)}
 	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(apmServer)
 

@@ -7,6 +7,7 @@ package kibana
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -108,7 +109,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 		assert.Fail(t, "failed to build custom scheme")
 	}
 
-	caSecret := "es-ca-secret"
+	caSecret := v1alpha1.SecretRef{SecretName: "es-ca-secret"}
 	kibanaFixture := kbtype.Kibana{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
@@ -128,7 +129,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 						Key: "kibana-user",
 					},
 				},
-				CaCertSecret: caSecret,
+				CertificateAuthorities: caSecret,
 			},
 		},
 	}
@@ -157,7 +158,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 	var defaultInitialObjs = []runtime.Object{
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      caSecret,
+				Name:      caSecret.SecretName,
 				Namespace: "default",
 			},
 			Data: map[string][]byte{
@@ -238,7 +239,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				initialObjects: []runtime.Object{
 					&corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:      caSecret,
+							Name:      caSecret.SecretName,
 							Namespace: "default",
 						},
 						Data: map[string][]byte{

@@ -54,8 +54,8 @@ type Config struct {
 	EsEndpoint string
 	// EsVersion is the Elasticsearch version.
 	EsVersion version.Version
-	// EsCACertsPath points to the CA certificate chain to call the Elasticsearch API.
-	EsCACertsPath string
+	// EsCertsPath is a path to the certificates that should be used to validate requests to Elasticsearch.
+	EsCertsPath string
 	// EsUser is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
 	EsUser client.UserAuth
 }
@@ -137,12 +137,12 @@ func NewConfigFromFlags() (Config, error, string) {
 
 		config.EsUser = client.UserAuth{Name: user, Password: pass}
 
-		caCerts := viper.GetString(esCertsPathFlag)
-		_, err = loadCerts(caCerts)
+		esCerts := viper.GetString(esCertsPathFlag)
+		_, err = loadCerts(esCerts)
 		if err != nil {
 			return Config{}, err, "CA certificates are required when reloading credentials but could not be read"
 		}
-		config.EsCACertsPath = caCerts
+		config.EsCertsPath = esCerts
 		config.EsEndpoint = viper.GetString(esEndpointFlag)
 	}
 
