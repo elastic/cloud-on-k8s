@@ -40,8 +40,8 @@ var log = logf.Log.WithName(name)
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	reconciler := newReconciler(mgr)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileKibana {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
 		Client:         client,
@@ -58,6 +58,7 @@ func newReconciler(mgr manager.Manager) *ReconcileKibana {
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		operatorInfo:   params.OperatorInfo,
 	}
 }
 
@@ -118,6 +119,8 @@ type ReconcileKibana struct {
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
+	// operatorInfo is information about the operator
+	operatorInfo info.Info
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
@@ -131,10 +134,11 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	err := info.ReconcileOperatorUUID(r, r.scheme)
+	uid, err := info.ReconcileOperatorUUID(r, r.scheme, r.operatorInfo.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+	r.operatorInfo.UUID = uid
 
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
@@ -177,7 +181,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	// version specific reconcile
-	results := driver.Reconcile(&state, kb)
+	results := driver.Reconcile(&state, kb, r.operatorInfo)
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {

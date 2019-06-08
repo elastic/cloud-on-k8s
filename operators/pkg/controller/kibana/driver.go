@@ -8,8 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
-
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -19,11 +17,13 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -143,6 +143,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 func (d *driver) Reconcile(
 	state *State,
 	kb *kbtype.Kibana,
+	info info.Info,
 ) *reconciler.Results {
 	results := reconciler.Results{}
 	if !kb.Spec.Elasticsearch.IsConfigured() {
@@ -160,7 +161,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings)
+	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, info)
 	if err != nil {
 		return results.WithError(err)
 	}

@@ -234,12 +234,16 @@ func execute() {
 		log.Error(err, "invalid roles specified")
 		os.Exit(1)
 	}
+
 	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
+	operatorInfo := info.New(operatorNamespace, cfg)
+
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:             dialer,
 		OperatorImage:      operatorImage,
 		OperatorNamespace:  operatorNamespace,
+		OperatorInfo:       operatorInfo,
 		CACertValidity:     caCertValidity,
 		CACertRotateBefore: caCertRotateBefore,
 		CertValidity:       certValidity,
@@ -255,11 +259,10 @@ func execute() {
 		os.Exit(1)
 	}
 
-	info.Setup(operatorNamespace, cfg)
-	eck := info.Get()
-
 	log.Info("Starting the manager",
-		"version", eck.Version.Number, "build_hash", eck.Version.BuildHash, "namespace", eck.Namespace)
+		"namespace", operatorInfo.Namespace, "version", operatorInfo.Version.Number,
+		"build_hash", operatorInfo.Version.BuildHash, "build_date", operatorInfo.Version.BuildDate,
+		"build_snapshot", operatorInfo.Version.BuildSnapshot)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)

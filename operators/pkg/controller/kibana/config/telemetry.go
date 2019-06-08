@@ -11,12 +11,11 @@ import (
 
 const telemetryFilename = "telemetry.yml"
 
+type ECK struct {
+	ECK info.Info `json:"eck"`
+}
+
 // getTelemetryYamlBytes returns the YAML bytes for the information on ECK.
-func getTelemetryYamlBytes() []byte {
-	bytes, _ := yaml.Marshal(struct {
-		ECK info.Info `json:"eck"`
-	}{
-		info.Get(),
-	})
-	return bytes
+func getTelemetryYamlBytes(info info.Info) ([]byte, error) {
+	return yaml.Marshal(ECK{info})
 }

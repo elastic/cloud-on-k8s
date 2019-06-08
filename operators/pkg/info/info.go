@@ -15,16 +15,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const UUIDCfgMapName = "elastic-operator-uid"
-
-var (
-	// Variables that must be set during the manager initialization by calling `Setup(ns, cfg)`.
-	operatorNamespace string
-	k8sDistribution   string
-
-	// Operator UUID set through a config map reconciliation.
-	operatorUUID types.UID
-)
+const UUIDCfgMapName = "elastic-operator-uuid"
 
 // Info contains versioning information.
 type Info struct {
@@ -42,36 +33,34 @@ type Version struct {
 	BuildSnapshot string `json:"build_snapshot"`
 }
 
-// Setup resolves the operator namespace and the k8s distribution.
-func Setup(ns string, cfg *rest.Config) {
-	operatorNamespace = ns
-	k8sDistribution = getDistribution(cfg)
-}
+// New creates a new Info given a operator namespace and kubernetes client config.
+func New(operatorNs string, cfg *rest.Config) Info {
+	distribution, err := getDistribution(cfg)
+	if err != nil {
+		distribution = "unknown"
+	}
 
-// Get returns operator information.
-func Get() Info {
 	return Info{
-		operatorUUID,
-		Version{
+		Version: Version{
 			version,
 			buildHash,
 			buildDate,
 			buildSnapshot,
 		},
-		operatorNamespace,
-		k8sDistribution,
+		Namespace:    operatorNs,
+		Distribution: distribution,
 	}
 }
 
 // ReconcileOperatorUUID reconciles a config map in the operator namespace whose the UID is used for the operator UUID.
-func ReconcileOperatorUUID(c k8s.Client, s *runtime.Scheme) error {
+func ReconcileOperatorUUID(c k8s.Client, s *runtime.Scheme, ns string) (types.UID, error) {
 	var reconciledCfgMap corev1.ConfigMap
 	if err := reconciler.ReconcileResource(reconciler.Params{
 		Client: c,
 		Scheme: s,
 		Expected: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: operatorNamespace,
+				Namespace: ns,
 				Name:      UUIDCfgMapName,
 			},
 		},
@@ -79,24 +68,22 @@ func ReconcileOperatorUUID(c k8s.Client, s *runtime.Scheme) error {
 		NeedsUpdate:      func() bool { return false },
 		UpdateReconciled: func() {},
 	}); err != nil {
-		return err
+		return types.UID(""), err
 	}
 
-	operatorUUID = reconciledCfgMap.UID
-	return nil
+	return reconciledCfgMap.UID, nil
 }
 
 // getDistribution returns the k8s distribution by fetching the GitVersion (legacy name) of the Info returned by ServerVersion().
-// It returns 'unknown' if an error occur.
-func getDistribution(cfg *rest.Config) string {
+func getDistribution(cfg *rest.Config) (string, error) {
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		return "unknown"
+		return "", err
 	}
 	version, err := clientset.ServerVersion()
 	if err != nil {
-		return "unknown"
+		return "", err
 	}
 
-	return version.GitVersion
+	return version.GitVersion, nil
 }
