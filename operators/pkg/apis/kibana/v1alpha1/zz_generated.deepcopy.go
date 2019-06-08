@@ -139,6 +139,10 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	*out = *in
 	out.ElasticsearchRef = in.ElasticsearchRef
 	in.Elasticsearch.DeepCopyInto(&out.Elasticsearch)
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = (*in).DeepCopy()
+	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.FeatureFlags != nil {
