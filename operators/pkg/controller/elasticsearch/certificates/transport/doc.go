@@ -4,8 +4,6 @@
 
 // Transport certificates
 //
-// For each Elasticsearch pod, we sign one certificate with the cluster CA.
-// The certificate is passed to the pod through a secret volume mount.
-// The corresponding private key stays in the ES pod: we request a CSR from the pod,
-// and never access the private key directly.
+// For each Elasticsearch pod, we issue one certificate from the cluster CA.
+// The certificate and associated private key are passed to the pod through a secret volume mount.
 package transport

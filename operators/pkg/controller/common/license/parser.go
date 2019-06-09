@@ -14,7 +14,7 @@ import (
 
 func ParseEnterpriseLicense(raw map[string][]byte) (EnterpriseLicense, error) {
 	var license EnterpriseLicense
-	err := json.Unmarshal(raw[LicenseFileName], &license)
+	err := json.Unmarshal(raw[FileName], &license)
 	if err != nil {
 		return EnterpriseLicense{}, errors.Wrapf(err, "License cannot be unmarshalled")
 	}

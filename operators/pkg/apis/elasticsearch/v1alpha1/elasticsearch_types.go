@@ -267,21 +267,6 @@ type ElasticsearchList struct {
 type TrustRelationshipSpec struct {
 	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
 	CaCert string `json:"caCert,omitempty"`
-	// TrustRestrictions contains configuration for the trust restrictions feature of Elasticsearch for this
-	// relationship
-	TrustRestrictions TrustRestrictions `json:"trustRestrictions,omitempty"`
-}
-
-// TrustRestrictions is the trust restrictions of an Elasticsearch cluster.
-type TrustRestrictions struct {
-	// Trust contains configuration for the Elasticsearch trust restrictions.
-	Trust Trust `json:"trust,omitempty"`
-}
-
-// Trust contains configuration for the Elasticsearch trust restrictions.
-type Trust struct {
-	// SubjectName is a list of patterns that incoming TLS client certificates must match.
-	SubjectName []string `json:"subjectName,omitempty"`
 }
 
 // TrustRelationship describes one direction of the trust relationship between two Elasticsearch clusters.

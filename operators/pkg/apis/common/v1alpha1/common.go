@@ -5,6 +5,8 @@
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -32,10 +34,16 @@ func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
+// IsDefined checks if the object selector is not nil and has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (s *ObjectSelector) IsDefined() bool {
+	return s != nil && s.Name != ""
+}
+
 // HTTPConfig configures a HTTP-based service.
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
-	Service HTTPService `json:"service,omitempty"`
+	Service ServiceTemplate `json:"service,omitempty"`
 	// TLS describe additional options to consider when generating HTTP TLS certificates.
 	TLS TLSOptions `json:"tls,omitempty"`
 }
@@ -57,29 +65,14 @@ type SubjectAlternativeName struct {
 	IP  string `json:"ip,omitempty"`
 }
 
-// HTTPService contains defaults for a HTTP service.
-type HTTPService struct {
-	// Metadata is metadata for the HTTP Service.
-	Metadata HTTPServiceObjectMeta `json:"metadata,omitempty"`
-
-	// Spec contains user-provided settings for the HTTP Service.
-	Spec HTTPServiceSpec `json:"spec,omitempty"`
-}
-
-// HTTPServiceObjectMeta is metadata for HTTP Service.
-type HTTPServiceObjectMeta struct {
-	// Annotations is an unstructured key value map stored with a resource that may be
-	// set by external tools to store and retrieve arbitrary metadata. They are not
-	// queryable and should be preserved when modifying objects.
-	// More info: http://kubernetes.io/docs/user-guide/annotations
+// ServiceTemplate describes the data a service should have when created from a template
+type ServiceTemplate struct {
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
 	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
-}
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
 
-// HTTPServiceSpec contains a subset of overridable settings for the HTTP Service
-type HTTPServiceSpec struct {
-	// Type determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Type string `json:"type,omitempty"`
+	// Spec defines the behavior of the service.
+	// +optional
+	Spec v1.ServiceSpec `json:"spec,omitempty"`
 }

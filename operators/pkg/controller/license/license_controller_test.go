@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	commonlicense "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
@@ -105,7 +106,7 @@ func enterpriseLicense(t *testing.T, licenseType v1alpha1.LicenseType, maxNodes 
 	require.NoError(t, err)
 	return &corev1.Secret{
 		Data: map[string][]byte{
-			commonlicense.LicenseFileName: bytes,
+			commonlicense.FileName: bytes,
 		},
 	}
 }
@@ -191,14 +192,16 @@ func TestReconcileLicenses_reconcileInternal(t *testing.T) {
 				require.NotZero(t, res.RequeueAfter)
 			}
 			// verify that a cluster license was created
-			// with the same name as the cluster
-			var license v1alpha1.ClusterLicense
-			err = client.Get(nsn, &license)
+			// following the es naming convention
+			licenseNsn := nsn
+			licenseNsn.Name = esname.LicenseSecretName(licenseNsn.Name)
+			var license corev1.Secret
+			err = client.Get(licenseNsn, &license)
 			if !tt.wantNewLicense {
 				require.True(t, apierrors.IsNotFound(err))
 			} else {
 				require.NoError(t, err)
-				require.NotEmpty(t, license.Spec.Type)
+				require.NotEmpty(t, license.Data)
 			}
 		})
 	}

@@ -64,8 +64,7 @@ func GetPods(
 	return podList.Items, nil
 }
 
-// GetServiceFullyQualifiedHostname returns the fully qualified DNS name for a service
-func GetServiceFullyQualifiedHostname(svc corev1.Service) string {
-	// TODO: cluster.local suffix should be configurable
-	return fmt.Sprintf("%s.%s.svc.cluster.local", svc.Name, svc.Namespace)
+// GetServiceDNSName returns the fully qualified DNS name for a service
+func GetServiceDNSName(svc corev1.Service) string {
+	return fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace)
 }

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -48,9 +47,6 @@ type Options struct {
 	// Client is used to access the Kubernetes API
 	Client k8s.Client
 	Scheme *runtime.Scheme
-
-	// CSRClient is used to retrieve certificate signing requests from nodes in the cluster
-	CSRClient certificates.CSRClient
 
 	// Observers that observe es clusters state
 	Observers *observer.Manager

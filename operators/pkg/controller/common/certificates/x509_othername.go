@@ -65,7 +65,7 @@ The RFC defines the Subject Alternative Names value as follows:
         value      [0] EXPLICIT ANY DEFINED BY type-id }
 
 OtherName is used in Elasticsearch certificates as the node names, and is what is compared to the allowed subjects
-in the trust_restrictions file when doing certificate validation between ES nodes.
+in the trust_restrictions file (if configured) when doing certificate validation between ES nodes.
 
 We only model OtherName, DNSName and IPAddress here because those are what we use for the Elasticsearch certs
 */

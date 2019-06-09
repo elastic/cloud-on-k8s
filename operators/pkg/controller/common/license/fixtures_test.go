@@ -47,7 +47,7 @@ func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
 				Name:      "test-license",
 			},
 			Data: map[string][]byte{
-				LicenseFileName: bytes,
+				FileName: bytes,
 			},
 		},
 	}

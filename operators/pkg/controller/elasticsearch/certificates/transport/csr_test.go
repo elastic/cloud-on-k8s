@@ -7,9 +7,7 @@ package transport
 import (
 	"crypto/x509"
 	"net"
-	"reflect"
 	"testing"
-	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -17,14 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 )
-
-type FakeCSRClient struct {
-	csr []byte
-}
-
-func (f FakeCSRClient) RetrieveCSR(pod corev1.Pod) ([]byte, error) {
-	return f.csr, nil
-}
 
 // roundTripSerialize does a serialization round-trip of the certificate in order to make sure any extra extensions
 // are parsed and considered part of the certificate
@@ -39,64 +29,6 @@ func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.
 	}
 
 	return certRT, nil
-}
-func Test_maybeRequestCSR(t *testing.T) {
-	tests := []struct {
-		name          string
-		lastCSRUpdate string
-		pod           corev1.Pod
-		want          []byte
-		wantErr       bool
-	}{
-		{
-			name:          "last request was made a day ago, should request a new CSR",
-			lastCSRUpdate: time.Now().Add(-24 * time.Hour).Format(time.RFC3339),
-			pod:           podWithRunningCertInitializer,
-			want:          fakeCSRClient.csr,
-		},
-		{
-			name:          "last request was made very recently, should not request a new CSR",
-			lastCSRUpdate: time.Now().Add(-5 * time.Second).Format(time.RFC3339),
-			pod:           podWithRunningCertInitializer,
-			want:          nil,
-		},
-		{
-			name:          "last request time isn't set, should request a new CSR",
-			lastCSRUpdate: "",
-			pod:           podWithRunningCertInitializer,
-			want:          fakeCSRClient.csr,
-		},
-		{
-			name:          "last request time has the wrong format, request a new CSR",
-			lastCSRUpdate: "yolo",
-			pod:           podWithRunningCertInitializer,
-			want:          fakeCSRClient.csr,
-		},
-		{
-			name:          "last request time is in the future, should request a new CSR",
-			lastCSRUpdate: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
-			pod:           podWithRunningCertInitializer,
-			want:          fakeCSRClient.csr,
-		},
-		{
-			name:          "cert-initializer is terminated, should not request a CSR",
-			lastCSRUpdate: time.Now().Add(1 * time.Hour).Format(time.RFC3339),
-			pod:           podWithTerminatedCertInitializer,
-			want:          nil,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := maybeRequestCSR(tt.pod, fakeCSRClient, tt.lastCSRUpdate)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("maybeRequestCSR() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("maybeRequestCSR() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {

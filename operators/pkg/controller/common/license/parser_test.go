@@ -33,7 +33,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 			name: "single license",
 			args: args{
 				raw: map[string][]byte{
-					LicenseFileName: good,
+					FileName: good,
 				},
 			},
 			want:    expectedLicenseSpec,
@@ -43,7 +43,7 @@ func TestParseEnterpriseLicenses(t *testing.T) {
 			name: "malformed license",
 			args: args{
 				raw: map[string][]byte{
-					LicenseFileName: bad,
+					FileName: bad,
 				},
 			},
 			wantErr: true,

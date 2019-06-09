@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -283,14 +284,15 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		Version:         as.Spec.Version,
 		CustomImageName: as.Spec.Image,
 
+		PodTemplate: as.Spec.PodTemplate,
+
 		ApmServerSecret: *reconciledApmServerSecret,
 		ConfigSecret:    *reconciledConfigSecret,
 	}
 
-	apmServerPodSpec := NewPodSpec(apmServerPodSpecParams)
-	labels := NewLabels(as.Name)
-	podLabels := NewLabels(as.Name)
+	podSpec := NewPodSpec(apmServerPodSpecParams)
 
+	podLabels := NewLabels(as.Name)
 	// add the config file checksum to the pod labels so a change triggers a rolling update
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", sha256.Sum224(cfgBytes))
 
@@ -321,28 +323,30 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		// changes, which will trigger a rolling update)
 		podLabels[caChecksumLabelName] = caChecksum
 
-		apmServerPodSpec.Volumes = append(apmServerPodSpec.Volumes, esCertsVolume.Volume())
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCertsVolume.Volume())
 
-		for i, container := range apmServerPodSpec.InitContainers {
-			apmServerPodSpec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+		for i, container := range podSpec.Spec.InitContainers {
+			podSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
 		}
 
-		for i, container := range apmServerPodSpec.Containers {
-			apmServerPodSpec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
+		for i, container := range podSpec.Spec.Containers {
+			podSpec.Spec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCertsVolume.VolumeMount())
 		}
 	}
 
 	// TODO: also need to hash secret token?
 
+	deploymentLabels := NewLabels(as.Name)
+	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
+
 	deploy := NewDeployment(DeploymentParams{
 		// TODO: revisit naming?
-		Name:      PseudoNamespacedResourceName(*as),
-		Namespace: as.Namespace,
-		Replicas:  as.Spec.NodeCount,
-		Selector:  labels,
-		Labels:    labels,
-		PodLabels: podLabels,
-		PodSpec:   apmServerPodSpec,
+		Name:            PseudoNamespacedResourceName(*as),
+		Namespace:       as.Namespace,
+		Replicas:        as.Spec.NodeCount,
+		Selector:        deploymentLabels,
+		Labels:          deploymentLabels,
+		PodTemplateSpec: podSpec,
 	})
 	result, err := r.ReconcileDeployment(deploy, as)
 	if err != nil {

@@ -7,3 +7,8 @@ package license
 import logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 var log = logf.Log.WithName("license")
+
+const (
+	// FileName is the name used in the license secret to point to the license data.
+	FileName = "license"
+)

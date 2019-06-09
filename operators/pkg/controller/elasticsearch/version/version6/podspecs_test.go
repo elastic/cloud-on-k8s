@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -174,7 +175,12 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	}
 	podSpec, err := ExpectedPodSpecs(
 		es,
-		pod.NewPodSpecParams{ProbeUser: testProbeUser},
+		pod.NewPodSpecParams{
+			ProbeUser:          testProbeUser,
+			UsersSecretVolume:  volume.NewSecretVolumeWithMountPath("", "user-secret-vol", "/mount/path"),
+			ConfigMapVolume:    volume.NewConfigMapVolume("config-map-volume", settings.ManagedConfigPath),
+			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
+		},
 		"operator-image-dummy",
 	)
 	assert.NoError(t, err)
@@ -182,8 +188,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
-	assert.Equal(t, 4, len(esPodSpec.InitContainers))
-	assert.Equal(t, 15, len(esPodSpec.Volumes))
+	assert.Equal(t, 3, len(esPodSpec.InitContainers))
+	assert.Equal(t, 14, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -193,6 +199,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the transport certs secret until pod creation
 	// time
-	assert.Equal(t, 16, len(esContainer.VolumeMounts))
+	assert.Equal(t, 15, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

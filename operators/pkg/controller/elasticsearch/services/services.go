@@ -7,61 +7,26 @@ package services
 import (
 	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	globalServiceSuffix = ".svc.cluster.local"
+	globalServiceSuffix = ".svc"
 )
-
-// DiscoveryServiceName returns the name for the discovery service
-// associated to this cluster
-func DiscoveryServiceName(esName string) string {
-	return name.DiscoveryService(esName)
-}
-
-// NewDiscoveryService returns the discovery service associated to the given cluster
-// It is used by nodes to talk to each other.
-func NewDiscoveryService(es v1alpha1.Elasticsearch) *corev1.Service {
-	nsn := k8s.ExtractNamespacedName(&es)
-	return &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      DiscoveryServiceName(es.Name),
-			Labels:    label.NewLabels(nsn),
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(nsn),
-			Ports: []corev1.ServicePort{
-				corev1.ServicePort{
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.TransportPort,
-				},
-			},
-			// We set ClusterIP to None in order to let the ES nodes discover all other node IPs at once.
-			ClusterIP:       "None",
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            corev1.ServiceTypeClusterIP,
-			// Nodes need to discover themselves before the pod is considered ready,
-			// otherwise minimum master nodes would never be reached
-			PublishNotReadyAddresses: true,
-		},
-	}
-}
 
 // ExternalServiceName returns the name for the external service
 // associated to this cluster
 func ExternalServiceName(esName string) string {
-	return name.Service(esName)
+	return name.HTTPService(esName)
 }
 
 // ExternalServiceURL returns the URL used to reach Elasticsearch's external endpoint
@@ -69,39 +34,29 @@ func ExternalServiceURL(es v1alpha1.Elasticsearch) string {
 	return stringsutil.Concat("https://", ExternalServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.HTTPPort))
 }
 
-// ExternalDiscoveryServiceHostname returns the hostname used to reach Elasticsearch's discovery endpoint.
-func ExternalDiscoveryServiceHostname(es types.NamespacedName) string {
-	return stringsutil.Concat(DiscoveryServiceName(es.Name), ".", es.Namespace, globalServiceSuffix, ":", strconv.Itoa(network.TransportPort))
-}
-
 // NewExternalService returns the external service associated to the given cluster
 // It is used by users to perform requests against one of the cluster nodes.
 func NewExternalService(es v1alpha1.Elasticsearch) *corev1.Service {
 	nsn := k8s.ExtractNamespacedName(&es)
-	var svc = corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   es.Namespace,
-			Name:        ExternalServiceName(es.Name),
-			Labels:      label.NewLabels(nsn),
-			Annotations: es.Spec.HTTP.Service.Metadata.Annotations,
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: label.NewLabels(nsn),
-			Ports: []corev1.ServicePort{
-				{
-					Name:     "https",
-					Protocol: corev1.ProtocolTCP,
-					Port:     network.HTTPPort,
-				},
-			},
-			SessionAffinity: corev1.ServiceAffinityNone,
-			Type:            common.GetServiceType(es.Spec.HTTP.Service.Spec.Type),
+
+	svc := corev1.Service{
+		ObjectMeta: es.Spec.HTTP.Service.ObjectMeta,
+		Spec:       es.Spec.HTTP.Service.Spec,
+	}
+
+	svc.ObjectMeta.Namespace = es.Namespace
+	svc.ObjectMeta.Name = ExternalServiceName(es.Name)
+
+	labels := label.NewLabels(nsn)
+	ports := []corev1.ServicePort{
+		{
+			Name:     "https",
+			Protocol: corev1.ProtocolTCP,
+			Port:     network.HTTPPort,
 		},
 	}
-	if svc.Spec.Type != corev1.ServiceTypeClusterIP {
-		svc.Spec.ExternalTrafficPolicy = corev1.ServiceExternalTrafficPolicyTypeCluster
-	}
-	return &svc
+
+	return defaults.SetServiceDefaults(&svc, labels, labels, ports)
 }
 
 // IsServiceReady checks if a service has one or more ready endpoints.

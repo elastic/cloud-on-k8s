@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -43,20 +44,24 @@ func ConfigSecretVolume(podName string) volume.SecretVolume {
 
 // GetESConfigContent retrieves the configuration secret of the given pod,
 // and returns the corresponding CanonicalConfig.
-func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (*CanonicalConfig, error) {
+func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (CanonicalConfig, error) {
 	secret, err := GetESConfigSecret(client, esPod)
 	if err != nil {
-		return nil, err
+		return CanonicalConfig{}, err
 	}
 	if len(secret.Data) == 0 {
-		return nil, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
 	}
 	content := secret.Data[ConfigFileName]
 	if len(content) == 0 {
-		return nil, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
 	}
 
-	return ParseConfig(content)
+	cfg, err := common.ParseConfig(content)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
+	return CanonicalConfig{cfg}, nil
 }
 
 // GetESConfigSecret returns the secret holding the ES configuration for the given pod
@@ -72,7 +77,7 @@ func GetESConfigSecret(client k8s.Client, esPod types.NamespacedName) (corev1.Se
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config *CanonicalConfig) error {
+func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err

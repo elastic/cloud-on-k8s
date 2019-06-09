@@ -103,7 +103,7 @@ func CreateEnterpriseLicense(c k8s.Client, key types.NamespacedName, l Enterpris
 			Labels:    LabelsForType(LicenseLabelEnterprise),
 		},
 		Data: map[string][]byte{
-			LicenseFileName: bytes,
+			FileName: bytes,
 		},
 	})
 }
@@ -115,7 +115,7 @@ func UpdateEnterpriseLicense(c k8s.Client, secret corev1.Secret, l EnterpriseLic
 		return pkgerrors.Wrap(err, "failed to marshal license")
 	}
 	secret.Data = map[string][]byte{
-		LicenseFileName: bytes,
+		FileName: bytes,
 	}
 	secret.Labels = LabelsForType(LicenseLabelEnterprise)
 	return c.Update(&secret)

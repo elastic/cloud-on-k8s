@@ -50,7 +50,7 @@ MANAGED_NAMESPACE ?= default
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager cert-initializer check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager check-license-header
 
 ## -- build
 
@@ -72,9 +72,6 @@ elastic-operator: generate
 
 process-manager:
 	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
-
-cert-initializer:
-	go build  -tags='$(GO_TAGS)' -o bin/cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 fmt:
 	goimports -w pkg cmd
@@ -203,8 +200,8 @@ ifndef GCLOUD_PROJECT
 endif
 
 set-context-gke: require-gcloud-project
-	kubectl config use-context $(shell hack/gke-cluster.sh name)
-	$(eval KUBECTL_CLUSTER=$(shell hack/gke-cluster.sh name))
+	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
+	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
 
 bootstrap-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
@@ -213,7 +210,7 @@ bootstrap-gke: require-gcloud-project
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
 delete-gke: require-gcloud-project
-	./hack/gke-cluster.sh delete
+	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
 
 ## -- registry in the cluster
 

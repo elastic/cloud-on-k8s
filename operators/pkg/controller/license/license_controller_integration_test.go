@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
@@ -108,28 +109,13 @@ func TestReconcile(t *testing.T) {
 
 	// test license assignment and ownership being triggered on cluster create
 	test.RetryUntilSuccess(t, func() error {
-		licenses := listClusterLicenses(t, c)
-		numLicenses := len(licenses)
-		if numLicenses != 1 {
-			return fmt.Errorf("expected exactly 1 cluster license got %d", numLicenses)
-		}
-		return validateOwnerRef(&licenses[0], cluster.ObjectMeta)
-	})
-
-	test.RetryUntilSuccess(t, func() error {
-		var secret corev1.Secret
-		err := c.Get(types.NamespacedName{Name: "foo-license", Namespace: "default"}, &secret)
-		if err != nil {
+		var clusterLicense corev1.Secret
+		if err := c.Get(types.NamespacedName{Namespace: "default", Name: esname.LicenseSecretName("foo")}, &clusterLicense); err != nil {
 			return err
 		}
-		return validateOwnerRef(&secret, cluster.ObjectMeta)
+		return validateOwnerRef(&clusterLicense, cluster.ObjectMeta)
 	})
-}
 
-func listClusterLicenses(t *testing.T, c k8s.Client) []v1alpha1.ClusterLicense {
-	clusterLicenses := v1alpha1.ClusterLicenseList{}
-	assert.NoError(t, c.List(&client.ListOptions{}, &clusterLicenses))
-	return clusterLicenses.Items
 }
 
 func validateOwnerRef(obj runtime.Object, cluster metav1.ObjectMeta) error {

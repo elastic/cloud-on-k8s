@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
@@ -70,7 +71,7 @@ func UpdateZen1Discovery(
 			return false, err
 		}
 		err = config.MergeWith(
-			settings.MustNewSingleValue(
+			common.MustNewSingleValue(
 				settings.DiscoveryZenMinimumMasterNodes,
 				strconv.Itoa(minimumMasterNodes),
 			),
@@ -87,7 +88,7 @@ func UpdateZen1Discovery(
 	for _, change := range performableChanges.ToCreate {
 		// Update the minimum_master_nodes before pod creation in order to avoid split brain situation.
 		err := change.PodSpecCtx.Config.MergeWith(
-			settings.MustNewSingleValue(
+			common.MustNewSingleValue(
 				settings.DiscoveryZenMinimumMasterNodes,
 				strconv.Itoa(minimumMasterNodes),
 			),

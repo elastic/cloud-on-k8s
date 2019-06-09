@@ -14,7 +14,6 @@ const (
 	LicenseLabelName         = "license.k8s.elastic.co/name"
 	LicenseLabelType         = "license.k8s.elastic.co/type"
 	Type                     = "license"
-	LicenseFileName          = "license"
 	EULAAnnotation           = "elastic.co/eula"
 	EULAAcceptedValue        = "accepted"
 	LicenseInvalidAnnotation = "license.k8s.elastic.co/invalid"

@@ -19,7 +19,6 @@ import (
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -27,7 +26,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -64,7 +62,6 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder(name),
 
-		csrClient:   certificates.NewCertInitializerCSRClient(params.Dialer, certificates.CSRRequestTimeout),
 		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
@@ -150,18 +147,6 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// ClusterLicense
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.ClusterLicense{}}, r.dynamicWatches.ClusterLicense); err != nil {
-		return err
-	}
-
-	// Users
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.User{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
-	}); err != nil {
-		return err
-	}
-
 	// Trigger a reconciliation when observers report a cluster health change
 	if err := c.Watch(observer.WatchClusterHealthChange(r.esObservers), reconciler.GenericEventHandler()); err != nil {
 		return err
@@ -178,8 +163,6 @@ type ReconcileElasticsearch struct {
 	operator.Parameters
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
-
-	csrClient certificates.CSRClient
 
 	esObservers *observer.Manager
 
@@ -270,7 +253,6 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		CSRClient:        r.csrClient,
 		Observers:        r.esObservers,
 		DynamicWatches:   r.dynamicWatches,
 		PodsExpectations: r.podsExpectations,
@@ -309,6 +291,5 @@ func (r *ReconcileElasticsearch) finalizersFor(
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		settings.SecureSettingsFinalizer(clusterName, watched),
-		license.Finalizer(clusterName, watched),
 	}
 }

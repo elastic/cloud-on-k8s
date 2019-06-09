@@ -58,29 +58,12 @@ spec:
                   description: Service is a template for the Kubernetes Service
                   properties:
                     metadata:
-                      description: Metadata is metadata for the HTTP Service.
-                      properties:
-                        annotations:
-                          description: 'Annotations is an unstructured key value map
-                            stored with a resource that may be set by external tools
-                            to store and retrieve arbitrary metadata. They are not
-                            queryable and should be preserved when modifying objects.
-                            More info: http://kubernetes.io/docs/user-guide/annotations'
-                          type: object
+                      description: ObjectMeta is metadata for the service. The name
+                        and namespace provided here is managed by ECK and will be
+                        ignored.
                       type: object
                     spec:
-                      description: Spec contains user-provided settings for the HTTP
-                        Service.
-                      properties:
-                        type:
-                          description: 'Type determines which service type to use
-                            for this workload. The options are: `ClusterIP|LoadBalancer|NodePort`.
-                            Defaults to ClusterIP.'
-                          enum:
-                          - ClusterIP
-                          - LoadBalancer
-                          - NodePort
-                          type: string
+                      description: Spec defines the behavior of the service.
                       type: object
                   type: object
                 tls:
@@ -168,8 +151,9 @@ spec:
               type: object
             podTemplate:
               description: PodTemplate can be used to propagate configuration to APM
-                pods. So far, only labels, Affinity and `Containers["apm"].Resources.Limits`
-                are applied.
+                Server pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
               type: object
             version:
               description: Version represents the version of the APM Server
