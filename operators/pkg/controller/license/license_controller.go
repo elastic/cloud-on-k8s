@@ -84,9 +84,8 @@ func nextReconcile(expiry time.Time, safety time.Duration) reconcile.Result {
 
 func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconcile.Result {
 	// short-circuit to default if no expiry given
-	if expiry.Equal(time.Time{}) {
+	if expiry.IsZero() {
 		return reconcile.Result{
-			Requeue:      true,
 			RequeueAfter: minimumRetryInternval,
 		}
 	}
