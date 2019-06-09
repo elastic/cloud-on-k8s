@@ -68,11 +68,7 @@ func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.P
 	l.License.Signature = string(sig)
 	// return pub key to retain in memory for later iterations
 	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
-		UpdateEnterpriseLicense(
-			c,
-			secret,
-			*l,
-		),
+		UpdateEnterpriseLicense(c, secret, *l),
 		"Failed to update trial license",
 	)
 }

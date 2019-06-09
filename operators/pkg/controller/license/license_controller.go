@@ -131,6 +131,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 					"Dropping watch event due to error in handler")
 				return nil
 			}
+			// TODO reconcile license secrets and augment license secret metadata with license UID to minimize parsing
 			license, err := license.ParseEnterpriseLicense(secret.Data)
 			if err != nil {
 				log.Error(err, "ignoring invalid or unparseable license in watch handler")
