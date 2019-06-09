@@ -69,7 +69,7 @@ type NodesStats struct {
 	Nodes map[string]NodeStats `json:"nodes"`
 }
 
-// Node partially models an Elasticsearch node retrieved from /_nodes/stats
+// NodeStats partially models an Elasticsearch node retrieved from /_nodes/stats
 type NodeStats struct {
 	Name string `json:"name"`
 	OS   struct {
