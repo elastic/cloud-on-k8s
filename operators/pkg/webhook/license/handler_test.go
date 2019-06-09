@@ -111,7 +111,7 @@ func TestValidationHandler_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.ValidationResponse(false, "Please set the field eula.accepted to true to accept the EULA"),
+			want: admission.ValidationResponse(false, "Please set the annotation elastic.co/eula to accepted to accept the EULA"),
 		},
 	}
 	for _, tt := range tests {

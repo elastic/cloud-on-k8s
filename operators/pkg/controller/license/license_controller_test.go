@@ -43,7 +43,6 @@ func Test_nextReconcileRelativeTo(t *testing.T) {
 				safety: 30 * 24 * time.Hour,
 			},
 			want: reconcile.Result{
-				Requeue:      true,
 				RequeueAfter: minimumRetryInternval,
 			},
 		},

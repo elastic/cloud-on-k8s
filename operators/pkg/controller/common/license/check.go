@@ -73,8 +73,7 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 	}
 	verifier, err := NewVerifier(pk)
 	if err != nil {
-		log.Error(err, "while creating license verifier")
-		return false, nil
+		return false, err
 	}
 	status := verifier.Valid(l, time.Now())
 	if status == v1alpha1.LicenseStatusValid {

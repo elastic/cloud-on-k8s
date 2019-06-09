@@ -53,7 +53,8 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 				initialObjects:    asRuntimeObjects(licenseFixture, signatureFixture),
 				operatorNamespace: "test-system",
 			},
-			want: false,
+			want:    false,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
