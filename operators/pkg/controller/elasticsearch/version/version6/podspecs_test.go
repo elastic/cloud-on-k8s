@@ -5,7 +5,6 @@
 package version6
 
 import (
-	"fmt"
 	"path"
 	"testing"
 
@@ -34,7 +33,6 @@ var testObjectMeta = metav1.ObjectMeta{
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
 		p                      pod.NewPodSpecParams
-		heapSize               int
 		httpCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
 		keystoreUserVolume     volume.SecretVolume
@@ -53,7 +51,6 @@ func TestNewEnvironmentVars(t *testing.T) {
 					KeystoreUser: testKeystoreUser,
 					Version:      "6",
 				},
-				heapSize:               1024,
 				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
 				keystoreUserVolume:     volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
@@ -66,7 +63,6 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 				}},
-				{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", 1024, 1024)},
 				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 				{Name: settings.EnvProbeUsername, Value: "username1"},
 				{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, "username1")},
@@ -87,7 +83,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.heapSize, tt.args.httpCertificatesVolume,
+			got := newEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume,
 				tt.args.keystoreUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})

@@ -62,9 +62,6 @@ func expectedDeploymentParams() *DeploymentParams {
 					},
 				},
 				Containers: []corev1.Container{{
-					Resources: corev1.ResourceRequirements{
-						Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-					},
 					VolumeMounts: []corev1.VolumeMount{
 						{
 							Name:      "elasticsearch-certs",
