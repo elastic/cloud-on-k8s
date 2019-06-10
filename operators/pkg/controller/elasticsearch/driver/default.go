@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/remotecluster"
@@ -179,6 +180,10 @@ func (d *defaultDriver) Reconcile(
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
 		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	}
+
+	if err := pdb.Reconcile(d.Client, d.Scheme, es); err != nil {
+		return results.WithError(err)
 	}
 
 	podsState := mutation.NewPodsState(*resourcesState, observedState)
