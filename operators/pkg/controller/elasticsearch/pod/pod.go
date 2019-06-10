@@ -74,8 +74,6 @@ type NewPodSpecParams struct {
 	ESConfigVolume volume.SecretVolume
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume volume.SecretVolume
-	// ConfigMapVolume is a volume containing a config map with configuration files
-	ConfigMapVolume volume.ConfigMapVolume
 	// ClusterSecretsRef is a reference to a secret containing generic secrets shared between pods in the cluster.
 	ClusterSecretsRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.

@@ -5,8 +5,6 @@
 package version
 
 import (
-	"path"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -26,7 +24,6 @@ import (
 
 var (
 	DefaultMemoryLimits = resource.MustParse("2Gi")
-	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -50,7 +47,6 @@ func NewExpectedPodSpecs(
 				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
-				ConfigMapVolume:    paramsTmpl.ConfigMapVolume,
 				ClusterSecretsRef:  paramsTmpl.ClusterSecretsRef,
 				ProbeUser:          paramsTmpl.ProbeUser,
 				ReloadCredsUser:    paramsTmpl.ReloadCredsUser,
@@ -143,7 +139,6 @@ func podSpec(
 			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
 				initcontainer.ProcessManagerVolume.Volume(),
 				p.UsersSecretVolume.Volume(),
-				p.ConfigMapVolume.Volume(),
 				p.UnicastHostsVolume.Volume(),
 				probeSecret.Volume(),
 				clusterSecretsSecretVolume.Volume(),
@@ -155,7 +150,6 @@ func podSpec(
 			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
-				p.ConfigMapVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				clusterSecretsSecretVolume.VolumeMount(),
