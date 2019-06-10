@@ -15,7 +15,8 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o proces
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest
-WORKDIR /root/
+RUN mkdir /eck && chmod 755 /eck
+WORKDIR /eck/
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/process-manager .
 ENTRYPOINT ["./elastic-operator"]
