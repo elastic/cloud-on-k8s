@@ -50,9 +50,8 @@ rules:
   resources:
   - elasticsearches
   - elasticsearches/status
+  - elasticsearches/finalizers
   - trustrelationships
-  - users
-  - users/status
   - remoteclusters
   - remoteclusters/status
   verbs:
@@ -68,6 +67,7 @@ rules:
   resources:
   - kibanas
   - kibanas/status
+  - kibanas/finalizers
   verbs:
   - get
   - list
@@ -105,6 +105,7 @@ rules:
   - apm.k8s.elastic.co
   resources:
   - apmservers/status
+  - apmservers/finalizers
   verbs:
   - get
   - update
