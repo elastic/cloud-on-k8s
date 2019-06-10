@@ -27,31 +27,32 @@ func CACertSecretName(kibanaName string) string {
 	return kibanaName + "-" + ElasticsearchCASecretSuffix
 }
 
-// reconcileCASecret ensures a secret exists in Kibana namespace, containing the Elasticsearch CA public cert.
-// The CA secret content is copied over from ES CA secret into a dedicated secret for Kibana.
+// reconcileCASecret ensures a secret exists in Kibana namespace, containing the Elasticsearch public HTTP certs.
+//
+// The CA secret content is copied over from ES public HTTP certificate secret into a dedicated secret for Kibana.
 func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
 	kibanaKey := k8s.ExtractNamespacedName(&kibana)
-	publicCertsSecretKey := http.PublicCertsSecretRef(es)
+	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(es)
 
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
 		Name:    esCAWatchName(kibanaKey),
-		Watched: publicCertsSecretKey,
+		Watched: publicESHTTPCertificatesNSN,
 		Watcher: kibanaKey,
 	}); err != nil {
 		return "", err
 	}
 
-	// retrieve the CA from ES namespace
-	var publicCACertSecret corev1.Secret
-	if err := r.Get(publicCertsSecretKey, &publicCACertSecret); err != nil {
+	// retrieve the HTTP certificates from ES namespace
+	var publicESHTTPCertificatesSecret corev1.Secret
+	if err := r.Get(publicESHTTPCertificatesNSN, &publicESHTTPCertificatesSecret); err != nil {
 		if apierrors.IsNotFound(err) {
 			return "", nil // probably not created yet, we'll be notified to reconcile later
 		}
 		return "", err
 	}
 
-	// CA data should be copied over a secret in Kibana namespace
+	// Certificate data should be copied over a secret in Kibana namespace
 	labels := kblabel.NewLabels(kibana.Name)
 	labels[AssociationLabelName] = kibana.Name
 	expectedSecret := corev1.Secret{
@@ -60,7 +61,7 @@ func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.
 			Name:      CACertSecretName(kibana.Name),
 			Labels:    labels,
 		},
-		Data: publicCACertSecret.Data,
+		Data: publicESHTTPCertificatesSecret.Data,
 	}
 	var reconciledSecret corev1.Secret
 	if err := reconciler.ReconcileResource(reconciler.Params{

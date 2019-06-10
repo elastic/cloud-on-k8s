@@ -7,7 +7,7 @@ package stack
 import (
 	"context"
 	"fmt"
-	"math"
+	"strconv"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -100,9 +100,14 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 		Test: func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
+
 			nodes, err := e.client.GetNodes(ctx)
 			require.NoError(t, err)
 			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
+
+			nodesStats, err := e.client.GetNodesStats(ctx)
+			require.NoError(t, err)
+			require.Equal(t, int(es.Spec.NodeCount()), len(nodesStats.Nodes))
 
 			// flatten the topology
 			var expectedTopology []estype.NodeSpec
@@ -112,16 +117,26 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				}
 			}
 			// match each actual node to an expected node
-			for _, node := range nodes.Nodes {
+			for nodeId, node := range nodes.Nodes {
 				nodeRoles := rolesToConfig(node.Roles)
+
+				require.Contains(t, nodesStats.Nodes, nodeId)
+				nodeStats := nodesStats.Nodes[nodeId]
+
 				for i, topoElem := range expectedTopology {
 					cfg, err := topoElem.Config.Unpack()
 					require.NoError(t, err)
 
 					podNameExample := name.NewPodName(es.Name, topoElem)
 
+					// ES returns a string, parse it as an int64, base10:
+					cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
+						nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
+					)
+					require.NoError(t, err)
+
 					if cfg.Node == nodeRoles &&
-						compareMemoryLimit(topoElem, node.JVM.Mem.HeapMaxInBytes) &&
+						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
 						// compare the base names of the pod and topology to ensure they're from the same nodespec
 						name.Basename(node.Name) == name.Basename(podNameExample) {
 						// no need to match this topology anymore
@@ -153,7 +168,7 @@ func rolesToConfig(roles []string) estype.Node {
 	return node
 }
 
-func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool {
+func compareMemoryLimit(topologyElement estype.NodeSpec, cgroupMemoryLimitsInBytes int64) bool {
 	var memoryLimit *resource.Quantity
 	for _, c := range topologyElement.PodTemplate.Spec.Containers {
 		if c.Name == v1alpha1.ElasticsearchContainerName {
@@ -165,14 +180,7 @@ func compareMemoryLimit(topologyElement estype.NodeSpec, heapMaxBytes int) bool 
 		return true
 	}
 
-	const epsilon = 0.05 // allow a 5% diff due to bytes approximation
-
 	expectedBytes := memoryLimit.Value()
-	actualBytes := int64(heapMaxBytes * 2) // we set heap to half the available memory
 
-	diffRatio := math.Abs(float64(actualBytes-expectedBytes)) / math.Abs(float64(expectedBytes))
-	if diffRatio < epsilon {
-		return true
-	}
-	return false
+	return expectedBytes == cgroupMemoryLimitsInBytes
 }

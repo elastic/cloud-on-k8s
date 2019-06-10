@@ -4,14 +4,18 @@
 
 package v1alpha1
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+)
 
 func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 	caSecretName := "ca-dummy"
 	type fields struct {
-		URL          string
-		Auth         ElasticsearchAuth
-		CaCertSecret string
+		URL                    string
+		Auth                   ElasticsearchAuth
+		CertificateAuthorities v1alpha1.SecretRef
 	}
 	tests := []struct {
 		name   string
@@ -21,9 +25,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 		{
 			name: "empty backend is not configured",
 			fields: fields{
-				URL:          "",
-				Auth:         ElasticsearchAuth{},
-				CaCertSecret: "",
+				Auth: ElasticsearchAuth{},
 			},
 			want: false,
 		},
@@ -37,7 +39,6 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 						Password: "bar",
 					},
 				},
-				CaCertSecret: "",
 			},
 			want: false,
 		},
@@ -51,7 +52,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 						Password: "bar",
 					},
 				},
-				CaCertSecret: caSecretName,
+				CertificateAuthorities: v1alpha1.SecretRef{SecretName: caSecretName},
 			},
 			want: true,
 		},
@@ -59,9 +60,9 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := BackendElasticsearch{
-				URL:          tt.fields.URL,
-				Auth:         tt.fields.Auth,
-				CaCertSecret: tt.fields.CaCertSecret,
+				URL:                    tt.fields.URL,
+				Auth:                   tt.fields.Auth,
+				CertificateAuthorities: tt.fields.CertificateAuthorities,
 			}
 			if got := b.IsConfigured(); got != tt.want {
 				t.Errorf("BackendElasticsearch.IsConfigured() = %v, want %v", got, tt.want)

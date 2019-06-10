@@ -24,8 +24,8 @@ import (
 // Constants to use for the `elasticsearch.yml` config file in an ES pod.
 const (
 	ConfigFileName        = "elasticsearch.yml"
-	ConfigVolumeName      = "elastic-internal-elasticsearch-config-managed"
-	ConfigVolumeMountPath = "/mnt/elastic-internal/elasticsearch-config-managed"
+	ConfigVolumeName      = "elastic-internal-elasticsearch-config"
+	ConfigVolumeMountPath = "/mnt/elastic-internal/elasticsearch-config"
 )
 
 // ConfigSecretName is the name of the secret that holds the ES config for the given pod.

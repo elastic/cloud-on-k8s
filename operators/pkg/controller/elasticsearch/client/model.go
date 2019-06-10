@@ -64,6 +64,23 @@ type Node struct {
 	} `json:"jvm"`
 }
 
+// NodesStats partially models the response from a request to /_nodes/stats
+type NodesStats struct {
+	Nodes map[string]NodeStats `json:"nodes"`
+}
+
+// NodeStats partially models an Elasticsearch node retrieved from /_nodes/stats
+type NodeStats struct {
+	Name string `json:"name"`
+	OS   struct {
+		CGroup struct {
+			Memory struct {
+				LimitInBytes string `json:"limit_in_bytes"`
+			} `json:"memory"`
+		} `json:"cgroup"`
+	} `json:"os"`
+}
+
 // ClusterStateNode represents an element in the `node` structure in
 // Elasticsearch cluster state.
 type ClusterStateNode struct {

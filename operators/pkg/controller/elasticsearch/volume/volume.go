@@ -14,7 +14,7 @@ const (
 	ProbeUserVolumeName      = "elastic-internal-probe-user"
 
 	KeystoreUserSecretMountPath = "/mnt/elastic-internal/keystore-user"
-	KeystoreUserVolumeName      = "elsatic-internal-keystore-user"
+	KeystoreUserVolumeName      = "elastic-internal-keystore-user"
 
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"

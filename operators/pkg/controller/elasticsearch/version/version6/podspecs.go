@@ -5,7 +5,6 @@
 package version6
 
 import (
-	"fmt"
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -92,7 +91,6 @@ func newInitContainers(
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	heapSize int,
 	httpCertificatesVolume volume.SecretVolume,
 	keystoreUserSecretVolume volume.SecretVolume,
 	secureSettingsSecretVolume volume.SecretVolume,
@@ -106,10 +104,6 @@ func newEnvironmentVars(
 		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 		}},
-
-		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
-
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
@@ -121,7 +115,7 @@ func newEnvironmentVars(
 			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
 			ESUsername:         p.KeystoreUser.Name,
 			ESPasswordFilepath: path.Join(keystoreUserSecretVolume.VolumeMount().MountPath, p.KeystoreUser.Name),
-			ESCaCertPath:       path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
+			ESCertsPath:        path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
 			ESVersion:          p.Version,
 		})...)
 
