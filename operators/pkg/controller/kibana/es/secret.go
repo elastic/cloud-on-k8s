@@ -18,7 +18,7 @@ var eSCertsVolumeMountPath = "/usr/share/kibana/config/elasticsearch-certs"
 func CaCertSecretVolume(kb v1alpha1.Kibana) volume.SecretVolume {
 	// TODO: this is a little ugly as it reaches into the ES controller bits
 	return volume.NewSecretVolumeWithMountPath(
-		kb.Spec.Elasticsearch.CaCertSecret,
+		kb.Spec.Elasticsearch.CertificateAuthorities.SecretName,
 		"elasticsearch-certs",
 		eSCertsVolumeMountPath,
 	)

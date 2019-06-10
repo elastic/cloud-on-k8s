@@ -3,30 +3,15 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: elasticsearch-sample
 spec:
   version: "7.1.0"
   nodes:
-  - config:
-      node.master: true
-      node.data: true
-      node.ingest: true
-    podTemplate:
-      spec:
-        containers:
-          - name: elasticsearch
-            resources:
-              limits:
-                memory: 2Gi
-    nodeCount: 3
+  - nodeCount: 3
 ---
 apiVersion: apm.k8s.elastic.co/v1alpha1
 kind: ApmServer
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: apm-server-sample
 spec:
   version: "7.1.0"
@@ -40,8 +25,6 @@ spec:
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
   version: "7.1.0"

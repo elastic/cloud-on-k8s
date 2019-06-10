@@ -28,7 +28,7 @@ func Test_newPVCFromTemplate(t *testing.T) {
 			args: args{
 				claimTemplate: corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "data",
+						Name: "elasticsearch-data",
 					},
 				},
 				pod: &corev1.Pod{
@@ -43,7 +43,7 @@ func Test_newPVCFromTemplate(t *testing.T) {
 			},
 			want: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "elasticsearch-sample-es-6bw9qkw77k-data",
+					Name: "elasticsearch-sample-es-6bw9qkw77k-elasticsearch-data",
 					Labels: map[string]string{
 						"l1":                   "v1",
 						"l2":                   "v2",
