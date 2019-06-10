@@ -355,10 +355,15 @@ func Test_podSpec(t *testing.T) {
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{
-									Name: "user-init-container-1",
+									Name:  "user-init-container-1",
+									Image: "my-custom-image",
 								},
 								{
 									Name: "user-init-container-2",
+									VolumeMounts: []corev1.VolumeMount{{
+										Name:      "foo",
+										MountPath: "/foo",
+									}},
 								},
 							},
 						},
@@ -368,16 +373,26 @@ func Test_podSpec(t *testing.T) {
 			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "user-init-container-1",
-					},
-					{
-						Name: "user-init-container-2",
-					},
-					{
 						Name: "init-container1",
 					},
 					{
 						Name: "init-container2",
+					},
+					{
+						Name:         "user-init-container-1",
+						Image:        "my-custom-image",
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
+					},
+					{
+						Name:  "user-init-container-2",
+						Image: podSpec.Containers[0].Image,
+						VolumeMounts: append(
+							[]corev1.VolumeMount{{
+								Name:      "foo",
+								MountPath: "/foo",
+							}},
+							podSpec.Containers[0].VolumeMounts...,
+						),
 					},
 				}, podSpec.InitContainers)
 			},
@@ -468,6 +483,31 @@ func Test_podSpec(t *testing.T) {
 						Value: "value2",
 					},
 				}, podSpec.Containers[0].Env)
+			},
+		},
+		{
+			name: "default affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, pod.DefaultAffinity("my-cluster"), podSpec.Affinity)
+			},
+		},
+		{
+			name: "custom affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, &corev1.Affinity{}, podSpec.Affinity)
 			},
 		},
 	}

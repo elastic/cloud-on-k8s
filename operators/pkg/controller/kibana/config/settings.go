@@ -67,7 +67,7 @@ func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
 func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
 	return map[string]interface{}{
-		ElasticsearchSslCertificateAuthorities: path.Join(esCertsVolumeMountPath, certificates.CAFileName),
+		ElasticsearchSslCertificateAuthorities: path.Join(esCertsVolumeMountPath, certificates.CertFileName),
 		ElasticsearchSslVerificationMode:       "certificate",
 	}
 }

@@ -34,15 +34,6 @@ func createProcessManagerClient(restartContext RestartContext, pod corev1.Pod) (
 
 	certs := make([]*x509.Certificate, 0)
 
-	if caCertsData, ok := publicCertsSecret.Data[certificates.CAFileName]; ok {
-		caCerts, err := certificates.ParsePEMCerts(caCertsData)
-		if err != nil {
-			return nil, err
-		}
-		certs = append(certs, caCerts...)
-	}
-
-	// TODO: is this the right thing to do? it conflates CA certs and leaf certs
 	if certsData, ok := publicCertsSecret.Data[certificates.CertFileName]; ok {
 		publicCerts, err := certificates.ParsePEMCerts(certsData)
 		if err != nil {

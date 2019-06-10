@@ -3,27 +3,14 @@
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: es-local-volume-sample
 spec:
   version: "7.1.0"
   nodes:
-  - config:
-      node.master: true
-      node.data: true
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            limits:
-              memory: 2Gi
-              cpu: 1
-    nodeCount: 3
+  - nodeCount: 3
     volumeClaimTemplates:
     - metadata:
-        name: data
+        name: elasticsearch-data
       spec:
         accessModes:
           - ReadWriteOnce

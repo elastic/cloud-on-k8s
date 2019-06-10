@@ -62,7 +62,7 @@ func Test_aggregateAllUsers(t *testing.T) {
 					[]string{
 						"kibana-user",
 						ExternalUserName,
-						InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName,
+						InternalControllerUserName, InternalProbeUserName, InternalKeystoreUserName,
 					},
 					users,
 				)

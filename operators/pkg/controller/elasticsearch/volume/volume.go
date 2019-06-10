@@ -10,30 +10,29 @@ import (
 
 // Default values for the volume name and paths
 const (
-	// DefaultSecretMountPath where secrets are mounted if not specified otherwise.
-	DefaultSecretMountPath = "/mnt/elastic/secrets"
+	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user"
+	ProbeUserVolumeName      = "elastic-internal-probe-user"
 
-	ProbeUserSecretMountPath = "/mnt/elastic/probe-user"
-	ProbeUserVolumeName      = "probe-user"
+	KeystoreUserSecretMountPath = "/mnt/elastic-internal/keystore-user"
+	KeystoreUserVolumeName      = "elastic-internal-keystore-user"
 
-	ReloadCredsUserSecretMountPath = "/mnt/elastic/reload-creds-user"
-	ReloadCredsUserVolumeName      = "reload-creds-user"
-
-	TransportCertificatesSecretVolumeName      = "transport-certificates"
+	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
 
-	HTTPCertificatesSecretVolumeName      = "http-certificates"
+	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
 	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs"
 
-	SecureSettingsVolumeName      = "secure-settings"
-	SecureSettingsVolumeMountPath = "/mnt/elastic/secure-settings"
+	SecureSettingsVolumeName      = "elastic-internal-secure-settings"
+	SecureSettingsVolumeMountPath = "/mnt/elastic-internal/secure-settings"
 
-	ClusterSecretsVolumeMountPath = "/usr/share/elasticsearch/config/secrets"
+	XPackFileRealmVolumeName      = "elastic-internal-xpack-file-realm"
+	XPackFileRealmVolumeMountPath = "/mnt/elastic-internal/xpack-file-realm"
 
-	UnicastHostsVolumeMountPath = "/mnt/elastic/unicast-hosts"
+	UnicastHostsVolumeName      = "elastic-internal-unicast-hosts"
+	UnicastHostsVolumeMountPath = "/mnt/elastic-internal/unicast-hosts"
 	UnicastHostsFile            = "unicast_hosts.txt"
 
-	ProcessManagerEmptyDirMountPath = "/mnt/elastic/process-manager"
+	ProcessManagerEmptyDirMountPath = "/mnt/elastic-internal/process-manager"
 )
 
 var (

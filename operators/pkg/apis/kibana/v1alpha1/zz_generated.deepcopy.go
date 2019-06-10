@@ -18,6 +18,7 @@ import (
 func (in *BackendElasticsearch) DeepCopyInto(out *BackendElasticsearch) {
 	*out = *in
 	in.Auth.DeepCopyInto(&out.Auth)
+	out.CertificateAuthorities = in.CertificateAuthorities
 	return
 }
 

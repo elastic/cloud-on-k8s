@@ -64,8 +64,9 @@ type ElasticsearchOutput struct {
 
 // ElasticsearchOutputSSL contains TLS-related configuration for Elasticsearch
 type ElasticsearchOutputSSL struct {
-	// CertificateAuthoritiesSecret names a secret that contains a CA file entry to use.
-	CertificateAuthoritiesSecret *string `json:"certificateAuthoritiesSecret,omitempty"`
+	// CertificateAuthorities is a secret that contains a `tls.crt` entry that contain certificates for server
+	// verifications.
+	CertificateAuthorities commonv1alpha1.SecretRef `json:"certificateAuthorities,omitempty"`
 }
 
 // ApmServerHealth expresses the status of the Apm Server instances.

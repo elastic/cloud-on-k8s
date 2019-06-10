@@ -32,7 +32,7 @@ var (
 	esPasswordFlag        = envToFlag(EnvEsPassword)
 	esPasswordFileFlag    = envToFlag(EnvEsPasswordFile)
 	esEndpointFlag        = envToFlag(EnvEsEndpoint)
-	esCaCertsPathFlag     = envToFlag(EnvEsCaCertsPath)
+	esCertsPathFlag       = envToFlag(EnvEsCertsPath)
 	esVersionFlag         = envToFlag(EnvEsVersion)
 )
 
@@ -54,8 +54,8 @@ type Config struct {
 	EsEndpoint string
 	// EsVersion is the Elasticsearch version.
 	EsVersion version.Version
-	// EsCACertsPath points to the CA certificate chain to call the Elasticsearch API.
-	EsCACertsPath string
+	// EsCertsPath is a path to the certificates that should be used to validate requests to Elasticsearch.
+	EsCertsPath string
 	// EsUser is the Elasticsearch user for the reload secure settings API call. Can be empty if ReloadCredentials is false.
 	EsUser client.UserAuth
 }
@@ -75,7 +75,7 @@ func BindEnvToFlags(cmd *cobra.Command) error {
 	cmd.Flags().StringP(esPasswordFlag, "p", "", "Elasticsearch password to reload credentials")
 	cmd.Flags().StringP(esEndpointFlag, "e", "https://127.0.0.1:9200", "Elasticsearch endpoint to reload credentials")
 	cmd.Flags().String(esVersionFlag, "", "Elasticsearch version")
-	cmd.Flags().StringP(esCaCertsPathFlag, "c", path.Join("/volume/http-certs", certificates.CAFileName), "Path to the CA certificate to connect to Elasticsearch")
+	cmd.Flags().StringP(esCertsPathFlag, "c", path.Join("/volume/http-certs", certificates.CertFileName), "Path to the certificates to connect to Elasticsearch")
 
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
@@ -137,12 +137,12 @@ func NewConfigFromFlags() (Config, error, string) {
 
 		config.EsUser = client.UserAuth{Name: user, Password: pass}
 
-		caCerts := viper.GetString(esCaCertsPathFlag)
-		_, err = loadCerts(caCerts)
+		esCerts := viper.GetString(esCertsPathFlag)
+		_, err = loadCerts(esCerts)
 		if err != nil {
 			return Config{}, err, "CA certificates are required when reloading credentials but could not be read"
 		}
-		config.EsCACertsPath = caCerts
+		config.EsCertsPath = esCerts
 		config.EsEndpoint = viper.GetString(esEndpointFlag)
 	}
 

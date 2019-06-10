@@ -1,13 +1,7 @@
 apiVersion: apm.k8s.elastic.co/v1alpha1
 kind: ApmServer
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: apmserver-sample
 spec:
   version: "7.1.0"
   nodeCount: 1
-  http:
-    service:
-      spec:
-        type: ClusterIP

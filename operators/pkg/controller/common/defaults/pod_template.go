@@ -107,6 +107,15 @@ func (b *PodTemplateBuilder) WithMemoryLimit(limit resource.Quantity) *PodTempla
 	return b
 }
 
+// WithAffinity sets a default affinity, unless already provided in the template.
+// An empty affinity in the spec is not overridden.
+func (b *PodTemplateBuilder) WithAffinity(affinity *corev1.Affinity) *PodTemplateBuilder {
+	if b.PodTemplate.Spec.Affinity == nil {
+		b.PodTemplate.Spec.Affinity = affinity
+	}
+	return b
+}
+
 // portExists checks if a port with the given name already exists in the Container.
 func (b *PodTemplateBuilder) portExists(name string) bool {
 	for _, p := range b.Container.Ports {
@@ -203,22 +212,85 @@ func (b *PodTemplateBuilder) WithTerminationGracePeriod(period int64) *PodTempla
 	return b
 }
 
-// initContainerExists checks if an init container with the given name already exists in the template.
-func (b *PodTemplateBuilder) initContainerExists(name string) bool {
-	for _, c := range b.PodTemplate.Spec.InitContainers {
-		if c.Name == name {
-			return true
+// findVolumeMountByNameOrMountPath attempts to find a volume mount with the given name or mount path in the mounts
+// Returns the index of the volume mount or -1 if no volume mount by that name was found.
+func (b *PodTemplateBuilder) findVolumeMountByNameOrMountPath(
+	volumeMount corev1.VolumeMount,
+	mounts []corev1.VolumeMount,
+) int {
+	for i, vm := range mounts {
+		if vm.Name == volumeMount.Name || vm.MountPath == volumeMount.MountPath {
+			return i
 		}
 	}
-	return false
+	return -1
 }
 
-// WithInitContainers appends the given init containers to the pod template, unless already provided by the user.
-func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Container) *PodTemplateBuilder {
-	for _, c := range initContainers {
-		if !b.initContainerExists(c.Name) {
-			b.PodTemplate.Spec.InitContainers = append(b.PodTemplate.Spec.InitContainers, c)
+// WithInitContainerDefaults sets default values for the current init containers.
+//
+// Defaults:
+// - If the init container contains an empty image field, it's inherited from the main container.
+// - VolumeMounts from the main container are added to the init container VolumeMounts, unless they would conflict
+//   with a specified VolumeMount (by having the same VolumeMount.Name or VolumeMount.MountPath)
+func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
+	for i := range b.PodTemplate.Spec.InitContainers {
+		c := &b.PodTemplate.Spec.InitContainers[i]
+
+		// default the init container image to the main container image
+		if c.Image == "" {
+			c.Image = b.Container.Image
+		}
+
+		// store a reference to the init container volume mounts for comparison purposes
+		providedMounts := c.VolumeMounts
+
+		// append the main container volume mounts that do not conflict in name or mount path with the init container
+		for _, volumeMount := range b.Container.VolumeMounts {
+			if b.findVolumeMountByNameOrMountPath(volumeMount, providedMounts) == -1 {
+				c.VolumeMounts = append(c.VolumeMounts, volumeMount)
+			}
 		}
 	}
+	return b
+}
+
+// findInitContainerByName attempts to find an init container with the given name in the template
+// Returns the index of the container or -1 if no init container by that name was found.
+func (b *PodTemplateBuilder) findInitContainerByName(name string) int {
+	for i, c := range b.PodTemplate.Spec.InitContainers {
+		if c.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// WithInitContainers includes the given init containers to the pod template.
+//
+// Ordering:
+// - Provided init containers are prepended to the existing ones in the template.
+// - If an init container by the same name already exists in the template, the init container in the template
+// takes its place, and the provided init container is discarded.
+func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Container) *PodTemplateBuilder {
+	var containers []corev1.Container
+
+	for _, c := range initContainers {
+		if index := b.findInitContainerByName(c.Name); index != -1 {
+			container := b.PodTemplate.Spec.InitContainers[index]
+
+			// remove it from the podTemplate:
+			b.PodTemplate.Spec.InitContainers = append(
+				b.PodTemplate.Spec.InitContainers[:index],
+				b.PodTemplate.Spec.InitContainers[index+1:]...,
+			)
+
+			containers = append(containers, container)
+		} else {
+			containers = append(containers, c)
+		}
+	}
+
+	b.PodTemplate.Spec.InitContainers = append(containers, b.PodTemplate.Spec.InitContainers...)
+
 	return b
 }
