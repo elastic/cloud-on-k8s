@@ -35,7 +35,7 @@ func NewExpectedPodSpecs(
 	for _, node := range es.Spec.Nodes {
 		// add default PVCs to the node spec
 		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimsTemplates...,
+			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimTemplates...,
 		)
 
 		for i := int32(0); i < node.NodeCount; i++ {

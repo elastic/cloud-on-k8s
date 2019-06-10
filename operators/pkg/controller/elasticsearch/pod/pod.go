@@ -33,8 +33,8 @@ var (
 		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
 	}
 
-	// DefaultVolumeClaimsTemplates is the default volume claim templates for Elasticsearch pods
-	DefaultVolumeClaimsTemplates = []corev1.PersistentVolumeClaim{
+	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
+	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: volume.ElasticsearchDataVolumeName,

@@ -23,7 +23,6 @@ func AppendDefaultPVCs(
 		if volume.PersistentVolumeClaim == nil {
 			// this volume is not a PVC
 			nonPVCvolumes[volume.Name] = struct{}{}
-
 		}
 	}
 
