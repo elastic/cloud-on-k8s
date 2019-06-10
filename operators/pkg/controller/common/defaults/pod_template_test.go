@@ -325,6 +325,45 @@ func TestPodTemplateBuilder_WithResources(t *testing.T) {
 	}
 }
 
+func TestPodTemplateBuilder_WithAffinity(t *testing.T) {
+	defaultAffinity := &corev1.Affinity{
+		NodeAffinity: &corev1.NodeAffinity{},
+	}
+
+	containerName := "mycontainer"
+	tests := []struct {
+		name        string
+		PodTemplate corev1.PodTemplateSpec
+		affinity    *corev1.Affinity
+		want        *corev1.Affinity
+	}{
+		{
+			name:        "set default affinity",
+			PodTemplate: corev1.PodTemplateSpec{},
+			affinity:    defaultAffinity,
+			want:        defaultAffinity,
+		},
+		{
+			name: "don't override user-provided affinity",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Affinity: &corev1.Affinity{},
+				},
+			},
+			affinity: defaultAffinity,
+			want:     &corev1.Affinity{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
+			if got := b.WithAffinity(tt.affinity).PodTemplate.Spec.Affinity; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithAffinity() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPodTemplateBuilder_WithPorts(t *testing.T) {
 	containerName := "mycontainer"
 	tests := []struct {

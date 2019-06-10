@@ -484,6 +484,31 @@ func Test_podSpec(t *testing.T) {
 				}, podSpec.Containers[0].Env)
 			},
 		},
+		{
+			name: "default affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, pod.DefaultAffinity("my-cluster"), podSpec.Affinity)
+			},
+		},
+		{
+			name: "custom affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, &corev1.Affinity{}, podSpec.Affinity)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
