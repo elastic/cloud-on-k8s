@@ -64,8 +64,6 @@ func NewPrepareFSInitContainer(
 	linkedFiles LinkedFilesArray,
 	transportCertificatesVolume volume.SecretVolume,
 ) (corev1.Container, error) {
-	privileged := false
-	initContainerRunAsUser := defaultInitContainerRunAsUser
 
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
@@ -89,13 +87,13 @@ func NewPrepareFSInitContainer(
 		return corev1.Container{}, err
 	}
 
+	privileged := false
 	container := corev1.Container{
 		Image:           imageName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Name:            "prepare-fs",
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
-			RunAsUser:  &initContainerRunAsUser,
 		},
 		Command: []string{"bash", "-c", script},
 		VolumeMounts: append(
