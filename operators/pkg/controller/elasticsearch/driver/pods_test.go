@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -28,7 +29,7 @@ func Test_newPVCFromTemplate(t *testing.T) {
 			args: args{
 				claimTemplate: corev1.PersistentVolumeClaim{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: "elasticsearch-data",
+						Name: volume.ElasticsearchDataVolumeName,
 					},
 				},
 				pod: &corev1.Pod{
@@ -43,7 +44,7 @@ func Test_newPVCFromTemplate(t *testing.T) {
 			},
 			want: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "elasticsearch-sample-es-6bw9qkw77k-elasticsearch-data",
+					Name: "elasticsearch-sample-es-6bw9qkw77k-" + volume.ElasticsearchDataVolumeName,
 					Labels: map[string]string{
 						"l1":                   "v1",
 						"l2":                   "v2",

@@ -35,6 +35,11 @@ func NewExpectedPodSpecs(
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, node := range es.Spec.Nodes {
+		// add default PVCs to the node spec
+		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimTemplates...,
+		)
+
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
 				// cluster-wide params

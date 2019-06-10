@@ -13,7 +13,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -31,6 +32,25 @@ var (
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
 		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
 	}
+
+	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
+	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: volume.ElasticsearchDataVolumeName,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Gi"),
+					},
+				},
+			},
+		},
+	}
 )
 
 // DefaultAffinity returns the default affinity for pods in a cluster.
@@ -43,7 +63,7 @@ func DefaultAffinity(esName string) *corev1.Affinity {
 					Weight: 100,
 					PodAffinityTerm: corev1.PodAffinityTerm{
 						TopologyKey: "kubernetes.io/hostname",
-						LabelSelector: &v1.LabelSelector{
+						LabelSelector: &metav1.LabelSelector{
 							MatchLabels: map[string]string{
 								label.ClusterNameLabelName: esName,
 							},
@@ -97,7 +117,6 @@ type NewPodSpecParams struct {
 	ESConfigVolume volume.SecretVolume
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume volume.SecretVolume
-
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
 	// KeystoreUser is the user that should be used for reloading the credentials.
