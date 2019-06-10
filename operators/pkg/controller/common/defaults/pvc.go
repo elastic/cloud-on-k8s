@@ -8,9 +8,9 @@ import v1 "k8s.io/api/core/v1"
 
 // AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
 //
-// The default not appended if:
-// - a Volume with a the same .name is found in podSpec.Volumes, and that volume is not a PVC volume
-// - a PVC with the same metadata.name is found in existing.
+// The default PVC is not appended if:
+// - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
+// - a PVC with the same .Metadata.Name is found in existing.
 func AppendDefaultPVCs(
 	existing []v1.PersistentVolumeClaim,
 	podSpec v1.PodSpec,
