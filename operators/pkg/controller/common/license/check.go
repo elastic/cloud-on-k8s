@@ -19,7 +19,7 @@ type Checker interface {
 	Valid(l EnterpriseLicense) (bool, error)
 }
 
-// Checker contains parameters for license checks.
+// checker contains parameters for license checks.
 type checker struct {
 	k8sClient         k8s.Client
 	operatorNamespace string

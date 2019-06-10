@@ -14,6 +14,8 @@ import (
 
 var log = logf.Log.WithName("license-validation")
 
+const EULAValidationMsg = `Please set the annotation elastic.co/eula to "accepted" to accept the EULA`
+
 var Validations = []Validation{
 	eulaAccepted,
 }
@@ -24,7 +26,7 @@ func eulaAccepted(ctx Context) validation.Result {
 	}
 
 	if ctx.Proposed.Annotations[license.EULAAnnotation] != license.EULAAcceptedValue {
-		return validation.Result{Allowed: false, Reason: "Please set the annotation elastic.co/eula to accepted to accept the EULA"}
+		return validation.Result{Allowed: false, Reason: EULAValidationMsg}
 	}
 	return validation.OK
 }

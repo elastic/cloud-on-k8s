@@ -37,8 +37,8 @@ const (
 
 	// defaultSafetyMargin is the duration used by this controller to ensure licenses are updated well before expiry
 	// In case of any operational issues affecting this controller clusters will have enough runway on their current license.
-	defaultSafetyMargin   = 30 * 24 * time.Hour
-	minimumRetryInternval = 1 * time.Hour
+	defaultSafetyMargin  = 30 * 24 * time.Hour
+	minimumRetryInterval = 1 * time.Hour
 )
 
 var log = logf.Log.WithName(name)
@@ -89,7 +89,7 @@ func nextReconcileRelativeTo(now, expiry time.Time, safety time.Duration) reconc
 	// short-circuit to default if no expiry given
 	if expiry.IsZero() {
 		return reconcile.Result{
-			RequeueAfter: minimumRetryInternval,
+			RequeueAfter: minimumRetryInterval,
 		}
 	}
 	requeueAfter := expiry.Add(-1 * (safety / 2)).Sub(now)

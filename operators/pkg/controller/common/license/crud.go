@@ -16,7 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	util_errors "k8s.io/apimachinery/pkg/util/errors"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -45,7 +45,7 @@ func EnterpriseLicensesOrErrors(c k8s.Client) ([]EnterpriseLicense, []error) {
 // EnterpriseLicenses lists all Enterprise licenses or an aggregate error
 func EnterpriseLicenses(c k8s.Client) ([]EnterpriseLicense, error) {
 	licenses, errors := EnterpriseLicensesOrErrors(c)
-	return licenses, util_errors.NewAggregate(errors)
+	return licenses, utilerrors.NewAggregate(errors)
 }
 
 // TrialLicense returns the trial license, its containing secret or an error
@@ -74,7 +74,7 @@ func TrialLicense(c k8s.Client, nsn types.NamespacedName) (corev1.Secret, Enterp
 	return secret, license, nil
 }
 
-// CreateTrialLicense create en empty secret w`ith the correct meta data to start an enterprise trial
+// CreateTrialLicense creates en empty secret with the correct meta data to start an enterprise trial
 func CreateTrialLicense(c k8s.Client, namespace string) error {
 	return c.Create(&corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{

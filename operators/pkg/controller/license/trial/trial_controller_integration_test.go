@@ -70,11 +70,6 @@ func TestReconcile(t *testing.T) {
 	require.NoError(t, deleteTrial(c, string(license.LicenseTypeEnterpriseTrial)))
 	// recreate it with modified validity + 1 year
 	license.CreateTrialLicense(c, operatorNs)
-	// trialLicense.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(12 * 30 * 24 * time.Hour))
-	// require.NoError(t, license.UpdateEnterpriseLicense(c, types.NamespacedName{
-	// 	Namespace: operatorNs,
-	// 	Name:      string(license.LicenseTypeEnterpriseTrial),
-	// }, trialLicense))
 	// expect an invalid license
 	validateTrialStatus(t, checker, false)
 	// ClusterLicense should be GC'ed but can't be tested here

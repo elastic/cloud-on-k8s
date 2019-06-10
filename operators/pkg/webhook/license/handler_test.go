@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/admission/v1beta1"
@@ -111,7 +112,7 @@ func TestValidationHandler_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.ValidationResponse(false, "Please set the annotation elastic.co/eula to accepted to accept the EULA"),
+			want: admission.ValidationResponse(false, validation.EULAValidationMsg),
 		},
 	}
 	for _, tt := range tests {

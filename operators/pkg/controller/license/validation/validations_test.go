@@ -37,7 +37,7 @@ func Test_eulaAccepted(t *testing.T) {
 					},
 				},
 			},
-			want: validation.Result{Allowed: false, Reason: "Please set the annotation elastic.co/eula to accepted to accept the EULA"},
+			want: validation.Result{Allowed: false, Reason: EULAValidationMsg},
 		},
 		{
 			name: "Other secret OK",

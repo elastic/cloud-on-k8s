@@ -31,7 +31,7 @@ func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.P
 	}
 
 	if err := populateTrialLicense(l); err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to populate trial license")
+		return nil, pkgerrors.Wrap(err, "failed to populate trial license")
 	}
 	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
 	rnd := rand.Reader
@@ -43,11 +43,11 @@ func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.P
 	signer := NewSigner(tmpPrivKey)
 	sig, err := signer.Sign(*l)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to sign license")
+		return nil, pkgerrors.Wrap(err, "failed to sign license")
 	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(&tmpPrivKey.PublicKey)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to marshal public key for trial status")
+		return nil, pkgerrors.Wrap(err, "failed to marshal public key for trial status")
 	}
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -63,13 +63,13 @@ func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.P
 	}
 	err = c.Create(&trialStatus)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to create trial status")
+		return nil, pkgerrors.Wrap(err, "failed to create trial status")
 	}
 	l.License.Signature = string(sig)
 	// return pub key to retain in memory for later iterations
 	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
 		UpdateEnterpriseLicense(c, secret, *l),
-		"Failed to update trial license",
+		"failed to update trial license",
 	)
 }
 
