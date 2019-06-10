@@ -7,9 +7,10 @@ ENV KUBECTL_VERSION=1.13.2
 ENV DOCKER_VERSION=18.03.1-ce
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
+ENV PATH=${PATH}:/usr/local/kubebuilder/bin
 RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
     tar -zxf kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64.tar.gz && \
-    mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/bin/kubebuilder
+    mv kubebuilder_${KUBEBUILDER_VERSION}_linux_amd64 /usr/local/kubebuilder
 
 # Download required golang tools
 RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
