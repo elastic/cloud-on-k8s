@@ -9,18 +9,20 @@ import (
 )
 
 // NewConfigMapVolume creates a new ConfigMapVolume struct
-func NewConfigMapVolume(name, mountPath string) ConfigMapVolume {
+func NewConfigMapVolume(configMapName, name, mountPath string) ConfigMapVolume {
 	return ConfigMapVolume{
-		name:      name,
-		mountPath: mountPath,
+		configMapName: configMapName,
+		name:          name,
+		mountPath:     mountPath,
 	}
 }
 
 // ConfigMapVolume defines a volume to expose a configmap
 type ConfigMapVolume struct {
-	name      string
-	mountPath string
-	items     []corev1.KeyToPath
+	configMapName string
+	name          string
+	mountPath     string
+	items         []corev1.KeyToPath
 }
 
 // VolumeMount returns the k8s volume mount.
@@ -39,7 +41,7 @@ func (cm ConfigMapVolume) Volume() corev1.Volume {
 		VolumeSource: corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: cm.name,
+					Name: cm.configMapName,
 				},
 				Items:    cm.items,
 				Optional: &defaultOptional,

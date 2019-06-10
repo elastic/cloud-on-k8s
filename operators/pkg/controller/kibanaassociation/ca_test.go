@@ -43,7 +43,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      esname.CertsPublicSecretName(es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-ca-cert"),
 		},
 	}
 	updatedEsCA := corev1.Secret{
@@ -52,7 +52,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      esname.CertsPublicSecretName(es.Name, certificates.HTTPCAType),
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-ca-cert"),
 		},
 	}
 	// mock existing ES CA secret for Kibana
@@ -62,7 +62,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      CACertSecretName(kibana),
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte("fake-ca-cert"),
+			certificates.CertFileName: []byte("fake-ca-cert"),
 		},
 	}
 	updatedKibanaEsCA := corev1.Secret{
@@ -71,7 +71,7 @@ func TestReconcileAssociation_reconcileCASecret(t *testing.T) {
 			Name:      CACertSecretName(kibana),
 		},
 		Data: map[string][]byte{
-			certificates.CAFileName: []byte("updated-fake-ca-cert"),
+			certificates.CertFileName: []byte("updated-fake-ca-cert"),
 		},
 	}
 	tests := []struct {

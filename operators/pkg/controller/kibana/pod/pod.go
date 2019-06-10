@@ -6,12 +6,11 @@ package pod
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/overrides"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -21,97 +20,41 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/kibana/kibana"
 )
 
-// DefaultResources are resource limits to apply to Kibana container by default
-var DefaultResources = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
+// ports to set in the Kibana container
+var ports = []corev1.ContainerPort{
+	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
+}
+
+// defaultReadinessProbe is the readiness probe for the Kibana container
+var defaultReadinessProbe = corev1.Probe{
+	FailureThreshold:    3,
+	InitialDelaySeconds: 10,
+	PeriodSeconds:       10,
+	SuccessThreshold:    1,
+	TimeoutSeconds:      5,
+	Handler: corev1.Handler{
+		HTTPGet: &corev1.HTTPGetAction{
+			Port:   intstr.FromInt(HTTPPort),
+			Path:   "/",
+			Scheme: corev1.URISchemeHTTP,
+		},
+	},
 }
 
 func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-type EnvFactory func(kibana v1alpha1.Kibana) []corev1.EnvVar
-
 func NewPodTemplateSpec(kb v1alpha1.Kibana) corev1.PodTemplateSpec {
-	// inherit from the user-provided podTemplateSpec
-	objectMeta := kb.Spec.PodTemplate.ObjectMeta.DeepCopy()
-	spec := kb.Spec.PodTemplate.Spec.DeepCopy()
-
-	// add our labels on top of user-provided ones (but don't override)
-	if objectMeta.Labels == nil {
-		objectMeta.Labels = map[string]string{}
-	}
-	objectMeta.Labels = overrides.SetDefaultLabels(objectMeta.Labels, label.NewLabels(kb.Name))
-
-	// disable service account token automount unless enabled by the user
-	varFalse := false
-	if spec.AutomountServiceAccountToken == nil {
-		spec.AutomountServiceAccountToken = &varFalse
-	}
-
-	userProvidedContainerSpec := true
-	kibanaContainer := GetKibanaContainer(kb.Spec.PodTemplate.Spec).DeepCopy()
-	if kibanaContainer == nil {
-		userProvidedContainerSpec = false
-		kibanaContainer = &corev1.Container{Name: v1alpha1.KibanaContainerName}
-	}
-
-	// set Docker image name if not user-provided
-	imageName := imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)
-	if kb.Spec.Image != "" {
-		imageName = kb.Spec.Image
-	}
-	if kibanaContainer.Image != "" {
-		imageName = kibanaContainer.Image
-	}
-	kibanaContainer.Image = imageName
-
-	// set readiness probe
-	kibanaContainer.ReadinessProbe = &corev1.Probe{
-		FailureThreshold:    3,
-		InitialDelaySeconds: 10,
-		PeriodSeconds:       10,
-		SuccessThreshold:    1,
-		TimeoutSeconds:      5,
-		Handler: corev1.Handler{
-			HTTPGet: &corev1.HTTPGetAction{
-				Port:   intstr.FromInt(HTTPPort),
-				Path:   "/",
-				Scheme: corev1.URISchemeHTTP,
-			},
-		},
-	}
-
-	// set resource requirements if not user-provided
-	if len(kibanaContainer.Resources.Limits) == 0 && len(kibanaContainer.Resources.Requests) == 0 {
-		kibanaContainer.Resources = DefaultResources
-	}
-
-	// set our ports to the Kibana container
-	kibanaContainer.Ports = []corev1.ContainerPort{
-		{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-	}
-
-	// set the modified Kibana container back into the spec
-	if userProvidedContainerSpec {
-		for i, c := range spec.Containers {
-			if c.Name == v1alpha1.KibanaContainerName {
-				spec.Containers[i] = *kibanaContainer
-			}
-		}
-	} else {
-		spec.Containers = append(spec.Containers, *kibanaContainer)
-	}
-
-	return corev1.PodTemplateSpec{
-		ObjectMeta: *objectMeta,
-		Spec:       *spec,
-	}
+	return defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
+		WithLabels(label.NewLabels(kb.Name)).
+		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
+		WithReadinessProbe(defaultReadinessProbe).
+		WithPorts(ports).
+		PodTemplate
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.
-// It returns nil if the container does not exist.
-// Warning: this function returns a pointer to the object that can then be mutated.
 func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 	for i, c := range podSpec.Containers {
 		if c.Name == v1alpha1.KibanaContainerName {

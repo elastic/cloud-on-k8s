@@ -66,8 +66,6 @@ func NewDriver(opts Options) (Driver, error) {
 	driver := &defaultDriver{
 		Options: opts,
 
-		versionWideResourcesReconciler: reconcileVersionWideResources,
-
 		observedStateResolver:  opts.Observers.ObservedStateResolver,
 		resourcesStateResolver: esreconcile.NewResourcesStateFromAPI,
 		usersReconciler:        user.ReconcileUsers,

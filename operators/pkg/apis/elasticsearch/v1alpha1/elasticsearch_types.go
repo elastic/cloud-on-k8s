@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -64,7 +63,7 @@ type NodeSpec struct {
 	Name string `json:"name,omitempty"`
 
 	// Config represents Elasticsearch configuration.
-	Config *Config `json:"config,omitempty"`
+	Config *commonv1alpha1.Config `json:"config,omitempty"`
 
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`

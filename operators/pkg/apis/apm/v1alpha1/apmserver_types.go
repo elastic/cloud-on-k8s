@@ -11,6 +11,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const APMServerContainerName = "apm-server"
+
 // ApmServerSpec defines the desired state of ApmServer
 type ApmServerSpec struct {
 	// Version represents the version of the APM Server
@@ -28,8 +30,9 @@ type ApmServerSpec struct {
 	// +optional
 	Output Output `json:"output,omitempty"`
 
-	// PodTemplate can be used to propagate configuration to APM pods.
-	// So far, only labels, Affinity and `Containers["apm"].Resources.Limits` are applied.
+	// PodTemplate can be used to propagate configuration to APM Server pods.
+	// This allows specifying custom annotations, labels, environment variables,
+	// affinity, resources, etc. for the pods created from this NodeSpec.
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
@@ -61,8 +64,9 @@ type ElasticsearchOutput struct {
 
 // ElasticsearchOutputSSL contains TLS-related configuration for Elasticsearch
 type ElasticsearchOutputSSL struct {
-	// CertificateAuthoritiesSecret names a secret that contains a CA file entry to use.
-	CertificateAuthoritiesSecret *string `json:"certificateAuthoritiesSecret,omitempty"`
+	// CertificateAuthorities is a secret that contains a `tls.crt` entry that contain certificates for server
+	// verifications.
+	CertificateAuthorities commonv1alpha1.SecretRef `json:"certificateAuthorities,omitempty"`
 }
 
 // ApmServerHealth expresses the status of the Apm Server instances.

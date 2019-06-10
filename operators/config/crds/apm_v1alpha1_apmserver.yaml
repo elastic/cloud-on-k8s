@@ -70,6 +70,16 @@ spec:
                   description: TLS describe additional options to consider when generating
                     HTTP TLS certificates.
                   properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contains
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
                         self-signed certificate managed by the operator.
@@ -142,17 +152,22 @@ spec:
                     ssl:
                       description: SSL configures TLS-related configuration for Elasticsearch
                       properties:
-                        certificateAuthoritiesSecret:
-                          description: CertificateAuthoritiesSecret names a secret
-                            that contains a CA file entry to use.
-                          type: string
+                        certificateAuthorities:
+                          description: CertificateAuthorities is a secret that contains
+                            a `tls.crt` entry that contain certificates for server
+                            verifications.
+                          properties:
+                            secretName:
+                              type: string
+                          type: object
                       type: object
                   type: object
               type: object
             podTemplate:
               description: PodTemplate can be used to propagate configuration to APM
-                pods. So far, only labels, Affinity and `Containers["apm"].Resources.Limits`
-                are applied.
+                Server pods. This allows specifying custom annotations, labels, environment
+                variables, affinity, resources, etc. for the pods created from this
+                NodeSpec.
               type: object
             version:
               description: Version represents the version of the APM Server

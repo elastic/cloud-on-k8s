@@ -64,7 +64,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				require.NotNil(t, kibanaContainer)
 				assert.Equal(t, imageWithVersion(defaultImageRepositoryAndName, "7.1.0"), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
-				assert.Equal(t, DefaultResources, kibanaContainer.Resources)
 				assert.NotEmpty(t, kibanaContainer.Ports)
 			},
 		},

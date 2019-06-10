@@ -18,6 +18,7 @@ import (
 func (in *BackendElasticsearch) DeepCopyInto(out *BackendElasticsearch) {
 	*out = *in
 	in.Auth.DeepCopyInto(&out.Auth)
+	out.CertificateAuthorities = in.CertificateAuthorities
 	return
 }
 
@@ -139,6 +140,10 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	*out = *in
 	out.ElasticsearchRef = in.ElasticsearchRef
 	in.Elasticsearch.DeepCopyInto(&out.Elasticsearch)
+	if in.Config != nil {
+		in, out := &in.Config, &out.Config
+		*out = (*in).DeepCopy()
+	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
 	if in.FeatureFlags != nil {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	csettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
@@ -215,7 +216,7 @@ func TestNewPod(t *testing.T) {
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides
 	// setup mocks for env vars func, es config func and init-containers func
-	newEnvVarsFn := func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar {
+	newEnvVarsFn := func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar {
 		return []corev1.EnvVar{
 			{
 				Name:  "var1",
@@ -227,7 +228,7 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error) {
+	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
 		return settings.CanonicalConfig{}, nil
 	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error) {
@@ -264,7 +265,6 @@ func Test_podSpec(t *testing.T) {
 				esContainer := podSpec.Containers[0]
 				require.NotEmpty(t, esContainer.VolumeMounts)
 				require.Len(t, esContainer.Env, 2)
-				require.Equal(t, corev1.ResourceList{corev1.ResourceMemory: DefaultMemoryLimits}, esContainer.Resources.Limits)
 				require.Nil(t, esContainer.Resources.Requests)
 				require.Equal(t, pod.DefaultContainerPorts, esContainer.Ports)
 				require.Equal(t, pod.NewReadinessProbe(), esContainer.ReadinessProbe)
@@ -354,10 +354,15 @@ func Test_podSpec(t *testing.T) {
 						Spec: corev1.PodSpec{
 							InitContainers: []corev1.Container{
 								{
-									Name: "user-init-container-1",
+									Name:  "user-init-container-1",
+									Image: "my-custom-image",
 								},
 								{
 									Name: "user-init-container-2",
+									VolumeMounts: []corev1.VolumeMount{{
+										Name:      "foo",
+										MountPath: "/foo",
+									}},
 								},
 							},
 						},
@@ -367,16 +372,26 @@ func Test_podSpec(t *testing.T) {
 			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "user-init-container-1",
-					},
-					{
-						Name: "user-init-container-2",
-					},
-					{
 						Name: "init-container1",
 					},
 					{
 						Name: "init-container2",
+					},
+					{
+						Name:         "user-init-container-1",
+						Image:        "my-custom-image",
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
+					},
+					{
+						Name:  "user-init-container-2",
+						Image: podSpec.Containers[0].Image,
+						VolumeMounts: append(
+							[]corev1.VolumeMount{{
+								Name:      "foo",
+								MountPath: "/foo",
+							}},
+							podSpec.Containers[0].VolumeMounts...,
+						),
 					},
 				}, podSpec.InitContainers)
 			},
@@ -467,6 +482,31 @@ func Test_podSpec(t *testing.T) {
 						Value: "value2",
 					},
 				}, podSpec.Containers[0].Env)
+			},
+		},
+		{
+			name: "default affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, pod.DefaultAffinity("my-cluster"), podSpec.Affinity)
+			},
+		},
+		{
+			name: "custom affinity",
+			params: pod.NewPodSpecParams{
+				ClusterName: "my-cluster",
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Affinity: &corev1.Affinity{},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+				require.Equal(t, &corev1.Affinity{}, podSpec.Affinity)
 			},
 		},
 	}

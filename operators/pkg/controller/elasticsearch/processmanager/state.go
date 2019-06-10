@@ -101,7 +101,7 @@ func (p *Process) updateState(action string, signal syscall.Signal, lastErr erro
 
 	err := p.state.Write()
 	if err != nil {
-		Exit("Failed to write process state", 1)
+		Exit(fmt.Sprintf("Failed to write process state: %s", err), 1)
 	}
 
 	kv := []interface{}{"action", action, "id", p.id, "state", p.state, "pid", p.pid}

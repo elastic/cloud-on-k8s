@@ -8,4 +8,4 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("es-settings")
+var log = logf.Log.WithName("settings")
