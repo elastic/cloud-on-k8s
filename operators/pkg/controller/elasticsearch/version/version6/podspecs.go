@@ -109,7 +109,7 @@ func newEnvironmentVars(
 		}},
 
 		// TODO: the JVM options are hardcoded, but should be configurable
-		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", heapSize, heapSize, version.SecurityPropsFile)},
+		{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", heapSize, heapSize)},
 
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
