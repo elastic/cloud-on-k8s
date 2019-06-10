@@ -70,6 +70,12 @@ func (c *clientV6) GetNodes(ctx context.Context) (Nodes, error) {
 	return nodes, c.get(ctx, "/_nodes/_all/jvm,settings", &nodes)
 }
 
+func (c *clientV6) GetNodesStats(ctx context.Context) (NodesStats, error) {
+	var nodesStats NodesStats
+	// restrict call to basic node info only
+	return nodesStats, c.get(ctx, "/_nodes/_all/stats/os", &nodesStats)
+}
+
 func (c *clientV6) GetLicense(ctx context.Context) (License, error) {
 	var license LicenseResponse
 	return license.License, c.get(ctx, "/_xpack/license", &license)

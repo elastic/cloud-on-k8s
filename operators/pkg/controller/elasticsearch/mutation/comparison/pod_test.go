@@ -44,7 +44,6 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				Name:            v1alpha1.ElasticsearchContainerName,
 				Ports:           pod.DefaultContainerPorts,
-				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse(cpuLimit),

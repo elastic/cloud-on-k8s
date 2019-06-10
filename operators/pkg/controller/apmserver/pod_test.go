@@ -72,7 +72,6 @@ func TestNewPodSpec(t *testing.T) {
 							},
 							ReadinessProbe: &readinessProbe,
 							Ports:          ports,
-							Resources:      DefaultResources,
 							Command:        command,
 							VolumeMounts: []corev1.VolumeMount{
 								configVolume.VolumeMount(), configSecretVol.VolumeMount(),
