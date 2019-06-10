@@ -7,6 +7,7 @@ package config
 import (
 	"path"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
@@ -25,17 +26,28 @@ type CanonicalConfig struct {
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, error) {
-	cfg := settings.NewCanonicalConfig()
+	specConfig := kb.Spec.Config
+	if specConfig == nil {
+		specConfig = &commonv1alpha1.Config{}
+	}
+
+	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
+	if err != nil {
+		return CanonicalConfig{}, err
+	}
 
 	esAuthSettings, err := elasticsearchAuthSettings(client, kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 
+	cfg := settings.MustCanonicalConfig(baseSettings(kb))
+
+	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		settings.MustCanonicalConfig(baseSettings(kb)),
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(esAuthSettings),
+		userSettings,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err

@@ -33,6 +33,9 @@ type KibanaSpec struct {
 	// +optional
 	Elasticsearch BackendElasticsearch `json:"elasticsearch,omitempty"`
 
+	// Config represents Kibana configuration.
+	Config *commonv1alpha1.Config `json:"config,omitempty"`
+
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 

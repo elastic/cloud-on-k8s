@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
@@ -51,7 +52,7 @@ func supportedVersion(ctx Context) validation.Result {
 func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		cfg, err := t.Config.Unpack()
+		cfg, err := v1alpha1.UnpackConfig(t.Config)
 		if err != nil {
 			return validation.Result{Reason: cfgInvalidMsg}
 		}

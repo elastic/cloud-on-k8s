@@ -49,6 +49,9 @@ spec:
           type: object
         spec:
           properties:
+            config:
+              description: Config represents Kibana configuration.
+              type: object
             elasticsearch:
               description: Elasticsearch configures how Kibana connects to Elasticsearch
               properties:

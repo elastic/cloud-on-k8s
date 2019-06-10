@@ -5,6 +5,7 @@
 package version
 
 import (
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -25,8 +26,9 @@ import (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
+
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
@@ -71,7 +73,7 @@ func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
+	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// setup volumes
@@ -146,7 +148,7 @@ func podSpec(
 	// actual volumes to propagate it will be created later on
 	config := p.NodeSpec.Config
 	if config == nil {
-		config = &v1alpha1.Config{}
+		config = &commonv1alpha1.Config{}
 	}
 	esConfig, err := newESConfigFn(p.ClusterName, *config)
 	if err != nil {

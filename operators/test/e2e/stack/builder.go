@@ -92,7 +92,7 @@ func (b Builder) WithNoESTopology() Builder {
 func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		Config: &estype.Config{
+		Config: &commonv1alpha1.Config{
 			Data: map[string]interface{}{
 				estype.NodeData: "false",
 			},
@@ -104,7 +104,7 @@ func (b Builder) WithESMasterNodes(count int, resources corev1.ResourceRequireme
 func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		Config: &estype.Config{
+		Config: &commonv1alpha1.Config{
 			Data: map[string]interface{}{
 				estype.NodeMaster: "false",
 			},
@@ -116,7 +116,7 @@ func (b Builder) WithESDataNodes(count int, resources corev1.ResourceRequirement
 func (b Builder) WithESMasterDataNodes(count int, resources corev1.ResourceRequirements) Builder {
 	return b.withESTopologyElement(estype.NodeSpec{
 		NodeCount: int32(count),
-		Config: &estype.Config{
+		Config: &commonv1alpha1.Config{
 			Data: map[string]interface{}{},
 		},
 		PodTemplate: ESPodTemplate(resources),

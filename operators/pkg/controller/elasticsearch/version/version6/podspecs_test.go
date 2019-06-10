@@ -8,6 +8,7 @@ import (
 	"path"
 	"testing"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
@@ -117,7 +118,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 1,
-							Config: &v1alpha1.Config{
+							Config: &commonv1alpha1.Config{
 								Data: map[string]interface{}{
 									v1alpha1.NodeMaster: "true",
 								},
@@ -125,7 +126,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 						},
 						{
 							NodeCount: 2,
-							Config: &v1alpha1.Config{
+							Config: &commonv1alpha1.Config{
 								Data: map[string]interface{}{
 									v1alpha1.NodeData: "true",
 								},
@@ -159,7 +160,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			Nodes: []v1alpha1.NodeSpec{
 				{
 					NodeCount: 1,
-					Config: &v1alpha1.Config{
+					Config: &commonv1alpha1.Config{
 						Data: map[string]interface{}{
 							v1alpha1.NodeMaster: "true",
 						},

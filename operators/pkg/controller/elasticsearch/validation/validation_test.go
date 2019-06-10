@@ -112,7 +112,7 @@ func TestValidate(t *testing.T) {
 						Version: "7.0.0",
 						Nodes: []estype.NodeSpec{
 							{
-								Config: &estype.Config{
+								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: "true",
 										estype.NodeData:   "false",
@@ -163,7 +163,7 @@ func TestValidate(t *testing.T) {
 						Nodes: []estype.NodeSpec{
 							{
 								NodeCount: 1,
-								Config: &estype.Config{
+								Config: &common.Config{
 									Data: map[string]interface{}{
 										estype.NodeMaster: false,
 										settings.XPackSecurityTransportSslCertificate: "blacklisted setting",

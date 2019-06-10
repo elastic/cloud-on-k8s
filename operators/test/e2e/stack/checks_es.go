@@ -124,7 +124,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				nodeStats := nodesStats.Nodes[nodeId]
 
 				for i, topoElem := range expectedTopology {
-					cfg, err := topoElem.Config.Unpack()
+					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
 					require.NoError(t, err)
 
 					podNameExample := name.NewPodName(es.Name, topoElem)
