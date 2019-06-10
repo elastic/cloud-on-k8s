@@ -15,7 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/policy/v1beta1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +25,7 @@ import (
 func TestReconcile(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 
-	esMeta := v1.ObjectMeta{
+	esMeta := metav1.ObjectMeta{
 		Name:      "my-cluster",
 		Namespace: "my-namespace",
 	}
@@ -54,12 +54,12 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			want: &v1beta1.PodDisruptionBudget{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: name.DefaultPodDisruptionBudget(esMeta.Name), Namespace: esMeta.Namespace,
 					Labels: label.NewLabels(k8s.ExtractNamespacedName(&esMeta)),
 				},
 				Spec: v1beta1.PodDisruptionBudgetSpec{
-					Selector: &v1.LabelSelector{
+					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							label.ClusterNameLabelName: esMeta.Name,
 						},
@@ -76,7 +76,7 @@ func TestReconcile(t *testing.T) {
 					ObjectMeta: esMeta,
 					Spec: v1alpha1.ElasticsearchSpec{
 						PodDisruptionBudget: &commonv1alpha1.PodDisruptionBudgetTemplate{
-							ObjectMeta: v1.ObjectMeta{
+							ObjectMeta: metav1.ObjectMeta{
 								Labels: map[string]string{
 									"foo": "bar",
 								},
@@ -87,7 +87,7 @@ func TestReconcile(t *testing.T) {
 							Spec: v1beta1.PodDisruptionBudgetSpec{
 								MaxUnavailable: intStrRef(intstr.FromInt(42)),
 								MinAvailable:   intStrRef(intstr.FromInt(123)),
-								Selector: &v1.LabelSelector{
+								Selector: &metav1.LabelSelector{
 									MatchLabels: map[string]string{
 										"foo": "bar",
 									},
@@ -98,7 +98,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			want: &v1beta1.PodDisruptionBudget{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: name.DefaultPodDisruptionBudget(esMeta.Name), Namespace: esMeta.Namespace,
 					Labels: defaults.SetDefaultLabels(
 						map[string]string{"foo": "bar"},
@@ -111,7 +111,7 @@ func TestReconcile(t *testing.T) {
 				Spec: v1beta1.PodDisruptionBudgetSpec{
 					MaxUnavailable: intStrRef(intstr.FromInt(42)),
 					MinAvailable:   intStrRef(intstr.FromInt(123)),
-					Selector: &v1.LabelSelector{
+					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"foo": "bar",
 						},
@@ -136,7 +136,7 @@ func TestReconcile(t *testing.T) {
 			name: "pod disruption budget disabled: should delete",
 			args: args{
 				c: k8s.WrapClient(fake.NewFakeClient(&v1beta1.PodDisruptionBudget{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: name.DefaultPodDisruptionBudget(esMeta.Name), Namespace: esMeta.Namespace,
 					},
 				})),

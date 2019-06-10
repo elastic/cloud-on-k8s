@@ -16,7 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -43,7 +43,7 @@ func Reconcile(
 		template = &commonv1alpha1.PodDisruptionBudgetTemplate{}
 	}
 
-	var objectMeta v1.ObjectMeta
+	var objectMeta metav1.ObjectMeta
 	if template != nil {
 		objectMeta = *template.ObjectMeta.DeepCopy()
 	}
@@ -80,7 +80,7 @@ func Reconcile(
 		expected.Spec.MaxUnavailable = &commonv1alpha1.DefaultPodDisruptionBudgetMaxUnavailable
 	}
 	if expected.Spec.Selector == nil {
-		expected.Spec.Selector = &v1.LabelSelector{
+		expected.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
 				label.ClusterNameLabelName: es.Name,
 			},
