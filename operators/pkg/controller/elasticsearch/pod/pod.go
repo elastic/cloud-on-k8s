@@ -7,12 +7,14 @@ package pod
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -30,7 +32,48 @@ var (
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
 		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
 	}
+
+	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
+	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: volume.ElasticsearchDataVolumeName,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{
+					corev1.ReadWriteOnce,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: resource.MustParse("1Gi"),
+					},
+				},
+			},
+		},
+	}
 )
+
+// DefaultAffinity returns the default affinity for pods in a cluster.
+func DefaultAffinity(esName string) *corev1.Affinity {
+	return &corev1.Affinity{
+		// prefer to avoid two pods in the same cluster being co-located on a single node
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: 100,
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						TopologyKey: "kubernetes.io/hostname",
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								label.ClusterNameLabelName: esName,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 // PodWithConfig contains a pod and its configuration
 type PodWithConfig struct {
@@ -74,12 +117,10 @@ type NewPodSpecParams struct {
 	ESConfigVolume volume.SecretVolume
 	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
 	UsersSecretVolume volume.SecretVolume
-	// ClusterSecretsRef is a reference to a secret containing generic secrets shared between pods in the cluster.
-	ClusterSecretsRef types.NamespacedName
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
-	// ReloadCredsUser is the user that should be used for reloading the credentials.
-	ReloadCredsUser client.UserAuth
+	// KeystoreUser is the user that should be used for reloading the credentials.
+	KeystoreUser client.UserAuth
 	// UnicastHostsVolume contains a file with the seed hosts.
 	UnicastHostsVolume volume.ConfigMapVolume
 }

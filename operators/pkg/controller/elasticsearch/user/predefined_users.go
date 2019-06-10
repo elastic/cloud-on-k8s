@@ -13,17 +13,17 @@ const (
 	InternalControllerUserName = "elastic-internal"
 	// InternalProbeUserName is a user to be used from the liveness/readiness probes when interacting with ES.
 	InternalProbeUserName = "elastic-internal-probe"
-	// InternalReloadCredsUserName is a user to be used for reloading ES credentials.
-	InternalReloadCredsUserName = "elastic-internal-reload-creds"
+	// InternalKeystoreUserName is a user to be used for reloading ES secure settings from the keystore.
+	InternalKeystoreUserName = "elastic-internal-keystore"
 
 	// SuperUserBuiltinRole is the name of the built-in superuser role
 	SuperUserBuiltinRole = "superuser"
 	// KibanaSystemUserBuiltinRole is the name of the built-in role for the Kibana system user
 	KibanaSystemUserBuiltinRole = "kibana_system"
-	// ProbeUserRole is the name of the custom probe_user role
-	ProbeUserRole = "probe_user"
-	// ReloadCredsUserRole is the name of the custom reload_creds_user role
-	ReloadCredsUserRole = "reload_creds_user"
+	// ProbeUserRole is the name of the custom elastic_internal_probe_user role
+	ProbeUserRole = "elastic_internal_probe_user"
+	// KeystoreUserRole is the name of the custom elastic_internal_keystore_user role
+	KeystoreUserRole = "elastic_internal_keystore_user"
 )
 
 // Predefined roles.
@@ -32,7 +32,7 @@ var (
 		ProbeUserRole: {
 			Cluster: []string{"monitor"},
 		},
-		ReloadCredsUserRole: {
+		KeystoreUserRole: {
 			Cluster: []string{"all"},
 		},
 	}
@@ -50,15 +50,15 @@ func newInternalUsers() []User {
 	return []User{
 		New(InternalControllerUserName, Roles(SuperUserBuiltinRole)),
 		New(InternalProbeUserName, Roles(ProbeUserRole)),
-		New(InternalReloadCredsUserName, Roles(ReloadCredsUserRole)),
+		New(InternalKeystoreUserName, Roles(KeystoreUserRole)),
 	}
 }
 
 // InternalUsers are Elasticsearch users intended for system use.
 type InternalUsers struct {
-	ControllerUser  User
-	ProbeUser       User
-	ReloadCredsUser User
+	ControllerUser User
+	ProbeUser      User
+	KeystoreUser   User
 }
 
 // NewInternalUsersFrom constructs a new struct with internal users from the given credentials of those users.
@@ -71,8 +71,8 @@ func NewInternalUsersFrom(users ClearTextCredentials) *InternalUsers {
 		if user.Id() == InternalProbeUserName {
 			internalUsers.ProbeUser = user
 		}
-		if user.Id() == InternalReloadCredsUserName {
-			internalUsers.ReloadCredsUser = user
+		if user.Id() == InternalKeystoreUserName {
+			internalUsers.KeystoreUser = user
 		}
 	}
 	return &internalUsers

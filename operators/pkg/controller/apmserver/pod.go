@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -23,11 +22,6 @@ const (
 
 	SecretTokenKey string = "secret-token"
 )
-
-// DefaultResources are resource limits to apply to an APM Server container by default
-var DefaultResources = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
-}
 
 var readinessProbe = corev1.Probe{
 	FailureThreshold:    3,
@@ -100,7 +94,6 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		p.PodTemplate, v1alpha1.APMServerContainerName).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
 		WithReadinessProbe(readinessProbe).
-		WithResources(DefaultResources).
 		WithPorts(ports).
 		WithCommand(command).
 		WithVolumes(configVolume.Volume(), configSecretVolume.Volume()).

@@ -18,8 +18,8 @@ const (
 )
 
 var ProcessManagerVolume = SharedVolume{
-	Name:                   "local-bin-volume",
-	InitContainerMountPath: "/volume/bin",
+	Name:                   "elastic-internal-process-manager",
+	InitContainerMountPath: volume.ProcessManagerEmptyDirMountPath,
 	EsContainerMountPath:   volume.ProcessManagerEmptyDirMountPath,
 }
 
@@ -29,7 +29,7 @@ func NewInjectProcessManagerInitContainer(imageName string) (corev1.Container, e
 		Env: []corev1.EnvVar{
 			{Name: envBinDirectoryPath, Value: ProcessManagerVolume.InitContainerMountPath},
 		},
-		Name:         "inject-process-manager",
+		Name:         injectProcessManagerContainerName,
 		Command:      []string{"bash", "-c", script},
 		VolumeMounts: []corev1.VolumeMount{ProcessManagerVolume.InitContainerVolumeMount()},
 	}

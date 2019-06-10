@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -34,7 +33,6 @@ func K8sStackChecks(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestSte
 		CheckESPodsRunning(stack, k8sClient),
 		CheckServices(stack, k8sClient),
 		CheckESPodsReady(stack, k8sClient),
-		CheckESPodsResources(stack, k8sClient),
 		CheckPodCertificates(stack, k8sClient),
 		CheckServicesEndpoints(stack, k8sClient),
 		CheckClusterHealth(stack, k8sClient),
@@ -233,43 +231,6 @@ func CheckClusterHealth(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			}
 			if es.Status.Health != estype.ElasticsearchGreenHealth {
 				return fmt.Errorf("Health is %s", es.Status.Health)
-			}
-			return nil
-		}),
-	}
-}
-
-// CheckESPodsResources checks that ES pods from the given stack have the expected resources
-// TODO: request Elasticsearch endpoint, to also validate what's seen from ES
-func CheckESPodsResources(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
-	return helpers.TestStep{
-		Name: "Pods should eventually have the expected resources",
-		Test: helpers.Eventually(func() error {
-			pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
-			if err != nil {
-				return err
-			}
-			var expectedLimits []corev1.ResourceList
-			for _, topoElem := range stack.Elasticsearch.Spec.Nodes {
-				for i := 0; i < int(topoElem.NodeCount); i++ {
-					esContainer := topoElem.GetESContainerTemplate()
-					if esContainer != nil && esContainer.Resources.Limits != nil {
-						expectedLimits = append(expectedLimits, esContainer.Resources.Limits)
-					} else {
-						expectedLimits = append(expectedLimits, corev1.ResourceList{corev1.ResourceMemory: version.DefaultMemoryLimits})
-					}
-				}
-			}
-			var limits []corev1.ResourceList
-			for _, p := range pods {
-				if len(p.Spec.Containers) == 0 {
-					return fmt.Errorf("No ES container found in pod %s", p.Name)
-				}
-				esContainer := p.Spec.Containers[0]
-				limits = append(limits, esContainer.Resources.Limits)
-			}
-			if err := helpers.ElementsMatch(expectedLimits, limits); err != nil {
-				return err
 			}
 			return nil
 		}),

@@ -16,6 +16,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -32,27 +33,28 @@ var (
 	log = logf.Log.WithName("http")
 )
 
-type HTTPCertificate struct {
-	CaPem   []byte
-	CertPem []byte
-	KeyPem  []byte
-}
-
-// ReconcileHTTPCertificate reconciles the internal resources for the HTTP certificate.
-func ReconcileHTTPCertificate(
+// ReconcileHTTPCertificates reconciles the internal resources for the HTTP certificate.
+func ReconcileHTTPCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
+	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
 	ca *certificates.CA,
 	services []corev1.Service,
 	certValidity time.Duration,
 	certRotateBefore time.Duration,
-) (*HTTPCertificate, error) {
-	// TODO: resolve user-provided certificate
-	var userProvidedHTTPCertificate *HTTPCertificate
+) (*CertificatesSecret, error) {
+	customCertificates, err := GetCustomCertificates(c, es)
+	if err != nil {
+		return nil, err
+	}
 
-	internalCerts, err := reconcileHTTPInternalCertificateSecret(
-		c, scheme, es, services, userProvidedHTTPCertificate, ca, certValidity, certRotateBefore,
+	if err := reconcileDynamicWatches(watches, es); err != nil {
+		return nil, err
+	}
+
+	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
+		c, scheme, es, services, customCertificates, ca, certValidity, certRotateBefore,
 	)
 	if err != nil {
 		return nil, err
@@ -61,20 +63,18 @@ func ReconcileHTTPCertificate(
 	return internalCerts, nil
 }
 
-// reconcileHTTPInternalCertificateSecret ensures that the internal HTTP certificate secret has the correct content.
-//
-// // TODO: use contents of userProvidedHTTPCertificate if provided
-func reconcileHTTPInternalCertificateSecret(
+// reconcileHTTPInternalCertificatesSecret ensures that the internal HTTP certificate secret has the correct content.
+func reconcileHTTPInternalCertificatesSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
-	userProvidedHTTPCertificate *HTTPCertificate,
+	customCertificates *CertificatesSecret,
 	ca *certificates.CA,
 	certValidity time.Duration,
 	certReconcileBefore time.Duration,
-) (*HTTPCertificate, error) {
-	secret := &corev1.Secret{
+) (*CertificatesSecret, error) {
+	secret := corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      name.HTTPCertsInternalSecretName(es.Name),
@@ -82,7 +82,7 @@ func reconcileHTTPInternalCertificateSecret(
 	}
 
 	shouldCreateSecret := false
-	if err := c.Get(k8s.ExtractNamespacedName(secret), secret); err != nil && !apierrors.IsNotFound(err) {
+	if err := c.Get(k8s.ExtractNamespacedName(&secret), &secret); err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
 	} else if apierrors.IsNotFound(err) {
 		shouldCreateSecret = true
@@ -104,7 +104,7 @@ func reconcileHTTPInternalCertificateSecret(
 		}
 	}
 
-	if err := controllerutil.SetControllerReference(&es, secret, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(&es, &secret, scheme); err != nil {
 		return nil, err
 	}
 
@@ -112,6 +112,53 @@ func reconcileHTTPInternalCertificateSecret(
 	if secret.Data == nil {
 		secret.Data = make(map[string][]byte)
 	}
+
+	if customCertificates != nil {
+		if !reflect.DeepEqual(secret.Data, customCertificates.Data) {
+			needsUpdate = true
+			secret.Data = customCertificates.Data
+		}
+	} else {
+		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
+			&secret, es, svcs, ca, certValidity, certReconcileBefore,
+		)
+		if err != nil {
+			return nil, err
+		}
+		needsUpdate = needsUpdate || selfSignedNeedsUpdate
+	}
+
+	if needsUpdate {
+		if shouldCreateSecret {
+			log.Info("Creating HTTP internal certificate secret", "secret", secret.Name)
+			if err := c.Create(&secret); err != nil {
+				return nil, err
+			}
+		} else {
+			log.Info("Updating HTTP internal certificate secret", "secret", secret.Name)
+			if err := c.Update(&secret); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	result := CertificatesSecret(secret)
+	return &result, nil
+}
+
+// ensureInternalSelfSignedCertificateSecretContents ensures that contents of a secret containing self-signed
+// certificates is valid. The provided secret is updated in-place.
+//
+// Returns true if the secret was changed.
+func ensureInternalSelfSignedCertificateSecretContents(
+	secret *corev1.Secret,
+	es v1alpha1.Elasticsearch,
+	svcs []corev1.Service,
+	ca *certificates.CA,
+	certValidity time.Duration,
+	certReconcileBefore time.Duration,
+) (bool, error) {
+	secretWasChanged := false
 
 	// verify that the secret contains a parsable private key, create if it does not exist
 	var privateKey *rsa.PrivateKey
@@ -128,23 +175,18 @@ func reconcileHTTPInternalCertificateSecret(
 
 	// if we need a new private key, generate it
 	if needsNewPrivateKey {
-		needsUpdate = true
 		generatedPrivateKey, err := rsa.GenerateKey(cryptorand.Reader, 2048)
 		if err != nil {
-			return nil, err
+			return secretWasChanged, err
 		}
 
 		privateKey = generatedPrivateKey
+		secretWasChanged = true
 		secret.Data[certificates.KeyFileName] = certificates.EncodePEMPrivateKey(*privateKey)
 	}
 
-	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore)
-
-	// TODO: validate private key vs cert.
-	if issueNewCertificate {
-		needsUpdate = true
-
+	// check if the existing cert should be re-issued
+	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"secret", secret.Name,
@@ -153,13 +195,13 @@ func reconcileHTTPInternalCertificateSecret(
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
 		if err != nil {
-			return nil, err
+			return secretWasChanged, err
 		}
 
 		// create a cert from the csr
 		parsedCSR, err := x509.ParseCertificateRequest(csr)
 		if err != nil {
-			return nil, err
+			return secretWasChanged, err
 		}
 
 		// validate the csr
@@ -167,37 +209,20 @@ func reconcileHTTPInternalCertificateSecret(
 			es, svcs, parsedCSR, certValidity,
 		)
 		if err != nil {
-			return nil, err
+			return secretWasChanged, err
 		}
 		// sign the certificate
 		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
 		if err != nil {
-			return nil, err
+			return secretWasChanged, err
 		}
 
-		// store CSR and signed certificate in a secret mounted into the pod
+		secretWasChanged = true
+		// store certificate and signed certificate in a secret mounted into the pod
 		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
-	if needsUpdate {
-		if shouldCreateSecret {
-			log.Info("Creating HTTP internal certificate secret", "secret", secret.Name)
-			if err := c.Create(secret); err != nil {
-				return nil, err
-			}
-		} else {
-			log.Info("Updating HTTP internal certificate secret", "secret", secret.Name)
-			if err := c.Update(secret); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return &HTTPCertificate{
-		CaPem:   secret.Data[certificates.CAFileName],
-		CertPem: secret.Data[certificates.CertFileName],
-		KeyPem:  secret.Data[certificates.KeyFileName],
-	}, nil
+	return secretWasChanged, nil
 }
 
 // shouldIssueNewHTTPCertificate returns true if we should issue a new HTTP certificate.

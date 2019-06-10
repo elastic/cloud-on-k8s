@@ -16,11 +16,6 @@ type SecretVolume struct {
 	items      []corev1.KeyToPath
 }
 
-// NewSecretVolume creates a new SecretVolume with default mount path.
-func NewSecretVolume(secretName string, name string) SecretVolume {
-	return NewSecretVolumeWithMountPath(secretName, name, DefaultSecretMountPath)
-}
-
 // NewSecretVolumeWithMountPath creates a new SecretVolume
 func NewSecretVolumeWithMountPath(secretName string, name string, mountPath string) SecretVolume {
 	return SecretVolume{
