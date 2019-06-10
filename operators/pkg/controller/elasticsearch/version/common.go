@@ -38,13 +38,9 @@ func NewExpectedPodSpecs(
 
 	for _, node := range es.Spec.Nodes {
 		// add default PVCs to the node spec
-		for _, defaultPVC := range pod.DefaultVolumeClaimsTemplates {
-			if shouldAddDefaultPVCToNodeSpec(defaultPVC, node) {
-				node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-					node.VolumeClaimTemplates, defaultPVC,
-				)
-			}
-		}
+		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimsTemplates...,
+		)
 
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
@@ -77,21 +73,6 @@ func NewExpectedPodSpecs(
 	}
 
 	return podSpecs, nil
-}
-
-// shouldAddDefaultPVCToNodeSpec returns true if the provided default PVC should be added to the NodeSpec
-func shouldAddDefaultPVCToNodeSpec(defaultPVC corev1.PersistentVolumeClaim, node v1alpha1.NodeSpec) bool {
-	for _, volume := range node.PodTemplate.Spec.Volumes {
-		if volume.Name == defaultPVC.Name {
-			if volume.PersistentVolumeClaim == nil {
-				// the template contains a custom volume which is not a PVC, so we should not add this
-				// defaulted PVC template
-				return false
-			}
-		}
-	}
-
-	return true
 }
 
 // podSpec creates a new PodSpec for an Elasticsearch node

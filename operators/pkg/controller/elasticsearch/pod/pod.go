@@ -13,7 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -35,7 +35,7 @@ var (
 	// DefaultVolumeClaimsTemplates is the default volume claim templates for Elasticsearch pods
 	DefaultVolumeClaimsTemplates = []corev1.PersistentVolumeClaim{
 		{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "elasticsearch-data",
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
