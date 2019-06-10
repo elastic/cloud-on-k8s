@@ -79,7 +79,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: keystore.EnvReloadCredentials, Value: "true"},
 				{Name: keystore.EnvEsUsername, Value: "username2"},
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
-				{Name: keystore.EnvEsCaCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
+				{Name: keystore.EnvEsCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
 				{Name: keystore.EnvEsVersion, Value: "6"},
 			},

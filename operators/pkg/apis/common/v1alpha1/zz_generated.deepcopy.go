@@ -175,6 +175,7 @@ func (in *TLSOptions) DeepCopyInto(out *TLSOptions) {
 		*out = new(SelfSignedCertificate)
 		(*in).DeepCopyInto(*out)
 	}
+	out.Certificate = in.Certificate
 	return
 }
 

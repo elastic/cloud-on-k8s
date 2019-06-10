@@ -71,10 +71,13 @@ spec:
                     secret:
                       type: object
                   type: object
-                caCertSecret:
-                  description: CaCertSecret names a secret that contains a CA file
-                    entry to use.
-                  type: string
+                certificateAuthorities:
+                  description: CertificateAuthorities names a secret that contains
+                    a CA file entry to use.
+                  properties:
+                    secretName:
+                      type: string
+                  type: object
                 url:
                   description: ElasticsearchURL is the URL to the target Elasticsearch
                   type: string
@@ -116,6 +119,16 @@ spec:
                   description: TLS describe additional options to consider when generating
                     HTTP TLS certificates.
                   properties:
+                    certificate:
+                      description: 'Certificate is a reference to a secret that contains
+                        the certificate and private key to be used.  The secret should
+                        have the following content:  - `tls.crt`: The certificate
+                        (or a chain). - `tls.key`: The private key to the first certificate
+                        in the certificate chain.'
+                      properties:
+                        secretName:
+                          type: string
+                      type: object
                     selfSignedCertificate:
                       description: SelfSignedCertificate define options to apply to
                         self-signed certificate managed by the operator.

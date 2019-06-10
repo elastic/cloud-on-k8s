@@ -23,22 +23,16 @@ func ReconcileHTTPCertsPublicSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	es v1alpha1.Elasticsearch,
-	httpCertificates *HTTPCertificate,
-	ca *certificates.CA,
+	httpCertificates *CertificatesSecret,
 ) error {
 	expected := &corev1.Secret{
 		ObjectMeta: k8s.ToObjectMeta(PublicCertsSecretRef(k8s.ExtractNamespacedName(&es))),
 		Data: map[string][]byte{
-			certificates.CertFileName: httpCertificates.CertPem,
+			certificates.CertFileName: httpCertificates.CertPem(),
 		},
 	}
 
 	// TODO: reconcile labels and annotations?
-
-	// if we have a CA, expose it:
-	if ca != nil {
-		expected.Data[certificates.CAFileName] = certificates.EncodePEMCert(ca.Cert.Raw)
-	}
 
 	reconciled := &corev1.Secret{}
 
