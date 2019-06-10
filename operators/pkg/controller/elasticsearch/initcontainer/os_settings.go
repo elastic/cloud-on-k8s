@@ -19,10 +19,11 @@ const VMMaxMapCount = 262144
 func NewOSSettingsInitContainer(imageName string) (corev1.Container, error) {
 	privileged := true
 	initContainerRunAsUser := defaultInitContainerRunAsUser
+
 	container := corev1.Container{
 		Image:           imageName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            "tweak-os-settings",
+		Name:            osSettingsContainerName,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 			RunAsUser:  &initContainerRunAsUser,

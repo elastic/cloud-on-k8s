@@ -31,9 +31,9 @@ func TestRenderScriptTemplate(t *testing.T) {
 			wantSubstr: []string{
 				"$PLUGIN_BIN install --batch repository-s3",
 				"$PLUGIN_BIN install --batch repository-gcs",
-				"mv /usr/share/elasticsearch/config/* /volume/config/",
-				"mv /usr/share/elasticsearch/bin/* /volume/bin/",
-				"mv /usr/share/elasticsearch/plugins/* /volume/plugins/",
+				"mv /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
+				"mv /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
+				"mv /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
 				"ln -sf /secrets/users /usr/share/elasticsearch/users",
 			},
 		},

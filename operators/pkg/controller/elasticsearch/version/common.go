@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -47,9 +46,8 @@ func NewExpectedPodSpecs(
 				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
-				ClusterSecretsRef:  paramsTmpl.ClusterSecretsRef,
 				ProbeUser:          paramsTmpl.ProbeUser,
-				ReloadCredsUser:    paramsTmpl.ReloadCredsUser,
+				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
 				// pod params
 				NodeSpec: node,
@@ -85,14 +83,9 @@ func podSpec(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
-	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
-		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
-	)
-	clusterSecretsSecretVolume := volume.NewSecretVolumeWithMountPath(
-		p.ClusterSecretsRef.Name,
-		"secrets",
-		volume.ClusterSecretsVolumeMountPath,
+	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		user.ElasticInternalUsersSecretName(p.ClusterName), volume.KeystoreUserVolumeName,
+		volume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
 	)
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
@@ -126,7 +119,7 @@ func podSpec(
 
 	// setup heap size based on memory limits
 	heapSize := MemoryLimitsToHeapSize(*builder.Container.Resources.Limits.Memory())
-	builder = builder.WithEnv(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+	builder = builder.WithEnv(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
@@ -141,8 +134,7 @@ func podSpec(
 				p.UsersSecretVolume.Volume(),
 				p.UnicastHostsVolume.Volume(),
 				probeSecret.Volume(),
-				clusterSecretsSecretVolume.Volume(),
-				reloadCredsSecret.Volume(),
+				keystoreUserSecret.Volume(),
 				secureSettingsVolume.Volume(),
 				httpCertificatesVolume.Volume(),
 			)...).
@@ -152,9 +144,8 @@ func podSpec(
 				p.UsersSecretVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
-				clusterSecretsSecretVolume.VolumeMount(),
 				transportCertificatesVolume.VolumeMount(),
-				reloadCredsSecret.VolumeMount(),
+				keystoreUserSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 			)...).
