@@ -15,13 +15,13 @@ import (
 // Volumes that are shared between the prepare-fs init container and the ES container
 var (
 	DataSharedVolume = SharedVolume{
-		Name:                   "elasticsearch-data",
+		Name:                   volume.ElasticsearchDataVolumeName,
 		InitContainerMountPath: "/usr/share/elasticsearch/data",
 		EsContainerMountPath:   "/usr/share/elasticsearch/data",
 	}
 
 	LogsSharedVolume = SharedVolume{
-		Name:                   "elasticsearch-logs",
+		Name:                   volume.ElasticsearchLogsVolumeName,
 		InitContainerMountPath: "/usr/share/elasticsearch/logs",
 		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
 	}

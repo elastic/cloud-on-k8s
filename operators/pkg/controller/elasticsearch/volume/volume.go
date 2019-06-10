@@ -33,6 +33,9 @@ const (
 	UnicastHostsFile            = "unicast_hosts.txt"
 
 	ProcessManagerEmptyDirMountPath = "/mnt/elastic-internal/process-manager"
+
+	ElasticsearchDataVolumeName = "elasticsearch-data"
+	ElasticsearchLogsVolumeName = "elasticsearch-logs"
 )
 
 var (

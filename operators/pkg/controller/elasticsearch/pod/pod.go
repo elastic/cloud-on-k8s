@@ -37,7 +37,7 @@ var (
 	DefaultVolumeClaimsTemplates = []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "elasticsearch-data",
+				Name: volume.ElasticsearchDataVolumeName,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
 				AccessModes: []corev1.PersistentVolumeAccessMode{
