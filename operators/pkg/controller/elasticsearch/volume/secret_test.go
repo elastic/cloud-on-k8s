@@ -19,7 +19,7 @@ func TestSecretVolumeItemProjection(t *testing.T) {
 		expected []corev1.KeyToPath
 	}{
 		{
-			volume:   NewSecretVolume("secret", "/secrets"),
+			volume:   NewSecretVolumeWithMountPath("secret", "secrets", "/secrets"),
 			expected: nil,
 		},
 		{

@@ -53,13 +53,6 @@ type defaultDriver struct {
 		es v1alpha1.Elasticsearch,
 	) (*user.InternalUsers, error)
 
-	// versionWideResourcesReconciler reconciles resources that may be specific to a version
-	versionWideResourcesReconciler func(
-		c k8s.Client,
-		scheme *runtime.Scheme,
-		es v1alpha1.Elasticsearch,
-	) (*VersionWideResources, error)
-
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
 	// Elasticsearch cluster.
 	//
@@ -194,11 +187,6 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		genericResources.ExternalService,
@@ -234,7 +222,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, *resourcesState)
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -486,7 +474,6 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 // calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the
 // desired one.
 func (d *defaultDriver) calculateChanges(
-	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
@@ -494,11 +481,11 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ClusterSecretsRef:  k8s.ExtractNamespacedName(&versionWideResources.ClusterSecrets),
-			ProbeUser:          internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnencryptedConfigurationFiles.Name, settings.ManagedConfigPath),
-			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
+			ProbeUser:    internalUsers.ProbeUser.Auth(),
+			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+			UnicastHostsVolume: volume.NewConfigMapVolume(
+				name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeName, volume.UnicastHostsVolumeMountPath,
+			),
 		},
 		d.OperatorImage,
 	)

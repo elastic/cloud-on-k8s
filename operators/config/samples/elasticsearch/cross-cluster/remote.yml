@@ -2,59 +2,24 @@ apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
   name: trust-one
-  labels:
 spec:
   version: "7.1.0"
   nodes:
-    - config:
-        node.master: true
-        node.data: true
-        node.ingest: true
-      podTemplate:
-        spec:
-          containers:
-          - name: elasticsearch
-            resources:
-              limits:
-                memory: 2Gi
-                cpu: 1
-      nodeCount: 1
-  http:
-    service:
-      spec:
-        type: ClusterIP
+    - nodeCount: 1
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: Elasticsearch
 metadata:
   name: trust-two
-  labels:
 spec:
   version: "7.1.0"
   nodes:
-    - config:
-        node.master: true
-        node.data: true
-        node.ingest: true
-      podTemplate:
-        spec:
-          containers:
-          - name: elasticsearch
-            resources:
-              limits:
-                memory: 2Gi
-                cpu: 1
-      nodeCount: 1
-  http:
-    service:
-      spec:
-        type: ClusterIP
+    - nodeCount: 1
 ---
 apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
 kind: RemoteCluster
 metadata:
   labels:
-    controller-tools.k8s.io: "1.0"
     elasticsearch.k8s.elastic.co/cluster-name: trust-one
   name: remotecluster-sample-1-2
 spec:

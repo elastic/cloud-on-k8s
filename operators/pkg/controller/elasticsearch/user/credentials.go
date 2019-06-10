@@ -29,9 +29,9 @@ const (
 	ElasticRolesFile = "roles.yml"
 )
 
-// ElasticUsersRolesSecretName is the name of the secret containing all users and roles information in ES format.
-func ElasticUsersRolesSecretName(ownerName string) string {
-	return name.EsRolesUsersSecret(ownerName)
+// XPackFileRealmSecretName is the name of the secret containing all users and roles information in ES format.
+func XPackFileRealmSecretName(ownerName string) string {
+	return name.XPackFileRealmSecret(ownerName)
 }
 
 // ElasticInternalUsersSecretName is the name of the secret containing the internal users' credentials.
@@ -228,7 +228,7 @@ func NewElasticUsersCredentialsAndRoles(
 		secret: corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: es.Namespace,
-				Name:      ElasticUsersRolesSecretName(es.Name),
+				Name:      XPackFileRealmSecretName(es.Name),
 				Labels:    label.NewLabels(es),
 			},
 			Data: map[string][]byte{

@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: elastic-operators-e2e-tests
+  name: $JOB_NAME
   namespace: e2e
 spec:
   template:

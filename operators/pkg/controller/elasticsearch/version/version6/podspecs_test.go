@@ -9,6 +9,10 @@ import (
 	"path"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
@@ -17,15 +21,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var testProbeUser = client.UserAuth{Name: "username1", Password: "supersecure"}
-var testReloadCredsUser = client.UserAuth{Name: "username2", Password: "supersecure"}
+var testKeystoreUser = client.UserAuth{Name: "username2", Password: "supersecure"}
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",
@@ -37,7 +37,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 		heapSize               int
 		httpCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
-		reloadCredsUserVolume  volume.SecretVolume
+		keystoreUserVolume     volume.SecretVolume
 		secureSettingsVolume   volume.SecretVolume
 	}
 	tests := []struct {
@@ -49,14 +49,14 @@ func TestNewEnvironmentVars(t *testing.T) {
 			name: "2 nodes",
 			args: args{
 				p: pod.NewPodSpecParams{
-					ProbeUser:       testProbeUser,
-					ReloadCredsUser: testReloadCredsUser,
-					Version:         "6",
+					ProbeUser:    testProbeUser,
+					KeystoreUser: testKeystoreUser,
+					Version:      "6",
 				},
 				heapSize:               1024,
 				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
-				reloadCredsUserVolume:  volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
+				keystoreUserVolume:     volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
 				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
@@ -66,7 +66,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 				}},
-				{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM -Djava.security.properties=%s", 1024, 1024, version.SecurityPropsFile)},
+				{Name: settings.EnvEsJavaOpts, Value: fmt.Sprintf("-Xms%dM -Xmx%dM", 1024, 1024)},
 				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 				{Name: settings.EnvProbeUsername, Value: "username1"},
 				{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, "username1")},
@@ -88,7 +88,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := newEnvironmentVars(tt.args.p, tt.args.heapSize, tt.args.httpCertificatesVolume,
-				tt.args.reloadCredsUserVolume, tt.args.secureSettingsVolume)
+				tt.args.keystoreUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
@@ -176,10 +176,13 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	podSpec, err := ExpectedPodSpecs(
 		es,
 		pod.NewPodSpecParams{
-			ProbeUser:          testProbeUser,
-			UsersSecretVolume:  volume.NewSecretVolumeWithMountPath("", "user-secret-vol", "/mount/path"),
-			ConfigMapVolume:    volume.NewConfigMapVolume("config-map-volume", settings.ManagedConfigPath),
-			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
+			ProbeUser:         testProbeUser,
+			UsersSecretVolume: volume.NewSecretVolumeWithMountPath("", "user-secret-vol", "/mount/path"),
+			UnicastHostsVolume: volume.NewConfigMapVolume(
+				name.UnicastHostsConfigMap(es.Name),
+				volume.UnicastHostsVolumeName,
+				volume.UnicastHostsVolumeMountPath,
+			),
 		},
 		"operator-image-dummy",
 	)
@@ -189,7 +192,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodSpec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 3, len(esPodSpec.InitContainers))
-	assert.Equal(t, 14, len(esPodSpec.Volumes))
+	assert.Equal(t, 12, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
 	assert.NotEqual(t, 0, esContainer.Env)
@@ -199,6 +202,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
 	// volume mounts is one less than volumes because we're not mounting the transport certs secret until pod creation
 	// time
-	assert.Equal(t, 15, len(esContainer.VolumeMounts))
+	assert.Equal(t, 13, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

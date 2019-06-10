@@ -2,8 +2,6 @@
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
 metadata:
-  labels:
-    controller-tools.k8s.io: "1.0"
   name: kibana-sample
 spec:
   version: "7.1.0"
