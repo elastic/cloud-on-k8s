@@ -26,12 +26,12 @@ type CanonicalConfig struct {
 
 // NewConfigSettings returns the Kibana configuration settings for the given Kibana resource.
 func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, error) {
-	userConfig := kb.Spec.Config
-	if userConfig == nil {
-		userConfig = &commonv1alpha1.Config{}
+	specConfig := kb.Spec.Config
+	if specConfig == nil {
+		specConfig = &commonv1alpha1.Config{}
 	}
 
-	cfg, err := settings.NewCanonicalConfigFrom(userConfig.Data)
+	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -41,10 +41,13 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 		return CanonicalConfig{}, err
 	}
 
+	cfg := settings.MustCanonicalConfig(baseSettings(kb))
+
+	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
-		settings.MustCanonicalConfig(baseSettings(kb)),
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(esAuthSettings),
+		userSettings,
 	)
 	if err != nil {
 		return CanonicalConfig{}, err
