@@ -20,7 +20,7 @@ elasticsearch:
   hosts:
   - ""
   ssl:
-    certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/ca.crt
+    certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/tls.crt
     verificationMode: certificate
 server:
   host: "0"
