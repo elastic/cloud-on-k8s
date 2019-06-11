@@ -32,11 +32,8 @@ func createElasticsearchPod(
 	reconcileState *esreconcile.State,
 	pod corev1.Pod,
 	podSpecCtx pod.PodSpecContext,
+	orphanedPVCs *pvcutils.OrphanedPersistentVolumeClaims,
 ) error {
-	orphanedPVCs, err := pvcutils.FindOrphanedVolumeClaims(c, es)
-	if err != nil {
-		return err
-	}
 
 	// when can we re-use a metav1.PersistentVolumeClaim?
 	// - It is the same size, storageclass etc, or resizable as such
