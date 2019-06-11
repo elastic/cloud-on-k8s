@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -24,11 +23,6 @@ const (
 // ports to set in the Kibana container
 var ports = []corev1.ContainerPort{
 	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
-}
-
-// DefaultResources are resource limits to apply to Kibana container by default
-var DefaultResources = corev1.ResourceRequirements{
-	Limits: corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("1Gi")},
 }
 
 // defaultReadinessProbe is the readiness probe for the Kibana container
@@ -56,7 +50,6 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana) corev1.PodTemplateSpec {
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(defaultReadinessProbe).
-		WithResources(DefaultResources).
 		WithPorts(ports).
 		PodTemplate
 }

@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,6 +38,13 @@ type ElasticsearchSpec struct {
 	// UpdateStrategy specifies how updates to the cluster should be performed.
 	UpdateStrategy UpdateStrategy `json:"updateStrategy,omitempty"`
 
+	// PodDisruptionBudget allows full control of the default pod disruption budget.
+	//
+	// The default budget selects all cluster pods and sets maxUnavailable to 1.
+	// To disable it entirely, set to the empty value (`{}` in YAML).
+	// +optional
+	PodDisruptionBudget *commonv1alpha1.PodDisruptionBudgetTemplate `json:"podDisruptionBudget,omitempty"`
+
 	// SecureSettings reference a secret containing secure settings, to be injected
 	// into Elasticsearch keystore on each node.
 	// Each individual key/value entry in the referenced secret is considered as an
@@ -64,7 +70,7 @@ type NodeSpec struct {
 	Name string `json:"name,omitempty"`
 
 	// Config represents Elasticsearch configuration.
-	Config *Config `json:"config,omitempty"`
+	Config *commonv1alpha1.Config `json:"config,omitempty"`
 
 	// NodeCount defines how many nodes have this topology
 	NodeCount int32 `json:"nodeCount,omitempty"`

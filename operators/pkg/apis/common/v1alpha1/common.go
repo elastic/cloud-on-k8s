@@ -6,8 +6,10 @@ package v1alpha1
 
 import (
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // ReconcilerStatus represents status information about desired/available nodes.
@@ -17,7 +19,7 @@ type ReconcilerStatus struct {
 
 // SecretRef reference a secret by name.
 type SecretRef struct {
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // ObjectSelector allows to specify a reference to an object across namespace boundaries.
@@ -52,6 +54,14 @@ type TLSOptions struct {
 	// SelfSignedCertificate define options to apply to self-signed certificate
 	// managed by the operator.
 	SelfSignedCertificate *SelfSignedCertificate `json:"selfSignedCertificate,omitempty"`
+
+	// Certificate is a reference to a secret that contains the certificate and private key to be used.
+	//
+	// The secret should have the following content:
+	//
+	// - `tls.crt`: The certificate (or a chain).
+	// - `tls.key`: The private key to the first certificate in the certificate chain.
+	Certificate SecretRef `json:"certificate,omitempty"`
 }
 
 type SelfSignedCertificate struct {
@@ -75,4 +85,19 @@ type ServiceTemplate struct {
 	// Spec defines the behavior of the service.
 	// +optional
 	Spec v1.ServiceSpec `json:"spec,omitempty"`
+}
+
+// DefaultPodDisruptionBudgetMaxUnavailable is the default max unavailable pods in a PDB.
+var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
+
+// PodDisruptionBudgetTemplate contains a template for creating a PodDisruptionBudget.
+type PodDisruptionBudgetTemplate struct {
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
+	// +optional
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec of the desired behavior of the PodDisruptionBudget
+	// +optional
+	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }

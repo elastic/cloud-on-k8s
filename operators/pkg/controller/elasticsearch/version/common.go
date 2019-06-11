@@ -5,8 +5,7 @@
 package version
 
 import (
-	"path"
-
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -19,28 +18,28 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-)
-
-var (
-	DefaultMemoryLimits = resource.MustParse("2Gi")
-	SecurityPropsFile   = path.Join(settings.ManagedConfigPath, settings.SecurityPropsFile)
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
+
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
 
 	for _, node := range es.Spec.Nodes {
+		// add default PVCs to the node spec
+		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimTemplates...,
+		)
+
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
 				// cluster-wide params
@@ -50,10 +49,8 @@ func NewExpectedPodSpecs(
 				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
-				ConfigMapVolume:    paramsTmpl.ConfigMapVolume,
-				ClusterSecretsRef:  paramsTmpl.ClusterSecretsRef,
 				ProbeUser:          paramsTmpl.ProbeUser,
-				ReloadCredsUser:    paramsTmpl.ReloadCredsUser,
+				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
 				// pod params
 				NodeSpec: node,
@@ -80,8 +77,8 @@ func NewExpectedPodSpecs(
 func podSpec(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, heapSize int, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config v1alpha1.Config) (settings.CanonicalConfig, error),
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// setup volumes
@@ -89,14 +86,9 @@ func podSpec(
 		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
 		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
-	reloadCredsSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ReloadCredsUserVolumeName,
-		volume.ReloadCredsUserSecretMountPath, []string{p.ReloadCredsUser.Name},
-	)
-	clusterSecretsSecretVolume := volume.NewSecretVolumeWithMountPath(
-		p.ClusterSecretsRef.Name,
-		"secrets",
-		volume.ClusterSecretsVolumeMountPath,
+	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
+		user.ElasticInternalUsersSecretName(p.ClusterName), volume.KeystoreUserVolumeName,
+		volume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
 	)
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
@@ -123,14 +115,8 @@ func podSpec(
 		WithPorts(pod.DefaultContainerPorts).
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
-		// enforce a memory resource limits if not provided by the user, since we need to compute JVM heap size
-		// we do not set resource Requests here in order to end up in the qosClass of Guaranteed by default
-		// see https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/ for more details
-		WithMemoryLimit(DefaultMemoryLimits)
-
-	// setup heap size based on memory limits
-	heapSize := MemoryLimitsToHeapSize(*builder.Container.Resources.Limits.Memory())
-	builder = builder.WithEnv(newEnvironmentVarsFn(p, heapSize, httpCertificatesVolume, reloadCredsSecret, secureSettingsVolume)...)
+		WithAffinity(pod.DefaultAffinity(p.ClusterName)).
+		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
@@ -143,11 +129,9 @@ func podSpec(
 			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
 				initcontainer.ProcessManagerVolume.Volume(),
 				p.UsersSecretVolume.Volume(),
-				p.ConfigMapVolume.Volume(),
 				p.UnicastHostsVolume.Volume(),
 				probeSecret.Volume(),
-				clusterSecretsSecretVolume.Volume(),
-				reloadCredsSecret.Volume(),
+				keystoreUserSecret.Volume(),
 				secureSettingsVolume.Volume(),
 				httpCertificatesVolume.Volume(),
 			)...).
@@ -155,22 +139,21 @@ func podSpec(
 			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
 				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
-				p.ConfigMapVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
-				clusterSecretsSecretVolume.VolumeMount(),
 				transportCertificatesVolume.VolumeMount(),
-				reloadCredsSecret.VolumeMount(),
+				keystoreUserSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 			)...).
+		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
 	config := p.NodeSpec.Config
 	if config == nil {
-		config = &v1alpha1.Config{}
+		config = &commonv1alpha1.Config{}
 	}
 	esConfig, err := newESConfigFn(p.ClusterName, *config)
 	if err != nil {
@@ -212,12 +195,6 @@ func NewPod(
 		ObjectMeta: builder.PodTemplate.ObjectMeta,
 		Spec:       podSpecCtx.PodSpec,
 	}, nil
-}
-
-// MemoryLimitsToHeapSize converts a memory limit to the heap size (in megabytes) for the JVM
-func MemoryLimitsToHeapSize(memoryLimit resource.Quantity) int {
-	// use half the available memory as heap
-	return quantityToMegabytes(memoryLimit) / 2
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity

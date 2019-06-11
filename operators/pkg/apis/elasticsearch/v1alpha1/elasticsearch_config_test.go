@@ -7,35 +7,36 @@ package v1alpha1
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_RoleDefaults(t *testing.T) {
 	type args struct {
-		c2 Config
+		c2 v1alpha1.Config
 	}
 	tests := []struct {
 		name string
-		c    Config
+		c    v1alpha1.Config
 		args args
 		want bool
 	}{
 		{
 			name: "empty is equal",
-			c:    Config{},
+			c:    v1alpha1.Config{},
 			args: args{},
 			want: true,
 		},
 		{
 			name: "same is equal",
-			c: Config{
+			c: v1alpha1.Config{
 				Data: map[string]interface{}{
 					NodeMaster: true,
 				},
 			},
 			args: args{
-				c2: Config{
+				c2: v1alpha1.Config{
 					Data: map[string]interface{}{
 						NodeMaster: true,
 					},
@@ -45,14 +46,14 @@ func TestConfig_RoleDefaults(t *testing.T) {
 		},
 		{
 			name: "detect differences",
-			c: Config{
+			c: v1alpha1.Config{
 				Data: map[string]interface{}{
 					NodeMaster: false,
 					NodeData:   true,
 				},
 			},
 			args: args{
-				c2: Config{
+				c2: v1alpha1.Config{
 					Data: map[string]interface{}{
 						NodeData: true,
 					},
@@ -63,9 +64,9 @@ func TestConfig_RoleDefaults(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c1, err := tt.c.Unpack()
+			c1, err := UnpackConfig(&tt.c)
 			require.NoError(t, err)
-			c2, err := tt.args.c2.Unpack()
+			c2, err := UnpackConfig(&tt.args.c2)
 			require.NoError(t, err)
 			if got := c1.Node == c2.Node; got != tt.want {
 				t.Errorf("Config.EqualRoles() = %v, want %v", got, tt.want)
@@ -74,7 +75,7 @@ func TestConfig_RoleDefaults(t *testing.T) {
 	}
 }
 
-var testFixture = Config{
+var testFixture = v1alpha1.Config{
 	Data: map[string]interface{}{
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
@@ -88,7 +89,7 @@ var testFixture = Config{
 	},
 }
 
-var expectedJSONized = Config{
+var expectedJSONized = v1alpha1.Config{
 	Data: map[string]interface{}{
 		"a": map[string]interface{}{
 			"b": map[string]interface{}{
@@ -105,8 +106,8 @@ var expectedJSONized = Config{
 func TestConfig_DeepCopyInto(t *testing.T) {
 	tests := []struct {
 		name     string
-		in       Config
-		expected Config
+		in       v1alpha1.Config
+		expected v1alpha1.Config
 	}{
 		{
 			name:     "deep copy via JSON roundtrip changes some types",
@@ -116,7 +117,7 @@ func TestConfig_DeepCopyInto(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var out Config
+			var out v1alpha1.Config
 			tt.in.DeepCopyInto(&out)
 			if diff := deep.Equal(out, tt.expected); diff != nil {
 				t.Error(diff)
@@ -128,8 +129,8 @@ func TestConfig_DeepCopyInto(t *testing.T) {
 func TestConfig_DeepCopy(t *testing.T) {
 	tests := []struct {
 		name string
-		in   Config
-		want Config
+		in   v1alpha1.Config
+		want v1alpha1.Config
 	}{
 		{
 			name: "deep copy via JSON roundtrip changes some types",
@@ -149,13 +150,13 @@ func TestConfig_DeepCopy(t *testing.T) {
 func TestConfig_Unpack(t *testing.T) {
 	tests := []struct {
 		name    string
-		args    *Config
+		args    *v1alpha1.Config
 		want    ElasticsearchSettings
 		wantErr bool
 	}{
 		{
 			name: "happy path",
-			args: &Config{
+			args: &v1alpha1.Config{
 				Data: map[string]interface{}{
 					"node": map[string]interface{}{
 						"master": false,
@@ -188,7 +189,7 @@ func TestConfig_Unpack(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.args.Unpack()
+			got, err := UnpackConfig(tt.args)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Config.Unpack() error = %v, wantErr %v", err, tt.wantErr)
 				return
