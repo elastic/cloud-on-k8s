@@ -10,10 +10,16 @@ import (
 
 // NewConfigMapVolume creates a new ConfigMapVolume struct
 func NewConfigMapVolume(configMapName, name, mountPath string) ConfigMapVolume {
+	return NewConfigMapVolumeWithMode(configMapName, name, mountPath, corev1.ConfigMapVolumeSourceDefaultMode)
+}
+
+// NewConfigMapVolume creates a new ConfigMapVolume struct with default mode
+func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMode int32) ConfigMapVolume {
 	return ConfigMapVolume{
 		configMapName: configMapName,
 		name:          name,
 		mountPath:     mountPath,
+		defaultMode:   defaultMode,
 	}
 }
 
@@ -23,6 +29,7 @@ type ConfigMapVolume struct {
 	name          string
 	mountPath     string
 	items         []corev1.KeyToPath
+	defaultMode   int32
 }
 
 // VolumeMount returns the k8s volume mount.
@@ -43,8 +50,9 @@ func (cm ConfigMapVolume) Volume() corev1.Volume {
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: cm.configMapName,
 				},
-				Items:    cm.items,
-				Optional: &defaultOptional,
+				Items:       cm.items,
+				Optional:    &defaultOptional,
+				DefaultMode: &cm.defaultMode,
 			},
 		},
 	}

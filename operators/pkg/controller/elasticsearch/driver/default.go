@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
@@ -119,6 +120,11 @@ func (d *defaultDriver) Reconcile(
 
 	// garbage collect secrets attached to this cluster that we don't need anymore
 	if err := cleanup.DeleteOrphanedSecrets(d.Client, es); err != nil {
+		return results.WithError(err)
+	}
+
+	scriptsConfigMap := prepareScriptsConfigMap(es)
+	if err := configmap.ReconcileConfigMap(d.Client, d.Scheme, es, scriptsConfigMap); err != nil {
 		return results.WithError(err)
 	}
 
@@ -516,4 +522,12 @@ func (d *defaultDriver) calculateChanges(
 func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, caCerts)
+}
+
+func prepareScriptsConfigMap(es v1alpha1.Elasticsearch) corev1.ConfigMap {
+	return configmap.NewConfigMapWithData(
+		types.NamespacedName{Namespace: es.Namespace, Name: name.ScriptsConfigMap(es.Name)},
+		map[string]string{
+			pod.ReadinessProbeScriptConfigKey: pod.ReadinessProbeScript,
+		})
 }
