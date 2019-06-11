@@ -15,7 +15,6 @@ pipeline {
         REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         GKE_CLUSTER_VERSION = '1.11'
-        GKE_CLUSTER_NAME = "${BUILD_TAG}-${GKE_CLUSTER_VERSION}"
     }
 
     stages {
