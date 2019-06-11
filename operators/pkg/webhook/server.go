@@ -19,6 +19,8 @@ const (
 	admissionServerName = "elastic-admission-server"
 	svcName             = "elastic-webhook-service"
 	controlPlane        = "control-plane"
+
+	serverPort int32 = 9443
 )
 
 // RegisterValidations registers validating webhooks and a new webhook server with the given manager.
@@ -46,6 +48,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 
 	disabled := !params.AutoInstall
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
+		Port:                          serverPort,
 		CertDir:                       "/tmp/cert",
 		DisableWebhookConfigInstaller: &disabled,
 		BootstrapOptions:              &params.Bootstrap,
