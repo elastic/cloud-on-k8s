@@ -16,7 +16,6 @@ DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
 VAULT_AWS_SECRET_KEY_FILE ?= aws_secret_key.file
-K8S_E2E_CLUSTER_FILE ?= e2e_tests_cluster_name.file
 
 DOCKER_LOGIN ?= cloudadmin
 
@@ -113,7 +112,6 @@ yaml-upload: vault-aws-creds
 
 # Spawn a k8s cluster, and run e2e tests against it
 ci-e2e: vault-gke-creds
-	echo e2e-qa-$(shell date +'%Y%m%d-%H%M%S') > $(K8S_E2E_CLUSTER_FILE)
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
 	docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
@@ -123,7 +121,7 @@ ci-e2e: vault-gke-creds
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		-e "REGISTRY=$(REGISTRY)" \
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
-		-e "GKE_CLUSTER_NAME=$(shell cat $(K8S_E2E_CLUSTER_FILE))" \
+		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
@@ -137,7 +135,7 @@ ci-e2e-delete-cluster:
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-    	-e "GKE_CLUSTER_NAME=$(shell cat $(K8S_E2E_CLUSTER_FILE))" \
+    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
     	cloud-on-k8s-ci-e2e \
-    	bash -c "make -C operators delete-gke"
+    	bash -c "make -C operators set-context-gke delete-gke"

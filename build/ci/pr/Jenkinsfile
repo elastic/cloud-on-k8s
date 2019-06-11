@@ -16,6 +16,7 @@ pipeline {
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         TESTS_MATCH = 'TestSmoke'
         GKE_CLUSTER_VERSION = '1.11'
+        GKE_CLUSTER_NAME = "${BUILD_TAG}-${GKE_CLUSTER_VERSION}"
     }
 
     stages {
@@ -47,6 +48,7 @@ pipeline {
 
     post {
         cleanup {
+            sh 'make -C build/ci ci-e2e-delete-cluster'
             cleanWs()
         }
     }
