@@ -23,31 +23,39 @@ func TestNeedsUpdate(t *testing.T) {
 		want corev1.Service
 	}{
 		{
-			name: "Reconciled clusterIP is used if expected clusterIP is empty",
+			name: "Reconciled ClusterIP/Type/SessionAffinity is used if expected ClusterIP/Type/SessionAffinity is empty",
 			args: args{
-				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP, ClusterIP: "",
-				}},
+				expected: corev1.Service{Spec: corev1.ServiceSpec{}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP, ClusterIP: "1.2.3.4",
+					Type:            corev1.ServiceTypeClusterIP,
+					ClusterIP:       "1.2.3.4",
+					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type: corev1.ServiceTypeClusterIP, ClusterIP: "1.2.3.4",
+				Type:            corev1.ServiceTypeClusterIP,
+				ClusterIP:       "1.2.3.4",
+				SessionAffinity: corev1.ServiceAffinityClientIP,
 			}},
 		},
 		{
-			name: "Reconciled clusterIP is not used if expected clusterIP is set",
+			name: "Reconciled ClusterIP/Type/SessionAffinity is not used if expected ClusterIP/Type/SessionAffinity is set",
 			args: args{
 				expected: corev1.Service{Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP, ClusterIP: "0.0.0.0",
+					Type:            corev1.ServiceTypeLoadBalancer,
+					ClusterIP:       "4.3.2.1",
+					SessionAffinity: corev1.ServiceAffinityNone,
 				}},
 				reconciled: corev1.Service{Spec: corev1.ServiceSpec{
-					Type: corev1.ServiceTypeClusterIP, ClusterIP: "1.2.3.4",
+					Type:            corev1.ServiceTypeClusterIP,
+					ClusterIP:       "1.2.3.4",
+					SessionAffinity: corev1.ServiceAffinityClientIP,
 				}},
 			},
 			want: corev1.Service{Spec: corev1.ServiceSpec{
-				Type: corev1.ServiceTypeClusterIP, ClusterIP: "0.0.0.0",
+				Type:            corev1.ServiceTypeLoadBalancer,
+				ClusterIP:       "4.3.2.1",
+				SessionAffinity: corev1.ServiceAffinityNone,
 			}},
 		},
 		{

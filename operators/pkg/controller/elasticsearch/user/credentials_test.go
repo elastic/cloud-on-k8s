@@ -41,7 +41,7 @@ func TestNewUserSecrets(t *testing.T) {
 		{
 			subject:      NewInternalUserCredentials(testES),
 			expectedName: "my-cluster-es-internal-users",
-			expectedKeys: []string{InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName},
+			expectedKeys: []string{InternalControllerUserName, InternalKeystoreUserName, InternalProbeUserName},
 		},
 		{
 			subject:      NewExternalUserCredentials(testES),
@@ -50,7 +50,7 @@ func TestNewUserSecrets(t *testing.T) {
 		},
 		{
 			subject:      elasticUsers,
-			expectedName: "my-cluster-es-roles-users",
+			expectedName: "my-cluster-es-xpack-file-realm",
 			expectedKeys: []string{ElasticRolesFile, ElasticUsersFile, ElasticUsersRolesFile},
 		},
 	}

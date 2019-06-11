@@ -1,5 +1,5 @@
 [id="{p}-accessing-elastic-services"]
-= How to access Elastic Stack services
+== How to access Elastic Stack services
 
 To access the Elastic Stack services, you will need to retrieve:
 
@@ -8,12 +8,12 @@ To access the Elastic Stack services, you will need to retrieve:
 - the IP of the service, if you want to access the service from outside the Kubernetes cluster
 
 [id="{p}-security"]
-== Security
+=== Security
 
 All Elastic Stack resources deployed by the ECK Operator are secured by default. The operator sets up basic authentication and TLS to encrypt network traffic to, from, and within your Elasticsearch cluster.
 
 [id="{p}-tls-certificates"]
-=== TLS Certificates
+==== TLS Certificates
 
 The operator manages a CA certificate for Elasticsearch as a `Secret` named `<name>-ca`. Supporting user defined CA certificates will be added in a future release.
 
@@ -28,7 +28,7 @@ QLYL4zLEby3vRxq65+xofVBJAaM=
 ----
 
 [id="{p}-authentication"]
-=== Authentication
+==== Authentication
 
 To access Elasticsearch and Kibana, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
@@ -38,13 +38,14 @@ To access Elasticsearch and Kibana, the operator manages a default user named `e
 5abc6x1234bb7vbabc4xyz42
 ----
 
+[float]
 [id="{p}-services"]
-== Services
+=== Services
 
 You can access Elasticsearch and Kibana by using native Kubernetes services that are not reachable from the public Internet by default.
 
 [id="{p}-kubernetes-service"]
-=== Managing Kubernetes services
+==== Managing Kubernetes services
 
 For each resource, `Elasticsearch` or `Kibana`, the operator manages a Kubernetes service named `<name>-<kind>`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
 
@@ -58,7 +59,7 @@ hulk-kibana         ClusterIP      10.19.247.151   <none>           5601:32567/T
 ----
 
 [id="{p}-allow-public-access"]
-=== Allowing public access
+==== Allowing public access
 
 You can expose services in link:https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] by specifying an `http.service.spec.type` in the `spec` of a resource manifest.
 On cloud providers which support external load balancers, you can set the `type` field to `LoadBalancer` to provision a load balancer for the `Service`, and populate the column `EXTERNAL-IP` after a short delay. Depending on the cloud provider, it may incur charges.
@@ -87,7 +88,7 @@ hulk-kibana         LoadBalancer   10.19.247.151   35.242.197.228   5601:32567/T
 ----
 
 [id="{p}-static-ip-custom-domain"]
-=== Reserving Static IP and custom domain
+==== Reserving Static IP and custom domain
 
 To use a custom domain name, you can reserve a static IP and/or use an Ingress instead of a `LoadBalancer` `Service`. Whatever you use, your DNS must be added to the certificate SAN in the `spec` of your Elastic resource manifest:
 
@@ -104,14 +105,16 @@ spec:
         - dns: hulk.example.com
 ----
 
+[float]
 [id="{p}-request-elasticsearch-endpoint"]
-== Requesting the Elasticsearch endpoint
+=== Requesting the Elasticsearch endpoint
 
-[id="{p}-from-within-kubernetes-cluster"]
-=== From within the Kubernetes cluster
+You can request the Elasticsearch endpoint within or outside the Kubernetes cluster.
 
-To request the Elasticsearch endpoint from within the Kubernetes cluster,
-you have to retrieve the CA certificate and the password of the `elastic` user.
+*Within the Kubernetes cluster*
+
+. Retrieve the CA certificate.
+. Retrieve the password of the `elastic` user.
 
 [source,sh]
 ----
@@ -123,11 +126,11 @@ PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | b
 curl --cacert ca.pem -u elastic:$PW https://$NAME-es:9200/
 ----
 
-[id="{p}-from-outside-kubernetes-cluster"]
-=== From outside the Kubernetes cluster
+*Outside the Kubernetes cluster*
 
-To request the Elasticsearch endpoint from outside the Kubernetes cluster,
-you have to retrieve the CA certificate, the password of the `elastic` user and the IP of the `LoadBalancer` `Service`.
+. Retrieve the CA certificate.
+. Retrieve the password of the `elastic` user.
+. Retrieve the IP of the `LoadBalancer` `Service`.
 
 [source,sh]
 ----
@@ -140,7 +143,7 @@ PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | b
 curl --cacert ca.pem -u elastic:$PW https://$IP:9200/
 ----
 
-At this stage, you should get this message:
+Now you should get this message:
 
 [source,sh]
 ----

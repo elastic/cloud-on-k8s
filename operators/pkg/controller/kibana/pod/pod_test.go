@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_imageWithVersion(t *testing.T) {
@@ -41,12 +44,6 @@ func Test_imageWithVersion(t *testing.T) {
 }
 
 func TestNewPodTemplateSpec(t *testing.T) {
-	testSelector := &corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: "secret-name",
-		},
-		Key: "u",
-	}
 	tests := []struct {
 		name       string
 		kb         v1alpha1.Kibana
@@ -67,7 +64,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				require.NotNil(t, kibanaContainer)
 				assert.Equal(t, imageWithVersion(defaultImageRepositoryAndName, "7.1.0"), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
-				assert.Equal(t, DefaultResources, kibanaContainer.Resources)
 				assert.NotEmpty(t, kibanaContainer.Ports)
 			},
 		},
@@ -79,45 +75,6 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetKibanaContainer(pod.Spec).Image)
-			},
-		},
-		{
-			name: "auth settings inline",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
-				Image:   "my-custom-image:1.0.0",
-				Version: "7.1.0",
-				Elasticsearch: v1alpha1.BackendElasticsearch{
-					Auth: v1alpha1.ElasticsearchAuth{
-						Inline: &v1alpha1.ElasticsearchInlineAuth{
-							Username: "u",
-							Password: "p",
-						},
-					},
-				},
-			}},
-			assertions: func(pod corev1.PodTemplateSpec) {
-				userName := envWithName(t, elasticsearchUsername, *GetKibanaContainer(pod.Spec))
-				assert.Equal(t, "u", userName.Value)
-				password := envWithName(t, elasticsearchPassword, *GetKibanaContainer(pod.Spec))
-				assert.Equal(t, "p", password.Value)
-			},
-		},
-		{
-			name: "auth settings via secret",
-			kb: v1alpha1.Kibana{Spec: v1alpha1.KibanaSpec{
-				Image:   "my-custom-image:1.0.0",
-				Version: "7.1.0",
-				Elasticsearch: v1alpha1.BackendElasticsearch{
-					Auth: v1alpha1.ElasticsearchAuth{
-						SecretKeyRef: testSelector,
-					},
-				},
-			}},
-			assertions: func(pod corev1.PodTemplateSpec) {
-				userName := envWithName(t, elasticsearchUsername, *GetKibanaContainer(pod.Spec))
-				assert.Equal(t, "u", userName.Value)
-				password := envWithName(t, elasticsearchPassword, *GetKibanaContainer(pod.Spec))
-				assert.Equal(t, testSelector, password.ValueFrom.SecretKeyRef)
 			},
 		},
 		{
@@ -135,6 +92,31 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
+			},
+		},
+		{
+			name: "with user-provided labels",
+			kb: v1alpha1.Kibana{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "kibana-name",
+				},
+				Spec: v1alpha1.KibanaSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"label1":                  "value1",
+								"label2":                  "value2",
+								label.KibanaNameLabelName: "overridden-kibana-name",
+							},
+						},
+					},
+				}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				labels := label.NewLabels("kibana-name")
+				labels["label1"] = "value1"
+				labels["label2"] = "value2"
+				labels[label.KibanaNameLabelName] = "overridden-kibana-name"
+				assert.Equal(t, labels, pod.Labels)
 			},
 		},
 		{
@@ -191,21 +173,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, EnvFactory(func(kb v1alpha1.Kibana) []corev1.EnvVar {
-				var env []corev1.EnvVar
-				return ApplyToEnv(tt.kb.Spec.Elasticsearch.Auth, env) // common across versions for now
-			}))
+			got := NewPodTemplateSpec(tt.kb)
 			tt.assertions(got)
 		})
 	}
-}
-
-func envWithName(t *testing.T, name string, container corev1.Container) corev1.EnvVar {
-	for _, v := range container.Env {
-		if v.Name == name {
-			return v
-		}
-	}
-	t.Errorf("expected env var %s does not exist ", name)
-	return corev1.EnvVar{}
 }

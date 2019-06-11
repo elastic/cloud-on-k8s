@@ -60,8 +60,8 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 				ReadinessProbe: &corev1.Probe{
 					FailureThreshold:    3,
 					InitialDelaySeconds: 10,
-					PeriodSeconds:       10,
-					SuccessThreshold:    3,
+					PeriodSeconds:       5,
+					SuccessThreshold:    1,
 					TimeoutSeconds:      5,
 					Handler: corev1.Handler{
 						Exec: &corev1.ExecAction{

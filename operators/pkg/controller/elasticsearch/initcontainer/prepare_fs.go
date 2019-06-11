@@ -5,44 +5,52 @@
 package initcontainer
 
 import (
+	"fmt"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // Volumes that are shared between the prepare-fs init container and the ES container
 var (
 	DataSharedVolume = SharedVolume{
-		Name:                   "data",
-		InitContainerMountPath: "/volume/data",
+		Name:                   volume.ElasticsearchDataVolumeName,
+		InitContainerMountPath: "/usr/share/elasticsearch/data",
 		EsContainerMountPath:   "/usr/share/elasticsearch/data",
 	}
 
 	LogsSharedVolume = SharedVolume{
-		Name:                   "logs",
-		InitContainerMountPath: "/volume/logs",
+		Name:                   volume.ElasticsearchLogsVolumeName,
+		InitContainerMountPath: "/usr/share/elasticsearch/logs",
 		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
 	}
 
+	// EsBinSharedVolume contains the ES bin/ directory
 	EsBinSharedVolume = SharedVolume{
-		Name:                   "bin-volume",
-		InitContainerMountPath: "/volume/bin",
+		Name:                   "elastic-internal-elasticsearch-bin-local",
+		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-bin-local",
 		EsContainerMountPath:   "/usr/share/elasticsearch/bin",
+	}
+
+	// EsConfigSharedVolume contains the ES config/ directory
+	EsConfigSharedVolume = SharedVolume{
+		Name:                   "elastic-internal-elasticsearch-config-local",
+		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-config-local",
+		EsContainerMountPath:   "/usr/share/elasticsearch/config",
+	}
+
+	// EsPluginsSharedVolume contains the ES plugins/ directory
+	EsPluginsSharedVolume = SharedVolume{
+		Name:                   "elastic-internal-elasticsearch-plugins-local",
+		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-plugins-local",
+		EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
 	}
 
 	PrepareFsSharedVolumes = SharedVolumeArray{
 		Array: []SharedVolume{
-			// Contains configuration (elasticsearch.yml) and plugins configuration subdirs
-			SharedVolume{
-				Name:                   "config-volume",
-				InitContainerMountPath: "/volume/config",
-				EsContainerMountPath:   "/usr/share/elasticsearch/config",
-			},
-			// Contains plugins data
-			SharedVolume{
-				Name:                   "plugins-volume",
-				InitContainerMountPath: "/volume/plugins",
-				EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
-			},
-			// Plugins may have binaries installed in /bin
+			EsConfigSharedVolume,
+			EsPluginsSharedVolume,
 			EsBinSharedVolume,
 			DataSharedVolume,
 			LogsSharedVolume,
@@ -55,9 +63,20 @@ var (
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
-func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray) (corev1.Container, error) {
+func NewPrepareFSInitContainer(
+	imageName string,
+	linkedFiles LinkedFilesArray,
+	transportCertificatesVolume volume.SecretVolume,
+) (corev1.Container, error) {
 	privileged := false
 	initContainerRunAsUser := defaultInitContainerRunAsUser
+
+	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
+	// will attempt to move all the files under the configuration directory to a different volume, and it should not
+	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
+	certificatesVolumeMount := transportCertificatesVolume.VolumeMount()
+	certificatesVolumeMount.MountPath = "/mnt/elastic-internal/transport-certificates"
+
 	script, err := RenderScriptTemplate(TemplateParams{
 		Plugins:       defaultInstalledPlugins,
 		SharedVolumes: PrepareFsSharedVolumes,
@@ -66,20 +85,27 @@ func NewPrepareFSInitContainer(imageName string, linkedFiles LinkedFilesArray) (
 			DataSharedVolume.InitContainerMountPath,
 			LogsSharedVolume.InitContainerMountPath,
 		},
+		TransportCertificatesKeyPath: fmt.Sprintf(
+			"%s/%s", certificatesVolumeMount.MountPath, certificates.KeyFileName,
+		),
 	})
 	if err != nil {
 		return corev1.Container{}, err
 	}
+
 	container := corev1.Container{
 		Image:           imageName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            "prepare-fs",
+		Name:            prepareFilesystemContainerName,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 			RunAsUser:  &initContainerRunAsUser,
 		},
-		Command:      []string{"bash", "-c", script},
-		VolumeMounts: PrepareFsSharedVolumes.InitContainerVolumeMounts(),
+		Command: []string{"bash", "-c", script},
+		VolumeMounts: append(
+			PrepareFsSharedVolumes.InitContainerVolumeMounts(), certificatesVolumeMount,
+		),
 	}
+
 	return container, nil
 }

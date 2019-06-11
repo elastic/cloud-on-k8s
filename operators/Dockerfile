@@ -12,13 +12,11 @@ ARG GO_TAGS
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o cert-initializer github.com/elastic/cloud-on-k8s/operators/cmd/cert-initializer
 
 # Copy the controller-manager into a thin image
-FROM ubuntu:latest
+FROM centos:7
 WORKDIR /root/
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/process-manager .
-COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/cert-initializer .
 ENTRYPOINT ["./elastic-operator"]
 CMD ["manager"]

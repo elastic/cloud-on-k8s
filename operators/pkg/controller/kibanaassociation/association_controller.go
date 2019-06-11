@@ -9,6 +9,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,16 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 // Kibana association controller
@@ -127,7 +127,11 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 
 	// register or execute watch finalizers
 	h := finalizer.NewHandler(r)
-	err = h.Handle(&kibana, watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches))
+	err = h.Handle(
+		&kibana,
+		watchFinalizer(k8s.ExtractNamespacedName(&kibana), r.watches),
+		user.UserFinalizer(r.Client, NewUserLabelSelector(k8s.ExtractNamespacedName(&kibana))),
+	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
 			log.V(1).Info("Conflict while handling finalizer")
@@ -206,6 +210,16 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
+	userSecretKey := KibanaUserKey(kibana, esRef.Namespace)
+	// watch the user secret in the ES namespace
+	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{
+		Name:    elasticsearchWatchName(kibanaKey),
+		Watched: userSecretKey,
+		Watcher: kibanaKey,
+	}); err != nil {
+		return commonv1alpha1.AssociationFailed, err
+	}
+
 	var es estype.Elasticsearch
 	if err := r.Get(esRefKey, &es); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -226,7 +240,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 		return commonv1alpha1.AssociationFailed, err
 	}
 
-	if err := reconcileEsUser(r.Client, r.scheme, kibana, esRefKey); err != nil {
+	if err := reconcileEsUser(r.Client, r.scheme, kibana, es); err != nil {
 		return commonv1alpha1.AssociationPending, err
 	}
 
@@ -237,7 +251,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	// update Kibana resource with ES access details
 	var expectedEsConfig kbtype.BackendElasticsearch
-	expectedEsConfig.CaCertSecret = caSecretName
+	expectedEsConfig.CertificateAuthorities.SecretName = caSecretName
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
 	expectedEsConfig.Auth.SecretKeyRef = KibanaUserSecretSelector(kibana)
 
@@ -255,35 +269,36 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 // deleteOrphanedResources deletes resources created by this association that are left over from previous reconciliation
 // attempts. Common use case is an Elasticsearch reference in Kibana spec that was removed.
 func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
-	hasESRef := kibana.Spec.ElasticsearchRef.Name != ""
-
 	var secrets corev1.SecretList
 	selector := NewResourceSelector(kibana.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	if err := c.List(&client.ListOptions{LabelSelector: selector, Namespace: kibana.Namespace}, &secrets); err != nil {
 		return err
-	}
-	for _, s := range secrets.Items {
-		// look for association secrets owned by this kibana instance
-		// which should not exist since no ES referenced in the spec
-		if metav1.IsControlledBy(&s, &kibana) && !hasESRef {
-			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
-			if err := c.Delete(&s); err != nil {
-				return err
-			}
-		}
 	}
 
-	var users estype.UserList
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &users); err != nil {
-		return err
+	// Namespace in reference can be empty, in that case we compare it with the namespace of Kibana
+	var esRefNamespace string
+	if kibana.Spec.ElasticsearchRef.IsDefined() && kibana.Spec.ElasticsearchRef.Namespace != "" {
+		esRefNamespace = kibana.Spec.ElasticsearchRef.Namespace
+	} else {
+		esRefNamespace = kibana.Namespace
 	}
-	for _, u := range users.Items {
-		// look for users owned by this Kibana instance
-		// which should not exist since no ES referenced in the spec
-		if metav1.IsControlledBy(&u, &kibana) && !hasESRef {
-			log.Info("Deleting", "user", k8s.ExtractNamespacedName(&u))
-			if err := c.Delete(&u); err != nil {
-				return err
+
+	for _, s := range secrets.Items {
+		if metav1.IsControlledBy(&s, &kibana) || hasBeenCreatedBy(&s, kibana) {
+			if !kibana.Spec.ElasticsearchRef.IsDefined() {
+				// look for association secrets owned by this kibana instance
+				// which should not exist since no ES referenced in the spec
+				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
+			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
+				esRefNamespace != s.Namespace {
+				// User secret may live in an other namespace, check if it has changed
+				log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
+					return err
+				}
 			}
 		}
 	}

@@ -46,8 +46,6 @@ func New(name string, setters ...Attr) User {
 	return result
 }
 
-var _ user.User = User{}
-
 // Id is the user id.
 func (u User) Id() string {
 	return u.name

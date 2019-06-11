@@ -17,12 +17,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -54,36 +56,7 @@ var (
 			ClusterIP: "2.2.3.3",
 		},
 	}
-	podWithRunningCertInitializer = corev1.Pod{
-		ObjectMeta: testPod.ObjectMeta,
-		Status: corev1.PodStatus{
-			PodIP: testIP,
-			InitContainerStatuses: []corev1.ContainerStatus{
-				{
-					Name: initcontainer.CertInitializerContainerName,
-					State: corev1.ContainerState{
-						Running: &corev1.ContainerStateRunning{},
-					},
-				},
-			},
-		},
-	}
-	podWithTerminatedCertInitializer = corev1.Pod{
-		ObjectMeta: testPod.ObjectMeta,
-		Status: corev1.PodStatus{
-			PodIP: testIP,
-			InitContainerStatuses: []corev1.ContainerStatus{
-				{
-					Name: initcontainer.CertInitializerContainerName,
-					State: corev1.ContainerState{
-						Terminated: &corev1.ContainerStateTerminated{},
-					},
-				},
-			},
-		},
-	}
-	fakeCSRClient FakeCSRClient
-	additionalCA  = [][]byte{[]byte(testAdditionalCA)}
+	additionalCA = [][]byte{[]byte(testAdditionalCA)}
 )
 
 const (
@@ -126,6 +99,10 @@ DMO3GhRADFpMz3vjHA2rHA4AQ6nC8N4lIYTw0AF1VAOC0SDntf6YEgrhRKRFAUY=
 )
 
 func init() {
+	if err := v1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		panic(err)
+	}
+
 	var err error
 	block, _ := pem.Decode([]byte(testPemPrivateKey))
 	if testRSAPrivateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
@@ -138,21 +115,24 @@ func init() {
 	}); err != nil {
 		panic("Failed to create new self signed CA: " + err.Error())
 	}
+
 	testCSRBytes, err = x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, testRSAPrivateKey)
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
 	}
-	fakeCSRClient = FakeCSRClient{csr: testCSRBytes}
 	testCSR, err = x509.ParseCertificateRequest(testCSRBytes)
+
 	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(
 		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
 	}
+
 	certData, err = testCA.CreateCertificate(*validatedCertificateTemplate)
 	if err != nil {
 		panic("Failed to create cert data:" + err.Error())
 	}
+
 	pemCert = certificates.EncodePEMCert(certData, testCA.Cert.Raw)
 }
 
@@ -251,7 +231,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldIssueNewCertificate(tt.args.cluster, []corev1.Service{testSvc}, tt.args.secret, testCA, tt.args.pod, tt.args.rotateBefore); got != tt.want {
+			if got := shouldIssueNewCertificate(tt.args.cluster, []corev1.Service{testSvc}, tt.args.secret, testRSAPrivateKey, testCA, tt.args.pod, tt.args.rotateBefore); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
@@ -261,7 +241,12 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 	objMeta := metav1.ObjectMeta{
 		Namespace: "namespace",
-		Name:      "secret",
+		Name:      name.TransportCertsSecret(testPod.Name),
+		Labels: map[string]string{
+			LabelCertificateType:       LabelCertificateTypeTransport,
+			label.PodNameLabelName:     testPod.Name,
+			label.ClusterNameLabelName: testCluster.Name,
+		},
 	}
 
 	tests := []struct {
@@ -271,99 +256,119 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 		additionalTrustedCAsPemEncoded  [][]byte
 		wantSecretUpdated               bool
 		wantCertUpdateAnnotationUpdated bool
+		wantErr                         func(t *testing.T, err error)
 	}{
 		{
-			name: "Do not requeue without updating secret if there is an additional CA",
+			name: "do not requeue without updating secret if there is an additional CA",
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
 					certificates.CertFileName: pemCert,
-					certificates.CSRFileName:  testCSRBytes,
 					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
 			additionalTrustedCAsPemEncoded:  additionalCA,
-			pod:                             podWithRunningCertInitializer,
+			pod:                             testPod,
 			wantSecretUpdated:               true,
 			wantCertUpdateAnnotationUpdated: false,
 		},
 		{
-			name:                            "no cert generated yet: issue one",
-			secret:                          corev1.Secret{ObjectMeta: objMeta},
-			pod:                             podWithRunningCertInitializer,
-			wantSecretUpdated:               true,
-			wantCertUpdateAnnotationUpdated: true,
-		},
-		{
-			name:                            "no cert generated, but pod has no IP yet: requeue",
-			secret:                          corev1.Secret{ObjectMeta: objMeta},
-			pod:                             corev1.Pod{},
-			wantSecretUpdated:               false,
-			wantCertUpdateAnnotationUpdated: true,
-		},
-		{
-			name:                            "no cert generated, but cert-initializer not running: requeue",
-			secret:                          corev1.Secret{ObjectMeta: objMeta},
-			pod:                             podWithTerminatedCertInitializer,
-			wantSecretUpdated:               false,
-			wantCertUpdateAnnotationUpdated: true,
-		},
-		{
-			name: "a cert already exists, is valid, and cert-initializer is not running: requeue",
+			name: "no private key in the secret",
 			secret: corev1.Secret{
 				ObjectMeta: objMeta,
 				Data: map[string][]byte{
 					certificates.CertFileName: pemCert,
-				},
-			},
-			pod:                             podWithTerminatedCertInitializer,
-			wantSecretUpdated:               false,
-			wantCertUpdateAnnotationUpdated: true,
-		},
-		{
-			name: "a cert already exists, is valid, and cert-initializer is running to serve a new CSR: issue cert",
-			secret: corev1.Secret{
-				ObjectMeta: objMeta,
-				Data: map[string][]byte{
-					certificates.CertFileName: pemCert,
-				},
-			},
-			pod:                             podWithRunningCertInitializer,
-			wantSecretUpdated:               true,
-			wantCertUpdateAnnotationUpdated: true,
-		},
-		{
-			name: "a cert already exists, is valid, and cert-initializer is running to serve the same CSR: requeue",
-			secret: corev1.Secret{
-				ObjectMeta: objMeta,
-				Data: map[string][]byte{
-					certificates.CertFileName: pemCert,
-					certificates.CSRFileName:  testCSRBytes,
 					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
 				},
 			},
-			pod:                             podWithRunningCertInitializer,
-			wantSecretUpdated:               false,
+			pod:                             testPod,
+			wantSecretUpdated:               true,
 			wantCertUpdateAnnotationUpdated: true,
+		},
+		{
+			name: "no cert in the secret",
+			secret: corev1.Secret{
+				ObjectMeta: objMeta,
+				Data: map[string][]byte{
+					certificates.KeyFileName: certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					certificates.CAFileName:  certificates.EncodePEMCert(testCA.Cert.Raw),
+				},
+			},
+			pod:                             testPod,
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: true,
+		},
+		{
+			name: "cert does not belong to the key in the secret",
+			secret: corev1.Secret{
+				ObjectMeta: objMeta,
+				Data: map[string][]byte{
+					certificates.KeyFileName:  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					certificates.CertFileName: certificates.EncodePEMCert(testCA.Cert.Raw),
+					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
+				},
+			},
+			pod:                             testPod,
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: true,
+		},
+		{
+			name: "invalid cert in the secret",
+			secret: corev1.Secret{
+				ObjectMeta: objMeta,
+				Data: map[string][]byte{
+					certificates.KeyFileName:  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					certificates.CertFileName: []byte("invalid"),
+					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
+				},
+			},
+			pod:                             testPod,
+			wantSecretUpdated:               true,
+			wantCertUpdateAnnotationUpdated: true,
+		},
+		{
+			name:   "no cert generated, but pod has no IP yet: requeue",
+			secret: corev1.Secret{ObjectMeta: objMeta},
+			pod:    corev1.Pod{},
+			wantErr: func(t *testing.T, err error) {
+				assert.Contains(t, err.Error(), "pod currently has no valid IP")
+			},
+		},
+		{
+			name: "valid data should not require updating",
+			secret: corev1.Secret{
+				ObjectMeta: objMeta,
+				Data: map[string][]byte{
+					certificates.KeyFileName:  certificates.EncodePEMPrivateKey(*testRSAPrivateKey),
+					certificates.CertFileName: pemCert,
+					certificates.CAFileName:   certificates.EncodePEMCert(testCA.Cert.Raw),
+				},
+			},
+			pod:               testPod,
+			wantSecretUpdated: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fakeClient := k8s.WrapClient(fake.NewFakeClient(&tt.secret))
+			secret := tt.secret.DeepCopy()
+			fakeClient := k8s.WrapClient(fake.NewFakeClient(secret))
 			err := fakeClient.Create(&tt.pod)
 			require.NoError(t, err)
 
 			_, err = doReconcileTransportCertificateSecret(
 				fakeClient,
-				*tt.secret.DeepCopy(), // We need a deepcopy to not update the original data slice
-				tt.pod,
-				fakeCSRClient,
+				scheme.Scheme,
 				testCluster,
+				tt.pod,
 				[]corev1.Service{testSvc},
 				testCA, tt.additionalTrustedCAsPemEncoded,
 				certificates.DefaultCertValidity,
 				certificates.DefaultRotateBefore,
 			)
+			if tt.wantErr != nil {
+				tt.wantErr(t, err)
+				return
+			}
 			require.NoError(t, err)
 
 			var updatedSecret corev1.Secret
@@ -374,23 +379,20 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 			err = fakeClient.Get(k8s.ExtractNamespacedName(&tt.pod), &updatedPod)
 
 			isUpdated := !reflect.DeepEqual(tt.secret, updatedSecret)
-			require.Equal(t, tt.wantSecretUpdated, isUpdated)
+			require.Equal(t, tt.wantSecretUpdated, isUpdated, "want secret updated")
+
 			if tt.wantSecretUpdated {
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CAFileName])
-				assert.NotEmpty(t, updatedSecret.Data[certificates.CSRFileName])
 				assert.NotEmpty(t, updatedSecret.Data[certificates.CertFileName])
 				if tt.wantCertUpdateAnnotationUpdated {
-					// check that the CSR annotation has been updated
-					assert.NotEmpty(t, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-					lastCertUpdate, err := time.Parse(time.RFC3339, updatedSecret.Annotations[LastCSRUpdateAnnotation])
-					require.NoError(t, err)
-					assert.True(t, lastCertUpdate.Add(-5*time.Minute).Before(time.Now()))
-					// also check that the pod annotation has been updated too
+					// check that the pod annotation has been updated
 					assert.NotEmpty(t, updatedPod.Annotations[annotation.UpdateAnnotation])
 					lastPodUpdate, err := time.Parse(time.RFC3339Nano, updatedPod.Annotations[annotation.UpdateAnnotation])
 					require.NoError(t, err)
 					assert.True(t, lastPodUpdate.Add(-5*time.Minute).Before(time.Now()))
 				}
+			} else {
+				assert.Equal(t, tt.secret.Data, updatedSecret.Data)
 			}
 		})
 	}

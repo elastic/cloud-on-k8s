@@ -10,6 +10,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,7 +27,7 @@ func namedPod(name string) pod.PodWithConfig {
 				Name: name,
 			},
 		},
-		Config: nil,
+		Config: settings.CanonicalConfig{},
 	}
 }
 
@@ -38,7 +39,7 @@ func namedPodWithCreationTimestamp(name string, creationTimestamp time.Time) pod
 				CreationTimestamp: metav1.Time{Time: creationTimestamp},
 			},
 		},
-		Config: nil,
+		Config: settings.CanonicalConfig{},
 	}
 }
 

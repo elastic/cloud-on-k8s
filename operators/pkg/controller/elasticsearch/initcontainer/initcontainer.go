@@ -12,6 +12,15 @@ import (
 // defaultInitContainerRunAsUser is the user id the init container should run as
 const defaultInitContainerRunAsUser int64 = 0
 
+const (
+	// injectProcessManagerContainerName is the name of the container that injects the process manager
+	injectProcessManagerContainerName = "elastic-internal-init-process-manager"
+	// osSettingsContainerName is the name of the container that tweaks os-level settings
+	osSettingsContainerName = "elastic-internal-init-os-settings"
+	// prepareFilesystemContainerName is the name of the container that prepares the filesystem
+	prepareFilesystemContainerName = "elastic-internal-init-filesystem"
+)
+
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
 	elasticsearchImage string,
@@ -19,7 +28,6 @@ func NewInitContainers(
 	linkedFiles LinkedFilesArray,
 	setVMMaxMapCount *bool,
 	transportCertificatesVolume volume.SecretVolume,
-	additional ...corev1.Container,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 	// create the privileged init container if not explicitly disabled by the user
@@ -30,12 +38,7 @@ func NewInitContainers(
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, linkedFiles)
-	if err != nil {
-		return nil, err
-	}
-
-	certInitializerContainer, err := NewCertInitializerContainer(operatorImage, transportCertificatesVolume)
+	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, linkedFiles, transportCertificatesVolume)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +48,7 @@ func NewInitContainers(
 		return nil, err
 	}
 
-	containers = append(containers, prepareFsContainer, injectProcessManager, certInitializerContainer)
-	containers = append(containers, additional...)
+	containers = append(containers, prepareFsContainer, injectProcessManager)
+
 	return containers, nil
 }

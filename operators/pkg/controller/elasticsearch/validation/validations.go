@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
@@ -50,7 +52,7 @@ func supportedVersion(ctx Context) validation.Result {
 func hasMaster(ctx Context) validation.Result {
 	var hasMaster bool
 	for _, t := range ctx.Proposed.Elasticsearch.Spec.Nodes {
-		cfg, err := t.Config.Unpack()
+		cfg, err := v1alpha1.UnpackConfig(t.Config)
 		if err != nil {
 			return validation.Result{Reason: cfgInvalidMsg}
 		}
@@ -68,7 +70,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 		if n.Config == nil {
 			continue
 		}
-		config, err := settings.NewCanonicalConfigFrom(*n.Config)
+		config, err := common.NewCanonicalConfigFrom(n.Config.Data)
 		if err != nil {
 			violations[i] = map[string]struct{}{
 				cfgInvalidMsg: {},

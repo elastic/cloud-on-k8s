@@ -18,7 +18,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.Log.WithName("stack-controller")
+var log = logf.Log.WithName("common")
 
 func ReconcileService(
 	c k8s.Client,
@@ -50,6 +50,17 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 	if expected.Spec.ClusterIP == "" {
 		expected.Spec.ClusterIP = reconciled.Spec.ClusterIP
 	}
+
+	// Type may be defaulted by the api server
+	if expected.Spec.Type == "" {
+		expected.Spec.Type = reconciled.Spec.Type
+	}
+
+	// SessionAffinity may be defaulted by the api server
+	if expected.Spec.SessionAffinity == "" {
+		expected.Spec.SessionAffinity = reconciled.Spec.SessionAffinity
+	}
+
 	// same for the target port and node port
 	if len(expected.Spec.Ports) == len(reconciled.Spec.Ports) {
 		for i := range expected.Spec.Ports {
@@ -62,5 +73,11 @@ func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {
 			}
 		}
 	}
+
 	return !reflect.DeepEqual(expected.Spec, reconciled.Spec)
+}
+
+// hasNodePort returns for a given service type, if the service ports have a NodePort or not.
+func hasNodePort(svcType corev1.ServiceType) bool {
+	return svcType == corev1.ServiceTypeNodePort || svcType == corev1.ServiceTypeLoadBalancer
 }

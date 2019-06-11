@@ -5,11 +5,13 @@
 package certificates
 
 import (
+	"crypto/x509"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -21,8 +23,8 @@ import (
 )
 
 type CertificateResources struct {
-	// HTTPCA is the CA used for HTTP certificates
-	HTTPCA *certificates.CA
+	// TrustedHTTPCertificates contains the latest HTTP certificates that should be trusted.
+	TrustedHTTPCertificates []*x509.Certificate
 
 	// TransportCA is the CA used for Transport certificates
 	TransportCA *certificates.CA
@@ -32,7 +34,7 @@ type CertificateResources struct {
 func Reconcile(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	csrClient certificates.CSRClient,
+	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	caCertValidity, caCertRotateBefore, certValidity, certRotateBefore time.Duration,
@@ -60,10 +62,11 @@ func Reconcile(
 		RequeueAfter: shouldRequeueIn(time.Now(), httpCA.Cert.NotAfter, caCertRotateBefore),
 	})
 
-	// discover and maybe reconcile for the http certificate to use
-	httpCertificate, err := http.ReconcileHTTPCertificate(
+	// discover and maybe reconcile for the http certificates to use
+	httpCertificates, err := http.ReconcileHTTPCertificates(
 		c,
 		scheme,
+		watches,
 		es,
 		httpCA,
 		services,
@@ -75,7 +78,7 @@ func Reconcile(
 	}
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, es, httpCertificate, httpCA); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, es, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -110,8 +113,8 @@ func Reconcile(
 	// reconcile transport certificates
 	result, err := transport.ReconcileTransportCertificateSecrets(
 		c,
+		scheme,
 		transportCA,
-		csrClient,
 		es,
 		services,
 		trustRelationships,
@@ -122,9 +125,14 @@ func Reconcile(
 		return nil, results
 	}
 
+	trustedHTTPCertificates, err := certificates.ParsePEMCerts(httpCertificates.CertPem())
+	if err != nil {
+		return nil, results.WithError(err)
+	}
+
 	return &CertificateResources{
-		HTTPCA:      httpCA,
-		TransportCA: transportCA,
+		TrustedHTTPCertificates: trustedHTTPCertificates,
+		TransportCA:             transportCA,
 	}, results
 }
 

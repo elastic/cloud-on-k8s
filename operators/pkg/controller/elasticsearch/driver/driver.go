@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -49,9 +48,6 @@ type Options struct {
 	Client k8s.Client
 	Scheme *runtime.Scheme
 
-	// CSRClient is used to retrieve certificate signing requests from nodes in the cluster
-	CSRClient certificates.CSRClient
-
 	// Observers that observe es clusters state
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
@@ -69,8 +65,6 @@ func NewDriver(opts Options) (Driver, error) {
 	}
 	driver := &defaultDriver{
 		Options: opts,
-
-		versionWideResourcesReconciler: reconcileVersionWideResources,
 
 		observedStateResolver:  opts.Observers.ObservedStateResolver,
 		resourcesStateResolver: esreconcile.NewResourcesStateFromAPI,

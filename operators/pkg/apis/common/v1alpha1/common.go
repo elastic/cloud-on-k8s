@@ -5,7 +5,11 @@
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/policy/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // ReconcilerStatus represents status information about desired/available nodes.
@@ -15,7 +19,7 @@ type ReconcilerStatus struct {
 
 // SecretRef reference a secret by name.
 type SecretRef struct {
-	SecretName string `json:"secretName"`
+	SecretName string `json:"secretName,omitempty"`
 }
 
 // ObjectSelector allows to specify a reference to an object across namespace boundaries.
@@ -32,10 +36,16 @@ func (s ObjectSelector) NamespacedName() types.NamespacedName {
 	}
 }
 
+// IsDefined checks if the object selector is not nil and has a name.
+// Namespace is not mandatory as it may be inherited by the parent object.
+func (s *ObjectSelector) IsDefined() bool {
+	return s != nil && s.Name != ""
+}
+
 // HTTPConfig configures a HTTP-based service.
 type HTTPConfig struct {
 	// Service is a template for the Kubernetes Service
-	Service HTTPService `json:"service,omitempty"`
+	Service ServiceTemplate `json:"service,omitempty"`
 	// TLS describe additional options to consider when generating HTTP TLS certificates.
 	TLS TLSOptions `json:"tls,omitempty"`
 }
@@ -44,6 +54,14 @@ type TLSOptions struct {
 	// SelfSignedCertificate define options to apply to self-signed certificate
 	// managed by the operator.
 	SelfSignedCertificate *SelfSignedCertificate `json:"selfSignedCertificate,omitempty"`
+
+	// Certificate is a reference to a secret that contains the certificate and private key to be used.
+	//
+	// The secret should have the following content:
+	//
+	// - `tls.crt`: The certificate (or a chain).
+	// - `tls.key`: The private key to the first certificate in the certificate chain.
+	Certificate SecretRef `json:"certificate,omitempty"`
 }
 
 type SelfSignedCertificate struct {
@@ -57,29 +75,29 @@ type SubjectAlternativeName struct {
 	IP  string `json:"ip,omitempty"`
 }
 
-// HTTPService contains defaults for a HTTP service.
-type HTTPService struct {
-	// Metadata is metadata for the HTTP Service.
-	Metadata HTTPServiceObjectMeta `json:"metadata,omitempty"`
-
-	// Spec contains user-provided settings for the HTTP Service.
-	Spec HTTPServiceSpec `json:"spec,omitempty"`
-}
-
-// HTTPServiceObjectMeta is metadata for HTTP Service.
-type HTTPServiceObjectMeta struct {
-	// Annotations is an unstructured key value map stored with a resource that may be
-	// set by external tools to store and retrieve arbitrary metadata. They are not
-	// queryable and should be preserved when modifying objects.
-	// More info: http://kubernetes.io/docs/user-guide/annotations
+// ServiceTemplate describes the data a service should have when created from a template
+type ServiceTemplate struct {
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
 	// +optional
-	Annotations map[string]string `json:"annotations,omitempty"`
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec defines the behavior of the service.
+	// +optional
+	Spec v1.ServiceSpec `json:"spec,omitempty"`
 }
 
-// HTTPServiceSpec contains a subset of overridable settings for the HTTP Service
-type HTTPServiceSpec struct {
-	// Type determines which service type to use for this workload. The
-	// options are: `ClusterIP|LoadBalancer|NodePort`. Defaults to ClusterIP.
-	// +kubebuilder:validation:Enum=ClusterIP,LoadBalancer,NodePort
-	Type string `json:"type,omitempty"`
+// DefaultPodDisruptionBudgetMaxUnavailable is the default max unavailable pods in a PDB.
+var DefaultPodDisruptionBudgetMaxUnavailable = intstr.FromInt(1)
+
+// PodDisruptionBudgetTemplate contains a template for creating a PodDisruptionBudget.
+type PodDisruptionBudgetTemplate struct {
+	// ObjectMeta is metadata for the service.
+	// The name and namespace provided here is managed by ECK and will be ignored.
+	// +optional
+	ObjectMeta metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec of the desired behavior of the PodDisruptionBudget
+	// +optional
+	Spec v1beta1.PodDisruptionBudgetSpec `json:"spec,omitempty"`
 }

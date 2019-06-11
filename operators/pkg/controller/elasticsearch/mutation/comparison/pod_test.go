@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -44,7 +45,6 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 				ImagePullPolicy: corev1.PullIfNotPresent,
 				Name:            v1alpha1.ElasticsearchContainerName,
 				Ports:           pod.DefaultContainerPorts,
-				// TODO: Hardcoded resource limits and requests
 				Resources: corev1.ResourceRequirements{
 					Limits: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse(cpuLimit),
@@ -318,14 +318,18 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with an empty VolumeMode",
 			args: args{
-				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				pod: withPVCs(
+					ESPodWithConfig(defaultImage, defaultCPULimit),
+					volume.ElasticsearchDataVolumeName,
+					"elasticsearch-sample-es-7gnc85w7ll-"+volume.ElasticsearchDataVolumeName,
+				),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "data",
+									Name: volume.ElasticsearchDataVolumeName,
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
 									VolumeMode: nil,
@@ -337,7 +341,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-sample-es-7gnc85w7ll-data"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "elasticsearch-sample-es-7gnc85w7ll-" + volume.ElasticsearchDataVolumeName,
+							},
 							Spec: corev1.PersistentVolumeClaimSpec{
 								VolumeMode: &fs,
 							},
@@ -351,14 +357,18 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with a VolumeMode set to something else than default setting",
 			args: args{
-				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "data", "elasticsearch-sample-es-7gnc85w7ll-data"),
+				pod: withPVCs(
+					ESPodWithConfig(defaultImage, defaultCPULimit),
+					volume.ElasticsearchDataVolumeName,
+					"elasticsearch-sample-es-7gnc85w7ll-"+volume.ElasticsearchDataVolumeName,
+				),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "data",
+									Name: volume.ElasticsearchDataVolumeName,
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
 									VolumeMode: &block,
@@ -370,7 +380,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{Name: "elasticsearch-sample-es-7gnc85w7ll-data"},
+							ObjectMeta: metav1.ObjectMeta{
+								Name: "elasticsearch-sample-es-7gnc85w7ll-" + volume.ElasticsearchDataVolumeName,
+							},
 							Spec: corev1.PersistentVolumeClaimSpec{
 								VolumeMode: &block,
 							},

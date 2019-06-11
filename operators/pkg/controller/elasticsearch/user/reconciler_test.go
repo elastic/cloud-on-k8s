@@ -7,10 +7,9 @@ package user
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/magiconair/properties/assert"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -23,28 +22,30 @@ func Test_aggregateAllUsers(t *testing.T) {
 	internalUsers := NewInternalUserCredentials(nsn)
 	externalUsers := NewExternalUserCredentials(nsn)
 	type args struct {
-		customUsers  v1alpha1.UserList
+		customUsers  corev1.SecretList
 		defaultUsers []ClearTextCredentials
 	}
 	tests := []struct {
 		name       string
 		args       args
-		assertions func([]user.User, []func(client k8s.Client) error)
+		wantErr    bool
+		assertions func([]user.User)
 	}{
 		{
-			name: "default case: one kibana user plus internal + external users",
+			name:    "default case: one kibana user plus internal + external users",
+			wantErr: false,
 			args: args{
-				customUsers: v1alpha1.UserList{
-					Items: []v1alpha1.User{
+				customUsers: corev1.SecretList{
+					Items: []corev1.Secret{
 						{
 							ObjectMeta: v1.ObjectMeta{
 								Namespace: "default",
 								Name:      "kibana-user",
 							},
-							Spec: v1alpha1.UserSpec{
-								Name:         "kibana-user",
-								PasswordHash: "skfjdkf",
-								UserRoles:    []string{KibanaSystemUserBuiltinRole},
+							Data: map[string][]byte{
+								user.UserName:     []byte("kibana-user"),
+								user.PasswordHash: []byte("skfjdkf"),
+								user.UserRoles:    []byte(KibanaSystemUserBuiltinRole),
 							},
 						},
 					},
@@ -54,34 +55,34 @@ func Test_aggregateAllUsers(t *testing.T) {
 					*externalUsers,
 				},
 			},
-			assertions: func(users []user.User, status []func(client k8s.Client) error) {
+			assertions: func(users []user.User) {
 				assert.Equal(t, len(users), 5)
-				assert.Equal(t, len(status), 1)
 				containsAllNames(
 					t,
 					[]string{
 						"kibana-user",
 						ExternalUserName,
-						InternalControllerUserName, InternalProbeUserName, InternalReloadCredsUserName,
+						InternalControllerUserName, InternalProbeUserName, InternalKeystoreUserName,
 					},
 					users,
 				)
 			},
 		},
 		{
-			name: "multiple custom users",
+			name:    "multiple custom users",
+			wantErr: false,
 			args: args{
-				customUsers: v1alpha1.UserList{
-					Items: []v1alpha1.User{
+				customUsers: corev1.SecretList{
+					Items: []corev1.Secret{
 						{
 							ObjectMeta: v1.ObjectMeta{
 								Namespace: "default",
 								Name:      "kibana-user",
 							},
-							Spec: v1alpha1.UserSpec{
-								Name:         "kibana-user",
-								PasswordHash: "skfjdkf",
-								UserRoles:    []string{KibanaSystemUserBuiltinRole},
+							Data: map[string][]byte{
+								user.UserName:     []byte("kibana-user"),
+								user.PasswordHash: []byte("skfjdkf"),
+								user.UserRoles:    []byte("KibanaSystemUserBuiltinRole"),
 							},
 						},
 						{
@@ -89,27 +90,27 @@ func Test_aggregateAllUsers(t *testing.T) {
 								Namespace: "default",
 								Name:      "foo-user",
 							},
-							Spec: v1alpha1.UserSpec{
-								Name:         "foo-user",
-								PasswordHash: "alskdfjslkdfjlsk",
-								UserRoles:    []string{"kibana-user"},
+							Data: map[string][]byte{
+								user.UserName:     []byte("foo-user"),
+								user.PasswordHash: []byte("alskdfjslkdfjlsk"),
+								user.UserRoles:    []byte("kibana-user"),
 							},
 						},
 					},
 				},
 				defaultUsers: nil,
 			},
-			assertions: func(users []user.User, status []func(client k8s.Client) error) {
+			assertions: func(users []user.User) {
 				assert.Equal(t, len(users), 2)
-				assert.Equal(t, len(status), 2)
 				containsAllNames(t, []string{"kibana-user", "foo-user"}, users)
 			},
 		},
 		{
-			name: "invalid custom users are ignored",
+			name:    "invalid custom users raise an error",
+			wantErr: true,
 			args: args{
-				customUsers: v1alpha1.UserList{
-					Items: []v1alpha1.User{
+				customUsers: corev1.SecretList{
+					Items: []corev1.Secret{
 						{
 							ObjectMeta: v1.ObjectMeta{
 								Namespace: "default",
@@ -122,18 +123,20 @@ func Test_aggregateAllUsers(t *testing.T) {
 					*externalUsers,
 				},
 			},
-			assertions: func(users []user.User, status []func(client k8s.Client) error) {
-				assert.Equal(t, len(users), 1)
-				assert.Equal(t, len(status), 1)
-				containsAllNames(t, []string{ExternalUserName}, users)
+			assertions: func(users []user.User) {
+				assert.Equal(t, len(users), 0)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := aggregateAllUsers(tt.args.customUsers, tt.args.defaultUsers...)
+			got, err := aggregateAllUsers(tt.args.customUsers, tt.args.defaultUsers...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("aggregateAllUsers(...) error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 			if tt.assertions != nil {
-				tt.assertions(got, got1)
+				tt.assertions(got)
 			}
 		})
 	}
