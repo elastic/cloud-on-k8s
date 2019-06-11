@@ -327,7 +327,7 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
-	// List the orphaned PVC before the Pods are created.
+	// List the orphaned PVCs before the Pods are created.
 	// If there are some orphaned PVCs they will be adopted and remove sequentially from the list when Pods are created.
 	orphanedPVCs, err := pvc.FindOrphanedVolumeClaims(d.Client, es)
 	if err != nil {
