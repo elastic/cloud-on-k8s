@@ -13,10 +13,15 @@ ARG GO_TAGS
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
-# Copy the controller-manager into a thin image
+# Copy the controller-manager and the process-manager into a thin image
 FROM ubuntu:latest
-RUN mkdir /eck && chmod 755 /eck
-WORKDIR /eck/
+
+RUN set -x \
+    && addgroup --system --gid 101 eck \
+    && adduser --system --disabled-login --ingroup eck --home /eck --gecos "eck user" --shell /bin/false --uid 101 eck
+
+WORKDIR /eck
+USER eck
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/process-manager .
 ENTRYPOINT ["./elastic-operator"]
