@@ -5,32 +5,27 @@
 package validation
 
 import (
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
+	corev1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("license-validation")
 
+const EULAValidationMsg = `Please set the annotation elastic.co/eula to "accepted" to accept the EULA`
+
 var Validations = []Validation{
 	eulaAccepted,
-	requiredFields,
 }
 
 func eulaAccepted(ctx Context) validation.Result {
-	if !ctx.Proposed.Spec.Eula.Accepted {
-		return validation.Result{Allowed: false, Reason: "Please set the field eula.accepted to true to accept the EULA"}
-	}
-	return validation.OK
-}
-
-func requiredFields(ctx Context) validation.Result {
-	if ctx.Proposed.IsTrial() {
+	if !license.IsEnterpriseTrial(ctx.Proposed) {
 		return validation.OK
 	}
-	err := ctx.Proposed.IsMissingFields()
-	if err != nil {
-		return validation.Result{Allowed: false, Reason: err.Error()}
+
+	if ctx.Proposed.Annotations[license.EULAAnnotation] != license.EULAAcceptedValue {
+		return validation.Result{Allowed: false, Reason: EULAValidationMsg}
 	}
 	return validation.OK
 }
@@ -42,9 +37,9 @@ type Validation func(ctx Context) validation.Result
 // Context is structured input for validation functions.
 type Context struct {
 	// Current is the EnterpriseLicense  stored in the api server. Can be nil on create.
-	Current *estype.EnterpriseLicense
+	Current *corev1.Secret
 	// Proposed is the EnterpriseLicense submitted for validation.
-	Proposed estype.EnterpriseLicense
+	Proposed corev1.Secret
 }
 
 func (v Context) isCreate() bool {
@@ -52,10 +47,10 @@ func (v Context) isCreate() bool {
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.
-func Validate(es estype.EnterpriseLicense) []validation.Result {
+func Validate(sec corev1.Secret) []validation.Result {
 	vCtx := Context{
 		Current:  nil,
-		Proposed: es,
+		Proposed: sec,
 	}
 	var errs []validation.Result
 	for _, v := range Validations {

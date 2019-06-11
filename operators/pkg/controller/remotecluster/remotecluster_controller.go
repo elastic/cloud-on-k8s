@@ -81,7 +81,7 @@ type ReconcileRemoteCluster struct {
 	scheme         *runtime.Scheme
 	recorder       record.EventRecorder
 	watches        watches.DynamicWatches
-	licenseChecker *license.Checker
+	licenseChecker license.Checker
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64

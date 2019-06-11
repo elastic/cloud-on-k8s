@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/license"
 	admission "k8s.io/api/admissionregistration/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -41,7 +42,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		Name("validation.license.elastic.co").
 		Validating().
 		FailurePolicy(admission.Fail).
-		ForType(&v1alpha1.EnterpriseLicense{}).
+		ForType(&corev1.Secret{}).
 		Handlers(&license.ValidationHandler{}).
 		WithManager(mgr).
 		Build()
