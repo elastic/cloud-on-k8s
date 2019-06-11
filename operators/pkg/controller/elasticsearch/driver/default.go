@@ -21,6 +21,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/remotecluster"
@@ -52,13 +53,6 @@ type defaultDriver struct {
 		scheme *runtime.Scheme,
 		es v1alpha1.Elasticsearch,
 	) (*user.InternalUsers, error)
-
-	// versionWideResourcesReconciler reconciles resources that may be specific to a version
-	versionWideResourcesReconciler func(
-		c k8s.Client,
-		scheme *runtime.Scheme,
-		es v1alpha1.Elasticsearch,
-	) (*VersionWideResources, error)
 
 	// expectedPodsAndResourcesResolver returns a list of pod specs with context that we would expect to find in the
 	// Elasticsearch cluster.
@@ -140,6 +134,7 @@ func (d *defaultDriver) Reconcile(
 	certificateResources, res := certificates.Reconcile(
 		d.Client,
 		d.Scheme,
+		d.DynamicWatches,
 		es,
 		[]corev1.Service{genericResources.ExternalService},
 		d.Parameters.CACertValidity,
@@ -172,20 +167,23 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
-	// TODO: support user-supplied certificate (non-ca)
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		[]*x509.Certificate{certificateResources.HTTPCA.Cert},
+		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
 			*min,
-			certificateResources.HTTPCA.Cert,
+			certificateResources.TrustedHTTPCertificates,
 		))
 
 	// always update the elasticsearch state bits
 	if observedState.ClusterState != nil && observedState.ClusterHealth != nil {
 		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
+	}
+
+	if err := pdb.Reconcile(d.Client, d.Scheme, es); err != nil {
+		return results.WithError(err)
 	}
 
 	podsState := mutation.NewPodsState(*resourcesState, observedState)
@@ -194,17 +192,12 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	versionWideResources, err := d.versionWideResourcesReconciler(d.Client, d.Scheme, es)
-	if err != nil {
-		return results.WithError(err)
-	}
-
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
 		genericResources.ExternalService,
 		internalUsers.ControllerUser,
 		*min,
-		certificateResources.HTTPCA.Cert,
+		certificateResources.TrustedHTTPCertificates,
 	)
 	defer esClient.Close()
 
@@ -234,7 +227,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(versionWideResources, internalUsers, es, *resourcesState)
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -486,7 +479,6 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 // calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the
 // desired one.
 func (d *defaultDriver) calculateChanges(
-	versionWideResources *VersionWideResources,
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
@@ -494,11 +486,11 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ClusterSecretsRef:  k8s.ExtractNamespacedName(&versionWideResources.ClusterSecrets),
-			ProbeUser:          internalUsers.ProbeUser.Auth(),
-			ReloadCredsUser:    internalUsers.ReloadCredsUser.Auth(),
-			ConfigMapVolume:    volume.NewConfigMapVolume(versionWideResources.GenericUnencryptedConfigurationFiles.Name, settings.ManagedConfigPath),
-			UnicastHostsVolume: volume.NewConfigMapVolume(name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeMountPath),
+			ProbeUser:    internalUsers.ProbeUser.Auth(),
+			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+			UnicastHostsVolume: volume.NewConfigMapVolume(
+				name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeName, volume.UnicastHostsVolumeMountPath,
+			),
 		},
 		d.OperatorImage,
 	)
@@ -521,7 +513,7 @@ func (d *defaultDriver) calculateChanges(
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCert *x509.Certificate) esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
-	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, []*x509.Certificate{caCert})
+	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, caCerts)
 }

@@ -262,6 +262,24 @@ func TestClientGetNodes(t *testing.T) {
 	require.Equal(t, 2130051072, resp.Nodes["iXqjbgPYThO-6S7reL5_HA"].JVM.Mem.HeapMaxInBytes)
 }
 
+func TestClientGetNodesStats(t *testing.T) {
+	expectedPath := "/_nodes/_all/stats/os"
+	testClient := NewMockClient(version.MustParse("6.7.0"), func(req *http.Request) *http.Response {
+		require.Equal(t, expectedPath, req.URL.Path)
+		return &http.Response{
+			StatusCode: 200,
+			Body:       ioutil.NopCloser(strings.NewReader(fixtures.NodesStatsSample)),
+			Header:     make(http.Header),
+			Request:    req,
+		}
+	})
+	resp, err := testClient.GetNodesStats(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, 1, len(resp.Nodes))
+	require.Contains(t, resp.Nodes, "Rt-o5-ZBQaq-Nkhhy0p7JA")
+	require.Equal(t, "3221225472", resp.Nodes["Rt-o5-ZBQaq-Nkhhy0p7JA"].OS.CGroup.Memory.LimitInBytes)
+}
+
 func TestGetInfo(t *testing.T) {
 	expectedPath := "/"
 	testClient := NewMockClient(version.MustParse("6.4.1"), func(req *http.Request) *http.Response {

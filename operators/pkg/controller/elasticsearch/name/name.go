@@ -7,9 +7,8 @@ package name
 import (
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -29,11 +28,11 @@ const (
 	certsSecretSuffix           = "certs"
 	httpServiceSuffix           = "http"
 	elasticUserSecretSuffix     = "elastic-user"
-	esRolesUsersSecretSuffix    = "roles-users"
-	clusterSecretsSecretSuffix  = "secrets"
+	xpackFileRealmSecretSuffix  = "xpack-file-realm"
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 	licenseSecretSuffix         = "license"
+	defaultPodDisruptionBudget  = "default"
 
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
@@ -106,12 +105,8 @@ func ElasticUserSecret(esName string) string {
 	return ESNamer.Suffix(esName, elasticUserSecretSuffix)
 }
 
-func EsRolesUsersSecret(esName string) string {
-	return ESNamer.Suffix(esName, esRolesUsersSecretSuffix)
-}
-
-func ClusterSecretsSecret(esName string) string {
-	return ESNamer.Suffix(esName, clusterSecretsSecretSuffix)
+func XPackFileRealmSecret(esName string) string {
+	return ESNamer.Suffix(esName, xpackFileRealmSecretSuffix)
 }
 
 func InternalUsersSecret(esName string) string {
@@ -133,4 +128,8 @@ func CertsPublicSecretName(esName string, caType certificates.CAType) string {
 
 func LicenseSecretName(esName string) string {
 	return ESNamer.Suffix(esName, licenseSecretSuffix)
+}
+
+func DefaultPodDisruptionBudget(esName string) string {
+	return ESNamer.Suffix(esName, defaultPodDisruptionBudget)
 }

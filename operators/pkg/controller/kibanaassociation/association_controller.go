@@ -251,7 +251,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	// update Kibana resource with ES access details
 	var expectedEsConfig kbtype.BackendElasticsearch
-	expectedEsConfig.CaCertSecret = caSecretName
+	expectedEsConfig.CertificateAuthorities.SecretName = caSecretName
 	expectedEsConfig.URL = services.ExternalServiceURL(es)
 	expectedEsConfig.Auth.SecretKeyRef = KibanaUserSecretSelector(kibana)
 
@@ -271,7 +271,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 	var secrets corev1.SecretList
 	selector := NewResourceSelector(kibana.Name)
-	if err := c.List(&client.ListOptions{LabelSelector: selector}, &secrets); err != nil {
+	if err := c.List(&client.ListOptions{LabelSelector: selector, Namespace: kibana.Namespace}, &secrets); err != nil {
 		return err
 	}
 

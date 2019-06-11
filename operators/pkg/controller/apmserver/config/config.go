@@ -76,7 +76,7 @@ func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
 				SSL: TLSConfig{
 					Enabled: true,
 					// TODO: hardcoded path
-					CertificateAuthorities: []string{"config/elasticsearch-certs/" + certificates.CAFileName},
+					CertificateAuthorities: []string{"config/elasticsearch-certs/" + certificates.CertFileName},
 				},
 				// TODO: include indices? or will they be defaulted fine?
 			},
