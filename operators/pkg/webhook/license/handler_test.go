@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/pkg/errors"
@@ -98,7 +97,7 @@ func TestValidationHandler_Handle(t *testing.T) {
 					obj: &corev1.Secret{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
-								common.TypeLabelName: license.Type,
+								license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
 							},
 						},
 					},

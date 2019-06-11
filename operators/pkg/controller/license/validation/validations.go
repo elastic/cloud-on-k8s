@@ -5,7 +5,6 @@
 package validation
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	corev1 "k8s.io/api/core/v1"
@@ -22,9 +21,6 @@ var Validations = []Validation{
 
 func eulaAccepted(ctx Context) validation.Result {
 	if !license.IsEnterpriseTrial(ctx.Proposed) {
-		return validation.OK
-	}
-	if ctx.Proposed.Labels[common.TypeLabelName] != license.Type {
 		return validation.OK
 	}
 

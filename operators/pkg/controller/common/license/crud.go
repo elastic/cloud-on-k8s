@@ -82,9 +82,10 @@ func CreateTrialLicense(c k8s.Client, namespace string) error {
 			Namespace: namespace,
 			Labels: map[string]string{
 				common.TypeLabelName: Type,
+				LicenseLabelType:     string(LicenseTypeEnterpriseTrial),
 			},
 			Annotations: map[string]string{
-				"elastic.co/eula": "accepted",
+				EULAAnnotation: EULAAcceptedValue,
 			},
 		},
 	})

@@ -12,26 +12,13 @@ import (
 )
 
 func isLicenseType(secret corev1.Secret, licenseType EnterpriseLicenseType) bool {
-	// is it a license at all?
-	if secret.Labels[common.TypeLabelName] != Type {
+	// is it a license at all (but be lenient if user omitted label)?
+	baseType, hasLabel := secret.Labels[common.TypeLabelName]
+	if hasLabel && baseType != Type {
 		return false
 	}
-	// potentially not set before first reconcile attempt
-	actualType, hasLabel := secret.Labels[LicenseLabelType]
-	if hasLabel {
-		return actualType == string(licenseType)
-	}
-	// user created license secret without data implies trial
-	if len(secret.Data) == 0 && licenseType == LicenseTypeEnterpriseTrial {
-		return true
-	}
-	// last resort parse the actual license data
-	license, err := ParseEnterpriseLicense(secret.Data)
-	if err != nil {
-		return false
-	}
-	// XOR expected enterprise license type and trial type
-	return (licenseType == LicenseTypeEnterprise || license.IsTrial()) && !(licenseType == LicenseTypeEnterprise && license.IsTrial())
+	// required to be set by user to detect license
+	return secret.Labels[LicenseLabelType] == string(licenseType)
 }
 
 // IsEnterpriseTrial returns true if the given secret is a wrapper for an Enterprise Trial license

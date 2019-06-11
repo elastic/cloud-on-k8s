@@ -31,7 +31,7 @@ func Test_eulaAccepted(t *testing.T) {
 					Proposed: v1.Secret{
 						ObjectMeta: v12.ObjectMeta{
 							Labels: map[string]string{
-								common.TypeLabelName: license.Type,
+								license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
 							},
 						},
 					},
