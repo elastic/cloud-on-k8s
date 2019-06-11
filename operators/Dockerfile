@@ -17,11 +17,12 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags="$GO_TAGS" -a -o proces
 FROM centos:7
 
 RUN set -x \
-    && groupadd --system --gid 101 eck \
-    && useradd --system -g eck --home /eck -c "eck user" --shell /bin/false --uid 101 eck
+    && groupadd --system --gid 101 elastic \
+    && useradd --system -g elastic -m --home /eck -c "eck user" --shell /bin/false --uid 101 elastic \
+    && chmod 755 /eck
 
 WORKDIR /eck
-USER eck
+USER elastic
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/process-manager .
