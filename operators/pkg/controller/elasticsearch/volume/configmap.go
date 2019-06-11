@@ -13,7 +13,7 @@ func NewConfigMapVolume(configMapName, name, mountPath string) ConfigMapVolume {
 	return NewConfigMapVolumeWithMode(configMapName, name, mountPath, corev1.ConfigMapVolumeSourceDefaultMode)
 }
 
-// NewConfigMapVolume creates a new ConfigMapVolume struct with default mode
+// NewConfigMapVolumeWithMode creates a new ConfigMapVolume struct with default mode
 func NewConfigMapVolumeWithMode(configMapName, name, mountPath string, defaultMode int32) ConfigMapVolume {
 	return ConfigMapVolume{
 		configMapName: configMapName,
