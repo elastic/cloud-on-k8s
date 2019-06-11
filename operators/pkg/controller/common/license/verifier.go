@@ -18,7 +18,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	errors2 "github.com/pkg/errors"
 )
 
@@ -28,21 +27,21 @@ type Verifier struct {
 }
 
 // Valid checks the validity of the given Enterprise license.
-func (v *Verifier) Valid(l v1alpha1.EnterpriseLicense, sig []byte, now time.Time) v1alpha1.LicenseStatus {
+func (v *Verifier) Valid(l EnterpriseLicense, now time.Time) LicenseStatus {
 	if !l.IsValid(now) {
-		return v1alpha1.LicenseStatusExpired
+		return LicenseStatusExpired
 	}
-	if err := v.ValidSignature(l, sig); err != nil {
+	if err := v.ValidSignature(l); err != nil {
 		log.Error(err, "Failed signature check")
-		return v1alpha1.LicenseStatusInvalid
+		return LicenseStatusInvalid
 	}
-	return v1alpha1.LicenseStatusValid
+	return LicenseStatusValid
 }
 
 // ValidSignature checks signature of the given Enterprise license. Returns nil if valid.
-func (v *Verifier) ValidSignature(l v1alpha1.EnterpriseLicense, sig []byte) error {
-	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(sig)))
-	_, err := base64.StdEncoding.Decode(allParts, sig)
+func (v *Verifier) ValidSignature(l EnterpriseLicense) error {
+	allParts := make([]byte, base64.StdEncoding.DecodedLen(len(l.License.Signature)))
+	_, err := base64.StdEncoding.Decode(allParts, []byte(l.License.Signature))
 	if err != nil {
 		return errors2.Wrap(err, "failed to base64 decode signature")
 	}
@@ -132,7 +131,7 @@ func NewSigner(privKey *rsa.PrivateKey) *signer {
 }
 
 // Sign signs the given Enterprise license.
-func (s *signer) Sign(l v1alpha1.EnterpriseLicense) ([]byte, error) {
+func (s *signer) Sign(l EnterpriseLicense) ([]byte, error) {
 	spec := toVerifiableSpec(l)
 	toSign, err := json.Marshal(spec)
 	if err != nil {
@@ -204,16 +203,16 @@ type licenseSpec struct {
 	Issuer             string `json:"issuer"`
 }
 
-func toVerifiableSpec(l v1alpha1.EnterpriseLicense) licenseSpec {
+func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
 	return licenseSpec{
-		Uid:                l.Spec.UID,
-		LicenseType:        string(l.Spec.Type),
-		IssueDateInMillis:  l.Spec.IssueDateInMillis,
-		StartDateInMillis:  l.Spec.StartDateInMillis,
-		ExpiryDateInMillis: l.Spec.ExpiryDateInMillis,
-		MaxInstances:       l.Spec.MaxInstances,
-		IssuedTo:           l.Spec.IssuedTo,
-		Issuer:             l.Spec.Issuer,
+		Uid:                l.License.UID,
+		LicenseType:        string(l.License.Type),
+		IssueDateInMillis:  l.License.IssueDateInMillis,
+		StartDateInMillis:  l.License.StartDateInMillis,
+		ExpiryDateInMillis: l.License.ExpiryDateInMillis,
+		MaxInstances:       l.License.MaxInstances,
+		IssuedTo:           l.License.IssuedTo,
+		Issuer:             l.License.Issuer,
 	}
 }
 

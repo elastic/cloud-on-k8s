@@ -8,11 +8,11 @@ import (
 	"context"
 	"net/http"
 
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	commonvalidation "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/inject"
@@ -38,7 +38,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	if r.AdmissionRequest.Operation == v1beta1.Delete {
 		return admission.ValidationResponse(true, "allowing all deletes")
 	}
-	license := estype.EnterpriseLicense{}
+	license := corev1.Secret{}
 	log.Info("ValidationHandler handler called",
 		"operation", r.AdmissionRequest.Operation,
 		"name", r.AdmissionRequest.Name,
@@ -49,13 +49,13 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 		log.Error(err, "Failed to decode request")
 		return admission.ErrorResponse(http.StatusBadRequest, err)
 	}
-	var onServer estype.EnterpriseLicense
+	var onServer corev1.Secret
 	err = v.client.Get(ctx, k8s.ExtractNamespacedName(&license), &onServer)
 	if err != nil && !apierrors.IsNotFound(err) {
 		log.Error(err, "Failed to retrieve existing license")
 		return admission.ErrorResponse(http.StatusInternalServerError, err)
 	}
-	var current *estype.EnterpriseLicense
+	var current *corev1.Secret
 	if err == nil {
 		current = &onServer
 	}
@@ -64,10 +64,10 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	for _, v := range validation.Validations {
 		results = append(results, v(*validationCtx))
 	}
-	return aggregate(results)
+	return Aggregate(results)
 }
 
-func aggregate(results []commonvalidation.Result) types.Response {
+func Aggregate(results []commonvalidation.Result) types.Response {
 	response := commonvalidation.Result{Allowed: true}
 	for _, r := range results {
 		if !r.Allowed {

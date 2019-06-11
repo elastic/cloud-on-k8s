@@ -12,8 +12,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	pkgerrors "github.com/pkg/errors"
@@ -25,18 +23,17 @@ import (
 const (
 	TrialStatusSecretKey = "trial-status"
 	TrialPubkeyKey       = "pubkey"
-	TrialSignatureKey    = "signature"
 )
 
-func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error) {
+func InitTrial(c k8s.Client, secret corev1.Secret, l *EnterpriseLicense) (*rsa.PublicKey, error) {
 	if l == nil {
 		return nil, errors.New("license is nil")
 	}
 
 	if err := populateTrialLicense(l); err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to populate trial license")
+		return nil, pkgerrors.Wrap(err, "failed to populate trial license")
 	}
-	log.Info("Starting enterprise trial", "start", l.StartDate(), "end", l.ExpiryDate())
+	log.Info("Starting enterprise trial", "start", l.StartTime(), "end", l.ExpiryTime())
 	rnd := rand.Reader
 	tmpPrivKey, err := rsa.GenerateKey(rnd, 2048)
 	if err != nil {
@@ -46,57 +43,60 @@ func InitTrial(c k8s.Client, l *estype.EnterpriseLicense) (*rsa.PublicKey, error
 	signer := NewSigner(tmpPrivKey)
 	sig, err := signer.Sign(*l)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to sign license")
+		return nil, pkgerrors.Wrap(err, "failed to sign license")
 	}
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(&tmpPrivKey.PublicKey)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to marshal public key for trial status")
+		return nil, pkgerrors.Wrap(err, "failed to marshal public key for trial status")
 	}
 	trialStatus := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: l.Namespace,
+			Namespace: secret.Namespace,
 			Name:      TrialStatusSecretKey,
 			Labels: map[string]string{
-				EnterpriseLicenseLabelName: l.Name,
+				LicenseLabelName: l.License.UID,
 			},
 		},
 		Data: map[string][]byte{
-			TrialSignatureKey: sig,
-			TrialPubkeyKey:    pubkeyBytes,
+			TrialPubkeyKey: pubkeyBytes,
 		},
 	}
 	err = c.Create(&trialStatus)
 	if err != nil {
-		return nil, pkgerrors.Wrap(err, "Failed to create trial status")
+		return nil, pkgerrors.Wrap(err, "failed to create trial status")
 	}
-	l.Spec.SignatureRef = corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: TrialStatusSecretKey,
-		},
-		Key: TrialSignatureKey,
-	}
-	l.Status = estype.LicenseStatusValid
+	l.License.Signature = string(sig)
 	// return pub key to retain in memory for later iterations
-	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(c.Update(l), "Failed to update trial license")
+	return &tmpPrivKey.PublicKey, pkgerrors.Wrap(
+		UpdateEnterpriseLicense(c, secret, *l),
+		"failed to update trial license",
+	)
 }
 
 // populateTrialLicense adds missing fields to a trial license.
-func populateTrialLicense(l *estype.EnterpriseLicense) error {
+func populateTrialLicense(l *EnterpriseLicense) error {
 	if !l.IsTrial() {
-		return fmt.Errorf("%v is not a trial license", k8s.ExtractNamespacedName(l))
+		return fmt.Errorf("%s for %s is not a trial license", l.License.UID, l.License.IssuedTo)
 	}
-	if err := l.IsMissingFields(); err != nil {
-		l.Spec.Issuer = "Elastic k8s operator"
-		l.Spec.IssuedTo = "Unknown"
-		l.Spec.UID = string(uuid.NewUUID())
+	if l.License.Issuer == "" {
+		l.License.Issuer = "Elastic k8s operator"
+	}
+	if l.License.IssuedTo == "" {
+		l.License.IssuedTo = "Unknown"
+	}
+	if l.License.UID == "" {
+		l.License.UID = string(uuid.NewUUID())
+	}
+
+	if l.License.StartDateInMillis == 0 || l.License.ExpiryDateInMillis == 0 {
 		setStartAndExpiry(l, time.Now())
 	}
 	return nil
 }
 
 // setStartAndExpiry sets the issue, start and end dates for a trial.
-func setStartAndExpiry(l *v1alpha1.EnterpriseLicense, from time.Time) {
-	l.Spec.StartDateInMillis = chrono.ToMillis(from)
-	l.Spec.IssueDateInMillis = l.Spec.StartDateInMillis
-	l.Spec.ExpiryDateInMillis = chrono.ToMillis(from.Add(24 * time.Hour * 30))
+func setStartAndExpiry(l *EnterpriseLicense, from time.Time) {
+	l.License.StartDateInMillis = chrono.ToMillis(from)
+	l.License.IssueDateInMillis = l.License.StartDateInMillis
+	l.License.ExpiryDateInMillis = chrono.ToMillis(from.Add(24 * time.Hour * 30))
 }

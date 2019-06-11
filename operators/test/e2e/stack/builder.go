@@ -18,7 +18,7 @@ import (
 
 var DefaultResources = corev1.ResourceRequirements{
 	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("2G"),
+		corev1.ResourceMemory: resource.MustParse("2Gi"),
 		corev1.ResourceCPU:    resource.MustParse("2"),
 	},
 }

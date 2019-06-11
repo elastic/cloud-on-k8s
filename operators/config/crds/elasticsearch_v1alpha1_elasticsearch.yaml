@@ -145,6 +145,20 @@ spec:
                     type: array
                 type: object
               type: array
+            podDisruptionBudget:
+              description: PodDisruptionBudget allows full control of the default
+                pod disruption budget.  The default budget selects all cluster pods
+                and sets maxUnavailable to 1. To disable it entirely, set to the empty
+                value (`{}` in YAML).
+              properties:
+                metadata:
+                  description: ObjectMeta is metadata for the service. The name and
+                    namespace provided here is managed by ECK and will be ignored.
+                  type: object
+                spec:
+                  description: Spec of the desired behavior of the PodDisruptionBudget
+                  type: object
+              type: object
             secureSettings:
               description: SecureSettings reference a secret containing secure settings,
                 to be injected into Elasticsearch keystore on each node. Each individual

@@ -21,7 +21,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
@@ -181,6 +183,10 @@ func (d *defaultDriver) Reconcile(
 		reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 	}
 
+	if err := pdb.Reconcile(d.Client, d.Scheme, es); err != nil {
+		return results.WithError(err)
+	}
+
 	podsState := mutation.NewPodsState(*resourcesState, observedState)
 
 	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods.Pods()); err != nil {
@@ -321,6 +327,13 @@ func (d *defaultDriver) Reconcile(
 		}
 	}
 
+	// List the orphaned PVCs before the Pods are created.
+	// If there are some orphaned PVCs they will be adopted and remove sequentially from the list when Pods are created.
+	orphanedPVCs, err := pvc.FindOrphanedVolumeClaims(d.Client, es)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	for _, change := range performableChanges.ToCreate {
 		d.PodsExpectations.ExpectCreation(namespacedName)
 		if err := createElasticsearchPod(
@@ -330,6 +343,7 @@ func (d *defaultDriver) Reconcile(
 			reconcileState,
 			change.Pod,
 			change.PodSpecCtx,
+			orphanedPVCs,
 		); err != nil {
 			// pod was not created, cancel our expectation by marking it observed
 			d.PodsExpectations.CreationObserved(namespacedName)

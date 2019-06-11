@@ -5,19 +5,45 @@
 package license
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
-	// EnterpriseLicenseLabelName is a label pointing to the name of the source enterprise license.
-	EnterpriseLicenseLabelName = "license.k8s.elastic.co/name"
-	ElasticsearchLicenseType   = "elasticsearch-license"
+	// LicenseLabelName is a label pointing to the name of the source enterprise license.
+	LicenseLabelName         = "license.k8s.elastic.co/name"
+	LicenseLabelType         = "license.k8s.elastic.co/type"
+	Type                     = "license"
+	EULAAnnotation           = "elastic.co/eula"
+	EULAAcceptedValue        = "accepted"
+	LicenseInvalidAnnotation = "license.k8s.elastic.co/invalid"
 )
 
-// NewLicenseSelector is a list selector to filter by a label containing the license name.
-func NewLicenseSelector(license types.NamespacedName) labels.Selector {
+// LicenseType is the type of license a resource is describing.
+type LicenseType string
+
+const (
+	LicenseLabelEnterprise    LicenseType = "enterprise"
+	LicenseLabelElasticsearch LicenseType = "elasticsearch"
+)
+
+// LabelsForType creates a map of labels for the given type of either enterprise or Elasticsearch license.
+func LabelsForType(licenseType LicenseType) map[string]string {
+	return map[string]string{
+		common.TypeLabelName: Type,
+		LicenseLabelType:     string(licenseType),
+	}
+}
+
+// NewLicenseByNameSelector is a list selector to filter by a label containing the license name.
+func NewLicenseByNameSelector(licenseName string) labels.Selector {
 	return labels.Set(map[string]string{
-		EnterpriseLicenseLabelName: license.Name,
+		LicenseLabelName: licenseName,
+	}).AsSelector()
+}
+
+func NewLicenseByTypeSelector(licenseType string) labels.Selector {
+	return labels.Set(map[string]string{
+		LicenseLabelType: licenseType,
 	}).AsSelector()
 }

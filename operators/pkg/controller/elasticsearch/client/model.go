@@ -224,7 +224,7 @@ type ErrorResponse struct {
 	} `json:"error"`
 }
 
-// License models the Elasticsearch license applied to a cluster. Signature will be empty on reads. IssueDate,  ExpiryDate and Status can be empty on writes.
+// License models the Elasticsearch license applied to a cluster. Signature will be empty on reads. IssueDate,  ExpiryTime and Status can be empty on writes.
 type License struct {
 	Status             string     `json:"status,omitempty"`
 	UID                string     `json:"uid"`
@@ -238,6 +238,22 @@ type License struct {
 	Issuer             string     `json:"issuer"`
 	StartDateInMillis  int64      `json:"start_date_in_millis"`
 	Signature          string     `json:"signature,omitempty"`
+}
+
+// StartTime is the date as of which this license is valid.
+func (l License) StartTime() time.Time {
+	return time.Unix(0, l.StartDateInMillis*int64(time.Millisecond))
+}
+
+// ExpiryTime is the date as of which the license is no longer valid.
+func (l License) ExpiryTime() time.Time {
+	return time.Unix(0, l.ExpiryDateInMillis*int64(time.Millisecond))
+}
+
+// IsValid returns true if the license is still valid at the given point in time.
+func (l License) IsValid(instant time.Time) bool {
+	return (l.StartTime().Equal(instant) || l.StartTime().Before(instant)) &&
+		l.ExpiryTime().After(instant)
 }
 
 // LicenseUpdateRequest is the request to apply a license to a cluster. Licenses must contain signature.

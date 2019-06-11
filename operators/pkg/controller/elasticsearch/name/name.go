@@ -7,9 +7,8 @@ package name
 import (
 	"strings"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -33,6 +32,7 @@ const (
 	internalUsersSecretSuffix   = "internal-users"
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 	licenseSecretSuffix         = "license"
+	defaultPodDisruptionBudget  = "default"
 
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
@@ -128,4 +128,8 @@ func CertsPublicSecretName(esName string, caType certificates.CAType) string {
 
 func LicenseSecretName(esName string) string {
 	return ESNamer.Suffix(esName, licenseSecretSuffix)
+}
+
+func DefaultPodDisruptionBudget(esName string) string {
+	return ESNamer.Suffix(esName, defaultPodDisruptionBudget)
 }

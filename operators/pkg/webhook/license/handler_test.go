@@ -11,10 +11,13 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/license/validation"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"k8s.io/api/admission/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +28,7 @@ import (
 
 type mockDecoder struct {
 	err error
-	obj *v1alpha1.EnterpriseLicense
+	obj *corev1.Secret
 }
 
 func (m mockDecoder) Decode(_ types.Request, o runtime.Object) error {
@@ -55,14 +58,7 @@ func TestValidationHandler_Handle(t *testing.T) {
 			fields: fields{
 				client: fake.NewFakeClient(),
 				decoder: mockDecoder{
-					obj: &v1alpha1.EnterpriseLicense{
-						Spec: v1alpha1.EnterpriseLicenseSpec{
-							Type: v1alpha1.LicenseTypeEnterpriseTrial,
-							Eula: v1alpha1.EulaState{
-								Accepted: true,
-							},
-						},
-					},
+					obj: &corev1.Secret{},
 				},
 			},
 			args: args{
@@ -98,9 +94,11 @@ func TestValidationHandler_Handle(t *testing.T) {
 			fields: fields{
 				client: fake.NewFakeClient(),
 				decoder: mockDecoder{
-					obj: &v1alpha1.EnterpriseLicense{
-						Spec: v1alpha1.EnterpriseLicenseSpec{
-							Type: v1alpha1.LicenseTypeEnterpriseTrial,
+					obj: &corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								license.LicenseLabelType: string(license.LicenseTypeEnterpriseTrial),
+							},
 						},
 					},
 				},
@@ -113,7 +111,7 @@ func TestValidationHandler_Handle(t *testing.T) {
 					},
 				},
 			},
-			want: admission.ValidationResponse(false, "Please set the field eula.accepted to true to accept the EULA"),
+			want: admission.ValidationResponse(false, validation.EULAValidationMsg),
 		},
 	}
 	for _, tt := range tests {
