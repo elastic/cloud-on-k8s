@@ -9,15 +9,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 )
 
 var (
 	now      = time.Date(2019, 01, 31, 0, 0, 0, 0, time.UTC)
-	gold     = v1alpha1.LicenseTypeGold
-	platinum = v1alpha1.LicenseTypePlatinum
+	gold     = ElasticsearchLicenseTypeGold
+	platinum = ElasticsearchLicenseTypePlatinum
 	oneMonth = client.License{
 		ExpiryDateInMillis: chrono.MustMillis("2019-02-28"),
 		StartDateInMillis:  chrono.MustMillis("2019-01-01"),
@@ -32,7 +31,7 @@ var (
 	}
 )
 
-func license(l client.License, t v1alpha1.LicenseType) client.License {
+func license(l client.License, t ElasticsearchLicenseType) client.License {
 	l.Type = string(t)
 	return l
 }
@@ -219,7 +218,7 @@ func Test_filterValidForType(t *testing.T) {
 							ClusterLicenses: []ElasticsearchLicense{
 								{
 									License: client.License{
-										Type:               string(v1alpha1.LicenseTypePlatinum),
+										Type:               string(ElasticsearchLicenseTypePlatinum),
 										ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
 										StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 									},
@@ -232,7 +231,7 @@ func Test_filterValidForType(t *testing.T) {
 			want: []licenseWithTimeLeft{
 				{
 					license: client.License{
-						Type:               string(v1alpha1.LicenseTypePlatinum),
+						Type:               string(ElasticsearchLicenseTypePlatinum),
 						ExpiryDateInMillis: chrono.MustMillis("2019-02-01"),
 						StartDateInMillis:  chrono.MustMillis("2019-01-01"),
 					},

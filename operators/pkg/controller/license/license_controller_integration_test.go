@@ -62,7 +62,7 @@ func TestReconcile(t *testing.T) {
 					License: esclient.License{
 						ExpiryDateInMillis: chrono.ToMillis(expiryDate),
 						StartDateInMillis:  chrono.ToMillis(startDate),
-						Type:               string(v1alpha1.LicenseTypePlatinum),
+						Type:               string(license.ElasticsearchLicenseTypePlatinum),
 						Signature:          "blah",
 					},
 				},

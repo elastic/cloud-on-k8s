@@ -7,7 +7,6 @@ package license
 import (
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -76,7 +75,7 @@ func (lc *checker) Valid(l EnterpriseLicense) (bool, error) {
 		return false, err
 	}
 	status := verifier.Valid(l, time.Now())
-	if status == v1alpha1.LicenseStatusValid {
+	if status == LicenseStatusValid {
 		return true, nil
 	}
 	return false, nil

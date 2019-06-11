@@ -92,3 +92,30 @@ func (l EnterpriseLicense) IsMissingFields() error {
 	}
 	return nil
 }
+
+type LicenseStatus string
+
+const (
+	LicenseStatusValid   LicenseStatus = "Valid"
+	LicenseStatusExpired LicenseStatus = "Expired"
+	LicenseStatusInvalid LicenseStatus = "Invalid"
+)
+
+// ElasticsearchLicenseType the type of a license.
+type ElasticsearchLicenseType string
+
+// Supported ElasticsearchLIcenseTypes
+const (
+	ElasticsearchLicenseTypeBasic    ElasticsearchLicenseType = "basic"
+	ElasticsearchLicenseTypeTrial    ElasticsearchLicenseType = "trial"
+	ElasticsearchLicenseTypeGold     ElasticsearchLicenseType = "gold"
+	ElasticsearchLicenseTypePlatinum ElasticsearchLicenseType = "platinum"
+)
+
+// ElasticsearchLicenseTypeOrder license types mapped to ints in increasing order of feature sets for sorting purposes.
+var ElasticsearchLicenseTypeOrder = map[ElasticsearchLicenseType]int{
+	ElasticsearchLicenseTypeBasic:    1,
+	ElasticsearchLicenseTypeTrial:    2,
+	ElasticsearchLicenseTypeGold:     3,
+	ElasticsearchLicenseTypePlatinum: 4,
+}

@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,7 +149,7 @@ func TestVerifier_Valid(t *testing.T) {
 		name   string
 		fields fields
 		args   args
-		want   v1alpha1.LicenseStatus
+		want   LicenseStatus
 	}{
 		{
 			name: "valid license",
@@ -161,7 +160,7 @@ func TestVerifier_Valid(t *testing.T) {
 				l:   licenseFixture,
 				now: chrono.MustParseTime("2019-02-01"),
 			},
-			want: v1alpha1.LicenseStatusValid,
+			want: LicenseStatusValid,
 		},
 		{
 			name: "expired license",
@@ -172,7 +171,7 @@ func TestVerifier_Valid(t *testing.T) {
 				l:   licenseFixture,
 				now: chrono.MustParseTime("2019-08-01"),
 			},
-			want: v1alpha1.LicenseStatusExpired,
+			want: LicenseStatusExpired,
 		},
 		{
 			name: "invalid signature",
@@ -187,7 +186,7 @@ func TestVerifier_Valid(t *testing.T) {
 				l:   licenseFixture,
 				now: chrono.MustParseTime("2019-03-01"),
 			},
-			want: v1alpha1.LicenseStatusInvalid,
+			want: LicenseStatusInvalid,
 		},
 	}
 	for _, tt := range tests {

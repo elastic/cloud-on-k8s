@@ -18,7 +18,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	errors2 "github.com/pkg/errors"
 )
 
@@ -28,15 +27,15 @@ type Verifier struct {
 }
 
 // Valid checks the validity of the given Enterprise license.
-func (v *Verifier) Valid(l EnterpriseLicense, now time.Time) v1alpha1.LicenseStatus {
+func (v *Verifier) Valid(l EnterpriseLicense, now time.Time) LicenseStatus {
 	if !l.IsValid(now) {
-		return v1alpha1.LicenseStatusExpired
+		return LicenseStatusExpired
 	}
 	if err := v.ValidSignature(l); err != nil {
 		log.Error(err, "Failed signature check")
-		return v1alpha1.LicenseStatusInvalid
+		return LicenseStatusInvalid
 	}
-	return v1alpha1.LicenseStatusValid
+	return LicenseStatusValid
 }
 
 // ValidSignature checks signature of the given Enterprise license. Returns nil if valid.

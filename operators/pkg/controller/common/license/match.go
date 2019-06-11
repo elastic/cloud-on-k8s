@@ -9,7 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
@@ -45,8 +44,8 @@ func bestMatchAt(
 		return license, parentMeta, false, errors.New("no matching license found")
 	}
 	sort.Slice(valid, func(i, j int) bool {
-		t1, t2 := v1alpha1.LicenseTypeOrder[v1alpha1.LicenseType(valid[i].license.Type)],
-			v1alpha1.LicenseTypeOrder[v1alpha1.LicenseType(valid[j].license.Type)]
+		t1, t2 := ElasticsearchLicenseTypeOrder[ElasticsearchLicenseType(valid[i].license.Type)],
+			ElasticsearchLicenseTypeOrder[ElasticsearchLicenseType(valid[j].license.Type)]
 		if t1 != t2 { // sort by type
 			return t1 < t2
 		}
