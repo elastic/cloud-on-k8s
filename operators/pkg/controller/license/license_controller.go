@@ -119,16 +119,14 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(object handler.MapObject) []reconcile.Request {
-			licenseType := object.Meta.GetLabels()[license.LicenseLabelType]
-			if licenseType != string(license.LicenseTypeEnterprise) {
-				// some other secret not containing an enterprise license
-				return nil
-			}
 			secret, ok := object.Object.(*corev1.Secret)
 			if !ok {
 				log.Error(
 					fmt.Errorf("unexpected object type %T in watch handler, expected Secret", object.Object),
-					"Dropping watch event due to error in handler")
+					"dropping watch event due to error in handler")
+				return nil
+			}
+			if !license.IsEnterpriseLicense(*secret) {
 				return nil
 			}
 			// TODO reconcile license secrets and augment license secret metadata with license UID to minimize parsing

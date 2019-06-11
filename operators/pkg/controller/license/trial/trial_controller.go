@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -149,8 +150,11 @@ func add(mgr manager.Manager, r *ReconcileTrials) error {
 	// Watch the trial status secret and the enterprise trial licenses as well
 	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestsFromMapFunc{
 		ToRequests: handler.ToRequestsFunc(func(obj handler.MapObject) []reconcile.Request {
-			//rely on naming convention for now TODO: label?
-			if obj.Meta.GetName() == string(licensing.LicenseTypeEnterpriseTrial) {
+			secret, ok := obj.Object.(*corev1.Secret)
+			if !ok {
+				log.Error(fmt.Errorf("object of type %T in secret watch", obj.Object), "dropping event due to type error")
+			}
+			if licensing.IsEnterpriseTrial(*secret) {
 				return []reconcile.Request{
 					{
 						NamespacedName: types.NamespacedName{

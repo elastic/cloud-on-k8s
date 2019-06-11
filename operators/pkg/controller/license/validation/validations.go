@@ -21,6 +21,9 @@ var Validations = []Validation{
 }
 
 func eulaAccepted(ctx Context) validation.Result {
+	if !license.IsEnterpriseTrial(ctx.Proposed) {
+		return validation.OK
+	}
 	if ctx.Proposed.Labels[common.TypeLabelName] != license.Type {
 		return validation.OK
 	}

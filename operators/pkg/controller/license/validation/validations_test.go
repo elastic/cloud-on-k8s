@@ -66,6 +66,24 @@ func Test_eulaAccepted(t *testing.T) {
 			},
 			want: validation.OK,
 		},
+		{
+			name: "Regular license secret OK",
+			args: args{
+				ctx: Context{
+					Proposed: v1.Secret{
+						ObjectMeta: v12.ObjectMeta{
+							Labels: map[string]string{
+								common.TypeLabelName: license.Type,
+							},
+						},
+						Data: map[string][]byte{
+							license.FileName: []byte("some license "),
+						},
+					},
+				},
+			},
+			want: validation.OK,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
