@@ -93,8 +93,10 @@ func (l EnterpriseLicense) IsMissingFields() error {
 	return nil
 }
 
+// LicenseStatus expresses the validity status of a license.
 type LicenseStatus string
 
+// Supported LicenseStatus values.
 const (
 	LicenseStatusValid   LicenseStatus = "Valid"
 	LicenseStatusExpired LicenseStatus = "Expired"
@@ -104,7 +106,7 @@ const (
 // ElasticsearchLicenseType the type of a license.
 type ElasticsearchLicenseType string
 
-// Supported ElasticsearchLIcenseTypes
+// Supported ElasticsearchLicenseTypes.
 const (
 	ElasticsearchLicenseTypeBasic    ElasticsearchLicenseType = "basic"
 	ElasticsearchLicenseTypeTrial    ElasticsearchLicenseType = "trial"
