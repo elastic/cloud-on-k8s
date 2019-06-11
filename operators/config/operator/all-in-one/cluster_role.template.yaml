@@ -54,11 +54,10 @@ rules:
   resources:
   - elasticsearches
   - elasticsearches/status
+  - elasticsearches/finalizers
   - enterpriselicenses
   - enterpriselicenses/status
   - trustrelationships
-  - users
-  - users/status
   - remoteclusters
   - remoteclusters/status
   verbs:
@@ -74,6 +73,7 @@ rules:
   resources:
   - kibanas
   - kibanas/status
+  - kibanas/finalizers
   verbs:
   - get
   - list
@@ -87,6 +87,7 @@ rules:
   resources:
   - apmservers
   - apmservers/status
+  - apmservers/finalizers
   verbs:
   - get
   - list
