@@ -25,6 +25,15 @@ type Info struct {
 	Distribution string    `json:"distribution"`
 }
 
+func (i Info) IsDefined() bool {
+	return i.Namespace != "" &&
+		i.UUID != "" &&
+		i.Distribution != "" &&
+		i.Version.Number != "0.0.0" &&
+		i.Version.BuildHash != "00000000" &&
+		i.Version.BuildDate != "1970-01-01T00:00:00Z"
+}
+
 // Version contains number and build metadata information.
 type Version struct {
 	Number        string `json:"number"`

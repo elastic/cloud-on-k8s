@@ -5,10 +5,11 @@
 package e2e
 
 import (
-	"errors"
-	"strings"
+	"encoding/json"
+	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 )
@@ -35,10 +36,15 @@ func TestTelemetry(t *testing.T) {
 						return err
 					}
 
-					// hack-ish test but simple
-					json := `"static_telemetry":{"eck":{"distribution"`
-					if !strings.Contains(string(body), json) {
-						return errors.New("eck info not found in telemetry data")
+					var stats ClusterStats
+					err = json.Unmarshal(body, &stats)
+					if err != nil {
+						return err
+					}
+
+					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
+					if !eck.IsDefined() {
+						return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
 
 					return nil
@@ -46,4 +52,17 @@ func TestTelemetry(t *testing.T) {
 			},
 		).
 		RunSequential(t)
+}
+
+// ClusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats
+type ClusterStats []struct {
+	StackStats struct {
+		Kibana struct {
+			Plugins struct {
+				StaticTelemetry struct {
+					Eck info.Info `json:"eck"`
+				} `json:"static_telemetry"`
+			} `json:"plugins"`
+		} `json:"kibana"`
+	} `json:"stack_stats"`
 }
