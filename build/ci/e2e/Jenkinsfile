@@ -42,6 +42,7 @@ pipeline {
             }
         }
         cleanup {
+            sh 'make -C build/ci ci-e2e-delete-cluster'
             cleanWs()
         }
     }

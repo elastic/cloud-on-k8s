@@ -101,12 +101,16 @@ ci-release: vault-public-key vault-docker-creds
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
+# Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
-	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
-		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
-		aws s3 cp \
-		$(ROOT_DIR)/operators/config/all-in-one.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml
+	docker run --rm -t \
+        -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+        -w $(GO_MOUNT_PATH) \
+        -e "AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE))" \
+        -e "AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE))" \
+        cloud-on-k8s-ci-release \
+        bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
 ## -- End-to-end tests job
 
@@ -121,9 +125,22 @@ ci-e2e: vault-gke-creds
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		-e "REGISTRY=$(REGISTRY)" \
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
-		-e "GKE_CLUSTER_NAME=e2e-qa-$(shell date +'%Y%m%d-%H%M%S')" \
+		-e "GKE_CLUSTER_NAME=$(BUILD_TAG)" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
+
+# Remove k8s cluster
+ci-e2e-delete-cluster: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
+	docker run --rm -t \
+    	-v /var/run/docker.sock:/var/run/docker.sock \
+    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+    	-w $(GO_MOUNT_PATH) \
+    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+    	-e "GKE_CLUSTER_NAME=$(BUILD_TAG)" \
+    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+    	cloud-on-k8s-ci-e2e \
+    	bash -c "make -C operators set-context-gke delete-gke"

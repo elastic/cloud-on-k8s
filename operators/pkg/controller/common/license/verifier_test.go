@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,8 +25,8 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		args        v1alpha1.EnterpriseLicense
-		verifyInput func(v1alpha1.EnterpriseLicense) v1alpha1.EnterpriseLicense
+		args        EnterpriseLicense
+		verifyInput func(EnterpriseLicense) EnterpriseLicense
 		wantErr     bool
 	}{
 		{
@@ -38,8 +37,8 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 		{
 			name: "tampered license",
 			args: licenseFixture,
-			verifyInput: func(l v1alpha1.EnterpriseLicense) v1alpha1.EnterpriseLicense {
-				l.Spec.MaxInstances = 1
+			verifyInput: func(l EnterpriseLicense) EnterpriseLicense {
+				l.License.MaxInstances = 1
 				return l
 			},
 			wantErr: true,
@@ -50,11 +49,11 @@ func TestLicenseVerifier_ValidSignature(t *testing.T) {
 			v := NewSigner(privKey)
 			sig, err := v.Sign(tt.args)
 			require.NoError(t, err)
-			toVerify := tt.args
+			toVerify := withSignature(tt.args, sig)
 			if tt.verifyInput != nil {
-				toVerify = tt.verifyInput(tt.args)
+				toVerify = tt.verifyInput(toVerify)
 			}
-			if err := v.ValidSignature(toVerify, sig); (err != nil) != tt.wantErr {
+			if err := v.ValidSignature(toVerify); (err != nil) != tt.wantErr {
 				t.Errorf("Verifier.ValidSignature() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -77,15 +76,23 @@ func TestNewLicenseVerifier(t *testing.T) {
 		{
 			name: "Can create verifier from pub key bytes",
 			want: func(v *Verifier) {
-				require.NoError(t, v.ValidSignature(licenseFixture, signatureFixture))
+				require.NoError(t, v.ValidSignature(licenseFixture))
 			},
 		},
 		{
 			name: "Detects tampered license",
 			want: func(v *Verifier) {
 				l := licenseFixture
-				l.Spec.Issuer = "me"
-				require.Error(t, v.ValidSignature(l, signatureFixture))
+				l.License.Issuer = "me"
+				require.Error(t, v.ValidSignature(l))
+			},
+		},
+		{
+			name: "Detects empty signature",
+			want: func(v *Verifier) {
+				l := licenseFixture
+				l.License.Signature = ""
+				require.Error(t, v.ValidSignature(l))
 			},
 		},
 		{
@@ -101,7 +108,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 				malice[8] = 255
 				tampered := make([]byte, base64.StdEncoding.EncodedLen(len(malice)))
 				base64.StdEncoding.Encode(tampered, malice)
-				err = v.ValidSignature(licenseFixture, tampered)
+				err = v.ValidSignature(withSignature(licenseFixture, tampered))
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "magic")
 			},
@@ -112,7 +119,7 @@ func TestNewLicenseVerifier(t *testing.T) {
 				signer := NewSigner(privKey)
 				bytes, err := signer.Sign(licenseFixture)
 				require.NoError(t, err)
-				require.NoError(t, v.ValidSignature(licenseFixture, bytes))
+				require.NoError(t, v.ValidSignature(withSignature(licenseFixture, bytes)))
 			},
 		},
 	}
@@ -135,15 +142,14 @@ func TestVerifier_Valid(t *testing.T) {
 		PublicKey *rsa.PublicKey
 	}
 	type args struct {
-		l   v1alpha1.EnterpriseLicense
-		sig []byte
+		l   EnterpriseLicense
 		now time.Time
 	}
 	tests := []struct {
 		name   string
 		fields fields
 		args   args
-		want   v1alpha1.LicenseStatus
+		want   LicenseStatus
 	}{
 		{
 			name: "valid license",
@@ -152,10 +158,9 @@ func TestVerifier_Valid(t *testing.T) {
 			},
 			args: args{
 				l:   licenseFixture,
-				sig: signatureFixture,
 				now: chrono.MustParseTime("2019-02-01"),
 			},
-			want: v1alpha1.LicenseStatusValid,
+			want: LicenseStatusValid,
 		},
 		{
 			name: "expired license",
@@ -164,10 +169,9 @@ func TestVerifier_Valid(t *testing.T) {
 			},
 			args: args{
 				l:   licenseFixture,
-				sig: signatureFixture,
 				now: chrono.MustParseTime("2019-08-01"),
 			},
-			want: v1alpha1.LicenseStatusExpired,
+			want: LicenseStatusExpired,
 		},
 		{
 			name: "invalid signature",
@@ -180,10 +184,9 @@ func TestVerifier_Valid(t *testing.T) {
 			},
 			args: args{
 				l:   licenseFixture,
-				sig: signatureFixture,
 				now: chrono.MustParseTime("2019-03-01"),
 			},
-			want: v1alpha1.LicenseStatusInvalid,
+			want: LicenseStatusInvalid,
 		},
 	}
 	for _, tt := range tests {
@@ -191,7 +194,7 @@ func TestVerifier_Valid(t *testing.T) {
 			v := &Verifier{
 				PublicKey: tt.fields.PublicKey,
 			}
-			if got := v.Valid(tt.args.l, tt.args.sig, tt.args.now); !reflect.DeepEqual(got, tt.want) {
+			if got := v.Valid(tt.args.l, tt.args.now); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Verifier.Valid() = %v, want %v", got, tt.want)
 			}
 		})

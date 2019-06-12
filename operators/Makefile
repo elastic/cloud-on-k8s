@@ -34,7 +34,7 @@ IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
-LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/eck-operator:0.8.0"
+LATEST_RELEASED_IMG ?= docker.elastic.co/eck/eck-operator:0.8.0
 
 ## -- Namespaces
 
@@ -199,7 +199,10 @@ ifndef GCLOUD_PROJECT
 	$(error GCLOUD_PROJECT not set)
 endif
 
-set-context-gke: require-gcloud-project
+credentials: require-gcloud-project
+	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh credentials
+
+set-context-gke: credentials
 	kubectl config use-context $(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name)
 	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
 
@@ -269,11 +272,11 @@ e2e-setup:
 # Run e2e tests as a k8s batch job
 E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 e2e: e2e-setup
+	# deploy an operator to manage the e2e namespace
+	$(MAKE) MANAGED_NAMESPACE=e2e deploy
 	# push the e2e tests docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 	docker push $(E2E_IMG)
-	# deploy an operator to manage the e2e namespace
-	$(MAKE) MANAGED_NAMESPACE=e2e deploy
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
 # Verify e2e tests compile with no errors, don't run them
@@ -299,10 +302,11 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
 ci-e2e:
-	$(MAKE) bootstrap-gke dep-vendor-only docker-build docker-push deploy e2e delete-gke || ($(MAKE) delete-gke; exit 1)
+	$(MAKE) bootstrap-gke dep-vendor-only e2e
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
+ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/eck/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 

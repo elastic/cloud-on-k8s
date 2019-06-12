@@ -33,3 +33,9 @@ RUN curl -fsSLO https://storage.googleapis.com/kubernetes-release/release/v${KUB
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz && \
     tar xzf docker-${DOCKER_VERSION}.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker-${DOCKER_VERSION}.tgz
+
+# Install AWS CLI
+RUN apt-get update && apt-get --no-install-recommends -y install \
+    awscli && \
+    apt-get clean && apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

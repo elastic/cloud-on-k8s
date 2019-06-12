@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook/license"
 	admission "k8s.io/api/admissionregistration/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
@@ -19,6 +20,8 @@ const (
 	admissionServerName = "elastic-admission-server"
 	svcName             = "elastic-webhook-service"
 	controlPlane        = "control-plane"
+
+	serverPort int32 = 9443
 )
 
 // RegisterValidations registers validating webhooks and a new webhook server with the given manager.
@@ -39,13 +42,14 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		Name("validation.license.elastic.co").
 		Validating().
 		FailurePolicy(admission.Fail).
-		ForType(&v1alpha1.EnterpriseLicense{}).
+		ForType(&corev1.Secret{}).
 		Handlers(&license.ValidationHandler{}).
 		WithManager(mgr).
 		Build()
 
 	disabled := !params.AutoInstall
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
+		Port:                          serverPort,
 		CertDir:                       "/tmp/cert",
 		DisableWebhookConfigInstaller: &disabled,
 		BootstrapOptions:              &params.Bootstrap,

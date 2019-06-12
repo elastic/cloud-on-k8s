@@ -7,53 +7,50 @@ package license
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var licenseFixture = v1alpha1.EnterpriseLicense{
-	Spec: v1alpha1.EnterpriseLicenseSpec{
-		LicenseMeta: v1alpha1.LicenseMeta{
-			UID:                "1A3E10B3-78AD-459B-86B9-230A53B3F282",
-			IssueDateInMillis:  1548115200000,
-			ExpiryDateInMillis: 1561247999999,
-			IssuedTo:           "Ben Bitdiddle",
-			Issuer:             "Alyssa P. Hacker,",
-			StartDateInMillis:  1548115200000,
-		},
-		Type:         "enterprise",
-		MaxInstances: 23,
+var licenseFixture = EnterpriseLicense{
+	License: LicenseSpec{
+		UID:                "1A3E10B3-78AD-459B-86B9-230A53B3F282",
+		IssueDateInMillis:  1548115200000,
+		ExpiryDateInMillis: 1561247999999,
+		IssuedTo:           "Ben Bitdiddle",
+		Issuer:             "Alyssa P. Hacker,",
+		StartDateInMillis:  1548115200000,
+		Type:               "enterprise",
+		MaxInstances:       23,
+		Signature:          string(signatureFixture),
 	},
 }
 
-func withSignature(l v1alpha1.EnterpriseLicense, sig []byte) []runtime.Object {
-	lcopy := l
-	lcopy.SetName("test-license")
-	lcopy.SetNamespace("test-system")
-	lcopy.Spec.SignatureRef = corev1.SecretKeySelector{
-		LocalObjectReference: corev1.LocalObjectReference{
-			Name: "lic-secret",
-		},
-		Key: "sig",
+func withSignature(l EnterpriseLicense, sig []byte) EnterpriseLicense {
+	l.License.Signature = string(sig)
+	return l
+}
+
+func asRuntimeObjects(l EnterpriseLicense, sig []byte) []runtime.Object {
+	bytes, err := json.Marshal(withSignature(l, sig))
+	if err != nil {
+		panic(err)
 	}
 	return []runtime.Object{
-		&lcopy,
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "test-system",
-				Name:      "lic-secret",
+				Name:      "test-license",
 			},
 			Data: map[string][]byte{
-				"sig": sig,
+				FileName: bytes,
 			},
 		},
 	}
-
 }
 
 func publicKeyBytesFixture(t *testing.T) []byte {
