@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -17,7 +18,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func CheckKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, expectedKeys []string) helpers.TestStep {
+const (
+	KibanaKeystoreBin = "/usr/share/kibana/bin/kibana-keystore"
+)
+
+func CheckESKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, expectedKeys []string) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Secure settings should eventually be set in all nodes keystore",
 		Test: helpers.Eventually(func() error {
@@ -38,6 +43,39 @@ func CheckKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, expec
 				noKeystoreSeeds := strings.Replace(stdout, "keystore.seed\n", "", 1)
 				// remove trailing newlines and whitespaces
 				trimmed := strings.TrimSpace(noKeystoreSeeds)
+				// split by lines, unless no output
+				if trimmed != "" {
+					entries = strings.Split(trimmed, "\n")
+				}
+
+				if !reflect.DeepEqual(expectedKeys, entries) {
+					return fmt.Errorf("invalid keystore entries. Expected: %s. Actual: %s", expectedKeys, entries)
+				}
+				return nil
+			})
+		}),
+	}
+}
+
+func CheckKibanaKeystoreEntries(k *helpers.K8sHelper, kb kbtype.Kibana, expectedKeys []string) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Secure settings should eventually be set in all nodes keystore",
+		Test: helpers.Eventually(func() error {
+			pods, err := k.GetPods(helpers.KibanaPodListOptions(kb.Name))
+			if err != nil {
+				return err
+			}
+			return onAllPods(pods, func(p corev1.Pod) error {
+				// exec into the pod to list keystore entries
+				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), []string{KibanaKeystoreBin, "list"})
+				if err != nil {
+					return errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
+				}
+
+				// parse entries from stdout
+				var entries []string
+				// remove trailing newlines and whitespaces
+				trimmed := strings.TrimSpace(stdout)
 				// split by lines, unless no output
 				if trimmed != "" {
 					entries = strings.Split(trimmed, "\n")
