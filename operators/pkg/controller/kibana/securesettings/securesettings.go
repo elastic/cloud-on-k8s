@@ -15,7 +15,7 @@ import (
 
 var log = logf.Log.WithName("secure-settings")
 
-// SecureSettingsResources optionally returns a volume and init container to include in Kibana pods,
+// Resources optionally returns a volume and init container to include in Kibana pods,
 // in order to create a Keystore from secure settings referenced in the Kibana spec.
 func Resources(
 	c k8s.Client,
