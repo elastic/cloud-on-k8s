@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -16,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -120,7 +120,7 @@ type ReconcileKibana struct {
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 	// operatorInfo is information about the operator
-	operatorInfo info.Info
+	operatorInfo about.OperatorInfo
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
@@ -134,11 +134,11 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	uid, err := info.ReconcileOperatorUUID(r, r.scheme, r.operatorInfo.Namespace)
+	uuid, err := about.ReconcileOperatorUUID(r, r.scheme, r.operatorInfo.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	r.operatorInfo.UUID = uid
+	r.operatorInfo.UUID = uuid
 
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}

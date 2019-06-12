@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 )
@@ -60,7 +60,7 @@ type ClusterStats []struct {
 		Kibana struct {
 			Plugins struct {
 				StaticTelemetry struct {
-					Eck info.Info `json:"eck"`
+					Eck about.OperatorInfo `json:"eck"`
 				} `json:"static_telemetry"`
 			} `json:"plugins"`
 		} `json:"kibana"`

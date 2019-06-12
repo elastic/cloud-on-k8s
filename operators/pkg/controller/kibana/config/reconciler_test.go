@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -108,7 +107,7 @@ func TestReconcileConfigSecret(t *testing.T) {
 			}
 			k8sClient := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, tt.args.initialObjects...))
 
-			err := ReconcileConfigSecret(k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, info.Info{})
+			err := ReconcileConfigSecret(k8sClient, tt.args.kb, CanonicalConfig{settings.NewCanonicalConfig()}, about.Info{})
 			assert.NoError(t, err)
 
 			var secrets corev1.SecretList

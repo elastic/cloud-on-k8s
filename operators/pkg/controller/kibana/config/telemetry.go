@@ -5,17 +5,17 @@
 package config
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/ghodss/yaml"
 )
 
 const telemetryFilename = "telemetry.yml"
 
 type ECK struct {
-	ECK info.Info `json:"eck"`
+	ECK about.OperatorInfo `json:"eck"`
 }
 
 // getTelemetryYamlBytes returns the YAML bytes for the information on ECK.
-func getTelemetryYamlBytes(info info.Info) ([]byte, error) {
-	return yaml.Marshal(ECK{info})
+func getTelemetryYamlBytes(operatorInfo about.OperatorInfo) ([]byte, error) {
+	return yaml.Marshal(ECK{operatorInfo})
 }

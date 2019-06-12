@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package info
+package about
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -17,40 +17,41 @@ import (
 
 const UUIDCfgMapName = "elastic-operator-uuid"
 
-// Info contains versioning information.
-type Info struct {
+// OperatorInfo contains information about the operator.
+type OperatorInfo struct {
 	UUID         types.UID `json:"uuid"`
-	Version      Version   `json:"version"`
+	BuildInfo    BuildInfo `json:"build"`
 	Namespace    string    `json:"namespace"`
 	Distribution string    `json:"distribution"`
 }
 
-func (i Info) IsDefined() bool {
+// BuildInfo contains build metadata information.
+type BuildInfo struct {
+	Version  string `json:"version"`
+	Hash     string `json:"hash"`
+	Date     string `json:"date"`
+	Snapshot string `json:"snapshot"`
+}
+
+// IsDefined returns true if the info's default values have been replaced.
+func (i OperatorInfo) IsDefined() bool {
 	return i.Namespace != "" &&
 		i.UUID != "" &&
 		i.Distribution != "" &&
-		i.Version.Number != "0.0.0" &&
-		i.Version.BuildHash != "00000000" &&
-		i.Version.BuildDate != "1970-01-01T00:00:00Z"
+		i.BuildInfo.Version != "0.0.0" &&
+		i.BuildInfo.Hash != "00000000" &&
+		i.BuildInfo.Date != "1970-01-01T00:00:00Z"
 }
 
-// Version contains number and build metadata information.
-type Version struct {
-	Number        string `json:"number"`
-	BuildHash     string `json:"build_hash"`
-	BuildDate     string `json:"build_date"`
-	BuildSnapshot string `json:"build_snapshot"`
-}
-
-// New creates a new Info given a operator namespace and kubernetes client config.
-func New(operatorNs string, cfg *rest.Config) Info {
+// NewOperatorInfo creates a new OperatorInfo given a operator namespace and kubernetes client config.
+func NewOperatorInfo(operatorNs string, cfg *rest.Config) OperatorInfo {
 	distribution, err := getDistribution(cfg)
 	if err != nil {
 		distribution = "unknown"
 	}
 
-	return Info{
-		Version: Version{
+	return OperatorInfo{
+		BuildInfo: BuildInfo{
 			version,
 			buildHash,
 			buildDate,

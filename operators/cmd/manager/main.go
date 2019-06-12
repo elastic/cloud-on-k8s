@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/info"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -236,7 +236,7 @@ func execute() {
 	}
 
 	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
-	operatorInfo := info.New(operatorNamespace, cfg)
+	operatorInfo := about.NewOperatorInfo(operatorNamespace, cfg)
 
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
