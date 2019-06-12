@@ -25,10 +25,10 @@ echo "Initializing Kibana keystore."
 
 # add all existing secret entries into it
 for filename in ` + kbvolume.SecureSettingsVolumeMountPath + `/*; do
-    [[ -e "$filename" ]] || continue # glob does not match
+	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
 	echo "Adding "$key" to the keystore."
-    ./bin/kibana-keystore add "$key" --stdin < "$filename"
+	./bin/kibana-keystore add "$key" --stdin < "$filename"
 done
 
 echo "Keystore initialization successful."
