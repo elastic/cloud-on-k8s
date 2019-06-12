@@ -292,7 +292,7 @@ spec:
         resources:
           requests:
             storage: 10Gi
-        storageClassName: gcePersistentDisk # can be any available storage class
+        storageClassName: standard # can be any available storage class
 EOF
 ----
 
