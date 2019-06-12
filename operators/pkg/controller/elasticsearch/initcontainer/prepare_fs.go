@@ -40,17 +40,9 @@ var (
 		EsContainerMountPath:   "/usr/share/elasticsearch/config",
 	}
 
-	// EsPluginsSharedVolume contains the ES plugins/ directory
-	EsPluginsSharedVolume = SharedVolume{
-		Name:                   "elastic-internal-elasticsearch-plugins-local",
-		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-plugins-local",
-		EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
-	}
-
 	PrepareFsSharedVolumes = SharedVolumeArray{
 		Array: []SharedVolume{
 			EsConfigSharedVolume,
-			EsPluginsSharedVolume,
 			EsBinSharedVolume,
 			DataSharedVolume,
 			LogsSharedVolume,
