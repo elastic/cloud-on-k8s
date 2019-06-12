@@ -20,7 +20,6 @@ func TestRenderScriptTemplate(t *testing.T) {
 		{
 			name: "Standard script rendering",
 			params: TemplateParams{
-				Plugins:       defaultInstalledPlugins,
 				SharedVolumes: PrepareFsSharedVolumes,
 				LinkedFiles: LinkedFilesArray{
 					Array: []LinkedFile{
@@ -29,8 +28,6 @@ func TestRenderScriptTemplate(t *testing.T) {
 							Target: "/usr/share/elasticsearch/users"}}},
 			},
 			wantSubstr: []string{
-				"$PLUGIN_BIN install --batch repository-s3",
-				"$PLUGIN_BIN install --batch repository-gcs",
 				"mv /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
 				"mv /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
 				"mv /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",

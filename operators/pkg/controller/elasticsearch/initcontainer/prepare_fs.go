@@ -76,7 +76,6 @@ func NewPrepareFSInitContainer(
 	certificatesVolumeMount.MountPath = "/mnt/elastic-internal/transport-certificates"
 
 	script, err := RenderScriptTemplate(TemplateParams{
-		Plugins:       defaultInstalledPlugins,
 		SharedVolumes: PrepareFsSharedVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
