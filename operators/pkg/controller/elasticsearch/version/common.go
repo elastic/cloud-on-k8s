@@ -128,8 +128,8 @@ func podSpec(
 
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
 		name.ScriptsConfigMap(p.ClusterName),
-		volume.ScriptsVolumeName,
-		volume.ScriptsVolumeMountPath,
+		esvolume.ScriptsVolumeName,
+		esvolume.ScriptsVolumeMountPath,
 		0744)
 
 	builder = builder.
