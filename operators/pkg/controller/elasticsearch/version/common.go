@@ -124,6 +124,12 @@ func podSpec(
 		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
 
+	scriptsVolume := volume.NewConfigMapVolumeWithMode(
+		name.ScriptsConfigMap(p.ClusterName),
+		volume.ScriptsVolumeName,
+		volume.ScriptsVolumeMountPath,
+		0744)
+
 	builder = builder.
 		WithVolumes(
 			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
@@ -134,6 +140,7 @@ func podSpec(
 				keystoreUserSecret.Volume(),
 				secureSettingsVolume.Volume(),
 				httpCertificatesVolume.Volume(),
+				scriptsVolume.Volume(),
 			)...).
 		WithVolumeMounts(
 			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
@@ -145,6 +152,7 @@ func podSpec(
 				keystoreUserSecret.VolumeMount(),
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
+				scriptsVolume.VolumeMount(),
 			)...).
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)

@@ -12,6 +12,7 @@ pipeline {
         REPOSITORY = 'eck'
         IMG_NAME = 'eck-operator'
         IMG_SUFFIX = ''
+        LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
     }
 
     options {
@@ -34,7 +35,7 @@ pipeline {
     post {
         success {
             script {
-                def msg = "docker.elastic.co/" + env.REPOSITORY + "/" + env.IMG_NAME + ":" + env.TAG_NAME + " was pushed \r\n" +
+                def msg = "${LATEST_RELEASED_IMG} was pushed \r\n " +
                           + "https://download.elastic.co/downloads/eck/" + env.TAG_NAME + "/all-in-one.yaml was uploaded \r\n" +
                           + "Congratulations!"
                 slackSend botUser: true,

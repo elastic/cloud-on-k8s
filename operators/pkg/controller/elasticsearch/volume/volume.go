@@ -36,6 +36,9 @@ const (
 
 	ElasticsearchDataVolumeName = "elasticsearch-data"
 	ElasticsearchLogsVolumeName = "elasticsearch-logs"
+
+	ScriptsVolumeName      = "elastic-internal-scripts"
+	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
 )
 
 var (

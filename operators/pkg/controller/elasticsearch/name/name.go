@@ -33,6 +33,7 @@ const (
 	unicastHostsConfigMapSuffix = "unicast-hosts"
 	licenseSecretSuffix         = "license"
 	defaultPodDisruptionBudget  = "default"
+	scriptsConfigMapSuffix      = "scripts"
 
 	certsPublicSecretName   = "certs-public"
 	certsInternalSecretName = "certs-internal"
@@ -116,6 +117,10 @@ func InternalUsersSecret(esName string) string {
 // UnicastHostsConfigMap returns the name of the ConfigMap that holds the list of seed nodes for a given cluster.
 func UnicastHostsConfigMap(esName string) string {
 	return ESNamer.Suffix(esName, unicastHostsConfigMapSuffix)
+}
+
+func ScriptsConfigMap(esName string) string {
+	return ESNamer.Suffix(esName, scriptsConfigMapSuffix)
 }
 
 func HTTPCertsInternalSecretName(esName string) string {

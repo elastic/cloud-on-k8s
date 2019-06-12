@@ -5,6 +5,9 @@
 package pod
 
 import (
+	"path"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -17,12 +20,13 @@ func NewReadinessProbe() *corev1.Probe {
 		TimeoutSeconds:      5,
 		Handler: corev1.Handler{
 			Exec: &corev1.ExecAction{
-				Command: []string{"bash", "-c", ReadinessProbeScript},
+				Command: []string{"bash", "-c", path.Join(volume.ScriptsVolumeMountPath, ReadinessProbeScriptConfigKey)},
 			},
 		},
 	}
 }
 
+const ReadinessProbeScriptConfigKey = "readiness-probe-script.sh"
 const ReadinessProbeScript string = `
 #!/usr/bin/env bash
 # Consider a node to be healthy if it responds to a simple GET on "/"
