@@ -260,9 +260,9 @@ func execute() {
 	}
 
 	log.Info("Starting the manager",
-		"namespace", operatorInfo.Namespace, "version", operatorInfo.Version.Number,
-		"build_hash", operatorInfo.Version.BuildHash, "build_date", operatorInfo.Version.BuildDate,
-		"build_snapshot", operatorInfo.Version.BuildSnapshot)
+		"namespace", operatorInfo.Namespace, "version", operatorInfo.BuildInfo.Version,
+		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
+		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)
