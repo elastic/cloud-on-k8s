@@ -73,7 +73,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	#  Files persistence #
 	######################
 
-	# Persist the content of bin/ and config/ 
+	# Persist the content of bin/, config/ and plugins/
 	# to a volume, to be used by the ES container
 	mv_start=$(date +%s)
 	{{range .SharedVolumes.Array}}
