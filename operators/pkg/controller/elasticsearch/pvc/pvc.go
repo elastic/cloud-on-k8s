@@ -18,7 +18,6 @@ import (
 
 var (
 	log                         = logf.Log.WithName("pvc")
-	standardStorageClassname    = "standard"
 	ErrNotNodeNameLabelNotFound = errors.New("node name not found as a label on the PVC")
 )
 
@@ -107,11 +106,13 @@ func compareResources(claim, candidate *corev1.PersistentVolumeClaim) bool {
 }
 
 func compareStorageClass(claim, candidate *corev1.PersistentVolumeClaim) bool {
-	if claim.Spec.StorageClassName != nil {
-		return reflect.DeepEqual(claim.Spec.StorageClassName, candidate.Spec.StorageClassName)
+	if claim.Spec.StorageClassName == nil {
+		// volumeClaimTemplate has no storageClass set: it should use the k8s cluster default
+		// since we don't know that default, we fallback to reusing any available volume
+		// from the same cluster (whatever the storage class actually is)
+		return true
 	}
-	// No storage class name in the claim, only match if the claim is a standard storage class
-	return standardStorageClassname == *candidate.Spec.StorageClassName
+	return reflect.DeepEqual(claim.Spec.StorageClassName, candidate.Spec.StorageClassName)
 }
 
 // compare two maps but ignore the label.PodNameLabelName key
