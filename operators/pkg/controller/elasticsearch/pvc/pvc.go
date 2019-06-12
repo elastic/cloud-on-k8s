@@ -107,7 +107,9 @@ func compareResources(claim, candidate *corev1.PersistentVolumeClaim) bool {
 
 func compareStorageClass(claim, candidate *corev1.PersistentVolumeClaim) bool {
 	if claim.Spec.StorageClassName == nil {
-		// volumeClaimTemplate has no storageClass set
+		// volumeClaimTemplate has no storageClass set: it should use the k8s cluster default
+		// since we don't know that default, we fallback to reusing any available volume
+		// from the same cluster (whatever the storage class actually is)
 		return true
 	}
 	return reflect.DeepEqual(claim.Spec.StorageClassName, candidate.Spec.StorageClassName)
