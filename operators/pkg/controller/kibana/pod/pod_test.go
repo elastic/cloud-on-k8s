@@ -45,9 +45,11 @@ func Test_imageWithVersion(t *testing.T) {
 
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
-		name       string
-		kb         v1alpha1.Kibana
-		assertions func(pod corev1.PodTemplateSpec)
+		name              string
+		kb                v1alpha1.Kibana
+		additionalVolumes []corev1.Volume
+		initContainers    []corev1.Container
+		assertions        func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
@@ -60,11 +62,27 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
 				assert.Len(t, pod.Spec.InitContainers, 0)
+				assert.Len(t, pod.Spec.Volumes, 1)
 				kibanaContainer := GetKibanaContainer(pod.Spec)
 				require.NotNil(t, kibanaContainer)
+				assert.Equal(t, 1, len(kibanaContainer.VolumeMounts))
 				assert.Equal(t, imageWithVersion(defaultImageRepositoryAndName, "7.1.0"), kibanaContainer.Image)
 				assert.NotNil(t, kibanaContainer.ReadinessProbe)
 				assert.NotEmpty(t, kibanaContainer.Ports)
+			},
+		},
+		{
+			name: "with additional volumes and init containers",
+			kb: v1alpha1.Kibana{
+				Spec: v1alpha1.KibanaSpec{
+					Version: "7.1.0",
+				},
+			},
+			additionalVolumes: []corev1.Volume{{Name: "vol"}},
+			initContainers:    []corev1.Container{{Name: "init"}},
+			assertions: func(pod corev1.PodTemplateSpec) {
+				assert.Len(t, pod.Spec.InitContainers, 1)
+				assert.Len(t, pod.Spec.Volumes, 2)
 			},
 		},
 		{
@@ -166,14 +184,14 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			}},
 			assertions: func(pod corev1.PodTemplateSpec) {
-				assert.Len(t, pod.Spec.Volumes, 1)
-				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 1)
+				assert.Len(t, pod.Spec.Volumes, 2)
+				assert.Len(t, GetKibanaContainer(pod.Spec).VolumeMounts, 2)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, nil)
+			got := NewPodTemplateSpec(tt.kb, tt.additionalVolumes, tt.initContainers)
 			tt.assertions(got)
 		})
 	}

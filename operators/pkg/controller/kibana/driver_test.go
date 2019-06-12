@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -44,6 +45,12 @@ func expectedDeploymentParams() *DeploymentParams {
 			Spec: corev1.PodSpec{
 				Volumes: []corev1.Volume{
 					{
+						Name: volume.DataVolumeName,
+						VolumeSource: corev1.VolumeSource{
+							EmptyDir: &corev1.EmptyDirVolumeSource{},
+						},
+					},
+					{
 						Name: "elasticsearch-certs",
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
@@ -64,6 +71,11 @@ func expectedDeploymentParams() *DeploymentParams {
 				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      volume.DataVolumeName,
+							ReadOnly:  false,
+							MountPath: volume.DataVolumeMountPath,
+						},
 						{
 							Name:      "elasticsearch-certs",
 							ReadOnly:  true,
