@@ -8,10 +8,17 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
@@ -32,13 +39,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -504,7 +506,7 @@ func (d *defaultDriver) calculateChanges(
 			ProbeUser:    internalUsers.ProbeUser.Auth(),
 			KeystoreUser: internalUsers.KeystoreUser.Auth(),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
-				name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeName, volume.UnicastHostsVolumeMountPath,
+				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
 		},
 		d.OperatorImage,
