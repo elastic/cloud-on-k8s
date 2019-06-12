@@ -62,8 +62,8 @@ func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions,
 			{
 				Name: "Wait for pod to be deleted",
 				Test: helpers.Eventually(func() error {
-					_, err := k.GetPod(killedPod.Name)
-					if apierrors.IsNotFound(err) {
+					pod, err := k.GetPod(killedPod.Name)
+					if apierrors.IsNotFound(err) || killedPod.UID != pod.UID {
 						return nil
 					}
 					if err != nil {
