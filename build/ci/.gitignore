@@ -2,3 +2,4 @@ credentials.json
 docker_credentials.file
 aws_access_key.file
 aws_secret_key.file
+e2e_tests_cluster_name.file

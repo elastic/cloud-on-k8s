@@ -8,7 +8,7 @@
 # of the necessary default settings so that no environment variable has to
 # be specified.
 #
-# Usage: gke-cluster.sh (create|delete|name|registry)
+# Usage: gke-cluster.sh (create|delete|name|registry|credentials)
 #
 
 set -eu
@@ -36,7 +36,7 @@ create_cluster() {
     if gcloud beta container clusters --project "${GCLOUD_PROJECT}" describe --region "${GKE_CLUSTER_REGION}" "${GKE_CLUSTER_NAME}" > /dev/null 2>&1; then
         echo "-> GKE cluster is running."
         # make sure cluster config is exported for kubectl
-        gcloud beta --project ${GCLOUD_PROJECT} container clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
+        export_credentials
         exit 0
     fi
 
@@ -50,7 +50,7 @@ create_cluster() {
         --subnetwork "projects/${GCLOUD_PROJECT}/regions/${GKE_CLUSTER_REGION}/subnetworks/default"
 
     # Export credentials for kubelet
-    gcloud beta container --project ${GCLOUD_PROJECT} clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
+    export_credentials
 
     # Create required role binding between the GCP account and the K8s cluster.
     kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
@@ -66,6 +66,10 @@ setup_registry_credentials() {
 
 cluster_fullname() {
     echo gke_${GCLOUD_PROJECT}_${GKE_CLUSTER_REGION}_${GKE_CLUSTER_NAME}
+}
+
+export_credentials() {
+    gcloud beta --project ${GCLOUD_PROJECT} container clusters get-credentials ${GKE_CLUSTER_NAME} --region ${GKE_CLUSTER_REGION}
 }
 
 main() {
@@ -85,8 +89,12 @@ main() {
       auth_service_account
       setup_registry_credentials
     ;;
+    credentials)
+      auth_service_account
+      export_credentials
+    ;;
     *)
-      echo "Usage: gke-cluster.sh (create|delete|name|registry)"; exit 1
+      echo "Usage: gke-cluster.sh (create|delete|name|registry|credentials)"; exit 1
     ;;
   esac
 }
