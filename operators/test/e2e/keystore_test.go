@@ -38,7 +38,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	}
 
 	// set up a 3-nodes cluster with secure settings
-	s := stack.NewStackBuilder("test-keystore").
+	s := stack.NewStackBuilder("test-es-keystore").
 		WithESMasterDataNodes(3, stack.DefaultResources).
 		WithESSecureSettings(secureSettings.Name)
 
@@ -130,7 +130,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	}
 
 	// set up a 1-node Kibana deployment with secure settings
-	s := stack.NewStackBuilder("test-keystore").
+	s := stack.NewStackBuilder("test-kibana-keystore").
 		WithESMasterDataNodes(1, stack.DefaultResources).
 		WithKibana(1).
 		WithKibanaSecureSettings(secureSettings.Name)
