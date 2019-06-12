@@ -34,7 +34,7 @@ IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
-LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/eck-operator:0.8.0"
+LATEST_RELEASED_IMG ?= docker.elastic.co/eck/eck-operator:0.8.0
 
 ## -- Namespaces
 
@@ -303,6 +303,7 @@ ci-e2e:
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
+ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/eck/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
 

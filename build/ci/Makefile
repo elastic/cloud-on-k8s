@@ -101,12 +101,16 @@ ci-release: vault-public-key vault-docker-creds
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
+# Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
-	@ AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE)) \
-		AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE)) \
-		aws s3 cp \
-		$(ROOT_DIR)/operators/config/all-in-one.yaml \
-		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml
+	docker run --rm -t \
+        -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+        -w $(GO_MOUNT_PATH) \
+        -e "AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE))" \
+        -e "AWS_SECRET_ACCESS_KEY=$(shell cat $(VAULT_AWS_SECRET_KEY_FILE))" \
+        cloud-on-k8s-ci-release \
+        bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
+		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
 ## -- End-to-end tests job
 
