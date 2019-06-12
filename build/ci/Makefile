@@ -125,7 +125,7 @@ ci-e2e: vault-gke-creds
 		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
 		-e "REGISTRY=$(REGISTRY)" \
 		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
-		-e "GKE_CLUSTER_NAME=$(BUILD_TAG)" \
+		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
 		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
@@ -140,7 +140,7 @@ ci-e2e-delete-cluster: vault-gke-creds
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
-    	-e "GKE_CLUSTER_NAME=$(BUILD_TAG)" \
+    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
     	cloud-on-k8s-ci-e2e \
     	bash -c "make -C operators set-context-gke delete-gke"
