@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -312,7 +313,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			assert.NoError(t, err)
 			kbVersion, err := version.Parse(tt.args.kb.Spec.Version)
 			assert.NoError(t, err)
-			d, err := newDriver(client, s, *kbVersion, w)
+			d, err := newDriver(client, s, *kbVersion, w, record.NewFakeRecorder(100))
 			assert.NoError(t, err)
 
 			got, err := d.deploymentParams(tt.args.kb)

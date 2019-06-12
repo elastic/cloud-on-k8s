@@ -16,6 +16,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -148,7 +149,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return common.PauseRequeue, nil
 	}
 
-	if err := r.finalizers.Handle(kb, secretWatchFinalizer(*kb, r.dynamicWatches)); err != nil {
+	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
 		if errors.IsConflict(err) {
 			log.V(1).Info("Conflict while handling secret watch finalizer")
 			return reconcile.Result{Requeue: true}, nil
@@ -166,7 +167,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	state := NewState(request, kb)
-	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches)
+	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -191,4 +192,12 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return r.Status().Update(state.Kibana)
+}
+
+// finalizersFor returns the list of finalizers applying to a given Kibana deployment
+func (r *ReconcileKibana) finalizersFor(kb kibanav1alpha1.Kibana) []finalizer.Finalizer {
+	return []finalizer.Finalizer{
+		secretWatchFinalizer(kb, r.dynamicWatches),
+		securesettings.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches),
+	}
 }
