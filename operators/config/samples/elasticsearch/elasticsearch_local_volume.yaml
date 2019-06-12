@@ -17,4 +17,4 @@ spec:
         resources:
           requests:
             storage: 10M
-        storageClassName: elastic-local # or eg. gcePersistentDisk
+        storageClassName: elastic-local
