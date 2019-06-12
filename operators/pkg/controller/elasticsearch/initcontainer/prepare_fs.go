@@ -59,7 +59,6 @@ var (
 )
 
 // NewPrepareFSInitContainer creates an init container to handle things such as:
-// - plugins installation
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.

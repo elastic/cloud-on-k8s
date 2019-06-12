@@ -34,12 +34,7 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 // in the prepare-fs init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
-
-	ES_DIR="/usr/share/elasticsearch"
-	CONFIG_DIR=$ES_DIR/config
-	PLUGIN_BIN=$ES_DIR/bin/elasticsearch-plugin
-	KEYSTORE_BIN=$ES_DIR/bin/elasticsearch-keystore 
-
+	
 	# compute time in seconds since the given start time
 	function duration() {
 		local start=$1
