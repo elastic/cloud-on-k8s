@@ -47,6 +47,23 @@ if [[ "$status" == "" ]]; then
     echo "e2e tests success"
 else
     echo "e2e tests failure"
+
+    echo "--"
+    echo "# k8s statefulset"
+    echo "> kubectl get sts --all-namespaces"
+    echo "--"
+    kubectl get sts --all-namespaces
+    echo "--"
+    echo "# elastic-namespace-operator log error"
+    echo "> kubectl -n elastic-namespace-operators logs elastic-namespace-operator-0  | grep error"
+    echo "--"
+    kubectl -n elastic-namespace-operators logs elastic-namespace-operator-0  | grep error
+    echo "--"
+    echo "# k8s ressources"
+    echo "> kubectl -n $NAMESPACE get elastic,pods,rs,deploy,svc,cm,secrets,pvc,pv"
+    echo "--"
+    kubectl -n $NAMESPACE get elastic,pods,rs,deploy,svc,cm,secrets,pvc,pv
+    echo "--"
 fi
 
 # delete job
