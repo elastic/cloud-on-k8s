@@ -9,16 +9,8 @@ import (
 	"html/template"
 )
 
-// List of plugins to be installed on the ES instance
-var defaultInstalledPlugins = []string{
-	"repository-s3",  // S3 snapshots
-	"repository-gcs", // gcp snapshots
-}
-
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
-	// Plugins is a list of plugins to install
-	Plugins []string
 	// SharedVolumes are directories to persist in shared volumes
 	SharedVolumes SharedVolumeArray
 	// LinkedFiles are files to link individually
@@ -42,12 +34,7 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 // in the prepare-fs init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash -eu
-
-	ES_DIR="/usr/share/elasticsearch"
-	CONFIG_DIR=$ES_DIR/config
-	PLUGIN_BIN=$ES_DIR/bin/elasticsearch-plugin
-	KEYSTORE_BIN=$ES_DIR/bin/elasticsearch-keystore 
-
+	
 	# compute time in seconds since the given start time
 	function duration() {
 		local start=$1
@@ -62,23 +49,6 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	script_start=$(date +%s)
 
 	echo "Starting init script"
-
-	######################
-	#       Plugins      #
-	######################
-
-	plugins_start=$(date +%s)
-	# Install extra plugins
-	{{range .Plugins}}
-		echo "Installing plugin {{.}}"
-		# Using --batch accepts any user prompt (y/n)
-		$PLUGIN_BIN install --batch {{.}}
-	{{end}}
-
-	echo "Installed plugins:"
-	$PLUGIN_BIN list
-
-	echo "Plugins installation duration: $(duration $plugins_start) sec."
 
 	######################
 	#  Config linking    #

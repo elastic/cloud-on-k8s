@@ -6,7 +6,7 @@ package config
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 )
 
 // Constants to use for the config files in a Kibana pod.

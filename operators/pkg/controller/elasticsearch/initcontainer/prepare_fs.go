@@ -7,21 +7,23 @@ package initcontainer
 import (
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	volume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 // Volumes that are shared between the prepare-fs init container and the ES container
 var (
 	DataSharedVolume = SharedVolume{
-		Name:                   volume.ElasticsearchDataVolumeName,
+		Name:                   esvolume.ElasticsearchDataVolumeName,
 		InitContainerMountPath: "/usr/share/elasticsearch/data",
 		EsContainerMountPath:   "/usr/share/elasticsearch/data",
 	}
 
 	LogsSharedVolume = SharedVolume{
-		Name:                   volume.ElasticsearchLogsVolumeName,
+		Name:                   esvolume.ElasticsearchLogsVolumeName,
 		InitContainerMountPath: "/usr/share/elasticsearch/logs",
 		EsContainerMountPath:   "/usr/share/elasticsearch/logs",
 	}
@@ -59,7 +61,6 @@ var (
 )
 
 // NewPrepareFSInitContainer creates an init container to handle things such as:
-// - plugins installation
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
@@ -76,7 +77,6 @@ func NewPrepareFSInitContainer(
 	certificatesVolumeMount.MountPath = "/mnt/elastic-internal/transport-certificates"
 
 	script, err := RenderScriptTemplate(TemplateParams{
-		Plugins:       defaultInstalledPlugins,
 		SharedVolumes: PrepareFsSharedVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{

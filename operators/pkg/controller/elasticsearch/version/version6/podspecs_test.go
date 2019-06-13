@@ -8,19 +8,21 @@ import (
 	"path"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 var testProbeUser = client.UserAuth{Name: "username1", Password: "supersecure"}
@@ -65,7 +67,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				}},
 				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 				{Name: settings.EnvProbeUsername, Value: "username1"},
-				{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, "username1")},
+				{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, "username1")},
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
 				{Name: processmanager.EnvTLS, Value: "true"},
@@ -176,8 +178,8 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 			UsersSecretVolume: volume.NewSecretVolumeWithMountPath("", "user-secret-vol", "/mount/path"),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name),
-				volume.UnicastHostsVolumeName,
-				volume.UnicastHostsVolumeMountPath,
+				esvolume.UnicastHostsVolumeName,
+				esvolume.UnicastHostsVolumeMountPath,
 			),
 		},
 		"operator-image-dummy",
