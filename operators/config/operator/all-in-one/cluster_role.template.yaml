@@ -50,6 +50,18 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
   - elasticsearch.k8s.elastic.co
   resources:
   - elasticsearches
