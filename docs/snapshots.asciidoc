@@ -27,7 +27,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "7.1.0"
+  version: 7.1.0
   image: your/custom/image:7.1.0
   nodes:
   - nodeCount: 1
@@ -42,7 +42,7 @@ kind: Elasticsearch
 metadata:
   name: elasticsearch-sample
 spec:
-  version: "7.1.0"
+  version: 7.1.0
   nodes:
   - podTemplate:
       spec:
@@ -154,7 +154,7 @@ You can set up a simple CronJob to take a snapshot every day.
 apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
-  name: my-cluster-snapshotter
+  name: elasticsearch-sample-snapshotter
 spec:
   schedule: "@daily"
   concurrencyPolicy: Forbid
