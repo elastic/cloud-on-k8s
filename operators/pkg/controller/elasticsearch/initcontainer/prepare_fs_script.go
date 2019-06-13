@@ -30,11 +30,15 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 	return tplBuffer.String(), nil
 }
 
+const PrepareFsScriptConfigKey = "prepare-fs.sh"
+
 // scriptTemplate is the main script to be run
 // in the prepare-fs init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
-	`#!/usr/bin/env bash -eu
-	
+	`#!/usr/bin/env bash
+
+	set -eu
+
 	# compute time in seconds since the given start time
 	function duration() {
 		local start=$1

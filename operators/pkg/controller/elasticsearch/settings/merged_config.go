@@ -10,8 +10,12 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+)
+
+const (
+	EsContainerDataMountPath = "/usr/share/elasticsearch/data"
+	EsContainerLogsMountPath = "/usr/share/elasticsearch/logs"
 )
 
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
@@ -47,8 +51,8 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		NetworkPublishHost: "${" + EnvPodIP + "}",
 		NetworkHost:        "0.0.0.0",
 
-		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
-		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
+		PathData: EsContainerDataMountPath,
+		PathLogs: EsContainerLogsMountPath,
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }
