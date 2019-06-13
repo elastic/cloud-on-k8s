@@ -1,0 +1,190 @@
+[id="{p}-how-to-snapshot"]
+= How to create automated snapshots
+
+To set up automated snapshots for Elasticsearch on Kubernetes you have to:
+
+. Ensure you have the necessary Elasticsearch storage plugin installed.
+. Add snapshot repository credentials to the Elasticsearch keystore.
+. Register the snapshot repository with the Elasticsearch API.
+. Set up a https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[CronJob] to take snapshots on a schedule.
+
+The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs.html[Google Cloud Storage Repository Plugin].
+
+For more information on Elasticsearch snapshots, see https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
+
+[id="{p}-install-plugin"]
+== Install the Storage Repository Plugin
+
+You can install the storage repository plugin either by using a custom image or by adding your own init container which
+installs the plugin at pod creation time.
+
+To use your own custom image with all necessary plugins pre-installed use an Elasticsearch resource like this one:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: "7.1.0"
+  image: your/custom/image:7.1.0
+  nodes:
+  - nodeCount: 1
+----
+
+Or alternatively install the plugin at pod creation time by using an init container:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch-sample
+spec:
+  version: "7.1.0"
+  nodes:
+  - podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
+    nodeCount: 1
+----
+
+Assuming you stored this in a file called `elasticsearch.yaml` you can in both cases create the Elasticsearch cluster with:
+
+[source,sh]
+----
+kubectl apply -f elasticsearch.yaml
+----
+
+
+[id="{p}-secure-settings"]
+== Configure GCS credentials via the Elasticsearch keystore
+
+The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html[Google Cloud Storage Repository Plugin]).
+
+Using ECK, you can automatically inject secure settings into a cluster node by providing them through a secret in the Elasticsearch Spec.
+
+. Create a file containing the GCS credentials. For this example, name it `gcs.client.default.credentials_file`. The file name is important as it will be reflected in the secure setting.
++
+[source,json]
+----
+{
+  "type": "service_account",
+  "project_id": "your-project-id",
+  "private_key_id": "...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+  "client_email": "service-account-for-your-repository@your-project-id.iam.gserviceaccount.com",
+  "client_id": "...",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://accounts.google.com/o/oauth2/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-bucket@your-project-id.iam.gserviceaccount.com"
+}
+----
+
+. Create a Kubernetes secret from that file:
++
+[source,sh]
+----
+kubectl create secret generic gcs-credentials --from-file=gcs.client.default.credentials_file
+----
+
+. Edit the `secureSettings` section of the Elasticsearch resource:
++
+[source,yaml]
+----
+kind: Elasticsearch
+spec:
+    # ...
+    # Inject secure settings into Elasticsearch nodes from a k8s secret reference
+    secureSettings:
+      secretName: "gcs-credentials"
+----
+
+. Apply the modifications:
++
+[source,bash]
+----
+kubectl apply -f elasticsearch.yml
+----
+
+GCS credentials are automatically propagated into each node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
+
+[id="{p}-create-repository"]
+== Register the repository in Elasticsearch
+
+. Create the GCS snapshot repository in Elasticsearch following the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
++
+[source]
+----
+PUT /_snapshot/my_gcs_repository
+{
+  "type": "gcs",
+  "settings": {
+    "bucket": "my_bucket",
+    "client": "default"
+  }
+}
+----
+
+. Take a snapshot with the following HTTP request:
++
+[source]
+----
+PUT /_snapshot/my_gcs_repository/test-snapshot
+----
+
+[id="{p}-setup-cronjob"]
+== Periodic snapshots with a CronJob
+
+You can set up a simple CronJob to take a snapshot every day.
+
+. Make an HTTP request against the appropriate endpoint, using a daily snapshot naming format. Elasticsearch credentials are mounted as a volume into the job's pod:
++
+[source,yaml]
+----
+# snapshotter.yml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-cluster-snapshotter
+spec:
+  schedule: "@daily"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: snapshotter
+            image: centos:7
+            volumeMounts:
+              - name: es-basic-auth
+                mountPath: /mnt/elastic/es-basic-auth
+            command:
+            - /bin/bash
+            args:
+            - -c
+            - 'curl -s -i -k -u "elastic:$(</mnt/elastic/es-basic-auth/elastic)" -XPUT "https://elasticsearch-sample-es-http:9200/_snapshot/my_gcs_repository/%3Csnapshot-%7Bnow%2Fd%7D%3E" | tee /dev/stderr | grep "200 OK"'
+          restartPolicy: OnFailure
+          volumes:
+          - name: es-basic-auth
+            secret:
+              secretName: elasticsearch-sample-elastic-user
+----
+
+. Apply it to the Kubernetes cluster:
++
+[source,sh]
+----
+kubectl apply -f snapshotter.yml
+----
+
+For more details see https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/[Kubernetes CronJobs].
