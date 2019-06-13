@@ -135,8 +135,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	// Create the operator uuid config map in the namespace managed by the operator
-	uuid, err := about.ReconcileOperatorUUID(r, r.scheme, request.Namespace)
+	uuid, err := about.ReconcileOperatorUUID(r, r.scheme, r.operatorInfo.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
