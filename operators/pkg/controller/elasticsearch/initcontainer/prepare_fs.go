@@ -59,7 +59,6 @@ var (
 )
 
 // NewPrepareFSInitContainer creates an init container to handle things such as:
-// - plugins installation
 // - configuration changes
 // Modified directories and files are meant to be persisted for reuse in the actual ES container.
 // This container does not need to be privileged.
@@ -76,7 +75,6 @@ func NewPrepareFSInitContainer(
 	certificatesVolumeMount.MountPath = "/mnt/elastic-internal/transport-certificates"
 
 	script, err := RenderScriptTemplate(TemplateParams{
-		Plugins:       defaultInstalledPlugins,
 		SharedVolumes: PrepareFsSharedVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
