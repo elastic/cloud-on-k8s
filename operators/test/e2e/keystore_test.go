@@ -109,5 +109,6 @@ func TestUpdateSecureSettings(t *testing.T) {
 				},
 			},
 		).
+		WithSteps(stack.DeletionTestSteps(s, k)...).
 		RunSequential(t)
 }
