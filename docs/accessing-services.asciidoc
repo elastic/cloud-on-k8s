@@ -38,7 +38,6 @@ To access Elasticsearch and Kibana, the operator manages a default user named `e
 5abc6x1234bb7vbabc4xyz42
 ----
 
-[float]
 [id="{p}-services"]
 === Services
 
@@ -105,7 +104,6 @@ spec:
         - dns: hulk.example.com
 ----
 
-[float]
 [id="{p}-request-elasticsearch-endpoint"]
 === Requesting the Elasticsearch endpoint
 

@@ -261,7 +261,6 @@ EOF
 
 Now that you have completed the quickstart, you can try out more features like using persistent storage.
 
-[float]
 ==== Use persistent storage
 
 The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
