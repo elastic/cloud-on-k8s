@@ -5,10 +5,14 @@
 package version
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
@@ -16,10 +20,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
@@ -83,29 +85,29 @@ func podSpec(
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// setup volumes
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), volume.ProbeUserVolumeName,
-		volume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
+		user.ElasticInternalUsersSecretName(p.ClusterName), esvolume.ProbeUserVolumeName,
+		esvolume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), volume.KeystoreUserVolumeName,
-		volume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
+		user.ElasticInternalUsersSecretName(p.ClusterName), esvolume.KeystoreUserVolumeName,
+		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
 	)
 	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
 	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
 	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		"",
-		volume.TransportCertificatesSecretVolumeName,
-		volume.TransportCertificatesSecretVolumeMountPath,
+		esvolume.TransportCertificatesSecretVolumeName,
+		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.ClusterName),
-		volume.SecureSettingsVolumeName,
-		volume.SecureSettingsVolumeMountPath,
+		esvolume.SecureSettingsVolumeName,
+		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		name.HTTPCertsInternalSecretName(p.ClusterName),
-		volume.HTTPCertificatesSecretVolumeName,
-		volume.HTTPCertificatesSecretVolumeMountPath,
+		esvolume.HTTPCertificatesSecretVolumeName,
+		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
 	// build on top of the user-provided pod template spec
@@ -126,8 +128,8 @@ func podSpec(
 
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
 		name.ScriptsConfigMap(p.ClusterName),
-		volume.ScriptsVolumeName,
-		volume.ScriptsVolumeMountPath,
+		esvolume.ScriptsVolumeName,
+		esvolume.ScriptsVolumeMountPath,
 		0744)
 
 	builder = builder.

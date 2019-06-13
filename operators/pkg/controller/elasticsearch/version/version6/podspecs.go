@@ -7,8 +7,11 @@ package version6
 import (
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
@@ -16,9 +19,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -26,15 +28,15 @@ var (
 	linkedFiles6 = initcontainer.LinkedFilesArray{
 		Array: []initcontainer.LinkedFile{
 			{
-				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersFile),
 				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticRolesFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticRolesFile),
 				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticRolesFile),
 			},
 			{
-				Source: stringsutil.Concat(volume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersRolesFile),
+				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersRolesFile),
 				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersRolesFile),
 			},
 			{
@@ -42,8 +44,8 @@ var (
 				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", settings.ConfigFileName),
 			},
 			{
-				Source: stringsutil.Concat(volume.UnicastHostsVolumeMountPath, "/", volume.UnicastHostsFile),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", volume.UnicastHostsFile),
+				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
+				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", esvolume.UnicastHostsFile),
 			},
 		},
 	}
@@ -58,8 +60,8 @@ func ExpectedPodSpecs(
 	// the contents of the file realm volume needs to be symlinked into place
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
 		user.XPackFileRealmSecretName(es.Name),
-		volume.XPackFileRealmVolumeName,
-		volume.XPackFileRealmVolumeMountPath,
+		esvolume.XPackFileRealmVolumeName,
+		esvolume.XPackFileRealmVolumeMountPath,
 	)
 
 	return version.NewExpectedPodSpecs(
@@ -106,7 +108,7 @@ func newEnvironmentVars(
 		}},
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
-		{Name: settings.EnvProbePasswordFile, Value: path.Join(volume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
+		{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
 
 	vars = append(vars, processmanager.NewEnvVars(httpCertificatesVolume)...)

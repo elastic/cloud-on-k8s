@@ -4,10 +4,6 @@
 
 package volume
 
-import (
-	corev1 "k8s.io/api/core/v1"
-)
-
 // Default values for the volume name and paths
 const (
 	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user"
@@ -40,13 +36,3 @@ const (
 	ScriptsVolumeName      = "elastic-internal-scripts"
 	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
 )
-
-var (
-	defaultOptional = false
-)
-
-type VolumeLike interface {
-	Name() string
-	Volume() corev1.Volume
-	VolumeMount() corev1.VolumeMount
-}

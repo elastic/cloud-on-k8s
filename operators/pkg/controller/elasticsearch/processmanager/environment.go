@@ -7,9 +7,11 @@ package processmanager
 import (
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 const (
@@ -24,7 +26,7 @@ const (
 	EnvExpVars         = "PM_EXP_VARS"
 	EnvProfiler        = "PM_PROFILER"
 
-	CommandPath          = volume.ProcessManagerEmptyDirMountPath + "/process-manager"
+	CommandPath          = esvolume.ProcessManagerEmptyDirMountPath + "/process-manager"
 	ElasticsearchCommand = "/usr/local/bin/docker-entrypoint.sh"
 )
 

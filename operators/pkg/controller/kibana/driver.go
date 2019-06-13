@@ -8,7 +8,14 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -25,9 +32,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 type driver struct {
@@ -35,6 +39,7 @@ type driver struct {
 	scheme          *runtime.Scheme
 	settingsFactory func(kb kbtype.Kibana) map[string]interface{}
 	dynamicWatches  watches.DynamicWatches
+	recorder        record.EventRecorder
 }
 
 func secretWatchKey(kibana kbtype.Kibana) string {
@@ -52,12 +57,20 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 }
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
-	kibanaPodSpec := pod.NewPodTemplateSpec(*kb)
+	// setup a keystore with secure settings in an init container, if specified by the user
+	volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(d.client, d.recorder, d.dynamicWatches, *kb)
+	if err != nil {
+		return nil, err
+	}
 
-	// build a checksum of the configuration, which we can use to cause the Deployment to roll the Kibana
-	// instances in the deployment when the ca file contents or credentials change. this is done because Kibana does not support
-	// updating the CA file contents or credentials without restarting the process.
+	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, volumes, initContainers)
+
+	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
+	// instances in case of any change in the CA file, secure settings or credentials contents.
+	// This is done because Kibana does not support updating those without restarting the process.
 	configChecksum := sha256.New224()
+	configChecksum.Write([]byte(secureSettingsVersion))
+
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {
 		ref := kb.Spec.Elasticsearch.Auth.SecretKeyRef
@@ -118,7 +131,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
-	err := d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
+	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
 	if err != nil {
 		return nil, err
 	}
@@ -190,11 +203,13 @@ func newDriver(
 	scheme *runtime.Scheme,
 	version version.Version,
 	watches watches.DynamicWatches,
+	recorder record.EventRecorder,
 ) (*driver, error) {
 	d := driver{
 		client:         client,
 		scheme:         scheme,
 		dynamicWatches: watches,
+		recorder:       recorder,
 	}
 	switch version.Major {
 	case 6:

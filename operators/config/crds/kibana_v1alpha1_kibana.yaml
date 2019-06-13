@@ -165,6 +165,16 @@ spec:
                 variables, affinity, resources, etc. for the pods created from this
                 NodeSpec.
               type: object
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into Kibana keystore on each node. Each individual
+                key/value entry in the referenced secret is considered as an individual
+                secure setting to be injected. The secret must exist in the same namespace
+                as the Kibana resource.
+              properties:
+                secretName:
+                  type: string
+              type: object
             version:
               description: Version represents the version of Kibana
               type: string
