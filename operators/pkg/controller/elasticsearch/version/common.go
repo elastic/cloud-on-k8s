@@ -130,7 +130,7 @@ func podSpec(
 		name.ScriptsConfigMap(p.ClusterName),
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
-		0744)
+		0755)
 
 	builder = builder.
 		WithVolumes(
