@@ -165,7 +165,7 @@ func execute() {
 			Addr:    viper.GetString(DebugHTTPServerListenAddressFlag),
 			Handler: mux,
 		}
-		log.Info("Starting Debug HTTP Server.", "addr", pprofServer.Addr)
+		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
 		go func() {
 			err := pprofServer.ListenAndServe()
@@ -199,7 +199,7 @@ func execute() {
 	}
 
 	// Get a config to talk to the apiserver
-	log.Info("setting up client for manager")
+	log.Info("Setting up client for manager")
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "unable to set up client config")
@@ -207,7 +207,7 @@ func execute() {
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("setting up manager")
+	log.Info("Setting up manager")
 	opts := manager.Options{
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
@@ -223,10 +223,8 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Registering Components.")
-
 	// Setup Scheme for all resources
-	log.Info("setting up scheme")
+	log.Info("Setting up scheme")
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
@@ -244,7 +242,8 @@ func execute() {
 	}
 
 	// Setup a Kubernetes client without cache to request resources in the operator namespace and not in the
-	// managed namespaces until we upgrade the controller-runtime to be able to watch n namespaces.
+	// managed namespaces until we upgrade the controller-runtime to be able to read in n namespaces with the
+	// cache enabled
 	operatorClient, err := k8s.NewClient(cfg)
 	if err != nil {
 		log.Error(err, "unable to set operator k8s client")
@@ -255,7 +254,7 @@ func execute() {
 	operatorUUID, err := about.GetOperatorUUID(operatorClient, operatorNamespace)
 	operatorInfo := about.NewOperatorInfo(operatorUUID, operatorNamespace, cfg)
 
-	log.Info("Setting up controller", "roles", roles)
+	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		OperatorClient:     operatorClient,
 		Dialer:             dialer,
@@ -271,7 +270,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("setting up webhooks")
+	log.Info("Setting up webhooks")
 	if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
 		log.Error(err, "unable to register webhooks to the manager")
 		os.Exit(1)
