@@ -26,13 +26,13 @@ const (
 var (
 	DataSharedVolume = SharedVolume{
 		Name:                   esvolume.ElasticsearchDataVolumeName,
-		InitContainerMountPath: "/usr/share/elasticsearch/data",
+		InitContainerMountPath: settings.EsContainerDataMountPath,
 		EsContainerMountPath:   settings.EsContainerDataMountPath,
 	}
 
 	LogsSharedVolume = SharedVolume{
 		Name:                   esvolume.ElasticsearchLogsVolumeName,
-		InitContainerMountPath: "/usr/share/elasticsearch/logs",
+		InitContainerMountPath: settings.EsContainerLogsMountPath,
 		EsContainerMountPath:   settings.EsContainerLogsMountPath,
 	}
 
@@ -64,6 +64,14 @@ var (
 			EsBinSharedVolume,
 			DataSharedVolume,
 			LogsSharedVolume,
+		},
+	}
+
+	PluginVolumes = SharedVolumeArray{
+		Array: []SharedVolume{
+			EsConfigSharedVolume,
+			EsPluginsSharedVolume,
+			EsBinSharedVolume,
 		},
 	}
 
@@ -135,7 +143,7 @@ func NewPrepareFSInitContainer(
 
 func RenderPrepareFsScript() (string, error) {
 	return RenderScriptTemplate(TemplateParams{
-		SharedVolumes: PrepareFsSharedVolumes,
+		PluginVolumes: PluginVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
 			DataSharedVolume.InitContainerMountPath,
