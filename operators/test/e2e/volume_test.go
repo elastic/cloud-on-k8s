@@ -16,7 +16,6 @@ import (
 func TestVolumeDefaultPVC(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 
-	// create a single node cluster
 	initStack := stack.NewStackBuilder("test-es-default-pvc").
 		WithESMasterNodes(1, stack.DefaultResources)
 
@@ -33,9 +32,9 @@ func TestVolumeDefaultPVC(t *testing.T) {
 func TestVolumeEmptyDir(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 
-	// create a single node cluster
 	initStack := stack.NewStackBuilder("test-es-explicit-empty-dir").
-		WithESMasterNodes(1, stack.DefaultResources).WithEmptyDirVolumes()
+		WithESMasterNodes(1, stack.DefaultResources).
+		WithEmptyDirVolumes()
 
 	helpers.TestStepList{}.
 		WithSteps(stack.InitTestSteps(initStack, k)...).
