@@ -41,10 +41,10 @@ TAG ?= $(shell git rev-parse --short --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
-GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/info.version=$(VERSION) \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/info.buildHash=$(TAG) \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/info.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
-	-X github.com/elastic/cloud-on-k8s/operators/pkg/info.buildSnapshot=$(SNAPSHOT)
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 ## -- Namespaces
 
