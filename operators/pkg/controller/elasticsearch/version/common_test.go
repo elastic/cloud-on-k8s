@@ -232,7 +232,7 @@ func Test_podSpec(t *testing.T) {
 	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
 		return settings.CanonicalConfig{}, nil
 	}
-	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume) ([]corev1.Container, error) {
+	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
 		return []corev1.Container{
 			{
 				Name: "init-container1",

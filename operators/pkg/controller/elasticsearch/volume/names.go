@@ -31,7 +31,10 @@ const (
 	ProcessManagerEmptyDirMountPath = "/mnt/elastic-internal/process-manager"
 
 	ElasticsearchDataVolumeName = "elasticsearch-data"
+	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
+
 	ElasticsearchLogsVolumeName = "elasticsearch-logs"
+	ElasticsearchLogsMountPath  = "/usr/share/elasticsearch/logs"
 
 	ScriptsVolumeName      = "elastic-internal-scripts"
 	ScriptsVolumeMountPath = "/mnt/elastic-internal/scripts"
