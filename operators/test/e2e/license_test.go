@@ -53,6 +53,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			license.ElasticsearchLicenseTypeGold,
 			license.ElasticsearchLicenseTypePlatinum,
 		)).
+		WithSteps(stack.DeletionTestSteps(s, k)...).
 		RunSequential(t)
 
 }
