@@ -11,8 +11,8 @@ import (
 
 const (
 	envBinDirectoryPath = "LOCAL_BIN"
-	script              = `
-		#!/usr/bin/env bash -eu
+	script              = `#!/usr/bin/env bash 
+		set -eu
 		cp process-manager $` + envBinDirectoryPath + `
 `
 )
@@ -30,7 +30,7 @@ func NewInjectProcessManagerInitContainer(imageName string) (corev1.Container, e
 			{Name: envBinDirectoryPath, Value: ProcessManagerVolume.InitContainerMountPath},
 		},
 		Name:         injectProcessManagerContainerName,
-		Command:      []string{"bash", "-c", script},
+		Command:      []string{"/usr/bin/env", "bash", "-c", script},
 		VolumeMounts: []corev1.VolumeMount{ProcessManagerVolume.InitContainerVolumeMount()},
 	}
 	return container, nil
