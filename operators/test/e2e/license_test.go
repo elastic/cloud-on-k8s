@@ -29,7 +29,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 
 	// create a single node cluster
 	initStack := stack.NewStackBuilder("test-es-license-provisioning").
-		WithESMasterDataNodes(1, stack.DefaultResources)
+		WithESMasterNodes(1, stack.DefaultResources)
 
 	mutated := initStack.
 		WithNoESTopology().
@@ -53,7 +53,7 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 			license.ElasticsearchLicenseTypeGold,
 			license.ElasticsearchLicenseTypePlatinum,
 		)).
-		WithSteps(stack.DeletionTestSteps(s, k)...).
+		WithSteps(stack.DeletionTestSteps(mutated, k)...).
 		RunSequential(t)
 
 }
