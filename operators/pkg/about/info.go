@@ -20,9 +20,9 @@ const UUIDCfgMapName = "elastic-operator-uuid"
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
 	UUID         types.UID `json:"uuid"`
-	BuildInfo    BuildInfo `json:"build"`
 	Namespace    string    `json:"namespace"`
 	Distribution string    `json:"distribution"`
+	BuildInfo    BuildInfo `json:"build"`
 }
 
 // BuildInfo contains build metadata information.
@@ -35,15 +35,15 @@ type BuildInfo struct {
 
 // IsDefined returns true if the info's default values have been replaced.
 func (i OperatorInfo) IsDefined() bool {
-	return i.Namespace != "" &&
-		i.UUID != "" &&
+	return i.UUID != "" &&
+		i.Namespace != "" &&
 		i.Distribution != "" &&
 		i.BuildInfo.Version != "0.0.0" &&
 		i.BuildInfo.Hash != "00000000" &&
 		i.BuildInfo.Date != "1970-01-01T00:00:00Z"
 }
 
-// NewOperatorInfo creates a new OperatorInfo given a operator namespace and kubernetes client config.
+// NewOperatorInfo creates a new OperatorInfo given a operator namespace and a Kubernetes client config.
 func NewOperatorInfo(operatorNs string, cfg *rest.Config) OperatorInfo {
 	distribution, err := getDistribution(cfg)
 	if err != nil {
@@ -51,26 +51,26 @@ func NewOperatorInfo(operatorNs string, cfg *rest.Config) OperatorInfo {
 	}
 
 	return OperatorInfo{
+		Namespace:    operatorNs,
+		Distribution: distribution,
 		BuildInfo: BuildInfo{
 			version,
 			buildHash,
 			buildDate,
 			buildSnapshot,
 		},
-		Namespace:    operatorNs,
-		Distribution: distribution,
 	}
 }
 
-// ReconcileOperatorUUID reconciles a config map in the operator namespace whose the UID is used for the operator UUID.
-func ReconcileOperatorUUID(c k8s.Client, s *runtime.Scheme, ns string) (types.UID, error) {
+// ReconcileOperatorUUIDConfigMap reconciles a config map in the operator namespace whose the UID is used for the operator UUID.
+func ReconcileOperatorUUIDConfigMap(operatorClient k8s.Client, s *runtime.Scheme, operatorNs string) (types.UID, error) {
 	var reconciledCfgMap corev1.ConfigMap
 	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client: c,
+		Client: operatorClient,
 		Scheme: s,
 		Expected: &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
+				Namespace: operatorNs,
 				Name:      UUIDCfgMapName,
 			},
 		},

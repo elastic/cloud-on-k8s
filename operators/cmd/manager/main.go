@@ -19,6 +19,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -242,11 +243,19 @@ func execute() {
 		os.Exit(1)
 	}
 
-	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
+	// Setup static operator info
 	operatorInfo := about.NewOperatorInfo(operatorNamespace, cfg)
+	// Setup a Kubernetes client with a cache configured for the operator namespace until we upgrade the
+	// controller-runtime to be able to watch n namespaces.
+	operatorClient, err := k8s.NewClientWithCache(cfg, operatorNamespace)
+	if err != nil {
+		log.Error(err, "unable to set operator k8s client")
+		os.Exit(1)
+	}
 
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
+		OperatorClient:     operatorClient,
 		Dialer:             dialer,
 		OperatorImage:      operatorImage,
 		OperatorNamespace:  operatorNamespace,

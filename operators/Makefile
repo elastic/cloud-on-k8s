@@ -123,7 +123,7 @@ run: install-crds
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-				--operator-namespace=elastic-system \
+				--operator-namespace=elastic-system --namespace= \
 				--auto-install-webhooks=false
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set

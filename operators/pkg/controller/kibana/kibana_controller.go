@@ -53,8 +53,10 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
+	operatorClient := k8s.WrapClient(params.OperatorClient)
 	return &ReconcileKibana{
 		Client:         client,
+		operatorClient: operatorClient,
 		scheme:         mgr.GetScheme(),
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
@@ -112,8 +114,9 @@ var _ reconcile.Reconciler = &ReconcileKibana{}
 // ReconcileKibana reconciles a Kibana object
 type ReconcileKibana struct {
 	k8s.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	operatorClient k8s.Client
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
 
 	finalizers     finalizer.Handler
 	dynamicWatches watches.DynamicWatches
@@ -135,7 +138,8 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	uuid, err := about.ReconcileOperatorUUID(r, r.scheme, r.operatorInfo.Namespace)
+	// reconcile and set operator uuid
+	uuid, err := about.ReconcileOperatorUUIDConfigMap(r.operatorClient, r.scheme, r.operatorInfo.Namespace)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
