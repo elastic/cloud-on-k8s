@@ -190,6 +190,13 @@ func execute() {
 		os.Exit(1)
 	}
 
+	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
+	if operatorNamespace == "" {
+		log.Error(fmt.Errorf("%s is a required flag", OperatorNamespaceFlag),
+			"required configuration missing")
+		os.Exit(1)
+	}
+
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")
 	cfg, err := config.GetConfig()
