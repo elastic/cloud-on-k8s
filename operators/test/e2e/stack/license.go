@@ -39,15 +39,7 @@ func NewLicenseTestContext(k *helpers.K8sHelper, es estype.Elasticsearch) licens
 	}
 }
 
-func (ltctx *licenseTestContext) WrapSteps(steps ...helpers.TestStep) helpers.TestStepList {
-	testSteps := helpers.TestStepList{
-		ltctx.createESClient(),
-	}
-	testSteps = append(testSteps, steps...)
-	return testSteps
-}
-
-func (ltctx *licenseTestContext) createESClient() helpers.TestStep {
+func (ltctx *licenseTestContext) Init() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Creating Elasticsearch client",
 		Test: func(t *testing.T) {
@@ -97,9 +89,22 @@ func (ltctx *licenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []by
 					license.FileName: licenseBytes,
 				},
 			}
-			// delete if left over from previous run
-			_ = ltctx.k.Client.Delete(&sec)
 			require.NoError(t, ltctx.k.Client.Create(&sec))
+		},
+	}
+}
+
+func (ltctx *licenseTestContext) DeleteEnterpriseLicenseSecret() helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Removing any test enterprise licenses",
+		Test: func(t *testing.T) {
+			sec := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: params.Namespace,
+					Name:      licenseSecretName,
+				},
+			}
+			_ = ltctx.k.Client.Delete(&sec)
 		},
 	}
 }
