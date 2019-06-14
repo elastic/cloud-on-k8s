@@ -324,8 +324,8 @@ func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 }
 
 // KibanaDoReq executes an HTTP request against a Kibana instance.
-func KibanaDoReq(stack Builder, method string, uri string, body []byte) ([]byte, error) {
-	password, err := helpers.NewK8sClientOrFatal().GetElasticPassword(stack.Elasticsearch.Name)
+func KibanaDoReq(k *helpers.K8sHelper, stack Builder, method string, uri string, body []byte) ([]byte, error) {
+	password, err := k.GetElasticPassword(stack.Elasticsearch.Name)
 	if err != nil {
 		return nil, err
 	}

@@ -15,15 +15,15 @@ import (
 )
 
 func TestTelemetry(t *testing.T) {
-	k8s := helpers.NewK8sClientOrFatal()
+	k := helpers.NewK8sClientOrFatal()
 
 	s := stack.NewStackBuilder("test-telemetry").
 		WithESMasterDataNodes(1, stack.DefaultResources).
 		WithKibana(1)
 
 	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(s, k8s)...).
-		WithSteps(stack.CreationTestSteps(s, k8s)...).
+		WithSteps(stack.InitTestSteps(s, k)...).
+		WithSteps(stack.CreationTestSteps(s, k)...).
 		WithSteps(
 			helpers.TestStep{
 				Name: "Kibana should expose eck info in telemetry data",
@@ -31,7 +31,7 @@ func TestTelemetry(t *testing.T) {
 
 					uri := "/api/telemetry/v1/clusters/_stats"
 					payload := `{"timeRange":{"min":"0","max":"0"}}`
-					body, err := stack.KibanaDoReq(s, "POST", uri, []byte(payload))
+					body, err := stack.KibanaDoReq(k, s, "POST", uri, []byte(payload))
 					if err != nil {
 						return err
 					}
