@@ -5,14 +5,14 @@
 package about
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const UUIDCfgMapName = "elastic-operator-uuid"
@@ -44,13 +44,14 @@ func (i OperatorInfo) IsDefined() bool {
 }
 
 // NewOperatorInfo creates a new OperatorInfo given a operator namespace and a Kubernetes client config.
-func NewOperatorInfo(operatorNs string, cfg *rest.Config) OperatorInfo {
+func NewOperatorInfo(operatorUUID types.UID, operatorNs string, cfg *rest.Config) OperatorInfo {
 	distribution, err := getDistribution(cfg)
 	if err != nil {
 		distribution = "unknown"
 	}
 
 	return OperatorInfo{
+		UUID:         operatorUUID,
 		Namespace:    operatorNs,
 		Distribution: distribution,
 		BuildInfo: BuildInfo{
@@ -62,23 +63,31 @@ func NewOperatorInfo(operatorNs string, cfg *rest.Config) OperatorInfo {
 	}
 }
 
-// ReconcileOperatorUUIDConfigMap reconciles a config map in the operator namespace whose the UID is used for the operator UUID.
-func ReconcileOperatorUUIDConfigMap(operatorClient k8s.Client, s *runtime.Scheme, operatorNs string) (types.UID, error) {
+func GetOperatorUUID(operatorClient client.Client, ns string) (types.UID, error) {
+	c := k8s.WrapClient(operatorClient)
+	// get the config map
 	var reconciledCfgMap corev1.ConfigMap
-	if err := reconciler.ReconcileResource(reconciler.Params{
-		Client: operatorClient,
-		Scheme: s,
-		Expected: &corev1.ConfigMap{
+	err := c.Get(types.NamespacedName{
+		Namespace: ns,
+		Name:      UUIDCfgMapName,
+	}, &reconciledCfgMap)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return types.UID(""), nil
+	}
+
+	// or create it
+	if err != nil && apierrors.IsNotFound(err) {
+		cfgMap := corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: operatorNs,
+				Namespace: ns,
 				Name:      UUIDCfgMapName,
-			},
-		},
-		Reconciled:       &reconciledCfgMap,
-		NeedsUpdate:      func() bool { return false },
-		UpdateReconciled: func() {},
-	}); err != nil {
-		return types.UID(""), err
+			}}
+		err = c.Create(&cfgMap)
+		if err != nil {
+			return types.UID(""), nil
+		}
+
+		return cfgMap.UID, nil
 	}
 
 	return reconciledCfgMap.UID, nil

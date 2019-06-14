@@ -243,15 +243,17 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// Setup static operator info
-	operatorInfo := about.NewOperatorInfo(operatorNamespace, cfg)
-	// Setup a Kubernetes client with a cache configured for the operator namespace until we upgrade the
-	// controller-runtime to be able to watch n namespaces.
-	operatorClient, err := k8s.NewClientWithCache(cfg, operatorNamespace)
+	// Setup a Kubernetes client without cache to request resources in the operator namespace and not in the
+	// managed namespaces until we upgrade the controller-runtime to be able to watch n namespaces.
+	operatorClient, err := k8s.NewClient(cfg)
 	if err != nil {
 		log.Error(err, "unable to set operator k8s client")
 		os.Exit(1)
 	}
+
+	// Setup operator info
+	operatorUUID, err := about.GetOperatorUUID(operatorClient, operatorNamespace)
+	operatorInfo := about.NewOperatorInfo(operatorUUID, operatorNamespace, cfg)
 
 	log.Info("Setting up controller", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
@@ -275,7 +277,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Starting the manager",
+	log.Info("Starting the manager", "uuid", operatorInfo.UUID,
 		"namespace", operatorInfo.Namespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)

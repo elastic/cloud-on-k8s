@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -148,8 +147,8 @@ func (s StatusWriter) Update(obj runtime.Object) error {
 	})
 }
 
-// NewClientWithCache initializes and returns a new Kubernetes client with a namespaced cache
-func NewClientWithCache(cfg *rest.Config, ns string) (client.Client, error) {
+// NewClient initializes and returns a new Kubernetes client.
+func NewClient(cfg *rest.Config) (client.Client, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
@@ -165,26 +164,5 @@ func NewClientWithCache(cfg *rest.Config, ns string) (client.Client, error) {
 		return nil, err
 	}
 
-	clientCache, err := cache.New(cfg, cache.Options{Scheme: scheme.Scheme, Mapper: mapper, Namespace: ns})
-	if err != nil {
-		return nil, err
-	}
-
-	stop := make(chan struct{})
-	errChan := make(chan error)
-	go func() {
-		if err := clientCache.Start(stop); err != nil {
-			errChan <- err
-		}
-	}()
-	clientCache.WaitForCacheSync(stop)
-
-	return &client.DelegatingClient{
-		Reader: &client.DelegatingReader{
-			CacheReader:  clientCache,
-			ClientReader: c,
-		},
-		Writer:       c,
-		StatusClient: c,
-	}, nil
+	return c, nil
 }

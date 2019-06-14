@@ -138,16 +138,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
 	}()
 
-	// reconcile and set operator uuid
-	uuid, err := about.ReconcileOperatorUUIDConfigMap(r.operatorClient, r.scheme, r.operatorInfo.Namespace)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-	r.operatorInfo.UUID = uuid
-
 	// Fetch the Kibana instance
 	kb := &kibanav1alpha1.Kibana{}
-	err = r.Get(request.NamespacedName, kb)
+	err := r.Get(request.NamespacedName, kb)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
