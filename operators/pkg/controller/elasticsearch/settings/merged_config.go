@@ -13,11 +13,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
-const (
-	EsContainerDataMountPath = "/usr/share/elasticsearch/data"
-	EsContainerLogsMountPath = "/usr/share/elasticsearch/logs"
-)
-
 // NewMergedESConfig merges user provided Elasticsearch configuration with configuration derived  from the given
 // parameters.
 func NewMergedESConfig(
@@ -51,8 +46,8 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		NetworkPublishHost: "${" + EnvPodIP + "}",
 		NetworkHost:        "0.0.0.0",
 
-		PathData: EsContainerDataMountPath,
-		PathLogs: EsContainerLogsMountPath,
+		PathData: volume.ElasticsearchDataMountPath,
+		PathLogs: volume.ElasticsearchLogsMountPath,
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

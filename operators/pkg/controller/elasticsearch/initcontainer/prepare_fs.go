@@ -26,14 +26,14 @@ const (
 var (
 	DataSharedVolume = SharedVolume{
 		Name:                   esvolume.ElasticsearchDataVolumeName,
-		InitContainerMountPath: settings.EsContainerDataMountPath,
-		EsContainerMountPath:   settings.EsContainerDataMountPath,
+		InitContainerMountPath: esvolume.ElasticsearchDataMountPath,
+		EsContainerMountPath:   esvolume.ElasticsearchDataMountPath,
 	}
 
 	LogsSharedVolume = SharedVolume{
 		Name:                   esvolume.ElasticsearchLogsVolumeName,
-		InitContainerMountPath: settings.EsContainerLogsMountPath,
-		EsContainerMountPath:   settings.EsContainerLogsMountPath,
+		InitContainerMountPath: esvolume.ElasticsearchLogsMountPath,
+		EsContainerMountPath:   esvolume.ElasticsearchLogsMountPath,
 	}
 
 	// EsBinSharedVolume contains the ES bin/ directory
