@@ -342,8 +342,9 @@ func KibanaDoReq(k *helpers.K8sHelper, stack Builder, method string, uri string,
 	}
 
 	req.SetBasicAuth("elastic", password)
-	req.Header.Set("kbn-version", stack.Kibana.Spec.Version)
 	req.Header.Set("Content-Type", "application/json")
+	// send the kbn-version header expected by the Kibana server to protect against xsrf attacks
+	req.Header.Set("kbn-version", stack.Kibana.Spec.Version)
 	client := helpers.NewHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {

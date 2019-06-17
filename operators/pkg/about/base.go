@@ -6,8 +6,7 @@ package about
 
 // Base version information.
 //
-// This is the fallback data used when version information is not
-// provided via go ldflags.
+// These values are meant to be overridden at runtime through go ldflags.
 var (
 	version       = "0.0.0"                // semantic version X.Y.Z
 	buildHash     = "00000000"             // sha1 from git

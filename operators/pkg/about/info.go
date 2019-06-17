@@ -15,6 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// UUIDCfgMapName is the name of a config map whose the uuid is used for as an operator uuid.
+// This operator UUID is then used in the OperatorInfo.
 const UUIDCfgMapName = "elastic-operator-uuid"
 
 // OperatorInfo contains information about the operator.
@@ -63,6 +65,7 @@ func NewOperatorInfo(operatorUUID types.UID, operatorNs string, cfg *rest.Config
 	}
 }
 
+// GetOperatorUUID returns the operator UUID by retrieving a config map or creating it if it does not exist.
 func GetOperatorUUID(operatorClient client.Client, ns string) (types.UID, error) {
 	c := k8s.WrapClient(operatorClient)
 	// get the config map
