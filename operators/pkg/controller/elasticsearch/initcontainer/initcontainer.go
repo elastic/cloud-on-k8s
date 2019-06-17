@@ -5,7 +5,7 @@
 package initcontainer
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -25,9 +25,9 @@ const (
 func NewInitContainers(
 	elasticsearchImage string,
 	operatorImage string,
-	linkedFiles LinkedFilesArray,
 	setVMMaxMapCount *bool,
 	transportCertificatesVolume volume.SecretVolume,
+	clusterName string,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 	// create the privileged init container if not explicitly disabled by the user
@@ -38,7 +38,7 @@ func NewInitContainers(
 		}
 		containers = append(containers, osSettingsContainer)
 	}
-	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, linkedFiles, transportCertificatesVolume)
+	prepareFsContainer, err := NewPrepareFSInitContainer(elasticsearchImage, transportCertificatesVolume, clusterName)
 	if err != nil {
 		return nil, err
 	}

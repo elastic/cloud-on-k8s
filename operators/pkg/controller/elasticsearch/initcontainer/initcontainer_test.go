@@ -7,7 +7,7 @@ package initcontainer
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,7 +17,6 @@ func TestNewInitContainers(t *testing.T) {
 	type args struct {
 		elasticsearchImage string
 		operatorImage      string
-		linkedFiles        LinkedFilesArray
 		SetVMMaxMapCount   *bool
 	}
 	tests := []struct {
@@ -30,7 +29,6 @@ func TestNewInitContainers(t *testing.T) {
 			args: args{
 				elasticsearchImage: "es-image",
 				operatorImage:      "op-image",
-				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   &varTrue,
 			},
 			expectedNumberOfContainers: 3,
@@ -40,7 +38,6 @@ func TestNewInitContainers(t *testing.T) {
 			args: args{
 				elasticsearchImage: "es-image",
 				operatorImage:      "op-image",
-				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   nil,
 			},
 			expectedNumberOfContainers: 3,
@@ -50,7 +47,6 @@ func TestNewInitContainers(t *testing.T) {
 			args: args{
 				elasticsearchImage: "es-image",
 				operatorImage:      "op-image",
-				linkedFiles:        LinkedFilesArray{},
 				SetVMMaxMapCount:   &varFalse,
 			},
 			expectedNumberOfContainers: 2,
@@ -61,9 +57,9 @@ func TestNewInitContainers(t *testing.T) {
 			containers, err := NewInitContainers(
 				tt.args.elasticsearchImage,
 				tt.args.operatorImage,
-				tt.args.linkedFiles,
 				tt.args.SetVMMaxMapCount,
 				volume.SecretVolume{},
+				"clusterName",
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))

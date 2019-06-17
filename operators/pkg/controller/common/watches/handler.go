@@ -80,6 +80,17 @@ func (d *DynamicEnqueueRequest) RemoveHandlerForKey(key string) {
 	log.V(4).Info("Removed handler registration", "removed", key, "now", d.registrations)
 }
 
+// Registrations returns the list of registered handler names.
+func (d *DynamicEnqueueRequest) Registrations() []string {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+	keys := make([]string, 0, len(d.registrations))
+	for k := range d.registrations {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 // DynamicEnqueueRequest implements EventHandler
 var _ handler.EventHandler = &DynamicEnqueueRequest{}
 

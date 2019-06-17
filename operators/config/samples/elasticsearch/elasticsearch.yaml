@@ -34,7 +34,7 @@ spec:
     #    resources:
     #      requests:
     #        storage: 2Gi
-    #    storageClassName: elastic-local # or eg. gcePersistentDisk
+    #    storageClassName: elastic-local # or eg. standard
   ## Inject secure settings into Elasticsearch nodes from a k8s secret reference
   # secureSettings:
   #   secretName: "ref-to-secret"

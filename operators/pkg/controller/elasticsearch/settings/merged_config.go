@@ -10,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
@@ -47,8 +46,8 @@ func baseConfig(clusterName string) *CanonicalConfig {
 		NetworkPublishHost: "${" + EnvPodIP + "}",
 		NetworkHost:        "0.0.0.0",
 
-		PathData: initcontainer.DataSharedVolume.EsContainerMountPath,
-		PathLogs: initcontainer.LogsSharedVolume.EsContainerMountPath,
+		PathData: volume.ElasticsearchDataMountPath,
+		PathLogs: volume.ElasticsearchLogsMountPath,
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

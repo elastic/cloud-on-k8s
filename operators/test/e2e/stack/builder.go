@@ -128,7 +128,7 @@ func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder 
 	return b
 }
 
-func (b Builder) WithSecureSettings(secretName string) Builder {
+func (b Builder) WithESSecureSettings(secretName string) Builder {
 	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.SecretRef{
 		SecretName: secretName,
 	}
@@ -139,6 +139,13 @@ func (b Builder) WithSecureSettings(secretName string) Builder {
 
 func (b Builder) WithKibana(count int) Builder {
 	b.Kibana.Spec.NodeCount = int32(count)
+	return b
+}
+
+func (b Builder) WithKibanaSecureSettings(secretName string) Builder {
+	b.Kibana.Spec.SecureSettings = &commonv1alpha1.SecretRef{
+		SecretName: secretName,
+	}
 	return b
 }
 

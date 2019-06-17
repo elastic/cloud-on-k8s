@@ -15,7 +15,10 @@ spec:
     certificateAuthorities:
       secretName: my-ca-cert # reference to a secret containing certificates under "tls.crt"
   nodeCount: 1
-  #http:
-  #  service:
-  #    spec:
-  #      type: LoadBalancer
+# http:
+#   service:
+#     spec:
+#       type: LoadBalancer
+## Inject entries from the referenced secret into Kibana keystore
+#  secureSettings:
+#    secretName: kb-secure-settings

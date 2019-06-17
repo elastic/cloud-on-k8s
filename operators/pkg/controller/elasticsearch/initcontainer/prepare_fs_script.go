@@ -12,7 +12,7 @@ import (
 // TemplateParams are the parameters manipulated in the scriptTemplate
 type TemplateParams struct {
 	// SharedVolumes are directories to persist in shared volumes
-	SharedVolumes SharedVolumeArray
+	PluginVolumes SharedVolumeArray
 	// LinkedFiles are files to link individually
 	LinkedFiles LinkedFilesArray
 	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
@@ -30,11 +30,15 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 	return tplBuffer.String(), nil
 }
 
+const PrepareFsScriptConfigKey = "prepare-fs.sh"
+
 // scriptTemplate is the main script to be run
 // in the prepare-fs init container before ES starts
 var scriptTemplate = template.Must(template.New("").Parse(
-	`#!/usr/bin/env bash -eu
-	
+	`#!/usr/bin/env bash
+
+	set -eu
+
 	# compute time in seconds since the given start time
 	function duration() {
 		local start=$1
@@ -68,10 +72,10 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	#  Files persistence #
 	######################
 
-	# Persist the content of bin/, config/ and plugins/
-	# to a volume, to be used by the ES container
+	# Persist the content of bin/, config/ and plugins/ to a volume,
+	# so installed plugins files can to be used by the ES container
 	mv_start=$(date +%s)
-	{{range .SharedVolumes.Array}}
+	{{range .PluginVolumes.Array}}
 		if [[ -z "$(ls -A {{.EsContainerMountPath}})" ]]; then
 			echo "Empty dir {{.EsContainerMountPath}}"
 		else

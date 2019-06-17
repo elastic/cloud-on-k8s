@@ -146,6 +146,11 @@ func (in *KibanaSpec) DeepCopyInto(out *KibanaSpec) {
 	}
 	in.HTTP.DeepCopyInto(&out.HTTP)
 	in.PodTemplate.DeepCopyInto(&out.PodTemplate)
+	if in.SecureSettings != nil {
+		in, out := &in.SecureSettings, &out.SecureSettings
+		*out = new(commonv1alpha1.SecretRef)
+		**out = **in
+	}
 	if in.FeatureFlags != nil {
 		in, out := &in.FeatureFlags, &out.FeatureFlags
 		*out = make(commonv1alpha1.FeatureFlags, len(*in))

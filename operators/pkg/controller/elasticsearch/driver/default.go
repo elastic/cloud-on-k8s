@@ -8,14 +8,22 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
@@ -32,13 +40,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -124,8 +127,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	scriptsConfigMap := prepareScriptsConfigMap(es)
-	if err := configmap.ReconcileConfigMap(d.Client, d.Scheme, es, scriptsConfigMap); err != nil {
+	if err := reconcileScriptsConfigMap(d.Client, d.Scheme, es); err != nil {
 		return results.WithError(err)
 	}
 
@@ -504,7 +506,7 @@ func (d *defaultDriver) calculateChanges(
 			ProbeUser:    internalUsers.ProbeUser.Auth(),
 			KeystoreUser: internalUsers.KeystoreUser.Auth(),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
-				name.UnicastHostsConfigMap(es.Name), volume.UnicastHostsVolumeName, volume.UnicastHostsVolumeMountPath,
+				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
 		},
 		d.OperatorImage,
@@ -533,10 +535,22 @@ func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user
 	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, caCerts)
 }
 
-func prepareScriptsConfigMap(es v1alpha1.Elasticsearch) corev1.ConfigMap {
-	return configmap.NewConfigMapWithData(
+func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+	fsScript, err := initcontainer.RenderPrepareFsScript()
+	if err != nil {
+		return err
+	}
+
+	scriptsConfigMap := configmap.NewConfigMapWithData(
 		types.NamespacedName{Namespace: es.Namespace, Name: name.ScriptsConfigMap(es.Name)},
 		map[string]string{
-			pod.ReadinessProbeScriptConfigKey: pod.ReadinessProbeScript,
+			pod.ReadinessProbeScriptConfigKey:      pod.ReadinessProbeScript,
+			initcontainer.PrepareFsScriptConfigKey: fsScript,
 		})
+
+	if err := configmap.ReconcileConfigMap(c, scheme, es, scriptsConfigMap); err != nil {
+		return err
+	}
+
+	return nil
 }

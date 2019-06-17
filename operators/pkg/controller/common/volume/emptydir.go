@@ -8,8 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// EmptyDirVolume used to store ES data on the node main disk
-// Its lifecycle is bound to the pod lifecycle on the node.
+// EmptyDirVolume defines a volume to expose an EmptyDir
 type EmptyDirVolume struct {
 	name      string
 	mountPath string
