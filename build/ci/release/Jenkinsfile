@@ -48,7 +48,7 @@ pipeline {
         unsuccessful {
             script {
                 def msg = "Release job failed! \r\n" +
-                          "env.BUILD_URL"
+                          "${BUILD_URL}"
                 slackSend botUser: true,
                     channel: '#cloud-k8s',
                     color: 'danger',
