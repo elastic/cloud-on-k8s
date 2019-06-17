@@ -94,9 +94,10 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 		}),
 	}
 }
+
 func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch nodes topology should be the expected one",
+		Name: "Elasticsearch nodes topology should eventually be the expected one",
 		Test: helpers.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
@@ -106,7 +107,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				return err
 			}
 			if int(es.Spec.NodeCount()) != len(nodes.Nodes) {
-				return fmt.Errorf("unexpected node count, %d != %d", int(es.Spec.NodeCount()), len(nodes.Nodes))
+				return fmt.Errorf("expected node count %d but was %d", es.Spec.NodeCount(), len(nodes.Nodes))
 			}
 
 			nodesStats, err := e.client.GetNodesStats(ctx)
@@ -114,7 +115,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				return err
 			}
 			if int(es.Spec.NodeCount()) != len(nodesStats.Nodes) {
-				return fmt.Errorf("unexpected node count in stats, %d != %d", int(es.Spec.NodeCount()), len(nodesStats.Nodes))
+				return fmt.Errorf(
+					"expected node count %d but _nodes/stats returned %d", es.Spec.NodeCount(), len(nodesStats.Nodes),
+				)
 			}
 
 			// flatten the topology
@@ -128,11 +131,17 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			for nodeId, node := range nodes.Nodes {
 				nodeRoles := rolesToConfig(node.Roles)
 
-				nodeStats, ok := nodesStats.Nodes[nodeId]
-				if !ok {
-					return fmt.Errorf("node not found in stats: %s", nodeId)
+				var found bool
+				for k, _ := range nodesStats.Nodes {
+					if k == nodeId {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("%s was not in %+v", nodeId, nodesStats.Nodes)
 				}
 
+				nodeStats := nodesStats.Nodes[nodeId]
 				for i, topoElem := range expectedTopology {
 					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
 					if err != nil {
@@ -161,7 +170,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			}
 			// expected topology should have matched all nodes
 			if len(expectedTopology) > 0 {
-				return fmt.Errorf("expected topology should be empty: %v", expectedTopology)
+				return fmt.Errorf("expected elements missing from cluster %+v", expectedTopology)
 			}
 			return nil
 		}),
