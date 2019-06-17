@@ -47,6 +47,7 @@ spec:
 
 You can setup various link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node[affinity and anti-affinity options] through the `podTemplate` section of the Elasticsearch resource specification.
 
+[float]
 ==== A single Elasticsearch node per Kubernetes host (default)
 
 To avoid scheduling several Elasticsearch nodes from the same cluster on the same host, use a `podAntiAffinity` rule based on the hostname and the cluster name label:
@@ -118,6 +119,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
 ----
 
+[float]
 ==== Local Persistent Volume constraints
 
 By default, volumes can be bound to a pod before the pod gets scheduled to a particular node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
@@ -134,6 +136,7 @@ provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
 ----
 
+[float]
 ==== Node affinity
 
 To restrict the scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
