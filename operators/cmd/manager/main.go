@@ -244,7 +244,7 @@ func execute() {
 	// Setup a Kubernetes client without cache to request resources in the operator namespace and not in the
 	// managed namespaces until we upgrade the controller-runtime to be able to read in n namespaces with the
 	// cache enabled
-	operatorClient, err := k8s.NewClient(cfg)
+	operatorClient, err := k8s.NewClientGo(cfg)
 	if err != nil {
 		log.Error(err, "unable to set operator k8s client")
 		os.Exit(1)

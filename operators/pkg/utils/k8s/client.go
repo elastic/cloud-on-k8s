@@ -147,8 +147,8 @@ func (s StatusWriter) Update(obj runtime.Object) error {
 	})
 }
 
-// NewClient initializes and returns a new Kubernetes client.
-func NewClient(cfg *rest.Config) (client.Client, error) {
+// NewClientGo initializes and returns a new Kubernetes client.
+func NewClientGo(cfg *rest.Config) (client.Client, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
