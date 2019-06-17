@@ -26,6 +26,7 @@ set -eu
 
 set_max_map_count() {
     instances=$(gcloud compute instances list \
+                --project="${GCLOUD_PROJECT}" \
                 --filter="metadata.items.key['cluster-name']['value']='${GKE_CLUSTER_NAME}' AND metadata.items.key['cluster-name']['value']!='' " \
                 --format='value[separator=","](name,zone)')
 
