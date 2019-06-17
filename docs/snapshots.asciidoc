@@ -1,5 +1,5 @@
 [id="{p}-how-to-snapshot"]
-= How to create automated snapshots
+== How to create automated snapshots
 
 To set up automated snapshots for Elasticsearch on Kubernetes you have to:
 
@@ -13,7 +13,7 @@ The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins
 For more information on Elasticsearch snapshots, see https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
 
 [id="{p}-install-plugin"]
-== Install the Storage Repository Plugin
+=== Install the Storage Repository Plugin
 
 To install the storage repository plugin, you can either use a custom image or add your own init container which
 installs the plugin at pod creation time.
@@ -65,7 +65,7 @@ kubectl apply -f elasticsearch.yaml
 
 
 [id="{p}-secure-settings"]
-== Configure GCS credentials via the Elasticsearch keystore
+=== Configure GCS credentials via the Elasticsearch keystore
 
 The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html[Google Cloud Storage Repository Plugin]).
 
@@ -118,11 +118,11 @@ kubectl apply -f elasticsearch.yml
 GCS credentials are automatically propagated into each node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
 
 [id="{p}-create-repository"]
-== Register the repository in Elasticsearch
+=== Register the repository in Elasticsearch
 
 . Create the GCS snapshot repository in Elasticsearch following the procedure described in https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore]:
 +
-[source]
+[source,sh]
 ----
 PUT /_snapshot/my_gcs_repository
 {
@@ -136,13 +136,13 @@ PUT /_snapshot/my_gcs_repository
 
 . Take a snapshot with the following HTTP request:
 +
-[source]
+[source,sh]
 ----
 PUT /_snapshot/my_gcs_repository/test-snapshot
 ----
 
 [id="{p}-setup-cronjob"]
-== Periodic snapshots with a CronJob
+=== Periodic snapshots with a CronJob
 
 You can set up a simple CronJob to take a snapshot every day.
 
