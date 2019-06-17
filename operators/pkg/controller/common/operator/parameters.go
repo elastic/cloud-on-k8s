@@ -9,13 +9,10 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
-	// OperatorClient is a Kubernetes client configured in the operator namespace and not in the managed namespace
-	OperatorClient client.Client
 	// OperatorImage is the operator docker image. The operator needs to be aware of its image to use it in sidecars.
 	OperatorImage string
 	// OperatorNamespace is the control plane namespace of the operator.

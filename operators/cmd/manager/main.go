@@ -256,7 +256,6 @@ func execute() {
 
 	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
-		OperatorClient:     operatorClient,
 		Dialer:             dialer,
 		OperatorImage:      operatorImage,
 		OperatorNamespace:  operatorNamespace,
