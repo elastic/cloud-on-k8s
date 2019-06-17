@@ -50,7 +50,7 @@ create_cluster() {
         echo "-> GKE cluster is running."
         # make sure cluster config is exported for kubectl
         export_credentials
-	      # also make sure that vm.max_map_count is set if PSP is enabled
+        # also make sure that vm.max_map_count is set if PSP is enabled
         if [ "$PSP" == "1" ]; then
             set_max_map_count
         fi
