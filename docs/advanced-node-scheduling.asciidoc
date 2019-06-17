@@ -11,9 +11,9 @@ Elastic Cloud on Kubernetes (ECK) offers full control over cluster nodes schedul
 
 These features can be combined together, to deploy a production-grade Elasticsearch cluster.
 
-=== Defining Elasticsearch nodes roles
+=== Define Elasticsearch nodes roles
 
-Elasticsearch nodes can be configured with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with, for example, 3 dedicated master nodes:
+You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
 
 [source,yaml]
 ----
@@ -132,7 +132,8 @@ volumeBindingMode: WaitForFirstConsumer
 
 ==== Node affinity
 
-To restrict scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector]:
+To restrict the scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
+This example schedules Elasticsearch pods on Kubernetes nodes tagged with both labels `diskType: ssd` and `environment: production`.
 
 [source,yaml]
 ----
@@ -150,8 +151,6 @@ spec:
           diskType: ssd
           environment: production
 ----
-
-The example above will schedule Elasticsearch pods on Kubernetes nodes tagged with both labels `diskType: ssd` and `environment: production`.
 
 You can achieve the same (and more) with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[node affinity]:
 
@@ -253,7 +252,7 @@ This example relies on:
 - nodes from each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
 - node affinity for each group of nodes set to match the Kubernetes nodes zone.
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
-- groups highlighted in the `updateStrategy`, allowing ECK to logically group pods together when performing topology changes. Depending on `updateStrategy.changeBudget`, ECK will make sure all logical groups have the requested number of nodes running before attempting any other topology change.
+- groups highlighted in the `updateStrategy`, allowing ECK to logically group pods together when performing topology changes. Depending on `updateStrategy.changeBudget`, ECK makes sure all logical groups have the requested number of nodes running before attempting any other topology change.
 
 === Hot-warm topologies
 
@@ -337,6 +336,6 @@ In this example, we configure two groups of nodes:
 - the first group has the `data` attribute set to `hot`. It is intended to run on hosts with high CPU resources and fast IO (SSD). Here we restrict pods to be scheduled on Kubernetes nodes labeled with `beta.kubernetes.io/instance-type: highio` (to adapt to your Kubernetes nodes labels).
 - the second group has the `data` attribute set to `warm`. It is intended to run on hosts with larger but maybe slower storage. Pods are restricted to be scheduled on nodes labeled with `beta.kubernetes.io/instance-type: highstorage`.
 
-Note: this example uses link:https://kubernetes.io/blog/2019/04/04/kubernetes-1.14-local-persistent-volumes-ga[Local Persistent Volumes] for both groups, but can be adapted to use high-performance volumes for `hot` nodes and high-storage volumes for `warm` nodes.
+NOTE: this example uses link:https://kubernetes.io/blog/2019/04/04/kubernetes-1.14-local-persistent-volumes-ga[Local Persistent Volumes] for both groups, but can be adapted to use high-performance volumes for `hot` nodes and high-storage volumes for `warm` nodes.
 
-Then, setup link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html[Index Lifecycle Management] policies on your indices, link:https://www.elastic.co/blog/implementing-hot-warm-cold-in-elasticsearch-with-index-lifecycle-management[optimizing for hot-warm architectures].
+Finally, setup link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html[Index Lifecycle Management] policies on your indices, link:https://www.elastic.co/blog/implementing-hot-warm-cold-in-elasticsearch-with-index-lifecycle-management[optimizing for hot-warm architectures].
