@@ -47,6 +47,8 @@ auth_service_account() {
 }
 
 create_cluster() {
+    # Setup SSH keys and config to ensure that we can ssh into it later
+    gcloud --quiet --project ${GCLOUD_PROJECT} compute config-ssh
     if gcloud beta container clusters --project "${GCLOUD_PROJECT}" describe --region "${GKE_CLUSTER_REGION}" "${GKE_CLUSTER_NAME}" > /dev/null 2>&1; then
         echo "-> GKE cluster is running."
         # make sure cluster config is exported for kubectl
