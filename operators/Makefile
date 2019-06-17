@@ -309,9 +309,7 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
-# TODO: It needs n1-standard-8 since 2 pods may be scheduled on the same machine.
-# We should be able to remove this when K8S min. version will be 1.12 and we can use
-# anti-affinity and storage class with volumeBindingMode=WaitForFirstConsumer.
+# Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
 ci-e2e:
 	$(MAKE) bootstrap-gke dep-vendor-only e2e PSP=1 GKE_MACHINE_TYPE=n1-standard-8
 
