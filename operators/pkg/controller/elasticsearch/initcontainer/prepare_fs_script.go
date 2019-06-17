@@ -90,11 +90,15 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	######################
 
 	# chown the data and logs volume to the elasticsearch user
+	# only done when running as root, other cases should be handled
+	# with a proper security context
 	chown_start=$(date +%s)
-	{{range .ChownToElasticsearch}}
-		echo "chowning {{.}} to elasticsearch:elasticsearch"
-		chown -v elasticsearch:elasticsearch {{.}}
-	{{end}}
+	if [[ $EUID -eq 0 ]]; then
+		{{range .ChownToElasticsearch}}
+			echo "chowning {{.}} to elasticsearch:elasticsearch"
+			chown -v elasticsearch:elasticsearch {{.}}
+		{{end}}
+	fi
 	echo "chown duration: $(duration $chown_start) sec."
 
 	######################
