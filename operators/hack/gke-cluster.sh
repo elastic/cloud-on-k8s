@@ -24,6 +24,19 @@ set -eu
 : "${GKE_GCP_SCOPES:=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append}"
 : "${GKE_SERVICE_ACCOUNT_KEY_FILE:=}"
 
+set_max_map_count() {
+    instances=$(gcloud compute instances list \
+                --filter="metadata.items.key['cluster-name']['value']='${GKE_CLUSTER_NAME}' AND metadata.items.key['cluster-name']['value']!='' " \
+                --format='value[separator=","](name,zone)')
+
+    for instance in $instances
+    do
+        name="${instance%,*}";
+        zone="${instance#*,}";
+        echo "Running sysctl -w vm.max_map_count=262144 on $name"
+        gcloud compute ssh $name --zone=$zone --command="sudo sysctl -w vm.max_map_count=262144"
+    done
+}
 
 auth_service_account() {
     if [[ ! -z "$GKE_SERVICE_ACCOUNT_KEY_FILE" ]]; then
@@ -37,7 +50,16 @@ create_cluster() {
         echo "-> GKE cluster is running."
         # make sure cluster config is exported for kubectl
         export_credentials
+	      # also make sure that vm.max_map_count is set if PSP is enabled
+        if [ "$PSP" == "1" ]; then
+            set_max_map_count
+        fi
         exit 0
+    fi
+
+    local PSP_OPTION
+    if [ "$PSP" == "1" ]; then
+        PSP_OPTION="--enable-pod-security-policy"
     fi
 
     echo "-> Creating GKE cluster..."
@@ -47,13 +69,20 @@ create_cluster() {
         --local-ssd-count "${GKE_LOCAL_SSD_COUNT}" --scopes "${GKE_GCP_SCOPES}" --num-nodes "${GKE_NODE_COUNT_PER_ZONE}" \
         --enable-cloud-logging --enable-cloud-monitoring --addons HorizontalPodAutoscaling,HttpLoadBalancing \
         --no-enable-autoupgrade --no-enable-autorepair --network "projects/${GCLOUD_PROJECT}/global/networks/default" \
-        --subnetwork "projects/${GCLOUD_PROJECT}/regions/${GKE_CLUSTER_REGION}/subnetworks/default"
+        --subnetwork "projects/${GCLOUD_PROJECT}/regions/${GKE_CLUSTER_REGION}/subnetworks/default" \
+        ${PSP_OPTION}
 
     # Export credentials for kubelet
     export_credentials
 
     # Create required role binding between the GCP account and the K8s cluster.
     kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
+
+    # set vm.max_map_count if PSP is enabled
+    if [ "$PSP" == "1" ]; then
+        set_max_map_count
+    fi
+
 }
 
 delete_cluster() {

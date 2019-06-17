@@ -45,6 +45,11 @@ NAMESPACE_OPERATOR_NAMESPACE ?= elastic-namespace-operators
 # namespace in which the namespace operator should watch resources
 MANAGED_NAMESPACE ?= default
 
+## -- Security
+
+# should environments be configured with PSP ?
+# TODO: only relevant on GKE for e2e tests for the moment
+PSP ?= 0
 
 #####################################
 ##  --       Development       --  ##
@@ -207,8 +212,11 @@ set-context-gke: credentials
 	$(eval KUBECTL_CLUSTER=$(shell GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) hack/gke-cluster.sh name))
 
 bootstrap-gke: require-gcloud-project
-	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
+	PSP=$(PSP) GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh create
 	$(MAKE) set-context-gke cluster-bootstrap
+ifeq ($(PSP), 1)
+	kubectl apply -f config/dev/elastic-psp.yaml
+endif
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
 
@@ -301,8 +309,11 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 
 # Run e2e tests in a dedicated gke cluster,
 # that we delete if everything went fine
+# TODO: It needs n1-standard-8 since 2 pods may be scheduled on the same machine.
+# We should be able to remove this when K8S min. version will be 1.12 and we can use
+# anti-affinity and storage class with volumeBindingMode=WaitForFirstConsumer.
 ci-e2e:
-	$(MAKE) bootstrap-gke dep-vendor-only e2e
+	$(MAKE) bootstrap-gke dep-vendor-only e2e PSP=1 GKE_MACHINE_TYPE=n1-standard-8
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
