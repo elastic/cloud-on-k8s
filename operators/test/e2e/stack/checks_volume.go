@@ -15,29 +15,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func CheckDefaultPVC(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStep {
-	return helpers.TestStep{
-		Name: "Elasticsearch data volumes should be using defaulted PVCs",
-		Test: func(t *testing.T) {
-			pods, err := k.GetPods(helpers.ESPodListOptions(es.Name))
-			require.NoError(t, err)
-			for _, p := range pods {
-				for _, v := range p.Spec.Volumes {
-					if v.Name != volume.ElasticsearchDataVolumeName {
-						continue
-					}
-					require.Nil(t, v.EmptyDir)
-					require.NotNil(t, v.PersistentVolumeClaim)
-				}
+func usesEmptyDir(es estype.Elasticsearch) bool {
+	var emptyDirUsed bool
+	for _, n := range es.Spec.Nodes {
+		for _, v := range n.PodTemplate.Spec.Volumes {
+			if v.EmptyDir != nil && v.Name == volume.ElasticsearchDataVolumeName {
+				emptyDirUsed = true
 			}
-		},
+		}
 	}
+	return emptyDirUsed
 }
 
-func CheckEmptyDir(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStep {
+func CheckESDataVolumeType(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch data volumes should be emptyDirs",
+		Name: "Elasticsearch data volumes should be of the specified type",
 		Test: func(t *testing.T) {
+			checkForEmptyDir := usesEmptyDir(es)
 			pods, err := k.GetPods(helpers.ESPodListOptions(es.Name))
 			require.NoError(t, err)
 			for _, p := range pods {
@@ -45,8 +39,13 @@ func CheckEmptyDir(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestSt
 					if v.Name != volume.ElasticsearchDataVolumeName {
 						continue
 					}
-					require.Nil(t, v.PersistentVolumeClaim)
-					require.NotNil(t, v.EmptyDir)
+					if checkForEmptyDir {
+						require.Nil(t, v.PersistentVolumeClaim)
+						require.NotNil(t, v.EmptyDir)
+					} else {
+						require.Nil(t, v.EmptyDir)
+						require.NotNil(t, v.PersistentVolumeClaim)
+					}
 				}
 			}
 		},

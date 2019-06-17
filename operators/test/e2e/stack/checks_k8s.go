@@ -38,7 +38,7 @@ func K8sStackChecks(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestSte
 		CheckClusterHealth(stack, k8sClient),
 		CheckClusterUUID(stack, k8sClient),
 		CheckESPassword(stack, k8sClient),
-		CheckDefaultPVC(stack.Elasticsearch, k8sClient),
+		CheckESDataVolumeType(stack.Elasticsearch, k8sClient),
 	}
 }
 

@@ -23,9 +23,9 @@ func TestVolumeEmptyDir(t *testing.T) {
 
 	helpers.TestStepList{}.
 		WithSteps(stack.InitTestSteps(initStack, k)...).
+		// volume type will be checked in cluster creation steps
 		WithSteps(stack.CreationTestSteps(initStack, k)...).
 		WithSteps(stack.ESClusterChecks(initStack.Elasticsearch, k)...).
-		WithSteps(stack.CheckEmptyDir(initStack.Elasticsearch, k)).
 		WithSteps(stack.DeletionTestSteps(initStack, k)...).
 		RunSequential(t)
 }
