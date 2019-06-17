@@ -10,14 +10,18 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	k8suuid "k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// UUIDCfgMapName is the name of a config map whose the uuid is used for as an operator uuid.
-// This operator UUID is then used in the OperatorInfo.
-const UUIDCfgMapName = "elastic-operator-uuid"
+const (
+	// UUIDCfgMapName is the name of a config map whose the uuid is used for as an operator uuid.
+	// This operator UUID is then used in the OperatorInfo.
+	UUIDCfgMapName = "elastic-operator-uuid"
+	// UUIDCfgMapName is the name of the key to retrieve the UUID in the config map dedicated to this usage.
+	UUIDCfgMapKey = "uuid"
+)
 
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
@@ -45,11 +49,16 @@ func (i OperatorInfo) IsDefined() bool {
 		i.BuildInfo.Date != "1970-01-01T00:00:00Z"
 }
 
-// NewOperatorInfo creates a new OperatorInfo given a operator namespace and a Kubernetes client config.
-func NewOperatorInfo(operatorUUID types.UID, operatorNs string, cfg *rest.Config) OperatorInfo {
-	distribution, err := getDistribution(cfg)
+// GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config and an operator namespace.
+func GetOperatorInfo(operatorClient client.Client, clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
+	operatorUUID, err := getOperatorUUID(operatorClient, operatorNs)
 	if err != nil {
-		distribution = "unknown"
+		return OperatorInfo{}, err
+	}
+
+	distribution, err := getDistribution(clientset)
+	if err != nil {
+		return OperatorInfo{}, err
 	}
 
 	return OperatorInfo{
@@ -62,47 +71,64 @@ func NewOperatorInfo(operatorUUID types.UID, operatorNs string, cfg *rest.Config
 			buildDate,
 			buildSnapshot,
 		},
-	}
+	}, nil
 }
 
-// GetOperatorUUID returns the operator UUID by retrieving a config map or creating it if it does not exist.
-func GetOperatorUUID(operatorClient client.Client, ns string) (types.UID, error) {
+// getOperatorUUID returns the operator UUID by retrieving a config map or creating it if it does not exist.
+func getOperatorUUID(operatorClient client.Client, operatorNs string) (types.UID, error) {
 	c := k8s.WrapClient(operatorClient)
 	// get the config map
 	var reconciledCfgMap corev1.ConfigMap
 	err := c.Get(types.NamespacedName{
-		Namespace: ns,
+		Namespace: operatorNs,
 		Name:      UUIDCfgMapName,
 	}, &reconciledCfgMap)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return types.UID(""), nil
+		return types.UID(""), err
 	}
 
 	// or create it
 	if err != nil && apierrors.IsNotFound(err) {
+		newUUID := k8suuid.NewUUID()
 		cfgMap := corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: ns,
+				Namespace: operatorNs,
 				Name:      UUIDCfgMapName,
-			}}
+			},
+			Data: map[string]string{
+				UUIDCfgMapKey: string(newUUID),
+			},
+		}
 		err = c.Create(&cfgMap)
 		if err != nil {
-			return types.UID(""), nil
+			return types.UID(""), err
 		}
 
-		return cfgMap.UID, nil
+		return newUUID, nil
 	}
 
-	return reconciledCfgMap.UID, nil
+	UUID, ok := reconciledCfgMap.Data[UUIDCfgMapKey]
+	// or update it
+	if !ok {
+		newUUID := k8suuid.NewUUID()
+		if reconciledCfgMap.Data == nil {
+			reconciledCfgMap.Data = map[string]string{}
+		}
+		reconciledCfgMap.Data[UUIDCfgMapKey] = string(newUUID)
+		err := c.Update(&reconciledCfgMap)
+		if err != nil && !apierrors.IsNotFound(err) {
+			return types.UID(""), err
+		}
+
+		return newUUID, nil
+	}
+
+	return types.UID(UUID), nil
 }
 
 // getDistribution returns the k8s distribution by fetching the GitVersion (legacy name) of the Info returned by ServerVersion().
-func getDistribution(cfg *rest.Config) (string, error) {
-	clientset, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		return "", err
-	}
-	version, err := clientset.ServerVersion()
+func getDistribution(clientset kubernetes.Interface) (string, error) {
+	version, err := clientset.Discovery().ServerVersion()
 	if err != nil {
 		return "", err
 	}

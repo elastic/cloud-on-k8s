@@ -24,6 +24,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -251,8 +252,17 @@ func execute() {
 	}
 
 	// Setup operator info
-	operatorUUID, err := about.GetOperatorUUID(operatorClient, operatorNamespace)
-	operatorInfo := about.NewOperatorInfo(operatorUUID, operatorNamespace, cfg)
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "unable to create k8s clientset")
+		os.Exit(1)
+	}
+
+	operatorInfo, err := about.GetOperatorInfo(operatorClient, clientset, operatorNamespace)
+	if err != nil {
+		log.Error(err, "unable to get operator info")
+		os.Exit(1)
+	}
 
 	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
