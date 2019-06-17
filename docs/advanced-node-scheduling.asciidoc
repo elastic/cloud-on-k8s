@@ -4,13 +4,15 @@
 
 Elastic Cloud on Kubernetes (ECK) offers full control over cluster nodes scheduling by combining Elasticsearch configuration with Kubernetes scheduling options:
 
-* defining Elasticsearch nodes roles
-* pod affinity and anti-affinity
-* availability zone and rack awareness
-* hot-warm-cold architecture
+* <<{p}-define-elasticsearch-nodes-roles,define Elasticsearch nodes roles>>
+* <<{p}-affinity-options,pod affinity and anti-affinity>>
+* <<{p}-availability-zone-awareness,availability zone and rack awareness>>
+* <<{p}-hot-warm-topologies,hot-warm topologies>>
 
 These features can be combined together, to deploy a production-grade Elasticsearch cluster.
 
+[float]
+[id="{p}-define-elasticsearch-nodes-roles"]
 === Define Elasticsearch nodes roles
 
 You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
@@ -39,6 +41,8 @@ spec:
       node.ingest: true
 ----
 
+[float]
+[id="{p}-affinity-options"]
 === Affinity options
 
 You can setup various link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node[affinity and anti-affinity options] through the `podTemplate` section of the Elasticsearch resource specification.
@@ -188,6 +192,8 @@ spec:
 
 This example restricts Elasticsearch nodes to be scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
 
+[float]
+[id="{p}-availability-zone-awareness"]
 === Availability zone awareness
 
 By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an availability zone-aware Elasticsearch cluster:
@@ -254,6 +260,8 @@ This example relies on:
 - Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
 - groups highlighted in the `updateStrategy`, allowing ECK to logically group pods together when performing topology changes. Depending on `updateStrategy.changeBudget`, ECK makes sure all logical groups have the requested number of nodes running before attempting any other topology change.
 
+[float]
+[id="{p}-hot-warm-topologies"]
 === Hot-warm topologies
 
 By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an Elasticsearch cluster with hot-warm topology:
