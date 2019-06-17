@@ -35,7 +35,7 @@ set_max_map_count() {
         name="${instance%,*}";
         zone="${instance#*,}";
         echo "Running sysctl -w vm.max_map_count=262144 on $name"
-        gcloud compute ssh $name --zone=$zone --command="sudo sysctl -w vm.max_map_count=262144"
+        gcloud -q compute ssh $name --zone=$zone --command="sudo sysctl -w vm.max_map_count=262144"
     done
 }
 
