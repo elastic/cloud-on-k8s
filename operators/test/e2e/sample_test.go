@@ -39,7 +39,8 @@ func readSampleStack() stack.Builder {
 	// set namespace and version
 	return sampleStack.
 		WithNamespace(params.Namespace).
-		WithVersion(params.ElasticStackVersion)
+		WithVersion(params.ElasticStackVersion).
+		WithRestrictedSecurityContext()
 }
 
 // TestStackSample runs a test suite using the sample stack
