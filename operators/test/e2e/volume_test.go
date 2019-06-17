@@ -13,22 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 )
 
-func TestVolumeDefaultPVC(t *testing.T) {
-	k := helpers.NewK8sClientOrFatal()
-
-	initStack := stack.NewStackBuilder("test-es-default-pvc").
-		WithESMasterNodes(1, stack.DefaultResources)
-
-	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(initStack, k)...).
-		WithSteps(stack.CreationTestSteps(initStack, k)...).
-		WithSteps(stack.ESClusterChecks(initStack.Elasticsearch, k)...).
-		WithSteps(stack.CheckDefaultPVC(initStack.Elasticsearch, k)).
-		WithSteps(stack.DeletionTestSteps(initStack, k)...).
-		RunSequential(t)
-
-}
-
+// TestVolumeEmptyDir tests a manual override of the default persistent storage with emptyDir.
 func TestVolumeEmptyDir(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 
