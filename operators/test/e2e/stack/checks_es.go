@@ -149,10 +149,6 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 						return err
 					}
 
-					if !compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) {
-						fmt.Printf("Memory is different %v VS %v\n", topoElem, cgroupMemoryLimitsInBytes)
-					}
-
 					if cfg.Node == nodeRoles &&
 						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
 						// compare the base names of the pod and topology to ensure they're from the same nodespec
