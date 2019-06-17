@@ -330,7 +330,7 @@ func DoKibanaReq(k *helpers.K8sHelper, stack Builder, method string, uri string,
 		return nil, err
 	}
 
-	u, err := url.Parse(fmt.Sprintf("http://%s.%s.svc:5601", kbname.HTTPService(stack.Kibana.Name), stack.Kibana.Namespace))
+	u, err := url.Parse(fmt.Sprintf("http://%s.%s:5601", kbname.HTTPService(stack.Kibana.Name), stack.Kibana.Namespace))
 	if err != nil {
 		return nil, err
 	}
