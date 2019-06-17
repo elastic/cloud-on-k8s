@@ -15,10 +15,10 @@ For more information on Elasticsearch snapshots, see https://www.elastic.co/guid
 [id="{p}-install-plugin"]
 == Install the Storage Repository Plugin
 
-You can install the storage repository plugin either by using a custom image or by adding your own init container which
+To install the storage repository plugin, you can either use a custom image or add your own init container which
 installs the plugin at pod creation time.
 
-To use your own custom image with all necessary plugins pre-installed use an Elasticsearch resource like this one:
+To use your own custom image with all necessary plugins pre-installed, use an Elasticsearch resource like the following one:
 
 [source,yaml]
 ----
@@ -33,7 +33,7 @@ spec:
   - nodeCount: 1
 ----
 
-Or alternatively install the plugin at pod creation time by using an init container:
+Alternatively install the plugin at pod creation time by using an init container:
 
 [source,yaml]
 ----
