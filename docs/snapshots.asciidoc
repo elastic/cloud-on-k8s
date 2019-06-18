@@ -12,6 +12,7 @@ The examples below use the https://www.elastic.co/guide/en/elasticsearch/plugins
 
 For more information on Elasticsearch snapshots, see https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-snapshots.html[Snapshot and Restore].
 
+[float]
 [id="{p}-install-plugin"]
 === Install the Storage Repository Plugin
 
@@ -33,7 +34,7 @@ spec:
   - nodeCount: 1
 ----
 
-Alternatively install the plugin at pod creation time by using an init container:
+Alternatively, install the plugin at pod creation time by using an init container:
 
 [source,yaml]
 ----
@@ -63,11 +64,11 @@ Assuming you stored this in a file called `elasticsearch.yaml` you can in both c
 kubectl apply -f elasticsearch.yaml
 ----
 
-
+[float]
 [id="{p}-secure-settings"]
 === Configure GCS credentials via the Elasticsearch keystore
 
-The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html[Google Cloud Storage Repository Plugin]).
+The Elasticsearch GCS repository plugin requires a JSON file that contains service account credentials. These need to be added as secure settings to the Elasticsearch keystore. For more details, see https://www.elastic.co/guide/en/elasticsearch/plugins/master/repository-gcs-usage.html[Google Cloud Storage Repository Plugin].
 
 Using ECK, you can automatically inject secure settings into a cluster node by providing them through a secret in the Elasticsearch Spec.
 
@@ -117,6 +118,7 @@ kubectl apply -f elasticsearch.yml
 
 GCS credentials are automatically propagated into each node's keystore. It can take up to a few minutes, depending on the number of secrets in the keystore. You don't have to restart the nodes.
 
+[float]
 [id="{p}-create-repository"]
 === Register the repository in Elasticsearch
 
@@ -141,6 +143,7 @@ PUT /_snapshot/my_gcs_repository
 PUT /_snapshot/my_gcs_repository/test-snapshot
 ----
 
+[float]
 [id="{p}-setup-cronjob"]
 === Periodic snapshots with a CronJob
 
