@@ -88,13 +88,6 @@ func podSpecContext(
 		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.KeystoreUserVolumeName,
 		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
 	)
-	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
-	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		"",
-		esvolume.TransportCertificatesSecretVolumeName,
-		esvolume.TransportCertificatesSecretVolumeMountPath,
-	)
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
 		name.SecureSettingsSecret(p.Elasticsearch.Name),
 		esvolume.SecureSettingsVolumeName,
@@ -105,6 +98,34 @@ func podSpecContext(
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
+
+	// A few secret volumes will be generated based on the pod name.
+	// At this point the (maybe future) pod does not have a name yet: we still want to
+	// create corresponding volumes and volume mounts for pod spec comparison purpose.
+	// Let's create them with a placeholder for the pod name. Volume mounts will be correct,
+	// and secret refs in Volumes Mounts will be fixed right before pod creation,
+	// if this spec ends up leading to a new pod creation.
+	podNamePlaceholder := "pod-name-placeholder"
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.TransportCertsSecret(podNamePlaceholder),
+		esvolume.TransportCertificatesSecretVolumeName,
+		esvolume.TransportCertificatesSecretVolumeMountPath,
+	)
+	configVolume := settings.ConfigSecretVolume(podNamePlaceholder)
+
+	// append future volumes from PVCs (not resolved to a claim yet)
+	persistentVolumes := make([]corev1.Volume, 0, len(p.NodeSpec.VolumeClaimTemplates))
+	for _, claimTemplate := range p.NodeSpec.VolumeClaimTemplates {
+		persistentVolumes = append(persistentVolumes, corev1.Volume{
+			Name: claimTemplate.Name,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					// actual claim name will be resolved and fixed right before pod creation
+					ClaimName: "claim-name-placeholder",
+				},
+			},
+		})
+	}
 
 	// build on top of the user-provided pod template spec
 	builder := defaults.NewPodTemplateBuilder(p.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
@@ -136,18 +157,27 @@ func podSpecContext(
 
 	builder = builder.
 		WithVolumes(
-			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
-				initcontainer.ProcessManagerVolume.Volume(),
-				p.UsersSecretVolume.Volume(),
-				p.UnicastHostsVolume.Volume(),
-				probeSecret.Volume(),
-				keystoreUserSecret.Volume(),
-				secureSettingsVolume.Volume(),
-				httpCertificatesVolume.Volume(),
-				scriptsVolume.Volume(),
-			)...).
+			append(
+				persistentVolumes, // includes the data volume, unless specified differently in the pod template
+				append(
+					initcontainer.PluginVolumes.Volumes(),
+					esvolume.DefaultLogsVolume,
+					initcontainer.ProcessManagerVolume.Volume(),
+					p.UsersSecretVolume.Volume(),
+					p.UnicastHostsVolume.Volume(),
+					probeSecret.Volume(),
+					transportCertificatesVolume.Volume(),
+					keystoreUserSecret.Volume(),
+					secureSettingsVolume.Volume(),
+					httpCertificatesVolume.Volume(),
+					scriptsVolume.Volume(),
+					configVolume.Volume(),
+				)...)...).
 		WithVolumeMounts(
-			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
+			append(
+				initcontainer.PluginVolumes.EsContainerVolumeMounts(),
+				esvolume.DefaultDataVolumeMount,
+				esvolume.DefaultLogsVolumeMount,
 				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
@@ -157,6 +187,7 @@ func podSpecContext(
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
+				configVolume.VolumeMount(),
 			)...).
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
