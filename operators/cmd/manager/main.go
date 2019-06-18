@@ -19,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
@@ -242,23 +241,14 @@ func execute() {
 		os.Exit(1)
 	}
 
-	// Setup a Kubernetes client without cache to request resources in the operator namespace and not in the
-	// managed namespaces until we upgrade the controller-runtime to be able to read in n namespaces with the
-	// cache enabled
-	operatorClient, err := k8s.NewClientGo(cfg)
-	if err != nil {
-		log.Error(err, "unable to set operator k8s client")
-		os.Exit(1)
-	}
-
-	// Setup operator info
+	// Setup a client to set the operator uuid config map
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		log.Error(err, "unable to create k8s clientset")
 		os.Exit(1)
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(operatorClient, clientset, operatorNamespace)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
 	if err != nil {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)

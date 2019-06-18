@@ -5,14 +5,12 @@
 package about
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8suuid "k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/client-go/kubernetes"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -50,8 +48,8 @@ func (i OperatorInfo) IsDefined() bool {
 }
 
 // GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config and an operator namespace.
-func GetOperatorInfo(operatorClient client.Client, clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
-	operatorUUID, err := getOperatorUUID(operatorClient, operatorNs)
+func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
+	operatorUUID, err := getOperatorUUID(clientset, operatorNs)
 	if err != nil {
 		return OperatorInfo{}, err
 	}
@@ -75,14 +73,11 @@ func GetOperatorInfo(operatorClient client.Client, clientset kubernetes.Interfac
 }
 
 // getOperatorUUID returns the operator UUID by retrieving a config map or creating it if it does not exist.
-func getOperatorUUID(operatorClient client.Client, operatorNs string) (types.UID, error) {
-	c := k8s.WrapClient(operatorClient)
+func getOperatorUUID(clientset kubernetes.Interface, operatorNs string) (types.UID, error) {
+	c := clientset.CoreV1().ConfigMaps(operatorNs)
+
 	// get the config map
-	var reconciledCfgMap corev1.ConfigMap
-	err := c.Get(types.NamespacedName{
-		Namespace: operatorNs,
-		Name:      UUIDCfgMapName,
-	}, &reconciledCfgMap)
+	reconciledCfgMap, err := c.Get(UUIDCfgMapName, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return types.UID(""), err
 	}
@@ -99,7 +94,7 @@ func getOperatorUUID(operatorClient client.Client, operatorNs string) (types.UID
 				UUIDCfgMapKey: string(newUUID),
 			},
 		}
-		err = c.Create(&cfgMap)
+		_, err = c.Create(&cfgMap)
 		if err != nil {
 			return types.UID(""), err
 		}
@@ -115,7 +110,7 @@ func getOperatorUUID(operatorClient client.Client, operatorNs string) (types.UID
 			reconciledCfgMap.Data = map[string]string{}
 		}
 		reconciledCfgMap.Data[UUIDCfgMapKey] = string(newUUID)
-		err := c.Update(&reconciledCfgMap)
+		_, err := c.Update(reconciledCfgMap)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return types.UID(""), err
 		}

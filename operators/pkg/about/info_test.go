@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const fakeOperatorNs = "elastic-system-test"
@@ -66,11 +65,10 @@ func TestGetOperatorInfo(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			fakeOperatorClient := fake.NewFakeClient(test.initObjs...)
-			fakeClientset := k8sfake.NewSimpleClientset()
+			fakeClientset := k8sfake.NewSimpleClientset(test.initObjs...)
 
 			// retrieve operator info a first time
-			operatorInfo, err := GetOperatorInfo(fakeOperatorClient, fakeClientset, fakeOperatorNs)
+			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs)
 			require.NoError(t, err)
 
 			// the operator uuid should be defined
@@ -78,7 +76,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			test.assert(uuid)
 
 			// retrieve operator info a second time
-			operatorInfo, err = GetOperatorInfo(fakeOperatorClient, fakeClientset, fakeOperatorNs)
+			operatorInfo, err = GetOperatorInfo(fakeClientset, fakeOperatorNs)
 			require.NoError(t, err)
 
 			// the operator uuid should be the same than the first time
