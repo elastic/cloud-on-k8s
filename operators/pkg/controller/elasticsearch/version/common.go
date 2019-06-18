@@ -57,7 +57,7 @@ func NewExpectedPodSpecs(
 				// pod params
 				NodeSpec: node,
 			}
-			podSpec, config, err := podSpec(
+			podSpecCtx, err := podSpecContext(
 				params,
 				operatorImage,
 				newEnvironmentVarsFn,
@@ -68,7 +68,7 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, NodeSpec: node, Config: config})
+			podSpecs = append(podSpecs, podSpecCtx)
 		}
 	}
 
@@ -175,13 +175,18 @@ func podSpec(
 	if err != nil {
 		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}
+	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
 
-	return builder.PodTemplate.Spec, esConfig, nil
+	return pod.PodSpecContext{
+		NodeSpec: p.NodeSpec,
+		PodSpec:  builder.PodTemplate.Spec,
+		Labels:   builder.PodTemplate.Labels,
+		Config:   esConfig,
+	}, nil
 }
 
 // NewPod constructs a pod from the given parameters.
 func NewPod(
-	version version.Version,
 	es v1alpha1.Elasticsearch,
 	podSpecCtx pod.PodSpecContext,
 ) (corev1.Pod, error) {
@@ -191,13 +196,8 @@ func NewPod(
 	// set our own name & namespace
 	builder.PodTemplate.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
 	builder.PodTemplate.Namespace = es.Namespace
-
-	cfg, err := podSpecCtx.Config.Unpack()
-	if err != nil {
-		return corev1.Pod{}, err
-	}
-
-	builder = builder.WithLabels(label.NewPodLabels(es, version, cfg))
+	// apply labels computed in the podSpecCtx
+	builder.PodTemplate.Labels = podSpecCtx.Labels
 
 	if podSpecCtx.PodSpec.Hostname == "" {
 		podSpecCtx.PodSpec.Hostname = builder.PodTemplate.Name

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -28,12 +29,14 @@ var es = v1alpha1.Elasticsearch{
 }
 
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
+	spec := ESPodSpecContext(image, cpuLimit).PodSpec
 	return pod.PodWithConfig{
 		Pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+				Name:   name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+				Labels: hash.SetSpecHashLabel(nil, spec),
 			},
-			Spec: ESPodSpecContext(image, cpuLimit).PodSpec,
+			Spec: spec,
 		},
 	}
 }

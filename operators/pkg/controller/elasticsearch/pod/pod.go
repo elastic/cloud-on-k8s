@@ -130,6 +130,7 @@ type NewPodSpecParams struct {
 // PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
 type PodSpecContext struct {
 	PodSpec  corev1.PodSpec
+	Labels   map[string]string
 	NodeSpec v1alpha1.NodeSpec
 	Config   settings.CanonicalConfig
 }
