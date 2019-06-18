@@ -16,6 +16,7 @@ pipeline {
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
         TESTS_MATCH = 'TestSmoke'
         GKE_CLUSTER_VERSION = '1.11'
+        GKE_CLUSTER_NAME = "${BUILD_TAG}"
     }
 
     stages {
@@ -27,17 +28,12 @@ pipeline {
                     }
                     steps {
                         checkout scm
-
                         sh 'make -C build/ci ci-pr'
                     }
                 }
                 stage("Run smoke E2E tests") {
-                    agent {
-                        label 'linux'
-                    }
                     steps {
                         checkout scm
-
                         sh 'make -C build/ci ci-e2e'
                     }
                 }

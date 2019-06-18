@@ -26,7 +26,7 @@ RUN set -x \
     && chmod 755 /eck
 
 WORKDIR /eck
-USER elastic
+USER 101
 
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/elastic-operator .
 COPY --from=builder /go/src/github.com/elastic/cloud-on-k8s/operators/process-manager .

@@ -40,10 +40,12 @@ func TestApmEsKibanaSample(t *testing.T) {
 	// set namespace and version
 	sampleStack = sampleStack.
 		WithNamespace(params.Namespace).
-		WithVersion(params.ElasticStackVersion)
+		WithVersion(params.ElasticStackVersion).
+		WithRestrictedSecurityContext()
 	sampleApm = sampleApm.
 		WithNamespace(params.Namespace).
-		WithVersion(params.ElasticStackVersion)
+		WithVersion(params.ElasticStackVersion).
+		WithRestrictedSecurityContext()
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.

@@ -94,20 +94,31 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 		}),
 	}
 }
+
 func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch nodes topology should be the expected one",
-		Test: func(t *testing.T) {
+		Name: "Elasticsearch nodes topology should eventually be the expected one",
+		Test: helpers.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
 
 			nodes, err := e.client.GetNodes(ctx)
-			require.NoError(t, err)
-			require.Equal(t, int(es.Spec.NodeCount()), len(nodes.Nodes))
+			if err != nil {
+				return err
+			}
+			if int(es.Spec.NodeCount()) != len(nodes.Nodes) {
+				return fmt.Errorf("expected node count %d but was %d", es.Spec.NodeCount(), len(nodes.Nodes))
+			}
 
 			nodesStats, err := e.client.GetNodesStats(ctx)
-			require.NoError(t, err)
-			require.Equal(t, int(es.Spec.NodeCount()), len(nodesStats.Nodes))
+			if err != nil {
+				return err
+			}
+			if int(es.Spec.NodeCount()) != len(nodesStats.Nodes) {
+				return fmt.Errorf(
+					"expected node count %d but _nodes/stats returned %d", es.Spec.NodeCount(), len(nodesStats.Nodes),
+				)
+			}
 
 			// flatten the topology
 			var expectedTopology []estype.NodeSpec
@@ -120,12 +131,22 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 			for nodeId, node := range nodes.Nodes {
 				nodeRoles := rolesToConfig(node.Roles)
 
-				require.Contains(t, nodesStats.Nodes, nodeId)
-				nodeStats := nodesStats.Nodes[nodeId]
+				var found bool
+				for k, _ := range nodesStats.Nodes {
+					if k == nodeId {
+						found = true
+					}
+				}
+				if !found {
+					return fmt.Errorf("%s was not in %+v", nodeId, nodesStats.Nodes)
+				}
 
+				nodeStats := nodesStats.Nodes[nodeId]
 				for i, topoElem := range expectedTopology {
 					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					podNameExample := name.NewPodName(es.Name, topoElem)
 
@@ -133,7 +154,9 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 					cgroupMemoryLimitsInBytes, err := strconv.ParseInt(
 						nodeStats.OS.CGroup.Memory.LimitInBytes, 10, 64,
 					)
-					require.NoError(t, err)
+					if err != nil {
+						return err
+					}
 
 					if cfg.Node == nodeRoles &&
 						compareMemoryLimit(topoElem, cgroupMemoryLimitsInBytes) &&
@@ -146,8 +169,11 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				}
 			}
 			// expected topology should have matched all nodes
-			require.Empty(t, expectedTopology)
-		},
+			if len(expectedTopology) > 0 {
+				return fmt.Errorf("expected elements missing from cluster %+v", expectedTopology)
+			}
+			return nil
+		}),
 	}
 }
 

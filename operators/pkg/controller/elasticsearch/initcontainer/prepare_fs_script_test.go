@@ -20,7 +20,7 @@ func TestRenderScriptTemplate(t *testing.T) {
 		{
 			name: "Standard script rendering",
 			params: TemplateParams{
-				SharedVolumes: PrepareFsSharedVolumes,
+				PluginVolumes: PluginVolumes,
 				LinkedFiles: LinkedFilesArray{
 					Array: []LinkedFile{
 						LinkedFile{

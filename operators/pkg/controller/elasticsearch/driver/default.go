@@ -23,6 +23,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
@@ -126,8 +127,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	scriptsConfigMap := prepareScriptsConfigMap(es)
-	if err := configmap.ReconcileConfigMap(d.Client, d.Scheme, es, scriptsConfigMap); err != nil {
+	if err := reconcileScriptsConfigMap(d.Client, d.Scheme, es); err != nil {
 		return results.WithError(err)
 	}
 
@@ -535,10 +535,22 @@ func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user
 	return esclient.NewElasticsearchClient(d.Dialer, url, user.Auth(), v, caCerts)
 }
 
-func prepareScriptsConfigMap(es v1alpha1.Elasticsearch) corev1.ConfigMap {
-	return configmap.NewConfigMapWithData(
+func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
+	fsScript, err := initcontainer.RenderPrepareFsScript()
+	if err != nil {
+		return err
+	}
+
+	scriptsConfigMap := configmap.NewConfigMapWithData(
 		types.NamespacedName{Namespace: es.Namespace, Name: name.ScriptsConfigMap(es.Name)},
 		map[string]string{
-			pod.ReadinessProbeScriptConfigKey: pod.ReadinessProbeScript,
+			pod.ReadinessProbeScriptConfigKey:      pod.ReadinessProbeScript,
+			initcontainer.PrepareFsScriptConfigKey: fsScript,
 		})
+
+	if err := configmap.ReconcileConfigMap(c, scheme, es, scriptsConfigMap); err != nil {
+		return err
+	}
+
+	return nil
 }
