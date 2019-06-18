@@ -17,6 +17,8 @@ TESTS_MATCH="$2" # Expression to match go test names (can be "")
 JOB_NAME="eck-e2e-tests-$(LC_CTYPE=C tr -dc 'a-z0-9' < /dev/urandom | fold -w 6 | head -n 1)"
 NAMESPACE="e2e"
 
+# exit early if another job already exists
+set +e
 kubectl -n e2e get job $JOB_NAME && \
     echo "Job $JOB_NAME already exists, please delete it first. Exiting." && \
     exit 1
