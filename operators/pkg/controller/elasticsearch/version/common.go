@@ -101,7 +101,7 @@ func podSpecContext(
 
 	// A few secret volumes will be generated based on the pod name.
 	// At this point the (maybe future) pod does not have a name yet: we still want to
-	// create corresponding volumes and volume mounts for pod spec comparison purpose.
+	// create corresponding volumes and volume mounts for pod spec comparisons.
 	// Let's create them with a placeholder for the pod name. Volume mounts will be correct,
 	// and secret refs in Volumes Mounts will be fixed right before pod creation,
 	// if this spec ends up leading to a new pod creation.

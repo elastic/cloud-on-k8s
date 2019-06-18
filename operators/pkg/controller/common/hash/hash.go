@@ -18,7 +18,7 @@ const (
 )
 
 // SetSpecHashLabel adds a label containing the hash of the given spec into the
-// given labels. This label can then be used for spec comparison purpose.
+// given labels. This label can then be used for spec comparisons.
 func SetSpecHashLabel(labels map[string]string, spec interface{}) map[string]string {
 	if labels == nil {
 		labels = map[string]string{}
@@ -35,7 +35,7 @@ func GetSpecHashLabel(labels map[string]string) string {
 // HashObject writes the specified object to a hash using the spew library
 // which follows pointers and prints actual values of the nested objects
 // ensuring the hash does not change when a pointer changes.
-// The returned hash can be used for object comparison purpose.
+// The returned hash can be used for object comparisons.
 //
 // This is inspired by controller revisions in StatefulSets:
 // https://github.com/kubernetes/kubernetes/blob/8de1569ddae62e8fab559fe6bd210a5d6100a277/pkg/controller/history/controller_history.go#L89-L101
