@@ -5,19 +5,20 @@
 package comparison
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 var es = v1alpha1.Elasticsearch{
@@ -26,13 +27,13 @@ var es = v1alpha1.Elasticsearch{
 	},
 }
 
-func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
+func ESPodWithConfig(spec pod.PodSpecContext) pod.PodWithConfig {
 	return pod.PodWithConfig{
 		Pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
 			},
-			Spec: ESPodSpecContext(image, cpuLimit).PodSpec,
+			Spec: spec.PodSpec,
 		},
 	}
 }
@@ -53,6 +54,16 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 					Requests: corev1.ResourceList{
 						corev1.ResourceCPU:    resource.MustParse("100m"),
 						corev1.ResourceMemory: resource.MustParse("2Gi"),
+					},
+				},
+				Env: []corev1.EnvVar{
+					{
+						Name:  "var1",
+						Value: "value1",
+					},
+					{
+						Name:  "var2",
+						Value: "value2",
 					},
 				},
 				ReadinessProbe: &corev1.Probe{
@@ -76,16 +87,16 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 	}
 }
 
-func withEnv(env []corev1.EnvVar, ps pod.PodSpecContext) pod.PodSpecContext {
-	ps.PodSpec.Containers[0].Env = env
-	return ps
+func withSpecHashLabel(p pod.PodWithConfig) pod.PodWithConfig {
+	p.Pod.Labels = hash.SetSpecHashLabel(p.Pod.Labels, p.Pod.Spec)
+	return p
 }
 
 var defaultCPULimit = "800m"
 var defaultImage = "image"
 
-// withPVCs is a small utility function to add PVCs to a Pod, the varargs argument is the volume name and claim names.
-func withPVCs(p pod.PodWithConfig, nameAndClaimNames ...string) pod.PodWithConfig {
+// withPVCs is a small utility function to add PVCs to a Pod spec, the varargs argument is the volume name and claim names.
+func withPVCs(p pod.PodSpecContext, nameAndClaimNames ...string) pod.PodSpecContext {
 	lenNameAndClaimNames := len(nameAndClaimNames)
 
 	if lenNameAndClaimNames%2 != 0 {
@@ -96,7 +107,7 @@ func withPVCs(p pod.PodWithConfig, nameAndClaimNames ...string) pod.PodWithConfi
 		volumeName := nameAndClaimNames[i]
 		claimName := nameAndClaimNames[i+1]
 
-		p.Pod.Spec.Volumes = append(p.Pod.Spec.Volumes, corev1.Volume{
+		p.PodSpec.Volumes = append(p.PodSpec.Volumes, corev1.Volume{
 			Name: volumeName,
 			VolumeSource: corev1.VolumeSource{
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
@@ -125,19 +136,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 		expectedMismatchesContain string
 	}{
 		{
-			name: "Call with invalid specs should return an error",
-			args: args{
-				pod:  pod.PodWithConfig{},
-				spec: pod.PodSpecContext{PodSpec: corev1.PodSpec{}},
-			},
-			want:               false,
-			wantErr:            errors.New("No container named elasticsearch in the given pod"),
-			expectedMismatches: nil,
-		},
-		{
 			name: "Matching pod should match",
 			args: args{
-				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
+				pod:  withSpecHashLabel(ESPodWithConfig(ESPodSpecContext(defaultImage, defaultCPULimit))),
 				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
 			},
 			want:               true,
@@ -147,17 +148,17 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Non-matching image should not match",
 			args: args{
-				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
+				pod:  withSpecHashLabel(ESPodWithConfig(ESPodSpecContext(defaultImage, defaultCPULimit))),
 				spec: ESPodSpecContext("another-image", defaultCPULimit),
 			},
 			want:               false,
 			wantErr:            nil,
-			expectedMismatches: []string{"Docker image mismatch: expected another-image, actual image"},
+			expectedMismatches: []string{"Spec hash and running pod spec hash are not equal"},
 		},
 		{
 			name: "Spec has different NodeSpec.Name",
 			args: args{
-				pod: pod.PodWithConfig{
+				pod: withSpecHashLabel(pod.PodWithConfig{
 					Pod: corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{
@@ -166,7 +167,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 						},
 						Spec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					},
-				},
+				}),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
@@ -181,14 +182,14 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has empty NodeSpec.Name",
 			args: args{
-				pod: pod.PodWithConfig{
+				pod: withSpecHashLabel(pod.PodWithConfig{
 					Pod: corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
 						},
 						Spec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					},
-				},
+				}),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
@@ -201,75 +202,19 @@ func Test_PodMatchesSpec(t *testing.T) {
 			expectedMismatches: []string{"Pod base name mismatch: expected elasticsearch-es-bar, actual elasticsearch-es"},
 		},
 		{
-			name: "Spec has extra env var",
+			name: "Non-matching resources should not match",
 			args: args{
-				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
-				spec: withEnv(
-					[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
-					ESPodSpecContext(defaultImage, defaultCPULimit),
-				),
-			},
-			want:               false,
-			wantErr:            nil,
-			expectedMismatches: []string{"Environment variable foo mismatch: expected [bar], actual []"},
-		},
-		{
-			name: "Pod has extra env var",
-			args: args{
-				pod: pod.PodWithConfig{
-					Pod: corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
-						},
-						Spec: withEnv(
-							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
-							ESPodSpecContext(defaultImage, defaultCPULimit),
-						).PodSpec,
-					},
-				},
-				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
-			},
-			want:               false,
-			wantErr:            nil,
-			expectedMismatches: []string{"Actual has additional env variables: map[foo:{foo bar nil}]"},
-		},
-		{
-			name: "Pod and Spec have different env var contents",
-			args: args{
-				pod: pod.PodWithConfig{
-					Pod: corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
-						},
-						Spec: withEnv(
-							[]corev1.EnvVar{{Name: "foo", Value: "bar"}},
-							ESPodSpecContext(defaultImage, defaultCPULimit),
-						).PodSpec,
-					},
-				},
-				spec: withEnv(
-					[]corev1.EnvVar{{Name: "foo", Value: "baz"}},
-					ESPodSpecContext(defaultImage, defaultCPULimit),
-				),
-			},
-			want:               false,
-			wantErr:            nil,
-			expectedMismatches: []string{"Environment variable foo mismatch: expected [baz], actual [bar]"},
-		},
-		{
-			name: "Non-matching resources should match",
-			args: args{
-				pod:  ESPodWithConfig(defaultImage, defaultCPULimit),
+				pod:  withSpecHashLabel(ESPodWithConfig(ESPodSpecContext(defaultImage, defaultCPULimit))),
 				spec: ESPodSpecContext(defaultImage, "600m"),
 			},
 			want:                      false,
 			wantErr:                   nil,
-			expectedMismatchesContain: "Different resource limits: expected ",
+			expectedMismatchesContain: "Spec hash and running pod spec hash are not equal",
 		},
 		{
 			name: "Pod is missing a PVC",
 			args: args{
-				pod: ESPodWithConfig(defaultImage, defaultCPULimit),
+				pod: withSpecHashLabel(ESPodWithConfig(ESPodSpecContext(defaultImage, defaultCPULimit))),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
@@ -290,9 +235,12 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod is missing a PVC, but has another",
 			args: args{
-				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withSpecHashLabel(
+					ESPodWithConfig(
+						withPVCs(
+							ESPodSpecContext(defaultImage, defaultCPULimit), "foo", "claim-foo"))),
 				spec: pod.PodSpecContext{
-					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					PodSpec: withPVCs(ESPodSpecContext(defaultImage, defaultCPULimit)).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
@@ -318,13 +266,18 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with an empty VolumeMode",
 			args: args{
-				pod: withPVCs(
-					ESPodWithConfig(defaultImage, defaultCPULimit),
-					volume.ElasticsearchDataVolumeName,
-					"elasticsearch-sample-es-7gnc85w7ll-"+volume.ElasticsearchDataVolumeName,
-				),
+				pod: withSpecHashLabel(
+					ESPodWithConfig(
+						withPVCs(
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+							volume.ElasticsearchDataVolumeName,
+							"claim-name",
+						))),
 				spec: pod.PodSpecContext{
-					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					PodSpec: withPVCs(
+						ESPodSpecContext(defaultImage, defaultCPULimit),
+						volume.ElasticsearchDataVolumeName,
+						"claim-name").PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
@@ -342,7 +295,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "elasticsearch-sample-es-7gnc85w7ll-" + volume.ElasticsearchDataVolumeName,
+								Name: "claim-name",
 							},
 							Spec: corev1.PersistentVolumeClaimSpec{
 								VolumeMode: &fs,
@@ -357,13 +310,18 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has a PVC with a VolumeMode set to something else than default setting",
 			args: args{
-				pod: withPVCs(
-					ESPodWithConfig(defaultImage, defaultCPULimit),
-					volume.ElasticsearchDataVolumeName,
-					"elasticsearch-sample-es-7gnc85w7ll-"+volume.ElasticsearchDataVolumeName,
-				),
+				pod: withSpecHashLabel(
+					ESPodWithConfig(
+						withPVCs(
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+							volume.ElasticsearchDataVolumeName,
+							"claim-name",
+						))),
 				spec: pod.PodSpecContext{
-					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					PodSpec: withPVCs(
+						ESPodSpecContext(defaultImage, defaultCPULimit),
+						volume.ElasticsearchDataVolumeName,
+						"claim-name").PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
@@ -381,7 +339,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
 							ObjectMeta: metav1.ObjectMeta{
-								Name: "elasticsearch-sample-es-7gnc85w7ll-" + volume.ElasticsearchDataVolumeName,
+								Name: "claim-name",
 							},
 							Spec: corev1.PersistentVolumeClaimSpec{
 								VolumeMode: &block,
@@ -396,14 +354,20 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has matching PVC",
 			args: args{
-				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withSpecHashLabel(
+					ESPodWithConfig(
+						withPVCs(
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+							"volume-name", "claim-name"),
+					)),
 				spec: pod.PodSpecContext{
-					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					PodSpec: withPVCs(ESPodSpecContext(defaultImage, defaultCPULimit),
+						"volume-name", "claim-name").PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "foo",
+									Name: "volume-name",
 								},
 							},
 						},
@@ -412,7 +376,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: metav1.ObjectMeta{Name: "claim-name"},
 						},
 					},
 				},
@@ -423,14 +387,19 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Pod has matching PVC, but spec does not match",
 			args: args{
-				pod: withPVCs(ESPodWithConfig(defaultImage, defaultCPULimit), "foo", "claim-foo"),
+				pod: withSpecHashLabel(
+					ESPodWithConfig(
+						withPVCs(
+							ESPodSpecContext(defaultImage, defaultCPULimit),
+							"volume-name", "claim-name"),
+					)),
 				spec: pod.PodSpecContext{
 					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{
 								ObjectMeta: metav1.ObjectMeta{
-									Name: "foo",
+									Name: "volume-name",
 								},
 								Spec: corev1.PersistentVolumeClaimSpec{
 									Resources: corev1.ResourceRequirements{
@@ -446,14 +415,14 @@ func Test_PodMatchesSpec(t *testing.T) {
 				state: reconcile.ResourcesState{
 					PVCs: []corev1.PersistentVolumeClaim{
 						{
-							ObjectMeta: metav1.ObjectMeta{Name: "claim-foo"},
+							ObjectMeta: metav1.ObjectMeta{Name: "claim-name"},
 						},
 					},
 				},
 			},
 			want:                      false,
 			wantErr:                   nil,
-			expectedMismatchesContain: "Unmatched volumeClaimTemplate: foo has no match in volumes [ foo]",
+			expectedMismatchesContain: "Unmatched volumeClaimTemplate: volume-name has no match in volumes [ volume-name]",
 		},
 	}
 	for _, tt := range tests {
@@ -463,7 +432,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 				assert.Error(t, err, tt.wantErr.Error())
 			} else {
 				assert.NoError(t, err, "No container named elasticsearch in the given pod")
-				assert.Equal(t, tt.want, match)
+				assert.Equal(t, tt.want, match, mismatchReasons)
 				if tt.expectedMismatches != nil {
 					assert.EqualValues(t, tt.expectedMismatches, mismatchReasons)
 				}
