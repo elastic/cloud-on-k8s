@@ -9,7 +9,7 @@
 # Usage: ./hack/run-e2e.sh <e2e_docker_image_name> <go_tests_matcher>
 #
 
-set -eux
+set -eu
 
 IMG="$1" # Docker image name
 TESTS_MATCH="$2" # Expression to match go test names (can be "")
