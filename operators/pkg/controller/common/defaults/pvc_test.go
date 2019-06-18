@@ -66,7 +66,7 @@ func TestAppendDefaultPVCs(t *testing.T) {
 		{
 			name: "not add a default pvc if a non-pvc volume with the same name exists",
 			args: args{
-				existing: []v1.PersistentVolumeClaim{foo},
+				existing: nil,
 				podSpec: v1.PodSpec{
 					Volumes: []v1.Volume{
 						{
@@ -77,7 +77,7 @@ func TestAppendDefaultPVCs(t *testing.T) {
 				},
 				defaults: []v1.PersistentVolumeClaim{bar},
 			},
-			want: []v1.PersistentVolumeClaim{foo},
+			want: nil,
 		},
 		{
 			name: "add a default pvc if a pvcvolume with the same name exists",

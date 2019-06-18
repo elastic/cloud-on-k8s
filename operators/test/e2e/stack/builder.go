@@ -9,6 +9,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
@@ -149,6 +150,20 @@ func (b Builder) withESTopologyElement(topologyElement estype.NodeSpec) Builder 
 func (b Builder) WithESSecureSettings(secretName string) Builder {
 	b.Elasticsearch.Spec.SecureSettings = &commonv1alpha1.SecretRef{
 		SecretName: secretName,
+	}
+	return b
+}
+
+func (b Builder) WithEmptyDirVolumes() Builder {
+	for i := range b.Elasticsearch.Spec.Nodes {
+		b.Elasticsearch.Spec.Nodes[i].PodTemplate.Spec.Volumes = []corev1.Volume{
+			{
+				Name: volume.ElasticsearchDataVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		}
 	}
 	return b
 }
