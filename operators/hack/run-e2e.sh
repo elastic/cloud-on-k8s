@@ -9,7 +9,7 @@
 # Usage: ./hack/run-e2e.sh <e2e_docker_image_name> <go_tests_matcher>
 #
 
-set -eu
+set -eux
 
 IMG="$1" # Docker image name
 TESTS_MATCH="$2" # Expression to match go test names (can be "")
@@ -17,8 +17,6 @@ TESTS_MATCH="$2" # Expression to match go test names (can be "")
 JOB_NAME="eck-e2e-tests-$(LC_CTYPE=C tr -dc 'a-z0-9' < /dev/urandom | fold -w 6 | head -n 1)"
 NAMESPACE="e2e"
 
-# exit early if another job already exists
-set +e
 kubectl -n e2e get job $JOB_NAME && \
     echo "Job $JOB_NAME already exists, please delete it first. Exiting." && \
     exit 1
@@ -33,7 +31,22 @@ sed \
     kubectl apply -f -
 
 # retrieve pod responsible for running the job
-pod=$(kubectl get pods -n $NAMESPACE --selector=job-name=$JOB_NAME --output=jsonpath={.items..metadata.name})
+pod=""
+retry=0
+e2e_pod_creation_timeout=30
+while true; do
+    if [[ ${retry} -ge ${e2e_pod_creation_timeout} ]]; then
+        echo "failed to get the e2e pod name after ${e2e_pod_creation_timeout} seconds"
+        exit 1
+    fi
+    ((retry++))
+    pod=$(kubectl get pods -n ${NAMESPACE} --selector=job-name=${JOB_NAME} --output=jsonpath={.items..metadata.name})
+    if [[ ! -z "${pod}" ]]; then
+        break
+    fi
+    sleep 1;
+done
+
 # wait until its container is started
 while kubectl -n $NAMESPACE get pod $pod | grep ContainerCreating; do
     sleep 1
