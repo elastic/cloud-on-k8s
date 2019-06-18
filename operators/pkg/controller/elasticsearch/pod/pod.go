@@ -78,8 +78,6 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 type NewPodSpecParams struct {
 	// Elasticsearch is the Elasticsearch cluster specification.
 	Elasticsearch v1alpha1.Elasticsearch
-	// Version is the Elasticsearch version.
-	Version string
 
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int

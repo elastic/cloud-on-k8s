@@ -520,7 +520,7 @@ func (d *defaultDriver) calculateChanges(
 		expectedPodSpecCtxs,
 		resourcesState,
 		func(ctx pod.PodSpecContext) (corev1.Pod, error) {
-			return esversion.NewPod(d.Version, es, ctx)
+			return esversion.NewPod(es, ctx)
 		},
 	)
 	if err != nil {

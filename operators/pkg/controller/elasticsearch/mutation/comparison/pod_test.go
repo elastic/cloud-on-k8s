@@ -261,7 +261,7 @@ func Test_PodMatchesSpec(t *testing.T) {
 			},
 			want:                      false,
 			wantErr:                   nil,
-			expectedMismatchesContain: "Unmatched volumeClaimTemplate: test has no match in volumes [ foo]",
+			expectedMismatchesContain: "Spec hash and running pod spec hash are not equal",
 		},
 		{
 			name: "Pod has a PVC with an empty VolumeMode",
@@ -394,7 +394,9 @@ func Test_PodMatchesSpec(t *testing.T) {
 							"volume-name", "claim-name"),
 					)),
 				spec: pod.PodSpecContext{
-					PodSpec: ESPodSpecContext(defaultImage, defaultCPULimit).PodSpec,
+					PodSpec: withPVCs(
+						ESPodSpecContext(defaultImage, defaultCPULimit),
+						"volume-name", "claim-name").PodSpec,
 					NodeSpec: v1alpha1.NodeSpec{
 						VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
 							{

@@ -46,7 +46,7 @@ func TestNewPodSpec(t *testing.T) {
 			want: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Volumes: []corev1.Volume{
-						configVolume.Volume(), configSecretVol.Volume(),
+						configSecretVol.Volume(), configVolume.Volume(),
 					},
 					AutomountServiceAccountToken: &varFalse,
 					Containers: []corev1.Container{
@@ -74,7 +74,7 @@ func TestNewPodSpec(t *testing.T) {
 							Ports:          ports,
 							Command:        command,
 							VolumeMounts: []corev1.VolumeMount{
-								configVolume.VolumeMount(), configSecretVol.VolumeMount(),
+								configSecretVol.VolumeMount(), configVolume.VolumeMount(),
 							},
 						},
 					},

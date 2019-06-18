@@ -51,7 +51,11 @@ func TestNewEnvironmentVars(t *testing.T) {
 				p: pod.NewPodSpecParams{
 					ProbeUser:    testProbeUser,
 					KeystoreUser: testKeystoreUser,
-					Version:      "6",
+					Elasticsearch: v1alpha1.Elasticsearch{
+						Spec: v1alpha1.ElasticsearchSpec{
+							Version: "7.1.0",
+						},
+					},
 				},
 				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
@@ -79,7 +83,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
 				{Name: keystore.EnvEsCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
-				{Name: keystore.EnvEsVersion, Value: "6"},
+				{Name: keystore.EnvEsVersion, Value: "7.1.0"},
 			},
 		},
 	}
@@ -103,6 +107,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 2,
@@ -117,6 +122,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 1,

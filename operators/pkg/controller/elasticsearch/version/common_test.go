@@ -15,11 +15,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	csettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -52,7 +48,6 @@ func TestNewPod(t *testing.T) {
 		Namespace: "ns",
 		Name:      "name",
 	}
-
 	podSpec := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
@@ -62,7 +57,6 @@ func TestNewPod(t *testing.T) {
 		Subdomain: esMeta.Namespace,
 		Hostname:  esMeta.Name,
 	}
-
 	// configurePodSpec is a helper method to set attributes on a pod spec without modifying the original
 	configurePodSpec := func(spec corev1.PodSpec, configure func(*corev1.PodSpec)) corev1.PodSpec {
 		s := spec.DeepCopy()
@@ -70,64 +64,46 @@ func TestNewPod(t *testing.T) {
 		return *s
 	}
 
-	masterCfg := settings.CanonicalConfig{CanonicalConfig: csettings.MustCanonicalConfig(map[string]interface{}{
-		"node.master": true,
-		"node.data":   false,
-		"node.ingest": false,
-		"node.ml":     false,
-	})}
 	tests := []struct {
 		name       string
-		version    version.Version
 		es         v1alpha1.Elasticsearch
 		podSpecCtx pod.PodSpecContext
 		want       corev1.Pod
 	}{
 		{
-			name:    "no podTemplate",
-			version: version.MustParse("7.1.0"),
+			name: "no podTemplate",
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: esMeta,
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
+				},
 			},
 			podSpecCtx: pod.PodSpecContext{
 				PodSpec: podSpec,
-				Config:  masterCfg,
 			},
 			want: corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: esMeta.Namespace,
 					Name:      esMeta.Name,
-					Labels: map[string]string{
-						common.TypeLabelName:                   label.Type,
-						label.ClusterNameLabelName:             esMeta.Name,
-						string(label.NodeTypesDataLabelName):   "false",
-						string(label.NodeTypesIngestLabelName): "false",
-						string(label.NodeTypesMasterLabelName): "true",
-						string(label.NodeTypesMLLabelName):     "false",
-						string(label.VersionLabelName):         "7.1.0",
-					},
 				},
 				Spec: podSpec,
 			},
 		},
 		{
-			name:    "with podTemplate: should propagate labels, annotations and subdomain",
-			version: version.MustParse("7.1.0"),
+			name: "with podTemplate: should propagate annotations and subdomain",
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: esMeta,
+				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
+				},
 			},
 			podSpecCtx: pod.PodSpecContext{
 				PodSpec: configurePodSpec(podSpec, func(spec *corev1.PodSpec) {
 					spec.Subdomain = "my-subdomain"
 				}),
-				Config: masterCfg,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								"foo": "bar",
-								"bar": "baz",
-							},
 							Annotations: map[string]string{
 								"annotation1": "foo",
 								"annotation2": "bar",
@@ -140,17 +116,6 @@ func TestNewPod(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: esMeta.Namespace,
 					Name:      esMeta.Name,
-					Labels: map[string]string{
-						common.TypeLabelName:                   label.Type,
-						label.ClusterNameLabelName:             esMeta.Name,
-						string(label.NodeTypesDataLabelName):   "false",
-						string(label.NodeTypesIngestLabelName): "false",
-						string(label.NodeTypesMasterLabelName): "true",
-						string(label.NodeTypesMLLabelName):     "false",
-						string(label.VersionLabelName):         "7.1.0",
-						"foo":                                  "bar",
-						"bar":                                  "baz",
-					},
 					Annotations: map[string]string{
 						"annotation1": "foo",
 						"annotation2": "bar",
@@ -161,50 +126,10 @@ func TestNewPod(t *testing.T) {
 				}),
 			},
 		},
-		{
-			name:    "with podTemplate: should not override user-provided labels",
-			version: version.MustParse("7.1.0"),
-			es: v1alpha1.Elasticsearch{
-				ObjectMeta: esMeta,
-			},
-			podSpecCtx: pod.PodSpecContext{
-				PodSpec: podSpec,
-				Config:  masterCfg,
-				NodeSpec: v1alpha1.NodeSpec{
-					PodTemplate: corev1.PodTemplateSpec{
-						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								label.ClusterNameLabelName: "override-operator-value",
-								"foo":                      "bar",
-								"bar":                      "baz",
-							},
-						},
-					},
-				},
-			},
-			want: corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: esMeta.Namespace,
-					Name:      esMeta.Name,
-					Labels: map[string]string{
-						common.TypeLabelName:                   label.Type,
-						label.ClusterNameLabelName:             "override-operator-value",
-						string(label.NodeTypesDataLabelName):   "false",
-						string(label.NodeTypesIngestLabelName): "false",
-						string(label.NodeTypesMasterLabelName): "true",
-						string(label.NodeTypesMLLabelName):     "false",
-						string(label.VersionLabelName):         "7.1.0",
-						"foo":                                  "bar",
-						"bar":                                  "baz",
-					},
-				},
-				Spec: podSpec,
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewPod(tt.version, tt.es, tt.podSpecCtx)
+			got, err := NewPod(tt.es, tt.podSpecCtx)
 			require.NoError(t, err)
 			// since the name is random, don't test its equality and inject it to the expected output
 			tt.want.Name = got.Name
@@ -230,7 +155,7 @@ func Test_podSpec(t *testing.T) {
 		}
 	}
 	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
-		return settings.CanonicalConfig{}, nil
+		return settings.NewCanonicalConfig(), nil
 	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
 		return []corev1.Container{
@@ -245,18 +170,24 @@ func Test_podSpec(t *testing.T) {
 	varFalse := false
 	varTrue := true
 	varInt64 := int64(12)
+	es71 := v1alpha1.Elasticsearch{
+		Spec: v1alpha1.ElasticsearchSpec{
+			Version: "7.1.0",
+		},
+	}
 
 	tests := []struct {
 		name       string
 		params     pod.NewPodSpecParams
-		assertions func(t *testing.T, podSpec corev1.PodSpec)
+		assertions func(t *testing.T, specCtx pod.PodSpecContext)
 	}{
 		{
 			name: "no podTemplate: default happy path",
 			params: pod.NewPodSpecParams{
-				Version: "7.1.0",
+				Elasticsearch: es71,
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				podSpec := specCtx.PodSpec
 				require.Equal(t, fmt.Sprintf("%s:%s", pod.DefaultImageRepository, "7.1.0"), podSpec.Containers[0].Image)
 				require.Equal(t, pod.DefaultTerminationGracePeriodSeconds, *podSpec.TerminationGracePeriodSeconds)
 				require.Equal(t, &varFalse, podSpec.AutomountServiceAccountToken)
@@ -277,17 +208,19 @@ func Test_podSpec(t *testing.T) {
 			params: pod.NewPodSpecParams{
 				Elasticsearch: v1alpha1.Elasticsearch{
 					Spec: v1alpha1.ElasticsearchSpec{
-						Image: "customImageName",
+						Image:   "customImageName",
+						Version: "7.1.0",
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
-				require.Equal(t, "customImageName", podSpec.Containers[0].Image)
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				require.Equal(t, "customImageName", specCtx.PodSpec.Containers[0].Image)
 			},
 		},
 		{
 			name: "custom termination grace period & automount sa token",
 			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -297,14 +230,15 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
-				require.Equal(t, &varInt64, podSpec.TerminationGracePeriodSeconds)
-				require.Equal(t, &varTrue, podSpec.AutomountServiceAccountToken)
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				require.Equal(t, &varInt64, specCtx.PodSpec.TerminationGracePeriodSeconds)
+				require.Equal(t, &varTrue, specCtx.PodSpec.AutomountServiceAccountToken)
 			},
 		},
 		{
 			name: "user-provided volumes & volume mounts",
 			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -333,7 +267,8 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				podSpec := specCtx.PodSpec
 				require.True(t, len(podSpec.Volumes) > 1)
 				foundUserVolumes := 0
 				for _, v := range podSpec.Volumes {
@@ -354,6 +289,7 @@ func Test_podSpec(t *testing.T) {
 		{
 			name: "user-provided init containers",
 			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -374,7 +310,8 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				podSpec := specCtx.PodSpec
 				require.Equal(t, []corev1.Container{
 					{
 						Name: "init-container1",
@@ -404,6 +341,7 @@ func Test_podSpec(t *testing.T) {
 		{
 			name: "user-provided environment",
 			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -426,7 +364,7 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
 				require.Equal(t, []corev1.EnvVar{
 					{
 						Name:  "user-env-1",
@@ -444,12 +382,13 @@ func Test_podSpec(t *testing.T) {
 						Name:  "var2",
 						Value: "value2",
 					},
-				}, podSpec.Containers[0].Env)
+				}, specCtx.PodSpec.Containers[0].Env)
 			},
 		},
 		{
 			name: "user-provided environment overrides",
 			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -472,21 +411,21 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
 				require.Equal(t, []corev1.EnvVar{
-					{
-						Name:  "var1",
-						Value: "user-overridden-var-1",
-					},
 					{
 						Name:  "user-env-2",
 						Value: "user-env-2-value",
 					},
 					{
+						Name:  "var1",
+						Value: "user-overridden-var-1",
+					},
+					{
 						Name:  "var2",
 						Value: "value2",
 					},
-				}, podSpec.Containers[0].Env)
+				}, specCtx.PodSpec.Containers[0].Env)
 			},
 		},
 		{
@@ -496,10 +435,13 @@ func Test_podSpec(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "my-cluster",
 					},
+					Spec: v1alpha1.ElasticsearchSpec{
+						Version: "7.1.0",
+					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
-				require.Equal(t, pod.DefaultAffinity("my-cluster"), podSpec.Affinity)
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				require.Equal(t, pod.DefaultAffinity("my-cluster"), specCtx.PodSpec.Affinity)
 			},
 		},
 		{
@@ -508,6 +450,9 @@ func Test_podSpec(t *testing.T) {
 				Elasticsearch: v1alpha1.Elasticsearch{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "my-cluster",
+					},
+					Spec: v1alpha1.ElasticsearchSpec{
+						Version: "7.1.0",
 					},
 				},
 				NodeSpec: v1alpha1.NodeSpec{
@@ -518,8 +463,37 @@ func Test_podSpec(t *testing.T) {
 					},
 				},
 			},
-			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
-				require.Equal(t, &corev1.Affinity{}, podSpec.Affinity)
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				require.Equal(t, &corev1.Affinity{}, specCtx.PodSpec.Affinity)
+			},
+		},
+		{
+			name: "user-provided labels",
+			params: pod.NewPodSpecParams{
+				Elasticsearch: es71,
+				NodeSpec: v1alpha1.NodeSpec{
+					PodTemplate: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"a": "b",
+								"c": "d",
+							},
+						},
+					},
+				},
+			},
+			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
+				require.Equal(t, map[string]string{
+					"a":                          "b",
+					"c":                          "d",
+					"common.k8s.elastic.co/type": "elasticsearch",
+					"elasticsearch.k8s.elastic.co/cluster-name": "",
+					"elasticsearch.k8s.elastic.co/node-data":    "true",
+					"elasticsearch.k8s.elastic.co/node-ingest":  "true",
+					"elasticsearch.k8s.elastic.co/node-master":  "true",
+					"elasticsearch.k8s.elastic.co/node-ml":      "true",
+					"elasticsearch.k8s.elastic.co/version":      "7.1.0",
+				}, specCtx.Labels)
 			},
 		},
 	}
@@ -527,7 +501,7 @@ func Test_podSpec(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			spec, err := podSpecContext(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
 			require.NoError(t, err)
-			tt.assertions(t, spec.PodSpec)
+			tt.assertions(t, spec)
 		})
 	}
 }
