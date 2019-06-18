@@ -14,7 +14,7 @@ Eager to get started? This fast guide shows you how to:
 
 **Requirements**
 
-This quickstart assumes you already have Kubernetes 1.11+.
+Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
 
 [float]
 [id="{p}-deploy-eck"]
