@@ -27,7 +27,7 @@ NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions.
 +
 [source,sh]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/0.8.0/all-in-one.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/0.8.1/all-in-one.yaml
 ----
 
 . Monitor the operator logs:
