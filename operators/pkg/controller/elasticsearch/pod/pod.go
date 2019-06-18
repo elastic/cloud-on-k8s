@@ -97,20 +97,13 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 
 // NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
 type NewPodSpecParams struct {
-	// Version is the Elasticsearch version
+	// Elasticsearch is the Elasticsearch cluster specification.
+	Elasticsearch v1alpha1.Elasticsearch
+	// Version is the Elasticsearch version.
 	Version string
-	// CustomImageName is the custom image used, leave empty for the default
-	CustomImageName string
-	// ClusterName is the name of the Elasticsearch cluster
-	ClusterName string
+
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
-
-	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
-	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-	// Setting this to true requires the kubelet to allow running privileged containers.
-	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
-	SetVMMaxMapCount *bool
 
 	// NodeSpec is the user-provided spec to apply on the target pod
 	NodeSpec v1alpha1.NodeSpec

@@ -275,7 +275,11 @@ func Test_podSpec(t *testing.T) {
 		{
 			name: "custom image",
 			params: pod.NewPodSpecParams{
-				CustomImageName: "customImageName",
+				Elasticsearch: v1alpha1.Elasticsearch{
+					Spec: v1alpha1.ElasticsearchSpec{
+						Image: "customImageName",
+					},
+				},
 			},
 			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
 				require.Equal(t, "customImageName", podSpec.Containers[0].Image)
@@ -488,7 +492,11 @@ func Test_podSpec(t *testing.T) {
 		{
 			name: "default affinity",
 			params: pod.NewPodSpecParams{
-				ClusterName: "my-cluster",
+				Elasticsearch: v1alpha1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-cluster",
+					},
+				},
 			},
 			assertions: func(t *testing.T, podSpec corev1.PodSpec) {
 				require.Equal(t, pod.DefaultAffinity("my-cluster"), podSpec.Affinity)
@@ -497,7 +505,11 @@ func Test_podSpec(t *testing.T) {
 		{
 			name: "custom affinity",
 			params: pod.NewPodSpecParams{
-				ClusterName: "my-cluster",
+				Elasticsearch: v1alpha1.Elasticsearch{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "my-cluster",
+					},
+				},
 				NodeSpec: v1alpha1.NodeSpec{
 					PodTemplate: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -513,9 +525,9 @@ func Test_podSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			spec, _, err := podSpec(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
+			spec, err := podSpecContext(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
 			require.NoError(t, err)
-			tt.assertions(t, spec)
+			tt.assertions(t, spec.PodSpec)
 		})
 	}
 }
