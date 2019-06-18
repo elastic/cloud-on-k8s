@@ -37,7 +37,7 @@ func GetSpecHashLabel(labels map[string]string) string {
 // ensuring the hash does not change when a pointer changes.
 // The returned hash can be used for object comparison purpose.
 //
-// This is inspired from controller revisions in StatefulSets:
+// This is inspired by controller revisions in StatefulSets:
 // https://github.com/kubernetes/kubernetes/blob/8de1569ddae62e8fab559fe6bd210a5d6100a277/pkg/controller/history/controller_history.go#L89-L101
 func HashObject(object interface{}) string {
 	hf := fnv.New32()
