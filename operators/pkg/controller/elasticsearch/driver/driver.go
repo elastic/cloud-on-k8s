@@ -102,14 +102,14 @@ func SupportedVersions(v version.Version) *esversion.LowestHighestSupportedVersi
 			// Min. version is 6.7.0 for now. Will be 6.8.0 soon.
 			LowestSupportedVersion: version.MustParse("6.7.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.8.99"),
+			HighestSupportedVersion: version.MustParse("6.99.99"),
 		}
 	case 7:
 		res = &esversion.LowestHighestSupportedVersions{
 			// 6.7.0 is the lowest wire compatibility version for 7.x
 			LowestSupportedVersion: version.MustParse("6.7.0"),
 			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("7.1.99"),
+			HighestSupportedVersion: version.MustParse("7.99.99"),
 		}
 	}
 	return res

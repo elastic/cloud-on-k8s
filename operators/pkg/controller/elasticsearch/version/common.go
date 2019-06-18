@@ -31,7 +31,7 @@ func NewExpectedPodSpecs(
 
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -81,7 +81,7 @@ func podSpec(
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (corev1.PodSpec, settings.CanonicalConfig, error) {
 	// setup volumes
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
@@ -121,7 +121,13 @@ func podSpec(
 		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
 
 	// setup init containers
-	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
+	initContainers, err := newInitContainersFn(
+		builder.Container.Image,
+		operatorImage,
+		p.SetVMMaxMapCount,
+		transportCertificatesVolume,
+		p.ClusterName)
+
 	if err != nil {
 		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
 	}

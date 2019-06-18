@@ -1,0 +1,352 @@
+[id="{p}-advanced-node-scheduling"]
+
+== Advanced Elasticsearch node scheduling
+
+Elastic Cloud on Kubernetes (ECK) offers full control over cluster nodes scheduling by combining Elasticsearch configuration with Kubernetes scheduling options:
+
+* <<{p}-define-elasticsearch-nodes-roles,define Elasticsearch nodes roles>>
+* <<{p}-affinity-options,pod affinity and anti-affinity>>
+* <<{p}-availability-zone-awareness,availability zone and rack awareness>>
+* <<{p}-hot-warm-topologies,hot-warm topologies>>
+
+These features can be combined together, to deploy a production-grade Elasticsearch cluster.
+
+[float]
+[id="{p}-define-elasticsearch-nodes-roles"]
+=== Define Elasticsearch nodes roles
+
+You can configure Elasticsearch nodes with link:https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html[one or multiple roles]. This allows you to describe an Elasticsearch cluster with 3 dedicated master nodes, for example:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  # 3 dedicated master nodes
+  - nodeCount: 3
+    config:
+      node.master: true
+      node.data: false
+      node.ingest: false
+      cluster.remote.connect: false
+  # 3 ingest-data nodes
+  - nodeCount: 3
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: true
+----
+
+[float]
+[id="{p}-affinity-options"]
+=== Affinity options
+
+You can setup various link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node[affinity and anti-affinity options] through the `podTemplate` section of the Elasticsearch resource specification.
+
+[float]
+==== A single Elasticsearch node per Kubernetes host (default)
+
+To avoid scheduling several Elasticsearch nodes from the same cluster on the same host, use a `podAntiAffinity` rule based on the hostname and the cluster name label:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    podTemplate:
+      spec:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: quickstart
+                topologyKey: kubernetes.io/hostname
+----
+
+This is ECK default behaviour if you don't specify any `affinity` option.
+
+To explicitly disable that behaviour, set an empty affinity object:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    podTemplate:
+      spec:
+        affinity: {}
+----
+
+The default affinity is using `preferredDuringSchedulingIgnoredDuringExecution`, which acts as best effort and won't prevent a node to be scheduled on a host if there are no other hosts available. Scheduling a 4-nodes Elasticsearch cluster on a 3-hosts Kubernetes cluster would then successfully schedule 2 nodes on the same host. To enforce a strict single node per host, specify `requiredDuringSchedulingIgnoredDuringExecution` instead:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    podTemplate:
+      spec:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: quickstart
+                topologyKey: kubernetes.io/hostname
+----
+
+[float]
+==== Local Persistent Volume constraints
+
+By default, volumes can be bound to a pod before the pod gets scheduled to a particular node. This can be a problem if the PersistentVolume can only be accessed from a particular host or set of hosts. Local persistent volumes are a good example: they are accessible from a single host. If the pod gets scheduled to a different host based on any affinity or anti-affinity rule, the volume may not be available.
+
+To solve this problem, you can link:https://kubernetes.io/docs/concepts/storage/storage-classes/#volume-binding-mode[set the Volume Binding Mode] of the `StorageClass` you are using. Make sure  `volumeBindingMode: WaitForFirstConsumer` is set, link:https://kubernetes.io/blog/2018/04/13/local-persistent-volumes-beta/#enabling-smarter-scheduling-and-volume-binding[especially if you are using local persistent volumes].
+
+[source,yaml]
+----
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: local-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+----
+
+[float]
+==== Node affinity
+
+To restrict the scheduling to a particular set of nodes based on labels, use a link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector[NodeSelector].
+This example schedules Elasticsearch pods on Kubernetes nodes tagged with both labels `diskType: ssd` and `environment: production`.
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    podTemplate:
+      spec:
+        nodeSelector:
+          diskType: ssd
+          environment: production
+----
+
+You can achieve the same (and more) with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[node affinity]:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    podTemplate:
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: environment
+                  operator: In
+                  values:
+                  - e2e
+                  - production
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                preference:
+                  matchExpressions:
+                  - key: diskType
+                    operator: In
+                    values:
+                    - ssd
+----
+
+This example restricts Elasticsearch nodes to be scheduled on Kubernetes hosts tagged with `environment: e2e` or `environment: production`. It favors nodes tagged with `diskType: ssd`.
+
+[float]
+[id="{p}-availability-zone-awareness"]
+=== Availability zone awareness
+
+By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an availability zone-aware Elasticsearch cluster:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 1
+    config:
+      node.attr.zone: europe-west3-a
+      cluster.routing.allocation.awareness.attributes: zone
+    podTemplate:
+      meta:
+        labels:
+          nodesGroup: group-a
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: failure-domain.beta.kubernetes.io/zone
+                  operator: In
+                  values:
+                  - europe-west3-a
+  - nodeCount: 1
+    config:
+      node.attr.zone: europe-west3-b
+      cluster.routing.allocation.awareness.attributes: zone
+    podTemplate:
+      meta:
+        labels:
+          nodesGroup: group-b
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: failure-domain.beta.kubernetes.io/zone
+                  operator: In
+                  values:
+                  - europe-west3-b
+  updateStrategy:
+    groups:
+    - selector:
+        matchLabels:
+          nodesGroup: group-a
+    - selector:
+        matchLabels:
+          nodesGroup: group-b
+----
+
+This example relies on:
+
+- nodes from each zone being labeled accordingly. `failure-domain.beta.kubernetes.io/zone` link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#interlude-built-in-node-labels[is standard], but any label can be used.
+- node affinity for each group of nodes set to match the Kubernetes nodes zone.
+- Elasticsearch configured to link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[allocate shards based on node attributes]. Here we specified `node.attr.zone`, but any attribute name can be used. `node.attr.rack_id` is another common example.
+- groups highlighted in the `updateStrategy`, allowing ECK to logically group pods together when performing topology changes. Depending on `updateStrategy.changeBudget`, ECK makes sure all logical groups have the requested number of nodes running before attempting any other topology change.
+
+[float]
+[id="{p}-hot-warm-topologies"]
+=== Hot-warm topologies
+
+By combining link:https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html#allocation-awareness[Elasticsearch shard allocation awareness] with link:https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#node-affinity-beta-feature[Kubernetes node affinity], you can setup an Elasticsearch cluster with hot-warm topology:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  # hot nodes, with high CPU and fast IO
+  - nodeCount: 3
+    config:
+      node.attr.data: hot
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 16Gi
+              cpu: 4
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/instance-type
+                  operator: In
+                  values:
+                  - highio
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Ti
+        storageClassName: local-storage
+  # warm nodes, with high storage
+  - nodeCount: 3
+    config:
+      node.attr.data: warm
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            limits:
+              memory: 16Gi
+              cpu: 2
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: beta.kubernetes.io/instance-type
+                  operator: In
+                  values:
+                  - highstorage
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Ti
+        storageClassName: local-storage
+----
+
+In this example, we configure two groups of nodes:
+
+- the first group has the `data` attribute set to `hot`. It is intended to run on hosts with high CPU resources and fast IO (SSD). Here we restrict pods to be scheduled on Kubernetes nodes labeled with `beta.kubernetes.io/instance-type: highio` (to adapt to your Kubernetes nodes labels).
+- the second group has the `data` attribute set to `warm`. It is intended to run on hosts with larger but maybe slower storage. Pods are restricted to be scheduled on nodes labeled with `beta.kubernetes.io/instance-type: highstorage`.
+
+NOTE: this example uses link:https://kubernetes.io/blog/2019/04/04/kubernetes-1.14-local-persistent-volumes-ga[Local Persistent Volumes] for both groups, but can be adapted to use high-performance volumes for `hot` nodes and high-storage volumes for `warm` nodes.
+
+Finally, setup link:https://www.elastic.co/guide/en/elasticsearch/reference/current/index-lifecycle-management.html[Index Lifecycle Management] policies on your indices, link:https://www.elastic.co/blog/implementing-hot-warm-cold-in-elasticsearch-with-index-lifecycle-management[optimizing for hot-warm architectures].
