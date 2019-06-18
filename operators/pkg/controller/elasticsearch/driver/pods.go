@@ -77,7 +77,7 @@ func createElasticsearchPod(
 				},
 			},
 		}
-		replaceVolume(pod, vol)
+		pod = replaceVolume(pod, vol)
 	}
 
 	// create the transport certificates secret for this pod because it must exist before we're able to create the
