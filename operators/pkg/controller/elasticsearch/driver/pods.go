@@ -182,6 +182,7 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	pvc.Labels = pod.Labels
 	// Add the current pod name as a label
 	pvc.Labels[label.PodNameLabelName] = pod.Name
+	pvc.Labels[label.VolumeNameLabelName] = claimTemplate.Name
 	pvc.Annotations = pod.Annotations
 	// TODO: add more labels or annotations?
 	return pvc

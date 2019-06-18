@@ -5,11 +5,11 @@
 package driver
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/go-test/deep"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -46,9 +46,10 @@ func Test_newPVCFromTemplate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "elasticsearch-sample-es-6bw9qkw77k-" + volume.ElasticsearchDataVolumeName,
 					Labels: map[string]string{
-						"l1":                   "v1",
-						"l2":                   "v2",
-						label.PodNameLabelName: "elasticsearch-sample-es-6bw9qkw77k",
+						"l1":                      "v1",
+						"l2":                      "v2",
+						label.PodNameLabelName:    "elasticsearch-sample-es-6bw9qkw77k",
+						label.VolumeNameLabelName: volume.ElasticsearchDataVolumeName,
 					},
 				},
 			},
@@ -56,8 +57,8 @@ func Test_newPVCFromTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := newPVCFromTemplate(tt.args.claimTemplate, tt.args.pod); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("newPVCFromTemplate() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(newPVCFromTemplate(tt.args.claimTemplate, tt.args.pod), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}
