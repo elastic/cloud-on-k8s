@@ -94,6 +94,7 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 		}),
 	}
 }
+
 func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Elasticsearch nodes topology should eventually be the expected one",

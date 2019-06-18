@@ -14,6 +14,41 @@ metadata:
   namespace: e2e
 
 ---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-restricted
+rules:
+  - apiGroups:
+      - extensions
+    resources:
+      - podsecuritypolicies
+    resourceNames:
+      - elastic.restricted
+    verbs:
+      - use
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: elastic-restricted-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-restricted
+subjects:
+  - kind: Group
+    name: system:serviceaccounts:e2e
+    apiGroup: rbac.authorization.k8s.io
+  - kind: ServiceAccount
+    name: elastic-global-operator
+    namespace: elastic-system
+  - kind: ServiceAccount
+    name: elastic-namespace-operator
+    namespace: elastic-namespace-operators
+
+---
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
