@@ -63,3 +63,8 @@ func ElementsMatch(listA interface{}, listB interface{}) error {
 	}
 	return nil
 }
+
+// BoolPtr returns a pointer to a bool/
+func BoolPtr(b bool) *bool {
+	return &b
+}

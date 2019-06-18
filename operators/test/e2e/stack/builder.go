@@ -10,6 +10,7 @@ import (
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,6 +28,7 @@ var DefaultResources = corev1.ResourceRequirements{
 func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		Spec: corev1.PodSpec{
+			SecurityContext: helpers.DefaultSecurityContext(),
 			Containers: []corev1.Container{
 				{
 					Name:      v1alpha1.ElasticsearchContainerName,
@@ -49,12 +51,12 @@ func NewStackBuilder(name string) Builder {
 		Name:      name,
 		Namespace: params.Namespace,
 	}
-
 	return Builder{
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				Version: params.ElasticStackVersion,
+				SetVMMaxMapCount: helpers.BoolPtr(false),
+				Version:          params.ElasticStackVersion,
 			},
 		},
 		Kibana: kbtype.Kibana{
@@ -65,9 +67,25 @@ func NewStackBuilder(name string) Builder {
 					Name:      name,
 					Namespace: params.Namespace,
 				},
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						SecurityContext: helpers.DefaultSecurityContext(),
+					},
+				},
 			},
 		},
 	}
+}
+
+// WithRestrictedSecurityContext helps to enforce a restricted security context on the objects.
+func (b Builder) WithRestrictedSecurityContext() Builder {
+	b.Elasticsearch.Spec.SetVMMaxMapCount = helpers.BoolPtr(false)
+	for idx := range b.Elasticsearch.Spec.Nodes {
+		node := &b.Elasticsearch.Spec.Nodes[idx]
+		node.PodTemplate.Spec.SecurityContext = helpers.DefaultSecurityContext()
+	}
+	b.Kibana.Spec.PodTemplate.Spec.SecurityContext = helpers.DefaultSecurityContext()
+	return b
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {
