@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#!/usr/bin/env bash
 
 # Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
 # or more contributor license agreements. Licensed under the Elastic License;
@@ -33,7 +33,24 @@ sed \
     kubectl apply -f -
 
 # retrieve pod responsible for running the job
-pod=$(kubectl get pods -n $NAMESPACE --selector=job-name=$JOB_NAME --output=jsonpath={.items..metadata.name})
+pod=""
+retry=0
+e2e_pod_creation_max_retries=30
+set +e # ignore error in the retry loop
+while true; do
+    if [[ ${retry} -ge ${e2e_pod_creation_max_retries} ]]; then
+        echo "failed to get the e2e pod name after ${e2e_pod_creation_max_retries} retries"
+        exit 1
+    fi
+    ((retry++))
+    pod=$(kubectl get pods -n ${NAMESPACE} --selector=job-name=${JOB_NAME} --output=jsonpath={.items..metadata.name})
+    if [[ ! -z "${pod}" ]]; then
+        break
+    fi
+    sleep 1;
+done
+set -e
+
 # wait until its container is started
 while kubectl -n $NAMESPACE get pod $pod | grep ContainerCreating; do
     sleep 1

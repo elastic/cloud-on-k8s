@@ -59,20 +59,20 @@ func TestMutationLessNodes(t *testing.T) {
 // TestMutationResizeMemoryUp creates a 1 node cluster,
 // then mutates it to a 1 node cluster with more RAM
 func TestMutationResizeMemoryUp(t *testing.T) {
-	// create a stack with a 1G node
+	// create a stack with a 2G node
 	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("1G"),
+				corev1.ResourceMemory: resource.MustParse("2Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
-	// mutate it to 1 node with 2G memory
+	// mutate it to 1 node with 4G memory
 	mutatedStack := initStack.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("2G"),
+				corev1.ResourceMemory: resource.MustParse("4Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
@@ -83,20 +83,20 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 // TestMutationResizeMemoryDown creates a 1 node cluster,
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
-	// create a stack with a 2G node
-	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
+	// create a stack with a 4G node
+	initStack := stack.NewStackBuilder("test-mutation-resize-memory-down").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("2G"),
+				corev1.ResourceMemory: resource.MustParse("4Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})
-	// mutate it to 1 node with 1G memory
+	// mutate it to 1 node with 2G memory
 	mutatedStack := initStack.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
-				corev1.ResourceMemory: resource.MustParse("1G"),
+				corev1.ResourceMemory: resource.MustParse("2Gi"),
 				corev1.ResourceCPU:    resource.MustParse("2"),
 			},
 		})

@@ -4,7 +4,7 @@
 
 package defaults
 
-import v1 "k8s.io/api/core/v1"
+import corev1 "k8s.io/api/core/v1"
 
 // AppendDefaultPVCs appends defaults PVCs to a set of existing ones.
 //
@@ -12,10 +12,10 @@ import v1 "k8s.io/api/core/v1"
 // - a Volume with the same .Name is found in podSpec.Volumes, and that volume is not a PVC volume
 // - a PVC with the same .Metadata.Name is found in existing.
 func AppendDefaultPVCs(
-	existing []v1.PersistentVolumeClaim,
-	podSpec v1.PodSpec,
-	defaults ...v1.PersistentVolumeClaim,
-) []v1.PersistentVolumeClaim {
+	existing []corev1.PersistentVolumeClaim,
+	podSpec corev1.PodSpec,
+	defaults ...corev1.PersistentVolumeClaim,
+) []corev1.PersistentVolumeClaim {
 	// create a set of volume names that are not PVC-volumes for efficient testing
 	nonPVCvolumes := map[string]struct{}{}
 
@@ -33,14 +33,13 @@ defaults:
 				// a PVC with that name already exists, skip.
 				continue defaults
 			}
-			if _, isNonPVCVolume := nonPVCvolumes[defaultPVC.Name]; isNonPVCVolume {
-				// the corresponding volume is not a PVC
-				continue defaults
-			}
-		}
 
+		}
+		if _, isNonPVCVolume := nonPVCvolumes[defaultPVC.Name]; isNonPVCVolume {
+			// the corresponding volume is not a PVC
+			continue defaults
+		}
 		existing = append(existing, defaultPVC)
 	}
-
 	return existing
 }
