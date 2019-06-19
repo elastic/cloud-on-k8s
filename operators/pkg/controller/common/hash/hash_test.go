@@ -106,9 +106,9 @@ func TestAddSpecHashLabel(t *testing.T) {
 		"c": "d",
 	}
 	expected := map[string]string{
-		"a":               "b",
-		"c":               "d",
-		SpecHashLabelName: HashObject(spec),
+		"a":                   "b",
+		"c":                   "d",
+		TemplateHashLabelName: HashObject(spec),
 	}
-	require.Equal(t, expected, SetSpecHashLabel(labels, spec))
+	require.Equal(t, expected, SetTemplateHashLabel(labels, spec))
 }

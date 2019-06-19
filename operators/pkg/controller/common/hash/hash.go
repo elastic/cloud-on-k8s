@@ -12,24 +12,24 @@ import (
 )
 
 const (
-	// SpecHashLabelName is a label to annotate a Kubernetes resource
-	// with the hash of its initial spec before creation.
-	SpecHashLabelName = "common.k8s.elastic.co/spec-hash"
+	// TemplateHashLabelName is a label to annotate a Kubernetes resource
+	// with the hash of its initial template before creation.
+	TemplateHashLabelName = "common.k8s.elastic.co/spec-hash"
 )
 
-// SetSpecHashLabel adds a label containing the hash of the given spec into the
-// given labels. This label can then be used for spec comparisons.
-func SetSpecHashLabel(labels map[string]string, spec interface{}) map[string]string {
+// SetTemplateHashLabel adds a label containing the hash of the given template into the
+// given labels. This label can then be used for template comparisons.
+func SetTemplateHashLabel(labels map[string]string, template interface{}) map[string]string {
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	labels[SpecHashLabelName] = HashObject(spec)
+	labels[TemplateHashLabelName] = HashObject(template)
 	return labels
 }
 
-// GetSpecHashLabel returns the spec hash label value if set, or an empty string.
-func GetSpecHashLabel(labels map[string]string) string {
-	return labels[SpecHashLabelName]
+// GetTemplateHashLabel returns the template hash label value if set, or an empty string.
+func GetTemplateHashLabel(labels map[string]string) string {
+	return labels[TemplateHashLabelName]
 }
 
 // HashObject writes the specified object to a hash using the spew library

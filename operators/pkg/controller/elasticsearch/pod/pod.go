@@ -97,12 +97,11 @@ type NewPodSpecParams struct {
 	UnicastHostsVolume volume.ConfigMapVolume
 }
 
-// PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
+// PodSpecContext contains a pod template and some additional context pertaining to its creation.
 type PodSpecContext struct {
-	PodSpec  corev1.PodSpec
-	Labels   map[string]string
-	NodeSpec v1alpha1.NodeSpec
-	Config   settings.CanonicalConfig
+	PodTemplate corev1.PodTemplateSpec
+	NodeSpec    v1alpha1.NodeSpec
+	Config      settings.CanonicalConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

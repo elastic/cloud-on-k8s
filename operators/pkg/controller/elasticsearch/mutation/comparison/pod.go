@@ -15,6 +15,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+// PodMatchesSpec compares an existing pod and its config with an expected pod spec, and returns true if the
+// existing pod matches the expected pod spec, or returns a list of reasons why it does not match.
+//
+// A pod matches the spec if:
+// - it has the same namespace and base name
+// - it has the same configuration
+// - it has the same PVC spec
+// - it was created using the same pod template (whose hash is stored in the pod annotations)
 func PodMatchesSpec(
 	es v1alpha1.Elasticsearch,
 	podWithConfig pod.PodWithConfig,
@@ -25,23 +33,15 @@ func PodMatchesSpec(
 	config := podWithConfig.Config
 
 	comparisons := []Comparison{
-		// -- pod meta
 		// require same namespace
 		NewStringComparison(es.Namespace, pod.Namespace, "Pod namespace"),
 		// require same base pod name
 		NewStringComparison(name.Basename(name.NewPodName(es.Name, spec.NodeSpec)), name.Basename(pod.Name), "Pod base name"),
-		// require spec labels and annotations to be present on the actual pod (which can have more)
-		MapSubsetComparison(spec.NodeSpec.PodTemplate.Labels, pod.Labels, "Labels mismatch"),
-		MapSubsetComparison(spec.NodeSpec.PodTemplate.Annotations, pod.Annotations, "Annotations mismatch"),
-
-		// -- pod spec
-		// require strict spec equality
-		ComparePodSpec(spec.PodSpec, pod),
+		// require strict template equality
+		ComparePodTemplate(spec.PodTemplate, pod),
 		// require pvc compatibility
 		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.NodeSpec.VolumeClaimTemplates, state),
-
-		// -- config
-		// require strict equality
+		// require strict config equality
 		compareConfigs(config, spec.Config),
 	}
 
@@ -56,31 +56,18 @@ func PodMatchesSpec(
 
 // ComparePodSpec returns a ComparisonMatch if the given spec matches the spec of the given pod.
 // Comparison is based on the hash of the pod spec (before resource creation), stored in a label in the pod.
-func ComparePodSpec(spec corev1.PodSpec, existingPod corev1.Pod) Comparison {
-	existingPodHash := hash.GetSpecHashLabel(existingPod.Labels)
+//
+// Since the hash was computed from the existing pod template, before its creation, it only accounts
+// for fields in the pod that were set by the operator.
+// Any defaulted environment variables, resources, containers from Kubernetes or a mutating webhook is ignored.
+// Any label or annotation set by something external (user, webhook, defaulted value) is also ignored.
+func ComparePodTemplate(template corev1.PodTemplateSpec, existingPod corev1.Pod) Comparison {
+	existingPodHash := hash.GetTemplateHashLabel(existingPod.Labels)
 	if existingPodHash == "" {
-		return ComparisonMismatch(fmt.Sprintf("No %s label set on the existing pod", hash.SpecHashLabelName))
+		return ComparisonMismatch(fmt.Sprintf("No %s label set on the existing pod", hash.TemplateHashLabelName))
 	}
-	if hash.HashObject(spec) != existingPodHash {
+	if hash.HashObject(template) != existingPodHash {
 		return ComparisonMismatch("Spec hash and running pod spec hash are not equal")
-	}
-	return ComparisonMatch
-}
-
-// MapSubsetComparison returns ComparisonMatch if the expected labels (keys and values) are present in the
-// actual map. The actual map may contain more entries: this will not cause a mismatch.
-// This allows user to add additional labels or annotations to pods, while not causing the pod to be replaced.
-func MapSubsetComparison(expected map[string]string, actual map[string]string, mismatchMsg string) Comparison {
-	for k, expectedValue := range expected {
-		actualValue, exists := actual[k]
-		if !exists {
-			return ComparisonMismatch(fmt.Sprintf("%s: %s does not exist", mismatchMsg, k))
-		}
-		if actualValue != expectedValue {
-			return ComparisonMismatch(fmt.Sprintf(
-				"%s: value for %s (%s) does not match the expected one (%s)",
-				mismatchMsg, k, actualValue, expectedValue))
-		}
 	}
 	return ComparisonMatch
 }
