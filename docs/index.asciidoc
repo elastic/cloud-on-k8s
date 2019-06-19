@@ -6,4 +6,5 @@
 
 include::{asciidoc-dir}/../../shared/versions70.asciidoc[]
 include::{asciidoc-dir}/../../shared/attributes.asciidoc[]
+include::overview.asciidoc[]
 include::k8s-quickstart.asciidoc[]

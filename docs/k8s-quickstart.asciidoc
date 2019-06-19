@@ -1,8 +1,6 @@
 [id="{p}-quickstart"]
-= Quickstart
+== Quickstart
 
-[partintro]
---
 With Elastic Cloud on Kubernetes (ECK) you can extend the basic Kubernetes orchestration capabilities to easily deploy, secure, upgrade your Elasticsearch cluster, and much more.
 
 Eager to get started? This fast guide shows you how to:
@@ -11,15 +9,16 @@ Eager to get started? This fast guide shows you how to:
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
-* <<{p}-deep-dive,Deep dive>>
+* <<{p}-persistent-storage,Use persistent storage>>
+* <<{p}-checkout-samples,Check out the samples>>
 
 **Requirements**
 
-This quickstart assumes you already have Kubernetes 1.11+.
---
+Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
 
+[float]
 [id="{p}-deploy-eck"]
-== Deploy ECK in your Kubernetes cluster
+=== Deploy ECK in your Kubernetes cluster
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
@@ -39,7 +38,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 [float]
 [id="{p}-deploy-elasticsearch"]
-== Deploy the Elasticsearch cluster
+=== Deploy the Elasticsearch cluster
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
@@ -66,7 +65,7 @@ EOF
 The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
 [float]
-=== Monitor cluster health and creation progress
+==== Monitor cluster health and creation progress
 
 Get an overview of the current Elasticsearch clusters in the Kubernetes cluster, including health, version and number of nodes:
 
@@ -104,7 +103,7 @@ kubectl logs -f quickstart-es-5zctxpn8nd
 ----
 
 [float]
-=== Request Elasticsearch access
+==== Request Elasticsearch access
 
 A ClusterIP Service is automatically created for your cluster:
 
@@ -175,7 +174,7 @@ NOTE: For testing purposes only, you can specify the `-k` option to turn off cer
 
 [float]
 [id="{p}-deploy-kibana"]
-== Deploy the Kibana instance
+=== Deploy the Kibana instance
 
 To deploy your link:{kibana-ref}/introduction.html#introduction[Kibana] instance go through the following steps.
 
@@ -239,7 +238,7 @@ echo $(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' 
 
 [float]
 [id="{p}-upgrade-deployment"]
-== Upgrade your deployment
+=== Upgrade your deployment
 
 You can apply any modification to the original cluster specification. The operator makes sure that your changes are applied to the existing cluster, while avoiding downtime.
 
@@ -263,15 +262,11 @@ spec:
 EOF
 ----
 
-[id="{p}-deep-dive"]
-== Deep dive
-
-Now that you have completed the quickstart, you can try out more features like using persistent storage.
-
 [float]
+[id="{p}-persistent-storage"]
 === Use persistent storage
 
-The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
+Now that you have completed the quickstart, you can try out more features like using persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
 
 You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
 
@@ -310,6 +305,7 @@ To aim for the best performance, the operator supports persistent volumes local 
  * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
 [float]
+[id="{p}-checkout-samples"]
 === Check out the samples
 
 You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/0.8/operators/config/samples[in the project repository].
