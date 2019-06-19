@@ -14,7 +14,7 @@ import (
 const (
 	// TemplateHashLabelName is a label to annotate a Kubernetes resource
 	// with the hash of its initial template before creation.
-	TemplateHashLabelName = "common.k8s.elastic.co/spec-hash"
+	TemplateHashLabelName = "common.k8s.elastic.co/template-hash"
 )
 
 // SetTemplateHashLabel adds a label containing the hash of the given template into the
