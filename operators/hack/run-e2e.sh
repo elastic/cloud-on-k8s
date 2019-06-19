@@ -36,6 +36,7 @@ sed \
 pod=""
 retry=0
 e2e_pod_creation_max_retries=30
+set +e # ignore error in the retry loop
 while true; do
     if [[ ${retry} -ge ${e2e_pod_creation_max_retries} ]]; then
         echo "failed to get the e2e pod name after ${e2e_pod_creation_max_retries} retries"
@@ -48,6 +49,7 @@ while true; do
     fi
     sleep 1;
 done
+set -e
 
 # wait until its container is started
 while kubectl -n $NAMESPACE get pod $pod | grep ContainerCreating; do
