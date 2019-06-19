@@ -184,7 +184,7 @@ func TestChanges_Group(t *testing.T) {
 	barPod := withLabels(namedPod("2"), map[string]string{"bar": "bar"})
 	bazPodToCreate := PodToCreate{
 		Pod:        withLabels(namedPod("3"), map[string]string{"baz": "bar"}).Pod,
-		PodSpecCtx: pod.PodSpecContext{PodSpec: corev1.PodSpec{Hostname: "baz"}},
+		PodSpecCtx: pod.PodSpecContext{PodTemplate: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Hostname: "baz"}}},
 	}
 
 	foobarPod := withLabels(namedPod("4"), map[string]string{"foo": "bar", "bar": "baz"})

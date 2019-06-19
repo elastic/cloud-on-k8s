@@ -193,7 +193,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 
-	esPodSpec := podSpec[0].PodSpec
+	esPodSpec := podSpec[0].PodTemplate.Spec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 3, len(esPodSpec.InitContainers))
 	assert.Equal(t, 15, len(esPodSpec.Volumes))

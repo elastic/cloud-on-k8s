@@ -16,7 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
@@ -78,8 +77,10 @@ func Test_newPVCFromTemplate(t *testing.T) {
 func Test_createElasticsearchPod(t *testing.T) {
 	client := k8s.WrapClient(fake.NewFakeClient())
 	podSpecCtx := pod.PodSpecContext{
-		PodSpec: corev1.PodSpec{
-			Containers: []corev1.Container{{Name: "foo"}},
+		PodTemplate: corev1.PodTemplateSpec{
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{Name: "foo"}},
+			},
 		},
 		NodeSpec: v1alpha1.NodeSpec{
 			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
@@ -97,6 +98,9 @@ func Test_createElasticsearchPod(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
 			Name:      "name",
+			Labels: map[string]string{
+				"a": "b",
+			},
 		},
 		Spec: corev1.PodSpec{
 			Volumes: []corev1.Volume{

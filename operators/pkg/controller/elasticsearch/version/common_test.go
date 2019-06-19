@@ -178,7 +178,7 @@ func Test_podSpec(t *testing.T) {
 				Elasticsearch: es71,
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				podSpec := specCtx.PodSpec
+				podSpec := specCtx.PodTemplate.Spec
 				require.Equal(t, fmt.Sprintf("%s:%s", pod.DefaultImageRepository, "7.1.0"), podSpec.Containers[0].Image)
 				require.Equal(t, pod.DefaultTerminationGracePeriodSeconds, *podSpec.TerminationGracePeriodSeconds)
 				require.Equal(t, &varFalse, podSpec.AutomountServiceAccountToken)
@@ -205,7 +205,7 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				require.Equal(t, "customImageName", specCtx.PodSpec.Containers[0].Image)
+				require.Equal(t, "customImageName", specCtx.PodTemplate.Spec.Containers[0].Image)
 			},
 		},
 		{
@@ -222,8 +222,8 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				require.Equal(t, &varInt64, specCtx.PodSpec.TerminationGracePeriodSeconds)
-				require.Equal(t, &varTrue, specCtx.PodSpec.AutomountServiceAccountToken)
+				require.Equal(t, &varInt64, specCtx.PodTemplate.Spec.TerminationGracePeriodSeconds)
+				require.Equal(t, &varTrue, specCtx.PodTemplate.Spec.AutomountServiceAccountToken)
 			},
 		},
 		{
@@ -259,7 +259,7 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				podSpec := specCtx.PodSpec
+				podSpec := specCtx.PodTemplate.Spec
 				require.True(t, len(podSpec.Volumes) > 1)
 				foundUserVolumes := 0
 				for _, v := range podSpec.Volumes {
@@ -302,7 +302,7 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				podSpec := specCtx.PodSpec
+				podSpec := specCtx.PodTemplate.Spec
 				require.Equal(t, []corev1.Container{
 					{
 						Name: "init-container1",
@@ -373,7 +373,7 @@ func Test_podSpec(t *testing.T) {
 						Name:  "var2",
 						Value: "value2",
 					},
-				}, specCtx.PodSpec.Containers[0].Env)
+				}, specCtx.PodTemplate.Spec.Containers[0].Env)
 			},
 		},
 		{
@@ -416,7 +416,7 @@ func Test_podSpec(t *testing.T) {
 						Name:  "var2",
 						Value: "value2",
 					},
-				}, specCtx.PodSpec.Containers[0].Env)
+				}, specCtx.PodTemplate.Spec.Containers[0].Env)
 			},
 		},
 		{
@@ -432,7 +432,7 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				require.Equal(t, pod.DefaultAffinity("my-cluster"), specCtx.PodSpec.Affinity)
+				require.Equal(t, pod.DefaultAffinity("my-cluster"), specCtx.PodTemplate.Spec.Affinity)
 			},
 		},
 		{
@@ -455,7 +455,7 @@ func Test_podSpec(t *testing.T) {
 				},
 			},
 			assertions: func(t *testing.T, specCtx pod.PodSpecContext) {
-				require.Equal(t, &corev1.Affinity{}, specCtx.PodSpec.Affinity)
+				require.Equal(t, &corev1.Affinity{}, specCtx.PodTemplate.Spec.Affinity)
 			},
 		},
 		{
@@ -484,7 +484,7 @@ func Test_podSpec(t *testing.T) {
 					"elasticsearch.k8s.elastic.co/node-master":  "true",
 					"elasticsearch.k8s.elastic.co/node-ml":      "true",
 					"elasticsearch.k8s.elastic.co/version":      "7.1.0",
-				}, specCtx.Labels)
+				}, specCtx.PodTemplate.Labels)
 			},
 		},
 	}
