@@ -130,8 +130,6 @@ func Test_createElasticsearchPod(t *testing.T) {
 	err = client.Get(k8s.ExtractNamespacedName(&pod), &pod)
 	require.NoError(t, err)
 
-	// pod should have the spec hash label set
-	require.Equal(t, hash.HashObject(podSpecCtx.PodSpec), hash.GetSpecHashLabel(pod.Labels))
 	// should have a volume for transport certs (existing one replaced)
 	found := false
 	for _, v := range pod.Spec.Volumes {

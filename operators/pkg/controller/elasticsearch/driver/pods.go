@@ -13,7 +13,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -37,9 +36,6 @@ func createElasticsearchPod(
 	podSpecCtx pod.PodSpecContext,
 	orphanedPVCs *pvcutils.OrphanedPersistentVolumeClaims,
 ) error {
-	// label the pod with a hash of its spec, for comparison purpose
-	pod.Labels = hash.SetSpecHashLabel(pod.Labels, podSpecCtx.PodSpec)
-
 	// when can we re-use a metav1.PersistentVolumeClaim?
 	// - It is the same size, storageclass etc, or resizable as such
 	// 		(https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims)

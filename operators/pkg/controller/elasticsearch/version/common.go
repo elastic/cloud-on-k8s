@@ -11,6 +11,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
@@ -215,10 +216,9 @@ func podSpecContext(
 	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
 
 	return pod.PodSpecContext{
-		NodeSpec: p.NodeSpec,
-		PodSpec:  builder.PodTemplate.Spec,
-		Labels:   builder.PodTemplate.Labels,
-		Config:   esConfig,
+		NodeSpec:    p.NodeSpec,
+		PodTemplate: builder.PodTemplate,
+		Config:      esConfig,
 	}, nil
 }
 
@@ -226,28 +226,31 @@ func podSpecContext(
 func NewPod(
 	es v1alpha1.Elasticsearch,
 	podSpecCtx pod.PodSpecContext,
-) (corev1.Pod, error) {
-	// build on top of user-provided objectMeta to reuse labels, annotations, etc.
-	builder := defaults.NewPodTemplateBuilder(podSpecCtx.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName)
-
-	// set our own name & namespace
-	builder.PodTemplate.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	builder.PodTemplate.Namespace = es.Namespace
-	// apply labels computed in the podSpecCtx
-	builder.PodTemplate.Labels = podSpecCtx.Labels
-
-	if podSpecCtx.PodSpec.Hostname == "" {
-		podSpecCtx.PodSpec.Hostname = builder.PodTemplate.Name
+) corev1.Pod {
+	// build a pod based on the podSpecCtx template
+	template := *podSpecCtx.PodTemplate.DeepCopy()
+	pod := corev1.Pod{
+		ObjectMeta: template.ObjectMeta,
+		Spec:       template.Spec,
 	}
 
-	if podSpecCtx.PodSpec.Subdomain == "" {
-		podSpecCtx.PodSpec.Subdomain = es.Name
+	// label the pod with a hash of its template, for comparison purpose,
+	// before it gets assigned a name
+	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
+
+	// set name & namespace
+	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
+	pod.Namespace = es.Namespace
+
+	// set hostname and subdomain based on pod and cluster names
+	if pod.Spec.Hostname == "" {
+		pod.Spec.Hostname = pod.Name
+	}
+	if pod.Spec.Subdomain == "" {
+		pod.Spec.Subdomain = es.Name
 	}
 
-	return corev1.Pod{
-		ObjectMeta: builder.PodTemplate.ObjectMeta,
-		Spec:       podSpecCtx.PodSpec,
-	}, nil
+	return pod
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity

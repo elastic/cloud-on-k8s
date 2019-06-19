@@ -138,12 +138,27 @@ func Test_PodMatchesSpec(t *testing.T) {
 		{
 			name: "Matching pod should match",
 			args: args{
-				pod:  withSpecHashLabel(ESPodWithConfig(ESPodSpecContext(defaultImage, defaultCPULimit))),
-				spec: ESPodSpecContext(defaultImage, defaultCPULimit),
+				pod:  defaultPod,
+				spec: defaultSpecCtx,
 			},
-			want:               true,
-			wantErr:            nil,
-			expectedMismatches: nil,
+			want: true,
+		},
+		{
+			name: "Pod is missing the hash label",
+			args: args{
+				pod:  defaultPodWithNoHash(),
+				spec: defaultSpecCtx,
+			},
+			want:                      false,
+			expectedMismatchesContain: fmt.Sprintf("No %s label set on the existing pod", hash.TemplateHashLabelName),
+		},
+		{
+			name: "Pod label was patched by a user: should still match",
+			args: args{
+				pod:  defaultPodWithPatchedLabel(),
+				spec: defaultSpecCtx,
+			},
+			want: true,
 		},
 		{
 			name: "Non-matching image should not match",
