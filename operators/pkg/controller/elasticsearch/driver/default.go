@@ -8,12 +8,6 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -22,10 +16,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cluster"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/discovery"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
@@ -42,6 +37,10 @@ import (
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // defaultDriver is the default Driver implementation
@@ -77,33 +76,6 @@ type defaultDriver struct {
 		c k8s.Client,
 		es v1alpha1.Elasticsearch,
 	) (*reconcile.ResourcesState, error)
-
-	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
-	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
-	clusterInitialMasterNodesEnforcer func(
-		performableChanges mutation.PerformableChanges,
-		resourcesState reconcile.ResourcesState,
-	) (*mutation.PerformableChanges, error)
-
-	// zen1SettingsUpdater updates the zen1 settings for the current pods.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(
-		cluster v1alpha1.Elasticsearch,
-		c k8s.Client,
-		esClient esclient.Client,
-		allPods []corev1.Pod,
-		performableChanges *mutation.PerformableChanges,
-		reconcileState *reconcile.State,
-	) (bool, error)
-
-	// zen2SettingsUpdater updates the zen2 settings for the current changes.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
-	zen2SettingsUpdater func(
-		esClient esclient.Client,
-		minVersion version.Version,
-		changes mutation.Changes,
-		performableChanges mutation.PerformableChanges,
-	) error
 
 	// TODO: implement
 	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.
@@ -268,8 +240,18 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// figure out what changes we can perform right now
-	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
+	performableChanges, err := mutation.CalculatePerformableChanges(
+		es.Spec.UpdateStrategy,
+		*changes,
+		// copy the pods state because this method is destructive
+		podsState.Copy(),
+	)
 	if err != nil {
+		return results.WithError(err)
+	}
+
+	// zen1 has certain limits on what changes can be safely performed concurrently.
+	if err := discovery.ApplyZen1Limitations(d.Client, podsState, performableChanges, esReachable); err != nil {
 		return results.WithError(err)
 	}
 
@@ -300,38 +282,43 @@ func (d *defaultDriver) Reconcile(
 		},
 	)
 
-	if d.clusterInitialMasterNodesEnforcer != nil {
-		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
-		if err != nil {
-			return results.WithError(err)
-		}
-	}
-
-	// Compute seed hosts based on current masters with a podIP
-	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
+	// bootstrap a Zen2 cluster if required
+	if err := discovery.Zen2InjectInitialMasterNodesIfBootstrapping(performableChanges, *resourcesState); err != nil {
 		return results.WithError(err)
 	}
 
-	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
-	// correct value for minimum_master_nodes.
-	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
-	// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
-	if d.zen1SettingsUpdater != nil {
-		requeue, err := d.zen1SettingsUpdater(
-			es,
-			d.Client,
-			esClient,
-			resourcesState.AllPods,
-			performableChanges,
-			reconcileState,
-		)
+	// Compute seed hosts based on current masters with a podIP
+	if err := discovery.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
+		return results.WithError(err)
+	}
 
-		if err != nil {
+	logicalCluster := cluster.NewDirectCluster(esClient, observedState)
+
+	if err := logicalCluster.PrepareForDeletionPods(d.Client, es, podsState, performableChanges); err != nil {
+		return results.WithError(err)
+	}
+
+	if err := logicalCluster.FilterDeletablePods(d.Client, es, podsState, performableChanges); err != nil {
+		return results.WithError(err)
+	}
+
+	if esReachable {
+		// TODO: update the following comments to be a little more applicable
+		// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
+		// correct value for minimum_master_nodes.
+		// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
+		// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
+
+		// update the cluster for the infrastructure changes we're about to perform
+		if err := logicalCluster.OnInfrastructureState(
+			d.Client, es, podsState, performableChanges, reconcileState,
+		); err != nil {
 			return results.WithError(err)
 		}
 
-		if requeue {
-			results.WithResult(defaultRequeue)
+		// update zen 1 configuration files on disk in preparation for the changes we're about to perform
+		if err := discovery.Zen1UpdateMinimumMasterNodesConfig(d.Client, es, podsState, performableChanges); err != nil {
+			return results.WithError(err)
 		}
 	}
 
@@ -372,33 +359,15 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	if d.zen2SettingsUpdater != nil {
-		// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
-		if err := d.zen2SettingsUpdater(
-			esClient,
-			*min,
-			*changes,
-			*performableChanges,
-		); err != nil {
-			return results.WithResult(defaultRequeue).WithError(err)
-		}
-	}
-
 	if !changes.HasChanges() {
 		// Current state matches expected state
 		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
 		return results
 	}
 
-	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete.Pods())
-	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
-		return results.WithError(errors.Wrap(err, "error during migrate data"))
-	}
-
 	// Shrink clusters by deleting deprecated pods
 	if err = d.attemptPodsDeletion(
-		performableChanges,
+		performableChanges.ToDelete.Pods(),
 		reconcileState,
 		resourcesState,
 		observedState,
@@ -422,7 +391,7 @@ func (d *defaultDriver) Reconcile(
 
 // attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
 func (d *defaultDriver) attemptPodsDeletion(
-	changes *mutation.PerformableChanges,
+	pods []corev1.Pod,
 	reconcileState *reconcile.State,
 	resourcesState *reconcile.ResourcesState,
 	observedState observer.State,
@@ -430,48 +399,14 @@ func (d *defaultDriver) attemptPodsDeletion(
 	esClient esclient.Client,
 	elasticsearch v1alpha1.Elasticsearch,
 ) error {
-	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
-	copy(newState, resourcesState.CurrentPods.Pods())
-	for _, pod := range changes.ToDelete.Pods() {
-		newState = removePodFromList(newState, pod)
-		preDelete := func() error {
-			if d.zen1SettingsUpdater != nil {
-				requeue, err := d.zen1SettingsUpdater(
-					elasticsearch,
-					d.Client,
-					esClient,
-					newState,
-					changes,
-					reconcileState)
-
-				if err != nil {
-					return err
-				}
-
-				if requeue {
-					results.WithResult(defaultRequeue)
-				}
-			}
-			return nil
-		}
-
-		// do not delete a pod or expect a deletion if a data migration is in progress
-		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
-		if isMigratingData {
-			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
-			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
-			results.WithResult(defaultRequeue)
-			continue
-		}
-
+	for _, p := range pods {
 		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
 		d.PodsExpectations.ExpectDeletion(namespacedName)
 		result, err := deleteElasticsearchPod(
 			d.Client,
 			reconcileState,
 			*resourcesState,
-			pod,
-			preDelete,
+			p,
 		)
 		if err != nil {
 			// pod was not deleted, cancel our expectation by marking it observed
@@ -481,16 +416,6 @@ func (d *defaultDriver) attemptPodsDeletion(
 		results.WithResult(result)
 	}
 	return nil
-}
-
-// removePodFromList removes a single pod from the list, matching by pod name.
-func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
-	for i, p := range pods {
-		if p.Name == pod.Name {
-			return append(pods[:i], pods[i+1:]...)
-		}
-	}
-	return pods
 }
 
 // calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the

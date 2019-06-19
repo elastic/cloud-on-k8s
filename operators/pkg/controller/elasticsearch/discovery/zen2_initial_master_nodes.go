@@ -2,32 +2,44 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package version7
+package discovery
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 )
 
-// ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
-func ClusterInitialMasterNodesEnforcer(
-	performableChanges mutation.PerformableChanges,
+// Zen2InjectInitialMasterNodesIfBootstrapping enforces that cluster.initial_master_nodes is set for the master nodes
+// that we're about to create if they are the first nodes to be created in the cluster.
+func Zen2InjectInitialMasterNodesIfBootstrapping(
+	performableChanges *mutation.PerformableChanges,
 	resourcesState reconcile.ResourcesState,
-) (*mutation.PerformableChanges, error) {
+) error {
+	if len(resourcesState.CurrentPods) != 0 {
+		// already have pods, no bootstrap should be done
+		// this means if we lose all master nodes, but still have other nodes, we will not automatically bootstrap
+		return nil
+	}
+
+	if len(performableChanges.ToCreate) == 0 {
+		// not creating any nodes, no bootstrapping can be done
+		return nil
+	}
+
+	minVersion, err := version.MinVersion(performableChanges.ToCreate.Pods())
+	if err != nil {
+		return err
+	}
+
+	if !minVersion.IsSameOrAfter(Zen2MinimumVersion) {
+		// not creating zen2 pods, no zen 2 bootstrapping
+		return nil
+	}
+
 	var masterEligibleNodeNames []string
-	for _, pod := range resourcesState.CurrentPods {
-		if label.IsMasterNode(pod.Pod) {
-			masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Pod.Name)
-		}
-	}
-
-	// if we have masters in the cluster, we can relatively safely assume that it's already bootstrapped
-	if len(masterEligibleNodeNames) > 0 {
-		return &performableChanges, nil
-	}
-
 	// collect the master eligible node names from the pods we're about to create
 	for _, change := range performableChanges.ToCreate {
 		if label.IsMasterNode(change.Pod) {
@@ -42,14 +54,13 @@ func ClusterInitialMasterNodesEnforcer(
 			continue
 		}
 
-		err := performableChanges.ToCreate[i].PodSpecCtx.Config.SetStrings(
+		if err := performableChanges.ToCreate[i].PodSpecCtx.Config.SetStrings(
 			settings.ClusterInitialMasterNodes,
 			masterEligibleNodeNames...,
-		)
-		if err != nil {
-			return nil, err
+		); err != nil {
+			return err
 		}
 	}
 
-	return &performableChanges, nil
+	return nil
 }

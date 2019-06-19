@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package settings
+package discovery
 
 import (
 	"fmt"
@@ -22,14 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// Quorum computes the quorum of a cluster given the number of masters.
-func Quorum(nMasters int) int {
-	if nMasters == 0 {
-		return 0
-	}
-	return (nMasters / 2) + 1
-}
 
 // UpdateSeedHostsConfigMap updates the config map that contains the seed hosts. It returns true if a reconcile
 // iteration should be triggered later because some pods don't have an IP yet.

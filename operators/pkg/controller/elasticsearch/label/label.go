@@ -47,6 +47,19 @@ func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
 }
 
+// MasterEligiblePods returns the master eligible pods of the provided pods
+func MasterEligiblePods(pods []corev1.Pod) []corev1.Pod {
+	masterEligible := make([]corev1.Pod, 0, len(pods))
+
+	for _, pod := range pods {
+		if IsMasterNode(pod) {
+			masterEligible = append(masterEligible, pod)
+		}
+	}
+
+	return masterEligible
+}
+
 // IsDataNode returns true if the pod has the data node label
 func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)

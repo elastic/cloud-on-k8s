@@ -194,7 +194,6 @@ func deleteElasticsearchPod(
 	reconcileState *esreconcile.State,
 	resourcesState esreconcile.ResourcesState,
 	pod corev1.Pod,
-	preDelete func() error,
 ) (reconcile.Result, error) {
 
 	// delete all PVCs associated with this pod
@@ -215,9 +214,6 @@ func deleteElasticsearchPod(
 		}
 	}
 
-	if err := preDelete(); err != nil {
-		return reconcile.Result{}, err
-	}
 	if err := c.Delete(&pod); err != nil && !apierrors.IsNotFound(err) {
 		return reconcile.Result{}, err
 	}

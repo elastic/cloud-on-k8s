@@ -29,10 +29,21 @@ type Node struct {
 	ML     bool `config:"ml"`
 }
 
+// ZenSettings are settings for Zen discovery
+type ZenSettings struct {
+	MinimumMasterNodes int `config:"minimum_master_nodes,omitempty"`
+}
+
+// DiscoverySettings are settings for the discovery
+type DiscoverySettings struct {
+	Zen ZenSettings `config:"zen,omitempty"`
+}
+
 // ElasticsearchSettings is a typed subset of elasticsearch.yml for purposes of the operator.
 type ElasticsearchSettings struct {
-	Node    Node            `config:"node"`
-	Cluster ClusterSettings `config:"cluster"`
+	Node      Node              `config:"node"`
+	Cluster   ClusterSettings   `config:"cluster"`
+	Discovery DiscoverySettings `config:"discovery,omitempty"`
 }
 
 // DefaultCfg is an instance of ElasticsearchSettings with defaults set as they are in Elasticsearch.

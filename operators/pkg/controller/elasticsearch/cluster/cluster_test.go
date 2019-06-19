@@ -2,26 +2,23 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package driver
+package cluster
 
 import (
 	"encoding/json"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	k8sreconcile "sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -192,16 +189,19 @@ const (
 )
 
 func newPod(name, namespace string) corev1.Pod {
-	pod := corev1.Pod{
+	p := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Labels: map[string]string{
+				label.VersionLabelName: "7.1.0",
+			},
 		},
 	}
-	return pod
+	return p
 }
 
-func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
+func TestDirectCluster_FilterDeletablePods(t *testing.T) {
 	var clusterState esclient.ClusterState
 	b := []byte(ClusterStateSample)
 	err := json.Unmarshal(b, &clusterState)
@@ -213,13 +213,7 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	pod3 := newPod("elasticsearch-sample-es-jfpqbt2s4q", "default")
 	pod4 := newPod("elasticsearch-sample-es-nope", "default")
 
-	expectedResult1 := reconciler.Results{}
-	expectedResult1.WithResult(defaultRequeue).WithResult(defaultRequeue)
-
-	expectedEmptyResult := reconciler.Results{}
-	expectedEmptyResult.WithResult(k8sreconcile.Result{})
-
-	elasticsearch := v1alpha1.Elasticsearch{
+	es := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "default",
 			Name:      "elasticsearch-sample",
@@ -227,36 +221,27 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 	}
 
 	type fields struct {
-		Options Options
+		esClient      client.Client
+		observerState observer.State
 	}
-
 	type args struct {
-		ToDelete       *mutation.PerformableChanges
-		reconcileState *reconcile.State
-		resourcesState *reconcile.ResourcesState
-		observedState  observer.State
-		results        *reconciler.Results
-		esClient       esclient.Client
-		elasticsearch  v1alpha1.Elasticsearch
+		k                  k8s.Client
+		es                 v1alpha1.Elasticsearch
+		podsState          mutation.PodsState
+		performableChanges *mutation.PerformableChanges
 	}
-
-	type want struct {
-		results              *reconciler.Results
-		fulfilledExpectation bool
-	}
-
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-		want    want
+		name       string
+		fields     fields
+		args       args
+		wantErr    bool
+		assertions func(t *testing.T, performableChanges *mutation.PerformableChanges)
 	}{
 		{
 			name: "Do not delete a pod with migrating data",
 			args: args{
-				elasticsearch: elasticsearch,
-				ToDelete: &mutation.PerformableChanges{
+				es: es,
+				performableChanges: &mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToDelete: pod.PodsWithConfig{
 							pod.PodWithConfig{Pod: pod1},
@@ -264,81 +249,63 @@ func Test_defaultDriver_attemptPodsDeletion(t *testing.T) {
 						},
 					},
 				},
-				resourcesState: &reconcile.ResourcesState{
-					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1},
-						{Pod: pod2},
-						{Pod: pod3},
+				podsState: mutation.PodsState{
+					RunningReady: map[string]corev1.Pod{
+						pod1.Name: pod1,
+						pod2.Name: pod2,
+						pod3.Name: pod3,
 					},
 				},
-				observedState: observer.State{
-					ClusterState: &clusterState,
-				},
-				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
-				results:        &reconciler.Results{},
 			},
 			fields: fields{
-				Options: Options{
-					PodsExpectations: reconciler.NewExpectations(),
+				observerState: observer.State{
+					ClusterState: &clusterState,
 				},
 			},
-			wantErr: false,
-			want: want{
-				results:              &expectedResult1,
-				fulfilledExpectation: true, // pod deletion is delayed, do not expect anything
+			assertions: func(t *testing.T, performableChanges *mutation.PerformableChanges) {
+				assert.Len(t, performableChanges.ToDelete, 0)
 			},
 		},
 		{
 			name: "Delete a pod with no data",
 			args: args{
-				elasticsearch: elasticsearch,
-				ToDelete: &mutation.PerformableChanges{
+				es: es,
+				performableChanges: &mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToDelete: pod.PodsWithConfig{
+							pod.PodWithConfig{Pod: pod1},
+							pod.PodWithConfig{Pod: pod2},
 							pod.PodWithConfig{Pod: pod4},
 						},
 					},
 				},
-				resourcesState: &reconcile.ResourcesState{
-					CurrentPods: pod.PodsWithConfig{
-						{Pod: pod1},
-						{Pod: pod2},
-						{Pod: pod3},
-						{Pod: pod4},
+				podsState: mutation.PodsState{
+					RunningReady: map[string]corev1.Pod{
+						pod1.Name: pod1,
+						pod2.Name: pod2,
+						pod3.Name: pod3,
 					},
 				},
-				observedState: observer.State{
-					ClusterState: &clusterState,
-				},
-				reconcileState: &reconcile.State{Recorder: events.NewRecorder()},
-				results:        &reconciler.Results{},
 			},
 			fields: fields{
-				Options: Options{
-					PodsExpectations: reconciler.NewExpectations(),
-					Client:           k8s.WrapClient(fake.NewFakeClient()),
+				observerState: observer.State{
+					ClusterState: &clusterState,
 				},
 			},
-			wantErr: false,
-			want: want{
-				results:              &expectedEmptyResult,
-				fulfilledExpectation: false, // pod4 is expected to be deleted
+			assertions: func(t *testing.T, performableChanges *mutation.PerformableChanges) {
+				assert.Len(t, performableChanges.ToDelete, 1)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := &defaultDriver{
-				Options: tt.fields.Options,
+			c := &DirectCluster{
+				esClient:      tt.fields.esClient,
+				observerState: tt.fields.observerState,
 			}
-			if err := d.attemptPodsDeletion(
-				tt.args.ToDelete, tt.args.reconcileState, tt.args.resourcesState,
-				tt.args.observedState, tt.args.results, tt.args.esClient, tt.args.elasticsearch); (err != nil) != tt.wantErr {
-				t.Errorf("defaultDriver.attemptPodsDeletion() error = %v, wantErr %v", err, tt.wantErr)
+			if err := c.FilterDeletablePods(tt.args.k, tt.args.es, tt.args.podsState, tt.args.performableChanges); (err != nil) != tt.wantErr {
+				t.Errorf("DirectCluster.FilterDeletablePods() error = %v, wantErr %v", err, tt.wantErr)
 			}
-			assert.EqualValues(t, tt.want.results, tt.args.results)
-			nn := k8s.ExtractNamespacedName(&tt.args.elasticsearch)
-			assert.EqualValues(t, tt.want.fulfilledExpectation, tt.fields.Options.PodsExpectations.Fulfilled(nn))
 		})
 	}
 }

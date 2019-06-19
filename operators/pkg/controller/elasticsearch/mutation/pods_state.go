@@ -5,6 +5,7 @@
 package mutation
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
@@ -121,6 +122,37 @@ func initializePodsState(state PodsState) PodsState {
 		state.Deleting = make(map[string]corev1.Pod)
 	}
 	return state
+}
+
+func (s PodsState) AllPods() []corev1.Pod {
+	groups := []map[string]corev1.Pod{
+		s.Pending,
+		s.RunningJoining,
+		s.RunningReady,
+		s.RunningUnknown,
+		s.Unknown,
+		s.Terminal,
+		s.Deleting,
+	}
+
+	count := 0
+	for _, group := range groups {
+		count += len(group)
+	}
+
+	allPods := make([]corev1.Pod, 0, count)
+
+	for _, podMap := range groups {
+		for _, pod := range podMap {
+			allPods = append(allPods, pod)
+		}
+	}
+
+	return allPods
+}
+
+func (s PodsState) MasterEligiblePods() []corev1.Pod {
+	return label.MasterEligiblePods(s.AllPods())
 }
 
 // CurrentPodsCount returns the count of pods that might be consuming resources in the Kubernetes cluster.
