@@ -35,10 +35,10 @@ sed \
 # retrieve pod responsible for running the job
 pod=""
 retry=0
-e2e_pod_creation_timeout=30
+e2e_pod_creation_max_retries=30
 while true; do
-    if [[ ${retry} -ge ${e2e_pod_creation_timeout} ]]; then
-        echo "failed to get the e2e pod name after ${e2e_pod_creation_timeout} seconds"
+    if [[ ${retry} -ge ${e2e_pod_creation_max_retries} ]]; then
+        echo "failed to get the e2e pod name after ${e2e_pod_creation_max_retries} retries"
         exit 1
     fi
     ((retry++))
