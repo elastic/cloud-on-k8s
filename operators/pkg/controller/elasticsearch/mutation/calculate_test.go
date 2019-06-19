@@ -156,8 +156,8 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
-				return corev1.Pod{}, nil // TODO: fix
+			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) corev1.Pod {
+				return version.NewPod(es, ctx)
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
