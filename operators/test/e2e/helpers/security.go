@@ -14,5 +14,6 @@ func DefaultSecurityContext() *corev1.PodSecurityContext {
 	return &corev1.PodSecurityContext{
 		RunAsNonRoot: BoolPtr(true),
 		RunAsUser:    &defaultUserId,
+		FSGroup:      &defaultUserId,
 	}
 }

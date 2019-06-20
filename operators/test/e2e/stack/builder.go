@@ -168,6 +168,40 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 	return b
 }
 
+func (b Builder) WithAdditionalPersistentVolumes() Builder {
+	for i := range b.Elasticsearch.Spec.Nodes {
+		name := "not-data"
+		b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates,
+			corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					AccessModes: []corev1.PersistentVolumeAccessMode{
+						corev1.ReadWriteOnce,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			})
+		b.Elasticsearch.Spec.Nodes[i].PodTemplate.Spec.Volumes = []corev1.Volume{
+			{
+				Name: name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: name,
+						ReadOnly:  false,
+					},
+				},
+			},
+		}
+	}
+	return b
+}
+
 // -- Kibana
 
 func (b Builder) WithKibana(count int) Builder {

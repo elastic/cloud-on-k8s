@@ -10,6 +10,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
@@ -19,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/kubernetes/pkg/kubelet/util/sliceutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,9 +46,9 @@ func RunFailureTest(t *testing.T, s stack.Builder, f failureTestFunc) {
 		RunSequential(t)
 }
 
-func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
-	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
-		var killedPod corev1.Pod
+func killSteps(listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) failureTestFunc {
+	var killedPod corev1.Pod
+	return func(k *helpers.K8sHelper) helpers.TestStepList {
 		return helpers.TestStepList{
 			{
 				Name: "Kill a node",
@@ -73,7 +76,11 @@ func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions,
 				}),
 			},
 		}
-	})
+	}
+}
+
+func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
+	RunFailureTest(t, s, killSteps(listOptions, podMatch))
 }
 
 func TestKillOneDataNode(t *testing.T) {
@@ -99,18 +106,77 @@ func TestKillOneMasterNode(t *testing.T) {
 }
 
 func TestKillSingleNodeReusePV(t *testing.T) {
-	// TODO :)
-	// This test cannot work until we correctly reuse PV between pods in the operator.
-	// We should not loose data, and ClusterUUID should stay the same
+	s := stack.NewStackBuilder("test-failure-pvc").
+		WithESMasterDataNodes(1, stack.DefaultResources)
+	matchNode := func(p corev1.Pod) bool {
+		return true // match first node we find
+	}
+	killNodeTest(t, s, helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)
+}
 
-	// s := stack.NewStackBuilder("test-failure-kill-single-node-no-pv").
-	// 	WithESMasterDataNodes(1, stack.DefaultResources).
-	//  WithPV().
-	// 	Stack
-	// matchNode := func(p corev1.Pod) bool {
-	// 	return true // match first node we find
-	// }
-	// killNodeTest(t, s, matchNode)
+func TestKillCorrectPVReuse(t *testing.T) {
+	s := stack.NewStackBuilder("test-failure-pvc").
+		WithESMasterDataNodes(1, stack.DefaultResources).
+		WithAdditionalPersistentVolumes() // create an additional volume that is not our data volume
+
+	matchNode := func(p corev1.Pod) bool {
+		return true // match first node we find
+	}
+	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
+		var seenPVCs []string
+		list := helpers.TestStepList{}
+		list = append(list, stack.PauseReconciliation(s.Elasticsearch, k))
+		list = append(list, killSteps(helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)(k)...)
+		list = append(list, helpers.TestStep{
+			Name: "Modify the es-data PVCs labels",
+			Test: helpers.Eventually(func() error {
+				pvcs, err := pvc.ListVolumeClaims(k.Client, s.Elasticsearch)
+				if err != nil {
+					return err
+				}
+				for _, pvc := range pvcs {
+					seenPVCs = append(seenPVCs, pvc.Name)
+					if pvc.Labels[label.VolumeNameLabelName] == volume.ElasticsearchDataVolumeName {
+						// this should ensure that when we resume reconciliation the operator creates a new PVC
+						// we also test correct reuse by keeping the non-data volume claim around and unchanged
+						delete(pvc.Labels, label.VolumeNameLabelName)
+						if err := k.Client.Update(&pvc); err != nil {
+							return err
+						}
+					}
+				}
+				return nil
+			}),
+		})
+		list = append(list, stack.ResumeReconciliation(s.Elasticsearch, k))
+		list = append(list, helpers.TestStep{
+			Name: "No PVC should have been reused for elasticsearch-data",
+			Test: helpers.Eventually(func() error {
+				pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
+				if err != nil {
+					return err
+				}
+				for _, pod := range pods {
+					for _, v := range pod.Spec.Volumes {
+						pvc := v.VolumeSource.PersistentVolumeClaim
+						if pvc == nil {
+							continue
+						}
+						if v.Name != volume.ElasticsearchDataVolumeName {
+							if !sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+								return fmt.Errorf("expected reused PVC but %v is new , seen: %v", pvc.ClaimName, seenPVCs)
+							}
+
+						} else if sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+							return fmt.Errorf("expected new PVC but was reused %v, seen: %v", pvc.ClaimName, seenPVCs)
+						}
+					}
+				}
+				return nil
+			}),
+		})
+		return list
+	})
 }
 
 func TestKillKibanaPod(t *testing.T) {

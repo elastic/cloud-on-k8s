@@ -25,11 +25,8 @@ type OrphanedPersistentVolumeClaims struct {
 	orphanedPersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
-// FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
-func FindOrphanedVolumeClaims(
-	c k8s.Client,
-	es v1alpha1.Elasticsearch,
-) (*OrphanedPersistentVolumeClaims, error) {
+// ListVolumeClaims lists the persistent volume claims for the given Elasticsearch cluster.
+func ListVolumeClaims(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.PersistentVolumeClaim, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	// List PVC
 	listPVCOptions := client.ListOptions{
@@ -41,10 +38,24 @@ func FindOrphanedVolumeClaims(
 	if err := c.List(&listPVCOptions, &persistentVolumeClaims); err != nil {
 		return nil, err
 	}
+	return persistentVolumeClaims.Items, nil
+
+}
+
+// FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
+func FindOrphanedVolumeClaims(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+) (*OrphanedPersistentVolumeClaims, error) {
+
+	persistentVolumeClaims, err := ListVolumeClaims(c, es)
+	if err != nil {
+		return nil, err
+	}
 
 	// Maintain a map of the retrieved PVCs
 	pvcByName := map[string]corev1.PersistentVolumeClaim{}
-	for _, p := range persistentVolumeClaims.Items {
+	for _, p := range persistentVolumeClaims {
 		if p.DeletionTimestamp != nil {
 			continue // PVC is being deleted, ignore it
 		}
@@ -52,6 +63,7 @@ func FindOrphanedVolumeClaims(
 	}
 
 	// List running pods
+	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	listPodSOptions := client.ListOptions{
 		Namespace:     es.Namespace,
 		LabelSelector: labelSelector,
