@@ -36,7 +36,6 @@ func createElasticsearchPod(
 	podSpecCtx pod.PodSpecContext,
 	orphanedPVCs *pvcutils.OrphanedPersistentVolumeClaims,
 ) error {
-
 	// when can we re-use a metav1.PersistentVolumeClaim?
 	// - It is the same size, storageclass etc, or resizable as such
 	// 		(https://kubernetes.io/docs/concepts/storage/persistent-volumes/#expanding-persistent-volumes-claims)
@@ -65,27 +64,16 @@ func createElasticsearchPod(
 			return err
 		}
 
-		// delete the volume with the same name as our claim template, we will add the expected one later
-		for i, volume := range pod.Spec.Volumes {
-			if volume.Name == claimTemplate.Name {
-				pod.Spec.Volumes = append(pod.Spec.Volumes[:i], pod.Spec.Volumes[i+1:]...)
-				break
-			}
-		}
-
-		// append our PVC to the list of volumes
-		pod.Spec.Volumes = append(
-			pod.Spec.Volumes,
-			corev1.Volume{
-				Name: claimTemplate.Name,
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: pvc.Name,
-						// TODO: support read only pvcs
-					},
+		vol := corev1.Volume{
+			Name: claimTemplate.Name,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvc.Name,
+					// TODO: support read only pvcs
 				},
 			},
-		)
+		}
+		pod = replaceVolume(pod, vol)
 	}
 
 	// create the transport certificates secret for this pod because it must exist before we're able to create the
@@ -102,26 +90,18 @@ func createElasticsearchPod(
 	}
 
 	// we finally have the transport certificates secret made, so we can inject the secret volume into the pod
-	transportCertificatesSecretVolume := volume.NewSecretVolumeWithMountPath(
+	transportCertsVolume := volume.NewSecretVolumeWithMountPath(
 		transportCertificatesSecret.Name,
 		esvolume.TransportCertificatesSecretVolumeName,
-		esvolume.TransportCertificatesSecretVolumeMountPath,
-	)
-	// add the transport certificates volume to volumes
-	pod.Spec.Volumes = append(pod.Spec.Volumes, transportCertificatesSecretVolume.Volume())
+		esvolume.TransportCertificatesSecretVolumeMountPath).Volume()
+	pod = replaceVolume(pod, transportCertsVolume)
 
 	// create the config volume for this pod, now that we have a proper name for the pod
 	if err := settings.ReconcileConfig(c, es, pod, podSpecCtx.Config); err != nil {
 		return err
 	}
-	configSecretVolume := settings.ConfigSecretVolume(pod.Name)
-	// inject both volume and volume mount
-	pod.Spec.Volumes = append(pod.Spec.Volumes, configSecretVolume.Volume())
-	for i, c := range pod.Spec.Containers {
-		if c.Name == v1alpha1.ElasticsearchContainerName {
-			pod.Spec.Containers[i].VolumeMounts = append(pod.Spec.Containers[i].VolumeMounts, configSecretVolume.VolumeMount())
-		}
-	}
+	configSecretVolume := settings.ConfigSecretVolume(pod.Name).Volume()
+	pod = replaceVolume(pod, configSecretVolume)
 
 	if err := controllerutil.SetControllerReference(&es, &pod, scheme); err != nil {
 		return err
@@ -133,6 +113,17 @@ func createElasticsearchPod(
 	log.Info("Created pod", "name", pod.Name, "namespace", pod.Namespace)
 
 	return nil
+}
+
+// replaceVolume replaces an existing volume in the pod that has the same name as the given one.
+func replaceVolume(pod corev1.Pod, volume corev1.Volume) corev1.Pod {
+	for i, v := range pod.Spec.Volumes {
+		if v.Name == volume.Name {
+			pod.Spec.Volumes[i] = volume
+			break
+		}
+	}
+	return pod
 }
 
 // getOrCreatePVC tries to attach a PVC that already exists or attaches a new one otherwise.

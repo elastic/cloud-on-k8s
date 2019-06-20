@@ -72,7 +72,7 @@ func newEnvironmentVars(
 			ESUsername:         p.KeystoreUser.Name,
 			ESPasswordFilepath: path.Join(keystoreUserSecretVolume.VolumeMount().MountPath, p.KeystoreUser.Name),
 			ESCertsPath:        path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
-			ESVersion:          p.Version,
+			ESVersion:          p.Elasticsearch.Spec.Version,
 		})...)
 
 	return vars

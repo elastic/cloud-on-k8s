@@ -6,7 +6,6 @@ package pod
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -16,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
 
 const (
@@ -33,25 +31,6 @@ var (
 		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
 		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
 		{Name: "process-manager", ContainerPort: processmanager.DefaultPort, Protocol: corev1.ProtocolTCP},
-	}
-
-	// DefaultVolumeClaimTemplates is the default volume claim templates for Elasticsearch pods
-	DefaultVolumeClaimTemplates = []corev1.PersistentVolumeClaim{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: esvolume.ElasticsearchDataVolumeName,
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes: []corev1.PersistentVolumeAccessMode{
-					corev1.ReadWriteOnce,
-				},
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceStorage: resource.MustParse("1Gi"),
-					},
-				},
-			},
-		},
 	}
 )
 
@@ -97,20 +76,11 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 
 // NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
 type NewPodSpecParams struct {
-	// Version is the Elasticsearch version
-	Version string
-	// CustomImageName is the custom image used, leave empty for the default
-	CustomImageName string
-	// ClusterName is the name of the Elasticsearch cluster
-	ClusterName string
+	// Elasticsearch is the Elasticsearch cluster specification.
+	Elasticsearch v1alpha1.Elasticsearch
+
 	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
 	DiscoveryZenMinimumMasterNodes int
-
-	// SetVMMaxMapCount indicates whether a init container should be used to ensure that the `vm.max_map_count`
-	// is set according to https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html.
-	// Setting this to true requires the kubelet to allow running privileged containers.
-	// Defaults to true if not specified. To be disabled, it must be explicitly set to false.
-	SetVMMaxMapCount *bool
 
 	// NodeSpec is the user-provided spec to apply on the target pod
 	NodeSpec v1alpha1.NodeSpec
@@ -127,11 +97,11 @@ type NewPodSpecParams struct {
 	UnicastHostsVolume volume.ConfigMapVolume
 }
 
-// PodSpecContext contains a PodSpec and some additional context pertaining to its creation.
+// PodSpecContext contains a pod template and some additional context pertaining to its creation.
 type PodSpecContext struct {
-	PodSpec  corev1.PodSpec
-	NodeSpec v1alpha1.NodeSpec
-	Config   settings.CanonicalConfig
+	PodTemplate corev1.PodTemplateSpec
+	NodeSpec    v1alpha1.NodeSpec
+	Config      settings.CanonicalConfig
 }
 
 // PodListToNames returns a list of pod names from the list of pods.

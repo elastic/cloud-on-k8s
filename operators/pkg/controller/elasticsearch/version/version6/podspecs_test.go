@@ -51,7 +51,11 @@ func TestNewEnvironmentVars(t *testing.T) {
 				p: pod.NewPodSpecParams{
 					ProbeUser:    testProbeUser,
 					KeystoreUser: testKeystoreUser,
-					Version:      "6",
+					Elasticsearch: v1alpha1.Elasticsearch{
+						Spec: v1alpha1.ElasticsearchSpec{
+							Version: "7.1.0",
+						},
+					},
 				},
 				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
@@ -79,7 +83,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
 				{Name: keystore.EnvEsCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
-				{Name: keystore.EnvEsVersion, Value: "6"},
+				{Name: keystore.EnvEsVersion, Value: "7.1.0"},
 			},
 		},
 	}
@@ -103,6 +107,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 2,
@@ -117,6 +122,7 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			es: v1alpha1.Elasticsearch{
 				ObjectMeta: testObjectMeta,
 				Spec: v1alpha1.ElasticsearchSpec{
+					Version: "7.1.0",
 					Nodes: []v1alpha1.NodeSpec{
 						{
 							NodeCount: 1,
@@ -187,19 +193,17 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 
-	esPodSpec := podSpec[0].PodSpec
+	esPodSpec := podSpec[0].PodTemplate.Spec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 3, len(esPodSpec.InitContainers))
-	assert.Equal(t, 13, len(esPodSpec.Volumes))
+	assert.Equal(t, 15, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
+	assert.Equal(t, 15, len(esContainer.VolumeMounts))
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
 	assert.NotNil(t, esContainer.ReadinessProbe)
 	assert.ElementsMatch(t, pod.DefaultContainerPorts, esContainer.Ports)
-	// volume mounts is one less than volumes because we're not mounting the transport certs secret until pod creation
-	// time
-	assert.Equal(t, 14, len(esContainer.VolumeMounts))
 	assert.NotEmpty(t, esContainer.ReadinessProbe.Handler.Exec.Command)
 }

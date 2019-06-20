@@ -15,6 +15,10 @@ type CanonicalConfig struct {
 	*common.CanonicalConfig
 }
 
+func NewCanonicalConfig() CanonicalConfig {
+	return CanonicalConfig{common.NewCanonicalConfig()}
+}
+
 // Unpack returns a typed subset of Elasticsearch settings.
 func (c CanonicalConfig) Unpack() (v1alpha1.ElasticsearchSettings, error) {
 	cfg := v1alpha1.DefaultCfg

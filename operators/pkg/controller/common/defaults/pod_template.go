@@ -5,6 +5,8 @@
 package defaults
 
 import (
+	"sort"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -140,6 +142,10 @@ func (b *PodTemplateBuilder) WithVolumes(volumes ...corev1.Volume) *PodTemplateB
 			b.PodTemplate.Spec.Volumes = append(b.PodTemplate.Spec.Volumes, v)
 		}
 	}
+	// order volumes by name to ensure stable pod spec comparison
+	sort.SliceStable(b.PodTemplate.Spec.Volumes, func(i, j int) bool {
+		return b.PodTemplate.Spec.Volumes[i].Name < b.PodTemplate.Spec.Volumes[j].Name
+	})
 	return b
 }
 
@@ -160,6 +166,10 @@ func (b *PodTemplateBuilder) WithVolumeMounts(volumeMounts ...corev1.VolumeMount
 			b.Container.VolumeMounts = append(b.Container.VolumeMounts, v)
 		}
 	}
+	// order volume mounts by name to ensure stable pod spec comparison
+	sort.SliceStable(b.Container.VolumeMounts, func(i, j int) bool {
+		return b.Container.VolumeMounts[i].Name < b.Container.VolumeMounts[j].Name
+	})
 	return b
 }
 
@@ -180,6 +190,10 @@ func (b *PodTemplateBuilder) WithEnv(vars ...corev1.EnvVar) *PodTemplateBuilder 
 			b.Container.Env = append(b.Container.Env, v)
 		}
 	}
+	// order env vars by name to ensure stable pod spec comparison
+	sort.SliceStable(b.Container.Env, func(i, j int) bool {
+		return b.Container.Env[i].Name < b.Container.Env[j].Name
+	})
 	return b
 }
 
