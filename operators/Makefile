@@ -143,7 +143,9 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds docker-build docker-push
+deploy: check-gke install-crds docker-build docker-push apply-operators
+
+apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-global | kubectl apply -f -
