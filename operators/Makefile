@@ -325,11 +325,12 @@ clean-e2e:
 
 ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
 
-# Run e2e tests in a dedicated gke cluster,
-# that we delete if everything went fine
+# Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
-ci-e2e:
-	$(MAKE) bootstrap-gke dep-vendor-only e2e PSP=1 GKE_MACHINE_TYPE=n1-standard-8
+ci-e2e: dep-vendor-only ci-bootstrap-gke e2e
+
+ci-bootstrap-gke:
+	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
