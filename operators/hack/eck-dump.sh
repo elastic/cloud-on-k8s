@@ -14,9 +14,8 @@ help() {
 Dumps Elastic Cloud in Kubernetes (ECK) info out suitable for debugging and diagnosing problems.
 
 By default, dumps everything to stdout. You can optionally specify a directory with --output-directory.
-By default only dumps things in the namespaces "elastic-system", "elastic-namespace-operators" and the 
-current, but you can switch to different namespaces with the --operator-namespaces and --elastic-namespaces
-flags.
+By default only dumps things in the namespaces "elastic-system" and the current, but you can switch to
+different namespaces with the --operator-namespaces and --elastic-namespaces flags.
 
 Options:
   -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (list separated by comma)
@@ -29,7 +28,7 @@ Dependencies:
   exit
 }
 
-OPERATOR_NS=elastic-system,elastic-namespace-operators
+OPERATOR_NS=elastic-system
 ELASTIC_NS="default"
 OUTPUT_DIR=""
 VERBOSE=0
