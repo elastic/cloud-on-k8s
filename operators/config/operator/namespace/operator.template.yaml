@@ -23,6 +23,10 @@ spec:
         name: manager
         args: ["manager", "--namespace", "<MANAGED_NAMESPACE>", "--operator-roles", "namespace"]
         env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
           - name: OPERATOR_IMAGE
             value: <OPERATOR_IMAGE>
         resources:

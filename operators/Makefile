@@ -6,6 +6,7 @@
 ##  --      Variables      --  ##
 #################################
 
+
 ROOT_DIR = $(shell dirname $(CURDIR))
 
 # make sure sub-commands don't use eg. fish shell
@@ -14,9 +15,15 @@ export SHELL := /bin/bash
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
 GKE_CLUSTER_VERSION ?= 1.11
 
+REPOSITORY 	?= eck
+NAME       	?= eck-operator
+VERSION    	?= 0.9.0-SNAPSHOT
+SNAPSHOT   	?= true
+
+LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
+
 ## -- Docker image
 
-REPOSITORY ?= elastic-dev
 # on GKE, use GCR and GCLOUD_PROJECT
 ifneq ($(findstring gke_,$(KUBECTL_CLUSTER)),)
 	REGISTRY ?= eu.gcr.io
@@ -26,15 +33,18 @@ endif
 ifeq ($(REGISTRY),)
 	REGISTRY ?= localhost:5000
 endif
+
 # suffix image name with current user name
 IMG_SUFFIX ?= -$(subst _,,$(USER))
-IMG_NAME ?= eck-operators
-IMG ?= $(REGISTRY)/$(REPOSITORY)/$(IMG_NAME)$(IMG_SUFFIX)
-# use git sha1 as the default image tag
-TAG ?= $(shell git rev-parse --verify HEAD)
+IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
+TAG ?= $(shell git rev-parse --short --verify HEAD)
 OPERATOR_IMAGE ?= $(IMG):$(TAG)
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
-LATEST_RELEASED_IMG ?= docker.elastic.co/eck/eck-operator:0.8.0
+
+GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
+	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildSnapshot=$(SNAPSHOT)
 
 ## -- Namespaces
 
@@ -73,7 +83,7 @@ generate:
 	$(MAKE) --no-print-directory generate-all-in-one
 
 elastic-operator: generate
-	go build -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
+	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
 
 process-manager:
 	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
@@ -115,11 +125,12 @@ install-crds: generate
 run: install-crds
     # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
-		go run ./cmd/main.go manager \
-			--development --operator-roles=global,namespace \
-			--ca-cert-validity=10h --ca-cert-rotate-before=1h \
-			--operator-namespace=elastic-system \
-			--auto-install-webhooks=false
+		go run -ldflags "$(GO_LDFLAGS)" \
+			./cmd/main.go manager \
+				--development --operator-roles=global,namespace \
+				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
+				--operator-namespace=elastic-system --namespace= \
+				--auto-install-webhooks=false
 
 # if the current k8s cluster is on GKE, GCLOUD_PROJECT must be set
 check-gke:
@@ -245,7 +256,10 @@ force-push-latest-operator-image-in-local-registry:
 #################################
 
 docker-build:
-	docker build . --build-arg GO_TAGS='$(GO_TAGS)' -t $(OPERATOR_IMAGE)
+	docker build . \
+		--build-arg GO_LDFLAGS='$(GO_LDFLAGS)' \
+		--build-arg GO_TAGS='$(GO_TAGS)' \
+		-t $(OPERATOR_IMAGE)
 
 docker-push:
 ifeq ($(RELEASE), true)

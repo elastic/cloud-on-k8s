@@ -8,15 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"k8s.io/client-go/tools/record"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -26,12 +18,18 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 )
 
 type driver struct {
@@ -135,9 +133,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if err != nil {
 		return nil, err
 	}
-	for key := range configSecret.Data {
-		configChecksum.Write(configSecret.Data[key])
-	}
+	configChecksum.Write(configSecret.Data[config.SettingsFilename])
 
 	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)
@@ -158,6 +154,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 func (d *driver) Reconcile(
 	state *State,
 	kb *kbtype.Kibana,
+	operatorInfo about.OperatorInfo,
 ) *reconciler.Results {
 	results := reconciler.Results{}
 	if !kb.Spec.Elasticsearch.IsConfigured() {
@@ -175,7 +172,7 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings)
+	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, operatorInfo)
 	if err != nil {
 		return results.WithError(err)
 	}
