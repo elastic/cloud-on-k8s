@@ -81,6 +81,10 @@ create_cluster() {
     # Create required role binding between the GCP account and the K8s cluster.
     kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
 
+    # Create a default storage class that uses late binding to avoid volume zone affinity issues
+    kubectl apply -f config/dev/default-storage.yaml
+    kubectl patch storageclass standard -p '{"metadata": {"annotations":{"storageclass.beta.kubernetes.io/is-default-class":"false"}}}'
+
     # set vm.max_map_count if PSP is enabled
     if [ "$PSP" == "1" ]; then
         set_max_map_count
