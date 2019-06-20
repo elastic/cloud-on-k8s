@@ -290,19 +290,26 @@ purge-gcr-images:
 
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= ""
-
-# Setup for running e2e tests
-e2e-setup:
-	kubectl apply -f config/e2e/rbac.yaml
+E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 
 # Run e2e tests as a k8s batch job
-E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-e2e: e2e-setup
-	# deploy an operator to manage the e2e namespace
-	$(MAKE) MANAGED_NAMESPACE=e2e deploy
-	# push the e2e tests docker image
+e2e: e2e-setup e2e-deploy-operators e2e-docker-image e2e-run
+
+e2e-setup:
+	@ echo -- Setup e2e rbac
+	kubectl apply -f config/e2e/rbac.yaml
+
+e2e-deploy-operators:
+	@ echo -- Deploy operators to manage e2e namespace
+	@ $(MAKE) --no-print-directory MANAGED_NAMESPACE=e2e deploy
+
+e2e-docker-image:
+	@ echo -- Build and push e2e docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 	docker push $(E2E_IMG)
+
+e2e-run:
+	@ echo -- Setup run e2e as a job
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
 # Verify e2e tests compile with no errors, don't run them
