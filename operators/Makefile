@@ -309,7 +309,7 @@ e2e-docker-image:
 	docker push $(E2E_IMG)
 
 e2e-run:
-	@ echo -- Setup run e2e as a job
+	@ echo -- Run e2e as a job
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
 # Verify e2e tests compile with no errors, don't run them
