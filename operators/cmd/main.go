@@ -12,7 +12,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.KBLog.WithName("main")
+var log = logf.Log.WithName("main")
 
 func main() {
 	var rootCmd = &cobra.Command{Use: "elastic-operator"}
