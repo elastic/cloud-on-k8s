@@ -424,6 +424,12 @@ func TestPodTemplateBuilder_WithVolumes(t *testing.T) {
 			want:        []corev1.Volume{{Name: "vol1"}, {Name: "vol2"}},
 		},
 		{
+			name:        "volumes should be sorted",
+			PodTemplate: corev1.PodTemplateSpec{},
+			volumes:     []corev1.Volume{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
+			want:        []corev1.Volume{{Name: "aa"}, {Name: "bb"}, {Name: "cc"}},
+		},
+		{
 			name: "append to but don't override user-provided volumes",
 			PodTemplate: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
@@ -503,24 +509,16 @@ func TestPodTemplateBuilder_WithVolumeMounts(t *testing.T) {
 		want         []corev1.VolumeMount
 	}{
 		{
-			name:        "set default volume mounts",
-			PodTemplate: corev1.PodTemplateSpec{},
-			volumeMounts: []corev1.VolumeMount{
-				{
-					Name: "vm1",
-				},
-				{
-					Name: "vm2",
-				},
-			},
-			want: []corev1.VolumeMount{
-				{
-					Name: "vm1",
-				},
-				{
-					Name: "vm2",
-				},
-			},
+			name:         "set default volume mounts",
+			PodTemplate:  corev1.PodTemplateSpec{},
+			volumeMounts: []corev1.VolumeMount{{Name: "vm1"}, {Name: "vm2"}},
+			want:         []corev1.VolumeMount{{Name: "vm1"}, {Name: "vm2"}},
+		},
+		{
+			name:         "volume mounts should be sorted alphabetically",
+			PodTemplate:  corev1.PodTemplateSpec{},
+			volumeMounts: []corev1.VolumeMount{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
+			want:         []corev1.VolumeMount{{Name: "aa"}, {Name: "bb"}, {Name: "cc"}},
 		},
 		{
 			name: "append to but don't override user-provided volume mounts",
@@ -594,12 +592,14 @@ func TestPodTemplateBuilder_WithEnv(t *testing.T) {
 		{
 			name:        "set defaults",
 			PodTemplate: corev1.PodTemplateSpec{},
-			vars: []corev1.EnvVar{
-				{Name: "var1"}, {Name: "var2"},
-			},
-			want: []corev1.EnvVar{
-				{Name: "var1"}, {Name: "var2"},
-			},
+			vars:        []corev1.EnvVar{{Name: "var1"}, {Name: "var2"}},
+			want:        []corev1.EnvVar{{Name: "var1"}, {Name: "var2"}},
+		},
+		{
+			name:        "env vars should be sorted alphabetically",
+			PodTemplate: corev1.PodTemplateSpec{},
+			vars:        []corev1.EnvVar{{Name: "cc"}, {Name: "aa"}, {Name: "bb"}},
+			want:        []corev1.EnvVar{{Name: "aa"}, {Name: "bb"}, {Name: "cc"}},
 		},
 		{
 			name: "append to but don't override user provided env vars",

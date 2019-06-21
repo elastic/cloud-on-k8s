@@ -1,3 +1,3 @@
 # LVM flex driver
 
-LVM code in `vg.go` and `lv.go` is inspired from https://github.com/mesosphere/csilvm
+LVM code in `vg.go` and `lv.go` is inspired by https://github.com/mesosphere/csilvm

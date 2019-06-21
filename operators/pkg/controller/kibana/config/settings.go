@@ -16,7 +16,7 @@ import (
 )
 
 // Kibana configuration settings file
-const settingsFilename = "kibana.yml"
+const SettingsFilename = "kibana.yml"
 
 // CanonicalConfig contains configuration for Kibana ("kibana.yml"),
 // as a hierarchical key-value configuration.

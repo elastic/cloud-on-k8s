@@ -16,7 +16,7 @@ import (
 
 // PodBuilder is a function that is able to create pods from a PodSpecContext,
 // mostly used by the various supported versions
-type PodBuilder func(ctx pod.PodSpecContext) (corev1.Pod, error)
+type PodBuilder func(ctx pod.PodSpecContext) corev1.Pod
 
 // PodComparisonResult holds information about pod comparison result
 type PodComparisonResult struct {
@@ -83,10 +83,8 @@ func mutableCalculateChanges(
 		}
 
 		// no matching pod, a new one should be created
-		pod, err := podBuilder(expectedPodSpecCtx)
-		if err != nil {
-			return changes, err
-		}
+		pod := podBuilder(expectedPodSpecCtx)
+
 		changes.ToCreate = append(changes.ToCreate, PodToCreate{
 			Pod:             pod,
 			PodSpecCtx:      expectedPodSpecCtx,

@@ -7,6 +7,7 @@ package config
 import (
 	"reflect"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
@@ -18,8 +19,17 @@ import (
 
 // ReconcileConfigSecret reconciles the expected Kibana config secret for the given Kibana resource.
 // This managed secret is mounted into each pod of the Kibana deployment.
-func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings CanonicalConfig) error {
+func ReconcileConfigSecret(
+	client k8s.Client,
+	kb v1alpha1.Kibana,
+	kbSettings CanonicalConfig,
+	operatorInfo about.OperatorInfo,
+) error {
 	settingsYamlBytes, err := kbSettings.Render()
+	if err != nil {
+		return err
+	}
+	telemetryYamlBytes, err := getTelemetryYamlBytes(operatorInfo)
 	if err != nil {
 		return err
 	}
@@ -32,7 +42,8 @@ func ReconcileConfigSecret(client k8s.Client, kb v1alpha1.Kibana, kbSettings Can
 			},
 		},
 		Data: map[string][]byte{
-			settingsFilename: settingsYamlBytes,
+			SettingsFilename:  settingsYamlBytes,
+			telemetryFilename: telemetryYamlBytes,
 		},
 	}
 	reconciled := corev1.Secret{}

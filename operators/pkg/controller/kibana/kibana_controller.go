@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -40,8 +41,8 @@ var log = logf.Log.WithName(name)
 
 // Add creates a new Kibana Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager, _ operator.Parameters) error {
-	reconciler := newReconciler(mgr)
+func Add(mgr manager.Manager, params operator.Parameters) error {
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -50,7 +51,7 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileKibana {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKibana {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileKibana{
 		Client:         client,
@@ -58,6 +59,7 @@ func newReconciler(mgr manager.Manager) *ReconcileKibana {
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		operatorInfo:   params.OperatorInfo,
 	}
 }
 
@@ -118,6 +120,8 @@ type ReconcileKibana struct {
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
+	// operatorInfo is information about the operator
+	operatorInfo about.OperatorInfo
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
@@ -172,7 +176,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	// version specific reconcile
-	results := driver.Reconcile(&state, kb)
+	results := driver.Reconcile(&state, kb, r.operatorInfo)
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
