@@ -4,14 +4,14 @@
 # or more contributor license agreements. Licensed under the Elastic License;
 # you may not use this file except in compliance with the Elastic License.
 
-# Diagnostics utility for Elastic Cloud in Kubernetes (ECK)
+# Diagnostics utility for Elastic Cloud on Kubernetes (ECK)
 
 set -eu
 
 help() {
   echo 'Usage: ./eck-dump.sh [OPTIONS]
 
-Dumps Elastic Cloud in Kubernetes (ECK) info out suitable for debugging and diagnosing problems.
+Dumps Elastic Cloud on Kubernetes (ECK) info out suitable for debugging and diagnosing problems.
 
 By default, dumps everything to stdout. You can optionally specify a directory with --output-directory.
 By default only dumps things in the namespaces "elastic-system" and the current, but you can switch to
