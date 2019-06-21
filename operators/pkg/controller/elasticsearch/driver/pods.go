@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+	pvcpkg "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -168,9 +169,13 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	pvc := claimTemplate.DeepCopy()
 	pvc.Name = name.NewPVCName(pod.Name, claimTemplate.Name)
 	pvc.Namespace = pod.Namespace
-	// we re-use the labels and annotation from the associated pod, which is used to select these PVCs when
-	// reflecting state from K8s.
-	pvc.Labels = pod.Labels
+	// reuse some labels also applied to the pod for comparison purposes
+	if pvc.Labels == nil {
+		pvc.Labels = map[string]string{}
+	}
+	for _, k := range pvcpkg.PodLabelsInPVCs {
+		pvc.Labels[k] = pod.Labels[k]
+	}
 	// Add the current pod name as a label
 	pvc.Labels[label.PodNameLabelName] = pod.Name
 	pvc.Annotations = pod.Annotations

@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
@@ -47,8 +48,15 @@ func Test_newPVCFromTemplate(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "elasticsearch-sample-es-6bw9qkw77k",
 						Labels: map[string]string{
-							"l1": "v1",
-							"l2": "v2",
+							"l1":                                   "v1",
+							"l2":                                   "v2",
+							common.TypeLabelName:                   "elasticsearch",
+							label.ClusterNameLabelName:             "cluster-name",
+							string(label.NodeTypesMasterLabelName): "true",
+							string(label.NodeTypesMLLabelName):     "true",
+							string(label.NodeTypesIngestLabelName): "true",
+							string(label.NodeTypesDataLabelName):   "true",
+							label.VersionLabelName:                 "7.1.0",
 						},
 					},
 				},
@@ -57,8 +65,15 @@ func Test_newPVCFromTemplate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "elasticsearch-sample-es-6bw9qkw77k-" + esvolume.ElasticsearchDataVolumeName,
 					Labels: map[string]string{
-						"l1":                   "v1",
-						"l2":                   "v2",
+						// only a subset of labels should be copied over the pvc
+						common.TypeLabelName:                   "elasticsearch",
+						label.ClusterNameLabelName:             "cluster-name",
+						string(label.NodeTypesMasterLabelName): "true",
+						string(label.NodeTypesMLLabelName):     "true",
+						string(label.NodeTypesIngestLabelName): "true",
+						string(label.NodeTypesDataLabelName):   "true",
+						label.VersionLabelName:                 "7.1.0",
+						// additional pod name label should be there
 						label.PodNameLabelName: "elasticsearch-sample-es-6bw9qkw77k",
 					},
 				},
