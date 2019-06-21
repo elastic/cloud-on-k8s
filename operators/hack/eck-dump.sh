@@ -18,9 +18,9 @@ By default only dumps things in the namespaces "elastic-system" and the current,
 different namespaces with the --operator-namespaces and --elastic-namespaces flags.
 
 Options:
-  -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (list separated by comma)
-  -n, --resources-namespaces    Namespace(s) in which resources are managed      (list separated by comma)
-  -d, --output-directory        Path to output dump files (default: .)
+  -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
+  -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
+  -o, --output-directory        Path to output dump files (default: .)
   -v, --verbose                 Verbose mode
 
 Dependencies:
@@ -46,7 +46,7 @@ parse_args() {
     -n|--elastic-namespaces)
       ELASTIC_NS=${value:-${$(current_namespace):-ELASTIC_NS}}
     ;;
-    -d|--output-directory)
+    -o|--output-directory)
       OUTPUT_DIR=${value:-${OUTPUT_DIR:-"."}}
     ;;
     -v|--verbose)
