@@ -139,14 +139,12 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// changes, which will trigger a rolling update)
 	kibanaPodSpec.Labels[configChecksumLabel] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
-	deploymentLabels := label.NewLabels(kb.Name)
-
 	return &DeploymentParams{
 		Name:            kbname.KBNamer.Suffix(kb.Name),
 		Namespace:       kb.Namespace,
 		Replicas:        kb.Spec.NodeCount,
-		Selector:        deploymentLabels,
-		Labels:          deploymentLabels,
+		Selector:        label.NewLabels(kb.Name),
+		Labels:          label.NewLabels(kb.Name),
 		PodTemplateSpec: kibanaPodSpec,
 	}, nil
 }

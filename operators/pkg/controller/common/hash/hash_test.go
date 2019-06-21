@@ -87,7 +87,7 @@ func TestHashObject(t *testing.T) {
 	require.NotEqual(t, hash, HashObject(pod))
 }
 
-func TestAddSpecHashLabel(t *testing.T) {
+func TestAddTemplateHashLabel(t *testing.T) {
 	spec := corev1.PodSpec{
 		Containers: []corev1.Container{
 			{
