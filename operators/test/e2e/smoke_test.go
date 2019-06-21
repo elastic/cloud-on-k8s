@@ -10,32 +10,43 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
+	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 func TestSmoke(t *testing.T) {
-	var sampleStack stack.Builder
+	var sampleEs es.Builder
+	var sampleKb kb.Builder
 	var sampleApm apm.Builder
 
 	yamlFile, err := os.Open(sampleEsApmFile)
 	helpers.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Elasticsearch))
+	helpers.ExitOnErr(decoder.Decode(&sampleEs.Elasticsearch))
+	helpers.ExitOnErr(decoder.Decode(&sampleKb.Kibana))
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
 
-	namespacedSampleStack := sampleStack.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
-	namespacedSampleApm := sampleApm.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
+	sampleEs = sampleEs.
+		WithNamespace(params.Namespace).
+		WithRestrictedSecurityContext()
+	sampleKb = sampleKb.
+		WithNamespace(params.Namespace).
+		WithRestrictedSecurityContext()
+	sampleApm = sampleApm.
+		WithNamespace(params.Namespace).
+		WithRestrictedSecurityContext()
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.InitTestSteps(namespacedSampleApm, k)...).
-		WithSteps(stack.CreationTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.CreationTestSteps(namespacedSampleApm, namespacedSampleStack.Elasticsearch, k)...).
+		WithSteps(es.InitTestSteps(sampleEs, k)...).
+		WithSteps(kb.InitTestSteps(sampleKb, k)...).
+		WithSteps(apm.InitTestSteps(sampleApm, k)...).
+		WithSteps(es.CreationTestSteps(sampleEs, k)...).
+		WithSteps(kb.CreationTestSteps(sampleKb, k)...).
+		WithSteps(apm.CreationTestSteps(sampleApm, sampleEs.Elasticsearch, k)...).
 		RunSequential(t)
 }

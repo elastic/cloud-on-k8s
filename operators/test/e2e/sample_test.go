@@ -9,11 +9,10 @@ import (
 	"os"
 	"testing"
 
-	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -22,30 +21,33 @@ import (
 // Path is relative to the e2e directory.
 const sampleStackFile = "../../config/samples/kibana/kibana_es.yaml"
 
-func readSampleStack() stack.Builder {
-	// build stack from yaml sample
-	var sampleStack stack.Builder
+func readSampleEsKb() (es.Builder, kb.Builder) {
+	var sampleEs es.Builder
+	var sampleKb kb.Builder
+
 	yamlFile, err := os.Open(sampleStackFile)
 	helpers.ExitOnErr(err)
-	var es estype.Elasticsearch
-	var kb kbtype.Kibana
+
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&es))
-	helpers.ExitOnErr(decoder.Decode(&kb))
+	helpers.ExitOnErr(decoder.Decode(&sampleEs.Elasticsearch))
+	helpers.ExitOnErr(decoder.Decode(&sampleKb.Kibana))
 
-	sampleStack.Elasticsearch = es
-	sampleStack.Kibana = kb
-
-	// set namespace and version
-	return sampleStack.
+	sampleEs = sampleEs.
 		WithNamespace(params.Namespace).
 		WithVersion(params.ElasticStackVersion).
 		WithRestrictedSecurityContext()
+	sampleKb = sampleKb.
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion).
+		WithRestrictedSecurityContext()
+
+	return sampleEs, sampleKb
 }
 
 // TestStackSample runs a test suite using the sample stack
 func TestStackSample(t *testing.T) {
-	s := readSampleStack()
-	// run, with mutation to the same stack (should work and do nothing)
-	stack.RunCreationMutationDeletionTests(t, s, s)
+	sampleEs, sampleKb := readSampleEsKb()
+	// run, with mutation to the same resource (should work and do nothing)
+	es.RunCreationMutationDeletionTests(t, sampleEs, sampleEs)
+	kb.RunCreationMutationDeletionTests(t, sampleKb, sampleKb)
 }

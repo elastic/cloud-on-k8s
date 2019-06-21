@@ -14,8 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
+	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
+	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 )
 
 // Re-use the sample stack for e2e tests.
@@ -26,19 +27,24 @@ const sampleEsApmFile = "../../config/samples/apm/apm_es_kibana.yaml"
 // TestApmEsKibanaSample runs a test suite using the sample apm server + es + kibana resources
 func TestApmEsKibanaSample(t *testing.T) {
 	// build resources from yaml sample
-	var sampleStack stack.Builder
+	var sampleEs es.Builder
+	var sampleKb kb.Builder
 	var sampleApm apm.Builder
 
 	yamlFile, err := os.Open(sampleEsApmFile)
 	helpers.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Elasticsearch))
+	helpers.ExitOnErr(decoder.Decode(&sampleEs.Elasticsearch))
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
+	helpers.ExitOnErr(decoder.Decode(&sampleKb.Kibana))
 
 	// set namespace and version
-	sampleStack = sampleStack.
+	sampleEs = sampleEs.
+		WithNamespace(params.Namespace).
+		WithVersion(params.ElasticStackVersion).
+		WithRestrictedSecurityContext()
+	sampleKb = sampleKb.
 		WithNamespace(params.Namespace).
 		WithVersion(params.ElasticStackVersion).
 		WithRestrictedSecurityContext()
@@ -49,11 +55,14 @@ func TestApmEsKibanaSample(t *testing.T) {
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(sampleStack, k)...).
+		WithSteps(es.InitTestSteps(sampleEs, k)...).
+		WithSteps(kb.InitTestSteps(sampleKb, k)...).
 		WithSteps(apm.InitTestSteps(sampleApm, k)...).
-		WithSteps(stack.CreationTestSteps(sampleStack, k)...).
-		WithSteps(apm.CreationTestSteps(sampleApm, sampleStack.Elasticsearch, k)...).
-		WithSteps(stack.DeletionTestSteps(sampleStack, k)...).
+		WithSteps(es.CreationTestSteps(sampleEs, k)...).
+		WithSteps(kb.CreationTestSteps(sampleKb, k)...).
+		WithSteps(apm.CreationTestSteps(sampleApm, sampleEs.Elasticsearch, k)...).
+		WithSteps(es.DeletionTestSteps(sampleEs, k)...).
+		WithSteps(kb.DeletionTestSteps(sampleKb, k)...).
 		WithSteps(apm.DeletionTestSteps(sampleApm, k)...).
 		RunSequential(t)
 

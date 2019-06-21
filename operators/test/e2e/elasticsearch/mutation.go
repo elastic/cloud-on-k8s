@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package stack
+package elasticsearch
 
 import (
 	"context"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
@@ -50,11 +49,6 @@ func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &curEs))
 					curEs.Spec = stack.Elasticsearch.Spec
 					require.NoError(t, k.Client.Update(&curEs))
-
-					var curKb v1alpha1.Kibana
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Kibana), &curKb))
-					curKb.Spec = stack.Kibana.Spec
-					require.NoError(t, k.Client.Update(&curKb))
 				},
 			}).
 		WithSteps(CheckStackSteps(stack, k)...).

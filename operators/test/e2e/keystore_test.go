@@ -10,9 +10,11 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
+	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,8 +40,8 @@ func TestUpdateESSecureSettings(t *testing.T) {
 	}
 
 	// set up a 3-nodes cluster with secure settings
-	s := stack.NewStackBuilder("test-es-keystore").
-		WithESMasterDataNodes(3, stack.DefaultResources).
+	s := es.NewBuilder("test-es-keystore").
+		WithESMasterDataNodes(3, es.DefaultResources).
 		WithESSecureSettings(secureSettings.Name)
 
 	helpers.TestStepList{}.
@@ -56,12 +58,12 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		}).
 
 		// create the cluster
-		WithSteps(stack.InitTestSteps(s, k)...).
-		WithSteps(stack.CreationTestSteps(s, k)...).
+		WithSteps(es.InitTestSteps(s, k)...).
+		WithSteps(es.CreationTestSteps(s, k)...).
 		WithSteps(
 
 			// initial secure settings should be there in all nodes keystore
-			stack.CheckESKeystoreEntries(k, s.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, s.Elasticsearch, []string{
 				"file.setting1", "file.setting2", "key.without.prefix", "string.setting1", "string.setting2"}),
 
 			// modify the secure settings secret
@@ -80,7 +82,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckESKeystoreEntries(k, s.Elasticsearch, []string{
+			elasticsearch.CheckESKeystoreEntries(k, s.Elasticsearch, []string{
 				"new.file.setting", "new.string.setting2", "string.setting1"}),
 
 			// remove the secure settings reference
@@ -99,7 +101,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckESKeystoreEntries(k, s.Elasticsearch, nil),
+			elasticsearch.CheckESKeystoreEntries(k, s.Elasticsearch, nil),
 
 			// cleanup extra resources
 			helpers.TestStep{
@@ -110,7 +112,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				},
 			},
 		).
-		WithSteps(stack.DeletionTestSteps(s, k)...).
+		WithSteps(es.DeletionTestSteps(s, k)...).
 		RunSequential(t)
 }
 
@@ -131,8 +133,9 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	}
 
 	// set up a 1-node Kibana deployment with secure settings
-	s := stack.NewStackBuilder("test-kibana-keystore").
-		WithESMasterDataNodes(1, stack.DefaultResources).
+	b1 := es.NewBuilder("test-kibana-keystore").
+		WithESMasterDataNodes(1, es.DefaultResources)
+	b2 := kb.NewBuilder("test-kibana-keystore").
 		WithKibana(1).
 		WithKibanaSecureSettings(secureSettings.Name)
 
@@ -150,11 +153,13 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		}).
 
 		// create the cluster
-		WithSteps(stack.InitTestSteps(s, k)...).
-		WithSteps(stack.CreationTestSteps(s, k)...).
+		WithSteps(es.InitTestSteps(b1, k)...).
+		WithSteps(kb.InitTestSteps(b2, k)...).
+		WithSteps(es.CreationTestSteps(b1, k)...).
+		WithSteps(kb.CreationTestSteps(b2, k)...).
 		WithSteps(
 
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, []string{"logging.verbose"}),
+			elasticsearch.CheckKibanaKeystoreEntries(k, b2.Kibana, []string{"logging.verbose"}),
 
 			// modify the secure settings secret
 			helpers.TestStep{
@@ -171,7 +176,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, []string{"logging.json", "logging.verbose"}),
+			elasticsearch.CheckKibanaKeystoreEntries(k, b2.Kibana, []string{"logging.json", "logging.verbose"}),
 
 			// remove the secure settings reference
 			helpers.TestStep{
@@ -179,7 +184,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				Test: func(t *testing.T) {
 					// retrieve current resource version
 					var kb kbtype.Kibana
-					err := k.Client.Get(k8s.ExtractNamespacedName(&s.Kibana), &kb)
+					err := k.Client.Get(k8s.ExtractNamespacedName(&b2.Kibana), &kb)
 					require.NoError(t, err)
 					// set its secure settings to nil
 					kb.Spec.SecureSettings = nil
@@ -189,7 +194,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, nil),
+			elasticsearch.CheckKibanaKeystoreEntries(k, b2.Kibana, nil),
 
 			// cleanup extra resources
 			helpers.TestStep{
@@ -200,6 +205,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 				},
 			},
 		).
-		WithSteps(stack.DeletionTestSteps(s, k)...).
+		WithSteps(es.DeletionTestSteps(b1, k)...).
+		WithSteps(kb.DeletionTestSteps(b2, k)...).
 		RunSequential(t)
 }

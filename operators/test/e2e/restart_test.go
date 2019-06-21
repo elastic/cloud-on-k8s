@@ -15,14 +15,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
 )
 
 func TestCoordinatedClusterRestart(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
-	s := stack.NewStackBuilder("test-restart").
-		WithESMasterDataNodes(3, stack.DefaultResources)
+	s := es.NewBuilder("test-restart").
+		WithESMasterDataNodes(3, es.DefaultResources)
 
 	// keep track of nodes start time before the restart
 	// it is supposed to be different after the restart is over
@@ -30,8 +30,8 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 
 	helpers.TestStepList{}.
 		// create the cluster
-		WithSteps(stack.InitTestSteps(s, k)...).
-		WithSteps(stack.CreationTestSteps(s, k)...).
+		WithSteps(es.InitTestSteps(s, k)...).
+		WithSteps(es.CreationTestSteps(s, k)...).
 		WithSteps(
 			helpers.TestStep{
 				Name: "Retrieve nodes start time",
@@ -87,9 +87,9 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 			},
 		).
 		// we should get back to a green cluster
-		WithSteps(stack.CheckStackSteps(s, k)...).
+		WithSteps(es.CheckStackSteps(s, k)...).
 		// finally, cleanup resources
-		WithSteps(stack.DeletionTestSteps(s, k)...).
+		WithSteps(es.DeletionTestSteps(s, k)...).
 		RunSequential(t)
 }
 

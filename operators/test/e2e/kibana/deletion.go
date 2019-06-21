@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package apm
+package kibana
 
 import (
 	"testing"
@@ -16,11 +16,11 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// DeletionTestSteps tests the deletion of the given apmserver
+// DeletionTestSteps tests the deletion of the given stack
 func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 	return []helpers.TestStep{
 		{
-			Name: "Deleting the resources should return no error",
+			Name: "Deleting stack should return no error",
 			Test: func(t *testing.T) {
 				for _, obj := range stack.RuntimeObjects() {
 					err := k.Client.Delete(obj)
@@ -30,7 +30,7 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			},
 		},
 		{
-			Name: "The resources should not be there anymore",
+			Name: "Stack should not be there anymore",
 			Test: helpers.Eventually(func() error {
 				for _, obj := range stack.RuntimeObjects() {
 					m, err := meta.Accessor(obj)
@@ -50,9 +50,9 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			}),
 		},
 		{
-			Name: "APM Server pods should be eventually be removed",
+			Name: "Kibana pods should be eventually be removed",
 			Test: helpers.Eventually(func() error {
-				return k.CheckPodCount(helpers.ApmServerPodListOptions(stack.ApmServer.Name), 0)
+				return k.CheckPodCount(helpers.KibanaPodListOptions(stack.Kibana.Name), 0)
 			}),
 		},
 	}

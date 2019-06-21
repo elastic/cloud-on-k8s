@@ -8,18 +8,8 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-var DefaultResources = corev1.ResourceRequirements{
-	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("1G"),
-	},
-}
-
-// -- Stack
 
 type Builder struct {
 	ApmServer apmtype.ApmServer
