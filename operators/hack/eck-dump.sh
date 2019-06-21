@@ -29,7 +29,7 @@ Dependencies:
 }
 
 OPERATOR_NS=elastic-system
-ELASTIC_NS="default"
+RESOURCES_NS="default"
 OUTPUT_DIR=""
 VERBOSE=0
 
@@ -43,8 +43,8 @@ parse_args() {
     -N|--operator-namespaces)
       OPERATOR_NS=${value:-OPERATOR_NS}
     ;;
-    -n|--elastic-namespaces)
-      ELASTIC_NS=${value:-${$(current_namespace):-ELASTIC_NS}}
+    -n|--resources-namespaces)
+      RESOURCES_NS=${value:-${$(current_namespace):-RESOURCES_NS}}
     ;;
     -o|--output-directory)
       OUTPUT_DIR=${value:-${OUTPUT_DIR:-"."}}
@@ -62,8 +62,8 @@ main() {
 
   IFS=, # use comma as field separator for iterations
   
-  # start by checking the namespaces exist
-  local all_ns="$OPERATOR_NS,$ELASTIC_NS"
+  # start by checking if the namespaces exist
+  local all_ns="$OPERATOR_NS,$RESOURCES_NS"
   for ns in $all_ns; do
     check_namespace $ns
   done
@@ -82,7 +82,7 @@ main() {
   done
 
   # get info from the namespaces in which resources are managed 
-  for ns in $ELASTIC_NS; do
+  for ns in $RESOURCES_NS; do
     get_resources $ns replicasets
     get_resources $ns deployments
     get_resources $ns pods
