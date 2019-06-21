@@ -16,5 +16,5 @@ import (
 )
 
 var (
-	log = logf.KBLog.WithName("portforward")
+	log = logf.Log.WithName("portforward")
 )
