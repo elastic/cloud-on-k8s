@@ -77,6 +77,7 @@ main() {
     get_resources $ns statefulsets
     get_resources $ns pods
     get_resources $ns services
+    get_resources $ns configmaps
     get_resources $ns events
     get_logs $ns
   done
@@ -86,8 +87,12 @@ main() {
     get_resources $ns replicasets
     get_resources $ns deployments
     get_resources $ns pods
+    get_resources $ns persistentvolumes
+    get_resources $ns persistentvolumeclaims
     get_resources $ns services
+    get_resources $ns configmaps
     get_resources $ns events
+    list_resources $ns secrets
     
     local types="kibana,elasticsearch,apmserver"
     for t in $types; do
@@ -101,10 +106,17 @@ main() {
   fi
 }
 
-# get_resources lists resources in a speficied namespace in JSON output format
+# get_resources lists resources in a specified namespace in JSON output format
 get_resources() {
   local ns=$1 resources=${2}
   kubectl get -n $ns $resources -o json | to_stdin_or_file $ns/$resources.json
+}
+
+# list_resources lists resources in a specified namespace in human readable plain-text
+# Useful to list secrets without their content.
+list_resources() {
+  local ns=$1 resources=${2}
+  kubectl get -n $ns $resources | to_stdin_or_file $ns/$resources.txt
 }
 
 # get_logs retrieves logs for all pods in a specified namespace
