@@ -68,9 +68,10 @@ main() {
     check_namespace $ns
   done
 
-  # get global info
+  # get global info from cluster-level resources
   kubectl version   -o json | to_stdin_or_file version.json
   kubectl get nodes -o json | to_stdin_or_file nodes.json
+  kubectl get podsecuritypolicies -o json | to_stdin_or_file podsecuritypolicies.json
 
   # get info from the namespaces in which operators are running in 
   for ns in $OPERATOR_NS; do
@@ -79,6 +80,7 @@ main() {
     get_resources $ns services
     get_resources $ns configmaps
     get_resources $ns events
+    get_resources $ns networkpolicies
     get_logs $ns
   done
 
@@ -92,6 +94,7 @@ main() {
     get_resources $ns services
     get_resources $ns configmaps
     get_resources $ns events
+    get_resources $ns networkpolicies
     list_resources $ns secrets
     
     local types="kibana,elasticsearch,apmserver"
