@@ -122,7 +122,9 @@ install-crds: generate
 
 # Run locally against the configured Kubernetes cluster, with port-forwarding enabled so that
 # the operator can reach services running in the cluster through k8s port-forward feature
-run: install-crds
+run: install-crds go-run
+
+go-run:
     # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run -ldflags "$(GO_LDFLAGS)" \
@@ -141,7 +143,9 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds docker-build docker-push
+deploy: check-gke install-crds docker-build docker-push apply-operators
+
+apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
 	NAMESPACE=$(GLOBAL_OPERATOR_NAMESPACE) \
 		$(MAKE) --no-print-directory -sC config/operator generate-global | kubectl apply -f -
@@ -286,19 +290,26 @@ purge-gcr-images:
 
 # can be overriden to eg. TESTS_MATCH=TestMutationMoreNodes to match a single test
 TESTS_MATCH ?= ""
-
-# Setup for running e2e tests
-e2e-setup:
-	kubectl apply -f config/e2e/rbac.yaml
+E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
 
 # Run e2e tests as a k8s batch job
-E2E_IMG ?= $(IMG)-e2e-tests:$(TAG)
-e2e: e2e-setup
-	# deploy an operator to manage the e2e namespace
-	$(MAKE) MANAGED_NAMESPACE=e2e deploy
-	# push the e2e tests docker image
+e2e: e2e-setup e2e-deploy-operators e2e-docker-image e2e-run
+
+e2e-setup:
+	@ echo -- Setup e2e rbac
+	kubectl apply -f config/e2e/rbac.yaml
+
+e2e-deploy-operators:
+	@ echo -- Deploy operators to manage e2e namespace
+	@ $(MAKE) --no-print-directory MANAGED_NAMESPACE=e2e deploy
+
+e2e-docker-image:
+	@ echo -- Build and push e2e docker image
 	docker build -t $(E2E_IMG) -f test/e2e/Dockerfile .
 	docker push $(E2E_IMG)
+
+e2e-run:
+	@ echo -- Run e2e as a job
 	./hack/run-e2e.sh "$(E2E_IMG)" "$(TESTS_MATCH)"
 
 # Verify e2e tests compile with no errors, don't run them
@@ -307,7 +318,9 @@ e2e-compile:
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
-e2e-local: e2e-setup
+e2e-local: e2e-setup e2e-run-local
+
+e2e-run-local:
 	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Clean k8s cluster from e2e resources
@@ -321,11 +334,12 @@ clean-e2e:
 
 ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
 
-# Run e2e tests in a dedicated gke cluster,
-# that we delete if everything went fine
+# Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
-ci-e2e:
-	$(MAKE) bootstrap-gke dep-vendor-only e2e PSP=1 GKE_MACHINE_TYPE=n1-standard-8
+ci-e2e: ci-bootstrap-gke e2e
+
+ci-bootstrap-gke:
+	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
