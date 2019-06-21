@@ -72,6 +72,8 @@ main() {
   kubectl version   -o json | to_stdin_or_file version.json
   kubectl get nodes -o json | to_stdin_or_file nodes.json
   kubectl get podsecuritypolicies -o json | to_stdin_or_file podsecuritypolicies.json
+  # describe matches by prefix
+  kubectl describe clusterroles elastic | to_stdin_or_file clusterroles.txt
 
   # get info from the namespaces in which operators are running in 
   for ns in $OPERATOR_NS; do
