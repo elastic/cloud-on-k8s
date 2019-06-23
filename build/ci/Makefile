@@ -132,6 +132,25 @@ ci-e2e: vault-gke-creds
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
 
+ci-e2e-rc: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
+	docker run --rm -t \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-w $(GO_MOUNT_PATH) \
+		-e "IMG_SUFFIX=-ci" \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		-e "REGISTRY=$(REGISTRY)" \
+		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
+		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
+		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+		-e "TESTS_MATCH=$(TESTS_MATCH)" \
+		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
+		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+		-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
+		cloud-on-k8s-ci-e2e \
+		bash -c "make -C operators ci-e2e"
+
 # Remove k8s cluster
 ci-e2e-delete-cluster: vault-gke-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
