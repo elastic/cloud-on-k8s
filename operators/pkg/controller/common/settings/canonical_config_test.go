@@ -62,6 +62,12 @@ func TestCanonicalConfig_MergeWith(t *testing.T) {
 			want: MustCanonicalConfig(map[string]string{"a": "b", "c": "d"}),
 		},
 		{
+			name: "merge arrays",
+			c:    MustCanonicalConfig(map[string][]string{"a": {"x"}}),
+			c2:   MustCanonicalConfig(map[string][]string{"a": {"y"}}),
+			want: MustCanonicalConfig(map[string][]string{"a": {"x", "y"}}),
+		},
+		{
 			name: "conflict: c2 has precedence",
 			c:    MustNewSingleValue("a", "b"),
 			c2:   MustCanonicalConfig(map[string]string{"c": "d", "a": "e"}),
@@ -73,7 +79,11 @@ func TestCanonicalConfig_MergeWith(t *testing.T) {
 			// Merge mutates c
 			require.NoError(t, tt.c.MergeWith(tt.c2))
 			if diff := tt.c.Diff(tt.want, nil); diff != nil {
-				t.Errorf("CanonicalConfig.MergeWith() = %v, want %v", diff, tt.want)
+				var wantMap map[string]interface{}
+				require.NoError(t, tt.want.Unpack(&wantMap))
+				var gotMap map[string]interface{}
+				require.NoError(t, tt.c.Unpack(&gotMap))
+				t.Errorf("CanonicalConfig.MergeWith() = %v, want %+v, got %+v ", diff, wantMap, gotMap)
 			}
 		})
 	}

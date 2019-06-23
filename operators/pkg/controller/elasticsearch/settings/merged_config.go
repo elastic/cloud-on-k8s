@@ -70,7 +70,7 @@ func xpackConfig() *CanonicalConfig {
 		XPackSecurityTransportSslEnabled:                "true",
 		XPackSecurityTransportSslKey:                    path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 		XPackSecurityTransportSslCertificate:            path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CertFileName),
-		XPackSecurityTransportSslCertificateAuthorities: path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName),
+		XPackSecurityTransportSslCertificateAuthorities: []string{path.Join(volume.TransportCertificatesSecretVolumeMountPath, certificates.CAFileName)},
 	}
 	return &CanonicalConfig{common.MustCanonicalConfig(cfg)}
 }

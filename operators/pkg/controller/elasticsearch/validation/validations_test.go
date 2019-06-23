@@ -247,7 +247,26 @@ func Test_noBlacklistedSettings(t *testing.T) {
 			},
 			want: validation.OK,
 		},
-
+		{
+			name: "non blacklisted settings with blacklisted string prefix OK",
+			args: args{
+				es: estype.Elasticsearch{
+					Spec: estype.ElasticsearchSpec{
+						Version: "7.0.0",
+						Nodes: []estype.NodeSpec{
+							{
+								Config: &common.Config{
+									Data: map[string]interface{}{
+										settings.XPackSecurityTransportSslCertificateAuthorities: "foo",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			want: validation.OK,
+		},
 		{
 			name: "settings are canonicalized before validation",
 			args: args{
