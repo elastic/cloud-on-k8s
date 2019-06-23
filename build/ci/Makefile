@@ -148,8 +148,9 @@ ci-e2e-rc: vault-gke-creds
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
 		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
 		-e "LATEST_RELEASED_IMG=$(LATEST_RELEASED_IMG)" \
+		-e "USE_CUSTOM_IMAGE=true" \
 		cloud-on-k8s-ci-e2e \
-		bash -c "make -C operators ci-e2e"
+		bash -c "make -C operators ci-e2e-rc"
 
 # Remove k8s cluster
 ci-e2e-delete-cluster: vault-gke-creds
