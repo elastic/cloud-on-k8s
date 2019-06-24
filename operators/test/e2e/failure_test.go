@@ -47,9 +47,9 @@ func RunFailureTest(t *testing.T, s stack.Builder, f failureTestFunc) {
 		RunSequential(t)
 }
 
-func killSteps(listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) failureTestFunc {
-	var killedPod corev1.Pod
-	return func(k *helpers.K8sHelper) helpers.TestStepList {
+func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
+	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
+		var killedPod corev1.Pod
 		return helpers.TestStepList{
 			{
 				Name: "Kill a node",
@@ -73,15 +73,11 @@ func killSteps(listOptions client.ListOptions, podMatch func(p corev1.Pod) bool)
 					if apierrors.IsNotFound(err) || killedPod.UID != pod.UID {
 						return nil
 					}
-					return fmt.Errorf("Pod %s not deleted yet", killedPod.Name)
+					return fmt.Errorf("pod %s not deleted yet", killedPod.Name)
 				}),
 			},
 		}
-	}
-}
-
-func killNodeTest(t *testing.T, s stack.Builder, listOptions client.ListOptions, podMatch func(p corev1.Pod) bool) {
-	RunFailureTest(t, s, killSteps(listOptions, podMatch))
+	})
 }
 
 func TestKillOneDataNode(t *testing.T) {
@@ -115,6 +111,7 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 	killNodeTest(t, s, helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)
 }
 
+// TestKillCorrectPVReuse tests that when deleting pods with multiple PVs, PV reuse respects the
 func TestKillCorrectPVReuse(t *testing.T) {
 	helpers.MinVersionOrSkip(t, "v1.12.0")
 
@@ -128,14 +125,12 @@ func TestKillCorrectPVReuse(t *testing.T) {
 		WithPersistentVolumes("not-data", &sc.Name).
 		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
 
-	matchNode := func(p corev1.Pod) bool {
-		return true // match first node we find
-	}
-
 	k := helpers.NewK8sClientOrFatal()
 
 	var clusterUUID string
 	var seenPVCs []string
+	var killedPod corev1.Pod
+	var survivingPodNames []string
 
 	helpers.TestStepList{}.
 		WithSteps(stack.CreateStorageClass(*sc, k)).
@@ -144,30 +139,61 @@ func TestKillCorrectPVReuse(t *testing.T) {
 		WithSteps(stack.RetrieveClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
 		// Simulate a pod deletion
 		WithSteps(stack.PauseReconciliation(s.Elasticsearch, k)).
-		WithSteps(killSteps(helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)(k)...).
-		WithSteps(helpers.TestStep{
-			Name: "Modify the es-data PVCs labels",
-			Test: helpers.Eventually(func() error {
-				pvcs, err := pvc.ListVolumeClaims(k.Client, s.Elasticsearch)
-				if err != nil {
-					return err
-				}
-				for _, pvc := range pvcs {
-					seenPVCs = append(seenPVCs, pvc.Name)
-					if pvc.Labels[label.VolumeNameLabelName] == volume.ElasticsearchDataVolumeName {
-						// this should ensure that when we resume reconciliation the operator creates a new PVC
-						// we also test correct reuse by keeping the non-data volume claim around and unchanged
-						delete(pvc.Labels, label.VolumeNameLabelName)
-						if err := k.Client.Update(&pvc); err != nil {
-							return err
+		WithSteps(helpers.TestStepList{
+			{
+				Name: "Kill a node",
+				Test: func(t *testing.T) {
+					pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
+					require.NoError(t, err)
+					require.True(t, len(pods) > 0, "need at least one pod to kill")
+					for i, pod := range pods {
+						if i == 0 {
+							killedPod = pod
+						} else {
+							survivingPodNames = append(survivingPodNames, pod.Name)
 						}
 					}
-				}
-				return nil
-			}),
-		},
+					err = k.DeletePod(killedPod)
+					require.NoError(t, err)
+				},
+			},
+			{
+				Name: "Wait for pod to be deleted",
+				Test: helpers.Eventually(func() error {
+					pod, err := k.GetPod(killedPod.Name)
+					if err != nil && !apierrors.IsNotFound(err) {
+						return err
+					}
+					if apierrors.IsNotFound(err) || killedPod.UID != pod.UID {
+						return nil
+					}
+					return fmt.Errorf("pod %s not deleted yet", killedPod.Name)
+				}),
+			},
+			{
+				Name: "Modify the es-data PVCs labels",
+				Test: helpers.Eventually(func() error {
+					pvcs, err := pvc.ListVolumeClaims(k.Client, s.Elasticsearch)
+					if err != nil {
+						return err
+					}
+					for _, pvc := range pvcs {
+						seenPVCs = append(seenPVCs, pvc.Name)
+						if pvc.Labels[label.VolumeNameLabelName] == volume.ElasticsearchDataVolumeName &&
+							pvc.Labels[label.PodNameLabelName] == killedPod.Name {
+							// this should ensure that when we resume reconciliation the operator creates a new PVC
+							// we also test correct reuse by keeping the non-data volume claim around and unchanged
+							delete(pvc.Labels, label.VolumeNameLabelName)
+							if err := k.Client.Update(&pvc); err != nil {
+								return err
+							}
+						}
+					}
+					return nil
+				}),
+			},
 			stack.ResumeReconciliation(s.Elasticsearch, k),
-			helpers.TestStep{
+			{
 				Name: "No PVC should have been reused for elasticsearch-data",
 				Test: helpers.Eventually(func() error {
 					pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
@@ -175,6 +201,9 @@ func TestKillCorrectPVReuse(t *testing.T) {
 						return err
 					}
 					for _, pod := range pods {
+						if sliceutils.StringInSlice(pod.Name, survivingPodNames) {
+							continue
+						}
 						for _, v := range pod.Spec.Volumes {
 							pvc := v.VolumeSource.PersistentVolumeClaim
 							if pvc == nil {
@@ -193,7 +222,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 					return nil
 				}),
 			},
-		).
+		}...).
 		// Check we recover
 		WithSteps(stack.CheckStackSteps(s, k)...).
 		// And that the cluster UUID has not changed
