@@ -21,11 +21,14 @@ const (
 	UUIDCfgMapKey = "uuid"
 )
 
+var defaultOperatorNamespaces = []string{"elastic-namespace", "elastic-namespace-operators"}
+
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
-	OperatorUUID types.UID `json:"operator_uuid"`
-	Distribution string    `json:"distribution"`
-	BuildInfo    BuildInfo `json:"build"`
+	OperatorUUID            types.UID `json:"operator_uuid"`
+	Distribution            string    `json:"distribution"`
+	BuildInfo               BuildInfo `json:"build"`
+	CustomOperatorNamespace bool      `json:"custom_operator_namespace"`
 }
 
 // BuildInfo contains build metadata information.
@@ -57,6 +60,13 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 		return OperatorInfo{}, err
 	}
 
+	customOperatorNs := true
+	for _, ns := range defaultOperatorNamespaces {
+		if operatorNs == ns {
+			customOperatorNs = false
+		}
+	}
+
 	return OperatorInfo{
 		OperatorUUID: operatorUUID,
 		Distribution: distribution,
@@ -66,6 +76,7 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 			buildDate,
 			buildSnapshot,
 		},
+		CustomOperatorNamespace: customOperatorNs,
 	}, nil
 }
 
