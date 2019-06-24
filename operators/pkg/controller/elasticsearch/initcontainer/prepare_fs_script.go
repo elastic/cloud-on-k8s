@@ -79,8 +79,8 @@ var scriptTemplate = template.Must(template.New("").Parse(
 		if [[ -z "$(ls -A {{.EsContainerMountPath}})" ]]; then
 			echo "Empty dir {{.EsContainerMountPath}}"
 		else
-			echo "Moving {{.EsContainerMountPath}}/* to {{.InitContainerMountPath}}/"
-			mv {{.EsContainerMountPath}}/* {{.InitContainerMountPath}}/
+			echo "Copying {{.EsContainerMountPath}}/* to {{.InitContainerMountPath}}/"
+			cp -av {{.EsContainerMountPath}}/* {{.InitContainerMountPath}}/
 		fi
 	{{end}}
 	echo "Files copy duration: $(duration $mv_start) sec."

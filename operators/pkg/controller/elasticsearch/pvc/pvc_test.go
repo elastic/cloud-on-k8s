@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -22,16 +23,37 @@ import (
 
 var (
 	fastStorageClassname = "fast"
-	sampleLabels1        = map[string]string{"label1": "value1", "label2": "value2"}
-	sampleLabels2        = map[string]string{"label1": "value1", "label2": "value3"}
+	sampleLabels1        = map[string]string{
+		common.TypeLabelName:                   "elasticsearch",
+		label.ClusterNameLabelName:             "cluster-name",
+		string(label.NodeTypesMasterLabelName): "true",
+		string(label.NodeTypesMLLabelName):     "true",
+		string(label.NodeTypesIngestLabelName): "true",
+		string(label.NodeTypesDataLabelName):   "true",
+		label.VersionLabelName:                 "7.1.0",
+	}
+	sampleLabels2 = map[string]string{
+		common.TypeLabelName:                   "elasticsearch",
+		label.ClusterNameLabelName:             "another-cluster",
+		string(label.NodeTypesMasterLabelName): "true",
+		string(label.NodeTypesMLLabelName):     "true",
+		string(label.NodeTypesIngestLabelName): "true",
+		string(label.NodeTypesDataLabelName):   "true",
+		label.VersionLabelName:                 "7.1.0",
+	}
 )
 
 func newPVC(podName string, pvcName string, sourceLabels map[string]string,
 	storageQty string, storageClassName *string) *corev1.PersistentVolumeClaim {
+	labels := make(map[string]string)
+	for k, v := range sourceLabels {
+		labels[k] = v
+	}
+	labels[label.PodNameLabelName] = podName
 	return &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:   pvcName,
-			Labels: newPodLabel(podName, sourceLabels),
+			Labels: sourceLabels,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: storageClassName,
@@ -65,7 +87,6 @@ func newPodLabel(podName string, sourceLabels map[string]string) map[string]stri
 		newMap[key] = value
 	}
 	newMap[label.PodNameLabelName] = podName
-	newMap[label.ClusterNameLabelName] = "elasticsearch-sample"
 	return newMap
 }
 
@@ -180,7 +201,7 @@ func TestFindOrphanedVolumeClaims(t *testing.T) {
 	}
 }
 
-func TestOrphanedPersistentVolumeClaims_FindOrphanedVolumeClaim(t *testing.T) {
+func TestOrphanedPersistentVolumeClaims_GetOrphanedVolumeClaim(t *testing.T) {
 	type fields struct {
 		orphanedPersistentVolumeClaims []corev1.PersistentVolumeClaim
 	}
@@ -346,6 +367,77 @@ func TestOrphanedPersistentVolumeClaims_FindOrphanedVolumeClaim(t *testing.T) {
 			}
 			if got := o.GetOrphanedVolumeClaim(tt.args.expectedLabels, tt.args.claim); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("OrphanedPersistentVolumeClaims.GetOrphanedVolumeClaim() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_compareLabels(t *testing.T) {
+	mergeLabels := func(labels map[string]string, mergeWith map[string]string) func() map[string]string {
+		return func() map[string]string {
+			merged := map[string]string{}
+			for k, v := range labels {
+				merged[k] = v
+			}
+			for k, v := range mergeWith {
+				merged[k] = v
+			}
+			return merged
+		}
+	}
+	tests := []struct {
+		name      string
+		pvcLabels func() map[string]string
+		podLabels func() map[string]string
+		want      bool
+	}{
+		{
+			name:      "same labels",
+			pvcLabels: mergeLabels(sampleLabels1, nil),
+			podLabels: mergeLabels(sampleLabels1, nil),
+			want:      true,
+		},
+		{
+			name:      "same labels, with more on pvc",
+			pvcLabels: mergeLabels(sampleLabels1, map[string]string{"foo": "bar"}),
+			podLabels: mergeLabels(sampleLabels1, nil),
+			want:      true,
+		},
+		{
+			name:      "same labels, with more on pod",
+			pvcLabels: mergeLabels(sampleLabels1, nil),
+			podLabels: mergeLabels(sampleLabels1, map[string]string{"foo": "bar"}),
+			want:      true,
+		},
+		{
+			name:      "different cluster name",
+			pvcLabels: mergeLabels(sampleLabels1, map[string]string{label.ClusterNameLabelName: "cluster-name"}),
+			podLabels: mergeLabels(sampleLabels1, map[string]string{label.ClusterNameLabelName: "another-cluster"}),
+			want:      false,
+		},
+		{
+			name:      "ingest vs. not ingest: ok",
+			pvcLabels: mergeLabels(sampleLabels1, map[string]string{string(label.NodeTypesIngestLabelName): "true"}),
+			podLabels: mergeLabels(sampleLabels1, map[string]string{string(label.NodeTypesIngestLabelName): "false"}),
+			want:      true,
+		},
+		{
+			name:      "version on pod is higher than version on pvc: ok",
+			pvcLabels: mergeLabels(sampleLabels1, map[string]string{label.VersionLabelName: "7.1.0"}),
+			podLabels: mergeLabels(sampleLabels1, map[string]string{label.VersionLabelName: "7.2.0"}),
+			want:      true,
+		},
+		{
+			name:      "version on pvc is higher than version on pod: not ok",
+			pvcLabels: mergeLabels(sampleLabels1, map[string]string{label.VersionLabelName: "7.2.0"}),
+			podLabels: mergeLabels(sampleLabels1, map[string]string{label.VersionLabelName: "7.1.0"}),
+			want:      false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := compareLabels(tt.podLabels(), tt.pvcLabels()); got != tt.want {
+				t.Errorf("compareLabels() = %v, want %v", got, tt.want)
 			}
 		})
 	}
