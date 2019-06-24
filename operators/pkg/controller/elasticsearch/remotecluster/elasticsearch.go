@@ -75,6 +75,8 @@ func UpdateRemoteCluster(
 		}
 	}
 	// Update state
+	// If the map is empty then it must be stored as nil, not an empty map. It is retrieved as a nil value from the API
+	// and it could lead to some reconcile loops that never converge on Openshift.
 	if len(currentRemoteClusters) > 0 {
 		reconcileState.UpdateRemoteClusters(currentRemoteClusters)
 	}
