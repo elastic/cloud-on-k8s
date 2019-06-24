@@ -77,7 +77,7 @@ func noBlacklistedSettings(ctx Context) validation.Result {
 			}
 			continue
 		}
-		forbidden := config.HasPrefixes(settings.Blacklist)
+		forbidden := config.HasKeys(settings.Blacklist)
 		// remove duplicates
 		set := set.Make(forbidden...)
 		if set.Count() > 0 {
