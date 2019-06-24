@@ -1,5 +1,19 @@
-# allow operator in the 'elastic-namespace-operators' namespace
-# to manage resources in the 'default' namespace
+# allow operator to manage resources in its namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: elastic-operator
+  namespace: <NAMESPACE>
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-operator
+subjects:
+- kind: ServiceAccount
+  name: elastic-namespace-operator
+  namespace: <NAMESPACE>
+---
+# allow operator to manage resources in the managed namespace
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:

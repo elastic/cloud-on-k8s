@@ -8,9 +8,13 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,52 +32,61 @@ var es = v1alpha1.Elasticsearch{
 }
 
 func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
+	tpl := ESPodSpecContext(image, cpuLimit).PodTemplate
 	return pod.PodWithConfig{
 		Pod: corev1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+				Name:   name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
+				Labels: hash.SetTemplateHashLabel(nil, tpl),
 			},
-			Spec: ESPodSpecContext(image, cpuLimit).PodSpec,
+			Spec: tpl.Spec,
 		},
 	}
 }
 
 func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 	return pod.PodSpecContext{
-		PodSpec: corev1.PodSpec{
-			Containers: []corev1.Container{{
-				Image:           image,
-				ImagePullPolicy: corev1.PullIfNotPresent,
-				Name:            v1alpha1.ElasticsearchContainerName,
-				Ports:           pod.DefaultContainerPorts,
-				// TODO: Hardcoded resource limits and requests
-				Resources: corev1.ResourceRequirements{
-					Limits: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse(cpuLimit),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
-					Requests: corev1.ResourceList{
-						corev1.ResourceCPU:    resource.MustParse("100m"),
-						corev1.ResourceMemory: resource.MustParse("2Gi"),
-					},
+		PodTemplate: corev1.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					label.ClusterNameLabelName: es.Name,
 				},
-				ReadinessProbe: &corev1.Probe{
-					FailureThreshold:    3,
-					InitialDelaySeconds: 10,
-					PeriodSeconds:       5,
-					SuccessThreshold:    1,
-					TimeoutSeconds:      5,
-					Handler: corev1.Handler{
-						Exec: &corev1.ExecAction{
-							Command: []string{
-								"sh",
-								"-c",
-								"script here",
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{{
+					Image:           image,
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Name:            v1alpha1.ElasticsearchContainerName,
+					Ports:           pod.DefaultContainerPorts,
+					// TODO: Hardcoded resource limits and requests
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse(cpuLimit),
+							corev1.ResourceMemory: resource.MustParse("2Gi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("100m"),
+							corev1.ResourceMemory: resource.MustParse("2Gi"),
+						},
+					},
+					ReadinessProbe: &corev1.Probe{
+						FailureThreshold:    3,
+						InitialDelaySeconds: 10,
+						PeriodSeconds:       5,
+						SuccessThreshold:    1,
+						TimeoutSeconds:      5,
+						Handler: corev1.Handler{
+							Exec: &corev1.ExecAction{
+								Command: []string{
+									"sh",
+									"-c",
+									"script here",
+								},
 							},
 						},
 					},
-				},
-			}},
+				}},
+			},
 		},
 	}
 }
@@ -153,8 +166,8 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) (corev1.Pod, error) {
-				return corev1.Pod{}, nil // TODO: fix
+			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) corev1.Pod {
+				return version.NewPod(es, ctx)
 			})
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))

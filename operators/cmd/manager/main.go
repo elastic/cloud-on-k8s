@@ -12,17 +12,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/dev/portforward"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/webhook"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -164,7 +165,7 @@ func execute() {
 			Addr:    viper.GetString(DebugHTTPServerListenAddressFlag),
 			Handler: mux,
 		}
-		log.Info("Starting Debug HTTP Server.", "addr", pprofServer.Addr)
+		log.Info("Starting debug HTTP server", "addr", pprofServer.Addr)
 
 		go func() {
 			err := pprofServer.ListenAndServe()
@@ -190,8 +191,15 @@ func execute() {
 		os.Exit(1)
 	}
 
+	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
+	if operatorNamespace == "" {
+		log.Error(fmt.Errorf("%s is a required flag", OperatorNamespaceFlag),
+			"required configuration missing")
+		os.Exit(1)
+	}
+
 	// Get a config to talk to the apiserver
-	log.Info("setting up client for manager")
+	log.Info("Setting up client for manager")
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Error(err, "unable to set up client config")
@@ -199,7 +207,7 @@ func execute() {
 	}
 
 	// Create a new Cmd to provide shared dependencies and start components
-	log.Info("setting up manager")
+	log.Info("Setting up manager")
 	opts := manager.Options{
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
@@ -215,10 +223,8 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Registering Components.")
-
 	// Setup Scheme for all resources
-	log.Info("setting up scheme")
+	log.Info("Setting up scheme")
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "unable add APIs to scheme")
 		os.Exit(1)
@@ -234,12 +240,26 @@ func execute() {
 		log.Error(err, "invalid roles specified")
 		os.Exit(1)
 	}
-	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
-	log.Info("Setting up controller", "roles", roles)
+
+	// Setup a client to set the operator uuid config map
+	clientset, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		log.Error(err, "unable to create k8s clientset")
+		os.Exit(1)
+	}
+
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
+	if err != nil {
+		log.Error(err, "unable to get operator info")
+		os.Exit(1)
+	}
+
+	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:             dialer,
 		OperatorImage:      operatorImage,
 		OperatorNamespace:  operatorNamespace,
+		OperatorInfo:       operatorInfo,
 		CACertValidity:     caCertValidity,
 		CACertRotateBefore: caCertRotateBefore,
 		CertValidity:       certValidity,
@@ -249,14 +269,16 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("setting up webhooks")
+	log.Info("Setting up webhooks")
 	if err := webhook.AddToManager(mgr, roles, newWebhookParameters); err != nil {
 		log.Error(err, "unable to register webhooks to the manager")
 		os.Exit(1)
 	}
 
-	// Start the Cmd
-	log.Info("Starting the Cmd.")
+	log.Info("Starting the manager", "uuid", operatorInfo.UUID,
+		"namespace", operatorInfo.Namespace, "version", operatorInfo.BuildInfo.Version,
+		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
+		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "unable to run the manager")
 		os.Exit(1)

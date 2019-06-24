@@ -5,9 +5,12 @@
 package license
 
 import (
+	"crypto/x509"
 	"testing"
+	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/chrono"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +20,16 @@ import (
 
 func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
+
+	privKey, err := x509.ParsePKCS1PrivateKey(privateKeyFixture)
+	require.NoError(t, err)
+
+	validLicenseFixture := licenseFixture
+	validLicenseFixture.License.ExpiryDateInMillis = chrono.ToMillis(time.Now().Add(1 * time.Hour))
+
+	signatureBytes, err := NewSigner(privKey).Sign(validLicenseFixture)
+	require.NoError(t, err)
+
 	type fields struct {
 		initialObjects    []runtime.Object
 		operatorNamespace string
@@ -31,7 +44,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "valid license: OK",
 			fields: fields{
-				initialObjects:    asRuntimeObjects(licenseFixture, signatureFixture),
+				initialObjects:    asRuntimeObjects(validLicenseFixture, signatureBytes),
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},
@@ -40,7 +53,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "invalid signature: FAIL",
 			fields: fields{
-				initialObjects:    asRuntimeObjects(licenseFixture, []byte{}),
+				initialObjects:    asRuntimeObjects(validLicenseFixture, []byte{}),
 				operatorNamespace: "test-system",
 				publicKey:         publicKeyBytesFixture(t),
 			},
@@ -50,7 +63,7 @@ func TestChecker_EnterpriseFeaturesEnabled(t *testing.T) {
 		{
 			name: "no public key: FAIL",
 			fields: fields{
-				initialObjects:    asRuntimeObjects(licenseFixture, signatureFixture),
+				initialObjects:    asRuntimeObjects(validLicenseFixture, signatureBytes),
 				operatorNamespace: "test-system",
 			},
 			want:    false,
