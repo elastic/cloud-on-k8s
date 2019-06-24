@@ -275,7 +275,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Starting the manager", "uuid", operatorInfo.UUID,
+	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
 		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)

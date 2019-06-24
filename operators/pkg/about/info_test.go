@@ -72,7 +72,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			require.NoError(t, err)
 
 			// the operator uuid should be defined
-			uuid := operatorInfo.UUID
+			uuid := operatorInfo.OperatorUUID
 			test.assert(uuid)
 
 			// retrieve operator info a second time
@@ -80,7 +80,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			require.NoError(t, err)
 
 			// the operator uuid should be the same than the first time
-			assert.Equal(t, uuid, operatorInfo.UUID)
+			assert.Equal(t, uuid, operatorInfo.OperatorUUID)
 		})
 	}
 }
