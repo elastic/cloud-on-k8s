@@ -24,7 +24,6 @@ const (
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
 	UUID         types.UID `json:"uuid"`
-	Namespace    string    `json:"namespace"`
 	Distribution string    `json:"distribution"`
 	BuildInfo    BuildInfo `json:"build"`
 }
@@ -40,7 +39,6 @@ type BuildInfo struct {
 // IsDefined returns true if the info's default values have been replaced.
 func (i OperatorInfo) IsDefined() bool {
 	return i.UUID != "" &&
-		i.Namespace != "" &&
 		i.Distribution != "" &&
 		i.BuildInfo.Version != "0.0.0" &&
 		i.BuildInfo.Hash != "00000000" &&
@@ -61,7 +59,6 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 
 	return OperatorInfo{
 		UUID:         operatorUUID,
-		Namespace:    operatorNs,
 		Distribution: distribution,
 		BuildInfo: BuildInfo{
 			version,
