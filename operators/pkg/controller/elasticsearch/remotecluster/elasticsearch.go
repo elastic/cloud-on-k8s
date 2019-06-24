@@ -75,7 +75,9 @@ func UpdateRemoteCluster(
 		}
 	}
 	// Update state
-	reconcileState.UpdateRemoteClusters(currentRemoteClusters)
+	if len(currentRemoteClusters) > 0 {
+		reconcileState.UpdateRemoteClusters(currentRemoteClusters)
+	}
 	return nil
 }
 
