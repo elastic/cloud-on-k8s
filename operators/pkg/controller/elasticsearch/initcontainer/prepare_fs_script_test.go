@@ -28,9 +28,9 @@ func TestRenderScriptTemplate(t *testing.T) {
 							Target: "/usr/share/elasticsearch/users"}}},
 			},
 			wantSubstr: []string{
-				"mv /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
-				"mv /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
-				"mv /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
+				"cp -av /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/",
+				"cp -av /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/",
+				"cp -av /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/",
 				"ln -sf /secrets/users /usr/share/elasticsearch/users",
 			},
 		},
