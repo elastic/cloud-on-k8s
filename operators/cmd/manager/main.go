@@ -276,7 +276,7 @@ func execute() {
 	}
 
 	log.Info("Starting the manager", "uuid", operatorInfo.UUID,
-		"namespace", operatorInfo.Namespace, "version", operatorInfo.BuildInfo.Version,
+		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
