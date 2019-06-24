@@ -21,7 +21,7 @@ import (
 var (
 	log                         = logf.Log.WithName("pvc")
 	ErrNotNodeNameLabelNotFound = errors.New("node name not found as a label on the PVC")
-	// podLabelsInPVCs is the list of labels PVCs inherit from pods they are associated with
+	// PodLabelsInPVCs is the list of labels PVCs inherit from pods they are associated with
 	PodLabelsInPVCs = []string{
 		label.ClusterNameLabelName,
 		common.TypeLabelName,
