@@ -25,7 +25,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
-var log = logf.KBLog.WithName("transport")
+var log = logf.Log.WithName("transport")
 
 // ReconcileTransportCertificateSecrets reconciles certificate secrets for nodes
 // of the given es cluster.

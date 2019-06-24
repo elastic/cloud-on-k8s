@@ -7,6 +7,7 @@ package operator
 import (
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 )
 
@@ -16,6 +17,8 @@ type Parameters struct {
 	OperatorImage string
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
+	// OperatorInfo is information about the operator
+	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
 	// CACertValidity is the validity duration of a newly created CA cert

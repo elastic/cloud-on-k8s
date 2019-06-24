@@ -84,7 +84,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create a stack with a 4G node
-	initStack := stack.NewStackBuilder("test-mutation-resize-memory-up").
+	initStack := stack.NewStackBuilder("test-mutation-resize-memory-down").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("4Gi"),

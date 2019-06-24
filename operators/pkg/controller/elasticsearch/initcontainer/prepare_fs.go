@@ -24,18 +24,6 @@ const (
 
 // Volumes that are shared between the prepare-fs init container and the ES container
 var (
-	DataSharedVolume = SharedVolume{
-		Name:                   esvolume.ElasticsearchDataVolumeName,
-		InitContainerMountPath: esvolume.ElasticsearchDataMountPath,
-		EsContainerMountPath:   esvolume.ElasticsearchDataMountPath,
-	}
-
-	LogsSharedVolume = SharedVolume{
-		Name:                   esvolume.ElasticsearchLogsVolumeName,
-		InitContainerMountPath: esvolume.ElasticsearchLogsMountPath,
-		EsContainerMountPath:   esvolume.ElasticsearchLogsMountPath,
-	}
-
 	// EsBinSharedVolume contains the ES bin/ directory
 	EsBinSharedVolume = SharedVolume{
 		Name:                   "elastic-internal-elasticsearch-bin-local",
@@ -55,16 +43,6 @@ var (
 		Name:                   "elastic-internal-elasticsearch-plugins-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-plugins-local",
 		EsContainerMountPath:   "/usr/share/elasticsearch/plugins",
-	}
-
-	PrepareFsSharedVolumes = SharedVolumeArray{
-		Array: []SharedVolume{
-			EsConfigSharedVolume,
-			EsPluginsSharedVolume,
-			EsBinSharedVolume,
-			DataSharedVolume,
-			LogsSharedVolume,
-		},
 	}
 
 	PluginVolumes = SharedVolumeArray{
@@ -111,7 +89,6 @@ func NewPrepareFSInitContainer(
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
 ) (corev1.Container, error) {
-
 	// we mount the certificates to a location outside of the default config directory because the prepare-fs script
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
 	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
@@ -134,7 +111,11 @@ func NewPrepareFSInitContainer(
 		},
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
-			PrepareFsSharedVolumes.InitContainerVolumeMounts(), certificatesVolumeMount, scriptsVolume.VolumeMount(),
+			PluginVolumes.InitContainerVolumeMounts(),
+			certificatesVolumeMount,
+			scriptsVolume.VolumeMount(),
+			esvolume.DefaultDataVolumeMount,
+			esvolume.DefaultLogsVolumeMount,
 		),
 	}
 
@@ -146,8 +127,8 @@ func RenderPrepareFsScript() (string, error) {
 		PluginVolumes: PluginVolumes,
 		LinkedFiles:   linkedFiles,
 		ChownToElasticsearch: []string{
-			DataSharedVolume.InitContainerMountPath,
-			LogsSharedVolume.InitContainerMountPath,
+			esvolume.ElasticsearchDataMountPath,
+			esvolume.ElasticsearchLogsMountPath,
 		},
 		TransportCertificatesKeyPath: fmt.Sprintf(
 			"%s/%s",
