@@ -115,6 +115,8 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 }
 
 func TestKillCorrectPVReuse(t *testing.T) {
+	helpers.MinVersionOrSkip(t, "v1.12.0")
+
 	s := stack.NewStackBuilder("test-failure-pvc").
 		WithESMasterDataNodes(1, stack.DefaultResources).
 		WithAdditionalPersistentVolumes() // create an additional volume that is not our data volume
