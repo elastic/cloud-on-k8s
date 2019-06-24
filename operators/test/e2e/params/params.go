@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultElasticStackVersion = "7.1.0"
+	defaultElasticStackVersion = "7.1.1"
 	defaultNamespace           = "e2e"
 )
 
@@ -21,11 +21,13 @@ var (
 	ElasticStackVersion string
 	Namespace           string
 	AutoPortForward     bool
+	TestLicense         string
 )
 
 func init() {
 	flag.StringVar(&ElasticStackVersion, "version", defaultElasticStackVersion, "Elastic Stack version")
 	flag.StringVar(&Namespace, "namespace", defaultNamespace, "Namespace")
+	flag.StringVar(&TestLicense, "test-license", "", "path to Enterprise license to be used for testing")
 	flag.BoolVar(&AutoPortForward, "auto-port-forward", false, "enables automatic port-forwarding "+
 		"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)")
 	flag.Parse()

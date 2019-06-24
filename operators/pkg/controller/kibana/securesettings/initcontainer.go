@@ -16,7 +16,9 @@ const (
 
 // script is a small bash script to create a Kibana keystore,
 // then add all entries from the secure settings secret volume into it.
-const script = `#!/usr/bin/env bash -eu
+const script = `#!/usr/bin/env bash
+
+set -eu
 
 echo "Initializing Kibana keystore."
 
@@ -45,7 +47,7 @@ func initContainer(secureSettingsSecret volume.SecretVolume) corev1.Container {
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},
-		Command: []string{"bash", "-c", script},
+		Command: []string{"/usr/bin/env", "bash", "-c", script},
 		VolumeMounts: []corev1.VolumeMount{
 			// access secure settings
 			secureSettingsSecret.VolumeMount(),

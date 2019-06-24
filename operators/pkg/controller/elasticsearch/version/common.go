@@ -11,6 +11,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
@@ -28,10 +29,9 @@ import (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
@@ -39,16 +39,13 @@ func NewExpectedPodSpecs(
 	for _, node := range es.Spec.Nodes {
 		// add default PVCs to the node spec
 		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-			node.VolumeClaimTemplates, node.PodTemplate.Spec, pod.DefaultVolumeClaimTemplates...,
+			node.VolumeClaimTemplates, node.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
 		)
 
 		for i := int32(0); i < node.NodeCount; i++ {
 			params := pod.NewPodSpecParams{
 				// cluster-wide params
-				Version:          es.Spec.Version,
-				CustomImageName:  es.Spec.Image,
-				ClusterName:      es.Name,
-				SetVMMaxMapCount: es.Spec.SetVMMaxMapCount,
+				Elasticsearch: es,
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
 				ProbeUser:          paramsTmpl.ProbeUser,
@@ -57,7 +54,7 @@ func NewExpectedPodSpecs(
 				// pod params
 				NodeSpec: node,
 			}
-			podSpec, config, err := podSpec(
+			podSpecCtx, err := podSpecContext(
 				params,
 				operatorImage,
 				newEnvironmentVarsFn,
@@ -68,84 +65,120 @@ func NewExpectedPodSpecs(
 				return nil, err
 			}
 
-			podSpecs = append(podSpecs, pod.PodSpecContext{PodSpec: podSpec, NodeSpec: node, Config: config})
+			podSpecs = append(podSpecs, podSpecCtx)
 		}
 	}
 
 	return podSpecs, nil
 }
 
-// podSpec creates a new PodSpec for an Elasticsearch node
-func podSpec(
+// podSpecContext creates a new PodSpecContext for an Elasticsearch node
+func podSpecContext(
 	p pod.NewPodSpecParams,
 	operatorImage string,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume) ([]corev1.Container, error),
-) (corev1.PodSpec, settings.CanonicalConfig, error) {
+	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
+) (pod.PodSpecContext, error) {
 	// setup volumes
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), esvolume.ProbeUserVolumeName,
+		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.ProbeUserVolumeName,
 		esvolume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
 	)
 	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.ClusterName), esvolume.KeystoreUserVolumeName,
+		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.KeystoreUserVolumeName,
 		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
 	)
-	// we don't have a secret name for this, this will be injected as a volume for us upon creation, this is fine
-	// because we will not be adding this to the container Volumes, only the VolumeMounts section.
-	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		"",
-		esvolume.TransportCertificatesSecretVolumeName,
-		esvolume.TransportCertificatesSecretVolumeMountPath,
-	)
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		name.SecureSettingsSecret(p.ClusterName),
+		name.SecureSettingsSecret(p.Elasticsearch.Name),
 		esvolume.SecureSettingsVolumeName,
 		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		name.HTTPCertsInternalSecretName(p.ClusterName),
+		name.HTTPCertsInternalSecretName(p.Elasticsearch.Name),
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
 
+	// A few secret volumes will be generated based on the pod name.
+	// At this point the (maybe future) pod does not have a name yet: we still want to
+	// create corresponding volumes and volume mounts for pod spec comparisons.
+	// Let's create them with a placeholder for the pod name. Volume mounts will be correct,
+	// and secret refs in Volumes Mounts will be fixed right before pod creation,
+	// if this spec ends up leading to a new pod creation.
+	podNamePlaceholder := "pod-name-placeholder"
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.TransportCertsSecret(podNamePlaceholder),
+		esvolume.TransportCertificatesSecretVolumeName,
+		esvolume.TransportCertificatesSecretVolumeMountPath,
+	)
+	configVolume := settings.ConfigSecretVolume(podNamePlaceholder)
+
+	// append future volumes from PVCs (not resolved to a claim yet)
+	persistentVolumes := make([]corev1.Volume, 0, len(p.NodeSpec.VolumeClaimTemplates))
+	for _, claimTemplate := range p.NodeSpec.VolumeClaimTemplates {
+		persistentVolumes = append(persistentVolumes, corev1.Volume{
+			Name: claimTemplate.Name,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					// actual claim name will be resolved and fixed right before pod creation
+					ClaimName: "claim-name-placeholder",
+				},
+			},
+		})
+	}
+
 	// build on top of the user-provided pod template spec
 	builder := defaults.NewPodTemplateBuilder(p.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
-		WithDockerImage(p.CustomImageName, stringsutil.Concat(pod.DefaultImageRepository, ":", p.Version)).
+		WithDockerImage(p.Elasticsearch.Spec.Image, stringsutil.Concat(pod.DefaultImageRepository, ":", p.Elasticsearch.Spec.Version)).
 		WithTerminationGracePeriod(pod.DefaultTerminationGracePeriodSeconds).
 		WithPorts(pod.DefaultContainerPorts).
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
-		WithAffinity(pod.DefaultAffinity(p.ClusterName)).
+		WithAffinity(pod.DefaultAffinity(p.Elasticsearch.Name)).
 		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
 
 	// setup init containers
-	initContainers, err := newInitContainersFn(builder.Container.Image, operatorImage, p.SetVMMaxMapCount, transportCertificatesVolume)
+	initContainers, err := newInitContainersFn(
+		builder.Container.Image,
+		operatorImage,
+		p.Elasticsearch.Spec.SetVMMaxMapCount,
+		transportCertificatesVolume,
+		p.Elasticsearch.Name)
+
 	if err != nil {
-		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
+		return pod.PodSpecContext{}, err
 	}
 
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
-		name.ScriptsConfigMap(p.ClusterName),
+		name.ScriptsConfigMap(p.Elasticsearch.Name),
 		esvolume.ScriptsVolumeName,
 		esvolume.ScriptsVolumeMountPath,
 		0755)
 
 	builder = builder.
 		WithVolumes(
-			append(initcontainer.PrepareFsSharedVolumes.Volumes(),
-				initcontainer.ProcessManagerVolume.Volume(),
-				p.UsersSecretVolume.Volume(),
-				p.UnicastHostsVolume.Volume(),
-				probeSecret.Volume(),
-				keystoreUserSecret.Volume(),
-				secureSettingsVolume.Volume(),
-				httpCertificatesVolume.Volume(),
-				scriptsVolume.Volume(),
-			)...).
+			append(
+				persistentVolumes, // includes the data volume, unless specified differently in the pod template
+				append(
+					initcontainer.PluginVolumes.Volumes(),
+					esvolume.DefaultLogsVolume,
+					initcontainer.ProcessManagerVolume.Volume(),
+					p.UsersSecretVolume.Volume(),
+					p.UnicastHostsVolume.Volume(),
+					probeSecret.Volume(),
+					transportCertificatesVolume.Volume(),
+					keystoreUserSecret.Volume(),
+					secureSettingsVolume.Volume(),
+					httpCertificatesVolume.Volume(),
+					scriptsVolume.Volume(),
+					configVolume.Volume(),
+				)...)...).
 		WithVolumeMounts(
-			append(initcontainer.PrepareFsSharedVolumes.EsContainerVolumeMounts(),
+			append(
+				initcontainer.PluginVolumes.EsContainerVolumeMounts(),
+				esvolume.DefaultDataVolumeMount,
+				esvolume.DefaultLogsVolumeMount,
 				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
@@ -155,6 +188,7 @@ func podSpec(
 				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
+				configVolume.VolumeMount(),
 			)...).
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
@@ -165,46 +199,58 @@ func podSpec(
 	if config == nil {
 		config = &commonv1alpha1.Config{}
 	}
-	esConfig, err := newESConfigFn(p.ClusterName, *config)
+	esConfig, err := newESConfigFn(p.Elasticsearch.Name, *config)
 	if err != nil {
-		return corev1.PodSpec{}, settings.CanonicalConfig{}, err
+		return pod.PodSpecContext{}, err
+	}
+	unpackedCfg, err := esConfig.Unpack()
+	if err != nil {
+		return pod.PodSpecContext{}, err
 	}
 
-	return builder.PodTemplate.Spec, esConfig, nil
+	// set labels
+	version, err := version.Parse(p.Elasticsearch.Spec.Version)
+	if err != nil {
+		return pod.PodSpecContext{}, err
+	}
+	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
+
+	return pod.PodSpecContext{
+		NodeSpec:    p.NodeSpec,
+		PodTemplate: builder.PodTemplate,
+		Config:      esConfig,
+	}, nil
 }
 
 // NewPod constructs a pod from the given parameters.
 func NewPod(
-	version version.Version,
 	es v1alpha1.Elasticsearch,
 	podSpecCtx pod.PodSpecContext,
-) (corev1.Pod, error) {
-	// build on top of user-provided objectMeta to reuse labels, annotations, etc.
-	builder := defaults.NewPodTemplateBuilder(podSpecCtx.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName)
-
-	// set our own name & namespace
-	builder.PodTemplate.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	builder.PodTemplate.Namespace = es.Namespace
-
-	cfg, err := podSpecCtx.Config.Unpack()
-	if err != nil {
-		return corev1.Pod{}, err
+) corev1.Pod {
+	// build a pod based on the podSpecCtx template
+	template := *podSpecCtx.PodTemplate.DeepCopy()
+	pod := corev1.Pod{
+		ObjectMeta: template.ObjectMeta,
+		Spec:       template.Spec,
 	}
 
-	builder = builder.WithLabels(label.NewPodLabels(es, version, cfg))
+	// label the pod with a hash of its template, for comparison purpose,
+	// before it gets assigned a name
+	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
 
-	if podSpecCtx.PodSpec.Hostname == "" {
-		podSpecCtx.PodSpec.Hostname = builder.PodTemplate.Name
+	// set name & namespace
+	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
+	pod.Namespace = es.Namespace
+
+	// set hostname and subdomain based on pod and cluster names
+	if pod.Spec.Hostname == "" {
+		pod.Spec.Hostname = pod.Name
+	}
+	if pod.Spec.Subdomain == "" {
+		pod.Spec.Subdomain = es.Name
 	}
 
-	if podSpecCtx.PodSpec.Subdomain == "" {
-		podSpecCtx.PodSpec.Subdomain = es.Name
-	}
-
-	return corev1.Pod{
-		ObjectMeta: builder.PodTemplate.ObjectMeta,
-		Spec:       podSpecCtx.PodSpec,
-	}, nil
+	return pod
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity

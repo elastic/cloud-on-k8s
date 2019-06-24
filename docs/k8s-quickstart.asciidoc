@@ -9,11 +9,12 @@ Eager to get started? This fast guide shows you how to:
 * <<{p}-deploy-elasticsearch,Deploy the Elasticsearch cluster>>
 * <<{p}-deploy-kibana,Deploy the Kibana instance>>
 * <<{p}-upgrade-deployment,Upgrade your deployment>>
-* <<{p}-deep-dive,Deep dive>>
+* <<{p}-persistent-storage,Use persistent storage>>
+* <<{p}-check-samples,Check out the samples>>
 
 **Requirements**
 
-This quickstart assumes you already have Kubernetes 1.11+.
+Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kubectl/[kubectl] version 1.11+ installed.
 
 [float]
 [id="{p}-deploy-eck"]
@@ -263,15 +264,10 @@ EOF
 ----
 
 [float]
-[id="{p}-deep-dive"]
-=== Deep dive
+[id="{p}-persistent-storage"]
+=== Use persistent storage
 
-Now that you have completed the quickstart, you can try out more features like using persistent storage.
-
-[float]
-==== Use persistent storage
-
-The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
+Now that you have completed the quickstart, you can try out more features like using persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
 
 You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
 
@@ -299,18 +295,18 @@ spec:
         resources:
           requests:
             storage: 10Gi
-        storageClassName: gcePersistentDisk # can be any available storage class
+        #storageClassName: standard # can be any available storage class
 EOF
 ----
 
 To aim for the best performance, the operator supports persistent volumes local to each node. For more details, see:
 
  * link:https://kubernetes.io/docs/concepts/storage/storage-classes[persistent volumes storage classes]
- * link:https://github.com/elastic/cloud-on-k8s/tree/master/local-volume[elastic local volume dynamic provisioner] to setup dynamic local volumes based on LVM.
  * link:https://github.com/kubernetes-sigs/sig-storage-local-static-provisioner[kubernetes-sigs local volume static provisioner] to setup static local volumes.
 
 [float]
-==== Check out the samples
+[id="{p}-check-samples"]
+=== Check out the samples
 
 You can find a set of sample resources link:https://github.com/elastic/cloud-on-k8s/tree/master/operators/config/samples[in the project repository].
 To customize the Elasticsearch resource, check the link:https://github.com/elastic/cloud-on-k8s/blob/master/operators/config/samples/elasticsearch/elasticsearch.yaml[Elasticsearch sample].

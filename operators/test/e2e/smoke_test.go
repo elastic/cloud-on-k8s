@@ -28,8 +28,8 @@ func TestSmoke(t *testing.T) {
 	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
 	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
 
-	namespacedSampleStack := sampleStack.WithNamespace(params.Namespace)
-	namespacedSampleApm := sampleApm.WithNamespace(params.Namespace)
+	namespacedSampleStack := sampleStack.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
+	namespacedSampleApm := sampleApm.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
 
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.

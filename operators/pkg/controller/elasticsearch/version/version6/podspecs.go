@@ -7,8 +7,6 @@ package version6
 import (
 	"path"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -20,35 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-)
-
-var (
-	// linkedFiles6 describe how various secrets are mapped into the pod's filesystem.
-	linkedFiles6 = initcontainer.LinkedFilesArray{
-		Array: []initcontainer.LinkedFile{
-			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersFile),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersFile),
-			},
-			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticRolesFile),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticRolesFile),
-			},
-			{
-				Source: stringsutil.Concat(esvolume.XPackFileRealmVolumeMountPath, "/", user.ElasticUsersRolesFile),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", user.ElasticUsersRolesFile),
-			},
-			{
-				Source: stringsutil.Concat(settings.ConfigVolumeMountPath, "/", settings.ConfigFileName),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", settings.ConfigFileName),
-			},
-			{
-				Source: stringsutil.Concat(esvolume.UnicastHostsVolumeMountPath, "/", esvolume.UnicastHostsFile),
-				Target: stringsutil.Concat(initcontainer.EsConfigSharedVolume.EsContainerMountPath, "/", esvolume.UnicastHostsFile),
-			},
-		},
-	}
+	corev1 "k8s.io/api/core/v1"
 )
 
 // ExpectedPodSpecs returns a list of pod specs with context that we would expect to find in the Elasticsearch cluster.
@@ -69,24 +39,8 @@ func ExpectedPodSpecs(
 		paramsTmpl,
 		newEnvironmentVars,
 		settings.NewMergedESConfig,
-		newInitContainers,
+		initcontainer.NewInitContainers,
 		operatorImage,
-	)
-}
-
-// newInitContainers returns a list of init containers
-func newInitContainers(
-	elasticsearchImage string,
-	operatorImage string,
-	setVMMaxMapCount *bool,
-	transportCertificatesVolume volume.SecretVolume,
-) ([]corev1.Container, error) {
-	return initcontainer.NewInitContainers(
-		elasticsearchImage,
-		operatorImage,
-		linkedFiles6,
-		setVMMaxMapCount,
-		transportCertificatesVolume,
 	)
 }
 
@@ -118,7 +72,7 @@ func newEnvironmentVars(
 			ESUsername:         p.KeystoreUser.Name,
 			ESPasswordFilepath: path.Join(keystoreUserSecretVolume.VolumeMount().MountPath, p.KeystoreUser.Name),
 			ESCertsPath:        path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
-			ESVersion:          p.Version,
+			ESVersion:          p.Elasticsearch.Spec.Version,
 		})...)
 
 	return vars

@@ -7,6 +7,7 @@ package apm
 import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -22,6 +23,11 @@ var DefaultResources = corev1.ResourceRequirements{
 
 type Builder struct {
 	ApmServer apmtype.ApmServer
+}
+
+func (b Builder) WithRestrictedSecurityContext() Builder {
+	b.ApmServer.Spec.PodTemplate.Spec.SecurityContext = helpers.DefaultSecurityContext()
+	return b
 }
 
 func (b Builder) WithNamespace(namespace string) Builder {

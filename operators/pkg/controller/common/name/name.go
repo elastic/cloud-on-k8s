@@ -63,9 +63,9 @@ func (n Namer) Suffix(ownerName string, suffixes ...string) string {
 	// Trim the ownerName and log an error as fallback.
 	maxPrefixLength := MaxNameLength - len(suffix)
 	if len(ownerName) > maxPrefixLength {
-		ownerName = ownerName[:maxPrefixLength]
 		log.Error(fmt.Errorf("ownerName should not exceed %d characters: got %s", maxPrefixLength, ownerName),
 			"Failed to suffix resource")
+		ownerName = ownerName[:maxPrefixLength]
 	}
 
 	return stringsutil.Concat(ownerName, suffix)
