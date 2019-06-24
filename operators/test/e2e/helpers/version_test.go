@@ -13,14 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 )
 
-// MinVersionOrSkip run this test only if the server has at least version v.
-func MinVersionOrSkip(t *testing.T, v string) {
-	info, err := ServerVersion()
-	require.NoError(t, err)
-
-	min := version.MustParseGeneric(v)
-	actual := version.MustParseGeneric(info.GitVersion)
-	if !actual.AtLeast(min) {
-		t.SkipNow()
-	}
+func TestMinVersionOrSkip(t *testing.T) {
+	k8s := version.MustParseGeneric("v1.12.8-gke.10")
+	test := version.MustParseGeneric("v1.12")
+	require.True(t, k8s.AtLeast(test))
 }

@@ -23,6 +23,7 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -87,11 +88,11 @@ func CreateClient() (k8s.Client, error) {
 func ServerVersion() (*version.Info, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while getting rest config")
 	}
 	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while creating discovery client")
 	}
 	return dc.ServerVersion()
 }

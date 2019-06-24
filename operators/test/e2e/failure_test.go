@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/sliceutils"
@@ -117,19 +118,34 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 func TestKillCorrectPVReuse(t *testing.T) {
 	helpers.MinVersionOrSkip(t, "v1.12.0")
 
+	lateBinding := v1.VolumeBindingWaitForFirstConsumer
+	sc, err := stack.StorageClassTemplate()
+	require.NoError(t, err)
+	sc.VolumeBindingMode = &lateBinding
+
 	s := stack.NewStackBuilder("test-failure-pvc").
-		WithESMasterDataNodes(1, stack.DefaultResources).
-		WithAdditionalPersistentVolumes() // create an additional volume that is not our data volume
+		WithESMasterDataNodes(2, stack.DefaultResources).
+		WithPersistentVolumes("not-data", &sc.Name).
+		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
 
 	matchNode := func(p corev1.Pod) bool {
 		return true // match first node we find
 	}
-	RunFailureTest(t, s, func(k *helpers.K8sHelper) helpers.TestStepList {
-		var seenPVCs []string
-		list := helpers.TestStepList{}
-		list = append(list, stack.PauseReconciliation(s.Elasticsearch, k))
-		list = append(list, killSteps(helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)(k)...)
-		list = append(list, helpers.TestStep{
+
+	k := helpers.NewK8sClientOrFatal()
+
+	var clusterUUID string
+	var seenPVCs []string
+
+	helpers.TestStepList{}.
+		WithSteps(stack.CreateStorageClass(*sc, k)).
+		WithSteps(stack.InitTestSteps(s, k)...).
+		WithSteps(stack.CreationTestSteps(s, k)...).
+		WithSteps(stack.RetrieveClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
+		// Simulate a pod deletion
+		WithSteps(stack.PauseReconciliation(s.Elasticsearch, k)).
+		WithSteps(killSteps(helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)(k)...).
+		WithSteps(helpers.TestStep{
 			Name: "Modify the es-data PVCs labels",
 			Test: helpers.Eventually(func() error {
 				pvcs, err := pvc.ListVolumeClaims(k.Client, s.Elasticsearch)
@@ -149,36 +165,41 @@ func TestKillCorrectPVReuse(t *testing.T) {
 				}
 				return nil
 			}),
-		})
-		list = append(list, stack.ResumeReconciliation(s.Elasticsearch, k))
-		list = append(list, helpers.TestStep{
-			Name: "No PVC should have been reused for elasticsearch-data",
-			Test: helpers.Eventually(func() error {
-				pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
-				if err != nil {
-					return err
-				}
-				for _, pod := range pods {
-					for _, v := range pod.Spec.Volumes {
-						pvc := v.VolumeSource.PersistentVolumeClaim
-						if pvc == nil {
-							continue
-						}
-						if v.Name != volume.ElasticsearchDataVolumeName {
-							if !sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
-								return fmt.Errorf("expected reused PVC but %v is new , seen: %v", pvc.ClaimName, seenPVCs)
+		},
+			stack.ResumeReconciliation(s.Elasticsearch, k),
+			helpers.TestStep{
+				Name: "No PVC should have been reused for elasticsearch-data",
+				Test: helpers.Eventually(func() error {
+					pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
+					if err != nil {
+						return err
+					}
+					for _, pod := range pods {
+						for _, v := range pod.Spec.Volumes {
+							pvc := v.VolumeSource.PersistentVolumeClaim
+							if pvc == nil {
+								continue
 							}
+							if v.Name != volume.ElasticsearchDataVolumeName {
+								if !sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+									return fmt.Errorf("expected reused PVC but %v is new , seen: %v", pvc.ClaimName, seenPVCs)
+								}
 
-						} else if sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
-							return fmt.Errorf("expected new PVC but was reused %v, seen: %v", pvc.ClaimName, seenPVCs)
+							} else if sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+								return fmt.Errorf("expected new PVC but was reused %v, seen: %v", pvc.ClaimName, seenPVCs)
+							}
 						}
 					}
-				}
-				return nil
-			}),
-		})
-		return list
-	})
+					return nil
+				}),
+			},
+		).
+		// Check we recover
+		WithSteps(stack.CheckStackSteps(s, k)...).
+		// And that the cluster UUID has not changed
+		WithSteps(stack.CompareClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
+		WithSteps(stack.DeletionTestSteps(s, k)...).
+		RunSequential(t)
 }
 
 func TestKillKibanaPod(t *testing.T) {

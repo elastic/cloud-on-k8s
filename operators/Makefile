@@ -321,7 +321,7 @@ e2e-compile:
 e2e-local: e2e-setup e2e-run-local
 
 e2e-run-local:
-	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
+	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward --storage-class-template $(realpath config/dev/custom-storage.yaml)
 
 # Clean k8s cluster from e2e resources
 clean-e2e:
