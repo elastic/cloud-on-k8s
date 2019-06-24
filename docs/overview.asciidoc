@@ -15,4 +15,4 @@ With Elastic Cloud on Kubernetes you can streamline all those critical operation
 Learn more about ECK:
 
 - link:https://www.elastic.co/elasticsearch-kubernetes[Orchestrate Elasticsearch on Kubernetes]
-- link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK's Blog]
+- link:https://www.elastic.co/blog/introducing-elastic-cloud-on-kubernetes-the-elasticsearch-operator-and-beyond?elektra=products&storm=sub1[ECK post on the Elastic blog]

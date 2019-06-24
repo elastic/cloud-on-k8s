@@ -266,7 +266,7 @@ EOF
 [id="{p}-persistent-storage"]
 === Use persistent storage
 
-Now that you have completed the quickstart, you can try out more features like using persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
+The cluster that you deployed in this quickstart uses an link:https://kubernetes.io/docs/concepts/storage/volumes/#emptydir[emptyDir volume], which might not qualify for production workloads.
 
 You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
 
