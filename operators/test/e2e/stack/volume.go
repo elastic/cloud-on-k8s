@@ -20,6 +20,7 @@ import (
 const IsDefaultStorageClassAnnotation common.TrueFalseLabel = "storageclass.kubernetes.io/is-default-class"
 const BetaIsDefaultStorageClassAnnotation common.TrueFalseLabel = "storageclass.beta.kubernetes.io/is-default-class"
 
+// CreateStorageClass deletes then re-creates the given storageClass.
 func CreateStorageClass(storageClass v1.StorageClass, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Should create a custom storage class",
@@ -32,7 +33,7 @@ func CreateStorageClass(storageClass v1.StorageClass, k *helpers.K8sHelper) help
 	}
 }
 
-// DefaultStorageClass returns a provider specific storage class template
+// DefaultStorageClass returns the provider specific default storage class.
 func DefaultStorageClass(k *helpers.K8sHelper) (*v1.StorageClass, error) {
 	var scs v1.StorageClassList
 	if err := k.Client.List(&client.ListOptions{}, &scs); err != nil {
