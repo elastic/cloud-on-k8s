@@ -72,7 +72,7 @@ func CheckApmServerPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.Test
 			}
 			for _, p := range pods {
 				if p.Status.Phase != corev1.PodRunning {
-					return fmt.Errorf("Pod not running yet")
+					return fmt.Errorf("pod not running yet")
 				}
 			}
 			return nil
@@ -83,7 +83,7 @@ func CheckApmServerPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.Test
 // CheckServices checks that all stack services are created
 func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Services should be created",
+		Name: "ApmServer services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
 				stack.ApmServer.Name + "-apm-server",
@@ -100,7 +100,7 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 // CheckServicesEndpoints checks that services have the expected number of endpoints
 func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Services should have endpoints",
+		Name: "ApmServer services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
 				stack.ApmServer.Name + "-apm-server": int(stack.ApmServer.Spec.NodeCount),
@@ -110,7 +110,7 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 					return err
 				}
 				if len(endpoints.Subsets) == 0 {
-					return fmt.Errorf("No subset for endpoint %s", endpointName)
+					return fmt.Errorf("no subset for endpoint %s", endpointName)
 				}
 				if len(endpoints.Subsets[0].Addresses) != addrCount {
 					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)

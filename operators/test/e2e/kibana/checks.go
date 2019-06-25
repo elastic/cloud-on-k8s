@@ -8,8 +8,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 )
 
-func CheckStackSteps(stack Builder, k8sClient *helpers.K8sHelper) helpers.TestStepList {
+func (b Builder) CheckStackSteps(k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
-		WithSteps(K8sStackChecks(stack, k8sClient)...).
-		WithSteps(KibanaChecks(stack.Kibana)...)
+		WithSteps(K8sStackChecks(b, k8sClient)).
+		WithSteps(KibanaChecks(b.Kibana))
 }

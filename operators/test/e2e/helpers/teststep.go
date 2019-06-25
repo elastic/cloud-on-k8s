@@ -20,12 +20,17 @@ type TestStep struct {
 // TestStepList defines a list of TestStep
 type TestStepList []TestStep
 
-// WithSteps appends the given TestSteps to the TestStepList
-func (l TestStepList) WithSteps(testSteps ...TestStep) TestStepList {
+// WithSteps appends the given TestStepList to the TestStepList
+func (l TestStepList) WithSteps(testSteps TestStepList) TestStepList {
 	return append(l, testSteps...)
 }
 
-// RunSequential runs the TestSteps sequentially,
+// WithStep appends the given TestStep to the TestStepList
+func (l TestStepList) WithStep(testStep TestStep) TestStepList {
+	return append(l, testStep)
+}
+
+// RunSequential runs the TestStepList sequentially,
 // and fails fast on first error
 func (l TestStepList) RunSequential(t *testing.T) {
 	for _, ts := range l {

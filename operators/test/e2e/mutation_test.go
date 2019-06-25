@@ -7,8 +7,8 @@ package e2e
 import (
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/common"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
-	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -17,51 +17,51 @@ import (
 // then mutates it to 1 dedicated master + 1 dedicated data cluster
 func TestMutationMdiToDedicated(t *testing.T) {
 	// create a 1 md node cluster
-	initStack := es.NewBuilder("test-mutation-mdi-to-dedicated").
-		WithESMasterDataNodes(1, es.DefaultResources)
+	es := elasticsearch.NewBuilder("test-mutation-mdi-to-dedicated").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
 	// mutate to 1 m node + 1 d node
-	mutatedStack := initStack.
+	mutatedEs := es.
 		WithNoESTopology().
-		WithESDataNodes(1, es.DefaultResources).
-		WithESMasterNodes(1, es.DefaultResources)
+		WithESDataNodes(1, elasticsearch.DefaultResources).
+		WithESMasterNodes(1, elasticsearch.DefaultResources)
 
-	elasticsearch.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	common.RunMutationTests(t, es, mutatedEs)
 }
 
 // TestMutationMoreNodes creates a 1 node cluster,
 // then mutates it to a 3 nodes cluster
 func TestMutationMoreNodes(t *testing.T) {
 	// create a stack with 1 node
-	initStack := es.NewBuilder("test-mutation-more-nodes").
-		WithESMasterDataNodes(1, es.DefaultResources)
+	es := elasticsearch.NewBuilder("test-mutation-more-nodes").
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	// mutate it to 2 nodes
-	mutatedStack := initStack.
+	mutatedEs := es.
 		WithNoESTopology().
-		WithESMasterDataNodes(2, es.DefaultResources)
+		WithESMasterDataNodes(2, elasticsearch.DefaultResources)
 
-	elasticsearch.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	common.RunMutationTests(t, es, mutatedEs)
 }
 
 // TestMutationLessNodes creates a 3 node cluster,
 // then mutates it to a 1 node cluster
 func TestMutationLessNodes(t *testing.T) {
 	// create a stack with 3 node
-	initStack := es.NewBuilder("test-mutation-less-nodes").
-		WithESMasterDataNodes(3, es.DefaultResources)
+	es := elasticsearch.NewBuilder("test-mutation-less-nodes").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	// mutate it to 1 node
-	mutatedStack := initStack.
+	mutatedEs := es.
 		WithNoESTopology().
-		WithESMasterDataNodes(1, es.DefaultResources)
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	elasticsearch.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	common.RunMutationTests(t, es, mutatedEs)
 }
 
 // TestMutationResizeMemoryUp creates a 1 node cluster,
 // then mutates it to a 1 node cluster with more RAM
 func TestMutationResizeMemoryUp(t *testing.T) {
 	// create a stack with a 2G node
-	initStack := es.NewBuilder("test-mutation-resize-memory-up").
+	es := elasticsearch.NewBuilder("test-mutation-resize-memory-up").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("2Gi"),
@@ -69,7 +69,7 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 			},
 		})
 	// mutate it to 1 node with 4G memory
-	mutatedStack := initStack.
+	mutatedEs := es.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
@@ -78,14 +78,14 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 			},
 		})
 
-	elasticsearch.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	common.RunMutationTests(t, es, mutatedEs)
 }
 
 // TestMutationResizeMemoryDown creates a 1 node cluster,
 // then mutates it to a 1 node cluster with less RAM
 func TestMutationResizeMemoryDown(t *testing.T) {
 	// create a stack with a 4G node
-	initStack := es.NewBuilder("test-mutation-resize-memory-down").
+	es := elasticsearch.NewBuilder("test-mutation-resize-memory-down").
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
 				corev1.ResourceMemory: resource.MustParse("4Gi"),
@@ -93,7 +93,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 	// mutate it to 1 node with 2G memory
-	mutatedStack := initStack.
+	mutatedEs := es.
 		WithNoESTopology().
 		WithESMasterDataNodes(1, corev1.ResourceRequirements{
 			Limits: map[corev1.ResourceName]resource.Quantity{
@@ -102,5 +102,5 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 
-	elasticsearch.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	common.RunMutationTests(t, es, mutatedEs)
 }

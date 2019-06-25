@@ -48,7 +48,7 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) helpers.TestStep {
 			// this is of course fragile and relying on potentially version specific implementation detail
 			// verified to be present in 6.x and 7.x
 			if !strings.Contains(string(body), "allowLogin&quot;:true") {
-				return errors.New("Initial Kibana UI state forbids login which indicates an error in the ES/Kibana setup")
+				return errors.New("initial Kibana UI state forbids login which indicates an error in the ES/Kibana setup")
 			}
 			return nil
 		}),

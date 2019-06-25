@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+// Builder to create APM servers
 type Builder struct {
 	ApmServer apmtype.ApmServer
 }
@@ -37,7 +38,7 @@ func (b Builder) WithVersion(version string) Builder {
 }
 
 func (b Builder) WithNodeCount(count int) Builder {
-	b.ApmServer.Spec.NodeCount = 1
+	b.ApmServer.Spec.NodeCount = int32(count)
 	return b
 }
 

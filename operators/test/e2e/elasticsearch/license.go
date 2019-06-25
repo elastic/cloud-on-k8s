@@ -41,9 +41,9 @@ func (ltctx *licenseTestContext) Init() helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Creating Elasticsearch client",
 		Test: func(t *testing.T) {
-			esclient, err := helpers.NewElasticsearchClient(ltctx.es, ltctx.k)
+			esClient, err := helpers.NewElasticsearchClient(ltctx.es, ltctx.k)
 			require.NoError(t, err)
-			ltctx.esClient = esclient
+			ltctx.esClient = esClient
 		},
 	}
 }

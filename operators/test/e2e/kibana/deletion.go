@@ -16,13 +16,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// DeletionTestSteps tests the deletion of the given stack
-func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
+func (b Builder) DeletionTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
 	return []helpers.TestStep{
 		{
-			Name: "Deleting stack should return no error",
+			Name: "Deleting Kibana should return no error",
 			Test: func(t *testing.T) {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					require.NoError(t, err)
 
@@ -30,9 +29,9 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			},
 		},
 		{
-			Name: "Stack should not be there anymore",
+			Name: "Kibana should not be there anymore",
 			Test: helpers.Eventually(func() error {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					m, err := meta.Accessor(obj)
 					if err != nil {
 						return err
@@ -43,7 +42,7 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 							continue
 						}
 					}
-					return errors.New("Expected 404 not found API error here")
+					return errors.New("expected 404 not found API error here")
 
 				}
 				return nil
@@ -52,7 +51,7 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		{
 			Name: "Kibana pods should be eventually be removed",
 			Test: helpers.Eventually(func() error {
-				return k.CheckPodCount(helpers.KibanaPodListOptions(stack.Kibana.Name), 0)
+				return k.CheckPodCount(helpers.KibanaPodListOptions(b.Kibana.Name), 0)
 			}),
 		},
 	}

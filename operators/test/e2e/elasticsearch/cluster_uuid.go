@@ -17,7 +17,7 @@ import (
 // RetrieveClusterUUIDStep stores the current clusterUUID into the given futureClusterUUID
 func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *helpers.K8sHelper, futureClusterUUID *string) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Retrieve cluster UUID for comparison purpose",
+		Name: "Retrieve Elasticsearch cluster UUID for comparison purpose",
 		Test: helpers.Eventually(func() error {
 			var e v1alpha1.Elasticsearch
 			err := k.Client.Get(k8s.ExtractNamespacedName(&es), &e)
@@ -26,7 +26,7 @@ func RetrieveClusterUUIDStep(es v1alpha1.Elasticsearch, k *helpers.K8sHelper, fu
 			}
 			clusterUUID := e.Status.ClusterUUID
 			if clusterUUID == "" {
-				return fmt.Errorf("Empty ClusterUUID")
+				return fmt.Errorf("empty ClusterUUID")
 			}
 			*futureClusterUUID = clusterUUID
 			return nil

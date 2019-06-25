@@ -24,7 +24,7 @@ const (
 
 func CheckESKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, expectedKeys []string) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Secure settings should eventually be set in all nodes keystore",
+		Name: "Elasticsearch secure settings should eventually be set in all nodes keystore",
 		Test: helpers.Eventually(func() error {
 			pods, err := k.GetPods(helpers.ESPodListOptions(es.Name))
 			if err != nil {
@@ -59,7 +59,7 @@ func CheckESKeystoreEntries(k *helpers.K8sHelper, es v1alpha1.Elasticsearch, exp
 
 func CheckKibanaKeystoreEntries(k *helpers.K8sHelper, kb kbtype.Kibana, expectedKeys []string) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Secure settings should eventually be set in all nodes keystore",
+		Name: "Kibana secure settings should eventually be set in all nodes keystore",
 		Test: helpers.Eventually(func() error {
 			pods, err := k.GetPods(helpers.KibanaPodListOptions(kb.Name))
 			if err != nil {

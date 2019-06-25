@@ -16,9 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
-// and cleanup from previous tests
-func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
+func (b Builder) InitTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
 	return []helpers.TestStep{
 
 		{
@@ -31,7 +29,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		},
 
 		{
-			Name: "Stack CRDs should exist",
+			Name: "Kibana CRDs should exist",
 			Test: func(t *testing.T) {
 				crds := []runtime.Object{
 					&kbtype.KibanaList{},
@@ -44,9 +42,9 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		},
 
 		{
-			Name: "Remove the stack if it already exists",
+			Name: "Remove Kibana if it already exists",
 			Test: func(t *testing.T) {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					if err != nil {
 						// might not exist, which is ok
@@ -55,7 +53,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 				}
 				// wait for Kibana pods to disappear
 				helpers.Eventually(func() error {
-					return k.CheckPodCount(helpers.KibanaPodListOptions(stack.Kibana.Name), 0)
+					return k.CheckPodCount(helpers.KibanaPodListOptions(b.Kibana.Name), 0)
 				})(t)
 			},
 		},

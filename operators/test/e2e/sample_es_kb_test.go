@@ -9,9 +9,10 @@ import (
 	"os"
 	"testing"
 
-	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/common"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
-	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -21,33 +22,29 @@ import (
 // Path is relative to the e2e directory.
 const sampleStackFile = "../../config/samples/kibana/kibana_es.yaml"
 
-func readSampleEsKb() (es.Builder, kb.Builder) {
-	var sampleEs es.Builder
-	var sampleKb kb.Builder
+// TestStackSample runs a test suite using the sample stack
+func TestStackSample(t *testing.T) {
+	var es elasticsearch.Builder
+	var kb kibana.Builder
 
 	yamlFile, err := os.Open(sampleStackFile)
 	helpers.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&sampleEs.Elasticsearch))
-	helpers.ExitOnErr(decoder.Decode(&sampleKb.Kibana))
+	// the decoding order depends on the yaml
+	helpers.ExitOnErr(decoder.Decode(&es.Elasticsearch))
+	helpers.ExitOnErr(decoder.Decode(&kb.Kibana))
 
-	sampleEs = sampleEs.
+	es = es.
 		WithNamespace(params.Namespace).
 		WithVersion(params.ElasticStackVersion).
 		WithRestrictedSecurityContext()
-	sampleKb = sampleKb.
+	kb = kb.
 		WithNamespace(params.Namespace).
 		WithVersion(params.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
-	return sampleEs, sampleKb
-}
-
-// TestStackSample runs a test suite using the sample stack
-func TestStackSample(t *testing.T) {
-	sampleEs, sampleKb := readSampleEsKb()
+	builders := []common.Builder{es, kb}
 	// run, with mutation to the same resource (should work and do nothing)
-	es.RunCreationMutationDeletionTests(t, sampleEs, sampleEs)
-	kb.RunCreationMutationDeletionTests(t, sampleKb, sampleKb)
+	common.RunMutationsTests(t, builders, builders)
 }

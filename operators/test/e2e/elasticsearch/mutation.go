@@ -20,51 +20,47 @@ import (
 
 const continousHealthCheckTimeout = 25 * time.Second
 
-// MutationTestSteps tests topology changes on the given stack
-// we expect the stack to be already created and running.
-// If the stack to mutate to is the same as the original stack,
-// then all tests should still pass.
-func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
+func (b Builder) MutationTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
 
 	var clusterIDBeforeMutation string
 
 	var continuousHealthChecks *ContinousHealthCheck
 
-	return helpers.TestStepList{}.
-		WithSteps(
-			helpers.TestStep{
-				Name: "Start querying ES cluster health while mutation is going on",
-				Test: func(t *testing.T) {
-					var err error
-					continuousHealthChecks, err = NewContinousHealthCheck(stack.Elasticsearch, k)
-					require.NoError(t, err)
-					continuousHealthChecks.Start()
-				},
+	return helpers.TestStepList{
+		helpers.TestStep{
+			Name: "Start querying Elasticsearch cluster health while mutation is going on",
+			Test: func(t *testing.T) {
+				var err error
+				continuousHealthChecks, err = NewContinousHealthCheck(b.Elasticsearch, k)
+				require.NoError(t, err)
+				continuousHealthChecks.Start()
 			},
-			RetrieveClusterUUIDStep(stack.Elasticsearch, k, &clusterIDBeforeMutation),
+		},
+		RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
+		helpers.TestStep{
+			Name: "Applying the Elasticsearch mutation should succeed",
+			Test: func(t *testing.T) {
+				var curEs estype.Elasticsearch
+				require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &curEs))
+				curEs.Spec = b.Elasticsearch.Spec
+				require.NoError(t, k.Client.Update(&curEs))
+			},
+		},
+	}.
+		WithSteps(b.CheckStackSteps(k)).
+		WithSteps(helpers.TestStepList{
+			CompareClusterUUIDStep(b.Elasticsearch, k, &clusterIDBeforeMutation),
 			helpers.TestStep{
-				Name: "Applying the mutation should succeed",
-				Test: func(t *testing.T) {
-					var curEs estype.Elasticsearch
-					require.NoError(t, k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &curEs))
-					curEs.Spec = stack.Elasticsearch.Spec
-					require.NoError(t, k.Client.Update(&curEs))
-				},
-			}).
-		WithSteps(CheckStackSteps(stack, k)...).
-		WithSteps(
-			CompareClusterUUIDStep(stack.Elasticsearch, k, &clusterIDBeforeMutation),
-			helpers.TestStep{
-				Name: "Cluster health should not have been red during mutation process",
+				Name: "Elasticsearch cluster health should not have been red during mutation process",
 				Test: func(t *testing.T) {
 					continuousHealthChecks.Stop()
 					assert.Equal(t, 0, continuousHealthChecks.FailureCount)
 					for _, f := range continuousHealthChecks.Failures {
-						t.Errorf("Cluster health check failure at %s: %s", f.timestamp, f.err.Error())
+						t.Errorf("Elasticsearch cluster health check failure at %s: %s", f.timestamp, f.err.Error())
 					}
 				},
 			},
-		)
+		})
 }
 
 // ContinuousHealthCheckFailure represents a healthchechk failure

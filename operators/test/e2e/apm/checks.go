@@ -9,9 +9,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 )
 
-// CheckStackSteps returns all test steps to verify the status of the given stack
-func CheckStackSteps(stack Builder, es estype.Elasticsearch, k8sClient *helpers.K8sHelper) helpers.TestStepList {
+func (b Builder) CheckStackSteps(es estype.Elasticsearch, k8sClient *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
-		WithSteps(K8sStackChecks(stack, k8sClient)...).
-		WithSteps(ApmServerChecks(stack.ApmServer, es, k8sClient)...)
+		WithSteps(K8sStackChecks(b, k8sClient)).
+		WithSteps(ApmServerChecks(b.ApmServer, es, k8sClient))
 }

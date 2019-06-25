@@ -16,28 +16,28 @@ import (
 
 // CreationTestSteps tests the creation of the given stack.
 // The stack is not deleted at the end.
-func CreationTestSteps(stack Builder, k *helpers.K8sHelper) helpers.TestStepList {
+func (b Builder) CreationTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
 	return helpers.TestStepList{}.
-		WithSteps(
+		WithSteps(helpers.TestStepList{
 			helpers.TestStep{
-				Name: "Creating a stack should succeed",
+				Name: "Creating an Elasticsearch cluster should succeed",
 				Test: func(t *testing.T) {
-					for _, obj := range stack.RuntimeObjects() {
+					for _, obj := range b.RuntimeObjects() {
 						err := k.Client.Create(obj)
 						require.NoError(t, err)
 					}
 				},
 			},
 			helpers.TestStep{
-				Name: "Stack should be created",
+				Name: "Elasticsearch cluster should be created",
 				Test: func(t *testing.T) {
 					var createdEs estype.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &createdEs)
+					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &createdEs)
 					require.NoError(t, err)
-					require.Equal(t, stack.Elasticsearch.Spec.Version, createdEs.Spec.Version)
+					require.Equal(t, b.Elasticsearch.Spec.Version, createdEs.Spec.Version)
 					//TODO this is incomplete
 				},
 			},
-		).
-		WithSteps(CheckStackSteps(stack, k)...)
+		}).
+		WithSteps(b.CheckStackSteps(k))
 }

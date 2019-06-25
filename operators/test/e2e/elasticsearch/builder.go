@@ -38,8 +38,7 @@ func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec
 	}
 }
 
-// -- Stack
-
+// Builder to create Elasticsearch clusters
 type Builder struct {
 	Elasticsearch estype.Elasticsearch
 }

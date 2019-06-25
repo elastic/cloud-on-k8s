@@ -9,20 +9,19 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCoordinatedClusterRestart(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
-	s := es.NewBuilder("test-restart").
-		WithESMasterDataNodes(3, es.DefaultResources)
+	es := elasticsearch.NewBuilder("test-restart").
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 
 	// keep track of nodes start time before the restart
 	// it is supposed to be different after the restart is over
@@ -30,13 +29,13 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 
 	helpers.TestStepList{}.
 		// create the cluster
-		WithSteps(es.InitTestSteps(s, k)...).
-		WithSteps(es.CreationTestSteps(s, k)...).
-		WithSteps(
+		WithSteps(es.InitTestSteps(k)).
+		WithSteps(es.CreationTestSteps(k)).
+		WithSteps(helpers.TestStepList{
 			helpers.TestStep{
 				Name: "Retrieve nodes start time",
 				Test: func(t *testing.T) {
-					startTime, err := getNodesStartTime(k, s.Elasticsearch)
+					startTime, err := getNodesStartTime(k, es.Elasticsearch)
 					require.NoError(t, err)
 					initialStartTime = startTime
 				},
@@ -44,7 +43,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 			helpers.TestStep{
 				Name: "Nodes start time should stay the same if not restarted",
 				Test: func(t *testing.T) {
-					startTime, err := getNodesStartTime(k, s.Elasticsearch)
+					startTime, err := getNodesStartTime(k, es.Elasticsearch)
 					require.NoError(t, err)
 					require.Equal(t, initialStartTime, startTime)
 				},
@@ -54,7 +53,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 				Test: func(t *testing.T) {
 					// retrieve current cluster resource
 					var cluster v1alpha1.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&s.Elasticsearch), &cluster)
+					err := k.Client.Get(k8s.ExtractNamespacedName(&es.Elasticsearch), &cluster)
 					require.NoError(t, err)
 					// annotate it to have the operator schedule a restart
 					restart.AnnotateClusterForCoordinatedRestart(&cluster)
@@ -68,7 +67,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 				Name: "Wait for all nodes start time to have changed (restart is complete)",
 				Test: helpers.Eventually(func() error {
 					// retrieve current start time
-					startTime, err := getNodesStartTime(k, s.Elasticsearch)
+					startTime, err := getNodesStartTime(k, es.Elasticsearch)
 					if err != nil {
 						return err
 					}
@@ -85,11 +84,11 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 					return nil
 				}),
 			},
-		).
+		}).
 		// we should get back to a green cluster
-		WithSteps(es.CheckStackSteps(s, k)...).
+		WithSteps(es.CheckStackSteps(k)).
 		// finally, cleanup resources
-		WithSteps(es.DeletionTestSteps(s, k)...).
+		WithSteps(es.DeletionTestSteps(k)).
 		RunSequential(t)
 }
 

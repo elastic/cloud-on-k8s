@@ -17,12 +17,12 @@ import (
 )
 
 // DeletionTestSteps tests the deletion of the given stack
-func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
-	return []helpers.TestStep{
+func (b Builder) DeletionTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
+	return helpers.TestStepList{
 		{
-			Name: "Deleting stack should return no error",
+			Name: "Deleting Elasticsearch should return no error",
 			Test: func(t *testing.T) {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					require.NoError(t, err)
 
@@ -30,9 +30,9 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 			},
 		},
 		{
-			Name: "Stack should not be there anymore",
+			Name: "Elasticsearch should not be there anymore",
 			Test: helpers.Eventually(func() error {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					m, err := meta.Accessor(obj)
 					if err != nil {
 						return err
@@ -43,16 +43,16 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 							continue
 						}
 					}
-					return errors.New("Expected 404 not found API error here")
+					return errors.New("expected 404 not found API error here")
 
 				}
 				return nil
 			}),
 		},
 		{
-			Name: "ES pods should be eventually be removed",
+			Name: "Elasticsearch pods should be eventually be removed",
 			Test: helpers.Eventually(func() error {
-				return k.CheckPodCount(helpers.ESPodListOptions(stack.Elasticsearch.Name), 0)
+				return k.CheckPodCount(helpers.ESPodListOptions(b.Elasticsearch.Name), 0)
 			}),
 		},
 	}

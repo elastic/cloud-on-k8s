@@ -24,8 +24,8 @@ type esClusterChecks struct {
 	client client.Client
 }
 
-// ESClusterChecks returns all test steps to verify the given stack's Elasticsearch
-// cluster is running as expected
+// ESClusterChecks returns all test steps to verify the given Elasticsearch cluster
+// is running as expected
 func ESClusterChecks(es estype.Elasticsearch, k *helpers.K8sHelper) helpers.TestStepList {
 	e := esClusterChecks{}
 	return helpers.TestStepList{
@@ -50,7 +50,7 @@ func (e *esClusterChecks) BuildESClient(es estype.Elasticsearch, k *helpers.K8sH
 
 func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch endpoint should eventually be reachable",
+		Name: "ES endpoint should eventually be reachable",
 		Test: helpers.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
@@ -64,7 +64,7 @@ func (e *esClusterChecks) CheckESReachable() helpers.TestStep {
 
 func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch version should be the expected one",
+		Name: "ES version should be the expected one",
 		Test: func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
@@ -77,7 +77,7 @@ func (e *esClusterChecks) CheckESVersion(es estype.Elasticsearch) helpers.TestSt
 
 func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch endpoint should eventually be reachable",
+		Name: "ES endpoint should eventually be reachable",
 		Test: helpers.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
@@ -88,7 +88,7 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 			actualHealth := estype.ElasticsearchHealth(health.Status)
 			expectedHealth := estype.ElasticsearchGreenHealth
 			if actualHealth != expectedHealth {
-				return fmt.Errorf("Cluster health is not green, but %s", actualHealth)
+				return fmt.Errorf("cluster health is not green, but %s", actualHealth)
 			}
 			return nil
 		}),
@@ -97,7 +97,7 @@ func (e *esClusterChecks) CheckESHealthGreen() helpers.TestStep {
 
 func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Elasticsearch nodes topology should eventually be the expected one",
+		Name: "ES nodes topology should eventually be the expected one",
 		Test: helpers.Eventually(func() error {
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
@@ -132,7 +132,7 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) helpers.
 				nodeRoles := rolesToConfig(node.Roles)
 
 				var found bool
-				for k, _ := range nodesStats.Nodes {
+				for k := range nodesStats.Nodes {
 					if k == nodeId {
 						found = true
 					}

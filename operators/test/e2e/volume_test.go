@@ -15,14 +15,14 @@ import (
 func TestVolumeEmptyDir(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 
-	initStack := elasticsearch.NewBuilder("test-es-explicit-empty-dir").
+	es := elasticsearch.NewBuilder("test-es-explicit-empty-dir").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithEmptyDirVolumes()
 
 	helpers.TestStepList{}.
-		WithSteps(elasticsearch.InitTestSteps(initStack, k)...).
+		WithSteps(es.InitTestSteps(k)).
 		// volume type will be checked in cluster creation steps
-		WithSteps(elasticsearch.CreationTestSteps(initStack, k)...).
-		WithSteps(elasticsearch.DeletionTestSteps(initStack, k)...).
+		WithSteps(es.CreationTestSteps(k)).
+		WithSteps(es.DeletionTestSteps(k)).
 		RunSequential(t)
 }

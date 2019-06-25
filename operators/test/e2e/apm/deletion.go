@@ -16,13 +16,12 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-// DeletionTestSteps tests the deletion of the given apmserver
-func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
+func (b Builder) DeletionTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
 	return []helpers.TestStep{
 		{
 			Name: "Deleting the resources should return no error",
 			Test: func(t *testing.T) {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					require.NoError(t, err)
 
@@ -32,7 +31,7 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		{
 			Name: "The resources should not be there anymore",
 			Test: helpers.Eventually(func() error {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					m, err := meta.Accessor(obj)
 					if err != nil {
 						return err
@@ -52,7 +51,7 @@ func DeletionTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		{
 			Name: "APM Server pods should be eventually be removed",
 			Test: helpers.Eventually(func() error {
-				return k.CheckPodCount(helpers.ApmServerPodListOptions(stack.ApmServer.Name), 0)
+				return k.CheckPodCount(helpers.ApmServerPodListOptions(b.ApmServer.Name), 0)
 			}),
 		},
 	}

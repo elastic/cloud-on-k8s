@@ -6,39 +6,15 @@ package kibana
 
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-var DefaultResources = corev1.ResourceRequirements{
-	Limits: map[corev1.ResourceName]resource.Quantity{
-		corev1.ResourceMemory: resource.MustParse("2Gi"),
-		corev1.ResourceCPU:    resource.MustParse("2"),
-	},
-}
-
-func ESPodTemplate(resources corev1.ResourceRequirements) corev1.PodTemplateSpec {
-	return corev1.PodTemplateSpec{
-		Spec: corev1.PodSpec{
-			SecurityContext: helpers.DefaultSecurityContext(),
-			Containers: []corev1.Container{
-				{
-					Name:      v1alpha1.ElasticsearchContainerName,
-					Resources: resources,
-				},
-			},
-		},
-	}
-}
-
-// -- Stack
-
+// Builder to create Kibana instances
 type Builder struct {
 	Kibana kbtype.Kibana
 }
@@ -84,7 +60,7 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
-func (b Builder) WithKibana(count int) Builder {
+func (b Builder) WithNodeCount(count int) Builder {
 	b.Kibana.Spec.NodeCount = int32(count)
 	return b
 }

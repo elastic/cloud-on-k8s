@@ -10,33 +10,33 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
-	es "github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
-	kb "github.com/elastic/cloud-on-k8s/operators/test/e2e/kibana"
 )
 
 func TestTelemetry(t *testing.T) {
 	k := helpers.NewK8sClientOrFatal()
 
-	b1 := es.NewBuilder("test-telemetry").
-		WithESMasterDataNodes(1, es.DefaultResources)
-	b2 := kb.NewBuilder("test-telemetry").
-		WithKibana(1)
+	name := "test-telemetry"
+	es := elasticsearch.NewBuilder(name).
+		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+	kb := kibana.NewBuilder(name).
+		WithNodeCount(1)
 
 	helpers.TestStepList{}.
-		WithSteps(es.InitTestSteps(b1, k)...).
-		WithSteps(kb.InitTestSteps(b2, k)...).
-		WithSteps(es.CreationTestSteps(b1, k)...).
-		WithSteps(kb.CreationTestSteps(b2, k)...).
-		WithSteps(
+		WithSteps(es.InitTestSteps(k)).
+		WithSteps(kb.InitTestSteps(k)).
+		WithSteps(es.CreationTestSteps(k)).
+		WithSteps(kb.CreationTestSteps(k)).
+		WithStep(
 			helpers.TestStep{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: helpers.Eventually(func() error {
 
 					uri := "/api/telemetry/v1/clusters/_stats"
 					payload := `{"timeRange":{"min":"0","max":"0"}}`
-					body, err := kibana.DoKibanaReq(k, b2, "POST", uri, []byte(payload))
+					body, err := kibana.DoKibanaReq(k, kb, "POST", uri, []byte(payload))
 					if err != nil {
 						return err
 					}
@@ -56,8 +56,8 @@ func TestTelemetry(t *testing.T) {
 				}),
 			},
 		).
-		WithSteps(es.DeletionTestSteps(b1, k)...).
-		WithSteps(kb.DeletionTestSteps(b2, k)...).
+		WithSteps(es.DeletionTestSteps(k)).
+		WithSteps(kb.DeletionTestSteps(k)).
 		RunSequential(t)
 }
 

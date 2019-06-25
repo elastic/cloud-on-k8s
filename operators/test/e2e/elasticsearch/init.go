@@ -20,8 +20,8 @@ import (
 
 // InitTestSteps includes pre-requisite tests (eg. is k8s accessible),
 // and cleanup from previous tests
-func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
-	return []helpers.TestStep{
+func (b Builder) InitTestSteps(k *helpers.K8sHelper) helpers.TestStepList {
+	return helpers.TestStepList{
 
 		{
 			Name: "K8S should be accessible",
@@ -33,7 +33,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		},
 
 		{
-			Name: "Stack CRDs should exist",
+			Name: "Elasticsearch CRDs should exist",
 			Test: func(t *testing.T) {
 				crds := []runtime.Object{
 					&estype.ElasticsearchList{},
@@ -46,9 +46,9 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 		},
 
 		{
-			Name: "Remove the stack if it already exists",
+			Name: "Remove Elasticsearch if it already exists",
 			Test: func(t *testing.T) {
-				for _, obj := range stack.RuntimeObjects() {
+				for _, obj := range b.RuntimeObjects() {
 					err := k.Client.Delete(obj)
 					if err != nil {
 						// might not exist, which is ok
@@ -57,18 +57,18 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 				}
 				// wait for ES pods to disappear
 				helpers.Eventually(func() error {
-					return k.CheckPodCount(helpers.ESPodListOptions(stack.Elasticsearch.Name), 0)
+					return k.CheckPodCount(helpers.ESPodListOptions(b.Elasticsearch.Name), 0)
 				})(t)
 
 				// it may take some extra time for Elasticsearch to be fully deleted
 				helpers.Eventually(func() error {
 					var es estype.Elasticsearch
-					err := k.Client.Get(k8s.ExtractNamespacedName(&stack.Elasticsearch), &es)
+					err := k.Client.Get(k8s.ExtractNamespacedName(&b.Elasticsearch), &es)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
 					}
 					if err == nil {
-						return fmt.Errorf("elasticsearch %s is still there")
+						return fmt.Errorf("elasticsearch %s is still there", b.Elasticsearch.Name)
 					}
 					return nil
 				})(t)

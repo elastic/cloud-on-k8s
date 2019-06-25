@@ -78,7 +78,7 @@ func CheckKibanaPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 			}
 			for _, p := range pods {
 				if p.Status.Phase != corev1.PodRunning {
-					return fmt.Errorf("Pod not running yet")
+					return fmt.Errorf("pod not running yet")
 				}
 			}
 			return nil
@@ -89,7 +89,7 @@ func CheckKibanaPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 // CheckServices checks that all stack services are created
 func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Services should be created",
+		Name: "Kibana services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
 				kbname.HTTPService(stack.Kibana.Name),
@@ -106,7 +106,7 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 // CheckServicesEndpoints checks that services have the expected number of endpoints
 func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 	return helpers.TestStep{
-		Name: "Services should have endpoints",
+		Name: "Kibana services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
 				kbname.HTTPService(stack.Kibana.Name): int(stack.Kibana.Spec.NodeCount),
@@ -119,7 +119,7 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 					return err
 				}
 				if len(endpoints.Subsets) == 0 {
-					return fmt.Errorf("No subset for endpoint %s", endpointName)
+					return fmt.Errorf("no subset for endpoint %s", endpointName)
 				}
 				if len(endpoints.Subsets[0].Addresses) != addrCount {
 					return fmt.Errorf("%d addresses found for endpoint %s, expected %d", len(endpoints.Subsets[0].Addresses), endpointName, addrCount)
