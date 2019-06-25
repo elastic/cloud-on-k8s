@@ -121,7 +121,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 	sc.VolumeBindingMode = &lateBinding
 
 	s := stack.NewStackBuilder("test-failure-pvc").
-		WithESMasterDataNodes(2, stack.DefaultResources).
+		WithESMasterDataNodes(3, stack.DefaultResources).
 		WithPersistentVolumes("not-data", &sc.Name).
 		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
 
