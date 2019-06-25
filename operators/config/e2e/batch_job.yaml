@@ -11,6 +11,6 @@ spec:
       - name: e2e
         image: $IMG
         imagePullPolicy: Always
-        args: [ "-run", "$TESTS_MATCH" ] # optionally limit tests to run
+        args: ["-run", "$TESTS_MATCH"] # optionally limit tests to run
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test
