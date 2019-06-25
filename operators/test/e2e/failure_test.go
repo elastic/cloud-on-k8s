@@ -111,7 +111,9 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 	killNodeTest(t, s, helpers.ESPodListOptions(s.Elasticsearch.Name), matchNode)
 }
 
-// TestKillCorrectPVReuse tests that when deleting pods with multiple PVs, PV reuse respects the
+// TestKillCorrectPVReuse sets up a cluster with multiple PVs per node, kills a node, then makes sure that:
+// - PVC are reused with the correct volume (eg. do not bind the "data" PVC to a "non-data" volume)
+// - if no PVC is available, a new one is created
 func TestKillCorrectPVReuse(t *testing.T) {
 	helpers.MinVersionOrSkip(t, "v1.12.0")
 
