@@ -41,13 +41,17 @@ parse_args() {
       help
     ;;
     -N|--operator-namespaces)
-      OPERATOR_NS=${value:-OPERATOR_NS}
+      OPERATOR_NS=${value:-$OPERATOR_NS}
     ;;
     -n|--resources-namespaces)
-      RESOURCES_NS=${value:-${$(current_namespace):-RESOURCES_NS}}
+      RESOURCES_NS=${value:-${$(current_namespace):-$RESOURCES_NS}}
     ;;
     -o|--output-directory)
-      OUTPUT_DIR=${value:-${OUTPUT_DIR:-"."}}
+      OUTPUT_DIR=${value:-$OUTPUT_DIR}
+      if [[ -z $OUTPUT_DIR ]]; then
+        >&2 echo "flag needs an argument: --output-directory"
+        exit 1
+      fi
     ;;
     -v|--verbose)
       VERBOSE=1
@@ -150,7 +154,7 @@ to_stdin_or_file() {
   if [[ "$VERBOSE" == "1" ]]; then
     >&2 echo "$OUTPUT_DIR/$filepath"
   fi
-  if [[ $OUTPUT_DIR != "" ]]; then
+  if [[ ! -z $OUTPUT_DIR ]]; then
     mkdir -p $(dirname $OUTPUT_DIR/$filepath)
     cat /dev/stdin > $OUTPUT_DIR/$filepath 
   else
