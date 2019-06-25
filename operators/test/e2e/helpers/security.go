@@ -9,6 +9,8 @@ import (
 )
 
 // DefaultSecurityContext returns a minimalist, restricted, security context.
+// It provides some default so that pods have some descent values if they are
+// started by a developer.
 func DefaultSecurityContext() *corev1.PodSecurityContext {
 	defaultUserId := int64(1000)
 	return &corev1.PodSecurityContext{
