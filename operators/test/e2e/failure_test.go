@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
@@ -22,7 +23,6 @@ import (
 	v1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/kubernetes/pkg/kubelet/util/sliceutils"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -201,7 +201,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 						return err
 					}
 					for _, pod := range pods {
-						if sliceutils.StringInSlice(pod.Name, survivingPodNames) {
+						if stringsutil.StringInSlice(pod.Name, survivingPodNames) {
 							continue
 						}
 						for _, v := range pod.Spec.Volumes {
@@ -210,11 +210,11 @@ func TestKillCorrectPVReuse(t *testing.T) {
 								continue
 							}
 							if v.Name != volume.ElasticsearchDataVolumeName {
-								if !sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+								if !stringsutil.StringInSlice(pvc.ClaimName, seenPVCs) {
 									return fmt.Errorf("expected reused PVC but %v is new , seen: %v", pvc.ClaimName, seenPVCs)
 								}
 
-							} else if sliceutils.StringInSlice(pvc.ClaimName, seenPVCs) {
+							} else if stringsutil.StringInSlice(pvc.ClaimName, seenPVCs) {
 								return fmt.Errorf("expected new PVC but was reused %v, seen: %v", pvc.ClaimName, seenPVCs)
 							}
 						}

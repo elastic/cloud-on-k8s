@@ -27,6 +27,15 @@ rules:
       - elastic.restricted
     verbs:
       - use
+  - apiGroups:
+      - "storage.k8s.io"
+    resources:
+      - storageclasses
+    verbs:
+      - get
+      - list
+      - delete
+      - create
 
 ---
 kind: ClusterRoleBinding
