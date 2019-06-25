@@ -42,7 +42,7 @@ kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 
 Apply a simple link:{ref}/getting-started.html[Elasticsearch] cluster specification, with one node:
 
-NOTE: The default resource request is 2gb memory and 100m cpu, and your pod will be `Pending` if your cluster does not have enough resources.
+NOTE: The default resource request is 2GB memory and 100m CPU. Your pod will be `Pending` if your cluster does not have enough resources.
 
 [source,yaml]
 ----
@@ -62,7 +62,7 @@ spec:
 EOF
 ----
 
-The operator automatically manages Pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
+The operator automatically manages pods and resources corresponding to the desired cluster. It may take up to a few minutes until the cluster is ready.
 
 [float]
 ==== Monitor cluster health and creation progress
@@ -82,7 +82,7 @@ quickstart    green     1         7.1.0     Operational   1m
 
 When you create the cluster, there is no `HEALTH` status and the `PHASE` is `Pending`. After a while, the `PHASE` turns into `Operational`, and `HEALTH` becomes `green`.
 
-You can see that one Pod is in the process of being started:
+You can see that one pod is in the process of being started:
 
 [source,sh]
 ----
@@ -149,7 +149,7 @@ PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elasti
 curl -u "elastic:$PASSWORD" -k "https://localhost:9200"
 ----
 
-NOTE: For testing purposes only, you can specify the `-k` option to turn off certificate verification.
+NOTE: For testing purposes only, you can specify the option `-k` to turn off certificate verification.
 
 [source,json]
 ----
