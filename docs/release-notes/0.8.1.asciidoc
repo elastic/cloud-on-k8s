@@ -1,0 +1,11 @@
+[[release-notes-0.8.1]]
+== {n} version 0.8.1
+
+The changes listed below have been released for the first time in {n}
+0.8.1.
+
+[[bug-0.8.1]]
+[float]
+=== Bug fixes
+
+* Support all 7.x versions of Elasticsearch https://github.com/elastic/cloud-on-k8s/pull/1075[#1075] (issue https://github.com/elastic/cloud-on-k8s/issues/1065[#1065])
