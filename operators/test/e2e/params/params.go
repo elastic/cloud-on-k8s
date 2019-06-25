@@ -29,7 +29,6 @@ func init() {
 	flag.StringVar(&ElasticStackVersion, "version", defaultElasticStackVersion, "Elastic Stack version")
 	flag.StringVar(&Namespace, "namespace", defaultNamespace, "Namespace")
 	flag.StringVar(&TestLicense, "test-license", "", "path to Enterprise license to be used for testing")
-	flag.StringVar(&StorageClassTemplate, "storage-class-template", "", "path to a provider specific storage class template")
 	flag.BoolVar(&AutoPortForward, "auto-port-forward", false, "enables automatic port-forwarding "+
 		"(for dev use only as it exposes k8s resources on ephemeral ports to localhost)")
 	flag.Parse()

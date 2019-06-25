@@ -125,6 +125,9 @@ main() {
       auth_service_account
       export_credentials
     ;;
+    maxmapcount)
+      set_max_map_count
+    ;;
     *)
       echo "Usage: gke-cluster.sh (create|delete|name|registry|credentials)"; exit 1
     ;;

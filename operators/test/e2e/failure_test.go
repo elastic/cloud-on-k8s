@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -117,17 +118,20 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 func TestKillCorrectPVReuse(t *testing.T) {
 	helpers.MinVersionOrSkip(t, "v1.12.0")
 
+	k := helpers.NewK8sClientOrFatal()
+
 	lateBinding := v1.VolumeBindingWaitForFirstConsumer
-	sc, err := stack.StorageClassTemplate()
+	sc, err := stack.DefaultStorageClass(k)
 	require.NoError(t, err)
+	sc.ObjectMeta = metav1.ObjectMeta{
+		Name: "custom-storage",
+	}
 	sc.VolumeBindingMode = &lateBinding
 
 	s := stack.NewStackBuilder("test-failure-pvc").
 		WithESMasterDataNodes(3, stack.DefaultResources).
 		WithPersistentVolumes("not-data", &sc.Name).
 		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
-
-	k := helpers.NewK8sClientOrFatal()
 
 	var clusterUUID string
 	var seenPVCs []string

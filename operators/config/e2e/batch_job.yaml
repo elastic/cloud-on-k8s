@@ -11,17 +11,6 @@ spec:
       - name: e2e
         image: $IMG
         imagePullPolicy: Always
-        args:
-        - "-run"
-        - "$TESTS_MATCH" # optionally limit tests to run
-        - "--storage-class-template"
-        - "/mnt/elastic/custom-storage.yaml"
-        volumeMounts:
-        - name: storage-class
-          mountPath: /mnt/elastic
-      volumes:
-      - name: storage-class
-        configMap:
-          name: e2e-storage-class
+        args: [ "-run", "$TESTS_MATCH" ] # optionally limit tests to run
       restartPolicy: Never
   backoffLimit: 0 # don't retry a failed test

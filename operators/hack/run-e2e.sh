@@ -24,16 +24,6 @@ kubectl -n e2e get job $JOB_NAME && \
     exit 1
 set -e
 
-CONFIG_MAP_NAME="e2e-storage-class"
-
-# delete config map if exists
-set +e
-kubectl -n e2e delete configmap ${CONFIG_MAP_NAME}
-set -e
-
-# (re-)create storage class template config map
-kubectl create configmap e2e-storage-class --from-file=config/dev/custom-storage.yaml -n $NAMESPACE
-
 # apply e2e job
 sed \
     -e "s;\$IMG;$IMG;g" \
