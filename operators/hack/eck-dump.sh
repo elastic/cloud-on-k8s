@@ -21,6 +21,7 @@ Options:
   -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
   -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
   -o, --output-directory        Path to output dump files (default: .)
+  -z, --create-zip              Create an archive of the output directorty (implies --output-directory)
   -v, --verbose                 Verbose mode
 
 Dependencies:
@@ -31,6 +32,7 @@ Dependencies:
 OPERATOR_NS=elastic-system
 RESOURCES_NS="default"
 OUTPUT_DIR=""
+ZIP=""
 VERBOSE=0
 
 parse_args() {
@@ -53,6 +55,9 @@ parse_args() {
         exit 1
       fi
     ;;
+    -z|--create-zip)
+      ZIP=true
+    ;;
     -v|--verbose)
       VERBOSE=1
     ;;
@@ -63,6 +68,11 @@ parse_args() {
 
 main() {
   parse_args $@
+
+  if [[ -z $OUTPUT_DIR && ! -z $ZIP ]]; then
+    >&2 echo "flag needs to be defined : --output-directory"
+    exit 1
+  fi
 
   IFS=, # use comma as field separator for iterations
   
@@ -110,8 +120,13 @@ main() {
     done
   done
 
-  if [[ "$OUTPUT_DIR" != "" ]]; then
-    echo "ECK info dumped to $OUTPUT_DIR"
+  if [[ ! -z $OUTPUT_DIR ]]; then
+    local dest=$OUTPUT_DIR
+    if [[ ! -z $ZIP ]]; then
+      dest=$OUTPUT_DIR-$(date +%d_%b_%Y_%H_%M_%S).tgz
+      tar czf $dest $OUTPUT_DIR/*
+    fi
+    echo "ECK info dumped to $dest"
   fi
 }
 
