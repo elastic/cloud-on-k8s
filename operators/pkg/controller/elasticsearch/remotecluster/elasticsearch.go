@@ -79,6 +79,9 @@ func UpdateRemoteCluster(
 	// and it could lead to some reconcile loops that never converge on Openshift.
 	if len(currentRemoteClusters) > 0 {
 		reconcileState.UpdateRemoteClusters(currentRemoteClusters)
+	} else {
+		// ensure that map is nil in the status if empty
+		reconcileState.UpdateRemoteClusters(nil)
 	}
 	return nil
 }
