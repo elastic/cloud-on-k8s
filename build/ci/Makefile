@@ -144,3 +144,12 @@ ci-e2e-delete-cluster: vault-gke-creds
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
     	cloud-on-k8s-ci-e2e \
     	bash -c "make -C operators set-context-gke delete-gke"
+
+# Run docs build
+ci-build-docs:
+	docker run --rm -t \
+        -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+        docker.elastic.co/docs/build:1 \
+        bash -c "git clone https://github.com/elastic/docs.git && \
+        	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html && \
+        	test -e $(GO_MOUNT_PATH)/docs/html/index.html"
