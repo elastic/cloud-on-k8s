@@ -9,8 +9,8 @@ import (
 )
 
 // DefaultSecurityContext returns a minimalist, restricted, security context.
-// It provides some default so that pods have some descent values if they are
-// started by a developer.
+// Values should be inherited and checked against a PSP, but we provide some
+// default values if pods are started outside E2E tests, by a developer for example.
 func DefaultSecurityContext() *corev1.PodSecurityContext {
 	defaultUserId := int64(1000)
 	return &corev1.PodSecurityContext{
