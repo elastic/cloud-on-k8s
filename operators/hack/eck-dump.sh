@@ -20,8 +20,8 @@ different namespaces with the --operator-namespaces and --elastic-namespaces fla
 Options:
   -N, --operator-namespaces     Namespace(s) in which operator(s) are running in (comma-separated list)
   -n, --resources-namespaces    Namespace(s) in which resources are managed      (comma-separated list)
-  -o, --output-directory        Path to output dump files (default: .)
-  -z, --create-zip              Create an archive of the output directorty (implies --output-directory)
+  -o, --output-directory        Path to output dump files
+  -z, --create-zip              Create an archive with the dump files (implies --output-directory)
   -v, --verbose                 Verbose mode
 
 Dependencies:
@@ -33,7 +33,7 @@ OPERATOR_NS=elastic-system
 RESOURCES_NS="default"
 OUTPUT_DIR=""
 ZIP=""
-VERBOSE=0
+VERBOSE=""
 
 parse_args() {
   while :; do
@@ -56,7 +56,7 @@ parse_args() {
       fi
     ;;
     -z|--create-zip)
-      ZIP=true
+      ZIP=1
     ;;
     -v|--verbose)
       VERBOSE=1
@@ -132,14 +132,14 @@ main() {
 
 # get_resources lists resources in a specified namespace in JSON output format
 get_resources() {
-  local ns=$1 resources=${2}
+  local ns=$1 resources=$2
   kubectl get -n $ns $resources -o json | to_stdin_or_file $ns/$resources.json
 }
 
 # list_resources lists resources in a specified namespace in human readable plain-text
 # Useful to list secrets without their content.
 list_resources() {
-  local ns=$1 resources=${2}
+  local ns=$1 resources=$2
   kubectl get -n $ns $resources | to_stdin_or_file $ns/$resources.txt
 }
 
@@ -158,7 +158,7 @@ get_logs() {
 
 # list_pods_names lists the names of the pods in a specified namespace
 list_pods_names() {
-  local ns=$1 label=${2:-}
+  local ns=$1 label=${2:-""}
   [[ "$label" != "" ]] && label="-l $label"
   kubectl get pods -n $ns $label --no-headers=true -o name 
 }
@@ -166,7 +166,7 @@ list_pods_names() {
 # to_stdin_or_file redirects stdin to a file if OUTPUT_DIR is defined, else to stdout
 to_stdin_or_file() {
   local filepath=$1
-  if [[ "$VERBOSE" == "1" ]]; then
+  if [[ ! -z $VERBOSE ]]; then
     >&2 echo "$OUTPUT_DIR/$filepath"
   fi
   if [[ ! -z $OUTPUT_DIR ]]; then
@@ -179,8 +179,8 @@ to_stdin_or_file() {
 
 # check_namespace fails and exits the program if the namespace does not exist
 check_namespace() {
-  local ns="$1"
-  kubectl get namespace $1 >/dev/null
+  local ns=$1
+  kubectl get namespace $ns >/dev/null
 }
 
 # current_namespace returns the current namespace, empty if there is none
