@@ -18,11 +18,10 @@ const (
 var (
 	log = logf.Log.WithName("e2e-params")
 
-	ElasticStackVersion  string
-	Namespace            string
-	StorageClassTemplate string
-	AutoPortForward      bool
-	TestLicense          string
+	ElasticStackVersion string
+	Namespace           string
+	AutoPortForward     bool
+	TestLicense         string
 )
 
 func init() {

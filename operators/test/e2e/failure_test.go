@@ -120,6 +120,13 @@ func TestKillCorrectPVReuse(t *testing.T) {
 
 	k := helpers.NewK8sClientOrFatal()
 
+	// When working with multiple PVs on a single pod, there's a risk each PV get assigned to a different zone,
+	// not taking into consideration pod scheduling constraints. As a result, the pod becomes unschedulable.
+	// This is a Kubernetes issue, that can be dealt with relying on storage classes with `volumeBindingMode: WaitForFirstConsumer`.
+	// With this binding mode, the pod is scheduled before its PVs, which then take into account zone constraints.
+	// That's the only way to work with multiple PVs. Since the k8s cluster here may have a default storage class
+	// with `volumeBindingMode: Immediate`, we create a new one, based on the default storage class, that uses
+	// `waitForFirstConsumer`.
 	lateBinding := v1.VolumeBindingWaitForFirstConsumer
 	sc, err := stack.DefaultStorageClass(k)
 	require.NoError(t, err)
@@ -134,9 +141,9 @@ func TestKillCorrectPVReuse(t *testing.T) {
 		WithPersistentVolumes(volume.ElasticsearchDataVolumeName, &sc.Name) // create an additional volume that is not our data volume
 
 	var clusterUUID string
+	var deletedPVC corev1.PersistentVolumeClaim
 	var seenPVCs []string
 	var killedPod corev1.Pod
-	var survivingPodNames []string
 
 	helpers.TestStepList{}.
 		WithSteps(stack.CreateStorageClass(*sc, k)).
@@ -145,8 +152,8 @@ func TestKillCorrectPVReuse(t *testing.T) {
 		WithSteps(stack.RetrieveClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
 		// Simulate a pod deletion
 		WithSteps(stack.PauseReconciliation(s.Elasticsearch, k)).
-		WithSteps(helpers.TestStepList{
-			{
+		WithSteps(
+			helpers.TestStep{
 				Name: "Kill a node",
 				Test: func(t *testing.T) {
 					pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
@@ -155,15 +162,13 @@ func TestKillCorrectPVReuse(t *testing.T) {
 					for i, pod := range pods {
 						if i == 0 {
 							killedPod = pod
-						} else {
-							survivingPodNames = append(survivingPodNames, pod.Name)
 						}
 					}
 					err = k.DeletePod(killedPod)
 					require.NoError(t, err)
 				},
 			},
-			{
+			helpers.TestStep{
 				Name: "Wait for pod to be deleted",
 				Test: helpers.Eventually(func() error {
 					pod, err := k.GetPod(killedPod.Name)
@@ -176,21 +181,21 @@ func TestKillCorrectPVReuse(t *testing.T) {
 					return fmt.Errorf("pod %s not deleted yet", killedPod.Name)
 				}),
 			},
-			{
-				Name: "Modify the es-data PVCs labels",
+			helpers.TestStep{
+				Name: "Delete one of the es-data PVCs",
 				Test: helpers.Eventually(func() error {
 					pvcs, err := pvc.ListVolumeClaims(k.Client, s.Elasticsearch)
 					if err != nil {
 						return err
 					}
 					for _, pvc := range pvcs {
-						seenPVCs = append(seenPVCs, pvc.Name)
+						seenPVCs = append(seenPVCs, string(pvc.UID))
 						if pvc.Labels[label.VolumeNameLabelName] == volume.ElasticsearchDataVolumeName &&
 							pvc.Labels[label.PodNameLabelName] == killedPod.Name {
 							// this should ensure that when we resume reconciliation the operator creates a new PVC
 							// we also test correct reuse by keeping the non-data volume claim around and unchanged
-							delete(pvc.Labels, label.VolumeNameLabelName)
-							if err := k.Client.Update(&pvc); err != nil {
+							deletedPVC = pvc
+							if err := k.Client.Delete(&pvc); err != nil {
 								return err
 							}
 						}
@@ -198,39 +203,43 @@ func TestKillCorrectPVReuse(t *testing.T) {
 					return nil
 				}),
 			},
-			stack.ResumeReconciliation(s.Elasticsearch, k),
-			{
-				Name: "No PVC should have been reused for elasticsearch-data",
-				Test: helpers.Eventually(func() error {
-					pods, err := k.GetPods(helpers.ESPodListOptions(s.Elasticsearch.Name))
-					if err != nil {
-						return err
-					}
-					for _, pod := range pods {
-						if stringsutil.StringInSlice(pod.Name, survivingPodNames) {
-							continue
-						}
-						for _, v := range pod.Spec.Volumes {
-							pvc := v.VolumeSource.PersistentVolumeClaim
-							if pvc == nil {
-								continue
-							}
-							if v.Name != volume.ElasticsearchDataVolumeName {
-								if !stringsutil.StringInSlice(pvc.ClaimName, seenPVCs) {
-									return fmt.Errorf("expected reused PVC but %v is new , seen: %v", pvc.ClaimName, seenPVCs)
-								}
-
-							} else if stringsutil.StringInSlice(pvc.ClaimName, seenPVCs) {
-								return fmt.Errorf("expected new PVC but was reused %v, seen: %v", pvc.ClaimName, seenPVCs)
-							}
-						}
-					}
-					return nil
-				}),
-			},
-		}...).
+			stack.ResumeReconciliation(s.Elasticsearch, k)).
 		// Check we recover
 		WithSteps(stack.CheckStackSteps(s, k)...).
+		// Check PVCs have been reused correctly
+		WithSteps(
+			helpers.TestStep{
+				Name: "No PVC should have been reused for elasticsearch-data",
+				Test: func(t *testing.T) {
+					// should be resurrected with same name due to second PVC still around and forcing the pods name
+					// back to the old one
+					pod, err := k.GetPod(killedPod.Name)
+					require.NoError(t, err)
+					var checkedVolumes bool
+					for _, v := range pod.Spec.Volumes {
+						// find the volumes sourced from PVCs
+						pvcSrc := v.VolumeSource.PersistentVolumeClaim
+						if pvcSrc == nil {
+							// we have a few non-PVC volumes
+							continue
+						}
+						checkedVolumes = true
+						// fetch the corresponding claim
+						var pvc corev1.PersistentVolumeClaim
+						require.NoError(t, k.Client.Get(types.NamespacedName{Namespace: pod.Namespace, Name: pvcSrc.ClaimName}, &pvc))
+
+						// for elasticsearch-data ensure it's a new one (we deleted the old one above)
+						if v.Name == volume.ElasticsearchDataVolumeName && deletedPVC.UID == pvc.UID {
+							t.Errorf("expected new PVC but was reused %v, %v, seen: %v", pvc.Name, pvc.UID, deletedPVC.UID)
+							// for all the other volumes expect reuse
+						} else if v.Name != volume.ElasticsearchDataVolumeName && !stringsutil.StringInSlice(string(pvc.UID), seenPVCs) {
+							t.Errorf("expected reused PVC but %v is new, %v , seen: %v", pvc.Name, pvc.UID, seenPVCs)
+						}
+					}
+					require.True(t, checkedVolumes, "unexpected: no persistent volume claims where found")
+				},
+			},
+		).
 		// And that the cluster UUID has not changed
 		WithSteps(stack.CompareClusterUUIDStep(s.Elasticsearch, k, &clusterUUID)).
 		WithSteps(stack.DeletionTestSteps(s, k)...).
