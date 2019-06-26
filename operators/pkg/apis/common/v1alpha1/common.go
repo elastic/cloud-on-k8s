@@ -68,6 +68,8 @@ type SelfSignedCertificate struct {
 	// SubjectAlternativeNames is a list of SANs to include in the HTTP TLS certificates.
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
+	// Disabled turns off the provisioning of self-signed HTTP TLS certificates.
+	Disabled bool
 }
 
 type SubjectAlternativeName struct {

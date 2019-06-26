@@ -5,7 +5,7 @@
 package http
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
@@ -30,15 +30,16 @@ func (s CertificatesSecret) Validate() error {
 // GetCustomCertificates returns the custom certificates to use or nil if there is none specified
 func GetCustomCertificates(
 	c k8s.Client,
-	es v1alpha1.Elasticsearch,
+	owner types.NamespacedName,
+	tls v1alpha1.TLSOptions,
 ) (*CertificatesSecret, error) {
-	secretName := es.Spec.HTTP.TLS.Certificate.SecretName
+	secretName := tls.Certificate.SecretName
 	if secretName == "" {
 		return nil, nil
 	}
 
 	var secret v1.Secret
-	if err := c.Get(types.NamespacedName{Name: secretName, Namespace: es.Namespace}, &secret); err != nil {
+	if err := c.Get(types.NamespacedName{Name: secretName, Namespace: owner.Namespace}, &secret); err != nil {
 		return nil, err
 	}
 

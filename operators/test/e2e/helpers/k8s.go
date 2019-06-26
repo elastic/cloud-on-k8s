@@ -17,7 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
@@ -159,6 +159,7 @@ func (k *K8sHelper) GetElasticPassword(stackName string) (string, error) {
 func (k *K8sHelper) GetHTTPCerts(stackName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
 	secretNSN := http.PublicCertsSecretRef(
+		name.ESNamer,
 		types.NamespacedName{
 			Namespace: params.Namespace,
 			Name:      stackName,

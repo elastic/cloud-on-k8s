@@ -14,17 +14,17 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	netutil "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -38,22 +38,26 @@ func ReconcileHTTPCertificates(
 	c k8s.Client,
 	scheme *runtime.Scheme,
 	watches watches.DynamicWatches,
-	es v1alpha1.Elasticsearch,
+	owner metav1.Object,
+	namer name.Namer,
 	ca *certificates.CA,
+	tls v1alpha1.TLSOptions,
+	labels map[string]string,
 	services []corev1.Service,
 	rotationParams certificates.RotationParams,
 ) (*CertificatesSecret, error) {
-	customCertificates, err := GetCustomCertificates(c, es)
+	ownerNSN := k8s.ExtractNamespacedName(owner)
+	customCertificates, err := GetCustomCertificates(c, ownerNSN, tls)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := reconcileDynamicWatches(watches, es); err != nil {
+	if err := reconcileDynamicWatches(watches, ownerNSN, namer, tls); err != nil {
 		return nil, err
 	}
 
 	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
-		c, scheme, es, services, customCertificates, ca, rotationParams,
+		c, scheme, owner, namer, tls, labels, services, customCertificates, ca, rotationParams,
 	)
 	if err != nil {
 		return nil, err
@@ -66,16 +70,19 @@ func ReconcileHTTPCertificates(
 func reconcileHTTPInternalCertificatesSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	owner metav1.Object,
+	namer name.Namer,
+	tls v1alpha1.TLSOptions,
+	labels map[string]string,
 	svcs []corev1.Service,
 	customCertificates *CertificatesSecret,
 	ca *certificates.CA,
 	rotationParams certificates.RotationParams,
 ) (*CertificatesSecret, error) {
 	secret := corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Namespace: es.Namespace,
-			Name:      name.HTTPCertsInternalSecretName(es.Name),
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: owner.GetNamespace(),
+			Name:      certificates.HTTPCertsInternalSecretName(namer, owner.GetName()),
 		},
 	}
 
@@ -94,7 +101,6 @@ func reconcileHTTPInternalCertificatesSecret(
 	needsUpdate := false
 
 	// ensure our labels are set on the secret.
-	labels := label.NewLabels(k8s.ExtractNamespacedName(&es))
 	for k, v := range labels {
 		if current, ok := secret.Labels[k]; !ok || current != v {
 			secret.Labels[k] = v
@@ -102,7 +108,7 @@ func reconcileHTTPInternalCertificatesSecret(
 		}
 	}
 
-	if err := controllerutil.SetControllerReference(&es, &secret, scheme); err != nil {
+	if err := controllerutil.SetControllerReference(owner, &secret, scheme); err != nil {
 		return nil, err
 	}
 
@@ -118,7 +124,7 @@ func reconcileHTTPInternalCertificatesSecret(
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, es, svcs, ca, rotationParams,
+			&secret, k8s.ExtractNamespacedName(owner), tls, svcs, ca, rotationParams,
 		)
 		if err != nil {
 			return nil, err
@@ -150,7 +156,8 @@ func reconcileHTTPInternalCertificatesSecret(
 // Returns true if the secret was changed.
 func ensureInternalSelfSignedCertificateSecretContents(
 	secret *corev1.Secret,
-	es v1alpha1.Elasticsearch,
+	owner types.NamespacedName,
+	tls v1alpha1.TLSOptions,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	rotationParam certificates.RotationParams,
@@ -183,11 +190,11 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// check if the existing cert should be re-issued
-	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, rotationParam.RotateBefore) {
+	if shouldIssueNewHTTPCertificate(owner, tls, secret, svcs, ca, rotationParam.RotateBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"secret", secret.Name,
-			"es", k8s.ExtractNamespacedName(&es),
+			"owner", owner,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -203,7 +210,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		// validate the csr
 		validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
-			es, svcs, parsedCSR, rotationParam.Validity,
+			owner, tls, svcs, parsedCSR, rotationParam.Validity,
 		)
 		if err != nil {
 			return secretWasChanged, err
@@ -231,14 +238,15 @@ func ensureInternalSelfSignedCertificateSecretContents(
 //   - certificate is invalid according to the CA or expired
 //   - certificate SAN and IP does not match the expected ones
 func shouldIssueNewHTTPCertificate(
-	es v1alpha1.Elasticsearch,
+	owner types.NamespacedName,
+	tls v1alpha1.TLSOptions,
 	secret *corev1.Secret,
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
 	validatedTemplate, err := createValidatedHTTPCertificateTemplate(
-		es, svcs, &x509.CertificateRequest{}, certReconcileBefore,
+		owner, tls, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
 	if err != nil {
 		return true
@@ -307,13 +315,14 @@ func shouldIssueNewHTTPCertificate(
 
 // createValidatedHTTPCertificateTemplate validates a CSR and creates a certificate template.
 func createValidatedHTTPCertificateTemplate(
-	es v1alpha1.Elasticsearch,
+	owner types.NamespacedName,
+	tls v1alpha1.TLSOptions,
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
 	// add .cluster.local to the certificate name to avoid issuing certificates signed for .es by default
-	certCommonName := fmt.Sprintf("%s.%s.es.cluster.local", es.Name, es.Namespace)
+	certCommonName := fmt.Sprintf("%s.%s.es.cluster.local", owner.Name, owner.Namespace) //TODO wrong!!!!
 
 	dnsNames := []string{
 		certCommonName,
@@ -324,7 +333,7 @@ func createValidatedHTTPCertificateTemplate(
 		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc))
 	}
 
-	if selfSignedCerts := es.Spec.HTTP.TLS.SelfSignedCertificate; selfSignedCerts != nil {
+	if selfSignedCerts := tls.SelfSignedCertificate; selfSignedCerts != nil {
 		for _, san := range selfSignedCerts.SubjectAlternativeNames {
 			if san.DNS != "" {
 				dnsNames = append(dnsNames, san.DNS)
@@ -338,7 +347,7 @@ func createValidatedHTTPCertificateTemplate(
 	certificateTemplate := certificates.ValidatedCertificateTemplate(x509.Certificate{
 		Subject: pkix.Name{
 			CommonName:         certCommonName,
-			OrganizationalUnit: []string{es.Name},
+			OrganizationalUnit: []string{owner.Name},
 		},
 
 		DNSNames:    dnsNames,

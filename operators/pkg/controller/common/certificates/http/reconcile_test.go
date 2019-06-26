@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -89,7 +90,7 @@ func init() {
 	testCSR, err := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
-		testES, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
@@ -166,7 +167,7 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 			require.NoError(t, w.InjectScheme(scheme.Scheme))
 
 			got, err := ReconcileHTTPCertificates(
-				tt.args.c, scheme.Scheme, w, tt.args.es, tt.args.ca, tt.args.services,
+				tt.args.c, scheme.Scheme, w, &tt.args.es, name.ESNamer, tt.args.ca, tt.args.es.Spec.HTTP.TLS, map[string]string{}, tt.args.services,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
@@ -251,7 +252,13 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createValidatedHTTPCertificateTemplate(tt.args.es, tt.args.svcs, &x509.CertificateRequest{}, tt.args.certValidity)
+			got, err := createValidatedHTTPCertificateTemplate(
+				k8s.ExtractNamespacedName(&tt.args.es),
+				tt.args.es.Spec.HTTP.TLS,
+				tt.args.svcs,
+				&x509.CertificateRequest{},
+				tt.args.certValidity,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createValidatedHTTPCertificateTemplate() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -351,7 +358,13 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldIssueNewHTTPCertificate(
-				tt.args.es, &tt.args.secret, []corev1.Service{testSvc}, testCA, tt.args.rotateBefore); got != tt.want {
+				k8s.ExtractNamespacedName(&tt.args.es),
+				tt.args.es.Spec.HTTP.TLS,
+				&tt.args.secret,
+				[]corev1.Service{testSvc},
+				testCA,
+				tt.args.rotateBefore,
+			); got != tt.want {
 				t.Errorf("shouldIssueNewCertificate() = %v, want %v", got, tt.want)
 			}
 		})
