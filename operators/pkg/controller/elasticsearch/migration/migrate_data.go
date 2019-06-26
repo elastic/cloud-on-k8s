@@ -6,13 +6,12 @@ package migration
 
 import (
 	"context"
-	"strconv"
 	"strings"
-	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
-	corev1 "k8s.io/api/core/v1"
 )
 
 func shardIsMigrating(toMigrate client.Shard, others []client.Shard) bool {
@@ -85,12 +84,10 @@ type AllocationSettings interface {
 }
 
 // setAllocationExcludes sets allocation filters for the given nodes.
-func setAllocationExcludes(asClient AllocationSettings, leavingNodes []string, now time.Time) error {
+func setAllocationExcludes(asClient AllocationSettings, leavingNodes []string) error {
 	exclusions := "none_excluded"
 	if len(leavingNodes) > 0 {
-		// See https://github.com/elastic/elasticsearch/issues/28316
-		withBugfix := append(leavingNodes, strconv.FormatInt(now.Unix(), 10))
-		exclusions = strings.Join(withBugfix, ",")
+		exclusions = strings.Join(leavingNodes, ",")
 	}
 	// update allocation exclusions
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
@@ -100,5 +97,5 @@ func setAllocationExcludes(asClient AllocationSettings, leavingNodes []string, n
 
 // MigrateData sets allocation filters for the given nodes.
 func MigrateData(client AllocationSettings, leavingNodes []string) error {
-	return setAllocationExcludes(client, leavingNodes, time.Now())
+	return setAllocationExcludes(client, leavingNodes)
 }
