@@ -132,6 +132,7 @@ ci-e2e: vault-gke-creds
 		cloud-on-k8s-ci-e2e \
 		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
 
+# Run e2e tests in GKE against provided ECK image
 ci-e2e-rc: vault-gke-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
 	docker run --rm -t \
