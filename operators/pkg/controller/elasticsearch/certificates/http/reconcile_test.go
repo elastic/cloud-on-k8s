@@ -167,7 +167,10 @@ func TestReconcileHTTPCertificates(t *testing.T) {
 
 			got, err := ReconcileHTTPCertificates(
 				tt.args.c, scheme.Scheme, w, tt.args.es, tt.args.ca, tt.args.services,
-				certificates.DefaultCertValidity, certificates.DefaultRotateBefore,
+				certificates.RotationParams{
+					Validity:     certificates.DefaultCertValidity,
+					RotateBefore: certificates.DefaultRotateBefore,
+				},
 			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileHTTPCertificates() error = %v, wantErr %v", err, tt.wantErr)
