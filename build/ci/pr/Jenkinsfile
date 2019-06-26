@@ -20,6 +20,12 @@ pipeline {
     }
 
     stages {
+        stage('Build docs') {
+            steps {
+                checkout scm
+                sh 'make -C build/ci ci-build-docs'
+            }
+        }
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {
@@ -33,7 +39,6 @@ pipeline {
                 }
                 stage("Run smoke E2E tests") {
                     steps {
-                        checkout scm
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
