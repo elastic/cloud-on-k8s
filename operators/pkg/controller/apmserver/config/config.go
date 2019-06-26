@@ -5,86 +5,100 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// DefaultHTTPPort is the (default) port used by ApmServer
-const DefaultHTTPPort = 8200
+const (
+	// DefaultHTTPPort is the (default) port used by ApmServer
+	DefaultHTTPPort = 8200
+)
 
-// FromResourceSpec resolves the ApmServer configuration to use based on the provided spec.
-// TODO: missing test
-func FromResourceSpec(c k8s.Client, as v1alpha1.ApmServer) (*Config, error) {
-	// TODO: consider scaling the default values provided based on the apm server resources
-	// these defaults are taken (without scaling) from a defaulted ECE install
+var DefaultConfiguration = []byte(`
+apm-server:
+  concurrent_requests: 1
+  max_unzipped_size: 5242880
+  read_timeout: 3600
+  rum:
+    enabled: true
+    rate_limit: 10
+  shutdown_timeout: 30s
+  ssl:
+    enabled: false
+logging:
+  json: true
+  metrics.enabled: true
+output:
+  elasticsearch:
+    compression_level: 5
+    max_bulk_size: 267
+    worker: 5
+queue:
+  mem:
+    events: 2000
+    flush:
+      min_events: 267
+      timeout: 1s
+setup.template.settings.index:
+  auto_expand_replicas: 0-2
+  number_of_replicas: 1
+  number_of_shards: 1
+xpack.monitoring.enabled: true
+`)
 
-	username, password, err := getCredentials(c, as)
+func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.CanonicalConfig, error) {
+	specConfig := as.Spec.Config
+	if specConfig == nil {
+		specConfig = &commonv1alpha1.Config{}
+	}
+
+	userSettings, err := settings.NewCanonicalConfigFrom(specConfig.Data)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Config{
-		Name: "${POD_NAME}",
-		ApmServer: ApmServerConfig{
-			Host:               fmt.Sprintf(":%d", DefaultHTTPPort),
-			SecretToken:        "${SECRET_TOKEN}",
-			ReadTimeout:        3600,
-			ShutdownTimeout:    "30s",
-			Rum:                RumConfig{Enabled: true, RateLimit: 10},
-			ConcurrentRequests: 1,
-			MaxUnzippedSize:    5242880,
-			// TODO: TLS support for the server itself
-			SSL: TLSConfig{
-				Enabled: false,
-			},
-		},
-		XPackMonitoringEnabled: true,
+	// Get username and password
+	username, password, err := elasticsearchAuthSettings(c, as)
+	if err != nil {
+		return nil, err
+	}
 
-		Logging: LoggingConfig{
-			JSON:           true,
-			MetricsEnabled: true,
-		},
-		Queue: QueueConfig{
-			Mem: QueueMemConfig{
-				Events: 2000,
-				Flush: FlushConfig{
-					MinEvents: 267,
-					Timeout:   "1s",
-				},
+	// Create a base configuration.
+	cfg := settings.MustCanonicalConfig(map[string]interface{}{
+		"apm-server.host":         fmt.Sprintf(":%d", DefaultHTTPPort),
+		"apm-server.secret_token": "${SECRET_TOKEN}",
+	})
+
+	// Build the default configuration
+	defaultCfg, err := settings.ParseConfig(DefaultConfiguration)
+	if err != nil {
+		return nil, err
+	}
+
+	// Merge the configuration with userSettings last so they take precedence.
+	err = cfg.MergeWith(
+		defaultCfg,
+		settings.MustCanonicalConfig(
+			map[string]interface{}{
+				"output.elasticsearch.hosts":                       as.Spec.Output.Elasticsearch.Hosts,
+				"output.elasticsearch.username":                    username,
+				"output.elasticsearch.password":                    password,
+				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/" + certificates.CertFileName},
 			},
-		},
-		SetupTemplateSettingsIndex: SetupTemplateSettingsIndex{
-			NumberOfShards:     1,
-			NumberOfReplicas:   1,
-			AutoExpandReplicas: "0-2",
-		},
-		Output: OutputConfig{
-			Elasticsearch: ElasticsearchOutputConfig{
-				Worker:           5,
-				MaxBulkSize:      267,
-				CompressionLevel: 5,
-				Hosts:            as.Spec.Output.Elasticsearch.Hosts,
-				Username:         username,
-				Password:         password,
-				// TODO: optional TLS
-				SSL: TLSConfig{
-					Enabled: true,
-					// TODO: hardcoded path
-					CertificateAuthorities: []string{"config/elasticsearch-certs/" + certificates.CertFileName},
-				},
-				// TODO: include indices? or will they be defaulted fine?
-			},
-		},
-	}, nil
+		),
+		userSettings,
+	)
+	return cfg, nil
 }
 
-func getCredentials(c k8s.Client, as v1alpha1.ApmServer) (username, password string, err error) {
+func elasticsearchAuthSettings(c k8s.Client, as v1alpha1.ApmServer) (username, password string, err error) {
 	auth := as.Spec.Output.Elasticsearch.Auth
 
 	if auth.Inline != nil {
@@ -103,91 +117,4 @@ func getCredentials(c k8s.Client, as v1alpha1.ApmServer) (username, password str
 
 	// no authentication method provided, return an empty credential
 	return "", "", nil
-}
-
-type Config struct {
-	Name                       string                     `json:"name,omitempty"`
-	ApmServer                  ApmServerConfig            `json:"apm-server,omitempty"`
-	XPackMonitoringEnabled     bool                       `json:"xpack.monitoring.enabled,omitempty"`
-	Logging                    LoggingConfig              `json:"logging,omitempty"`
-	Queue                      QueueConfig                `json:"queue,omitempty"`
-	Output                     OutputConfig               `json:"output,omitempty"`
-	SetupTemplateSettingsIndex SetupTemplateSettingsIndex `json:"setup.template.settings.index,omitempty"`
-}
-
-type OutputConfig struct {
-	Elasticsearch ElasticsearchOutputConfig `json:"elasticsearch,omitempty"`
-	// TODO support other outputs.
-}
-
-type SetupTemplateSettingsIndex struct {
-	NumberOfShards     int    `json:"number_of_shards,omitempty"`
-	NumberOfReplicas   int    `json:"number_of_replicas,omitempty"`
-	AutoExpandReplicas string `json:"auto_expand_replicas,omitempty"`
-}
-
-type ApmServerConfig struct {
-	Host               string    `json:"host,omitempty"`
-	ReadTimeout        int       `json:"read_timeout,omitempty"`
-	ShutdownTimeout    string    `json:"shutdown_timeout,omitempty"`
-	SecretToken        string    `json:"secret_token,omitempty"`
-	SSL                TLSConfig `json:"ssl,omitempty"`
-	Rum                RumConfig `json:"rum,omitempty"`
-	ConcurrentRequests int       `json:"concurrent_requests,omitempty"`
-	MaxUnzippedSize    int       `json:"max_unzipped_size,omitempty"`
-}
-
-type RumConfig struct {
-	Enabled   bool `json:"enabled,omitempty"`
-	RateLimit int  `json:"rate_limit,omitempty"`
-}
-
-type TLSConfig struct {
-	Enabled                bool     `json:"enabled"`
-	Certificate            string   `json:"certificate,omitempty"`
-	Key                    string   `json:"key,omitempty"`
-	CertificateAuthorities []string `json:"certificate_authorities,omitempty"`
-}
-
-type LoggingConfig struct {
-	Level          string `json:"level,omitempty"`
-	ToFiles        bool   `json:"to_files,omitempty"`
-	JSON           bool   `json:"json,omitempty"`
-	MetricsEnabled bool   `json:"metrics.enabled,omitempty"`
-}
-
-type LoggingFilesConfig struct {
-	Path      string `json:"path,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Keepfiles int    `json:"keepfiles,omitempty"`
-}
-
-type LoggingMetricsConfig struct {
-	Enabled bool `json:"enabled,omitempty"`
-}
-
-type QueueConfig struct {
-	Mem QueueMemConfig `json:"mem,omitempty"`
-}
-
-type QueueMemConfig struct {
-	Events int         `json:"events,omitempty"`
-	Flush  FlushConfig `json:"flush,omitempty"`
-}
-
-type FlushConfig struct {
-	MinEvents int    `json:"min_events,omitempty"`
-	Timeout   string `json:"timeout,omitempty"`
-}
-
-type ElasticsearchOutputConfig struct {
-	Hosts            []string          `json:"hosts,omitempty"`
-	SSL              TLSConfig         `json:"ssl,omitempty"`
-	Username         string            `json:"username,omitempty"`
-	Password         string            `json:"password,omitempty"`
-	Headers          map[string]string `json:"headers,omitempty"`
-	Worker           int               `json:"worker,omitempty"`
-	MaxBulkSize      int               `json:"max_bulk_size,omitempty"`
-	CompressionLevel int               `json:"compression_level,omitempty"`
-	Indices          []json.RawMessage `json:"indices,omitempty"`
 }

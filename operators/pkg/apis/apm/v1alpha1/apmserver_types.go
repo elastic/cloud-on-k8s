@@ -24,6 +24,9 @@ type ApmServerSpec struct {
 	// NodeCount defines how many nodes the Apm Server deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
+	// Config represents the APM configuration.
+	Config *commonv1alpha1.Config `json:"config,omitempty"`
+
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 

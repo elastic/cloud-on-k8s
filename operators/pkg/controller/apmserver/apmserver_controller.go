@@ -11,6 +11,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,18 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"sigs.k8s.io/yaml"
-
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
 const (
@@ -232,12 +230,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	cfg, err := config.FromResourceSpec(r.Client, *as)
+	cfg, err := config.NewConfigFromSpec(r.Client, *as)
 	if err != nil {
 		return state, err
 	}
 
-	cfgBytes, err := yaml.Marshal(cfg)
+	cfgBytes, err := cfg.Render()
 	if err != nil {
 		return state, err
 	}

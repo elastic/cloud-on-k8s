@@ -72,6 +72,7 @@ func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	}
 }
 
+// TODO: factorize this function to get the auth settings for a given object ?
 func elasticsearchAuthSettings(client k8s.Client, kb v1alpha1.Kibana) (map[string]interface{}, error) {
 	authSettings := map[string]interface{}{}
 	auth := kb.Spec.Elasticsearch.Auth
