@@ -21,7 +21,7 @@ const (
 	UUIDCfgMapKey = "uuid"
 )
 
-var defaultOperatorNamespaces = []string{"elastic-namespace", "elastic-namespace-operators"}
+var defaultOperatorNamespaces = []string{"elastic-system", "elastic-namespace-operators"}
 
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
