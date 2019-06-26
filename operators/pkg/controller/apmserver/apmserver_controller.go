@@ -119,6 +119,7 @@ type ReconcileApmServer struct {
 // and what is in the ApmServer.Spec
 func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.
+	// TODO(sabo): debug?
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
 	log.Info("Start reconcile iteration", "iteration", currentIteration)
@@ -131,7 +132,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	err := r.Get(request.NamespacedName, as)
 
 	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "name", as.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -169,7 +170,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	as *apmv1alpha1.ApmServer,
 ) (State, error) {
 	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured")
+		//  TODO: should this be part of the validation? or is it still useful to spin up the earlier stuff?
+		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
+			"namespace", as.Namespace, "name", as.Name)
 		return state, nil
 	}
 
@@ -222,10 +225,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating apm server secret", "name", expectedApmServerSecret.Name)
+				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "name", expectedApmServerSecret.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating apm server secret", "name", expectedApmServerSecret.Name)
+				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "name", expectedApmServerSecret.Name)
 			},
 		},
 	); err != nil {
@@ -271,10 +274,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledConfigSecret.Data = expectedConfigSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating config secret", "name", expectedConfigSecret.Name)
+				log.Info("Creating config secret", "namespace", expectedConfigSecret.Namespace, "name", expectedConfigSecret.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating config secret", "name", expectedConfigSecret.Name)
+				log.Info("Updating config secret", "namespace", expectedConfigSecret.Namespace, "name", expectedConfigSecret.Name)
 			},
 		},
 	); err != nil {
@@ -365,6 +368,6 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(state.ApmServer)
 }

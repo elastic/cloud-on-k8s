@@ -57,10 +57,10 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	}()
 	result, err := r.reconcileInternal(request)
 	if result.Requeue {
-		log.Info("Re-queuing new license check immediately (rate-limited)", "cluster", request.NamespacedName)
+		log.Info("Re-queuing new license check immediately (rate-limited)", "namespace", request.Namespace, "name", request.Name)
 	}
 	if result.RequeueAfter > 0 {
-		log.Info("Re-queuing new license check", "cluster", request.NamespacedName, "RequeueAfter", result.RequeueAfter)
+		log.Info("Re-queuing new license check", "namespace", request.Namespace, "name", request.Name, "RequeueAfter", result.RequeueAfter)
 	}
 	return result, err
 }
@@ -167,6 +167,7 @@ type ReconcileLicenses struct {
 func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool, error) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
+		// TODO(sabo): why is this not an error?
 		log.Info("Ignoring invalid license objects", "errors", errs)
 	}
 	return license.BestMatch(licenseList, checker.Valid)

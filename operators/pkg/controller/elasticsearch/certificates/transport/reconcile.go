@@ -39,7 +39,7 @@ func ReconcileTransportCertificateSecrets(
 	certValidity time.Duration,
 	certRotateBefore time.Duration,
 ) (reconcile.Result, error) {
-	log.Info("Reconciling transport certificate secrets")
+	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "name", es.Name)
 
 	// load additional trusted CAs from the trustrelationships
 	additionalCAs := make([][]byte, 0, len(trustRelationships))
@@ -61,7 +61,7 @@ func ReconcileTransportCertificateSecrets(
 
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
-			log.Info("Skipping pod because it has no IP yet", "pod", pod.Name)
+			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "name", pod.Name)
 			continue
 		}
 
@@ -130,8 +130,9 @@ func doReconcileTransportCertificateSecret(
 	if issueNewCertificate {
 		log.Info(
 			"Issuing new certificate",
-			"pod", pod.Name,
-			"es", k8s.ExtractNamespacedName(&es),
+			"namespace", pod.Namespace,
+			"name", pod.Name,
+			"elasticsearch_name", es.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -172,7 +173,7 @@ func doReconcileTransportCertificateSecret(
 	}
 
 	if needsNewPrivateKey || issueNewCertificate || updateTrustedCACerts {
-		log.Info("Updating transport certificate secret", "secret", secret.Name)
+		log.Info("Updating transport certificate secret", "namespace", secret.Namespace, "name", secret.Name)
 		if err := c.Update(secret); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -186,13 +187,13 @@ func doReconcileTransportCertificateSecret(
 func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certificate {
 	certData, ok := secret.Data[certificates.CertFileName]
 	if !ok {
-		log.Info("No tls certificate found in secret", "secret", secret.Name)
+		log.Info("No tls certificate found in secret", "namespace", secret.Namespace, "name", secret.Name)
 		return nil
 	}
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
-		log.Error(err, "Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "name", secret.Name)
 		return nil
 	}
 
@@ -205,7 +206,8 @@ func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certifi
 		names = append(names, c.Subject.CommonName)
 	}
 
-	log.Info("Did not found a certificate with the expected common name", "secret", secret.Name, "expected", commonName, "found", names)
+	log.Info("Did not found a certificate with the expected common name", "namespace", secret.Namespace,
+		"name", secret.Name, "expected", commonName, "found", names)
 
 	return nil
 }
@@ -242,10 +244,12 @@ func shouldIssueNewCertificate(
 	publicKey, publicKeyOk := cert.PublicKey.(*rsa.PublicKey)
 	if !publicKeyOk || publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
 		log.Info(
-			"Certificate belongs do a different public key, should issue new",
+			"Certificate belongs to a different public key, should issue new",
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"name", secret.Name,
+			"namespace", secret.Namespace,
 		)
 		return true
 	}
@@ -258,17 +262,21 @@ func shouldIssueNewCertificate(
 		Intermediates: pool,
 	}
 	if _, err := cert.Verify(verifyOpts); err != nil {
+		// TODO(sabo): should this be an error?
 		log.Info(
 			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"namespace", secret.Namespace,
+			"name", secret.Name,
 		)
 		return true
 	}
 
+	// TODO(sabo): dont we have at least 2 other places we have this same code?
 	if time.Now().After(cert.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
+		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "name", secret.Name)
 		return true
 	}
 

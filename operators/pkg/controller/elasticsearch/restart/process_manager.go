@@ -50,7 +50,7 @@ func ensureESProcessStopped(pmClient processmanager.Client, podName string) (boo
 	// request ES process stop (idempotent)
 	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
 	defer cancel()
-	log.V(1).Info("Requesting ES process stop", "pod", podName)
+	log.V(1).Info("Requesting ES process stop", "name", podName)
 	status, err := pmClient.Stop(ctx)
 	if err != nil {
 		return false, err
@@ -58,12 +58,12 @@ func ensureESProcessStopped(pmClient processmanager.Client, podName string) (boo
 
 	// we got the current status back, check if the process is stopped
 	if status.State != processmanager.Stopped {
-		log.V(1).Info("ES process is not stopped yet", "pod", podName, "state", status.State)
+		log.V(1).Info("ES process is not stopped yet", "name", podName, "state", status.State)
 		// not stopped yet, requeue
 		return false, nil
 	}
 
-	log.V(1).Info("ES process successfully stopped", "pod", podName)
+	log.V(1).Info("ES process successfully stopped", "name", podName)
 	return true, nil
 }
 
@@ -72,7 +72,7 @@ func ensureESProcessStarted(pmClient processmanager.Client, podName string) (boo
 	// request ES process start (idempotent)
 	ctx, cancel := context.WithTimeout(context.Background(), processmanager.DefaultReqTimeout)
 	defer cancel()
-	log.V(1).Info("Requesting ES process start", "pod", podName)
+	log.V(1).Info("Requesting ES process start", "name", podName)
 	status, err := pmClient.Start(ctx)
 	if err != nil {
 		return false, err
@@ -80,11 +80,11 @@ func ensureESProcessStarted(pmClient processmanager.Client, podName string) (boo
 
 	// we got the current status back, check if the process is started
 	if status.State != processmanager.Started {
-		log.V(1).Info("ES process is not started yet", "pod", podName, "state", status.State)
+		log.V(1).Info("ES process is not started yet", "name", podName, "state", status.State)
 		// not started yet, requeue
 		return false, nil
 	}
 
-	log.V(1).Info("ES process successfully started", "pod", podName)
+	log.V(1).Info("ES process successfully started", "name", podName)
 	return true, nil
 }

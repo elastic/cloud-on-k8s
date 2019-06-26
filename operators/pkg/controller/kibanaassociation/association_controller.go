@@ -109,6 +109,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
+	// TODO(sabo): should these be debug logs?
 	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
 	defer func() {
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
@@ -134,6 +135,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
+			// TODO(sabo) error this?
 			log.V(1).Info("Conflict while handling finalizer")
 			return reconcile.Result{Requeue: true}, nil
 		}
@@ -147,7 +149,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if common.IsPaused(kibana.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "name", kibana.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -157,6 +159,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		kibana.Status.AssociationStatus = newStatus
 		if err := r.Status().Update(&kibana); err != nil {
 			if apierrors.IsConflict(err) {
+				// TODO(sabo): error?
 				log.V(1).Info("Conflict while updating status")
 				return reconcile.Result{Requeue: true}, nil
 			}
@@ -230,7 +233,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 			// remove connection details if they are set
 			if (kibana.Spec.Elasticsearch != kbtype.BackendElasticsearch{}) {
 				kibana.Spec.Elasticsearch = kbtype.BackendElasticsearch{}
-				log.Info("Removing Elasticsearch configuration from managed association", "kibana", kibana.Name)
+				log.Info("Removing Elasticsearch configuration from managed association", "namespace", kibana.Namespace, "name", kibana.Name)
 				if err := r.Update(&kibana); err != nil {
 					return commonv1alpha1.AssociationPending, err
 				}
@@ -257,7 +260,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	if !reflect.DeepEqual(kibana.Spec.Elasticsearch, expectedEsConfig) {
 		kibana.Spec.Elasticsearch = expectedEsConfig
-		log.Info("Updating Kibana spec with Elasticsearch backend configuration")
+		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "name", kibana.Name)
 		if err := r.Update(&kibana); err != nil {
 			return commonv1alpha1.AssociationPending, err
 		}

@@ -82,6 +82,7 @@ func isAnnotatedForRestart(pod corev1.Pod) bool {
 func setPhase(client k8s.Client, pod corev1.Pod, phase Phase) error {
 	log.V(1).Info(
 		"Setting restart phase",
+		"namespace", pod.Namespace,
 		"pod", pod.Name,
 		"phase", phase,
 	)
@@ -116,6 +117,7 @@ func getStrategy(pod corev1.Pod) Strategy {
 func setScheduleRestartAnnotations(client k8s.Client, pod corev1.Pod, strategy Strategy, startTime time.Time) error {
 	log.V(1).Info(
 		"Scheduling restart",
+		"namespace", pod.Namespace,
 		"pod", pod.Name,
 		"strategy", strategy,
 	)

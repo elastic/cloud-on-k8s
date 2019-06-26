@@ -68,24 +68,28 @@ func ReconcileCAForOwner(
 		return nil, err
 	}
 	if apierrors.IsNotFound(err) {
-		log.Info("No internal CA certificate Secret found, creating a new one", "owner", ownerNsn, "ca_type", caType)
+		// TODO(sabo): make this namespace and name?
+		log.Info("No internal CA secret found, creating a new one", "owner", ownerNsn, "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// build CA
 	ca := buildCAFromSecret(caInternalSecret)
 	if ca == nil {
+		// TODO(sabo): make this namespace and name?
 		log.Info("Cannot build CA from secret, creating a new one", "owner", ownerNsn, "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// renew if cannot reuse
 	if !canReuseCA(ca, expirationSafetyMargin) {
+		// TODO(sabo): make this namespace and name?
 		log.Info("Cannot reuse existing CA, creating a new one", "owner", ownerNsn, "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// reuse existing CA
+	// TODO(sabo): make this namespace and name?
 	log.V(1).Info("Reusing existing CA", "owner", ownerNsn, "ca_type", caType)
 	return ca, nil
 }
@@ -139,11 +143,11 @@ func canReuseCA(ca *CA, expirationSafetyMargin time.Duration) bool {
 func certIsValid(cert x509.Certificate, expirationSafetyMargin time.Duration) bool {
 	now := time.Now()
 	if now.Before(cert.NotBefore) {
-		log.Info("CA cert is not valid yet, will create a new one")
+		log.Info("CA cert is not valid yet", "subject", cert.Subject)
 		return false
 	}
 	if now.After(cert.NotAfter.Add(-expirationSafetyMargin)) {
-		log.Info("CA cert expired or soon to expire, will create a new one", "expiration", cert.NotAfter)
+		log.Info("CA cert expired or soon to expire", "subject", cert.Subject, "expiration", cert.NotAfter)
 		return false
 	}
 	return true
@@ -182,7 +186,7 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	certs, err := ParsePEMCerts(caBytes)
 	if err != nil {
-		log.Info("Cannot parse PEM cert from CA secret, will create a new one", "err", err)
+		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "name", caInternalSecret.Name)
 		return nil
 	}
 	if len(certs) == 0 {
@@ -191,7 +195,8 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	if len(certs) > 1 {
 		log.Info(
 			"More than 1 certificate in the CA secret, continuing with the first one",
-			"secret", caInternalSecret.Name,
+			"namespace", caInternalSecret.Namespace,
+			"name", caInternalSecret.Name,
 		)
 	}
 	cert := certs[0]
@@ -202,7 +207,7 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
 	if err != nil {
-		log.Info("Cannot parse PEM private key from CA secret, will create a new one", "err", err)
+		log.Error(err, "Cannot parse PEM private key from CA secret]")
 		return nil
 	}
 	return NewCA(privateKey, cert)

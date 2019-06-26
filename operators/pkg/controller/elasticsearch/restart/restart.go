@@ -80,7 +80,7 @@ func processOngoingRestarts(restartContext RestartContext) (done bool, err error
 		return true, nil
 	}
 
-	log.V(1).Info("Pods annotated for restart")
+	log.V(1).Info("Pods annotated for restart", "namespace", restartContext.Cluster.Namespace, "name", restartContext.Cluster.Name)
 
 	if len(annotatedPods[StrategyCoordinated]) > 0 {
 		// run the coordinated restart
@@ -129,7 +129,7 @@ func schedulePodsRestart(c k8s.Client, pods pod.PodsWithConfig, strategy Strateg
 	count := 0
 	for _, p := range pods {
 		if isAnnotatedForRestart(p.Pod) {
-			log.V(1).Info("Pod already in a restart phase", "pod", p.Pod.Name)
+			log.V(1).Info("Pod already in a restart phase", "namespace", p.Pod.Namespace, "pod", p.Pod.Name)
 			continue
 		}
 		if err := setScheduleRestartAnnotations(c, p.Pod, strategy, time.Now()); err != nil {

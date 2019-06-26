@@ -130,12 +130,12 @@ func reconcileHTTPInternalCertificatesSecret(
 
 	if needsUpdate {
 		if shouldCreateSecret {
-			log.Info("Creating HTTP internal certificate secret", "secret", secret.Name)
+			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "name", secret.Name)
 			if err := c.Create(&secret); err != nil {
 				return nil, err
 			}
 		} else {
-			log.Info("Updating HTTP internal certificate secret", "secret", secret.Name)
+			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret", secret.Name)
 			if err := c.Update(&secret); err != nil {
 				return nil, err
 			}
@@ -189,8 +189,10 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
+			"namespace", secret.Namespace,
 			"secret", secret.Name,
-			"es", k8s.ExtractNamespacedName(&es),
+			"elasticsearch_name", es.Name,
+			"elasticsearch_namespace", es.Namespace,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -280,16 +282,21 @@ func shouldIssueNewHTTPCertificate(
 	}
 	if _, err := certificate.Verify(verifyOpts); err != nil {
 		log.Info(
-			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
+			"Certificate was not valid, should issue new",
+			"validation_failure", err,
 			"subject", certificate.Subject,
 			"issuer", certificate.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"name", secret.Name,
+			"namespace", secret.Namespace,
+			"elasticsearch_name", es.Name,
 		)
 		return true
 	}
 
+	// TODO(sabo): dont we have other code that does the same thing?
 	if time.Now().After(certificate.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
+		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "name", secret.Name)
 		return true
 	}
 

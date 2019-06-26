@@ -36,7 +36,7 @@ func doReconcile(
 	// delete the remote relationship from the old namespace and recreate it in the new namespace.
 	if len(remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace) > 0 &&
 		remoteCluster.Spec.Remote.K8sLocalRef.Namespace != remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace {
-		log.V(1).Info("Remote cluster namespaced updated",
+		log.V(1).Info("Remote cluster namespace updated",
 			"old", remoteCluster.Status.K8SLocalStatus.RemoteSelector.Namespace,
 			"new", remoteCluster.Spec.Remote.K8sLocalRef.Namespace)
 		previousRemoteRelationshipName := fmt.Sprintf(

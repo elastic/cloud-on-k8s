@@ -90,16 +90,11 @@ func (s ChangeGroup) calculatePerformableChanges(
 ) error {
 	changeStats := s.ChangeStats()
 
-	log.V(3).Info(
+	log.V(1).Info(
 		"Calculating performable changes for group",
 		"group_name", s.Name,
 		"change_stats", changeStats,
 		"pods_state_status", s.PodsState.Status(),
-	)
-
-	log.V(4).Info(
-		"Calculating performable changes for group",
-		"group_name", s.Name,
 		"pods_state_summary", s.PodsState.Summary(),
 	)
 
@@ -144,9 +139,10 @@ func (s ChangeGroup) calculatePerformableChanges(
 	// schedule for creation as many pods as we can
 	for _, newPodToCreate := range s.Changes.ToCreate {
 		if changeStats.CurrentSurge >= maxSurge {
-			log.V(4).Info(
+			log.V(1).Info(
 				"Hit the max surge limit in a group.",
 				"group_name", s.Name,
+				"namespace", newPodToCreate.Pod.Namespace,
 				"change_stats", changeStats,
 			)
 			result.MaxSurgeGroups = append(result.MaxSurgeGroups, s.Name)
@@ -160,6 +156,8 @@ func (s ChangeGroup) calculatePerformableChanges(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"change_stats", changeStats,
+			"name", newPodToCreate.Pod.Name,
+			"namespace", newPodToCreate.Pod.Namespace,
 			"mismatch_reasons", newPodToCreate.MismatchReasons,
 		)
 
@@ -181,7 +179,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 		}
 
 		if changeStats.CurrentUnavailable >= maxUnavailable {
-			log.V(4).Info(
+			log.V(1).Info(
 				"Hit the max unavailable limit in a group.",
 				"group_name", s.Name,
 				"change_stats", changeStats,
@@ -194,9 +192,11 @@ func (s ChangeGroup) calculatePerformableChanges(
 		changeStats.CurrentUnavailable++
 		changeStats.CurrentRunningReadyPods--
 
-		log.V(4).Info(
+		log.V(1).Info(
 			"Scheduling a pod for deletion",
 			"group_name", s.Name,
+			"name", pod.Pod.Name,
+			"namespace", pod.Pod.Namespace,
 			"change_stats", changeStats,
 		)
 

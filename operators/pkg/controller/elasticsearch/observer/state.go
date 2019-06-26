@@ -47,7 +47,8 @@ func RetrieveState(
 	go func() {
 		clusterState, err := esClient.GetClusterState(ctx)
 		if err != nil {
-			log.V(3).Info("Unable to retrieve cluster state", "error", err)
+			// TODO(sabo): this was a debug log, should it still be?
+			log.Error(err, "Unable to retrieve cluster state")
 			clusterStateChan <- nil
 			return
 		}
@@ -57,7 +58,7 @@ func RetrieveState(
 	go func() {
 		health, err := esClient.GetClusterHealth(ctx)
 		if err != nil {
-			log.V(3).Info("Unable to retrieve cluster health", "error", err)
+			log.Error(err, "Unable to retrieve cluster health")
 			healthChan <- nil
 			return
 		}
@@ -67,7 +68,7 @@ func RetrieveState(
 	go func() {
 		license, err := esClient.GetLicense(ctx)
 		if err != nil {
-			log.V(3).Info("Unable to retrieve cluster license", "error", err)
+			log.Error(err, "Unable to retrieve cluster license")
 			licenseChan <- nil
 			return
 		}
@@ -109,7 +110,7 @@ func RetrieveState(
 
 func getKeystoreStatus(ctx context.Context, pmClientFactory pmClientFactory, pod corev1.Pod) keystore.Status {
 	if !k8s.IsPodReady(pod) {
-		log.V(3).Info("Pod not ready to retrieve keystore status", "pod_name", pod.Name)
+		log.V(1).Info("Pod not ready to retrieve keystore status", "namespace", pod.Namespace, "name", pod.Name)
 		return keystore.Status{State: keystore.WaitingState, Reason: "Pod not ready"}
 	}
 
@@ -117,10 +118,10 @@ func getKeystoreStatus(ctx context.Context, pmClientFactory pmClientFactory, pod
 	defer client.Close()
 	status, err := client.KeystoreStatus(ctx)
 	if err != nil {
-		log.V(3).Info("Unable to retrieve keystore status", "pod_name", pod.Name, "error", err)
+		log.Error(err, "Unable to retrieve keystore status", "namespace", pod.Namespace, "name", pod.Name)
 		return keystore.Status{State: keystore.FailedState, Reason: "Unable to retrieve keystore status"}
 	}
 
-	log.V(3).Info("Keystore updater", "pod_name", pod.Name, "status", status)
+	log.V(1).Info("Keystore status retrieved successfully", "namespace", pod.Namespace, "name", pod.Name, "status", status)
 	return status
 }

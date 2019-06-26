@@ -110,6 +110,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
+	// TODO(sabo): debug?
 	log.Info("Start reconcile iteration", "iteration", currentIteration)
 	defer func() {
 		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
@@ -126,7 +127,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) Reconcile(request reconcile
 	}
 
 	if common.IsPaused(apmServer.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", apmServer.Namespace, "name", apmServer.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -245,7 +246,7 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	// TODO: this is a bit rough
 	if !reflect.DeepEqual(apmServer.Spec.Output.Elasticsearch, expectedEsConfig) {
 		apmServer.Spec.Output.Elasticsearch = expectedEsConfig
-		log.Info("Updating Apm Server spec with Elasticsearch output configuration")
+		log.Info("Updating Apm Server spec with Elasticsearch output configuration", "namespace", apmServer.Namespace, "name", apmServer.Name)
 		if err := r.Update(&apmServer); err != nil {
 			return commonv1alpha1.AssociationPending, err
 		}
@@ -272,7 +273,7 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 	for _, s := range secrets.Items {
 		controlledBy := metav1.IsControlledBy(&s, &apm)
 		if controlledBy && !apm.Spec.Output.Elasticsearch.ElasticsearchRef.IsDefined() {
-			log.Info("Deleting", "secret", k8s.ExtractNamespacedName(&s))
+			log.Info("Deleting secret", "namespace", s.Namespace, "name", s.Name)
 			if err := c.Delete(&s); err != nil {
 				return err
 			}

@@ -156,7 +156,8 @@ func (d *driver) Reconcile(
 ) *reconciler.Results {
 	results := reconciler.Results{}
 	if !kb.Spec.Elasticsearch.IsConfigured() {
-		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
+		// TODO(sabo): should this be an error?
+		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured", "namespace", kb.Namespace, "name", kb.Name)
 		return &results
 	}
 

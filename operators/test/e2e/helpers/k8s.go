@@ -39,6 +39,7 @@ type K8sHelper struct {
 	Client k8s.Client
 }
 
+// TODO(sabo): is this necessary?
 func NewK8sClient() (*K8sHelper, error) {
 	client, err := CreateClient()
 	if err != nil {

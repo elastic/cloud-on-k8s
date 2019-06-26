@@ -149,7 +149,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 // retrieveState retrieves the current ES state, executes onObservation,
 // and stores the new state
 func (o *Observer) retrieveState(ctx context.Context) {
-	log.V(4).Info("Retrieving state", "cluster", o.cluster)
+	log.V(1).Info("Retrieving cluster state", "name", o.cluster.Name, "namespace", o.cluster.Namespace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 

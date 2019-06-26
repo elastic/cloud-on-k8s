@@ -67,6 +67,7 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	return Aggregate(results)
 }
 
+// TODO(sabo): this same func is also in the elasticsearch webhook handler
 func Aggregate(results []commonvalidation.Result) types.Response {
 	response := commonvalidation.Result{Allowed: true}
 	for _, r := range results {

@@ -26,6 +26,7 @@ func UpdateZen2Settings(
 	performableChanges mutation.PerformableChanges,
 ) error {
 	if !minVersion.IsSameOrAfter(version.MustParse("7.0.0")) {
+		// TODO(sabo): no way to log what cluster this is for unfortunately
 		log.Info("not setting zen2 exclusions", "min version in cluster", minVersion)
 		return nil
 	}

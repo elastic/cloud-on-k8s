@@ -75,7 +75,7 @@ func retrieveUserSecret(c k8s.Client, kibana v1alpha1.Kibana, recorder record.Ev
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: name}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "name", name)
+		log.Info(msg, "namespace", namespace, "name", name)
 		recorder.Event(&kibana, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
 		return nil, false, nil
 	} else if err != nil {

@@ -61,6 +61,8 @@ func UpdateZen1Discovery(
 	// Update the current value in the configuration of existing pods
 	log.V(1).Info("Set minimum master nodes",
 		"how", "configuration",
+		"namespace", cluster.Namespace,
+		"name", cluster.Name,
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,
@@ -105,7 +107,10 @@ func UpdateZen1Discovery(
 
 	// Do not attempt to make an API call if there is not enough available masters
 	if currentAvailableMasterCount < minimumMasterNodes {
+		// TODO(sabo): should we bump this up a log level? idk how critical it is
 		log.V(1).Info("Not enough masters to update the API",
+			"namespace", cluster.Namespace,
+			"name", cluster.Name,
 			"current", currentAvailableMasterCount,
 			"required", minimumMasterNodes)
 		// We can't update the minimum master nodes right now, it is the case if a new master node is not created yet.
@@ -115,6 +120,8 @@ func UpdateZen1Discovery(
 
 	log.Info("Update minimum master nodes",
 		"how", "api",
+		"namespace", cluster.Namespace,
+		"name", cluster.Name,
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,

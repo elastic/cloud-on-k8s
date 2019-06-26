@@ -15,6 +15,7 @@ import (
 )
 
 const (
+	// UpdateAnnotation is the name of the annotation applied to pods to force kubelet to resync secrets
 	UpdateAnnotation = "update.k8s.elastic.co/timestamp"
 )
 
@@ -52,10 +53,10 @@ func MarkPodAsUpdated(
 	pod corev1.Pod,
 ) {
 	log.V(1).Info(
-		"Update annotation on pod",
+		"Updating annotation on pod",
 		"annotation", UpdateAnnotation,
 		"namespace", pod.Namespace,
-		"pod", pod.Name,
+		"name", pod.Name,
 	)
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
@@ -64,12 +65,13 @@ func MarkPodAsUpdated(
 		time.Now().Format(time.RFC3339Nano) // nano should be enough to avoid collisions and keep it readable by a human.
 	if err := c.Update(&pod); err != nil {
 		if errors.IsConflict(err) {
-			log.V(1).Info("Conflict while updating pod annotation")
+			// TODO(sabo):  should this be an error not a debug log?
+			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "name", pod.Name)
 		} else {
 			log.Error(err, "failed to update pod annotation",
 				"annotation", UpdateAnnotation,
 				"namespace", pod.Namespace,
-				"pod", pod.Name)
+				"name", pod.Name)
 		}
 	}
 }

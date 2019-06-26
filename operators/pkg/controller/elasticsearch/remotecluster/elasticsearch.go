@@ -47,7 +47,9 @@ func UpdateRemoteCluster(
 			// Declare remote cluster in ES
 			persistentSettings := newRemoteClusterSetting(name, seedHosts)
 			log.V(1).Info("Add new remote cluster",
+				"localNamespace", es.Namespace,
 				"localCluster", es.Name,
+				"remoteNamespace", remoteCluster.Namespace,
 				"remoteCluster", remoteCluster.Name,
 				"seeds", seedHosts,
 			)
@@ -64,6 +66,7 @@ func UpdateRemoteCluster(
 		if _, ok := expectedRemoteClusters[name]; !ok {
 			persistentSettings := newRemoteClusterSetting(name, nil)
 			log.V(1).Info("Remove remote cluster",
+				"localNamespace", es.Namespace,
 				"localCluster", es.Name,
 				"remoteCluster", name,
 			)
@@ -95,6 +98,7 @@ func getRemoteClusters(c k8s.Client, clusterName, namespace string) (map[string]
 	}
 	log.V(1).Info(
 		"Loaded remote clusters",
+		"namespace", namespace,
 		"clusterName", clusterName,
 		"count", len(remoteClusterList.Items),
 	)

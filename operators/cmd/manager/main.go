@@ -180,6 +180,7 @@ func execute() {
 			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))
 	} else if autoPortForward {
+		// TODO(sabo): should this be an error?
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
 		dialer = portforward.NewForwardingDialer()
 	}
@@ -214,8 +215,8 @@ func execute() {
 	}
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
-		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
-		log.Info(fmt.Sprintf("Exposing Prometheus metrics on /metrics%s", opts.MetricsBindAddress))
+		// TODO(sabo): this is more to clarify that it is a custom port right? we still start it either way
+		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 	}
 	mgr, err := manager.New(cfg, opts)
 	if err != nil {

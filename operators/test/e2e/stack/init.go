@@ -70,7 +70,7 @@ func InitTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 						return err
 					}
 					if err == nil {
-						return fmt.Errorf("elasticsearch %s is still there")
+						return fmt.Errorf("elasticsearch %s is still there", k8s.ExtractNamespacedName(&stack.Elasticsearch))
 					}
 					return nil
 				})(t)

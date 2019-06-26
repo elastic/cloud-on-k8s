@@ -155,7 +155,8 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
 		if errors.IsConflict(err) {
-			log.V(1).Info("Conflict while handling secret watch finalizer")
+			// TODO(sabo): should this be an error?
+			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "name", kb.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
 		return reconcile.Result{}, err
@@ -180,7 +181,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status")
+		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return results.WithError(err).Aggregate()
@@ -194,7 +195,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", state.Kibana.Namespace, "name", state.Kibana.Name)
 	return r.Status().Update(state.Kibana)
 }
 
