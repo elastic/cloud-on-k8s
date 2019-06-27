@@ -5,6 +5,7 @@
 package mutation
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,9 +15,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 var defaultPodWithConfig = ESPodWithConfig(defaultImage, defaultCPULimit)
+var defaultPodToDelete = PodToDelete{PodWithConfig: defaultPodWithConfig}
 var emptyPodWithConfig = pod.PodWithConfig{Pod: corev1.Pod{}}
 var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
@@ -52,7 +55,7 @@ func TestChanges_HasChanges(t *testing.T) {
 	type fields struct {
 		ToCreate []PodToCreate
 		ToKeep   pod.PodsWithConfig
-		ToDelete pod.PodsWithConfig
+		ToDelete PodsToDelete
 	}
 	tests := []struct {
 		name   string
@@ -81,7 +84,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to delete has changes",
 			fields: fields{
-				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
+				ToDelete: PodsToDelete{{PodWithConfig: emptyPodWithConfig}},
 			},
 			want: true,
 		},
@@ -89,7 +92,7 @@ func TestChanges_HasChanges(t *testing.T) {
 			name: "create and delete has changes",
 			fields: fields{
 				ToCreate: []PodToCreate{PodToCreate{}},
-				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
+				ToDelete: PodsToDelete{{PodWithConfig: emptyPodWithConfig}},
 			},
 			want: true,
 		},
@@ -112,7 +115,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 	type fields struct {
 		ToCreate []PodToCreate
 		ToKeep   pod.PodsWithConfig
-		ToDelete pod.PodsWithConfig
+		ToDelete PodsToDelete
 	}
 	tests := []struct {
 		name   string
@@ -129,7 +132,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToCreate: []PodToCreate{},
 				ToKeep:   pod.PodsWithConfig{},
-				ToDelete: pod.PodsWithConfig{},
+				ToDelete: PodsToDelete{},
 			},
 			want: true,
 		},
@@ -138,7 +141,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToCreate: []PodToCreate{{}},
 				ToKeep:   pod.PodsWithConfig{},
-				ToDelete: pod.PodsWithConfig{},
+				ToDelete: PodsToDelete{},
 			},
 			want: false,
 		},
@@ -147,7 +150,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToCreate: []PodToCreate{},
 				ToKeep:   pod.PodsWithConfig{{}},
-				ToDelete: pod.PodsWithConfig{},
+				ToDelete: PodsToDelete{},
 			},
 			want: false,
 		},
@@ -156,7 +159,7 @@ func TestChanges_IsEmpty(t *testing.T) {
 			fields: fields{
 				ToCreate: []PodToCreate{},
 				ToKeep:   pod.PodsWithConfig{},
-				ToDelete: pod.PodsWithConfig{{}},
+				ToDelete: PodsToDelete{{}},
 			},
 			want: false,
 		},
@@ -218,8 +221,8 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   pod.PodsWithConfig{namedPod("1")},
-						ToCreate: []PodToCreate{},
-						ToDelete: pod.PodsWithConfig{},
+						ToCreate: PodsToCreate{},
+						ToDelete: PodsToDelete{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -239,8 +242,8 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   pod.PodsWithConfig{namedPod("1")},
-						ToCreate: []PodToCreate{},
-						ToDelete: pod.PodsWithConfig{},
+						ToCreate: PodsToCreate{},
+						ToDelete: PodsToDelete{},
 					},
 					PodsState: NewEmptyPodsState(),
 				},
@@ -251,7 +254,7 @@ func TestChanges_Group(t *testing.T) {
 			changes: Changes{
 				ToCreate: []PodToCreate{bazPodToCreate},
 				ToKeep:   pod.PodsWithConfig{fooPod},
-				ToDelete: pod.PodsWithConfig{barPod},
+				ToDelete: PodsToDelete{{PodWithConfig: barPod}},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -268,7 +271,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToCreate: []PodToCreate{},
 						ToKeep:   pod.PodsWithConfig{fooPod},
-						ToDelete: pod.PodsWithConfig{},
+						ToDelete: PodsToDelete{},
 					},
 					PodsState: initializePodsState(PodsState{
 						Pending: map[string]corev1.Pod{fooPod.Pod.Name: fooPod.Pod},
@@ -278,7 +281,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   pod.PodsWithConfig{},
-						ToDelete: pod.PodsWithConfig{barPod},
+						ToDelete: PodsToDelete{{PodWithConfig: barPod}},
 						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
@@ -292,7 +295,7 @@ func TestChanges_Group(t *testing.T) {
 			changes: Changes{
 				ToCreate: []PodToCreate{bazPodToCreate},
 				ToKeep:   pod.PodsWithConfig{fooPod},
-				ToDelete: pod.PodsWithConfig{foobarPod},
+				ToDelete: PodsToDelete{{PodWithConfig: foobarPod}},
 			},
 			args: args{
 				groupingDefinitions: []v1alpha1.GroupingDefinition{
@@ -316,7 +319,7 @@ func TestChanges_Group(t *testing.T) {
 					Changes: Changes{
 						ToCreate: []PodToCreate{},
 						ToKeep:   pod.PodsWithConfig{},
-						ToDelete: pod.PodsWithConfig{foobarPod},
+						ToDelete: PodsToDelete{{PodWithConfig: foobarPod}},
 					},
 					PodsState: initializePodsState(PodsState{
 						RunningJoining: map[string]corev1.Pod{foobarPod.Pod.Name: foobarPod.Pod},
@@ -326,7 +329,7 @@ func TestChanges_Group(t *testing.T) {
 					Name: UnmatchedGroupName,
 					Changes: Changes{
 						ToKeep:   pod.PodsWithConfig{fooPod},
-						ToDelete: pod.PodsWithConfig{},
+						ToDelete: PodsToDelete{},
 						ToCreate: []PodToCreate{bazPodToCreate},
 					},
 					PodsState: initializePodsState(PodsState{
@@ -346,6 +349,71 @@ func TestChanges_Group(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestChanges_Partition(t *testing.T) {
+	label1 := map[string]string{
+		"key": "value1",
+	}
+	label2 := map[string]string{
+		"key": "value2",
+	}
+	podWithLabel1 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "podWithLabel1",
+			Labels: label1,
+		},
+	}
+	toKeep1 := pod.PodWithConfig{Pod: podWithLabel1}
+	toCreate1 := PodToCreate{Pod: podWithLabel1}
+	toDelete1 := PodToDelete{PodWithConfig: pod.PodWithConfig{Pod: podWithLabel1}}
+	podWithLabel2 := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   "podWithLabel2",
+			Labels: label2,
+		},
+	}
+	toKeep2 := pod.PodWithConfig{Pod: podWithLabel2}
+	toCreate2 := PodToCreate{Pod: podWithLabel2}
+	toDelete2 := PodToDelete{PodWithConfig: pod.PodWithConfig{Pod: podWithLabel2}}
+	tests := []struct {
+		name     string
+		selector labels.Selector
+		changes  Changes
+		want1    Changes
+		want2    Changes
+	}{
+		{
+			name:     "sample changes",
+			selector: labels.SelectorFromSet(label1),
+			changes: Changes{
+				ToKeep:   pod.PodsWithConfig{toKeep1, toKeep1, toKeep2},
+				ToCreate: PodsToCreate{toCreate1, toCreate1, toCreate2},
+				ToDelete: PodsToDelete{toDelete1, toDelete1, toDelete1, toDelete2, toDelete2},
+			},
+			want1: Changes{
+				ToKeep:   pod.PodsWithConfig{toKeep1, toKeep1},
+				ToCreate: PodsToCreate{toCreate1, toCreate1},
+				ToDelete: PodsToDelete{toDelete1, toDelete1, toDelete1},
+			},
+			want2: Changes{
+				ToKeep:   pod.PodsWithConfig{toKeep2},
+				ToCreate: PodsToCreate{toCreate2},
+				ToDelete: PodsToDelete{toDelete2, toDelete2},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got1, got2 := tt.changes.Partition(tt.selector)
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Changes.Partition() got = %v, want %v", got1, tt.want1)
+			}
+			if !reflect.DeepEqual(got2, tt.want2) {
+				t.Errorf("Changes.Partition() got1 = %v, want %v", got2, tt.want2)
+			}
 		})
 	}
 }

@@ -92,11 +92,13 @@ func mutableCalculateChanges(
 		})
 	}
 	// remaining actual pods should be deleted
-	changes.ToDelete = actualPods
+	for _, p := range actualPods {
+		changes.ToDelete = append(changes.ToDelete, PodToDelete{PodWithConfig: p, ReusePVC: false})
+	}
 
 	// sort changes for idempotent processing
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
-	sort.SliceStable(changes.ToDelete, sortPodByCreationTimestampAsc(changes.ToDelete))
+	sort.SliceStable(changes.ToDelete, sortPodtoDeleteByCreationTimestampAsc(changes.ToDelete))
 
 	return changes, nil
 }

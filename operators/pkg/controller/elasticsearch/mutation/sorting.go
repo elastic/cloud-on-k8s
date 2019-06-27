@@ -17,7 +17,7 @@ import (
 func sortPodsByTerminalFirstMasterNodeLastAndCreationTimestampAsc(
 	terminalPods map[string]corev1.Pod,
 	masterNode *corev1.Pod,
-	pods pod.PodsWithConfig,
+	pods PodsToDelete,
 ) func(i, j int) bool {
 	return func(i, j int) bool {
 		iPod := pods[i].Pod
@@ -68,7 +68,16 @@ func sortPodsToCreateByMasterNodesFirstThenNameAsc(podsToCreate []PodToCreate) f
 	}
 }
 
+func creationTimestampIsBefore(podi, podj corev1.Pod) bool {
+	return podi.CreationTimestamp.Before(&podj.CreationTimestamp)
+}
+
 // sortPodByCreationTimestampAsc is a sort function for a list of pods
 func sortPodByCreationTimestampAsc(pods pod.PodsWithConfig) func(i, j int) bool {
-	return func(i, j int) bool { return pods[i].Pod.CreationTimestamp.Before(&pods[j].Pod.CreationTimestamp) }
+	return func(i, j int) bool { return creationTimestampIsBefore(pods[i].Pod, pods[j].Pod) }
+}
+
+// sortPodtoDeleteByCreationTimestampAsc is a sort function for a list of pods
+func sortPodtoDeleteByCreationTimestampAsc(pods PodsToDelete) func(i, j int) bool {
+	return func(i, j int) bool { return creationTimestampIsBefore(pods[i].Pod, pods[j].Pod) }
 }

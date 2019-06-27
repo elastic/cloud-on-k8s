@@ -31,7 +31,7 @@ func TestPerformableChanges_HasChanges(t *testing.T) {
 		},
 		{
 			name:    "deletion",
-			changes: PerformableChanges{Changes: Changes{ToDelete: pod.PodsWithConfig{{}}}},
+			changes: PerformableChanges{Changes: Changes{ToDelete: PodsToDelete{{}}}},
 			want:    true,
 		},
 		{
@@ -39,7 +39,7 @@ func TestPerformableChanges_HasChanges(t *testing.T) {
 			changes: PerformableChanges{
 				Changes: Changes{
 					ToCreate: []PodToCreate{{}},
-					ToDelete: pod.PodsWithConfig{{}},
+					ToDelete: PodsToDelete{{}},
 				},
 			},
 			want: true,
@@ -75,6 +75,16 @@ func concatPodList(podLists ...pod.PodsWithConfig) pod.PodsWithConfig {
 	res := make(pod.PodsWithConfig, 0)
 	for _, pods := range podLists {
 		res = append(res, pods...)
+	}
+	return res
+}
+
+func podsToDelete(fromPods ...pod.PodWithConfig) PodsToDelete {
+	res := make(PodsToDelete, 0, len(fromPods))
+	for _, p := range fromPods {
+		res = append(res, PodToDelete{
+			PodWithConfig: p,
+		})
 	}
 	return res
 }
@@ -143,7 +153,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				strategy: v1alpha1.UpdateStrategy{},
 				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsB[:2], podsC[:2]).Pods()),
@@ -151,7 +161,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			},
 			want: initializePerformableChanges(PerformableChanges{
 				Changes: Changes{
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 			}),
 		},
@@ -161,7 +171,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				strategy: v1alpha1.UpdateStrategy{},
 				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2]).Pods()),
@@ -170,7 +180,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			},
 			want: initializePerformableChanges(PerformableChanges{
 				Changes: Changes{
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 			}),
 		},
@@ -180,7 +190,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				strategy: updateStrategyWithZonesAsGroups,
 				allPodChanges: Changes{
 					ToKeep:   concatPodList(podsA[:2], podsC[:2]),
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2]).Pods()),
@@ -189,7 +199,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			},
 			want: initializePerformableChanges(PerformableChanges{
 				Changes: Changes{
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 			}),
 		},
@@ -200,7 +210,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4]).Pods()),
 					ToKeep:   concatPodList(),
-					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
+					ToDelete: podsToDelete(concatPodList(podsA[:2], podsB[:2], podsC[:2])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2]).Pods()),
@@ -213,7 +223,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 					// budget trying to rotate nodes in A
 					// but since no groups where specified, we have no knowledge of a "zone B"
 					ToCreate: []PodToCreate{{Pod: podsA[2].Pod}, {Pod: podsA[3].Pod}},
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 				MaxSurgeGroups:       []string{UnmatchedGroupName, AllGroupName},
 				MaxUnavailableGroups: []string{UnmatchedGroupName, AllGroupName},
@@ -226,7 +236,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(podsA[2:4], podsB[2:4], podsC[2:4]).Pods()),
 					ToKeep:   concatPodList(),
-					ToDelete: concatPodList(podsA[:2], podsB[:2], podsC[:2]),
+					ToDelete: podsToDelete(concatPodList(podsA[:2], podsB[:2], podsC[:2])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(podsA[:2], podsC[:2]).Pods()),
@@ -238,7 +248,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 					// we might have expected podsA[2] be be created here, but it can't be. why?
 					// trivia: which phase does a terminal pod (failed/succeeded) go to when a delete issued?
 					ToCreate: []PodToCreate{{Pod: podsB[2].Pod}, {Pod: podsB[3].Pod}},
-					ToDelete: concatPodList(podsB[:2]),
+					ToDelete: podsToDelete(concatPodList(podsB[:2])...),
 				},
 
 				MaxSurgeGroups:       []string{indexedGroupName(0), indexedGroupName(2), AllGroupName},
@@ -251,7 +261,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				strategy: updateStrategyWithZonesAsGroups,
 				allPodChanges: Changes{
 					ToKeep:   concatPodList(),
-					ToDelete: concatPodList(masterPods, dataPods),
+					ToDelete: podsToDelete(concatPodList(masterPods, dataPods)...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterPods, dataPods).Pods()),
@@ -259,7 +269,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 			},
 			want: initializePerformableChanges(PerformableChanges{
 				Changes: Changes{
-					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
+					ToDelete: podsToDelete(concatPodList(masterPods[:1], dataPods[:1])...),
 				},
 				RestrictedPods: map[string]error{
 					masterPods[1].Pod.Name: ErrNotEnoughMasterEligiblePods,
@@ -274,7 +284,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterPods[:1], dataPods[:1]).Pods()),
 					ToKeep:   concatPodList(),
-					ToDelete: concatPodList(masterDataPods[:1]),
+					ToDelete: podsToDelete(concatPodList(masterDataPods[:1])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterDataPods[:1]).Pods()),
@@ -297,7 +307,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterDataPods[:1]).Pods()),
 					ToKeep:   concatPodList(),
-					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
+					ToDelete: podsToDelete(concatPodList(masterPods[:1], dataPods[:1])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningReady: podListToMap(concatPodList(masterPods[:1], dataPods[:1]).Pods()),
@@ -321,7 +331,7 @@ func TestCalculatePerformableChanges(t *testing.T) {
 				allPodChanges: Changes{
 					ToCreate: podToCreateList(concatPodList(masterDataPods[:1]).Pods()),
 					ToKeep:   concatPodList(masterDataPods[1:]),
-					ToDelete: concatPodList(masterPods[:1], dataPods[:1]),
+					ToDelete: podsToDelete(concatPodList(masterPods[:1], dataPods[:1])...),
 				},
 				allPodsState: initializePodsState(PodsState{
 					RunningJoining: podListToMap(concatPodList(masterDataPods[1:]).Pods()),

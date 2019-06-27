@@ -120,7 +120,7 @@ func TestCalculateChanges(t *testing.T) {
 			},
 			want: Changes{
 				ToKeep:   pod.PodsWithConfig{},
-				ToDelete: pod.PodsWithConfig{},
+				ToDelete: PodsToDelete{},
 				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtxV2}, {PodSpecCtx: defaultPodSpecCtxV2}, {PodSpecCtx: defaultPodSpecCtxV2}},
 			},
 		},
@@ -149,7 +149,7 @@ func TestCalculateChanges(t *testing.T) {
 				expected: []pod.PodSpecContext{},
 				state:    reconcile.ResourcesState{CurrentPods: pod.PodsWithConfig{defaultPodWithConfig, defaultPodWithConfig}},
 			},
-			want: Changes{ToDelete: pod.PodsWithConfig{defaultPodWithConfig, defaultPodWithConfig}},
+			want: Changes{ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig}, {PodWithConfig: defaultPodWithConfig}}},
 		},
 		{
 			name: "1 pod replaced",
@@ -159,7 +159,7 @@ func TestCalculateChanges(t *testing.T) {
 			},
 			want: Changes{
 				ToKeep:   pod.PodsWithConfig{defaultPodWithConfig},
-				ToDelete: pod.PodsWithConfig{defaultPodWithConfig},
+				ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig}},
 				ToCreate: []PodToCreate{{PodSpecCtx: ESPodSpecContext("another-image", defaultCPULimit)}},
 			},
 		},

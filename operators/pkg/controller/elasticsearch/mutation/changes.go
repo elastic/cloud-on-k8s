@@ -16,8 +16,8 @@ import (
 // Changes represents the changes to perform on the Elasticsearch pods
 type Changes struct {
 	ToCreate PodsToCreate
+	ToDelete PodsToDelete
 	ToKeep   pod.PodsWithConfig
-	ToDelete pod.PodsWithConfig
 }
 
 // PodToCreate defines a pod to be created, along with
@@ -40,12 +40,61 @@ func (p PodsToCreate) Pods() []corev1.Pod {
 	return pods
 }
 
+// PodToDelete defines a pod to be deleted, and indicates
+// whether its PVC should be kept around for reuse.
+type PodToDelete struct {
+	pod.PodWithConfig
+	ReusePVC bool
+}
+
+// PodsToDelete is a list of PodToDelete.
+type PodsToDelete []PodToDelete
+
+// Pods is a helper method to retrieve pods only.
+func (p PodsToDelete) Pods() []corev1.Pod {
+	pods := make([]corev1.Pod, len(p))
+	for i, pod := range p {
+		pods[i] = pod.Pod
+	}
+	return pods
+}
+
+// PodsWithConfig is a helper method to retrieve PodsWithConfig only.
+func (p PodsToDelete) PodsWithConfig() pod.PodsWithConfig {
+	pods := make([]pod.PodWithConfig, len(p))
+	for i, pod := range p {
+		pods[i] = pod.PodWithConfig
+	}
+	return pods
+}
+
+// filterPVCReuse returns a filtered list of pods to delete according to the given bool.
+func (p PodsToDelete) filterPVCReuse(withPVCReuse bool) PodsToDelete {
+	filtered := make(PodsToDelete, 0, len(p))
+	for _, toDelete := range p {
+		if toDelete.ReusePVC == withPVCReuse {
+			filtered = append(filtered, toDelete)
+		}
+	}
+	return filtered
+}
+
+// WithPVCReuse returns a filtered list of pods to delete, marked for PVC reuse.
+func (p PodsToDelete) WithPVCReuse() PodsToDelete {
+	return p.filterPVCReuse(true)
+}
+
+// WithPVCReuse returns a filtered list of pods to delete, not marked for PVC reuse..
+func (p PodsToDelete) WithoutPVCReuse() PodsToDelete {
+	return p.filterPVCReuse(false)
+}
+
 // EmptyChanges creates an empty Changes with empty arrays (not nil)
 func EmptyChanges() Changes {
 	return Changes{
 		ToCreate: []PodToCreate{},
 		ToKeep:   pod.PodsWithConfig{},
-		ToDelete: pod.PodsWithConfig{},
+		ToDelete: []PodToDelete{},
 	}
 }
 
@@ -79,7 +128,7 @@ func (c Changes) Copy() Changes {
 	res := Changes{
 		ToCreate: append([]PodToCreate{}, c.ToCreate...),
 		ToKeep:   append(pod.PodsWithConfig{}, c.ToKeep...),
-		ToDelete: append(pod.PodsWithConfig{}, c.ToDelete...),
+		ToDelete: append([]PodToDelete{}, c.ToDelete...),
 	}
 	return res
 }
@@ -128,8 +177,20 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 	matchingChanges := EmptyChanges()
 	remainingChanges := EmptyChanges()
 
-	matchingChanges.ToKeep, remainingChanges.ToKeep = partitionPodsBySelector(selector, c.ToKeep)
-	matchingChanges.ToDelete, remainingChanges.ToDelete = partitionPodsBySelector(selector, c.ToDelete)
+	for _, toKeep := range c.ToKeep {
+		if selector.Matches(labels.Set(toKeep.Pod.Labels)) {
+			matchingChanges.ToKeep = append(matchingChanges.ToKeep, toKeep)
+		} else {
+			remainingChanges.ToKeep = append(remainingChanges.ToKeep, toKeep)
+		}
+	}
+	for _, toDelete := range c.ToDelete {
+		if selector.Matches(labels.Set(toDelete.Pod.Labels)) {
+			matchingChanges.ToDelete = append(matchingChanges.ToDelete, toDelete)
+		} else {
+			remainingChanges.ToDelete = append(remainingChanges.ToDelete, toDelete)
+		}
+	}
 	for _, toCreate := range c.ToCreate {
 		if selector.Matches(labels.Set(toCreate.Pod.Labels)) {
 			matchingChanges.ToCreate = append(matchingChanges.ToCreate, toCreate)
@@ -139,19 +200,4 @@ func (c Changes) Partition(selector labels.Selector) (Changes, Changes) {
 	}
 
 	return matchingChanges, remainingChanges
-}
-
-// partitionPodsBySelector partitions pods into two sets: one for pods matching the selector and one for the rest. it
-// guarantees that the order of the pods are not changed.
-func partitionPodsBySelector(selector labels.Selector, pods pod.PodsWithConfig) (pod.PodsWithConfig, pod.PodsWithConfig) {
-	matchingPods := make(pod.PodsWithConfig, 0, len(pods))
-	remainingPods := make(pod.PodsWithConfig, 0, len(pods))
-	for _, p := range pods {
-		if selector.Matches(labels.Set(p.Pod.Labels)) {
-			matchingPods = append(matchingPods, p)
-		} else {
-			remainingPods = append(remainingPods, p)
-		}
-	}
-	return matchingPods, remainingPods
 }

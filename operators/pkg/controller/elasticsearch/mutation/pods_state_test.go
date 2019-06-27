@@ -172,7 +172,7 @@ func TestPodsState_Partition(t *testing.T) {
 			},
 			args: args{
 				changes: Changes{
-					ToDelete: pod.PodsWithConfig{namedPod("2")},
+					ToDelete: PodsToDelete{{PodWithConfig: namedPod("2")}},
 					ToKeep:   pod.PodsWithConfig{namedPod("3")},
 					// expecting this to be ignored, and just kept in the remainder.
 					ToCreate: []PodToCreate{{Pod: namedPod("4").Pod}},
