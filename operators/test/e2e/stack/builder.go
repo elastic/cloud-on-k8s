@@ -101,6 +101,11 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
+func (b Builder) WithUpdateStrategy(updateStrategy estype.UpdateStrategy) Builder {
+	b.Elasticsearch.Spec.UpdateStrategy = updateStrategy
+	return b
+}
+
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {
@@ -152,6 +157,24 @@ func (b Builder) WithESSecureSettings(secretName string) Builder {
 		SecretName: secretName,
 	}
 	return b
+}
+
+func (b Builder) WithESConfig(config map[string]interface{}) Builder {
+	for i, nodes := range b.Elasticsearch.Spec.Nodes {
+		newCfg := mergeConfig(nodes.Config, &commonv1alpha1.Config{Data: config})
+		b.Elasticsearch.Spec.Nodes[i].Config = newCfg
+	}
+	return b
+}
+
+func mergeConfig(c1, c2 *commonv1alpha1.Config) *commonv1alpha1.Config {
+	if c1 == nil || len(c1.Data) == 0 {
+		return c2
+	}
+	for k, v := range c2.Data {
+		c1.Data[k] = v
+	}
+	return c1
 }
 
 func (b Builder) WithEmptyDirVolumes() Builder {

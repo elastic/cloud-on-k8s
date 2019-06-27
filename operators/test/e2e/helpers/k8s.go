@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
@@ -319,4 +320,13 @@ func GetFirstPodMatching(pods []corev1.Pod, predicate func(pod corev1.Pod) bool)
 		}
 	}
 	return corev1.Pod{}, false
+}
+
+func GetESDataVolumeClaimName(pod corev1.Pod) string {
+	for _, v := range pod.Spec.Volumes {
+		if v.Name == volume.ElasticsearchDataVolumeName && v.PersistentVolumeClaim != nil {
+			return v.PersistentVolumeClaim.ClaimName
+		}
+	}
+	return ""
 }
