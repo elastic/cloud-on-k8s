@@ -108,9 +108,11 @@ type ClusterState struct {
 	Version      int                         `json:"version"`
 	MasterNode   string                      `json:"master_node"`
 	Nodes        map[string]ClusterStateNode `json:"nodes"`
-	RoutingTable struct {
-		Indices map[string]Shards `json:"indices"`
-	} `json:"routing_table"`
+	RoutingTable RoutingTable                `json:"routing_table"`
+}
+
+type RoutingTable struct {
+	Indices map[string]Shards `json:"indices"`
 }
 
 // IsEmpty returns true if this is an empty struct without data.

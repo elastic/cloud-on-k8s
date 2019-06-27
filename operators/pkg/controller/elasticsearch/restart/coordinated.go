@@ -117,7 +117,7 @@ func (c *CoordinatedRestart) scheduleStop() Step {
 		initPhase: PhaseSchedule,
 		endPhase:  PhaseStop,
 		do: func(pods []corev1.Pod) (bool, error) {
-			if err := prepareClusterForStop(c.EsClient); err != nil {
+			if err := PrepareClusterForNodesStop(c.EsClient); err != nil {
 				// We consider this call best-effort: ES endpoint might not be reachable.
 				// Let's continue.
 				log.Error(err, "Failed to prepare the cluster for full restart (might not be reachable). Continuing.")

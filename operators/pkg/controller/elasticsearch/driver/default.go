@@ -5,10 +5,10 @@
 package driver
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,7 +25,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
@@ -92,7 +91,7 @@ type defaultDriver struct {
 		c k8s.Client,
 		esClient esclient.Client,
 		allPods []corev1.Pod,
-		performableChanges *mutation.PerformableChanges,
+		podsToCreate mutation.PodsToCreate,
 		reconcileState *reconcile.State,
 	) (bool, error)
 
@@ -236,7 +235,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, es.Spec.UpdateStrategy.ResolveChangeBudget().AllowsPVCReuse())
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -324,7 +323,7 @@ func (d *defaultDriver) Reconcile(
 			d.Client,
 			esClient,
 			resourcesState.AllPods,
-			performableChanges,
+			performableChanges.ToCreate,
 			reconcileState,
 		)
 
@@ -363,24 +362,39 @@ func (d *defaultDriver) Reconcile(
 	// passed this point, any pods resource listing should check expectations first
 
 	if !esReachable {
-		// We cannot manipulate ES allocation exclude settings if the ES cluster
-		// cannot be reached, hence we cannot delete pods.
-		// Probably it was just created and is not ready yet.
+		// We cannot manipulate ES allocation settings if the ES cluster cannot be reached,
+		// hence we cannot delete pods. Probably the cluster was just created and is not ready yet.
 		// Let's retry in a while.
-		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.")
-
+		log.Info("ES external service not ready yet for any HTTP call. Requeuing.")
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
-
 		return results.WithResult(defaultRequeue)
 	}
 
+	if len(podsState.RunningReady) >= int(es.Spec.NodeCount()) {
+		// Current number of nodes match the expected number of nodes.
+		// There may still be a cluster mutation in progress, but chances are nodes
+		// that were shut down for replacement or restart are back in the cluster.
+		// Make sure shards allocation is enabled, so the current cluster mutation
+		// (if there is one) can progress.
+		log.V(1).Info("Enabling shards allocation")
+		// TODO: optimize by doing the call only if shards allocation is currently disabled
+		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
+		defer cancel()
+		if err := esClient.EnableShardAllocation(ctx); err != nil {
+			return results.WithError(err)
+		}
+	} else {
+		// Make sure this eventually gets reconciled.
+		results.WithResult(defaultRequeue)
+	}
+
+	// Update zen2 settings, to account for master nodes that will (or were) deleted.
 	if d.zen2SettingsUpdater != nil {
-		// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
 		if err := d.zen2SettingsUpdater(
 			esClient,
 			*min,
-			*changes,
 			*performableChanges,
+			podsState,
 		); err != nil {
 			return results.WithResult(defaultRequeue).WithError(err)
 		}
@@ -392,28 +406,24 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete.Pods())
-	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
-		return results.WithError(errors.Wrap(err, "error during migrate data"))
+	deletionHandler := PodDeletionHandler{
+		es:                 es,
+		performableChanges: performableChanges,
+		results:            results,
+		observedState:      observedState,
+		reconcileState:     reconcileState,
+		esClient:           esClient,
+		resourcesState:     resourcesState,
+		defaultDriver:      d,
 	}
-
-	// Shrink clusters by deleting deprecated pods
-	if err = d.attemptPodsDeletion(
-		performableChanges,
-		reconcileState,
-		resourcesState,
-		observedState,
-		results,
-		esClient,
-		es,
-	); err != nil {
+	if err := deletionHandler.HandleDeletions(); err != nil {
 		return results.WithError(err)
 	}
+
 	// past this point, any pods resource listing should check expectations first
 
 	if changes.HasChanges() && !performableChanges.HasChanges() {
-		// if there are changes we'd like to perform, but none that were performable, we try again later
+		// if there are performableChanges we'd like to perform, but none that were performable, we try again later
 		results.WithResult(defaultRequeue)
 	}
 
@@ -422,85 +432,13 @@ func (d *defaultDriver) Reconcile(
 	return results
 }
 
-// attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
-func (d *defaultDriver) attemptPodsDeletion(
-	changes *mutation.PerformableChanges,
-	reconcileState *reconcile.State,
-	resourcesState *reconcile.ResourcesState,
-	observedState observer.State,
-	results *reconciler.Results,
-	esClient esclient.Client,
-	elasticsearch v1alpha1.Elasticsearch,
-) error {
-	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
-	copy(newState, resourcesState.CurrentPods.Pods())
-	for _, pod := range changes.ToDelete.Pods() {
-		newState = removePodFromList(newState, pod)
-		preDelete := func() error {
-			if d.zen1SettingsUpdater != nil {
-				requeue, err := d.zen1SettingsUpdater(
-					elasticsearch,
-					d.Client,
-					esClient,
-					newState,
-					changes,
-					reconcileState)
-
-				if err != nil {
-					return err
-				}
-
-				if requeue {
-					results.WithResult(defaultRequeue)
-				}
-			}
-			return nil
-		}
-
-		// do not delete a pod or expect a deletion if a data migration is in progress
-		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
-		if isMigratingData {
-			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
-			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
-			results.WithResult(defaultRequeue)
-			continue
-		}
-
-		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
-		d.PodsExpectations.ExpectDeletion(namespacedName)
-		result, err := deleteElasticsearchPod(
-			d.Client,
-			reconcileState,
-			*resourcesState,
-			pod,
-			preDelete,
-		)
-		if err != nil {
-			// pod was not deleted, cancel our expectation by marking it observed
-			d.PodsExpectations.DeletionObserved(namespacedName)
-			return err
-		}
-		results.WithResult(result)
-	}
-	return nil
-}
-
-// removePodFromList removes a single pod from the list, matching by pod name.
-func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
-	for i, p := range pods {
-		if p.Name == pod.Name {
-			return append(pods[:i], pods[i+1:]...)
-		}
-	}
-	return pods
-}
-
-// calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the
+// calculateChanges calculates the performableChanges we'd need to perform to go from the current cluster configuration to the
 // desired one.
 func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
+	allowPVCReuse bool,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
@@ -524,6 +462,7 @@ func (d *defaultDriver) calculateChanges(
 		func(ctx pod.PodSpecContext) corev1.Pod {
 			return esversion.NewPod(es, ctx)
 		},
+		allowPVCReuse,
 	)
 	if err != nil {
 		return nil, err
