@@ -17,6 +17,6 @@ func PublicSecretName(namer name.Namer, ownerName string, caType CAType) string 
 	return namer.Suffix(ownerName, string(caType), certsPublicSecretName)
 }
 
-func HTTPCertsInternalSecretName(namer name.Namer, esName string) string {
-	return namer.Suffix(esName, string(HTTPCAType), certsInternalSecretName)
+func HTTPCertsInternalSecretName(namer name.Namer, ownerName string) string {
+	return namer.Suffix(ownerName, string(HTTPCAType), certsInternalSecretName)
 }

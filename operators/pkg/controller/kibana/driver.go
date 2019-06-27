@@ -128,6 +128,14 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			esCertsVolume.VolumeMount(), configVolume.VolumeMount())
 	}
 
+	if kb.Spec.HTTP.TLS.Enabled() {
+		httpCertsVolume := kbcerts.HTTPCertSecretVolume(*kb)
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, httpCertsVolume.Volume())
+		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, httpCertsVolume.VolumeMount())
+		// TODO include in checksum
+	}
+
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
 	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)

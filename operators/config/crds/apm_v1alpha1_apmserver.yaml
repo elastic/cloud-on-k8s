@@ -84,6 +84,10 @@ spec:
                       description: SelfSignedCertificate define options to apply to
                         self-signed certificate managed by the operator.
                       properties:
+                        disabled:
+                          description: Disabled turns off the provisioning of self-signed
+                            HTTP TLS certificates.
+                          type: boolean
                         subjectAltNames:
                           description: 'SubjectAlternativeNames is a list of SANs
                             to include in the HTTP TLS certificates. For example:
