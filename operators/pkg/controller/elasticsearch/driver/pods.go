@@ -189,23 +189,26 @@ func deleteElasticsearchPod(
 	resourcesState esreconcile.ResourcesState,
 	pod corev1.Pod,
 	preDelete func() error,
+	deletePVC bool,
 ) (reconcile.Result, error) {
 
-	// delete all PVCs associated with this pod
-	// TODO: perhaps this is better to reconcile after the fact?
-	for _, volume := range pod.Spec.Volumes {
-		if volume.PersistentVolumeClaim == nil {
-			continue
-		}
+	if deletePVC {
+		// delete all PVCs associated with this pod
+		// TODO: perhaps this is better to reconcile after the fact?
+		for _, volume := range pod.Spec.Volumes {
+			if volume.PersistentVolumeClaim == nil {
+				continue
+			}
 
-		// TODO: perhaps not assuming all PVCs will be managed by us? and maybe we should not categorically delete?
-		pvc, err := resourcesState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+			// TODO: perhaps not assuming all PVCs will be managed by us? and maybe we should not categorically delete?
+			pvc, err := resourcesState.FindPVCByName(volume.PersistentVolumeClaim.ClaimName)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 
-		if err := c.Delete(&pvc); err != nil && !apierrors.IsNotFound(err) {
-			return reconcile.Result{}, err
+			if err := c.Delete(&pvc); err != nil && !apierrors.IsNotFound(err) {
+				return reconcile.Result{}, err
+			}
 		}
 	}
 

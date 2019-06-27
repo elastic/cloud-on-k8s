@@ -246,9 +246,10 @@ func (d *defaultDriver) Reconcile(
 		"to_create:", len(changes.ToCreate),
 		"to_keep:", len(changes.ToKeep),
 		"to_delete:", len(changes.ToDelete),
+		"pvc_reuse:", changes.PVCReuseCount(),
 	)
 
-	// restart ES processes that need to be restarted before going on with other changes
+	// restart ES processes that need to be restarted before going on with other performableChanges
 	done, err := restart.HandleESRestarts(
 		restart.RestartContext{
 			Cluster:        es,
@@ -267,16 +268,17 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	// figure out what changes we can perform right now
+	// figure out what performableChanges we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
 	if err != nil {
 		return results.WithError(err)
 	}
 
 	log.Info(
-		"Calculated performable changes",
+		"Calculated performable changes for this reconciliation",
 		"schedule_for_creation_count", len(performableChanges.ToCreate),
 		"schedule_for_deletion_count", len(performableChanges.ToDelete),
+		"pvc_reuse_count", performableChanges.PVCReuseCount(),
 	)
 
 	results.Apply(

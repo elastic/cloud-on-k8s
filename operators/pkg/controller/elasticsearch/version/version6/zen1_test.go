@@ -103,12 +103,12 @@ func TestUpdateZen1Discovery(t *testing.T) {
 		},
 	}
 	type args struct {
-		cluster            v1alpha1.Elasticsearch
-		c                  k8s.Client
-		esClient           client.Client
-		allPods            []corev1.Pod
-		performableChanges *mutation.PerformableChanges
-		state              *reconcile.State
+		cluster  v1alpha1.Elasticsearch
+		c        k8s.Client
+		esClient client.Client
+		allPods  []corev1.Pod
+		toCreate mutation.PodsToCreate
+		state    *reconcile.State
 	}
 	tests := []struct {
 		name                      string
@@ -122,15 +122,11 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			args: args{
 				esClient: fakeEsClient(true), // second master is not created, raise an error if API is called
 				c:        k8s.WrapClient(fake.NewFakeClientWithScheme(s, podConfig("master1", "ns1"))),
-				performableChanges: &mutation.PerformableChanges{
-					Changes: mutation.Changes{
-						ToCreate: []mutation.PodToCreate{
-							{
-								Pod: newMasterPod("master2", "ns1"),
-								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
-								},
-							},
+				toCreate: []mutation.PodToCreate{
+					{
+						Pod: newMasterPod("master2", "ns1"),
+						PodSpecCtx: pod.PodSpecContext{
+							Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 						},
 					},
 				},
@@ -155,15 +151,11 @@ func TestUpdateZen1Discovery(t *testing.T) {
 					podConfig("master4", "ns1"),
 				),
 				),
-				performableChanges: &mutation.PerformableChanges{
-					Changes: mutation.Changes{
-						ToCreate: []mutation.PodToCreate{
-							{
-								Pod: newMasterPod("master5", "ns1"),
-								PodSpecCtx: pod.PodSpecContext{
-									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
-								},
-							},
+				toCreate: []mutation.PodToCreate{
+					{
+						Pod: newMasterPod("master5", "ns1"),
+						PodSpecCtx: pod.PodSpecContext{
+							Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 						},
 					},
 				},
@@ -187,7 +179,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 				tt.args.c,
 				tt.args.esClient,
 				tt.args.allPods,
-				tt.args.performableChanges,
+				tt.args.toCreate,
 				tt.args.state,
 			)
 			if (err != nil) != tt.wantErr {
@@ -198,7 +190,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 				t.Errorf("UpdateZen1Discovery() = %v, want %v", got, tt.want)
 			}
 			// Check the mmn in the new pods
-			for _, newPod := range tt.args.performableChanges.ToCreate {
+			for _, newPod := range tt.args.toCreate {
 				expectedConfiguration :=
 					common.MustNewSingleValue(settings.DiscoveryZenMinimumMasterNodes, tt.expectedMinimumMasterNode)
 				if diff := newPod.PodSpecCtx.Config.Diff(expectedConfiguration, nil); diff != nil {

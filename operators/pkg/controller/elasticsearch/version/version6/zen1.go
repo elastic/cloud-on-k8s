@@ -33,7 +33,7 @@ func UpdateZen1Discovery(
 	c k8s.Client,
 	esClient client.Client,
 	allPods []corev1.Pod,
-	performableChanges *mutation.PerformableChanges,
+	podsToCreate mutation.PodsToCreate,
 	reconcileState *reconcile.State,
 ) (bool, error) {
 	// Get current master nodes count
@@ -51,7 +51,7 @@ func UpdateZen1Discovery(
 
 	nextMasterCount := currentMasterCount
 	// Add masters that must be created by this reconciliation loop
-	for _, pod := range performableChanges.ToCreate.Pods() {
+	for _, pod := range podsToCreate.Pods() {
 		if label.IsMasterNode(pod) {
 			nextMasterCount++
 		}
@@ -85,7 +85,7 @@ func UpdateZen1Discovery(
 	}
 
 	// Update the current value for each new pod that is about to be created
-	for _, change := range performableChanges.ToCreate {
+	for _, change := range podsToCreate {
 		// Update the minimum_master_nodes before pod creation in order to avoid split brain situation.
 		err := change.PodSpecCtx.Config.MergeWith(
 			common.MustNewSingleValue(

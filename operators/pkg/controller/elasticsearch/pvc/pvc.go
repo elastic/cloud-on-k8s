@@ -104,15 +104,19 @@ func (o *OrphanedPersistentVolumeClaims) GetOrphanedVolumeClaim(
 	podLabels map[string]string,
 	claim *corev1.PersistentVolumeClaim,
 ) *corev1.PersistentVolumeClaim {
+
+	log.V(1).Info("Orphaned PVCs", "count", len(o.orphanedPersistentVolumeClaims))
 	for i := 0; i < len(o.orphanedPersistentVolumeClaims); i++ {
 		candidate := o.orphanedPersistentVolumeClaims[i]
 		if compareLabels(podLabels, candidate.Labels) &&
 			compareStorageClass(claim, &candidate) &&
 			compareResources(claim, &candidate) {
+			log.Info("Found orphaned PVC to reuse", "name", candidate.Name)
 			o.orphanedPersistentVolumeClaims = append(o.orphanedPersistentVolumeClaims[:i], o.orphanedPersistentVolumeClaims[i+1:]...)
 			return &candidate
 		}
 	}
+	log.V(1).Info("No orphaned PVC match")
 	return nil
 }
 
