@@ -22,37 +22,64 @@ var (
 func UpdateZen2Settings(
 	esClient esclient.Client,
 	minVersion version.Version,
-	changes mutation.Changes,
 	performableChanges mutation.PerformableChanges,
+	podsState mutation.PodsState,
 ) error {
+	// only applies to ES v7+
 	if !minVersion.IsSameOrAfter(version.MustParse("7.0.0")) {
 		log.Info("not setting zen2 exclusions", "min version in cluster", minVersion)
 		return nil
 	}
-	if !changes.HasChanges() {
+
+	// Voting config exclusions allow master nodes to be excluded from voting when they are
+	// going to be removed from the cluster.
+	// This is necessary for cases where more than half of the master nodes are deleted "too quickly"
+	// (the actual time window being hard to determine).
+	// For safety, we add each master node we delete to that list, prior to deletion.
+	// Once the deletion is over, we need to remove corresponding nodes from that list.
+	// This is particularly important during rolling upgrades with PVC reuse: we want to make sure
+	// the replacing pod is allowed to vote.
+
+	// If there are no pods currently being deleted, clear the list of voting exclusions.
+	// Our cache of nodes being deleted is up-to-date thanks to pods expectations.
+	mastersDeletionInProgress := false
+	for _, p := range podsState.Deleting {
+		if label.IsMasterNode(p) {
+			mastersDeletionInProgress = true
+		}
+	}
+	if !mastersDeletionInProgress {
 		log.Info("Ensuring no voting exclusions are set")
 		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 		defer cancel()
+		// TODO: optimize by doing the call only if necessary.  /!\ must make sure to clear if should be cleared
+		//  during a rolling upgrade. Working with a stale cache showing a (wrong) empty list, leading us to
+		//  skip the call, would be dangerous.
 		if err := esClient.DeleteVotingConfigExclusions(ctx, false); err != nil {
 			return err
 		}
-		return nil
+	} else {
+		log.V(1).Info("Waiting for pods deletion to be over before updating voting exclusions")
 	}
 
-	leavingMasters := make([]string, 0)
-	for _, pod := range performableChanges.ToDelete {
-		if label.IsMasterNode(pod.Pod) {
-			leavingMasters = append(leavingMasters, pod.Pod.Name)
+	// Exclude master nodes to delete from voting.
+	leavingMasters := make([]string, 0, len(performableChanges.ToDelete))
+	for _, p := range performableChanges.ToDelete {
+		if label.IsMasterNode(p.Pod) {
+			leavingMasters = append(leavingMasters, p.Pod.Name)
 		}
 	}
-	if len(leavingMasters) != 0 {
-		// TODO: only update if required and remove old exclusions as well
+	if len(leavingMasters) > 0 {
 		log.Info("Setting voting config exclusions", "excluding", leavingMasters)
 		ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 		defer cancel()
+		// TODO: optimize by doing the call only if necessary. /!\ must make sure to add if should be added.
+		//  Working with a stale cache showing (wrongly) the node already in the list, leading us to skip the call,
+		//  would be dangerous.
 		if err := esClient.AddVotingConfigExclusions(ctx, leavingMasters, ""); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

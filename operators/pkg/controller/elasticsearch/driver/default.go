@@ -96,13 +96,13 @@ type defaultDriver struct {
 		reconcileState *reconcile.State,
 	) (bool, error)
 
-	// zen2SettingsUpdater updates the zen2 settings for the current changes.
+	// zen2SettingsUpdater updates the zen2 settings for the current performableChanges.
 	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
 	zen2SettingsUpdater func(
 		esClient esclient.Client,
 		minVersion version.Version,
-		changes mutation.Changes,
 		performableChanges mutation.PerformableChanges,
+		podsState mutation.PodsState,
 	) error
 
 	// TODO: implement
