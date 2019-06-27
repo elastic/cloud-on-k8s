@@ -29,7 +29,7 @@ func (c *clientV6) UpdateSettings(ctx context.Context, settings Settings) error 
 }
 
 func (c *clientV6) ExcludeFromShardAllocation(ctx context.Context, nodes string) error {
-	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes, Enable: "all"}}
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{ExcludeName: nodes}}
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 

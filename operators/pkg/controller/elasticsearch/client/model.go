@@ -187,8 +187,8 @@ func (s Shard) Key() string {
 
 // AllocationSettings model a subset of the supported attributes for dynamic Elasticsearch cluster settings.
 type AllocationSettings struct {
-	ExcludeName string `json:"cluster.routing.allocation.exclude._name"`
-	Enable      string `json:"cluster.routing.allocation.enable"`
+	ExcludeName string `json:"cluster.routing.allocation.exclude._name,omitempty"`
+	Enable      string `json:"cluster.routing.allocation.enable,omitempty"`
 } // TODO awareness settings
 
 // ClusterRoutingAllocation models a subset of transient allocation settings for an Elasticsearch cluster.
