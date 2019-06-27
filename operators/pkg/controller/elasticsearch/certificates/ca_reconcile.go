@@ -37,7 +37,8 @@ func Reconcile(
 	watches watches.DynamicWatches,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
-	caCertValidity, caCertRotateBefore, certValidity, certRotateBefore time.Duration,
+	caRotation certificates.RotationParams,
+	certRotation certificates.RotationParams,
 ) (*CertificateResources, *reconciler.Results) {
 	results := &reconciler.Results{}
 
@@ -50,8 +51,7 @@ func Reconcile(
 		&es,
 		labels,
 		certificates.HTTPCAType,
-		caCertValidity,
-		caCertRotateBefore,
+		caRotation,
 	)
 	if err != nil {
 		return nil, results.WithError(err)
@@ -59,7 +59,7 @@ func Reconcile(
 
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), httpCA.Cert.NotAfter, caCertRotateBefore),
+		RequeueAfter: shouldRequeueIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use
@@ -70,8 +70,7 @@ func Reconcile(
 		es,
 		httpCA,
 		services,
-		caCertValidity,
-		caCertRotateBefore,
+		caRotation,
 	)
 	if err != nil {
 		return nil, results.WithError(err)
@@ -94,15 +93,14 @@ func Reconcile(
 		&es,
 		labels,
 		certificates.TransportCAType,
-		caCertValidity,
-		caCertRotateBefore,
+		caRotation,
 	)
 	if err != nil {
 		return nil, results.WithError(err)
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), transportCA.Cert.NotAfter, caCertRotateBefore),
+		RequeueAfter: shouldRequeueIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// reconcile transport public certs secret:
@@ -118,8 +116,7 @@ func Reconcile(
 		es,
 		services,
 		trustRelationships,
-		certValidity,
-		certRotateBefore,
+		certRotation,
 	)
 	if results.WithResult(result).WithError(err).HasError() {
 		return nil, results

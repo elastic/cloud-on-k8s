@@ -41,8 +41,7 @@ func ReconcileHTTPCertificates(
 	es v1alpha1.Elasticsearch,
 	ca *certificates.CA,
 	services []corev1.Service,
-	certValidity time.Duration,
-	certRotateBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (*CertificatesSecret, error) {
 	customCertificates, err := GetCustomCertificates(c, es)
 	if err != nil {
@@ -54,7 +53,7 @@ func ReconcileHTTPCertificates(
 	}
 
 	internalCerts, err := reconcileHTTPInternalCertificatesSecret(
-		c, scheme, es, services, customCertificates, ca, certValidity, certRotateBefore,
+		c, scheme, es, services, customCertificates, ca, rotationParams,
 	)
 	if err != nil {
 		return nil, err
@@ -71,8 +70,7 @@ func reconcileHTTPInternalCertificatesSecret(
 	svcs []corev1.Service,
 	customCertificates *CertificatesSecret,
 	ca *certificates.CA,
-	certValidity time.Duration,
-	certReconcileBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (*CertificatesSecret, error) {
 	secret := corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
@@ -120,7 +118,7 @@ func reconcileHTTPInternalCertificatesSecret(
 		}
 	} else {
 		selfSignedNeedsUpdate, err := ensureInternalSelfSignedCertificateSecretContents(
-			&secret, es, svcs, ca, certValidity, certReconcileBefore,
+			&secret, es, svcs, ca, rotationParams,
 		)
 		if err != nil {
 			return nil, err
@@ -155,8 +153,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	es v1alpha1.Elasticsearch,
 	svcs []corev1.Service,
 	ca *certificates.CA,
-	certValidity time.Duration,
-	certReconcileBefore time.Duration,
+	rotationParam certificates.RotationParams,
 ) (bool, error) {
 	secretWasChanged := false
 
@@ -186,7 +183,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	}
 
 	// check if the existing cert should be re-issued
-	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, certReconcileBefore) {
+	if shouldIssueNewHTTPCertificate(es, secret, svcs, ca, rotationParam.RotateBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
 			"secret", secret.Name,
@@ -206,7 +203,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 
 		// validate the csr
 		validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
-			es, svcs, parsedCSR, certValidity,
+			es, svcs, parsedCSR, rotationParam.Validity,
 		)
 		if err != nil {
 			return secretWasChanged, err
