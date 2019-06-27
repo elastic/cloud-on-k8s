@@ -132,9 +132,14 @@ func CheckESPodsRunning(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			if err != nil {
 				return err
 			}
+			// check number of pods
+			if len(pods) != int(stack.Elasticsearch.Spec.NodeCount()) {
+				return fmt.Errorf("expected %d pods, got %d", stack.Elasticsearch.Spec.NodeCount(), len(pods))
+			}
+			// check they are all running
 			for _, p := range pods {
 				if p.Status.Phase != corev1.PodRunning {
-					return fmt.Errorf("Pod not running yet")
+					return fmt.Errorf("pod not running yet")
 				}
 			}
 			return nil
@@ -199,7 +204,7 @@ func CheckESPodsReady(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 			}
 			// check number of pods
 			if len(pods) != int(stack.Elasticsearch.Spec.NodeCount()) {
-				return fmt.Errorf("Expected %d pods, got %d", stack.Elasticsearch.Spec.NodeCount(), len(pods))
+				return fmt.Errorf("expected %d pods, got %d", stack.Elasticsearch.Spec.NodeCount(), len(pods))
 			}
 			// check pod statuses
 		podsLoop:
@@ -210,7 +215,7 @@ func CheckESPodsReady(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 						continue podsLoop
 					}
 				}
-				return fmt.Errorf("Pod %s is not ready yet", p.Name)
+				return fmt.Errorf("pod %s is not ready yet", p.Name)
 			}
 			return nil
 		}),
