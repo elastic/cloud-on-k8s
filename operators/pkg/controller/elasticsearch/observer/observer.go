@@ -93,7 +93,7 @@ func NewObserver(
 	}
 	observer.pmClientFactory = observer.createProcessManagerClient
 
-	log.Info("Creating observer", "cluster", cluster)
+	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "name", cluster.Name)
 	return &observer
 }
 
@@ -140,7 +140,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 		case <-ticker.C:
 			o.retrieveState(ctx)
 		case <-ctx.Done():
-			log.Info("Stopping observer", "cluster", o.cluster)
+			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "name", o.cluster.Name)
 			return
 		}
 	}

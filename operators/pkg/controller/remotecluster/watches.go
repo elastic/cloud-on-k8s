@@ -96,7 +96,7 @@ func allRemoteClustersWithMatchingSeedServiceMapper(c k8s.Client) handler.Mapper
 				continue
 			}
 
-			log.Info("Synthesizing reconcile for ", "resource", k8s.ExtractNamespacedName(&rc))
+			log.Info("Synthesizing reconcile for resource", "namespace", rc.Namespace, "name", rc.Name)
 			reqs = append(reqs, reconcile.Request{
 				NamespacedName: k8s.ExtractNamespacedName(&rc),
 			})
@@ -116,7 +116,7 @@ func allRemoteClustersMapper(c k8s.Client) handler.Mapper {
 		}
 		var reqs []reconcile.Request
 		for _, rc := range list.Items {
-			log.Info("Synthesizing reconcile for ", "resource", k8s.ExtractNamespacedName(&rc))
+			log.Info("Synthesizing reconcile for resource", "namespace", rc.Namespace, "name", rc.Name)
 			reqs = append(reqs, reconcile.Request{
 				NamespacedName: k8s.ExtractNamespacedName(&rc),
 			})

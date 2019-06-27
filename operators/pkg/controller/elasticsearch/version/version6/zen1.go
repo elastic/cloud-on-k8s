@@ -118,7 +118,7 @@ func UpdateZen1Discovery(
 		return true, nil
 	}
 
-	log.Info("Update minimum master nodes",
+	log.Info("Updating minimum master nodes",
 		"how", "api",
 		"namespace", cluster.Namespace,
 		"name", cluster.Name,

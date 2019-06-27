@@ -69,12 +69,12 @@ func reconcileTrustRelationship(
 ) error {
 
 	log.V(1).Info(
-		"Reconcile TrustRelationship",
+		"Reconciling TrustRelationship",
 		"name", name,
-		"local-namespace", local.Selector.Namespace,
-		"local-name", local.Selector.Name,
-		"remote-namespace", remote.Selector.Namespace,
-		"remote-name", remote.Selector.Name,
+		"local_namespace", local.Selector.Namespace,
+		"local_name", local.Selector.Name,
+		"remote_namespace", remote.Selector.Namespace,
+		"remote_name", remote.Selector.Name,
 	)
 
 	// Define the desired TrustRelationship object, it lives in the remote namespace.

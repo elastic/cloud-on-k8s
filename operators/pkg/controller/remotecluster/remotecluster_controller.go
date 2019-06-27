@@ -110,7 +110,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	if common.IsPaused(instance.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", instance.Namespace, "name", instance.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -122,6 +122,8 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 		log.Info(
 			"Remote cluster controller is an enterprise feature. Enterprise features are disabled",
 			"iteration", currentIteration,
+			"namespace", request.Namespace,
+			"name", request.Name,
 		)
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
 			Phase: v1alpha1.RemoteClusterFeatureDisabled,

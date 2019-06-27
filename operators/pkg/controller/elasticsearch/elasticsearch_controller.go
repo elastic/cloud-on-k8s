@@ -5,7 +5,6 @@
 package elasticsearch
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -269,10 +268,10 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", es.Namespace, "name", es.Name)
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
-		log.Info(fmt.Sprintf("Recording event %+v", evt))
+		log.V(1).Info("Recording event", "event", evt)
 		r.recorder.Event(&es, evt.EventType, evt.Reason, evt.Message)
 	}
 	if cluster == nil {
