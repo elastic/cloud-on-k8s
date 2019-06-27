@@ -90,7 +90,7 @@ func init() {
 	testCSR, err := x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
-		k8s.ExtractNamespacedName(&testES), testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+		k8s.ExtractNamespacedName(&testES), name.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 	if err != nil {
 		panic("Failed to create validated cert template:" + err.Error())
@@ -240,7 +240,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 			},
 			want: func(t *testing.T, cert *certificates.ValidatedCertificateTemplate) {
-				expectedCommonName := "test.test.es.cluster.local"
+				expectedCommonName := "test.test.es.local"
 				assert.Contains(t, cert.DNSNames, expectedCommonName)
 				assert.Contains(t, cert.DNSNames, "svc-name.svc-namespace.svc")
 				assert.Contains(t, cert.DNSNames, sanDNS1)
@@ -254,6 +254,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
+				name.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				tt.args.svcs,
 				&x509.CertificateRequest{},
@@ -359,6 +360,7 @@ func Test_shouldIssueNewCertificate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := shouldIssueNewHTTPCertificate(
 				k8s.ExtractNamespacedName(&tt.args.es),
+				name.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
 				&tt.args.secret,
 				[]corev1.Service{testSvc},
