@@ -74,8 +74,8 @@ type Client interface {
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation excludes for the given nodes.
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
-	// DisableShardAllocation disables shards allocation on the cluster.
-	DisableShardAllocation(ctx context.Context) error
+	// DisableReplicasShardAllocation disables replicas shards allocation on the cluster.
+	DisableReplicasShardAllocation(ctx context.Context) error
 	// EnableShardAllocation enables shards allocation on the cluster.
 	EnableShardAllocation(ctx context.Context) error
 	// SyncedFlush requests a synced flush on the cluster.

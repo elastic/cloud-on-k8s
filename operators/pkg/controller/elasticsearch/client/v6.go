@@ -38,8 +38,8 @@ func (c *clientV6) EnableShardAllocation(ctx context.Context) error {
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 
-func (c *clientV6) DisableShardAllocation(ctx context.Context) error {
-	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "none"}}
+func (c *clientV6) DisableReplicasShardAllocation(ctx context.Context) error {
+	allocationSetting := ClusterRoutingAllocation{AllocationSettings{Enable: "primaries"}}
 	return c.put(ctx, "/_cluster/settings", allocationSetting, nil)
 }
 
