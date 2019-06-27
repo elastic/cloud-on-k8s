@@ -7,6 +7,7 @@ package stack
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -21,18 +22,39 @@ import (
 
 const continousHealthCheckTimeout = 25 * time.Second
 
+type MutationTestsOptions struct {
+	ExpectedNewPods  int
+	ExpectedPVCReuse int
+}
+
 // MutationTestSteps tests topology changes on the given stack
 // we expect the stack to be already created and running.
 // If the stack to mutate to is the same as the original stack,
 // then all tests should still pass.
-func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
+func MutationTestSteps(stack Builder, k *helpers.K8sHelper, options MutationTestsOptions) []helpers.TestStep {
 
 	var clusterIDBeforeMutation string
+	initialPods := map[string]time.Time{}
+	initialPVCs := map[string]struct{}{}
 
 	var continuousHealthChecks *ContinousHealthCheck
 
 	return helpers.TestStepList{}.
 		WithSteps(
+			helpers.TestStep{
+				Name: "Retrieve pods and PVC names",
+				Test: func(t *testing.T) {
+					pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
+					require.NoError(t, err)
+					for _, p := range pods {
+						initialPods[p.Name] = p.CreationTimestamp.Time
+						claimName := helpers.GetESDataVolumeClaimName(p)
+						if claimName != "" {
+							initialPVCs[claimName] = struct{}{}
+						}
+					}
+				},
+			},
 			helpers.TestStep{
 				Name: "Start querying ES cluster health while mutation is going on",
 				Test: func(t *testing.T) {
@@ -56,7 +78,49 @@ func MutationTestSteps(stack Builder, k *helpers.K8sHelper) []helpers.TestStep {
 					curKb.Spec = stack.Kibana.Spec
 					require.NoError(t, k.Client.Update(&curKb))
 				},
-			}).
+			},
+			helpers.TestStep{
+				Name: "The expected number of new pods should have been created, with the expected number of PVC reused",
+				Test: helpers.Eventually(func() error {
+					pods, err := k.GetPods(helpers.ESPodListOptions(stack.Elasticsearch.Name))
+					if err != nil {
+						return err
+					}
+					// get number of pods that were created or re-created reusing a PVC
+					newPods := 0
+					pvcReuse := 0
+					for _, p := range pods {
+						initialCreationDate, existed := initialPods[p.Name]
+						switch {
+						case !existed:
+							// this pod is new
+							newPods++
+
+						case existed && !p.CreationTimestamp.Time.Equal(initialCreationDate):
+							// this pod was recreated, probably reusing PVCs
+							newPods++
+							claimName := helpers.GetESDataVolumeClaimName(p)
+							if claimName != "" {
+								if _, existed := initialPVCs[claimName]; existed {
+									// an existing PVC was reused
+									pvcReuse++
+								}
+							}
+
+						default:
+							// this pod wasn't modified
+						}
+					}
+					if newPods != options.ExpectedNewPods {
+						return fmt.Errorf("expected %d new pods, got %d", options.ExpectedNewPods, newPods)
+					}
+					if pvcReuse != options.ExpectedPVCReuse {
+						return fmt.Errorf("expected %d PVC reuse, got %d", options.ExpectedPVCReuse, pvcReuse)
+					}
+					return nil
+				}),
+			},
+		).
 		WithSteps(CheckStackSteps(stack, k)...).
 		WithSteps(
 			CompareClusterUUIDStep(stack.Elasticsearch, k, &clusterIDBeforeMutation),

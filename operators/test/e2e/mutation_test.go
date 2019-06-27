@@ -25,7 +25,9 @@ func TestMutationMdiToDedicated(t *testing.T) {
 		WithESDataNodes(1, stack.DefaultResources).
 		WithESMasterNodes(1, stack.DefaultResources)
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack, stack.MutationTestsOptions{
+		ExpectedNewPods: 2,
+	})
 }
 
 // TestMutationMoreNodes creates a 1 node cluster,
@@ -39,7 +41,9 @@ func TestMutationMoreNodes(t *testing.T) {
 		WithNoESTopology().
 		WithESMasterDataNodes(2, stack.DefaultResources)
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack, stack.MutationTestsOptions{
+		ExpectedNewPods: 2,
+	})
 }
 
 // TestMutationLessNodes creates a 3 node cluster,
@@ -53,7 +57,9 @@ func TestMutationLessNodes(t *testing.T) {
 		WithNoESTopology().
 		WithESMasterDataNodes(1, stack.DefaultResources)
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack, stack.MutationTestsOptions{
+		ExpectedNewPods: 0,
+	})
 }
 
 // TestMutationResizeMemoryUp creates a 1 node cluster,
@@ -77,7 +83,9 @@ func TestMutationResizeMemoryUp(t *testing.T) {
 			},
 		})
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack, stack.MutationTestsOptions{
+		ExpectedNewPods: 1,
+	})
 }
 
 // TestMutationResizeMemoryDown creates a 1 node cluster,
@@ -101,5 +109,7 @@ func TestMutationResizeMemoryDown(t *testing.T) {
 			},
 		})
 
-	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack)
+	stack.RunCreationMutationDeletionTests(t, initStack, mutatedStack, stack.MutationTestsOptions{
+		ExpectedNewPods: 1,
+	})
 }

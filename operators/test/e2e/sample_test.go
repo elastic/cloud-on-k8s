@@ -47,5 +47,5 @@ func readSampleStack() stack.Builder {
 func TestStackSample(t *testing.T) {
 	s := readSampleStack()
 	// run, with mutation to the same stack (should work and do nothing)
-	stack.RunCreationMutationDeletionTests(t, s, s)
+	stack.RunCreationMutationDeletionTests(t, s, s, stack.MutationTestsOptions{})
 }

@@ -12,12 +12,12 @@ import (
 
 // RunCreationMutationDeletionTests does exactly what its names is suggesting :)
 // If the stack we mutate to is the same as the original stack, tests should still pass.
-func RunCreationMutationDeletionTests(t *testing.T, toCreate Builder, mutateTo Builder) {
+func RunCreationMutationDeletionTests(t *testing.T, toCreate Builder, mutateTo Builder, mutationOptions MutationTestsOptions) {
 	k := helpers.NewK8sClientOrFatal()
 	helpers.TestStepList{}.
 		WithSteps(InitTestSteps(toCreate, k)...).
 		WithSteps(CreationTestSteps(toCreate, k)...).
-		WithSteps(MutationTestSteps(mutateTo, k)...).
+		WithSteps(MutationTestSteps(mutateTo, k, mutationOptions)...).
 		WithSteps(DeletionTestSteps(mutateTo, k)...).
 		RunSequential(t)
 }
