@@ -151,5 +151,5 @@ ci-build-docs:
         -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         docker.elastic.co/docs/build:1 \
         bash -c "git clone https://github.com/elastic/docs.git && \
-        	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html && \
+        	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html --chunk 1 && \
         	test -e $(GO_MOUNT_PATH)/docs/html/index.html"
