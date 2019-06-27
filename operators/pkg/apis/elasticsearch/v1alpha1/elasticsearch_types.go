@@ -158,6 +158,13 @@ type ChangeBudget struct {
 	MaxSurge int `json:"maxSurge"`
 }
 
+// AllowsPVCReuse returns true if the current budget allows pods to be deleted
+// in order to reuse their PVC for pods to be created.
+func (c ChangeBudget) AllowsPVCReuse() bool {
+	// only allow pod replacement (deletion first, then creation) if we can go below the target number of pods
+	return c.MaxUnavailable > 0
+}
+
 // DefaultFallbackGroupingDefinition is the grouping definition that is used if no user-defined groups are specified or
 // there are pods that are not selected by the user-defined groups.
 var DefaultFallbackGroupingDefinition = GroupingDefinition{
