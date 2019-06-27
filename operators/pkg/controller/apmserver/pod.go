@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/keystore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
@@ -60,6 +61,8 @@ type PodSpecParams struct {
 
 	ApmServerSecret corev1.Secret
 	ConfigSecret    corev1.Secret
+
+	keystoreResources *keystore.KeystoreResources
 }
 
 func imageWithVersion(image string, version string) string {
@@ -91,7 +94,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		},
 	}
 
-	return defaults.NewPodTemplateBuilder(
+	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, v1alpha1.APMServerContainerName).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
 		WithReadinessProbe(readinessProbe).
@@ -99,6 +102,14 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		WithCommand(command).
 		WithVolumes(configVolume.Volume(), configSecretVolume.Volume()).
 		WithVolumeMounts(configVolume.VolumeMount(), configSecretVolume.VolumeMount()).
-		WithEnv(env...).
-		PodTemplate
+		WithEnv(env...)
+
+	if p.keystoreResources != nil {
+		builder.WithInitContainers(p.keystoreResources.KeystoreInitContainer).
+			WithVolumes(p.keystoreResources.KeystoreVolume, keystore.DataVolume.Volume()).
+			WithVolumeMounts(keystore.DataVolume.VolumeMount()).
+			WithInitContainerDefaults()
+	}
+
+	return builder.PodTemplate
 }

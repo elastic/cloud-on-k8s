@@ -47,6 +47,9 @@ spec:
           type: object
         spec:
           properties:
+            config:
+              description: Config represents the APM configuration.
+              type: object
             featureFlags:
               description: FeatureFlags are apm-specific flags that enable or disable
                 specific experimental features
@@ -168,6 +171,16 @@ spec:
                 Server pods. This allows specifying custom annotations, labels, environment
                 variables, affinity, resources, etc. for the pods created from this
                 NodeSpec.
+              type: object
+            secureSettings:
+              description: SecureSettings reference a secret containing secure settings,
+                to be injected into the APM keystore on each node. Each individual
+                key/value entry in the referenced secret is considered as an individual
+                secure setting to be injected. The secret must exist in the same namespace
+                as the APM resource.
+              properties:
+                secretName:
+                  type: string
               type: object
             version:
               description: Version represents the version of the APM Server

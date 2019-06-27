@@ -11,11 +11,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/keystore"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
@@ -35,11 +37,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -53,11 +53,16 @@ var log = logf.Log.WithName(name)
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	return add(mgr, newReconciler(mgr))
+	reconciler := newReconciler(mgr)
+	c, err := add(mgr, reconciler)
+	if err != nil {
+		return err
+	}
+	return addWatches(c, reconciler)
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+func newReconciler(mgr manager.Manager) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
@@ -68,16 +73,9 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 	}
 }
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
-	// Create a new controller
-	c, err := controller.New(name, mgr, controller.Options{Reconciler: r})
-	if err != nil {
-		return err
-	}
-
+func addWatches(c controller.Controller, r *ReconcileApmServer) error {
 	// Watch for changes to ApmServer
-	err = c.Watch(&source.Kind{Type: &apmv1alpha1.ApmServer{}}, &handler.EnqueueRequestForObject{})
+	err := c.Watch(&source.Kind{Type: &apmv1alpha1.ApmServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -106,7 +104,18 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// dynamically watch referenced secrets to connect to Elasticsearch
+	if err := c.Watch(&source.Kind{Type: &corev1.Secret{}}, r.dynamicWatches.Secrets); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// add adds a new Controller to mgr with r as the reconcile.Reconciler
+func add(mgr manager.Manager, r reconcile.Reconciler) (controller.Controller, error) {
+	// Create a new controller
+	return controller.New(name, mgr, controller.Options{Reconciler: r})
 }
 
 var _ reconcile.Reconciler = &ReconcileApmServer{}
@@ -181,7 +190,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, nil
 	}
 
-	// TODO: move server and config secrets into separate methods
+	// TODO: move server secret into separate method
 
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -245,6 +254,11 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
+	keystoreResources, err := keystore.Resources(r.Client, r.recorder, r.dynamicWatches, *as)
+	if err != nil {
+		return state, err
+	}
+
 	apmServerPodSpecParams := PodSpecParams{
 		Version:         as.Spec.Version,
 		CustomImageName: as.Spec.Image,
@@ -253,6 +267,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		ApmServerSecret: *reconciledApmServerSecret,
 		ConfigSecret:    *reconciledConfigSecret,
+
+		keystoreResources: keystoreResources,
 	}
 
 	podSpec := NewPodSpec(apmServerPodSpecParams)

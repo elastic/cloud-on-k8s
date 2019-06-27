@@ -39,6 +39,13 @@ type ApmServerSpec struct {
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
 
+	// SecureSettings reference a secret containing secure settings, to be injected
+	// into the APM keystore on each node.
+	// Each individual key/value entry in the referenced secret is considered as an
+	// individual secure setting to be injected.
+	// The secret must exist in the same namespace as the APM resource.
+	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
+
 	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
