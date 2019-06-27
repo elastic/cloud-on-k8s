@@ -7,6 +7,12 @@ package mutation
 import (
 	"testing"
 
+	"github.com/go-test/deep"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -14,16 +20,22 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-
-	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var defaultCPULimit = "800m"
 var defaultImage = "image"
 var defaultPodSpecCtxV2 = ESPodSpecContext(defaultImage, "1000m")
+
+var defaultVolumeClaimTemplate = corev1.PersistentVolumeClaim{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "volume-name",
+	},
+}
+var defaultVolumeClaim = corev1.PersistentVolumeClaim{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: "claim",
+	},
+}
 
 var es = v1alpha1.Elasticsearch{
 	ObjectMeta: metav1.ObjectMeta{
@@ -46,6 +58,9 @@ func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
 
 func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 	return pod.PodSpecContext{
+		NodeSpec: v1alpha1.NodeSpec{
+			VolumeClaimTemplates: []corev1.PersistentVolumeClaim{defaultVolumeClaimTemplate},
+		},
 		PodTemplate: corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: map[string]string{
@@ -86,6 +101,16 @@ func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
 						},
 					},
 				}},
+				Volumes: []corev1.Volume{
+					{
+						Name: "volume-name",
+						VolumeSource: corev1.VolumeSource{
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: defaultVolumeClaim.Name,
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -166,13 +191,122 @@ func TestCalculateChanges(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// set the default pvc that all test pods use in the state
+			tt.args.state.PVCs = []corev1.PersistentVolumeClaim{defaultVolumeClaim}
 			got, err := CalculateChanges(es, tt.args.expected, tt.args.state, func(ctx pod.PodSpecContext) corev1.Pod {
 				return version.NewPod(es, ctx)
-			})
+			}, false)
 			assert.NoError(t, err)
 			assert.Equal(t, len(tt.want.ToKeep), len(got.ToKeep))
 			assert.Equal(t, len(tt.want.ToCreate), len(got.ToCreate))
 			assert.Equal(t, len(tt.want.ToDelete), len(got.ToDelete))
+		})
+	}
+}
+
+func Test_optimizeForPVCReuse(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		changes Changes
+		state   reconcile.ResourcesState
+		want    Changes
+	}{
+		{
+			name: "no pod to create",
+			changes: Changes{
+				ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig}},
+				ToCreate: PodsToCreate{},
+			},
+			want: Changes{
+				ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig}},
+				ToCreate: PodsToCreate{},
+			},
+		},
+		{
+			name: "no pod to delete",
+			changes: Changes{
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtx}, {PodSpecCtx: defaultPodSpecCtx}},
+				ToDelete: PodsToDelete{},
+			},
+			want: Changes{
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtx}, {PodSpecCtx: defaultPodSpecCtx}},
+				ToDelete: PodsToDelete{},
+			},
+		},
+		{
+			name: "pod to create matches pod to delete: reuse PVC",
+			changes: Changes{
+				ToCreate: []PodToCreate{{PodSpecCtx: defaultPodSpecCtx}},
+				ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig}},
+			},
+			state: reconcile.ResourcesState{
+				PVCs: []corev1.PersistentVolumeClaim{defaultVolumeClaim},
+			},
+			want: Changes{
+				ToCreate: PodsToCreate{},                                                      // no more pod to create
+				ToDelete: PodsToDelete{{PodWithConfig: defaultPodWithConfig, ReusePVC: true}}, // pod to delete marked for PVC reuse
+			},
+		},
+		{
+			name: "same with multiple pods to reuse",
+			changes: Changes{
+				ToCreate: []PodToCreate{
+					{PodSpecCtx: defaultPodSpecCtx},
+					{PodSpecCtx: defaultPodSpecCtx},
+					{PodSpecCtx: defaultPodSpecCtx},
+				},
+				ToDelete: PodsToDelete{
+					{PodWithConfig: defaultPodWithConfig},
+					{PodWithConfig: defaultPodWithConfig},
+					{PodWithConfig: defaultPodWithConfig},
+				},
+			},
+			state: reconcile.ResourcesState{
+				PVCs: []corev1.PersistentVolumeClaim{defaultVolumeClaim, defaultVolumeClaim, defaultVolumeClaim},
+			},
+			want: Changes{
+				ToCreate: PodsToCreate{},
+				ToDelete: PodsToDelete{
+					{PodWithConfig: defaultPodWithConfig, ReusePVC: true},
+					{PodWithConfig: defaultPodWithConfig, ReusePVC: true},
+					{PodWithConfig: defaultPodWithConfig, ReusePVC: true},
+				},
+			},
+		},
+		{
+			name: "only 1 reuse available out of 2",
+			changes: Changes{
+				// 2 pods to create
+				ToCreate: []PodToCreate{
+					{PodSpecCtx: defaultPodSpecCtx},
+					{PodSpecCtx: defaultPodSpecCtx},
+				},
+				// 1 pod to delete
+				ToDelete: PodsToDelete{
+					{PodWithConfig: defaultPodWithConfig},
+				}},
+			// a single volume
+			state: reconcile.ResourcesState{
+				PVCs: []corev1.PersistentVolumeClaim{defaultVolumeClaim},
+			},
+			// want only 1 pod replacement
+			want: Changes{
+				// one less pod to create
+				ToCreate: PodsToCreate{{PodSpecCtx: defaultPodSpecCtx}},
+				// pod to delete is marked for reuse
+				ToDelete: PodsToDelete{
+					{PodWithConfig: defaultPodWithConfig, ReusePVC: true},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := optimizeForPVCReuse(tt.changes, tt.state)
+			if diff := deep.Equal(got, tt.want); diff != nil {
+				t.Error(diff)
+			}
 		})
 	}
 }

@@ -40,7 +40,7 @@ func PodMatchesSpec(
 		// require strict template equality
 		ComparePodTemplate(spec.PodTemplate, pod),
 		// require pvc compatibility
-		comparePersistentVolumeClaims(pod.Spec.Volumes, spec.NodeSpec.VolumeClaimTemplates, state),
+		ComparePersistentVolumeClaims(pod.Spec.Volumes, spec.NodeSpec.VolumeClaimTemplates, state),
 		// require strict config equality
 		compareConfigs(config, spec.Config),
 	}

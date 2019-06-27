@@ -60,8 +60,11 @@ type ChangeStats struct {
 
 // ChangeStats calculates and returns the ChangeStats for this ChangeGroup
 func (s ChangeGroup) ChangeStats() ChangeStats {
-	// when we're done, we should have ToKeep + ToCreate pods in the group.
-	targetPodsCount := len(s.Changes.ToKeep) + len(s.Changes.ToCreate)
+	toBeReplaced := s.Changes.ToDelete.WithPVCReuse()
+	// when we're done, we should have ToKeep + ToCreate pods in the group,
+	// also include pods that should be deleted for replacement since they
+	// were removed from changes.ToCreate
+	targetPodsCount := len(s.Changes.ToKeep) + len(s.Changes.ToCreate) + len(toBeReplaced)
 
 	currentPodsCount := s.PodsState.CurrentPodsCount()
 
@@ -185,6 +188,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 				"Hit the max unavailable limit in a group.",
 				"group_name", s.Name,
 				"change_stats", changeStats,
+				"max_unavailable", maxUnavailable,
 			)
 
 			result.MaxUnavailableGroups = append(result.MaxUnavailableGroups, s.Name)

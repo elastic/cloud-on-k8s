@@ -32,6 +32,7 @@ func CalculateChanges(
 	expectedPodSpecCtxs []pod.PodSpecContext,
 	state reconcile.ResourcesState,
 	podBuilder PodBuilder,
+	allowPVCReuse bool,
 ) (Changes, error) {
 	// work on copies of the arrays, on which we can safely remove elements
 	expectedCopy := make([]pod.PodSpecContext, len(expectedPodSpecCtxs))
@@ -41,7 +42,7 @@ func CalculateChanges(
 	deletingCopy := make(pod.PodsWithConfig, len(state.DeletingPods))
 	copy(deletingCopy, state.DeletingPods)
 
-	return mutableCalculateChanges(es, expectedCopy, actualCopy, state, podBuilder, deletingCopy)
+	return mutableCalculateChanges(es, expectedCopy, actualCopy, state, podBuilder, deletingCopy, allowPVCReuse)
 }
 
 func mutableCalculateChanges(
@@ -51,6 +52,7 @@ func mutableCalculateChanges(
 	state reconcile.ResourcesState,
 	podBuilder PodBuilder,
 	deletingPods pod.PodsWithConfig,
+	allowPVCReuse bool,
 ) (Changes, error) {
 	changes := EmptyChanges()
 
@@ -100,6 +102,11 @@ func mutableCalculateChanges(
 	sort.SliceStable(changes.ToKeep, sortPodByCreationTimestampAsc(changes.ToKeep))
 	sort.SliceStable(changes.ToDelete, sortPodtoDeleteByCreationTimestampAsc(changes.ToDelete))
 
+	if allowPVCReuse {
+		// try to reuse PVCs of pods to delete for pods to create
+		changes = optimizeForPVCReuse(changes, state)
+	}
+
 	return changes, nil
 }
 
@@ -136,4 +143,46 @@ func getAndRemoveMatchingPod(
 		MismatchReasonsPerPod: mismatchReasonsPerPod,
 		RemainingPods:         podsWithConfig,
 	}, nil
+}
+
+// calculatePodsToReplace modifies changes to account for pods to delete
+// that can be replaced by pods to create while reusing PVCs.
+// When we find a delete/create match, we tag the pod to delete to preserve its PVC on deletion.
+// The corresponding pod to create is removed from changes, to be created in another reconciliation,
+// once the first pod is deleted.
+func optimizeForPVCReuse(changes Changes, state reconcile.ResourcesState) Changes {
+	// pods to create will not contains pods whose creation depends on the
+	// deletion of another pod, so PVC can be reused
+	toCreateFiltered := make(PodsToCreate, 0, len(changes.ToCreate))
+
+ForEachPodToCreate:
+	for _, toCreate := range changes.ToCreate {
+		pvcTemplates := toCreate.PodSpecCtx.NodeSpec.VolumeClaimTemplates
+		if len(pvcTemplates) == 0 {
+			// this pod is not using PVCs
+			toCreateFiltered = append(toCreateFiltered, toCreate)
+			continue
+		}
+
+	CompareWithPodsToDelete:
+		for j, toDelete := range changes.ToDelete {
+			if toDelete.ReusePVC {
+				// PVCs already reused for another pod to create
+				continue CompareWithPodsToDelete
+			}
+			pvcComparison := comparison.ComparePersistentVolumeClaims(toDelete.Pod.Spec.Volumes, pvcTemplates, state)
+			if pvcComparison.Match {
+				// PVC of that pod can be reused
+				changes.ToDelete[j].ReusePVC = true
+				// drop the pod to create from changes: we want to wait for
+				// the deletion to happen first, so the orphaned PVC can be reused
+				// the pod to create will reappear in the list of pods to create in subsequent reconciliations
+				continue ForEachPodToCreate
+			}
+		}
+		// no pvc match for that one: should be a new pod with new volumes
+		toCreateFiltered = append(toCreateFiltered, toCreate)
+	}
+	changes.ToCreate = toCreateFiltered
+	return changes
 }

@@ -123,6 +123,17 @@ func (c Changes) IsEmpty() bool {
 	return len(c.ToCreate) == 0 && len(c.ToDelete) == 0 && len(c.ToKeep) == 0
 }
 
+// PVCReuseCount returns the number of pods to be deleted whose PVC are kept for reuse
+func (c Changes) PVCReuseCount() int {
+	count := 0
+	for _, toDelete := range c.ToDelete {
+		if toDelete.ReusePVC {
+			count++
+		}
+	}
+	return count
+}
+
 // Copy copies this Changes. It copies the underlying slices and maps, but not their contents
 func (c Changes) Copy() Changes {
 	res := Changes{

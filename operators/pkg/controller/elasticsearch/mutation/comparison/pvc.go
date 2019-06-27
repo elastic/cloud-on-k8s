@@ -18,8 +18,8 @@ type volumeAndPVC struct {
 	pvc    corev1.PersistentVolumeClaim
 }
 
-// comparePersistentVolumeClaims returns true if the expected persistent volume claims are found in the list of volumes
-func comparePersistentVolumeClaims(
+// ComparePersistentVolumeClaims returns true if the expected persistent volume claims are found in the list of volumes
+func ComparePersistentVolumeClaims(
 	actual []corev1.Volume,
 	expected []corev1.PersistentVolumeClaim,
 	state reconcile.ResourcesState,

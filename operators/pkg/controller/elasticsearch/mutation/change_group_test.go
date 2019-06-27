@@ -172,6 +172,36 @@ func TestChangeGroups_ChangeStats(t *testing.T) {
 				CurrentUnavailable:      0,
 			},
 		},
+		{
+			name: "sample with some PVC reuse",
+			fields: fields{
+				Definition: v1alpha1.GroupingDefinition{
+					Selector: metav1.LabelSelector{},
+				},
+				Changes: Changes{
+					ToCreate: []PodToCreate{{Pod: namedPod("create-1").Pod}, {Pod: namedPod("create-2").Pod}},
+					ToKeep:   pod.PodsWithConfig{namedPod("keep-3")},
+					ToDelete: PodsToDelete{{PodWithConfig: namedPod("delete-1")}, {PodWithConfig: namedPod("delete-2")},
+						{PodWithConfig: namedPod("delete-3"), ReusePVC: true}, {PodWithConfig: namedPod("delete-4"), ReusePVC: true}},
+				},
+				PodsState: initializePodsState(PodsState{
+					RunningReady: map[string]corev1.Pod{
+						"delete-1": namedPod("delete-1").Pod,
+						"delete-2": namedPod("delete-2").Pod,
+						"delete-3": namedPod("delete-3").Pod,
+						"delete-4": namedPod("delete-4").Pod,
+						"keep-3":   namedPod("keep-3").Pod,
+					},
+				}),
+			},
+			want: ChangeStats{
+				TargetPods:              5,
+				CurrentPods:             5,
+				CurrentSurge:            0,
+				CurrentRunningReadyPods: 5,
+				CurrentUnavailable:      0,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
