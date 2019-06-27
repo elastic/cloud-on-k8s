@@ -254,7 +254,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	keystoreResources, err := keystore.Resources(r.Client, r.recorder, r.dynamicWatches, *as)
+	keystoreResources, err := keystore.NewResources(r.Client, r.recorder, r.dynamicWatches, as, as.Spec.SecureSettings, "/usr/share/apm-server/data")
 	if err != nil {
 		return state, err
 	}
@@ -271,7 +271,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		keystoreResources: keystoreResources,
 	}
 
-	podSpec := NewPodSpec(apmServerPodSpecParams)
+	podSpec := newPodSpec(as, apmServerPodSpecParams)
 
 	podLabels := labels.NewLabels(as.Name)
 	// add the config file checksum to the pod labels so a change triggers a rolling update

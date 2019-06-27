@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -62,14 +63,14 @@ type PodSpecParams struct {
 	ApmServerSecret corev1.Secret
 	ConfigSecret    corev1.Secret
 
-	keystoreResources *keystore.KeystoreResources
+	keystoreResources *keystore.Resources
 }
 
 func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
+func newPodSpec(as *apmv1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",
@@ -105,9 +106,10 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		WithEnv(env...)
 
 	if p.keystoreResources != nil {
+		dataVolume := keystore.DataVolume(as, "/usr/share/apm-server/data")
 		builder.WithInitContainers(p.keystoreResources.KeystoreInitContainer).
-			WithVolumes(p.keystoreResources.KeystoreVolume, keystore.DataVolume.Volume()).
-			WithVolumeMounts(keystore.DataVolume.VolumeMount()).
+			WithVolumes(p.keystoreResources.KeystoreVolume, dataVolume.Volume()).
+			WithVolumeMounts(dataVolume.VolumeMount()).
 			WithInitContainerDefaults()
 	}
 
