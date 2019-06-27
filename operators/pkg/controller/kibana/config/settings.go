@@ -76,7 +76,6 @@ func kibanaTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 		ServerSSLCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
 		ServerSSLKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
 	}
-	return nil
 }
 
 func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
