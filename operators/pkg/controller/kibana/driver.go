@@ -91,7 +91,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	}
 
 	if kb.Spec.Elasticsearch.CertificateAuthorities.SecretName != "" {
-		// TODO: use kibanaCa to generate cert for deployment
 
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CertificateAuthorities.SecretName}
@@ -129,11 +128,25 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	}
 
 	if kb.Spec.HTTP.TLS.Enabled() {
+		// fetch the secret to calculate the checksum
+		var httpCerts corev1.Secret
+		err := d.client.Get(types.NamespacedName{
+			Namespace: kb.Namespace,
+			Name:      certificates.HTTPCertsInternalSecretName(kbname.KBNamer, kb.Name),
+		}, &httpCerts)
+		if err != nil {
+			return nil, err
+		}
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+			configChecksum.Write(httpCert)
+		}
+
+		// add volume/mount for http certs to pod spec
 		httpCertsVolume := kbcerts.HTTPCertSecretVolume(*kb)
 		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, httpCertsVolume.Volume())
 		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
 		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, httpCertsVolume.VolumeMount())
-		// TODO include in checksum
+
 	}
 
 	// get config secret to add its content to the config checksum

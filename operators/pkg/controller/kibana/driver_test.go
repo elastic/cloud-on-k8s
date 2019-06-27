@@ -207,6 +207,15 @@ func Test_driver_deploymentParams(t *testing.T) {
 				"kibana.yml": []byte("server.name: test"),
 			},
 		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-kb-http-certs-internal",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"tls.crt": nil,
+			},
+		},
 	}
 
 	type args struct {
@@ -309,6 +318,15 @@ func Test_driver_deploymentParams(t *testing.T) {
 							"kibana.yml": []byte("server.name: test"),
 						},
 					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-kb-http-certs-internal",
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							"tls.crt": []byte("this is also relevant"),
+						},
+					},
 				},
 			},
 			want: func() *DeploymentParams {
@@ -316,7 +334,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "ab47b5621ae80a23a5fa881f8c8affcf511dfc1f007ffd883be9ad83",
+					"kibana.k8s.elastic.co/config-checksum": "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7",
 				}
 				return p
 			}(),
