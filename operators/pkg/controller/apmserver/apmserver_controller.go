@@ -11,15 +11,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
+
+	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,10 +58,13 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
-		Client:   k8s.WrapClient(mgr.GetClient()),
-		scheme:   mgr.GetScheme(),
-		recorder: mgr.GetRecorder(name),
+		Client:         client,
+		scheme:         mgr.GetScheme(),
+		recorder:       mgr.GetRecorder(name),
+		dynamicWatches: watches.NewDynamicWatches(),
+		finalizers:     finalizer.NewHandler(client),
 	}
 }
 
@@ -106,8 +114,10 @@ var _ reconcile.Reconciler = &ReconcileApmServer{}
 // ReconcileApmServer reconciles an ApmServer object
 type ReconcileApmServer struct {
 	k8s.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	scheme         *runtime.Scheme
+	recorder       record.EventRecorder
+	dynamicWatches watches.DynamicWatches
+	finalizers     finalizer.Handler
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -178,7 +188,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 			Namespace: as.Namespace,
 			// TODO: suffix+trim properly
 			Name:   as.Name + "-apm-server",
-			Labels: NewLabels(as.Name),
+			Labels: labels.NewLabels(as.Name),
 		},
 		Data: map[string][]byte{
 			SecretTokenKey: []byte(rand.String(24)),
@@ -230,52 +240,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	cfg, err := config.NewConfigFromSpec(r.Client, *as)
+	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
 	if err != nil {
-		return state, err
-	}
-
-	cfgBytes, err := cfg.Render()
-	if err != nil {
-		return state, err
-	}
-
-	expectedConfigSecret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: as.Namespace,
-			// TODO: suffix+trim properly
-			Name:   as.Name + "-config",
-			Labels: NewLabels(as.Name),
-		},
-		Data: map[string][]byte{
-			"apm-server.yml": cfgBytes,
-		},
-	}
-	reconciledConfigSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
-		reconciler.Params{
-			Client: r.Client,
-			Scheme: r.scheme,
-
-			Owner:      as,
-			Expected:   expectedConfigSecret,
-			Reconciled: reconciledConfigSecret,
-
-			NeedsUpdate: func() bool {
-				return true
-			},
-			UpdateReconciled: func() {
-				reconciledConfigSecret.Labels = expectedConfigSecret.Labels
-				reconciledConfigSecret.Data = expectedConfigSecret.Data
-			},
-			PreCreate: func() {
-				log.Info("Creating config secret", "name", expectedConfigSecret.Name)
-			},
-			PreUpdate: func() {
-				log.Info("Updating config secret", "name", expectedConfigSecret.Name)
-			},
-		},
-	); err != nil {
 		return state, err
 	}
 
@@ -291,9 +257,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	podSpec := NewPodSpec(apmServerPodSpecParams)
 
-	podLabels := NewLabels(as.Name)
+	podLabels := labels.NewLabels(as.Name)
 	// add the config file checksum to the pod labels so a change triggers a rolling update
-	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", sha256.Sum224(cfgBytes))
+	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", sha256.Sum224(reconciledConfigSecret.Data[config.ApmCfgSecretKey]))
 
 	esCASecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthorities.SecretName
 	if esCASecretName != "" {
@@ -335,7 +301,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	// TODO: also need to hash secret token?
 
-	deploymentLabels := NewLabels(as.Name)
+	deploymentLabels := labels.NewLabels(as.Name)
 	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
 
 	deploy := NewDeployment(DeploymentParams{
