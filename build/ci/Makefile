@@ -152,8 +152,7 @@ ci-gke-cleanup: ci-e2e-delete-cluster
     	-w $(GO_MOUNT_PATH) \
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
     	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
-    	-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
     	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
     	cloud-on-k8s-ci-e2e \
-    	bash -c "$(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
+    	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
     	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
