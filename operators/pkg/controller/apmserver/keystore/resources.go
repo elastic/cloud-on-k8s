@@ -47,7 +47,13 @@ func NewResources(
 	}
 
 	// build an init container to create Kibana keystore from the secure settings volume
-	initContainer, err := initContainer(object, *secretVolume, dataVolumePath, "/usr/share/apm-server/apm-server keystore")
+	initContainer, err := initContainer(
+		object,
+		*secretVolume,
+		dataVolumePath,
+		"/usr/share/apm-server/apm-server keystore create --force",
+		"/usr/share/apm-server/apm-server keystore add",
+	)
 	if err != nil {
 		return nil, err
 	}

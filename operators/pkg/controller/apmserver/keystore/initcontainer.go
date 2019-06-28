@@ -20,8 +20,10 @@ const (
 type InitContainerParameters struct {
 	// Where the user provided secured settings should be mounted
 	SecureSettingsVolumeMountPath string
-	// Keystore command
-	KeystoreCommand string
+	// Keystore add command
+	KeystoreAddCommand string
+	// Keystore create command
+	KeystoreCreateCommand string
 }
 
 // script is a small bash script to create a Kibana or APM keystore,
@@ -33,14 +35,14 @@ set -eux
 echo "Initializing keystore."
 
 # create a keystore in the default data path
-{{ .KeystoreCommand }} create
+{{ .KeystoreCreateCommand }}
 
 # add all existing secret entries into it
 for filename in  {{ .SecureSettingsVolumeMountPath }}/*; do
 	[[ -e "$filename" ]] || continue # glob does not match
 	key=$(basename "$filename")
 	echo "Adding "$key" to the keystore."
-	{{ .KeystoreCommand }} add "$key" --stdin < "$filename"
+	{{ .KeystoreAddCommand }} "$key" --stdin < "$filename"
 done
 
 echo "Keystore initialization successful."
@@ -54,12 +56,14 @@ func initContainer(
 	object runtime.Object,
 	secureSettingsSecret volume.SecretVolume,
 	dataVolumePath string,
-	KeystoreCommand string,
+	KeystoreCreateCommand string,
+	KeystoreAddCommand string,
 ) (corev1.Container, error) {
 	privileged := false
 	params := InitContainerParameters{
 		SecureSettingsVolumeMountPath: SecureSettingsVolumeMountPath,
-		KeystoreCommand:               KeystoreCommand,
+		KeystoreAddCommand:            KeystoreAddCommand,
+		KeystoreCreateCommand:         KeystoreCreateCommand,
 	}
 	tplBuffer := bytes.Buffer{}
 	if err := scriptTemplate.Execute(&tplBuffer, params); err != nil {
