@@ -52,8 +52,7 @@ func ReconcileCAForOwner(
 	owner v1.Object,
 	labels map[string]string,
 	caType CAType,
-	caCertValidity time.Duration,
-	expirationSafetyMargin time.Duration,
+	rotationParams RotationParams,
 ) (*CA, error) {
 
 	// retrieve current CA secret
@@ -67,21 +66,21 @@ func ReconcileCAForOwner(
 		return nil, err
 	}
 	if apierrors.IsNotFound(err) {
-		log.Info("No internal CA secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
+		log.Info("No internal CA certificate Secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
+		return renewCA(cl, namer, owner, labels, rotationParams.Validity, scheme, caType)
 	}
 
 	// build CA
 	ca := buildCAFromSecret(caInternalSecret)
 	if ca == nil {
 		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
+		return renewCA(cl, namer, owner, labels, rotationParams.Validity, scheme, caType)
 	}
 
 	// renew if cannot reuse
-	if !canReuseCA(ca, expirationSafetyMargin) {
+	if !canReuseCA(ca, rotationParams.RotateBefore) {
 		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
-		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
+		return renewCA(cl, namer, owner, labels, rotationParams.Validity, scheme, caType)
 	}
 
 	// reuse existing CA

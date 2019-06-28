@@ -253,14 +253,18 @@ func execute() {
 
 	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
-		Dialer:             dialer,
-		OperatorImage:      operatorImage,
-		OperatorNamespace:  operatorNamespace,
-		OperatorInfo:       operatorInfo,
-		CACertValidity:     caCertValidity,
-		CACertRotateBefore: caCertRotateBefore,
-		CertValidity:       certValidity,
-		CertRotateBefore:   certRotateBefore,
+		Dialer:            dialer,
+		OperatorImage:     operatorImage,
+		OperatorNamespace: operatorNamespace,
+		OperatorInfo:      operatorInfo,
+		CACertRotation: certificates.RotationParams{
+			Validity:     caCertValidity,
+			RotateBefore: caCertRotateBefore,
+		},
+		CertRotation: certificates.RotationParams{
+			Validity:     certValidity,
+			RotateBefore: certRotateBefore,
+		},
 	}); err != nil {
 		log.Error(err, "unable to register controllers to the manager")
 		os.Exit(1)

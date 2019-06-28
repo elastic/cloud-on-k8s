@@ -36,8 +36,7 @@ func ReconcileTransportCertificateSecrets(
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
 	trustRelationships []v1alpha1.TrustRelationship,
-	certValidity time.Duration,
-	certRotateBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "name", es.Name)
 
@@ -66,7 +65,7 @@ func ReconcileTransportCertificateSecrets(
 		}
 
 		if res, err := doReconcileTransportCertificateSecret(
-			c, scheme, es, pod, services, ca, additionalCAs, certValidity, certRotateBefore,
+			c, scheme, es, pod, services, ca, additionalCAs, rotationParams,
 		); err != nil {
 			return res, err
 		}
@@ -84,8 +83,7 @@ func doReconcileTransportCertificateSecret(
 	svcs []corev1.Service,
 	ca *certificates.CA,
 	additionalTrustedCAsPemEncoded [][]byte,
-	certValidity time.Duration,
-	certReconcileBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	secret, err := EnsureTransportCertificateSecretExists(c, scheme, es, pod)
 	if err != nil {
@@ -125,7 +123,7 @@ func doReconcileTransportCertificateSecret(
 	}
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, privateKey, ca, pod, certReconcileBefore)
+	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, privateKey, ca, pod, rotationParams.RotateBefore)
 
 	if issueNewCertificate {
 		log.Info(
@@ -146,7 +144,7 @@ func doReconcileTransportCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, certValidity)
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, rotationParams.Validity)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

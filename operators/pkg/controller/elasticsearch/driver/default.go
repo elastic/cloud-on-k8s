@@ -146,10 +146,8 @@ func (d *defaultDriver) Reconcile(
 		d.DynamicWatches,
 		es,
 		[]corev1.Service{genericResources.ExternalService},
-		d.Parameters.CACertValidity,
-		d.Parameters.CACertRotateBefore,
-		d.Parameters.CertValidity,
-		d.Parameters.CertRotateBefore,
+		d.Parameters.CACertRotation,
+		d.Parameters.CertRotation,
 	)
 	if results.WithResults(res).HasError() {
 		return results

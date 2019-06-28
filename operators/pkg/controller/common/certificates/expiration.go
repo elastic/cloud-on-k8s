@@ -13,3 +13,11 @@ const (
 	// should be re-issued
 	DefaultRotateBefore = 24 * time.Hour
 )
+
+// RotationParams defines validity and a safety margin for certificate rotation.
+type RotationParams struct {
+	// Validity is the validity duration of a newly created cert.
+	Validity time.Duration
+	// RotateBefore defines how long before expiration certificates should be rotated.
+	RotateBefore time.Duration
+}
