@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package e2e
+package apm
 
 import (
 	"bufio"
@@ -16,8 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-// TestSmoke runs a test suite using the ApmServer + Kibana + ES sample.
-func TestSmoke(t *testing.T) {
+const (
+	SampleApmEsKibanaFile = "../../../config/samples/apm/apm_es_kibana.yaml"
+)
+
+// TestApmEsKibanaSample runs a test suite using the sample ApmServer + ES + Kibana
+func TestApmEsKibanaSample(t *testing.T) {
 	var esBuilder elasticsearch.Builder
 	var kbBuilder kibana.Builder
 	var apmBuilder apmserver.Builder
@@ -25,21 +29,26 @@ func TestSmoke(t *testing.T) {
 	yamlFile, err := os.Open(SampleApmEsKibanaFile)
 	framework.ExitOnErr(err)
 
-	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
 	// the decoding order depends on the yaml
+	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
 	framework.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
 	framework.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
 	framework.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
+	// set namespace and version
 	esBuilder = esBuilder.
 		WithNamespace(framework.Namespace).
+		WithVersion(framework.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
 		WithNamespace(framework.Namespace).
+		WithVersion(framework.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
 		WithNamespace(framework.Namespace).
+		WithVersion(framework.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
 	framework.Run(t, framework.EmptySteps, esBuilder, kbBuilder, apmBuilder)
+	// TODO: is it possible to verify that it would also show up properly in Kibana?
 }
