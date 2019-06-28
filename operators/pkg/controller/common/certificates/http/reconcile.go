@@ -349,7 +349,7 @@ func createValidatedHTTPCertificateTemplate(
 	var ipAddresses []net.IP
 
 	for _, svc := range svcs {
-		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc))
+		dnsNames = append(dnsNames, k8s.GetServiceDNSName(svc)...)
 	}
 
 	if selfSignedCerts := tls.SelfSignedCertificate; selfSignedCerts != nil {

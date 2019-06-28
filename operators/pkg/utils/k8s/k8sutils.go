@@ -65,6 +65,9 @@ func GetPods(
 }
 
 // GetServiceDNSName returns the fully qualified DNS name for a service
-func GetServiceDNSName(svc corev1.Service) string {
-	return fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace)
+func GetServiceDNSName(svc corev1.Service) []string {
+	return []string{
+		fmt.Sprintf("%s.%s.svc", svc.Name, svc.Namespace),
+		fmt.Sprintf("%s.%s", svc.Name, svc.Namespace),
+	}
 }
