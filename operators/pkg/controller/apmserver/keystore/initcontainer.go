@@ -10,7 +10,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -53,9 +52,9 @@ var scriptTemplate = template.Must(template.New("").Parse(script))
 // initContainer returns an init container that executes a bash script
 // to create the APM Keystore.
 func initContainer(
-	object runtime.Object,
 	secureSettingsSecret volume.SecretVolume,
 	dataVolumePath string,
+	volumePrefix string,
 	KeystoreCreateCommand string,
 	KeystoreAddCommand string,
 ) (corev1.Container, error) {
@@ -82,7 +81,7 @@ func initContainer(
 			// access secure settings
 			secureSettingsSecret.VolumeMount(),
 			// write the keystore in the data volume
-			DataVolume(object, dataVolumePath).VolumeMount(),
+			DataVolume(volumePrefix, dataVolumePath).VolumeMount(),
 		},
 	}, nil
 }

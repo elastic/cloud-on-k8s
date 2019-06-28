@@ -146,6 +146,15 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// Fetch the ApmServer resource
 	as := &apmv1alpha1.ApmServer{}
 	err := r.Get(request.NamespacedName, as)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			// Object not found, return.  Created objects are automatically garbage collected.
+			// For additional cleanup logic use finalizers.
+			return reconcile.Result{}, nil
+		}
+		// Error reading the object - requeue the request.
+		return reconcile.Result{}, err
+	}
 
 	if common.IsPaused(as.ObjectMeta) {
 		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
@@ -160,20 +169,19 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
-	if err != nil {
-		if errors.IsNotFound(err) {
-			// Object not found, return.  Created objects are automatically garbage collected.
-			// For additional cleanup logic use finalizers.
-			return reconcile.Result{}, nil
-		}
-		// Error reading the object - requeue the request.
-		return reconcile.Result{}, err
+	if as.IsMarkedForDeletion() {
+		// APM server will be deleted nothing to do other than run finalizers
+		return reconcile.Result{}, nil
 	}
 
 	state := NewState(request, as)
 
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
+		if errors.IsConflict(err) {
+			log.V(1).Info("Conflict while updating status")
+			return reconcile.Result{Requeue: true}, nil
+		}
 		return state.Result, err
 	}
 
@@ -262,7 +270,14 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		return state, err
 	}
 
-	keystoreResources, err := keystore.NewResources(r.Client, r.recorder, r.dynamicWatches, as, as.Spec.SecureSettings, "/usr/share/apm-server/data")
+	keystoreResources, err := keystore.NewResources(
+		r.Client,
+		r.recorder,
+		r.dynamicWatches,
+		as,
+		as.Spec.SecureSettings,
+		"/usr/share/apm-server/data",
+		"apm")
 	if err != nil {
 		return state, err
 	}
@@ -360,7 +375,14 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(state.ApmServer)
+
+	err := r.Status().Update(state.ApmServer)
+	if err != nil && errors.IsConflict(err) {
+		log.V(1).Info("Conflict while updating status")
+		return reconcile.Result{Requeue: true}, nil
+	}
+
+	return state.Result, err
 }
 
 // finalizersFor returns the list of finalizers applying to a given APM deployment

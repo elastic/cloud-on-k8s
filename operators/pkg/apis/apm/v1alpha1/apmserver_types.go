@@ -159,3 +159,11 @@ type ApmServerList struct {
 func init() {
 	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
 }
+
+// IsMarkedForDeletion returns true if the APM is going to be deleted
+func (as ApmServer) IsMarkedForDeletion() bool {
+	if as.DeletionTimestamp.IsZero() { // already handles nil pointer
+		return false
+	}
+	return true
+}

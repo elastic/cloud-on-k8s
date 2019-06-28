@@ -35,6 +35,7 @@ func NewResources(
 	object runtime.Object,
 	userSecretRef *commonv1alpha1.SecretRef,
 	dataVolumePath string,
+	volumePrefix string,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
 	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, object, userSecretRef)
@@ -48,9 +49,9 @@ func NewResources(
 
 	// build an init container to create Kibana keystore from the secure settings volume
 	initContainer, err := initContainer(
-		object,
 		*secretVolume,
 		dataVolumePath,
+		volumePrefix,
 		"/usr/share/apm-server/apm-server keystore create --force",
 		"/usr/share/apm-server/apm-server keystore add",
 	)

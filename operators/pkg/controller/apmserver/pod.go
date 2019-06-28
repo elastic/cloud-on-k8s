@@ -106,7 +106,7 @@ func newPodSpec(as *apmv1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSp
 		WithEnv(env...)
 
 	if p.keystoreResources != nil {
-		dataVolume := keystore.DataVolume(as, "/usr/share/apm-server/data")
+		dataVolume := keystore.DataVolume("apm", "/usr/share/apm-server/data")
 		builder.WithInitContainers(p.keystoreResources.KeystoreInitContainer).
 			WithVolumes(p.keystoreResources.KeystoreVolume, dataVolume.Volume()).
 			WithVolumeMounts(dataVolume.VolumeMount()).
