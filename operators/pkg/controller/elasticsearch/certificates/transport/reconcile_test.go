@@ -361,7 +361,7 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 				testCluster,
 				tt.pod,
 				[]corev1.Service{testSvc},
-				testCA, tt.additionalTrustedCAsPemEncoded,
+				testCA,
 				certificates.RotationParams{
 					Validity:     certificates.DefaultCertValidity,
 					RotateBefore: certificates.DefaultRotateBefore,
