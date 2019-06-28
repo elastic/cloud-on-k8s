@@ -169,7 +169,6 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	as *apmv1alpha1.ApmServer,
 ) (State, error) {
 	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		//  TODO: should this be part of the validation? or is it still useful to spin up the earlier stuff?
 		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
 			"namespace", as.Namespace, "name", as.Name)
 		return state, nil
