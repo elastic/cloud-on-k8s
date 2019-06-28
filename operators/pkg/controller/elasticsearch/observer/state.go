@@ -47,8 +47,8 @@ func RetrieveState(
 	go func() {
 		clusterState, err := esClient.GetClusterState(ctx)
 		if err != nil {
-			// TODO(sabo): this was a debug log, should it still be?
-			log.Error(err, "Unable to retrieve cluster state")
+			// This is expected to happen from time to time
+			log.V(1).Info("Unable to retrieve cluster state", "error", err)
 			clusterStateChan <- nil
 			return
 		}
@@ -58,7 +58,7 @@ func RetrieveState(
 	go func() {
 		health, err := esClient.GetClusterHealth(ctx)
 		if err != nil {
-			log.Error(err, "Unable to retrieve cluster health")
+			log.V(1).Info("Unable to retrieve cluster health", "error", err)
 			healthChan <- nil
 			return
 		}
@@ -68,7 +68,7 @@ func RetrieveState(
 	go func() {
 		license, err := esClient.GetLicense(ctx)
 		if err != nil {
-			log.Error(err, "Unable to retrieve cluster license")
+			log.V(1).Info("Unable to retrieve cluster license", "error", err)
 			licenseChan <- nil
 			return
 		}

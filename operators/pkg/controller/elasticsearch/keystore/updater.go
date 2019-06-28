@@ -83,7 +83,6 @@ func (u *Updater) Start() {
 func (u *Updater) watchForUpdate() {
 	// on each filesystem event for config.SourceDir, update the keystore
 	onEvent := func(files fs.FilesCRC) (stop bool, e error) {
-		// TODO(sabo): what does this mean?
 		log.Info("On event")
 		err, msg := u.updateKeystore()
 		if err != nil {
@@ -94,7 +93,7 @@ func (u *Updater) watchForUpdate() {
 		}
 		return false, nil // run forever
 	}
-	// TODO(sabo): what does this mean?
+
 	log.Info("Watch for update")
 	watcher, err := fs.DirectoryWatcher(context.Background(), u.config.SecretsSourceDir, onEvent, dirWatcherPollingPeriod)
 	if err != nil {

@@ -59,7 +59,6 @@ func (s *forwarderStore) GetOrCreateForwarder(network, addr string, factory Forw
 		if err := fwd.Run(context.Background()); err != nil {
 			log.Error(err, "Forwarder returned with an error", "addr", addr)
 		} else {
-			//TODO(sabo): make this debug?
 			log.Info("Forwarder returned without an error", "addr", addr)
 		}
 	}()

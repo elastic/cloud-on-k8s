@@ -56,9 +56,9 @@ func (r *ReconcileTrials) Reconcile(request reconcile.Request) (reconcile.Result
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
 	}()
 
 	secret, license, err := licensing.TrialLicense(r, request.NamespacedName)

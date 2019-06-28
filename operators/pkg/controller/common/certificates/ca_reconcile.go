@@ -55,7 +55,6 @@ func ReconcileCAForOwner(
 	caCertValidity time.Duration,
 	expirationSafetyMargin time.Duration,
 ) (*CA, error) {
-	ownerNsn := k8s.ExtractNamespacedName(owner)
 
 	// retrieve current CA secret
 	caInternalSecret := corev1.Secret{}
@@ -68,29 +67,25 @@ func ReconcileCAForOwner(
 		return nil, err
 	}
 	if apierrors.IsNotFound(err) {
-		// TODO(sabo): make this namespace and name?
-		log.Info("No internal CA secret found, creating a new one", "owner", ownerNsn, "ca_type", caType)
+		log.Info("No internal CA secret found, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// build CA
 	ca := buildCAFromSecret(caInternalSecret)
 	if ca == nil {
-		// TODO(sabo): make this namespace and name?
-		log.Info("Cannot build CA from secret, creating a new one", "owner", ownerNsn, "ca_type", caType)
+		log.Info("Cannot build CA from secret, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// renew if cannot reuse
 	if !canReuseCA(ca, expirationSafetyMargin) {
-		// TODO(sabo): make this namespace and name?
-		log.Info("Cannot reuse existing CA, creating a new one", "owner", ownerNsn, "ca_type", caType)
+		log.Info("Cannot reuse existing CA, creating a new one", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 		return renewCA(cl, namer, owner, labels, caCertValidity, scheme, caType)
 	}
 
 	// reuse existing CA
-	// TODO(sabo): make this namespace and name?
-	log.V(1).Info("Reusing existing CA", "owner", ownerNsn, "ca_type", caType)
+	log.V(1).Info("Reusing existing CA", "owner_namespace", owner.GetNamespace(), "owner_name", owner.GetName(), "ca_type", caType)
 	return ca, nil
 }
 

@@ -180,7 +180,6 @@ func execute() {
 			"Enabling %s without enabling development mode not allowed", AutoPortForwardFlagName,
 		))
 	} else if autoPortForward {
-		// TODO(sabo): should this be an error?
 		log.Info("Warning: auto-port-forwarding is enabled, which is intended for development only")
 		dialer = portforward.NewForwardingDialer()
 	}
@@ -214,10 +213,7 @@ func execute() {
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
 	metricsPort := viper.GetInt(MetricsPortFlag)
-	if metricsPort != 0 {
-		// TODO(sabo): this is more to clarify that it is a custom port right? we still start it either way
-		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
-	}
+	log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")

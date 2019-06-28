@@ -109,10 +109,9 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	// TODO(sabo): should these be debug logs?
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
 	}()
 
 	// retrieve Kibana resource
@@ -135,7 +134,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	)
 	if err != nil {
 		if apierrors.IsConflict(err) {
-			// TODO(sabo) error this?
+			// Conflicts are expected here and should be resolved on next loop
 			log.V(1).Info("Conflict while handling finalizer")
 			return reconcile.Result{Requeue: true}, nil
 		}
@@ -159,7 +158,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		kibana.Status.AssociationStatus = newStatus
 		if err := r.Status().Update(&kibana); err != nil {
 			if apierrors.IsConflict(err) {
-				// TODO(sabo): error?
+				// Conflicts are expected and will be resolved on next loop
 				log.V(1).Info("Conflict while updating status")
 				return reconcile.Result{Requeue: true}, nil
 			}

@@ -130,9 +130,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
 	}()
 
 	// Fetch the Kibana instance
@@ -155,7 +155,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 
 	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
 		if errors.IsConflict(err) {
-			// TODO(sabo): should this be an error?
+			// Conflicts are expected and should be resolved on next loop
 			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "name", kb.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}

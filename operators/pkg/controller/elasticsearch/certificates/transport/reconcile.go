@@ -262,7 +262,7 @@ func shouldIssueNewCertificate(
 		Intermediates: pool,
 	}
 	if _, err := cert.Verify(verifyOpts); err != nil {
-		// TODO(sabo): should this be an error?
+		// this is not necessarily an error because the certificate may be expired
 		log.Info(
 			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
 			"subject", cert.Subject,
@@ -274,7 +274,6 @@ func shouldIssueNewCertificate(
 		return true
 	}
 
-	// TODO(sabo): dont we have at least 2 other places we have this same code?
 	if time.Now().After(cert.NotAfter.Add(-certReconcileBefore)) {
 		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "name", secret.Name)
 		return true

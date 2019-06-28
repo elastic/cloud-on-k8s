@@ -51,9 +51,9 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "request", request)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
 	}()
 	result, err := r.reconcileInternal(request)
 	if result.Requeue {
@@ -167,7 +167,6 @@ type ReconcileLicenses struct {
 func findLicense(c k8s.Client, checker license.Checker) (esclient.License, string, bool, error) {
 	licenseList, errs := license.EnterpriseLicensesOrErrors(c)
 	if len(errs) > 0 {
-		// TODO(sabo): why is this not an error?
 		log.Info("Ignoring invalid license objects", "errors", errs)
 	}
 	return license.BestMatch(licenseList, checker.Valid)

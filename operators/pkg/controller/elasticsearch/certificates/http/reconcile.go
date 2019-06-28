@@ -294,7 +294,6 @@ func shouldIssueNewHTTPCertificate(
 		return true
 	}
 
-	// TODO(sabo): dont we have other code that does the same thing?
 	if time.Now().After(certificate.NotAfter.Add(-certReconcileBefore)) {
 		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "name", secret.Name)
 		return true

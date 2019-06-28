@@ -107,7 +107,7 @@ func UpdateZen1Discovery(
 
 	// Do not attempt to make an API call if there is not enough available masters
 	if currentAvailableMasterCount < minimumMasterNodes {
-		// TODO(sabo): should we bump this up a log level? idk how critical it is
+		// This is expected to happen from time to time
 		log.V(1).Info("Not enough masters to update the API",
 			"namespace", cluster.Namespace,
 			"name", cluster.Name,

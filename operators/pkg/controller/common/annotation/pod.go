@@ -65,7 +65,7 @@ func MarkPodAsUpdated(
 		time.Now().Format(time.RFC3339Nano) // nano should be enough to avoid collisions and keep it readable by a human.
 	if err := c.Update(&pod); err != nil {
 		if errors.IsConflict(err) {
-			// TODO(sabo):  should this be an error not a debug log?
+			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
 			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "name", pod.Name)
 		} else {
 			log.Error(err, "failed to update pod annotation",
