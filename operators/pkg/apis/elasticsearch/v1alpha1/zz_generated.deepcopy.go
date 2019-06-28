@@ -57,7 +57,7 @@ func (in *Elasticsearch) DeepCopyInto(out *Elasticsearch) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
-	in.Status.DeepCopyInto(&out.Status)
+	out.Status = in.Status
 	return
 }
 
@@ -182,13 +182,6 @@ func (in *ElasticsearchStatus) DeepCopyInto(out *ElasticsearchStatus) {
 	*out = *in
 	out.ReconcilerStatus = in.ReconcilerStatus
 	out.ZenDiscovery = in.ZenDiscovery
-	if in.RemoteClusters != nil {
-		in, out := &in.RemoteClusters, &out.RemoteClusters
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 

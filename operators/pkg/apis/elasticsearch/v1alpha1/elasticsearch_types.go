@@ -219,7 +219,6 @@ type ElasticsearchStatus struct {
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
 	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
-	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
