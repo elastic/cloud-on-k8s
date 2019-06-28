@@ -6,6 +6,7 @@ package keystore
 
 import (
 	"fmt"
+	"strings"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -88,8 +89,8 @@ func retrieveUserSecret(c k8s.Client, object runtime.Object, recorder record.Eve
 	return &userSecret, true, nil
 }
 
-// secureSettingsWatchName returns the watch name according to the Kibana deployment name.
-// It is unique per Kibana deployment.
+// secureSettingsWatchName returns the watch name according to the deployment name.
+// It is unique per APM or Kibana deployment.
 func secureSettingsWatchName(namespacedName types.NamespacedName) string {
 	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
 }
@@ -115,10 +116,14 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *comm
 	})
 }
 
+func getKind(object runtime.Object) string {
+	return strings.ToLower(object.GetObjectKind().GroupVersionKind().Kind)
+}
+
 // Finalizer removes any dynamic watches on external user created secret.
-func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
+func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, object runtime.Object) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers.kibana.k8s.elastic.co",
+		Name: "secure-settings.finalizers." + getKind(object) + ".k8s.elastic.co",
 		Execute: func() error {
 			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
 			return nil

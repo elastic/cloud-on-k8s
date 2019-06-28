@@ -152,6 +152,14 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return common.PauseRequeue, nil
 	}
 
+	if err := r.finalizers.Handle(as, r.finalizersFor(*as)...); err != nil {
+		if errors.IsConflict(err) {
+			log.V(1).Info("Conflict while handling secret watch finalizer")
+			return reconcile.Result{Requeue: true}, nil
+		}
+		return reconcile.Result{}, err
+	}
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -274,8 +282,14 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	podSpec := newPodSpec(as, apmServerPodSpecParams)
 
 	podLabels := labels.NewLabels(as.Name)
-	// add the config file checksum to the pod labels so a change triggers a rolling update
-	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", sha256.Sum224(reconciledConfigSecret.Data[config.ApmCfgSecretKey]))
+
+	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
+	configChecksum := sha256.New224()
+	configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
+	if keystoreResources != nil {
+		configChecksum.Write([]byte(keystoreResources.KeystoreVersion))
+	}
+	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
 	esCASecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthorities.SecretName
 	if esCASecretName != "" {
@@ -347,4 +361,11 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	}
 	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(state.ApmServer)
+}
+
+// finalizersFor returns the list of finalizers applying to a given APM deployment
+func (r *ReconcileApmServer) finalizersFor(as apmv1alpha1.ApmServer) []finalizer.Finalizer {
+	return []finalizer.Finalizer{
+		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, &as),
+	}
 }

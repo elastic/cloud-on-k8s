@@ -64,6 +64,8 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		return nil, err
 	}
 
+	userSettings.
+
 	// Get username and password
 	username, password, err := elasticsearchAuthSettings(c, as)
 	if err != nil {
