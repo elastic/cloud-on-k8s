@@ -75,7 +75,7 @@ type SelfSignedCertificate struct {
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
 	// Disabled turns off the provisioning of self-signed HTTP TLS certificates.
-	Disabled bool `json:"disabled,omitempty""`
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 type SubjectAlternativeName struct {
