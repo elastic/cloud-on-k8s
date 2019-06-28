@@ -125,7 +125,7 @@ install-crds: generate
 run: install-crds go-run
 
 go-run:
-    # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator			
+    # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
