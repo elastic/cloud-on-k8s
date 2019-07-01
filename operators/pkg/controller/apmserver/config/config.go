@@ -9,11 +9,10 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 const (
@@ -64,10 +63,8 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		return nil, err
 	}
 
-	userSettings.
-
 	// Get username and password
-	username, password, err := elasticsearchAuthSettings(c, as)
+	username, password, err := association.ElasticsearchAuthSettings(c, &as)
 	if err != nil {
 		return nil, err
 	}
@@ -98,25 +95,4 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		userSettings,
 	)
 	return cfg, nil
-}
-
-func elasticsearchAuthSettings(c k8s.Client, as v1alpha1.ApmServer) (username, password string, err error) {
-	auth := as.Spec.Output.Elasticsearch.Auth
-
-	if auth.Inline != nil {
-		return auth.Inline.Username, auth.Inline.Password, nil
-	}
-
-	// if auth is provided via a secret, resolve credentials from it.
-	if auth.SecretKeyRef != nil {
-		secretObjKey := types.NamespacedName{Namespace: as.Namespace, Name: auth.SecretKeyRef.Name}
-		var secret v1.Secret
-		if err := c.Get(secretObjKey, &secret); err != nil {
-			return "", "", err
-		}
-		return auth.SecretKeyRef.Key, string(secret.Data[auth.SecretKeyRef.Key]), nil
-	}
-
-	// no authentication method provided, return an empty credential
-	return "", "", nil
 }

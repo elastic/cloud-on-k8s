@@ -4,6 +4,8 @@
 
 package v1alpha1
 
+import v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 // AssociationStatus is the status of an assocation resource.
 type AssociationStatus string
 
@@ -18,6 +20,7 @@ const (
 // offers a keystore which in ECK is represented with an underlying Secret.
 // Kibana and the APM server are two examples of associated objects.
 type Associated interface {
+	v1.Object
 	ElasticsearchAuth() ElasticsearchAuth
 	SecureSettings() *SecretRef
 }

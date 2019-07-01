@@ -143,9 +143,17 @@ func init() {
 }
 
 // IsMarkedForDeletion returns true if the APM is going to be deleted
-func (as ApmServer) IsMarkedForDeletion() bool {
+func (as *ApmServer) IsMarkedForDeletion() bool {
 	if as.DeletionTimestamp.IsZero() { // already handles nil pointer
 		return false
 	}
 	return true
+}
+
+func (as *ApmServer) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
+	return as.Spec.Output.Elasticsearch.Auth
+}
+
+func (as *ApmServer) SecureSettings() *commonv1alpha1.SecretRef {
+	return as.Spec.SecureSettings
 }

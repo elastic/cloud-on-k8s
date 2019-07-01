@@ -95,11 +95,19 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
-func (e Kibana) IsMarkedForDeletion() bool {
-	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
+func (k Kibana) IsMarkedForDeletion() bool {
+	if k.DeletionTimestamp.IsZero() { // already handles nil pointer
 		return false
 	}
 	return true
+}
+
+func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
+	return k.Spec.Elasticsearch.Auth
+}
+
+func (k *Kibana) SecureSettings() *commonv1alpha1.SecretRef {
+	return k.Spec.SecureSettings
 }
 
 // +genclient
