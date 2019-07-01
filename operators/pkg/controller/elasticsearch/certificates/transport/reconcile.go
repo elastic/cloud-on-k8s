@@ -35,21 +35,9 @@ func ReconcileTransportCertificateSecrets(
 	ca *certificates.CA,
 	es v1alpha1.Elasticsearch,
 	services []corev1.Service,
-	trustRelationships []v1alpha1.TrustRelationship,
-	certValidity time.Duration,
-	certRotateBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	log.Info("Reconciling transport certificate secrets")
-
-	// load additional trusted CAs from the trustrelationships
-	additionalCAs := make([][]byte, 0, len(trustRelationships))
-	for _, trustRelationship := range trustRelationships {
-		if trustRelationship.Spec.CaCert == "" {
-			continue
-		}
-
-		additionalCAs = append(additionalCAs, []byte(trustRelationship.Spec.CaCert))
-	}
 
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
@@ -66,7 +54,7 @@ func ReconcileTransportCertificateSecrets(
 		}
 
 		if res, err := doReconcileTransportCertificateSecret(
-			c, scheme, es, pod, services, ca, additionalCAs, certValidity, certRotateBefore,
+			c, scheme, es, pod, services, ca, rotationParams,
 		); err != nil {
 			return res, err
 		}
@@ -83,9 +71,7 @@ func doReconcileTransportCertificateSecret(
 	pod corev1.Pod,
 	svcs []corev1.Service,
 	ca *certificates.CA,
-	additionalTrustedCAsPemEncoded [][]byte,
-	certValidity time.Duration,
-	certReconcileBefore time.Duration,
+	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
 	secret, err := EnsureTransportCertificateSecretExists(c, scheme, es, pod)
 	if err != nil {
@@ -125,7 +111,7 @@ func doReconcileTransportCertificateSecret(
 	}
 
 	// check if the existing cert is correct
-	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, privateKey, ca, pod, certReconcileBefore)
+	issueNewCertificate := shouldIssueNewCertificate(es, svcs, *secret, privateKey, ca, pod, rotationParams.RotateBefore)
 
 	if issueNewCertificate {
 		log.Info(
@@ -145,7 +131,7 @@ func doReconcileTransportCertificateSecret(
 			return reconcile.Result{}, err
 		}
 
-		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, certValidity)
+		validatedCertificateTemplate, err := CreateValidatedCertificateTemplate(pod, es, svcs, parsedCSR, rotationParams.Validity)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -159,11 +145,8 @@ func doReconcileTransportCertificateSecret(
 		secret.Data[certificates.CertFileName] = certificates.EncodePEMCert(certData, ca.Cert.Raw)
 	}
 
-	// prepare trusted CA certs: CA of this node + additional CA certs from trustrelationships
+	// prepare trusted CA certs: CA of this node
 	trusted := certificates.EncodePEMCert(ca.Cert.Raw)
-	for _, caPemBytes := range additionalTrustedCAsPemEncoded {
-		trusted = append(trusted, caPemBytes...)
-	}
 
 	// compare with current trusted CA certs.
 	updateTrustedCACerts := !bytes.Equal(trusted, secret.Data[certificates.CAFileName])

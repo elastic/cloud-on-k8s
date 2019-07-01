@@ -289,7 +289,10 @@ func TestReconcileCAForCluster(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ca, err := ReconcileCAForOwner(
-				tt.cl, scheme.Scheme, testNamer, &testCluster, nil, TransportCAType, tt.caCertValidity, DefaultRotateBefore,
+				tt.cl, scheme.Scheme, testNamer, &testCluster, nil, TransportCAType, RotationParams{
+					Validity:     tt.caCertValidity,
+					RotateBefore: DefaultRotateBefore,
+				},
 			)
 			require.NoError(t, err)
 			require.NotNil(t, ca)

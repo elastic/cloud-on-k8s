@@ -7,10 +7,11 @@ package migration
 import (
 	"context"
 	"testing"
-	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestEnoughRedundancy(t *testing.T) {
@@ -98,7 +99,6 @@ func (m *mockClient) getAndReset() []string {
 }
 
 func TestMigrateData(t *testing.T) {
-	now := time.Date(2018, 11, 15, 0, 9, 0, 0, time.UTC) //1542240540
 	tests := []struct {
 		name  string
 		input []string
@@ -112,18 +112,19 @@ func TestMigrateData(t *testing.T) {
 		{
 			name:  "one node to migrate",
 			input: []string{"test-node"},
-			want:  "test-node,1542240540",
+			want:  "test-node",
 		},
 		{
 			name:  "multiple node to migrate",
 			input: []string{"test-node1", "test-node2"},
-			want:  "test-node1,test-node2,1542240540",
+			want:  "test-node1,test-node2",
 		},
 	}
 
 	for _, tt := range tests {
 		esClient := &mockClient{t: t}
-		setAllocationExcludes(esClient, tt.input, now)
+		err := setAllocationExcludes(esClient, tt.input)
+		require.NoError(t, err)
 		assert.Contains(t, esClient.getAndReset(), tt.want)
 	}
 }

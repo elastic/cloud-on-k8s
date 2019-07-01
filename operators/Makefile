@@ -13,7 +13,7 @@ ROOT_DIR = $(shell dirname $(CURDIR))
 export SHELL := /bin/bash
 
 KUBECTL_CLUSTER := $(shell kubectl config current-context 2> /dev/null)
-GKE_CLUSTER_VERSION ?= 1.11
+GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
@@ -127,7 +127,9 @@ run: install-crds go-run
 go-run:
     # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
-		go run -ldflags "$(GO_LDFLAGS)" \
+		go run \
+			-ldflags "$(GO_LDFLAGS)" \
+			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \

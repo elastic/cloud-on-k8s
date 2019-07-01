@@ -11,6 +11,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -130,6 +131,41 @@ func (b Builder) WithEmptyDirVolumes() Builder {
 				Name: volume.ElasticsearchDataVolumeName,
 				VolumeSource: corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			},
+		}
+	}
+	return b
+}
+
+func (b Builder) WithPersistentVolumes(volumeName string, storageClassName *string) Builder {
+	for i := range b.Elasticsearch.Spec.Nodes {
+		name := volumeName
+		b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates = append(b.Elasticsearch.Spec.Nodes[i].VolumeClaimTemplates,
+			corev1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+				Spec: corev1.PersistentVolumeClaimSpec{
+					StorageClassName: storageClassName,
+					AccessModes: []corev1.PersistentVolumeAccessMode{
+						corev1.ReadWriteOnce,
+					},
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceStorage: resource.MustParse("1Gi"),
+						},
+					},
+				},
+			})
+		b.Elasticsearch.Spec.Nodes[i].PodTemplate.Spec.Volumes = []corev1.Volume{
+			{
+				Name: name,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: name,
+						ReadOnly:  false,
+					},
 				},
 			},
 		}
