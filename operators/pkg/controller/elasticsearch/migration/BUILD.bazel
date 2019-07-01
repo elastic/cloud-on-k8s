@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["migrate_data.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "//operators/pkg/controller/elasticsearch/observer:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["migrate_data_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+    ],
+)

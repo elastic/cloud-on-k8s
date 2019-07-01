@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "client.go",
+        "client_mock.go",
+        "config.go",
+        "environment.go",
+        "manager.go",
+        "process.go",
+        "server.go",
+        "state.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/controller/elasticsearch/keystore:go_default_library",
+        "//operators/pkg/controller/elasticsearch/volume:go_default_library",
+        "//operators/pkg/utils/cryptutil:go_default_library",
+        "//operators/pkg/utils/net:go_default_library",
+        "@com_github_hashicorp_go_reap//:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)

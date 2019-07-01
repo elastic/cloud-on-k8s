@@ -1,0 +1,4 @@
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/elastic/cloud-on-k8s
+gazelle(name = "gazelle")

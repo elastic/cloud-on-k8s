@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["hash.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash",
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_davecgh_go_spew//spew:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["hash_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

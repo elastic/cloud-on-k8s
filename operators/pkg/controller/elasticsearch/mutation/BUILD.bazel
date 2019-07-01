@@ -1,0 +1,59 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "calculate.go",
+        "change_group.go",
+        "changes.go",
+        "mutation.go",
+        "performable.go",
+        "podrestrictions.go",
+        "pods_state.go",
+        "sorting.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/mutation/comparison:go_default_library",
+        "//operators/pkg/controller/elasticsearch/observer:go_default_library",
+        "//operators/pkg/controller/elasticsearch/pod:go_default_library",
+        "//operators/pkg/controller/elasticsearch/reconcile:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/labels:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "calculate_test.go",
+        "change_group_test.go",
+        "changes_test.go",
+        "performable_test.go",
+        "podrestrictions_test.go",
+        "pods_state_test.go",
+        "sorting_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/hash:go_default_library",
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/name:go_default_library",
+        "//operators/pkg/controller/elasticsearch/observer:go_default_library",
+        "//operators/pkg/controller/elasticsearch/pod:go_default_library",
+        "//operators/pkg/controller/elasticsearch/reconcile:go_default_library",
+        "//operators/pkg/controller/elasticsearch/settings:go_default_library",
+        "//operators/pkg/controller/elasticsearch/version:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/resource:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

@@ -1,0 +1,22 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["canonical_config.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_elastic_go_ucfg//:go_default_library",
+        "@com_github_elastic_go_ucfg//diff:go_default_library",
+        "@com_github_elastic_go_ucfg//yaml:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["canonical_config_test.go"],
+    embed = [":go_default_library"],
+    deps = ["@com_github_stretchr_testify//require:go_default_library"],
+)

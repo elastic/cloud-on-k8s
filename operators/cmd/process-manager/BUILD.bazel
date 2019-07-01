@@ -1,0 +1,24 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "flags.go",
+        "main.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/cmd/process-manager",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//operators/pkg/controller/elasticsearch/keystore:go_default_library",
+        "//operators/pkg/controller/elasticsearch/processmanager:go_default_library",
+        "@com_github_spf13_cobra//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "process-manager",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)

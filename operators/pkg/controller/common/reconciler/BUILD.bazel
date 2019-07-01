@@ -1,0 +1,56 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "expectations.go",
+        "handler.go",
+        "reconciler.go",
+        "results.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/controller/common/finalizer:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/errors:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/meta:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@io_k8s_apimachinery//pkg/util/errors:go_default_library",
+        "@io_k8s_client_go//util/workqueue:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client/apiutil:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/controller/controllerutil:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/event:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/handler:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/reconcile:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "expectations_test.go",
+        "reconciler_test.go",
+        "results_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@io_k8s_api//apps/v1:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime/schema:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@io_k8s_client_go//kubernetes/scheme:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client/fake:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/reconcile:go_default_library",
+    ],
+)

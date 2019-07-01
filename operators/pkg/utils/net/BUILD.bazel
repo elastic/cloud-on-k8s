@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "dialer.go",
+        "ip.go",
+        "port.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net",
+    visibility = ["//visibility:public"],
+)

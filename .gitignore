@@ -30,3 +30,6 @@ license.key
 
 # generated from merging multiple files in the Makefile
 operators/config/all-in-one.yaml
+
+# Bazel
+bazel*

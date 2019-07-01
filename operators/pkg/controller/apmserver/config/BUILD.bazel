@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["config.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/apm/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["config_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/apis/apm/v1alpha1:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client/fake:go_default_library",
+    ],
+)

@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["settings.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/kibana/v1alpha1:go_default_library",
+        "//operators/pkg/controller/kibana/config:go_default_library",
+    ],
+)

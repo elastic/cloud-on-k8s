@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "configmap.go",
+        "emptydir.go",
+        "secret.go",
+        "volume.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume",
+    visibility = ["//visibility:public"],
+    deps = ["@io_k8s_api//core/v1:go_default_library"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "emptydir_test.go",
+        "secret_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+    ],
+)

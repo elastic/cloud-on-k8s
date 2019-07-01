@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "pod.go",
+        "readiness_probe.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/network:go_default_library",
+        "//operators/pkg/controller/elasticsearch/processmanager:go_default_library",
+        "//operators/pkg/controller/elasticsearch/settings:go_default_library",
+        "//operators/pkg/controller/elasticsearch/volume:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

@@ -1,0 +1,40 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "base.go",
+        "client.go",
+        "mock.go",
+        "model.go",
+        "v6.go",
+        "v7.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/controller/common/version:go_default_library",
+        "//operators/pkg/utils/cryptutil:go_default_library",
+        "//operators/pkg/utils/net:go_default_library",
+        "//operators/pkg/utils/stringsutil:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "client_test.go",
+        "model_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/controller/common/version:go_default_library",
+        "//operators/pkg/controller/elasticsearch/client/test_fixtures:go_default_library",
+        "//operators/pkg/dev/portforward:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+    ],
+)

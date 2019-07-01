@@ -1,0 +1,59 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "common.go",
+        "doc.go",
+        "running_versions.go",
+        "supported_versions.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/common/v1alpha1:go_default_library",
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/defaults:go_default_library",
+        "//operators/pkg/controller/common/hash:go_default_library",
+        "//operators/pkg/controller/common/version:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/controller/elasticsearch/initcontainer:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/name:go_default_library",
+        "//operators/pkg/controller/elasticsearch/pod:go_default_library",
+        "//operators/pkg/controller/elasticsearch/processmanager:go_default_library",
+        "//operators/pkg/controller/elasticsearch/settings:go_default_library",
+        "//operators/pkg/controller/elasticsearch/user:go_default_library",
+        "//operators/pkg/controller/elasticsearch/volume:go_default_library",
+        "//operators/pkg/utils/stringsutil:go_default_library",
+        "@com_github_pkg_errors//:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/resource:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "common_test.go",
+        "running_versions_test.go",
+        "supported_versions_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/apis/common/v1alpha1:go_default_library",
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/hash:go_default_library",
+        "//operators/pkg/controller/common/version:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/pod:go_default_library",
+        "//operators/pkg/controller/elasticsearch/processmanager:go_default_library",
+        "//operators/pkg/controller/elasticsearch/settings:go_default_library",
+        "@com_github_stretchr_testify//require:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/resource:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

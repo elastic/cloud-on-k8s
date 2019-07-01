@@ -1,0 +1,21 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["handler.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/webhook/elasticsearch",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/validation:go_default_library",
+        "//operators/pkg/controller/elasticsearch/validation:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@io_k8s_api//admission/v1beta1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/errors:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/inject:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/webhook/admission:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/webhook/admission/types:go_default_library",
+    ],
+)

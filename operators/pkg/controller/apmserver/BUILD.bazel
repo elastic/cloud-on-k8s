@@ -1,0 +1,57 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "apmserver_controller.go",
+        "deployment.go",
+        "deployment_control.go",
+        "labels.go",
+        "pod.go",
+        "services.go",
+        "state.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/apm/v1alpha1:go_default_library",
+        "//operators/pkg/controller/apmserver/config:go_default_library",
+        "//operators/pkg/controller/common:go_default_library",
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/controller/common/defaults:go_default_library",
+        "//operators/pkg/controller/common/events:go_default_library",
+        "//operators/pkg/controller/common/operator:go_default_library",
+        "//operators/pkg/controller/common/reconciler:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "//operators/pkg/utils/stringsutil:go_default_library",
+        "@io_k8s_api//apps/v1:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/api/errors:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@io_k8s_apimachinery//pkg/util/intstr:go_default_library",
+        "@io_k8s_apimachinery//pkg/util/rand:go_default_library",
+        "@io_k8s_client_go//tools/record:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/controller:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/handler:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/manager:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/reconcile:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/source:go_default_library",
+        "@io_k8s_sigs_yaml//:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["pod_test.go"],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/apis/apm/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+    ],
+)

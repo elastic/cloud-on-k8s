@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["secret.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/kibana/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+    ],
+)

@@ -1,0 +1,23 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "addtoscheme_apm_v1alpha1.go",
+        "addtoscheme_associations_v1alpha1.go",
+        "addtoscheme_common_v1alpha1.go",
+        "addtoscheme_elasticsearch_v1alpha1.go",
+        "addtoscheme_kibana_v1alpha1.go",
+        "apis.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/apis",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/apm/v1alpha1:go_default_library",
+        "//operators/pkg/apis/associations/v1alpha1:go_default_library",
+        "//operators/pkg/apis/common/v1alpha1:go_default_library",
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/apis/kibana/v1alpha1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+    ],
+)

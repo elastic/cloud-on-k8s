@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "doc.go",
+        "register.go",
+        "zz_generated.deepcopy.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@io_k8s_apimachinery//pkg/runtime/schema:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/scheme:go_default_library",
+    ],
+)

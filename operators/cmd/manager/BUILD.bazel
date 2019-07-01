@@ -1,0 +1,26 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/cmd/manager",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/about:go_default_library",
+        "//operators/pkg/apis:go_default_library",
+        "//operators/pkg/controller:go_default_library",
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/controller/common/operator:go_default_library",
+        "//operators/pkg/dev:go_default_library",
+        "//operators/pkg/dev/portforward:go_default_library",
+        "//operators/pkg/utils/net:go_default_library",
+        "//operators/pkg/webhook:go_default_library",
+        "@com_github_spf13_cobra//:go_default_library",
+        "@com_github_spf13_viper//:go_default_library",
+        "@io_k8s_client_go//kubernetes:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client/config:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/manager:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/signals:go_default_library",
+    ],
+)

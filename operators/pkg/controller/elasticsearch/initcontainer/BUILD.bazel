@@ -1,0 +1,39 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "initcontainer.go",
+        "inject_process_manager.go",
+        "linked_files.go",
+        "os_settings.go",
+        "prepare_fs.go",
+        "prepare_fs_script.go",
+        "shared_volumes.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/controller/common/certificates:go_default_library",
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "//operators/pkg/controller/elasticsearch/name:go_default_library",
+        "//operators/pkg/controller/elasticsearch/settings:go_default_library",
+        "//operators/pkg/controller/elasticsearch/user:go_default_library",
+        "//operators/pkg/controller/elasticsearch/volume:go_default_library",
+        "//operators/pkg/utils/stringsutil:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "initcontainer_test.go",
+        "prepare_fs_script_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/controller/common/volume:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+    ],
+)

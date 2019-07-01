@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["params.go"],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/test/e2e/params",
+    visibility = ["//visibility:public"],
+    deps = ["@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library"],
+)

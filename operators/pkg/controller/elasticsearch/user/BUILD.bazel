@@ -1,0 +1,49 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "credentials.go",
+        "predefined_users.go",
+        "reconciler.go",
+        "user.go",
+    ],
+    importpath = "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//operators/pkg/apis/elasticsearch/v1alpha1:go_default_library",
+        "//operators/pkg/controller/common/reconciler:go_default_library",
+        "//operators/pkg/controller/common/user:go_default_library",
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "//operators/pkg/controller/elasticsearch/label:go_default_library",
+        "//operators/pkg/controller/elasticsearch/name:go_default_library",
+        "//operators/pkg/utils/k8s:go_default_library",
+        "@com_github_ghodss_yaml//:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/runtime:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/client:go_default_library",
+        "@io_k8s_sigs_controller_runtime//pkg/runtime/log:go_default_library",
+        "@org_golang_x_crypto//bcrypt:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "credentials_test.go",
+        "predefined_users_test.go",
+        "reconciler_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//operators/pkg/controller/common/user:go_default_library",
+        "//operators/pkg/controller/elasticsearch/client:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
+        "@io_k8s_api//core/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:go_default_library",
+        "@io_k8s_apimachinery//pkg/types:go_default_library",
+        "@org_golang_x_crypto//bcrypt:go_default_library",
+    ],
+)
