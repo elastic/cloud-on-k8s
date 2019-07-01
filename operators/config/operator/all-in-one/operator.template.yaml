@@ -21,7 +21,7 @@ spec:
       containers:
       - image: <OPERATOR_IMAGE>
         name: manager
-        args: ["manager", "--operator-roles", "all", "--log-level", "INFO"]
+        args: ["manager", "--operator-roles", "all", "--enable-debug-logs", "false"]
         env:
           - name: OPERATOR_NAMESPACE
             valueFrom:

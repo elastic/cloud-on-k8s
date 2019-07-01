@@ -24,7 +24,7 @@ Please note that if the annotation is set on the Stack all the dependents *(kiba
 
 ### Debug logs
 
-To enable debug logs for the operator, restart it with the flag `--log-level=DEBUG`. For example:
+To enable debug logs for the operator, restart it with the flag `--enable-debug-logs=true`. For example:
 
 ```shell
 kubectl edit statefulset.apps -n elastic-system elastic-operator
@@ -39,8 +39,8 @@ and change the following lines from:
         - manager
         - --operator-roles
         - all
-        - --log-level
-        - INFO
+        - --enable-debug-logs
+        - false
 ```
 
 to
@@ -52,6 +52,6 @@ to
         - manager
         - --operator-roles
         - all
-        - --log-level
-        - DEBUG
+        - --enable-debug-logs
+        - true
 ```

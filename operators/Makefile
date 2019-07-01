@@ -132,7 +132,7 @@ go-run:
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
-				--log-level=DEBUG \
+				--enable-debug-logs=true \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false

@@ -16,19 +16,15 @@ var log = logf.Log.WithName("main")
 
 func main() {
 	var rootCmd = &cobra.Command{Use: "elastic-operator"}
+	logLevelFlag := "enable-debug-logs"
 	rootCmd.AddCommand(manager.Cmd)
-	logLevelFlag := "log-level"
 	// development mode is only available as a command line flag to avoid accidentally enabling it
 	rootCmd.PersistentFlags().BoolVar(&dev.Enabled, "development", false, "turns on development mode")
-	rootCmd.PersistentFlags().String(logLevelFlag, "INFO", "sets the log level. May be either INFO or DEBUG")
+	rootCmd.PersistentFlags().Bool(logLevelFlag, false, "If true, enables debug logs. Defaults to false")
 
 	cobra.OnInitialize(func() {
-		level, _ := rootCmd.Flags().GetString(logLevelFlag)
-		logLevel := false
-		if level == "DEBUG" {
-			logLevel = true
-		}
-		logf.SetLogger(logf.ZapLogger(logLevel))
+		debug, _ := rootCmd.Flags().GetBool(logLevelFlag)
+		logf.SetLogger(logf.ZapLogger(debug))
 	})
 
 	if err := rootCmd.Execute(); err != nil {
