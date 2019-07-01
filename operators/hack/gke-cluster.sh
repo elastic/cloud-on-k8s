@@ -53,10 +53,8 @@ create_cluster() {
         echo "-> GKE cluster is running."
         # make sure cluster config is exported for kubectl
         export_credentials
-        # also make sure that vm.max_map_count is set if PSP is enabled
-        if [ "$PSP" == "1" ]; then
-            set_max_map_count
-        fi
+        # ensure vm.max_map_count
+        set_max_map_count
         exit 0
     fi
 
@@ -81,11 +79,8 @@ create_cluster() {
     # Create required role binding between the GCP account and the K8s cluster.
     kubectl create clusterrolebinding cluster-admin-binding --clusterrole=cluster-admin --user=$(gcloud auth list --filter=status:ACTIVE --format="value(account)")
 
-    # set vm.max_map_count if PSP is enabled
-    if [ "$PSP" == "1" ]; then
-        set_max_map_count
-    fi
-
+    # set vm.max_map_count
+    set_max_map_count
 }
 
 delete_cluster() {
