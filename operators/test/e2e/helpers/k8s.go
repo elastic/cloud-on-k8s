@@ -24,10 +24,13 @@ import (
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
@@ -81,6 +84,18 @@ func CreateClient() (k8s.Client, error) {
 		return nil, err
 	}
 	return k8s.WrapClient(client), nil
+}
+
+func ServerVersion() (*version.Info, error) {
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "while getting rest config")
+	}
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, errors.Wrap(err, "while creating discovery client")
+	}
+	return dc.ServerVersion()
 }
 
 func (k *K8sHelper) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {

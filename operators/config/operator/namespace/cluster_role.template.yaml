@@ -79,9 +79,6 @@ rules:
   - elasticsearches
   - elasticsearches/status
   - elasticsearches/finalizers
-  - trustrelationships
-  - remoteclusters
-  - remoteclusters/status
   verbs:
   - get
   - list

@@ -113,20 +113,6 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// watch trust relationships and queue reconciliation for their associated cluster on changes
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.TrustRelationship{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
-	}); err != nil {
-		return err
-	}
-
-	// Watch remote clusters and queue reconciliation for their associated cluster on changes.
-	if err := c.Watch(&source.Kind{Type: &elasticsearchv1alpha1.RemoteCluster{}}, &handler.EnqueueRequestsFromMapFunc{
-		ToRequests: label.NewToRequestsFuncFromClusterNameLabel(),
-	}); err != nil {
-		return err
-	}
-
 	// Watch services
 	if err := c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,

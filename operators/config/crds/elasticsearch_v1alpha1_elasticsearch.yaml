@@ -250,8 +250,6 @@ spec:
               type: string
             phase:
               type: string
-            remoteClusters:
-              type: object
             service:
               type: string
             zenDiscovery:
