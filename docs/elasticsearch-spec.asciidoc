@@ -1,0 +1,103 @@
+[id="{p}-elasticsearch-specification"]
+== Elasticsearch Specification
+
+There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
+
+Basic settings
+
+- JVM heap size
+- Node configuration
+- HTTP settings & TLS SANs
+- Resource limits
+- Pod Template
+- Volume claim templates
+
+Advanced settings
+
+- Virtual memory
+- Custom HTTP certificate
+- Secure settings
+- Custom plugins and bundles
+- Init containers for plugin downloads
+- Pod disruption budget
+- Change budget (maxUnavailable, maxSurge)
+
+[id="{p}-node-configuration"]
+=== Node configuration
+
+Any setting that can be configured in the `elasticsearch.yml` configuration file can be defined for each topology of nodes in the `spec.nodes[?].config` section.
+
+[source,yaml]
+----
+kind: Elasticsearch
+spec:
+  nodes:
+  - nodeCount: 3
+    config:
+      node.master: true
+      node.data: false
+      node.ingest: false
+      node.ml: false
+      xpack.ml.enabled: true
+      cluster.remote.connect: false
+  - nodeCount: 10
+    config:
+      node.master: false
+      node.data: true
+      node.ingest: true
+      node.ml: true
+      cluster.remote.connect: false
+----
+
+For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
+
+[id="{p}-http-settings-tls-sans"]
+=== HTTP settings & TLS SANs
+
+You can change the type of the Kubernetes service used to expose Elasticsearch in https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types[different ways] in the `spec.http.service.spec` section.
+
+[source,yaml]
+----
+spec:
+  http:
+    service:
+      spec:
+        type: LoadBalancer
+----
+
+You can add an IP or a DNS name in the SAN of the self-signed certificate configured by default to secure the HTTP layer with TLS in the `spec.http.tls.selfSignedCertificate` section.
+
+[source,yaml]
+----
+spec:
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+        - ip: 1.2.3.4
+        - dns: hulk.example.com
+----
+
+[id="{p}-custom-http-certificate"]
+=== Custom HTTP certificate
+
+You can provide your own CA and certificates instead of the self-signed certificate to connect to Elasticsearch via HTTPS using a Kubernetes secret.
+
+You need to reference the name of a secret that contains a TLS private key and a certificate (or a chain), in the `spec.http.tls.certificate` section.
+
+[source,yaml]
+----
+spec:
+  http:
+    tls:
+      certificate:
+        secretName: my-cert
+----
+
+Example to create a Kubernetes TLS secret with a self-signed certificate:
+
+[source,sh]
+----
+$ openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt -days 365 -nodes
+$ kubectl create secret tls my-cert --cert tls.crt --key tls.key
+----
