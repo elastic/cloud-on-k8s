@@ -81,11 +81,6 @@ func Reconcile(
 		return nil, results.WithError(err)
 	}
 
-	trustRelationships, err := transport.LoadTrustRelationships(c, es.Name, es.Namespace)
-	if err != nil {
-		return nil, results.WithError(err)
-	}
-
 	transportCA, err := certificates.ReconcileCAForOwner(
 		c,
 		scheme,
@@ -115,7 +110,6 @@ func Reconcile(
 		transportCA,
 		es,
 		services,
-		trustRelationships,
 		certRotation,
 	)
 	if results.WithResult(result).WithError(err).HasError() {
