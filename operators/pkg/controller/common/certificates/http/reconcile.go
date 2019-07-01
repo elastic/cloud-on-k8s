@@ -196,7 +196,8 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		log.Info(
 			"Issuing new HTTP certificate",
 			"secret", secret.Name,
-			"owner", owner,
+			"namespace", owner.Namespace,
+			"name", owner.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -334,14 +335,7 @@ func createValidatedHTTPCertificateTemplate(
 	// add .local to the certificate name to avoid issuing certificates signed for .es by default
 	cnNameParts = append(cnNameParts, "local")
 
-	var sb strings.Builder
-	for i, s := range cnNameParts {
-		if i != 0 {
-			sb.WriteString(".")
-		}
-		sb.WriteString(s) // #nosec G104
-	}
-	certCommonName := sb.String()
+	certCommonName := strings.Join(cnNameParts, ".")
 
 	dnsNames := []string{
 		certCommonName,

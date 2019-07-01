@@ -329,7 +329,7 @@ func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 func DoKibanaReq(k *helpers.K8sHelper, stack Builder, method string, uri string, body []byte) ([]byte, error) {
 	password, err := k.GetElasticPassword(stack.Elasticsearch.Name)
 	if err != nil {
-		return nil, errors.Wrap(err, "while getting elastic passwor")
+		return nil, errors.Wrap(err, "while getting elastic password")
 	}
 	scheme := "http"
 	if stack.Kibana.Spec.HTTP.TLS.Enabled() {

@@ -145,5 +145,4 @@ func tlsCannotBeDisabled(ctx Context) validation.Result {
 		}
 	}
 	return validation.OK
-
 }

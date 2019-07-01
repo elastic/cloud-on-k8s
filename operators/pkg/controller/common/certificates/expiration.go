@@ -22,7 +22,7 @@ type RotationParams struct {
 	RotateBefore time.Duration
 }
 
-// shouldRotateIn computes the duration after which a certificate rotation should be scheduled
+// ShouldRotateIn computes the duration after which a certificate rotation should be scheduled
 // in order for the CA cert to be rotated before it expires.
 func ShouldRotateIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
 	// make sure we are past the safety margin when rotating, by making it a little bit shorter
