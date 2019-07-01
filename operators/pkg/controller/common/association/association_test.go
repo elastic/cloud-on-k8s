@@ -2,10 +2,12 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package config
+package association
 
 import (
 	"testing"
+
+	v1alpha12 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -13,6 +15,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+var elasticsearhInlineAuth = v1alpha12.ElasticsearchInlineAuth{
+	Username: "foo_username",
+	Password: "foo_password",
+}
 
 func Test_getCredentials(t *testing.T) {
 	type args struct {
@@ -45,7 +52,7 @@ func Test_getCredentials(t *testing.T) {
 						Output: v1alpha1.Output{
 							Elasticsearch: v1alpha1.ElasticsearchOutput{
 								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-								Auth: v1alpha1.ElasticsearchAuth{
+								Auth: v1alpha12.ElasticsearchAuth{
 									SecretKeyRef: &corev1.SecretKeySelector{
 										Key: "elastic-internal-apm",
 										LocalObjectReference: corev1.LocalObjectReference{
@@ -61,10 +68,40 @@ func Test_getCredentials(t *testing.T) {
 			wantUsername: "elastic-internal-apm",
 			wantPassword: "a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy",
 		},
+		{
+			name: "Test inline credentials",
+			args: args{
+				c: k8s.WrapClient(fake.NewFakeClient(&corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "apmelasticsearchassociation-sample-elastic-internal-apm",
+						Namespace: "default",
+					},
+					Data: map[string][]byte{"elastic-internal-apm": []byte("a2s1Nmt0N3Nwdmg4cmpqdDlucWhsN3cy")},
+				})),
+				as: v1alpha1.ApmServer{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "apm-server-sample",
+						Namespace: "default",
+					},
+					Spec: v1alpha1.ApmServerSpec{
+						Output: v1alpha1.Output{
+							Elasticsearch: v1alpha1.ElasticsearchOutput{
+								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
+								Auth: v1alpha12.ElasticsearchAuth{
+									Inline: &elasticsearhInlineAuth,
+								},
+							},
+						},
+					},
+				},
+			},
+			wantUsername: "foo_username",
+			wantPassword: "foo_password",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotUsername, gotPassword, err := elasticsearchAuthSettings(tt.args.c, tt.args.as)
+			gotUsername, gotPassword, err := ElasticsearchAuthSettings(tt.args.c, &tt.args.as)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getCredentials() error = %v, wantErr %v", err, tt.wantErr)
 				return

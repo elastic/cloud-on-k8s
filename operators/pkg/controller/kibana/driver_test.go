@@ -131,7 +131,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 			NodeCount: 1,
 			Elasticsearch: kbtype.BackendElasticsearch{
 				URL: "https://localhost:9200",
-				Auth: kbtype.ElasticsearchAuth{
+				Auth: v1alpha1.ElasticsearchAuth{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "test-auth",

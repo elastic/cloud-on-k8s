@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -70,7 +69,7 @@ func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func newPodSpec(as *apmv1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
+func newPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",

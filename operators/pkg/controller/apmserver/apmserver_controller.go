@@ -294,7 +294,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		keystoreResources: keystoreResources,
 	}
 
-	podSpec := newPodSpec(as, apmServerPodSpecParams)
+	podSpec := newPodSpec(apmServerPodSpecParams)
 
 	podLabels := labels.NewLabels(as.Name)
 
