@@ -248,7 +248,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, roles)
 	if err != nil {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)

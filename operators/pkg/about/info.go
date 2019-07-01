@@ -26,9 +26,10 @@ var defaultOperatorNamespaces = []string{"elastic-system", "elastic-namespace-op
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
 	OperatorUUID            types.UID `json:"operator_uuid"`
+	OperatorRoles           []string  `json:"operator_roles"`
+	CustomOperatorNamespace bool      `json:"custom_operator_namespace"`
 	Distribution            string    `json:"distribution"`
 	BuildInfo               BuildInfo `json:"build"`
-	CustomOperatorNamespace bool      `json:"custom_operator_namespace"`
 }
 
 // BuildInfo contains build metadata information.
@@ -48,8 +49,9 @@ func (i OperatorInfo) IsDefined() bool {
 		i.BuildInfo.Date != "1970-01-01T00:00:00Z"
 }
 
-// GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config and an operator namespace.
-func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
+// GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config, an operator namespace
+// and operator roles.
+func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string, operatorRoles []string) (OperatorInfo, error) {
 	operatorUUID, err := getOperatorUUID(clientset, operatorNs)
 	if err != nil {
 		return OperatorInfo{}, err
@@ -68,15 +70,16 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 	}
 
 	return OperatorInfo{
-		OperatorUUID: operatorUUID,
-		Distribution: distribution,
+		OperatorUUID:            operatorUUID,
+		OperatorRoles:           operatorRoles,
+		CustomOperatorNamespace: customOperatorNs,
+		Distribution:            distribution,
 		BuildInfo: BuildInfo{
 			version,
 			buildHash,
 			buildDate,
 			buildSnapshot,
 		},
-		CustomOperatorNamespace: customOperatorNs,
 	}, nil
 }
 

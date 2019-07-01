@@ -68,7 +68,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			fakeClientset := k8sfake.NewSimpleClientset(test.initObjs...)
 
 			// retrieve operator info a first time
-			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs)
+			operatorInfo, err := GetOperatorInfo(fakeClientset, fakeOperatorNs, []string{"all"})
 			require.NoError(t, err)
 
 			// the operator uuid should be defined
@@ -76,7 +76,7 @@ func TestGetOperatorInfo(t *testing.T) {
 			test.assert(uuid)
 
 			// retrieve operator info a second time
-			operatorInfo, err = GetOperatorInfo(fakeClientset, fakeOperatorNs)
+			operatorInfo, err = GetOperatorInfo(fakeClientset, fakeOperatorNs, []string{"all"})
 			require.NoError(t, err)
 
 			// the operator uuid should be the same than the first time
