@@ -9,11 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
