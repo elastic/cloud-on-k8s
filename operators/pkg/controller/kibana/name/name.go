@@ -33,7 +33,3 @@ func HTTPService(kbName string) string {
 func Deployment(kbName string) string {
 	return KBNamer.Suffix(kbName)
 }
-
-func SecureSettingsSecret(kbName string) string {
-	return KBNamer.Suffix(kbName, secureSettingsSecretSuffix)
-}
