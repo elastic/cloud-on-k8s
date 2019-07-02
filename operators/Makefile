@@ -316,7 +316,7 @@ e2e-run:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e -c -o /dev/null
+	go test ./test/e2e/... -run=dryrun > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
