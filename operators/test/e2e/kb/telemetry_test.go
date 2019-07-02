@@ -16,23 +16,15 @@ import (
 )
 
 func TestTelemetry(t *testing.T) {
-	k := test.NewK8sClientOrFatal()
-
 	name := "test-telemetry"
 	esBuilder := elasticsearch.NewBuilder(name).
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 	kbBuilder := kibana.NewBuilder(name).
 		WithNodeCount(1)
 
-	test.StepList{}.
-		WithSteps(esBuilder.InitTestSteps(k)).
-		WithSteps(kbBuilder.InitTestSteps(k)).
-		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
-		WithSteps(test.CheckTestSteps(kbBuilder, k)).
-		WithStep(
-			test.Step{
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: func(t *testing.T) {
 					uri := "/api/telemetry/v1/clusters/_stats"
@@ -47,13 +39,13 @@ func TestTelemetry(t *testing.T) {
 					if !eck.IsDefined() {
 						t.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
-
 				},
 			},
-		).
-		WithSteps(esBuilder.DeletionTestSteps(k)).
-		WithSteps(kbBuilder.DeletionTestSteps(k)).
-		RunSequential(t)
+		}
+	}
+
+	test.Sequence(nil, stepsFn, esBuilder, kbBuilder)
+
 }
 
 // ClusterStats partially models the response from a request to /api/telemetry/v1/clusters/_stats

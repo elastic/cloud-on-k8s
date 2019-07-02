@@ -7,8 +7,8 @@ package es
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 )
 
 // TestVolumeEmptyDir tests a manual override of the default persistent storage with emptyDir.
@@ -18,5 +18,6 @@ func TestVolumeEmptyDir(t *testing.T) {
 		WithEmptyDirVolumes()
 
 	// volume type will be checked in creation steps
-	test.Run(t, test.EmptySteps, b)
+	test.Sequence(nil, test.EmptySteps, b).
+		RunSequential(t)
 }

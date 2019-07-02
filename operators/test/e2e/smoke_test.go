@@ -41,5 +41,6 @@ func TestSmoke(t *testing.T) {
 		WithNamespace(test.Namespace).
 		WithRestrictedSecurityContext()
 
-	test.Run(t, test.EmptySteps, esBuilder, kbBuilder, apmBuilder)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
+		RunSequential(t)
 }

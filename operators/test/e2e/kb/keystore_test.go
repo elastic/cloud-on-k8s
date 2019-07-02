@@ -18,8 +18,6 @@ import (
 )
 
 func TestUpdateKibanaSecureSettings(t *testing.T) {
-	k := test.NewK8sClientOrFatal()
-
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
 	secureSettings := corev1.Secret{
@@ -41,29 +39,23 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		WithNodeCount(1).
 		WithKibanaSecureSettings(secureSettings.Name)
 
-	test.StepList{}.
-		// create secure settings secret
-		WithStep(test.Step{
-			Name: "Create secure settings secret",
-			Test: func(t *testing.T) {
-				// remove if already exists (ignoring errors)
-				_ = k.Client.Delete(&secureSettings)
-				// and create a fresh one
-				err := k.Client.Create(&secureSettings)
-				require.NoError(t, err)
+	initStepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
+			{
+				Name: "Create secure settings secret",
+				Test: func(t *testing.T) {
+					// remove if already exists (ignoring errors)
+					_ = k.Client.Delete(&secureSettings)
+					// and create a fresh one
+					err := k.Client.Create(&secureSettings)
+					require.NoError(t, err)
+				},
 			},
-		}).
-		// create the cluster
-		WithSteps(esBuilder.InitTestSteps(k)).
-		WithSteps(kbBuilder.InitTestSteps(k)).
-		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(test.CheckTestSteps(esBuilder, k)).
-		WithSteps(test.CheckTestSteps(kbBuilder, k)).
-		WithSteps(test.StepList{
-
+		}
+	}
+	stepsFn := func(k *test.K8sClient) test.StepList {
+		return test.StepList{
 			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, []string{"logging.verbose"}),
-
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
@@ -107,8 +99,8 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
-		}).
-		WithSteps(esBuilder.DeletionTestSteps(k)).
-		WithSteps(kbBuilder.DeletionTestSteps(k)).
-		RunSequential(t)
+		}
+	}
+
+	test.Sequence(initStepsFn, stepsFn, esBuilder, kbBuilder).RunSequential(t)
 }

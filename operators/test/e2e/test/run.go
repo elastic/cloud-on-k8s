@@ -4,13 +4,16 @@
 
 package test
 
-import "testing"
-
-// Run tests something on given resources.
-func Run(t *testing.T, f StepsFunc, builders ...Builder) {
+// Sequence returns a list of steps corresponding to the basic workflow (some optional init steps, then init steps,
+// create steps, check steps, then something and delete steps to terminate).
+func Sequence(before StepsFunc, f StepsFunc, builders ...Builder) StepList {
 	k := NewK8sClientOrFatal()
 
 	steps := StepList{}
+
+	if before != nil {
+		steps = steps.WithSteps(before(k))
+	}
 
 	for _, b := range builders {
 		steps = steps.WithSteps(b.InitTestSteps(k))
@@ -29,5 +32,5 @@ func Run(t *testing.T, f StepsFunc, builders ...Builder) {
 		steps = steps.WithSteps(b.DeletionTestSteps(k))
 	}
 
-	steps.RunSequential(t)
+	return steps
 }

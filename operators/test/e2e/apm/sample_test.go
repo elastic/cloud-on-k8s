@@ -49,6 +49,7 @@ func TestApmEsKibanaSample(t *testing.T) {
 		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
-	test.Run(t, test.EmptySteps, esBuilder, kbBuilder, apmBuilder)
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
+		RunSequential(t)
 	// TODO: is it possible to verify that it would also show up properly in Kibana?
 }

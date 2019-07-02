@@ -26,7 +26,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 	// it is supposed to be different after the restart is over
 	var initialStartTime map[string]int64
 
-	test.Run(t, func(k *test.K8sClient) test.StepList {
+	test.Sequence(nil, func(k *test.K8sClient) test.StepList {
 		restartSteps := test.StepList{
 			test.Step{
 				Name: "Retrieve nodes start time",
@@ -82,7 +82,8 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 			},
 		}
 		return append(restartSteps, test.CheckTestSteps(b, k)...)
-	}, b)
+	}, b).
+		RunSequential(t)
 }
 
 func getNodesStartTime(k *test.K8sClient, cluster v1alpha1.Elasticsearch) (map[string]int64, error) {
