@@ -20,6 +20,9 @@ const (
 	DefaultHTTPPort = 8200
 )
 
+// DefaultConfiguration is the default configuration of an APM server.
+// These defaults are taken (without scaling) from a defaulted ECE install
+// TODO: consider scaling the default values provided based on the apm server resources
 var DefaultConfiguration = []byte(`
 apm-server:
   concurrent_requests: 1

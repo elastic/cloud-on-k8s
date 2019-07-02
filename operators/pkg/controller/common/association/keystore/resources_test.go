@@ -7,12 +7,11 @@ package keystore
 import (
 	"testing"
 
-	"github.com/magiconair/properties/assert"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	watches2 "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,6 +46,9 @@ var (
 		},
 	}
 	testKibanaWithSecureSettings = v1alpha1.Kibana{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "kibana",
+		},
 		ObjectMeta: testKibana.ObjectMeta,
 		Spec: v1alpha1.KibanaSpec{
 			SecureSettings: &testSecureSettingsSecretRef,
@@ -61,7 +63,6 @@ func TestResources(t *testing.T) {
 		client         k8s.Client
 		kb             v1alpha1.Kibana
 		wantNil        bool
-		wantVolumes    int
 		wantContainers *corev1.Container
 		wantVersion    string
 	}{
@@ -69,16 +70,14 @@ func TestResources(t *testing.T) {
 			name:           "no secure settings specified: no resources",
 			client:         k8s.WrapClient(fake.NewFakeClient()),
 			kb:             v1alpha1.Kibana{},
-			wantVolumes:    0,
 			wantContainers: nil,
 			wantVersion:    "",
 			wantNil:        true,
 		},
 		{
-			name:        "secure settings specified: return volume, init container and version",
-			client:      k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
-			kb:          testKibanaWithSecureSettings,
-			wantVolumes: 1,
+			name:   "secure settings specified: return volume, init container and version",
+			client: k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
+			kb:     testKibanaWithSecureSettings,
 			wantContainers: &corev1.Container{
 				Command: []string{
 					"/usr/bin/env",
@@ -127,7 +126,6 @@ echo "Keystore initialization successful."
 			name:           "secure settings specified but secret not there: no resources",
 			client:         k8s.WrapClient(fake.NewFakeClient()),
 			kb:             testKibanaWithSecureSettings,
-			wantVolumes:    0,
 			wantContainers: nil,
 			wantVersion:    "",
 			wantNil:        true,
@@ -146,16 +144,9 @@ echo "Keystore initialization successful."
 				require.NotNil(t, resources)
 				assert.Equal(t, resources.KeystoreInitContainer.Name, "init-keystore")
 				assert.Equal(t, resources.KeystoreInitContainer.Command, tt.wantContainers.Command)
+				assert.Equal(t, resources.KeystoreInitContainer.VolumeMounts, tt.wantContainers.VolumeMounts)
+				assert.Equal(t, resources.KeystoreInitContainer.SecurityContext, tt.wantContainers.SecurityContext)
 				assert.Equal(t, resources.KeystoreVersion, tt.wantVersion)
-				/*if !reflect.DeepEqual(len(resources.KeystoreVolume), tt.wantVolumes) {
-					t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)
-				}
-				if !reflect.DeepEqual(len(wantContainers), tt.wantContainers) {
-					t.Errorf("Resources() got1 = %v, want %v", wantContainers, tt.wantContainers)
-				}
-				if wantVersion != tt.wantVersion {
-					t.Errorf("Resources() got2 = %v, want %v", wantVersion, tt.wantVersion)
-				}*/
 			}
 
 		})
