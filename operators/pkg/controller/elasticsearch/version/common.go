@@ -5,6 +5,7 @@
 package version
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -95,7 +96,7 @@ func podSpecContext(
 		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		name.HTTPCertsInternalSecretName(p.Elasticsearch.Name),
+		certificates.HTTPCertsInternalSecretName(name.ESNamer, p.Elasticsearch.Name),
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)

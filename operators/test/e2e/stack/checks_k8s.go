@@ -20,6 +20,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -328,28 +329,34 @@ func CheckESPassword(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 func DoKibanaReq(k *helpers.K8sHelper, stack Builder, method string, uri string, body []byte) ([]byte, error) {
 	password, err := k.GetElasticPassword(stack.Elasticsearch.Name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while getting elastic password")
 	}
-
-	u, err := url.Parse(fmt.Sprintf("http://%s.%s:5601", kbname.HTTPService(stack.Kibana.Name), stack.Kibana.Namespace))
+	scheme := "http"
+	if stack.Kibana.Spec.HTTP.TLS.Enabled() {
+		scheme = "https"
+	}
+	u, err := url.Parse(fmt.Sprintf("%s://%s.%s:5601", scheme, kbname.HTTPService(stack.Kibana.Name), stack.Kibana.Namespace))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while parsing url")
 	}
 
 	u.Path = path.Join(u.Path, uri)
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(body))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while creating request")
 	}
 
 	req.SetBasicAuth("elastic", password)
 	req.Header.Set("Content-Type", "application/json")
 	// send the kbn-version header expected by the Kibana server to protect against xsrf attacks
 	req.Header.Set("kbn-version", stack.Kibana.Spec.Version)
-	client := helpers.NewHTTPClient()
+	client, err := helpers.NewKibanaClient(stack.Kibana, k)
+	if err != nil {
+		return nil, errors.Wrap(err, "while creating kibana client")
+	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "while doing request")
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {

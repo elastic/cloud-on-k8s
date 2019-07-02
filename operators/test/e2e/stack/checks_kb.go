@@ -9,15 +9,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"testing"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 type kbChecks struct {
-	client http.Client
+	client *http.Client
 }
 
 // Kibana checks returns all test steps to verify the given stack's Kibana
@@ -26,11 +28,22 @@ func KibanaChecks(kb kbtype.Kibana) helpers.TestStepList {
 	if kb.Spec.NodeCount == 0 {
 		return helpers.TestStepList{}
 	}
-	checks := kbChecks{
-		client: helpers.NewHTTPClient(),
-	}
+	checks := kbChecks{}
 	return helpers.TestStepList{
+		checks.CreateKbClient(kb),
 		checks.CheckKbLoginHealthy(kb),
+	}
+}
+
+func (check *kbChecks) CreateKbClient(kb kbtype.Kibana) helpers.TestStep {
+	return helpers.TestStep{
+		Name: "Create Kibana client",
+		Test: func(t *testing.T) {
+			k := helpers.NewK8sClientOrFatal()
+			client, err := helpers.NewKibanaClient(kb, k)
+			require.NoError(t, err)
+			check.client = client
+		},
 	}
 }
 
@@ -39,7 +52,11 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) helpers.TestStep {
 	return helpers.TestStep{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: helpers.Eventually(func() error {
-			resp, err := check.client.Get(fmt.Sprintf("http://%s.%s.svc:5601", name.HTTPService(kb.Name), kb.Namespace))
+			scheme := "http"
+			if kb.Spec.HTTP.TLS.Enabled() {
+				scheme = "https"
+			}
+			resp, err := check.client.Get(fmt.Sprintf("%s://%s.%s.svc:5601", scheme, name.HTTPService(kb.Name), kb.Namespace))
 			if err != nil {
 				return err
 			}

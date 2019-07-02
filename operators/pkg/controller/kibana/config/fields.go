@@ -19,4 +19,8 @@ const (
 
 	ElasticsearchURL   = "elasticsearch.url"
 	ElasticsearchHosts = "elasticsearch.hosts"
+
+	ServerSSLEnabled     = "server.ssl.enabled"
+	ServerSSLCertificate = "server.ssl.certificate"
+	ServerSSLKey         = "server.ssl.key"
 )

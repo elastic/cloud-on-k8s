@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func Test_shouldRequeueIn(t *testing.T) {
+func TestShouldRotateIn(t *testing.T) {
 	now := time.Now()
 	tests := []struct {
 		name               string
@@ -49,7 +49,7 @@ func Test_shouldRequeueIn(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shouldRequeueIn(tt.now, tt.certExpiration, tt.caCertRotateBefore); got != tt.want {
+			if got := ShouldRotateIn(tt.now, tt.certExpiration, tt.caCertRotateBefore); got != tt.want {
 				t.Errorf("shouldRequeueIn() = %v, want %v", got, tt.want)
 			}
 		})

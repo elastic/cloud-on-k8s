@@ -30,6 +30,7 @@ var Validations = []Validation{
 	validUpgradePath,
 	noBlacklistedSettings,
 	validSanIP,
+	tlsCannotBeDisabled,
 }
 
 // nameLength checks the length of the Elasticsearch name.
@@ -131,6 +132,16 @@ func validSanIP(ctx Context) validation.Result {
 					}
 				}
 			}
+		}
+	}
+	return validation.OK
+}
+
+func tlsCannotBeDisabled(ctx Context) validation.Result {
+	if !ctx.Proposed.Elasticsearch.Spec.HTTP.TLS.Enabled() {
+		return validation.Result{
+			Allowed: false,
+			Reason:  "TLS cannot be disabled for Elasticsearch currently",
 		}
 	}
 	return validation.OK
