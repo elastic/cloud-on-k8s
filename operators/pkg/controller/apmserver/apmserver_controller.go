@@ -14,6 +14,7 @@ import (
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
+	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
@@ -210,9 +211,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
-			// TODO: suffix+trim properly
-			Name:   as.Name + "-apm-server",
-			Labels: labels.NewLabels(as.Name),
+			Name:      apmname.SecretToken(as.Name),
+			Labels:    labels.NewLabels(as.Name),
 		},
 		Data: map[string][]byte{
 			SecretTokenKey: []byte(rand.String(24)),
@@ -353,8 +353,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	podSpec.Labels = defaults.SetDefaultLabels(podSpec.Labels, podLabels)
 
 	deploy := NewDeployment(DeploymentParams{
-		// TODO: revisit naming?
-		Name:            PseudoNamespacedResourceName(*as),
+		Name:            apmname.Deployment(as.Name),
 		Namespace:       as.Namespace,
 		Replicas:        as.Spec.NodeCount,
 		Selector:        deploymentLabels,

@@ -7,6 +7,7 @@ package config
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -38,9 +39,8 @@ func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *v1alpha1.ApmServer
 	expectedConfigSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
-			// TODO: suffix+trim properly
-			Name:   as.Name + "-config",
-			Labels: labels.NewLabels(as.Name),
+			Name:      name.Config(as.Name),
+			Labels:    labels.NewLabels(as.Name),
 		},
 		Data: map[string][]byte{
 			ApmCfgSecretKey: cfgBytes,
