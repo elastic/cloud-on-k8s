@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -17,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -202,6 +203,6 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 func (r *ReconcileKibana) finalizersFor(kb kibanav1alpha1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
 		secretWatchFinalizer(kb, r.dynamicWatches),
-		securesettings.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches, &kb),
 	}
 }

@@ -19,6 +19,8 @@ const (
 type InitContainerParameters struct {
 	// Where the user provided secured settings should be mounted
 	SecureSettingsVolumeMountPath string
+	// Where the data will be copied
+	DataVolumePath string
 	// Keystore add command
 	KeystoreAddCommand string
 	// Keystore create command
@@ -53,19 +55,12 @@ var scriptTemplate = template.Must(template.New("").Parse(script))
 // to create the APM Keystore.
 func initContainer(
 	secureSettingsSecret volume.SecretVolume,
-	dataVolumePath string,
 	volumePrefix string,
-	KeystoreCreateCommand string,
-	KeystoreAddCommand string,
+	parameters InitContainerParameters,
 ) (corev1.Container, error) {
 	privileged := false
-	params := InitContainerParameters{
-		SecureSettingsVolumeMountPath: SecureSettingsVolumeMountPath,
-		KeystoreAddCommand:            KeystoreAddCommand,
-		KeystoreCreateCommand:         KeystoreCreateCommand,
-	}
 	tplBuffer := bytes.Buffer{}
-	if err := scriptTemplate.Execute(&tplBuffer, params); err != nil {
+	if err := scriptTemplate.Execute(&tplBuffer, parameters); err != nil {
 		return corev1.Container{}, err
 	}
 
@@ -81,7 +76,7 @@ func initContainer(
 			// access secure settings
 			secureSettingsSecret.VolumeMount(),
 			// write the keystore in the data volume
-			DataVolume(volumePrefix, dataVolumePath).VolumeMount(),
+			DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount(),
 		},
 	}, nil
 }

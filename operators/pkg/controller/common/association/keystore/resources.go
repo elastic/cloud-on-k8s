@@ -34,7 +34,7 @@ func NewResources(
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
 	associated commonv1alpha1.Associated,
-	dataVolumePath string,
+	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
 	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, associated)
@@ -49,10 +49,8 @@ func NewResources(
 	// build an init container to create Kibana keystore from the secure settings volume
 	initContainer, err := initContainer(
 		*secretVolume,
-		dataVolumePath,
 		strings.ToLower(associated.GetObjectKind().GroupVersionKind().Kind),
-		"/usr/share/apm-server/apm-server keystore create --force",
-		"/usr/share/apm-server/apm-server keystore add",
+		initContainerParams,
 	)
 	if err != nil {
 		return nil, err

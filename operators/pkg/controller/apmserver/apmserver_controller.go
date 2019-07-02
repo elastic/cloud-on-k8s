@@ -11,14 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -37,9 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -275,7 +274,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		r.recorder,
 		r.dynamicWatches,
 		as,
-		"/usr/share/apm-server/data",
+		keystore.InitContainerParameters{
+			KeystoreCreateCommand:         "/usr/share/apm-server/apm-server keystore create --force",
+			KeystoreAddCommand:            "/usr/share/apm-server/apm-server keystore add",
+			SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+			DataVolumePath:                "/usr/share/apm-server/data",
+		},
 	)
 	if err != nil {
 		return state, err
