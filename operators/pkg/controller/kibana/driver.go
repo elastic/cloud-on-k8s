@@ -38,7 +38,7 @@ import (
 var initContainersParameters = keystore.InitContainerParameters{
 	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
 	KeystoreAddCommand:            "/usr/share/kibana/bin/kibana-keystore add",
-	SecureSettingsVolumeMountPath: volume.SecureSettingsVolumeMountPath,
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 	DataVolumePath:                volume.DataVolumeMountPath,
 }
 

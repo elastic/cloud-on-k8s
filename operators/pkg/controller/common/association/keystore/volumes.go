@@ -12,7 +12,6 @@ import (
 
 const (
 	DataVolumeNamePattern = "%s-data"
-	//DataVolumeMountPath = "/usr/share/apm-server/data"
 
 	SecureSettingsVolumeName      = "elastic-internal-secure-settings"
 	SecureSettingsVolumeMountPath = "/mnt/elastic-internal/secure-settings"
