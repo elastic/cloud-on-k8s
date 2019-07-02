@@ -5,6 +5,8 @@
 package framework
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"net/http"
 	"time"
 
@@ -12,14 +14,23 @@ import (
 )
 
 // NewHTTPClient creates a new HTTP client that is aware of any port forwarding configuration.
-func NewHTTPClient() http.Client {
+func NewHTTPClient(caCerts []*x509.Certificate) *http.Client {
 	client := http.Client{
 		Timeout: 60 * time.Second,
 	}
+
+	transport := http.Transport{}
 	if AutoPortForward {
-		client.Transport = &http.Transport{
-			DialContext: portforward.NewForwardingDialer().DialContext,
-		}
+		transport.DialContext = portforward.NewForwardingDialer().DialContext
 	}
-	return client
+
+	certPool := x509.NewCertPool()
+	for _, c := range caCerts {
+		certPool.AddCert(c)
+	}
+	transport.TLSClientConfig = &tls.Config{
+		RootCAs: certPool,
+	}
+	client.Transport = &transport
+	return &client
 }

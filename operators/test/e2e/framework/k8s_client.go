@@ -17,9 +17,10 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
@@ -170,12 +171,13 @@ func (k *K8sClient) GetElasticPassword(esName string) (string, error) {
 	return string(password), nil
 }
 
-func (k *K8sClient) GetHTTPCerts(esName string) ([]*x509.Certificate, error) {
+func (k *K8sClient) GetHTTPCerts(namer name.Namer, ownerName string) ([]*x509.Certificate, error) {
 	var secret corev1.Secret
 	secretNSN := http.PublicCertsSecretRef(
+		namer,
 		types.NamespacedName{
 			Namespace: Namespace,
-			Name:      esName,
+			Name:      ownerName,
 		},
 	)
 
@@ -198,7 +200,7 @@ func (k *K8sClient) GetCA(ownerName string, caType certificates.CAType) (*certif
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: Namespace,
-		Name:      certificates.CAInternalSecretName(name.ESNamer, ownerName, caType),
+		Name:      certificates.CAInternalSecretName(esname.ESNamer, ownerName, caType),
 	}
 	if err := k.Client.Get(key, &secret); err != nil {
 		return nil, err
@@ -234,7 +236,7 @@ func (k *K8sClient) GetTransportCert(podName string) (caCert, transportCert []*x
 	var secret corev1.Secret
 	key := types.NamespacedName{
 		Namespace: Namespace,
-		Name:      name.TransportCertsSecret(podName),
+		Name:      esname.TransportCertsSecret(podName),
 	}
 	if err = k.Client.Get(key, &secret); err != nil {
 		return nil, nil, err

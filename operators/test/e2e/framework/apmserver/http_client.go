@@ -44,7 +44,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *framework.K8sClient) (*ApmClien
 		"http://%s.%s.svc:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
 	)
 
-	client := framework.NewHTTPClient()
+	client := framework.NewHTTPClient(nil)
 
 	secretToken, ok := secretTokenSecret.Data[apmserver.SecretTokenKey]
 	if !ok {
@@ -52,7 +52,7 @@ func NewApmServerClient(as apmtype.ApmServer, k *framework.K8sClient) (*ApmClien
 	}
 
 	return &ApmClient{
-		client:                   &client,
+		client:                   client,
 		endpoint:                 inClusterURL,
 		version:                  as.Spec.Version,
 		authorizationHeaderValue: fmt.Sprintf("Bearer %s", secretToken),

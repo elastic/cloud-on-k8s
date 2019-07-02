@@ -10,9 +10,9 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
@@ -59,7 +59,7 @@ func Reconcile(
 
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), httpCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// discover and maybe reconcile for the http certificates to use
@@ -67,8 +67,11 @@ func Reconcile(
 		c,
 		scheme,
 		watches,
-		es,
+		&es,
+		name.ESNamer,
 		httpCA,
+		es.Spec.HTTP.TLS,
+		labels,
 		services,
 		caRotation,
 	)
@@ -77,7 +80,7 @@ func Reconcile(
 	}
 
 	// reconcile http public certs secret:
-	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, es, httpCertificates); err != nil {
+	if err := http.ReconcileHTTPCertsPublicSecret(c, scheme, &es, name.ESNamer, httpCertificates); err != nil {
 		return nil, results.WithError(err)
 	}
 
@@ -95,7 +98,7 @@ func Reconcile(
 	}
 	// make sure to requeue before the CA cert expires
 	results.WithResult(reconcile.Result{
-		RequeueAfter: shouldRequeueIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
+		RequeueAfter: certificates.ShouldRotateIn(time.Now(), transportCA.Cert.NotAfter, caRotation.RotateBefore),
 	})
 
 	// reconcile transport public certs secret:
@@ -125,18 +128,4 @@ func Reconcile(
 		TrustedHTTPCertificates: trustedHTTPCertificates,
 		TransportCA:             transportCA,
 	}, results
-}
-
-// shouldRequeueIn computes the duration after which a reconciliation should be requeued
-// in order for the CA cert to be rotated before it expires.
-func shouldRequeueIn(now time.Time, certExpiration time.Time, caCertRotateBefore time.Duration) time.Duration {
-	// make sure we are past the safety margin when requeueing, by making it a little bit shorter
-	safetyMargin := caCertRotateBefore - 1*time.Second
-	requeueTime := certExpiration.Add(-safetyMargin)
-	requeueIn := requeueTime.Sub(now)
-	if requeueIn < 0 {
-		// requeue asap
-		requeueIn = 0
-	}
-	return requeueIn
 }

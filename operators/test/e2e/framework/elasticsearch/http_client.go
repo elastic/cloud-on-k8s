@@ -24,7 +24,7 @@ func NewElasticsearchClient(es v1alpha1.Elasticsearch, k *framework.K8sClient) (
 	}
 	esUser := client.UserAuth{Name: "elastic", Password: password}
 
-	caCert, err := k.GetHTTPCerts(es.Name)
+	caCert, err := k.GetHTTPCerts(name.ESNamer, es.Name)
 	if err != nil {
 		return nil, err
 	}

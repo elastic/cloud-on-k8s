@@ -6,13 +6,13 @@ package kb
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTelemetry(t *testing.T) {
@@ -34,28 +34,21 @@ func TestTelemetry(t *testing.T) {
 		WithStep(
 			framework.TestStep{
 				Name: "Kibana should expose eck info in telemetry data",
-				Test: framework.Eventually(func() error {
-
+				Test: func(t *testing.T) {
 					uri := "/api/telemetry/v1/clusters/_stats"
 					payload := `{"timeRange":{"min":"0","max":"0"}}`
-					body, err := kibana.DoKibanaReq(kbBuilder, k, "POST", uri, []byte(payload))
-					if err != nil {
-						return err
-					}
+					body, err := kibana.DoKibanaReq(k, kbBuilder, "POST", uri, []byte(payload))
+					require.NoError(t, err)
 
 					var stats ClusterStats
 					err = json.Unmarshal(body, &stats)
-					if err != nil {
-						return err
-					}
-
+					require.NoError(t, err)
 					eck := stats[0].StackStats.Kibana.Plugins.StaticTelemetry.Eck
 					if !eck.IsDefined() {
-						return fmt.Errorf("eck info not defined properly in telemetry data: %+v", eck)
+						t.Errorf("eck info not defined properly in telemetry data: %+v", eck)
 					}
 
-					return nil
-				}),
+				},
 			},
 		).
 		WithSteps(esBuilder.DeletionTestSteps(k)).

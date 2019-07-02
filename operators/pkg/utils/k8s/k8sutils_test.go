@@ -7,6 +7,7 @@ package k8s
 import (
 	"testing"
 
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -37,20 +38,20 @@ func TestGetServiceDNSName(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want string
+		want []string
 	}{
 		{
 			name: "sample service",
 			args: args{
 				svc: v1.Service{ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns", Name: "test-name"}},
 			},
-			want: "test-name.test-ns.svc",
+			want: []string{"test-name.test-ns.svc", "test-name.test-ns"},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetServiceDNSName(tt.args.svc); got != tt.want {
-				t.Errorf("GetServiceDNSName() = %v, want %v", got, tt.want)
+			if diff := deep.Equal(GetServiceDNSName(tt.args.svc), tt.want); diff != nil {
+				t.Error(diff)
 			}
 		})
 	}

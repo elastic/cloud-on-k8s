@@ -9,26 +9,42 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"testing"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 )
 
 type kbChecks struct {
-	client http.Client
+	client *http.Client
 }
 
 func (b Builder) CheckStackTestSteps(k *framework.K8sClient) framework.TestStepList {
 	if b.Kibana.Spec.NodeCount == 0 {
 		return framework.TestStepList{}
 	}
+
 	checks := kbChecks{
-		client: framework.NewHTTPClient(),
+		client: framework.NewHTTPClient(nil),
 	}
 	return framework.TestStepList{
+		checks.CreateKbClient(b.Kibana),
 		checks.CheckKbLoginHealthy(b.Kibana),
+	}
+}
+
+func (check *kbChecks) CreateKbClient(kb kbtype.Kibana) framework.TestStep {
+	return framework.TestStep{
+		Name: "Create Kibana client",
+		Test: func(t *testing.T) {
+			k := framework.NewK8sClientOrFatal()
+			client, err := NewKibanaClient(kb, k)
+			require.NoError(t, err)
+			check.client = client
+		},
 	}
 }
 
@@ -37,7 +53,12 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) framework.TestStep 
 	return framework.TestStep{
 		Name: "Kibana should be able to connect to Elasticsearch",
 		Test: framework.Eventually(func() error {
-			resp, err := check.client.Get(fmt.Sprintf("http://%s.%s.svc:5601", name.HTTPService(kb.Name), kb.Namespace))
+			scheme := "http"
+			if kb.Spec.HTTP.TLS.Enabled() {
+				scheme = "https"
+			}
+			resp, err := check.client.Get(fmt.Sprintf("%s://%s.%s.svc:5601", scheme, name.HTTPService(kb.Name), kb.Namespace))
+
 			if err != nil {
 				return err
 			}
