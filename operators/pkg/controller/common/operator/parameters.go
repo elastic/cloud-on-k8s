@@ -5,9 +5,8 @@
 package operator
 
 import (
-	"time"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
 )
 
@@ -21,12 +20,8 @@ type Parameters struct {
 	OperatorInfo about.OperatorInfo
 	// Dialer is used to create the Elasticsearch HTTP client.
 	Dialer net.Dialer
-	// CACertValidity is the validity duration of a newly created CA cert
-	CACertValidity time.Duration
-	// CACertRotateBefore defines how long before expiration CA certificates should be rotated
-	CACertRotateBefore time.Duration
-	// CertValidity is the validity duration of a newly created certificate
-	CertValidity time.Duration
-	// CertRotateBefore defines how long before expiration certificates should be rotated
-	CertRotateBefore time.Duration
+	// CACertRotation defines the rotation params for CA certificates.
+	CACertRotation certificates.RotationParams
+	// CertRotation defines the rotation params for non-CA certificates.
+	CertRotation certificates.RotationParams
 }

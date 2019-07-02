@@ -7,12 +7,12 @@ package http
 import (
 	"reflect"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -22,11 +22,12 @@ import (
 func ReconcileHTTPCertsPublicSecret(
 	c k8s.Client,
 	scheme *runtime.Scheme,
-	es v1alpha1.Elasticsearch,
+	owner metav1.Object,
+	namer name.Namer,
 	httpCertificates *CertificatesSecret,
 ) error {
 	expected := &corev1.Secret{
-		ObjectMeta: k8s.ToObjectMeta(PublicCertsSecretRef(k8s.ExtractNamespacedName(&es))),
+		ObjectMeta: k8s.ToObjectMeta(PublicCertsSecretRef(namer, k8s.ExtractNamespacedName(owner))),
 		Data: map[string][]byte{
 			certificates.CertFileName: httpCertificates.CertPem(),
 		},
@@ -39,7 +40,7 @@ func ReconcileHTTPCertsPublicSecret(
 	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme,
-		Owner:      &es,
+		Owner:      owner,
 		Expected:   expected,
 		Reconciled: reconciled,
 		NeedsUpdate: func() bool {
@@ -64,9 +65,9 @@ func ReconcileHTTPCertsPublicSecret(
 }
 
 // PublicCertsSecretRef returns the NamespacedName for the Secret containing the publicly available HTTP CA.
-func PublicCertsSecretRef(es types.NamespacedName) types.NamespacedName {
+func PublicCertsSecretRef(namer name.Namer, es types.NamespacedName) types.NamespacedName {
 	return types.NamespacedName{
-		Name:      name.CertsPublicSecretName(es.Name, certificates.HTTPCAType),
+		Name:      certificates.PublicSecretName(namer, es.Name, certificates.HTTPCAType),
 		Namespace: es.Namespace,
 	}
 }

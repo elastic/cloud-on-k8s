@@ -9,9 +9,11 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/elastic/go-ucfg"
 	uyaml "github.com/elastic/go-ucfg/yaml"
-	"github.com/stretchr/testify/assert"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,6 +29,10 @@ elasticsearch:
 server:
   host: "0"
   name: ""
+  ssl: 
+    enabled: true
+    key: /mnt/elastic-internal/http-certs/tls.key
+    certificate: /mnt/elastic-internal/http-certs/tls.crt
 xpack:
   monitoring:
     ui:
@@ -52,6 +58,33 @@ func TestNewConfigSettings(t *testing.T) {
 				kb: v1alpha1.Kibana{},
 			},
 			want: defaultConfig,
+		},
+		{
+			name: "without TLS",
+			args: args{
+				kb: v1alpha1.Kibana{
+					Spec: v1alpha1.KibanaSpec{
+						HTTP: commonv1alpha1.HTTPConfig{
+							TLS: commonv1alpha1.TLSOptions{
+								SelfSignedCertificate: &commonv1alpha1.SelfSignedCertificate{
+									Disabled: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			want: func() []byte {
+				cfg, err := settings.ParseConfig(defaultConfig)
+				require.NoError(t, err)
+				removed, err := (*ucfg.Config)(cfg).Remove("server.ssl", -1, settings.Options...)
+				require.True(t, removed)
+				require.NoError(t, err)
+				bytes, err := cfg.Render()
+				require.NoError(t, err)
+				return bytes
+			}(),
+			wantErr: false,
 		},
 		{
 			name: "with user config",
@@ -86,8 +119,9 @@ func TestNewConfigSettings(t *testing.T) {
 			require.NoError(t, err)
 			var wantCfg map[string]interface{}
 			require.NoError(t, cfg.Unpack(&wantCfg))
-
-			assert.Equal(t, wantCfg, gotCfg)
+			if diff := deep.Equal(wantCfg, gotCfg); diff != nil {
+				t.Error(diff)
+			}
 		})
 	}
 }

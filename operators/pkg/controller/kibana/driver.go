@@ -8,16 +8,17 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	kbcerts "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
@@ -108,7 +109,6 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	}
 
 	if kb.Spec.Elasticsearch.CertificateAuthorities.SecretName != "" {
-		// TODO: use kibanaCa to generate cert for deployment
 
 		var esPublicCASecret corev1.Secret
 		key := types.NamespacedName{Namespace: kb.Namespace, Name: kb.Spec.Elasticsearch.CertificateAuthorities.SecretName}
@@ -145,6 +145,28 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			esCertsVolume.VolumeMount(), configVolume.VolumeMount())
 	}
 
+	if kb.Spec.HTTP.TLS.Enabled() {
+		// fetch the secret to calculate the checksum
+		var httpCerts corev1.Secret
+		err := d.client.Get(types.NamespacedName{
+			Namespace: kb.Namespace,
+			Name:      certificates.HTTPCertsInternalSecretName(kbname.KBNamer, kb.Name),
+		}, &httpCerts)
+		if err != nil {
+			return nil, err
+		}
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+			configChecksum.Write(httpCert)
+		}
+
+		// add volume/mount for http certs to pod spec
+		httpCertsVolume := kbcerts.HTTPCertSecretVolume(*kb)
+		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes, httpCertsVolume.Volume())
+		kibanaContainer := pod.GetKibanaContainer(kibanaPodSpec.Spec)
+		kibanaContainer.VolumeMounts = append(kibanaContainer.VolumeMounts, httpCertsVolume.VolumeMount())
+
+	}
+
 	// get config secret to add its content to the config checksum
 	configSecret := corev1.Secret{}
 	err = d.client.Get(types.NamespacedName{Name: config.SecretName(*kb), Namespace: kb.Namespace}, &configSecret)
@@ -170,11 +192,22 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 func (d *driver) Reconcile(
 	state *State,
 	kb *kbtype.Kibana,
-	operatorInfo about.OperatorInfo,
+	params operator.Parameters,
 ) *reconciler.Results {
 	results := reconciler.Results{}
 	if !kb.Spec.Elasticsearch.IsConfigured() {
 		log.Info("Aborting Kibana deployment reconciliation as no Elasticsearch backend is configured")
+		return &results
+	}
+
+	svc, err := common.ReconcileService(d.client, d.scheme, NewService(*kb), kb)
+	if err != nil {
+		// TODO: consider updating some status here?
+		return results.WithError(err)
+	}
+
+	results.WithResults(kbcerts.Reconcile(d.client, d.scheme, *kb, d.dynamicWatches, []corev1.Service{*svc}, params.CACertRotation))
+	if results.HasError() {
 		return &results
 	}
 
@@ -188,27 +221,22 @@ func (d *driver) Reconcile(
 	if err != nil {
 		return results.WithError(err)
 	}
-	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, operatorInfo)
+	err = config.ReconcileConfigSecret(d.client, *kb, kbSettings, params.OperatorInfo)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	params, err := d.deploymentParams(kb)
+	deploymentParams, err := d.deploymentParams(kb)
 	if err != nil {
 		return results.WithError(err)
 	}
-	expectedDp := NewDeployment(*params)
+	expectedDp := NewDeployment(*deploymentParams)
 	reconciledDp, err := ReconcileDeployment(d.client, d.scheme, expectedDp, kb)
 	if err != nil {
 		return results.WithError(err)
 	}
 	state.UpdateKibanaState(reconciledDp)
-	res, err := common.ReconcileService(d.client, d.scheme, NewService(*kb), kb)
-	if err != nil {
-		// TODO: consider updating some status here?
-		return results.WithError(err)
-	}
-	return results.WithResult(res)
+	return &results
 }
 
 func newDriver(

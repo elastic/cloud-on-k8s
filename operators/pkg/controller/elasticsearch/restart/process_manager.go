@@ -11,7 +11,8 @@ import (
 	"net"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -26,7 +27,7 @@ func createProcessManagerClient(restartContext RestartContext, pod corev1.Pod) (
 
 	var publicCertsSecret corev1.Secret
 	if err := restartContext.K8sClient.Get(
-		http.PublicCertsSecretRef(k8s.ExtractNamespacedName(&restartContext.Cluster)),
+		http.PublicCertsSecretRef(name.ESNamer, k8s.ExtractNamespacedName(&restartContext.Cluster)),
 		&publicCertsSecret,
 	); err != nil {
 		return nil, err

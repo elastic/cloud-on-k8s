@@ -97,5 +97,5 @@ func buildGeneralNames(
 
 // buildCertificateCommonName returns the CN (and ES othername) entry for a given pod within a stack
 func buildCertificateCommonName(pod corev1.Pod, clusterName, namespace string) string {
-	return fmt.Sprintf("%s.node.%s.%s.es.cluster.local", pod.Name, clusterName, namespace)
+	return fmt.Sprintf("%s.node.%s.%s.es.local", pod.Name, clusterName, namespace)
 }

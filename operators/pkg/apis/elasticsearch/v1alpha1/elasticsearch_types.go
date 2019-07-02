@@ -219,7 +219,6 @@ type ElasticsearchStatus struct {
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
 	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
-	RemoteClusters  map[string]string               `json:"remoteClusters,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {
@@ -269,33 +268,8 @@ type ElasticsearchList struct {
 	Items           []Elasticsearch `json:"items"`
 }
 
-// TrustRelationshipSpec contains configuration for trust restrictions.
-type TrustRelationshipSpec struct {
-	// CaCert contains the PEM-encoded CA certificate for the remote cluster.
-	CaCert string `json:"caCert,omitempty"`
-}
-
-// TrustRelationship describes one direction of the trust relationship between two Elasticsearch clusters.
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +k8s:openapi-gen=true
-type TrustRelationship struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec TrustRelationshipSpec `json:"spec,omitempty"`
-}
-
-// TrustRelationshipList contains a list of TrustRelationships.
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TrustRelationshipList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TrustRelationship `json:"items"`
-}
-
 func init() {
 	SchemeBuilder.Register(
 		&Elasticsearch{}, &ElasticsearchList{},
-		&TrustRelationship{}, &TrustRelationshipList{},
 	)
 }
