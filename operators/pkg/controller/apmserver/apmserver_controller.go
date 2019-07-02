@@ -48,7 +48,16 @@ const (
 	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
 )
 
-var log = logf.Log.WithName(name)
+var (
+	log = logf.Log.WithName(name)
+
+	initContainerParameters = keystore.InitContainerParameters{
+		KeystoreCreateCommand:         "/usr/share/apm-server/apm-server keystore create --force",
+		KeystoreAddCommand:            "/usr/share/apm-server/apm-server keystore add",
+		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+		DataVolumePath:                "/usr/share/apm-server/data",
+	}
+)
 
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -274,12 +283,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		r.recorder,
 		r.dynamicWatches,
 		as,
-		keystore.InitContainerParameters{
-			KeystoreCreateCommand:         "/usr/share/apm-server/apm-server keystore create --force",
-			KeystoreAddCommand:            "/usr/share/apm-server/apm-server keystore add",
-			SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-			DataVolumePath:                "/usr/share/apm-server/data",
-		},
+		initContainerParameters,
 	)
 	if err != nil {
 		return state, err
