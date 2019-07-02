@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,8 +27,8 @@ func TestKillKibanaPod(t *testing.T) {
 	matchFirst := func(p corev1.Pod) bool {
 		return true
 	}
-	framework.RunFailureTest(t,
-		framework.KillNodeTestSteps(framework.KibanaPodListOptions(kbBuilder.Kibana.Name), matchFirst),
+	test.RunFailure(t,
+		test.KillNodeSteps(test.KibanaPodListOptions(kbBuilder.Kibana.Name), matchFirst),
 		esBuilder, kbBuilder)
 }
 
@@ -39,14 +39,14 @@ func TestKillKibanaDeployment(t *testing.T) {
 	kbBuilder := kibana.NewBuilder(name).
 		WithNodeCount(1)
 
-	framework.RunFailureTest(t, func(k *framework.K8sClient) framework.TestStepList {
-		return framework.TestStepList{
+	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+		return test.StepList{
 			{
 				Name: "Delete Kibana deployment",
 				Test: func(t *testing.T) {
 					var dep appsv1.Deployment
 					err := k.Client.Get(types.NamespacedName{
-						Namespace: framework.Namespace,
+						Namespace: test.Namespace,
 						Name:      kbname.Deployment(kbBuilder.Kibana.Name),
 					}, &dep)
 					require.NoError(t, err)

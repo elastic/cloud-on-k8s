@@ -9,19 +9,19 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 )
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
 	// only execute this test if we have a test license to work with
-	if framework.TestLicense == "" {
+	if test.TestLicense == "" {
 		t.SkipNow()
 	}
-	k := framework.NewK8sClientOrFatal()
+	k := test.NewK8sClientOrFatal()
 
-	licenseBytes, err := ioutil.ReadFile(framework.TestLicense)
+	licenseBytes, err := ioutil.ReadFile(test.TestLicense)
 	require.NoError(t, err)
 
 	// create a single node cluster
@@ -34,14 +34,14 @@ func TestEnterpriseLicenseSingle(t *testing.T) {
 
 	licenseTestContext := elasticsearch.NewLicenseTestContext(k, esBuilder.Elasticsearch)
 
-	framework.TestStepList{}.
+	test.StepList{}.
 		WithSteps(esBuilder.InitTestSteps(k)).
 		// make sure no left over license is still around
 		WithStep(licenseTestContext.DeleteEnterpriseLicenseSecret()).
 		WithSteps(esBuilder.CreationTestSteps(k)).
-		WithSteps(framework.CheckTestSteps(esBuilder, k)).
+		WithSteps(test.CheckTestSteps(esBuilder, k)).
 		WithStep(licenseTestContext.Init()).
-		WithSteps(framework.TestStepList{
+		WithSteps(test.StepList{
 			licenseTestContext.CheckElasticsearchLicense(license.ElasticsearchLicenseTypeBasic),
 			licenseTestContext.CreateEnterpriseLicenseSecret(licenseBytes),
 		}).

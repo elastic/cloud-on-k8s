@@ -9,23 +9,23 @@ import (
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestUpdateKibanaSecureSettings(t *testing.T) {
-	k := framework.NewK8sClientOrFatal()
+	k := test.NewK8sClientOrFatal()
 
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
 	secureSettings := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secureSettingsSecretName,
-			Namespace: framework.Namespace,
+			Namespace: test.Namespace,
 		},
 		Data: map[string][]byte{
 			// this needs to be a valid configuration item, otherwise Kibana refuses to start
@@ -41,9 +41,9 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		WithNodeCount(1).
 		WithKibanaSecureSettings(secureSettings.Name)
 
-	framework.TestStepList{}.
+	test.StepList{}.
 		// create secure settings secret
-		WithStep(framework.TestStep{
+		WithStep(test.Step{
 			Name: "Create secure settings secret",
 			Test: func(t *testing.T) {
 				// remove if already exists (ignoring errors)
@@ -58,14 +58,14 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		WithSteps(kbBuilder.InitTestSteps(k)).
 		WithSteps(esBuilder.CreationTestSteps(k)).
 		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(framework.CheckTestSteps(esBuilder, k)).
-		WithSteps(framework.CheckTestSteps(kbBuilder, k)).
-		WithSteps(framework.TestStepList{
+		WithSteps(test.CheckTestSteps(esBuilder, k)).
+		WithSteps(test.CheckTestSteps(kbBuilder, k)).
+		WithSteps(test.StepList{
 
 			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, []string{"logging.verbose"}),
 
 			// modify the secure settings secret
-			framework.TestStep{
+			test.Step{
 				Name: "Modify secure settings secret",
 				Test: func(t *testing.T) {
 					secureSettings.Data = map[string][]byte{
@@ -82,7 +82,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, []string{"logging.json", "logging.verbose"}),
 
 			// remove the secure settings reference
-			framework.TestStep{
+			test.Step{
 				Name: "Remove secure settings from the spec",
 				Test: func(t *testing.T) {
 					// retrieve current Kibana resource
@@ -100,7 +100,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, nil),
 
 			// cleanup extra resources
-			framework.TestStep{
+			test.Step{
 				Name: "Delete secure settings secret",
 				Test: func(t *testing.T) {
 					err := k.Client.Delete(&secureSettings)

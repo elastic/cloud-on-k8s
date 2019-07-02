@@ -13,8 +13,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,9 +26,9 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 	// it is supposed to be different after the restart is over
 	var initialStartTime map[string]int64
 
-	framework.Run(t, func(k *framework.K8sClient) framework.TestStepList {
-		restartSteps := framework.TestStepList{
-			framework.TestStep{
+	test.Run(t, func(k *test.K8sClient) test.StepList {
+		restartSteps := test.StepList{
+			test.Step{
 				Name: "Retrieve nodes start time",
 				Test: func(t *testing.T) {
 					startTime, err := getNodesStartTime(k, b.Elasticsearch)
@@ -36,7 +36,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 					initialStartTime = startTime
 				},
 			},
-			framework.TestStep{
+			test.Step{
 				Name: "Nodes start time should stay the same if not restarted",
 				Test: func(t *testing.T) {
 					startTime, err := getNodesStartTime(k, b.Elasticsearch)
@@ -44,7 +44,7 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 					require.Equal(t, initialStartTime, startTime)
 				},
 			},
-			framework.TestStep{
+			test.Step{
 				Name: "Annotate the cluster to schedule a restart",
 				Test: func(t *testing.T) {
 					// retrieve current cluster resource
@@ -57,11 +57,11 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 					require.NoError(t, err)
 				},
 			},
-			framework.TestStep{
+			test.Step{
 				// It's technically possible to detect pods becoming not ready during the restart,
 				// but it might happen too fast for us to notice. Let's check the JVM start time instead.
 				Name: "Wait for all nodes start time to have changed (restart is complete)",
-				Test: framework.Eventually(func() error {
+				Test: test.Eventually(func() error {
 					// retrieve current start time
 					startTime, err := getNodesStartTime(k, b.Elasticsearch)
 					if err != nil {
@@ -81,11 +81,11 @@ func TestCoordinatedClusterRestart(t *testing.T) {
 				}),
 			},
 		}
-		return append(restartSteps, framework.CheckTestSteps(b, k)...)
+		return append(restartSteps, test.CheckTestSteps(b, k)...)
 	}, b)
 }
 
-func getNodesStartTime(k *framework.K8sClient, cluster v1alpha1.Elasticsearch) (map[string]int64, error) {
+func getNodesStartTime(k *test.K8sClient, cluster v1alpha1.Elasticsearch) (map[string]int64, error) {
 	// retrieve nodes information
 	esClient, err := elasticsearch.NewElasticsearchClient(cluster, k)
 	if err != nil {

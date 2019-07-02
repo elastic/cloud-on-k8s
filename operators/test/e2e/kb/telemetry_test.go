@@ -9,14 +9,14 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTelemetry(t *testing.T) {
-	k := framework.NewK8sClientOrFatal()
+	k := test.NewK8sClientOrFatal()
 
 	name := "test-telemetry"
 	esBuilder := elasticsearch.NewBuilder(name).
@@ -24,15 +24,15 @@ func TestTelemetry(t *testing.T) {
 	kbBuilder := kibana.NewBuilder(name).
 		WithNodeCount(1)
 
-	framework.TestStepList{}.
+	test.StepList{}.
 		WithSteps(esBuilder.InitTestSteps(k)).
 		WithSteps(kbBuilder.InitTestSteps(k)).
 		WithSteps(esBuilder.CreationTestSteps(k)).
 		WithSteps(kbBuilder.CreationTestSteps(k)).
-		WithSteps(framework.CheckTestSteps(esBuilder, k)).
-		WithSteps(framework.CheckTestSteps(kbBuilder, k)).
+		WithSteps(test.CheckTestSteps(esBuilder, k)).
+		WithSteps(test.CheckTestSteps(kbBuilder, k)).
 		WithStep(
-			framework.TestStep{
+			test.Step{
 				Name: "Kibana should expose eck info in telemetry data",
 				Test: func(t *testing.T) {
 					uri := "/api/telemetry/v1/clusters/_stats"

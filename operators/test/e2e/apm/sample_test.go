@@ -9,10 +9,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/apmserver"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -27,28 +27,28 @@ func TestApmEsKibanaSample(t *testing.T) {
 	var apmBuilder apmserver.Builder
 
 	yamlFile, err := os.Open(SampleApmEsKibanaFile)
-	framework.ExitOnErr(err)
+	test.ExitOnErr(err)
 
 	// the decoding order depends on the yaml
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	framework.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
-	framework.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
-	framework.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
+	test.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
+	test.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
+	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
 	// set namespace and version
 	esBuilder = esBuilder.
-		WithNamespace(framework.Namespace).
-		WithVersion(framework.ElasticStackVersion).
+		WithNamespace(test.Namespace).
+		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(framework.Namespace).
-		WithVersion(framework.ElasticStackVersion).
+		WithNamespace(test.Namespace).
+		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	apmBuilder = apmBuilder.
-		WithNamespace(framework.Namespace).
-		WithVersion(framework.ElasticStackVersion).
+		WithNamespace(test.Namespace).
+		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
-	framework.Run(t, framework.EmptySteps, esBuilder, kbBuilder, apmBuilder)
+	test.Run(t, test.EmptySteps, esBuilder, kbBuilder, apmBuilder)
 	// TODO: is it possible to verify that it would also show up properly in Kibana?
 }

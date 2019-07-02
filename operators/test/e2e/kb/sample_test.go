@@ -9,9 +9,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/kibana"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -25,23 +25,23 @@ func TestKibanaEsSample(t *testing.T) {
 	var kbBuilder kibana.Builder
 
 	yamlFile, err := os.Open(SampleKibanaEsStackFile)
-	framework.ExitOnErr(err)
+	test.ExitOnErr(err)
 
 	// the decoding order depends on the yaml
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	framework.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
-	framework.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
+	test.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
+	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
 	esBuilder = esBuilder.
-		WithNamespace(framework.Namespace).
-		WithVersion(framework.ElasticStackVersion).
+		WithNamespace(test.Namespace).
+		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 	kbBuilder = kbBuilder.
-		WithNamespace(framework.Namespace).
-		WithVersion(framework.ElasticStackVersion).
+		WithNamespace(test.Namespace).
+		WithVersion(test.ElasticStackVersion).
 		WithRestrictedSecurityContext()
 
-	builders := []framework.Builder{esBuilder, kbBuilder}
+	builders := []test.Builder{esBuilder, kbBuilder}
 	// run, with mutation to the same resource (should work and do nothing)
-	framework.RunMutationsTests(t, builders, builders)
+	test.RunMutations(t, builders, builders)
 }

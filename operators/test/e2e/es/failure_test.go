@@ -13,8 +13,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/framework/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/storage/v1"
@@ -33,8 +33,8 @@ func TestKillOneDataNode(t *testing.T) {
 		return label.IsDataNode(p) && !label.IsMasterNode(p)
 	}
 
-	framework.RunFailureTest(t,
-		framework.KillNodeTestSteps(framework.ESPodListOptions(b.Elasticsearch.Name), matchDataNode),
+	test.RunFailure(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchDataNode),
 		b)
 }
 
@@ -48,8 +48,8 @@ func TestKillOneMasterNode(t *testing.T) {
 		return !label.IsDataNode(p) && label.IsMasterNode(p)
 	}
 
-	framework.RunFailureTest(t,
-		framework.KillNodeTestSteps(framework.ESPodListOptions(b.Elasticsearch.Name), matchMasterNode),
+	test.RunFailure(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchMasterNode),
 		b)
 }
 
@@ -61,8 +61,8 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 		return true // match first node we find
 	}
 
-	framework.RunFailureTest(t,
-		framework.KillNodeTestSteps(framework.ESPodListOptions(b.Elasticsearch.Name), matchNode),
+	test.RunFailure(t,
+		test.KillNodeSteps(test.ESPodListOptions(b.Elasticsearch.Name), matchNode),
 		b)
 }
 
@@ -70,9 +70,9 @@ func TestKillSingleNodeReusePV(t *testing.T) {
 // - PVC are reused with the correct volume (eg. do not bind the "data" PVC to a "non-data" volume)
 // - if no PVC is available, a new one is created
 func TestKillCorrectPVReuse(t *testing.T) {
-	framework.MinVersionOrSkip(t, "v1.12.0")
+	test.MinVersionOrSkip(t, "v1.12.0")
 
-	k := framework.NewK8sClientOrFatal()
+	k := test.NewK8sClientOrFatal()
 
 	// When working with multiple PVs on a single pod, there's a risk each PV get assigned to a different zone,
 	// not taking into consideration pod scheduling constraints. As a result, the pod becomes unschedulable.
@@ -99,19 +99,19 @@ func TestKillCorrectPVReuse(t *testing.T) {
 	var seenPVCs []string
 	var killedPod corev1.Pod
 
-	framework.TestStepList{}.
+	test.StepList{}.
 		WithStep(elasticsearch.CreateStorageClass(*sc, k)).
 		WithSteps(b.InitTestSteps(k)).
 		WithSteps(b.CreationTestSteps(k)).
-		WithSteps(framework.CheckTestSteps(b, k)).
+		WithSteps(test.CheckTestSteps(b, k)).
 		WithStep(elasticsearch.RetrieveClusterUUIDStep(b.Elasticsearch, k, &clusterUUID)).
 		// Simulate a pod deletion
 		WithStep(elasticsearch.PauseReconciliation(b.Elasticsearch, k)).
-		WithSteps(framework.TestStepList{
+		WithSteps(test.StepList{
 			{
 				Name: "Kill a node",
 				Test: func(t *testing.T) {
-					pods, err := k.GetPods(framework.ESPodListOptions(b.Elasticsearch.Name))
+					pods, err := k.GetPods(test.ESPodListOptions(b.Elasticsearch.Name))
 					require.NoError(t, err)
 					require.True(t, len(pods) > 0, "need at least one pod to kill")
 					for i, pod := range pods {
@@ -125,7 +125,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			},
 			{
 				Name: "Wait for pod to be deleted",
-				Test: framework.Eventually(func() error {
+				Test: test.Eventually(func() error {
 					pod, err := k.GetPod(killedPod.Name)
 					if err != nil && !apierrors.IsNotFound(err) {
 						return err
@@ -138,7 +138,7 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			},
 			{
 				Name: "Delete one of the es-data PVCs",
-				Test: framework.Eventually(func() error {
+				Test: test.Eventually(func() error {
 					pvcs, err := pvc.ListVolumeClaims(k.Client, b.Elasticsearch)
 					if err != nil {
 						return err
@@ -161,9 +161,9 @@ func TestKillCorrectPVReuse(t *testing.T) {
 			elasticsearch.ResumeReconciliation(b.Elasticsearch, k),
 		}).
 		// Check we recover
-		WithSteps(framework.CheckTestSteps(b, k)).
+		WithSteps(test.CheckTestSteps(b, k)).
 		// Check PVCs have been reused correctly
-		WithStep(framework.TestStep{
+		WithStep(test.Step{
 			Name: "No PVC should have been reused for elasticsearch-data",
 			Test: func(t *testing.T) {
 				// should be resurrected with same name due to second PVC still around and forcing the pods name
@@ -205,8 +205,8 @@ func TestDeleteServices(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-services").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	framework.RunFailureTest(t, func(k *framework.K8sClient) framework.TestStepList {
-		return framework.TestStepList{
+	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+		return test.StepList{
 			{
 				Name: "Delete external service",
 				Test: func(t *testing.T) {
@@ -224,13 +224,13 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-delete-es-elastic-user-secret").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	framework.RunFailureTest(t, func(k *framework.K8sClient) framework.TestStepList {
-		return framework.TestStepList{
+	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+		return test.StepList{
 			{
 				Name: "Delete elastic user secret",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: framework.Namespace,
+						Namespace: test.Namespace,
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
@@ -247,13 +247,13 @@ func TestDeleteCACert(t *testing.T) {
 	b := elasticsearch.NewBuilder("test-failure-delete-ca-cert").
 		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
 
-	framework.RunFailureTest(t, func(k *framework.K8sClient) framework.TestStepList {
-		return framework.TestStepList{
+	test.RunFailure(t, func(k *test.K8sClient) test.StepList {
+		return test.StepList{
 			{
 				Name: "Delete CA cert",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: framework.Namespace,
+						Namespace: test.Namespace,
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
