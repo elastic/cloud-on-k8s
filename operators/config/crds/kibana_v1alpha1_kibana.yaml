@@ -72,6 +72,8 @@ spec:
                       - password
                       type: object
                     secret:
+                      description: SecretKeyRef is a secret that contains the credentials
+                        to use.
                       type: object
                   type: object
                 certificateAuthorities:

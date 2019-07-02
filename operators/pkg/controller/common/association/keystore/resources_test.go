@@ -5,8 +5,9 @@
 package keystore
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/magiconair/properties/assert"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
@@ -21,6 +22,13 @@ import (
 )
 
 var (
+	initContainersParameters = InitContainerParameters{
+		KeystoreCreateCommand:         "/keystore/bin/keystore create",
+		KeystoreAddCommand:            "/keystore/bin/keystore add",
+		SecureSettingsVolumeMountPath: "/foo/secret",
+		DataVolumePath:                "/bar/data",
+	}
+
 	testSecureSettingsSecretName = "secure-settings-secret"
 	testSecureSettingsSecret     = corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -47,12 +55,14 @@ var (
 )
 
 func TestResources(t *testing.T) {
+	varFalse := false
 	tests := []struct {
 		name           string
 		client         k8s.Client
 		kb             v1alpha1.Kibana
+		wantNil        bool
 		wantVolumes    int
-		wantContainers int
+		wantContainers *corev1.Container
 		wantVersion    string
 	}{
 		{
@@ -60,24 +70,67 @@ func TestResources(t *testing.T) {
 			client:         k8s.WrapClient(fake.NewFakeClient()),
 			kb:             v1alpha1.Kibana{},
 			wantVolumes:    0,
-			wantContainers: 0,
+			wantContainers: nil,
 			wantVersion:    "",
+			wantNil:        true,
 		},
 		{
-			name:           "secure settings specified: return volume, init container and version",
-			client:         k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
-			kb:             testKibanaWithSecureSettings,
-			wantVolumes:    1,
-			wantContainers: 1,
-			wantVersion:    testSecureSettingsSecret.ResourceVersion,
+			name:        "secure settings specified: return volume, init container and version",
+			client:      k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
+			kb:          testKibanaWithSecureSettings,
+			wantVolumes: 1,
+			wantContainers: &corev1.Container{
+				Command: []string{
+					"/usr/bin/env",
+					"bash",
+					"-c",
+					`#!/usr/bin/env bash
+
+set -eux
+
+echo "Initializing keystore."
+
+# create a keystore in the default data path
+/keystore/bin/keystore create
+
+# add all existing secret entries into it
+for filename in  /foo/secret/*; do
+	[[ -e "$filename" ]] || continue # glob does not match
+	key=$(basename "$filename")
+	echo "Adding "$key" to the keystore."
+	/keystore/bin/keystore add "$key" --stdin < "$filename"
+done
+
+echo "Keystore initialization successful."
+`,
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      "elastic-internal-secure-settings",
+						ReadOnly:  true,
+						MountPath: "/mnt/elastic-internal/secure-settings",
+					},
+					{
+						Name:      "kibana-data",
+						ReadOnly:  false,
+						MountPath: "/bar/data",
+					},
+				},
+				SecurityContext: &corev1.SecurityContext{
+					Privileged: &varFalse,
+				},
+			},
+			wantVersion: testSecureSettingsSecret.ResourceVersion,
+			wantNil:     false,
 		},
 		{
 			name:           "secure settings specified but secret not there: no resources",
 			client:         k8s.WrapClient(fake.NewFakeClient()),
 			kb:             testKibanaWithSecureSettings,
 			wantVolumes:    0,
-			wantContainers: 0,
+			wantContainers: nil,
 			wantVersion:    "",
+			wantNil:        true,
 		},
 	}
 	for _, tt := range tests {
@@ -85,17 +138,26 @@ func TestResources(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
 			watches := watches2.NewDynamicWatches()
 			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			wantVolumes, wantContainers, wantVersion, err := Resources(tt.client, recorder, watches, tt.kb)
+			resources, err := NewResources(tt.client, recorder, watches, &tt.kb, initContainersParameters)
 			require.NoError(t, err)
-			if !reflect.DeepEqual(len(wantVolumes), tt.wantVolumes) {
-				t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)
+			if tt.wantNil {
+				require.Nil(t, resources)
+			} else {
+				require.NotNil(t, resources)
+				assert.Equal(t, resources.KeystoreInitContainer.Name, "init-keystore")
+				assert.Equal(t, resources.KeystoreInitContainer.Command, tt.wantContainers.Command)
+				assert.Equal(t, resources.KeystoreVersion, tt.wantVersion)
+				/*if !reflect.DeepEqual(len(resources.KeystoreVolume), tt.wantVolumes) {
+					t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)
+				}
+				if !reflect.DeepEqual(len(wantContainers), tt.wantContainers) {
+					t.Errorf("Resources() got1 = %v, want %v", wantContainers, tt.wantContainers)
+				}
+				if wantVersion != tt.wantVersion {
+					t.Errorf("Resources() got2 = %v, want %v", wantVersion, tt.wantVersion)
+				}*/
 			}
-			if !reflect.DeepEqual(len(wantContainers), tt.wantContainers) {
-				t.Errorf("Resources() got1 = %v, want %v", wantContainers, tt.wantContainers)
-			}
-			if wantVersion != tt.wantVersion {
-				t.Errorf("Resources() got2 = %v, want %v", wantVersion, tt.wantVersion)
-			}
+
 		})
 	}
 }

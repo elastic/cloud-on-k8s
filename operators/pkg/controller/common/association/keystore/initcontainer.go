@@ -16,6 +16,7 @@ const (
 	InitContainerName = "init-keystore"
 )
 
+// InitContainerParameters helps to create a valid keystore init script for Kibana or the APM server.
 type InitContainerParameters struct {
 	// Where the user provided secured settings should be mounted
 	SecureSettingsVolumeMountPath string

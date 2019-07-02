@@ -129,6 +129,9 @@ spec:
                             username:
                               description: User is the username to use.
                               type: string
+                          required:
+                          - username
+                          - password
                           type: object
                         secret:
                           description: SecretKeyRef is a secret that contains the

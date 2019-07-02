@@ -8,13 +8,10 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
@@ -28,12 +25,21 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
+
+// initContainersParameters is used to generate the init container that will load the secure settings into a keystore
+var initContainersParameters = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
+	KeystoreAddCommand:            "/usr/share/kibana/bin/kibana-keystore add",
+	SecureSettingsVolumeMountPath: volume.SecureSettingsVolumeMountPath,
+	DataVolumePath:                volume.DataVolumeMountPath,
+}
 
 type driver struct {
 	client          k8s.Client
@@ -65,12 +71,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		d.recorder,
 		d.dynamicWatches,
 		kb,
-		keystore.InitContainerParameters{
-			KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
-			KeystoreAddCommand:            "/usr/share/kibana/bin/kibana-keystore add",
-			SecureSettingsVolumeMountPath: volume.SecureSettingsVolumeMountPath,
-			DataVolumePath:                volume.DataVolumeMountPath,
-		},
+		initContainersParameters,
 	)
 	if err != nil {
 		return nil, err

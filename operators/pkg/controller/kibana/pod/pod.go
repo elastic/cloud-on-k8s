@@ -52,11 +52,12 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(defaultReadinessProbe).
-		WithPorts(ports)
+		WithPorts(ports).
+		WithVolumes(volume.KibanaDataVolume.Volume()).
+		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount())
 
 	if keystore != nil {
-		builder.WithVolumes(keystore.KeystoreVolume, volume.KibanaDataVolume.Volume()).
-			WithVolumeMounts(volume.KibanaDataVolume.VolumeMount()).
+		builder.WithVolumes(keystore.KeystoreVolume).
 			WithInitContainers(keystore.KeystoreInitContainer).
 			WithInitContainerDefaults()
 	}

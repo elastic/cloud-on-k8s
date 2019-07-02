@@ -8,11 +8,10 @@ import (
 	"reflect"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNewPodSpec(t *testing.T) {
@@ -24,11 +23,21 @@ func TestNewPodSpec(t *testing.T) {
 	varFalse := false
 	tests := []struct {
 		name string
+		as   v1alpha1.ApmServer
 		p    PodSpecParams
 		want corev1.PodTemplateSpec
 	}{
 		{
 			name: "create default pod spec",
+			as: v1alpha1.ApmServer{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "ApmServer",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "fake-apm",
+					Namespace: "default",
+				},
+			},
 			p: PodSpecParams{
 				Version: "7.0.1",
 				ConfigSecret: corev1.Secret{
@@ -84,7 +93,7 @@ func TestNewPodSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := newPodSpec(tt.p); !reflect.DeepEqual(got, tt.want) {
+			if got := newPodSpec(&tt.as, tt.p); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("NewPodSpec() = %v, want %v", got, tt.want)
 			}
 		})
