@@ -5,6 +5,8 @@
 package config
 
 import (
+	"reflect"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
@@ -58,7 +60,8 @@ func Reconcile(client k8s.Client, scheme *runtime.Scheme, as *v1alpha1.ApmServer
 			Reconciled: reconciledConfigSecret,
 
 			NeedsUpdate: func() bool {
-				return true
+				return !reflect.DeepEqual(reconciledConfigSecret.Data, expectedConfigSecret.Data) ||
+					!reflect.DeepEqual(reconciledConfigSecret.Labels, expectedConfigSecret.Labels)
 			},
 			UpdateReconciled: func() {
 				reconciledConfigSecret.Labels = expectedConfigSecret.Labels
