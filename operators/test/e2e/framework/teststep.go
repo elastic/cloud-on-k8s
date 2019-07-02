@@ -34,7 +34,7 @@ func (l TestStepList) WithStep(testStep TestStep) TestStepList {
 func (l TestStepList) RunSequential(t *testing.T) {
 	for _, ts := range l {
 		if !t.Run(ts.Name, ts.Test) {
-			logf.Log.Error(errors.New("test failure"), "Stopping early")
+			logf.Log.Error(errors.New("test failure"), "stopping early")
 			t.FailNow()
 		}
 	}
