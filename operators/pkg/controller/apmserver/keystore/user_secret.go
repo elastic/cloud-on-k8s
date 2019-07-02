@@ -16,7 +16,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -33,26 +32,21 @@ func secureSettingsVolume(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	object runtime.Object,
-	userSecretRef *commonv1alpha1.SecretRef,
+	associated commonv1alpha1.Associated,
 ) (*volume.SecretVolume, string, error) {
-	metaObject, err := meta.Accessor(object)
-	if err != nil {
-		return nil, "", err
-	}
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	err = watchSecureSettings(watches, userSecretRef, k8s.ExtractNamespacedName(metaObject))
+	err := watchSecureSettings(watches, associated.SecureSettings(), k8s.ExtractNamespacedName(associated))
 	if err != nil {
 		return nil, "", err
 	}
 
-	if userSecretRef == nil {
+	if associated.SecureSettings() == nil {
 		// no secure settings secret specified
 		return nil, "", nil
 	}
 
 	// retrieve the secret referenced by the user in the same namespace
-	userSecret, exists, err := retrieveUserSecret(c, object, recorder, metaObject.GetNamespace(), userSecretRef.SecretName)
+	userSecret, exists, err := retrieveUserSecret(c, associated, recorder)
 	if err != nil {
 		return nil, "", err
 	}
@@ -75,13 +69,14 @@ func secureSettingsVolume(
 	return &secureSettingsVolume, resourceVersion, nil
 }
 
-func retrieveUserSecret(c k8s.Client, object runtime.Object, recorder record.EventRecorder, namespace string, name string) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(c k8s.Client, associated commonv1alpha1.Associated, recorder record.EventRecorder) (*corev1.Secret, bool, error) {
+	secretName := associated.SecureSettings().SecretName
 	userSecret := corev1.Secret{}
-	err := c.Get(types.NamespacedName{Namespace: namespace, Name: name}, &userSecret)
+	err := c.Get(types.NamespacedName{Namespace: associated.GetNamespace(), Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "name", name)
-		recorder.Event(object, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
+		log.Info(msg, "name", secretName)
+		recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err

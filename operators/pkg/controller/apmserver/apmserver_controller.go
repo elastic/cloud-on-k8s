@@ -275,9 +275,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		r.recorder,
 		r.dynamicWatches,
 		as,
-		as.Spec.SecureSettings,
 		"/usr/share/apm-server/data",
-		"apm")
+	)
 	if err != nil {
 		return state, err
 	}
@@ -294,7 +293,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		keystoreResources: keystoreResources,
 	}
 
-	podSpec := newPodSpec(apmServerPodSpecParams)
+	podSpec := newPodSpec(as, apmServerPodSpecParams)
 
 	podLabels := labels.NewLabels(as.Name)
 

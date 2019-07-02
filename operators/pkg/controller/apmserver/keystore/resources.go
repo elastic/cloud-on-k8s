@@ -5,11 +5,12 @@
 package keystore
 
 import (
+	"strings"
+
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -32,13 +33,11 @@ func NewResources(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	object runtime.Object,
-	userSecretRef *commonv1alpha1.SecretRef,
+	associated commonv1alpha1.Associated,
 	dataVolumePath string,
-	volumePrefix string,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, object, userSecretRef)
+	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, associated)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +50,7 @@ func NewResources(
 	initContainer, err := initContainer(
 		*secretVolume,
 		dataVolumePath,
-		volumePrefix,
+		strings.ToLower(associated.GetObjectKind().GroupVersionKind().Kind),
 		"/usr/share/apm-server/apm-server keystore create --force",
 		"/usr/share/apm-server/apm-server keystore add",
 	)
