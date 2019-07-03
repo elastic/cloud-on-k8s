@@ -28,6 +28,6 @@ func main() {
 	})
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Error(err, "Unexpected error while running executing command")
+		log.Error(err, "Unexpected error while executing command")
 	}
 }
