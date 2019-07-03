@@ -56,9 +56,6 @@ rules:
   - elasticsearches/finalizers
   - enterpriselicenses
   - enterpriselicenses/status
-  - trustrelationships
-  - remoteclusters
-  - remoteclusters/status
   verbs:
   - get
   - list

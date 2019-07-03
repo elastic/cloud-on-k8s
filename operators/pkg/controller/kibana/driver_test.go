@@ -68,6 +68,15 @@ func expectedDeploymentParams() *DeploymentParams {
 							},
 						},
 					},
+					{
+						Name: volume.HTTPCertificatesSecretVolumeName,
+						VolumeSource: corev1.VolumeSource{
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "test-kb-http-certs-internal",
+								Optional:   &false,
+							},
+						},
+					},
 				},
 				Containers: []corev1.Container{{
 					VolumeMounts: []corev1.VolumeMount{
@@ -86,6 +95,11 @@ func expectedDeploymentParams() *DeploymentParams {
 							ReadOnly:  true,
 							MountPath: "/usr/share/kibana/config",
 						},
+						{
+							Name:      volume.HTTPCertificatesSecretVolumeName,
+							ReadOnly:  true,
+							MountPath: volume.HTTPCertificatesSecretVolumeMountPath,
+						},
 					},
 					Image: "my-image",
 					Name:  kbtype.KibanaContainerName,
@@ -102,7 +116,7 @@ func expectedDeploymentParams() *DeploymentParams {
 							HTTPGet: &corev1.HTTPGetAction{
 								Port:   intstr.FromInt(5601),
 								Path:   "/",
-								Scheme: corev1.URISchemeHTTP,
+								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
 					},
@@ -193,6 +207,15 @@ func Test_driver_deploymentParams(t *testing.T) {
 				"kibana.yml": []byte("server.name: test"),
 			},
 		},
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-kb-http-certs-internal",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"tls.crt": nil,
+			},
+		},
 	}
 
 	type args struct {
@@ -222,6 +245,27 @@ func Test_driver_deploymentParams(t *testing.T) {
 				initialObjects: defaultInitialObjs,
 			},
 			want:    expectedDeploymentParams(),
+			wantErr: false,
+		},
+		{
+			name: "with TLS disabled",
+			args: args{
+				kb: func() *kbtype.Kibana {
+					kb := kibanaFixture
+					kb.Spec.HTTP.TLS.SelfSignedCertificate = &v1alpha1.SelfSignedCertificate{
+						Disabled: true,
+					}
+					return &kb
+				}(),
+				initialObjects: defaultInitialObjs,
+			},
+			want: func() *DeploymentParams {
+				params := expectedDeploymentParams()
+				params.PodTemplateSpec.Spec.Volumes = params.PodTemplateSpec.Spec.Volumes[:3]
+				params.PodTemplateSpec.Spec.Containers[0].VolumeMounts = params.PodTemplateSpec.Spec.Containers[0].VolumeMounts[:3]
+				params.PodTemplateSpec.Spec.Containers[0].ReadinessProbe.Handler.HTTPGet.Scheme = corev1.URISchemeHTTP
+				return params
+			}(),
 			wantErr: false,
 		},
 		{
@@ -274,6 +318,15 @@ func Test_driver_deploymentParams(t *testing.T) {
 							"kibana.yml": []byte("server.name: test"),
 						},
 					},
+					&corev1.Secret{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-kb-http-certs-internal",
+							Namespace: "default",
+						},
+						Data: map[string][]byte{
+							"tls.crt": []byte("this is also relevant"),
+						},
+					},
 				},
 			},
 			want: func() *DeploymentParams {
@@ -281,7 +334,7 @@ func Test_driver_deploymentParams(t *testing.T) {
 				p.PodTemplateSpec.Labels = map[string]string{
 					"common.k8s.elastic.co/type":            "kibana",
 					"kibana.k8s.elastic.co/name":            "test",
-					"kibana.k8s.elastic.co/config-checksum": "ab47b5621ae80a23a5fa881f8c8affcf511dfc1f007ffd883be9ad83",
+					"kibana.k8s.elastic.co/config-checksum": "c5496152d789682387b90ea9b94efcd82a2c6f572f40c016fb86c0d7",
 				}
 				return p
 			}(),
@@ -333,7 +386,8 @@ func Test_driver_deploymentParams(t *testing.T) {
 				t.Errorf("driver.deploymentParams() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
+			// deployment params is deeper than the default 10 levels even though I count only 8
+			deep.MaxDepth = 15
 			if diff := deep.Equal(got, tt.want); diff != nil {
 				t.Error(diff)
 			}

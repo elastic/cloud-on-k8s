@@ -8,9 +8,10 @@ import (
 	"reflect"
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/http"
+	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	kblabel "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,7 @@ func CACertSecretName(kibanaName string) string {
 // The CA secret content is copied over from ES public HTTP certificate secret into a dedicated secret for Kibana.
 func (r *ReconcileAssociation) reconcileCASecret(kibana kbtype.Kibana, es types.NamespacedName) (string, error) {
 	kibanaKey := k8s.ExtractNamespacedName(&kibana)
-	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(es)
+	publicESHTTPCertificatesNSN := http.PublicCertsSecretRef(esname.ESNamer, es)
 
 	// watch ES CA secret to reconcile on any change
 	if err := r.watches.Secrets.AddHandler(watches.NamedWatch{

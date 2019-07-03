@@ -9,33 +9,38 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/apm"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/helpers"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/params"
-	"github.com/elastic/cloud-on-k8s/operators/test/e2e/stack"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/elasticsearch"
+	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/kibana"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
+// TestSmoke runs a test suite using the ApmServer + Kibana + ES sample.
 func TestSmoke(t *testing.T) {
-	var sampleStack stack.Builder
-	var sampleApm apm.Builder
+	var esBuilder elasticsearch.Builder
+	var kbBuilder kibana.Builder
+	var apmBuilder apmserver.Builder
 
-	yamlFile, err := os.Open(sampleEsApmFile)
-	helpers.ExitOnErr(err)
+	yamlFile, err := os.Open(SampleApmEsKibanaFile)
+	test.ExitOnErr(err)
 
 	decoder := yaml.NewYAMLToJSONDecoder(bufio.NewReader(yamlFile))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Elasticsearch))
-	helpers.ExitOnErr(decoder.Decode(&sampleApm.ApmServer))
-	helpers.ExitOnErr(decoder.Decode(&sampleStack.Kibana))
+	// the decoding order depends on the yaml
+	test.ExitOnErr(decoder.Decode(&esBuilder.Elasticsearch))
+	test.ExitOnErr(decoder.Decode(&apmBuilder.ApmServer))
+	test.ExitOnErr(decoder.Decode(&kbBuilder.Kibana))
 
-	namespacedSampleStack := sampleStack.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
-	namespacedSampleApm := sampleApm.WithNamespace(params.Namespace).WithRestrictedSecurityContext()
+	esBuilder = esBuilder.
+		WithNamespace(test.Namespace).
+		WithRestrictedSecurityContext()
+	kbBuilder = kbBuilder.
+		WithNamespace(test.Namespace).
+		WithRestrictedSecurityContext()
+	apmBuilder = apmBuilder.
+		WithNamespace(test.Namespace).
+		WithRestrictedSecurityContext()
 
-	k := helpers.NewK8sClientOrFatal()
-	helpers.TestStepList{}.
-		WithSteps(stack.InitTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.InitTestSteps(namespacedSampleApm, k)...).
-		WithSteps(stack.CreationTestSteps(namespacedSampleStack, k)...).
-		WithSteps(apm.CreationTestSteps(namespacedSampleApm, namespacedSampleStack.Elasticsearch, k)...).
+	test.Sequence(nil, test.EmptySteps, esBuilder, kbBuilder, apmBuilder).
 		RunSequential(t)
 }

@@ -64,10 +64,18 @@ type TLSOptions struct {
 	Certificate SecretRef `json:"certificate,omitempty"`
 }
 
+// Enabled returns true when TLS is enabled based on this option struct.
+func (tls TLSOptions) Enabled() bool {
+	selfSigned := tls.SelfSignedCertificate
+	return selfSigned == nil || !selfSigned.Disabled || tls.Certificate.SecretName != ""
+}
+
 type SelfSignedCertificate struct {
 	// SubjectAlternativeNames is a list of SANs to include in the HTTP TLS certificates.
 	// For example: a wildcard DNS to expose the cluster.
 	SubjectAlternativeNames []SubjectAlternativeName `json:"subjectAltNames,omitempty"`
+	// Disabled turns off the provisioning of self-signed HTTP TLS certificates.
+	Disabled bool `json:"disabled,omitempty"`
 }
 
 type SubjectAlternativeName struct {
