@@ -29,7 +29,6 @@ Any setting that can be configured in the `elasticsearch.yml` configuration file
 
 [source,yaml]
 ----
-kind: Elasticsearch
 spec:
   nodes:
   - nodeCount: 3
