@@ -26,6 +26,17 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
+var (
+	// DefaultResources for the Elasticsearch container. The JVM default heap size is 1Gi, so we
+	// request at least 2Gi for the container to make sure ES can work properly.
+	// Not applying this minimum default would make ES randomly crash (OOM) on small machines.
+	DefaultResources = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+	}
+)
+
 // NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
@@ -132,6 +143,7 @@ func podSpecContext(
 	// build on top of the user-provided pod template spec
 	builder := defaults.NewPodTemplateBuilder(p.NodeSpec.PodTemplate, v1alpha1.ElasticsearchContainerName).
 		WithDockerImage(p.Elasticsearch.Spec.Image, stringsutil.Concat(pod.DefaultImageRepository, ":", p.Elasticsearch.Spec.Version)).
+		WithDefaultResources(DefaultResources).
 		WithTerminationGracePeriod(pod.DefaultTerminationGracePeriodSeconds).
 		WithPorts(pod.DefaultContainerPorts).
 		WithReadinessProbe(*pod.NewReadinessProbe()).
