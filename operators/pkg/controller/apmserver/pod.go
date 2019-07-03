@@ -24,6 +24,8 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/apm/apm-server"
 
 	SecretTokenKey string = "secret-token"
+
+	DataVolumePath = "/usr/share/apm-server/data"
 )
 
 var readinessProbe = corev1.Probe{
@@ -108,7 +110,7 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 	if p.keystoreResources != nil {
 		dataVolume := keystore.DataVolume(
 			strings.ToLower(as.Kind),
-			"/usr/share/apm-server/data",
+			DataVolumePath,
 		)
 		builder.WithInitContainers(p.keystoreResources.KeystoreInitContainer).
 			WithVolumes(p.keystoreResources.KeystoreVolume, dataVolume.Volume()).

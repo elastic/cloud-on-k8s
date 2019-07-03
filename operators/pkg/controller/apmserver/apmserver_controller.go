@@ -55,7 +55,7 @@ var (
 		KeystoreCreateCommand:         "/usr/share/apm-server/apm-server keystore create --force",
 		KeystoreAddCommand:            "/usr/share/apm-server/apm-server keystore add",
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-		DataVolumePath:                "/usr/share/apm-server/data",
+		DataVolumePath:                DataVolumePath,
 	}
 )
 
