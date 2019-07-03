@@ -1037,8 +1037,8 @@ func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
-			if got := b.WithDefaultResources(tt.defaultResources).Container.Resources; !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("PodTemplateBuilder.WithDefaultResources() = %v, want %v", got, tt.want)
+			if got := b.WithResources(tt.defaultResources).Container.Resources; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
 			}
 		})
 	}
