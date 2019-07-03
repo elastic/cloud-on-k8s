@@ -51,6 +51,19 @@ pipeline {
     }
 
     post {
+        success {
+            withEnv([
+                'REGISTRY=push.docker.elastic.co',
+                'REPOSITORY=eck-snapshot',
+                'IMG_SUFFIX=',
+                'SNAPSHOT_RELEASE=true'
+                ]) {
+                sh 'make -C build/ci ci-release'
+            }
+            script {
+
+            }
+        }
         cleanup {
             sh 'make -C build/ci ci-e2e-delete-cluster'
             cleanWs()
