@@ -11,4 +11,4 @@ COPY test/   test/
 COPY vendor/ vendor/
 
 # Run the tests
-ENTRYPOINT ["go", "test", "-v", "-failfast", "-timeout", "2h", "-tags=e2e", "./test/e2e"]
+ENTRYPOINT ["go", "test", "-v", "-failfast", "-timeout", "2h", "-tags=e2e", "-p", "1", "./test/e2e/..."]
