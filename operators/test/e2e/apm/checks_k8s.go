@@ -35,7 +35,7 @@ func CheckApmServerDeployment(stack Builder, k *helpers.K8sHelper) helpers.TestS
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: params.Namespace,
-				Name:      stack.ApmServer.Name + "-apm-server",
+				Name:      stack.ApmServer.Name + "-apm",
 			}, &dep)
 			if stack.ApmServer.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
 				return nil
@@ -86,7 +86,7 @@ func CheckServices(stack Builder, k *helpers.K8sHelper) helpers.TestStep {
 		Name: "Services should be created",
 		Test: helpers.Eventually(func() error {
 			for _, s := range []string{
-				stack.ApmServer.Name + "-apm-server",
+				stack.ApmServer.Name + "-apm-http",
 			} {
 				if _, err := k.GetService(s); err != nil {
 					return err
@@ -103,7 +103,7 @@ func CheckServicesEndpoints(stack Builder, k *helpers.K8sHelper) helpers.TestSte
 		Name: "Services should have endpoints",
 		Test: helpers.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				stack.ApmServer.Name + "-apm-server": int(stack.ApmServer.Spec.NodeCount),
+				stack.ApmServer.Name + "-apm-http": int(stack.ApmServer.Spec.NodeCount),
 			} {
 				endpoints, err := k.GetEndpoints(endpointName)
 				if err != nil {

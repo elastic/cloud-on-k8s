@@ -154,7 +154,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 		WithSteps(stack.CreationTestSteps(s, k)...).
 		WithSteps(
 
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, []string{"logging.verbose"}),
+			stack.CheckKeystoreEntries(k, helpers.KibanaPodListOptions(s.Kibana.Name), stack.KibanaKeystoreCmd, []string{"logging.verbose"}),
 
 			// modify the secure settings secret
 			helpers.TestStep{
@@ -171,7 +171,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, []string{"logging.json", "logging.verbose"}),
+			stack.CheckKeystoreEntries(k, helpers.KibanaPodListOptions(s.Kibana.Name), stack.KibanaKeystoreCmd, []string{"logging.json", "logging.verbose"}),
 
 			// remove the secure settings reference
 			helpers.TestStep{
@@ -189,7 +189,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			stack.CheckKibanaKeystoreEntries(k, s.Kibana, nil),
+			stack.CheckKeystoreEntries(k, helpers.KibanaPodListOptions(s.Kibana.Name), stack.KibanaKeystoreCmd, nil),
 
 			// cleanup extra resources
 			helpers.TestStep{
