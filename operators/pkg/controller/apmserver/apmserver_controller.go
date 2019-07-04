@@ -121,9 +121,9 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "as_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "as_name", request.Name)
 	}()
 
 	// Fetch the ApmServer resource
@@ -131,7 +131,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	err := r.Get(request.NamespacedName, as)
 
 	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "name", as.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -223,10 +223,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name)
+				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name)
+				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 		},
 	); err != nil {
@@ -272,10 +272,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledConfigSecret.Data = expectedConfigSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name)
+				log.Info("Creating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name, "as_name", as.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name)
+				log.Info("Updating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name, "as_name", as.Name)
 			},
 		},
 	); err != nil {
