@@ -144,7 +144,7 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 
 var _ reconcile.Reconciler = &ReconcileElasticsearch{}
 
-// ReconcileElasticsearch reconciles a Elasticsearch object
+// ReconcileElasticsearch reconciles an Elasticsearch object
 type ReconcileElasticsearch struct {
 	k8s.Client
 	operator.Parameters
@@ -165,7 +165,7 @@ type ReconcileElasticsearch struct {
 	iteration int64
 }
 
-// Reconcile reads that state of the cluster for a Elasticsearch object and makes changes based on the state read and
+// Reconcile reads the state of the cluster for an Elasticsearch object and makes changes based on the state read and
 // what is in the Elasticsearch.Spec
 func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// atomically update the iteration to support concurrent runs.

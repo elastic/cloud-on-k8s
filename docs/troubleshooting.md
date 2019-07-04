@@ -21,3 +21,37 @@ $ kubectl annotate stack stack-sample --overwrite common.k8s.elastic.co/pause=tr
 ```
 
 Please note that if the annotation is set on the Stack all the dependents *(kibana, elasticsearchcluster)* are also paused.
+
+### Debug logs
+
+To enable debug logs for the operator, restart it with the flag `--enable-debug-logs=true`. For example:
+
+```shell
+kubectl edit statefulset.apps -n elastic-system elastic-operator
+```
+
+and change the following lines from:
+
+```yaml
+    spec:
+      containers:
+      - args:
+        - manager
+        - --operator-roles
+        - all
+        - --enable-debug-logs
+        - false
+```
+
+to
+
+```yaml
+    spec:
+      containers:
+      - args:
+        - manager
+        - --operator-roles
+        - all
+        - --enable-debug-logs
+        - true
+```

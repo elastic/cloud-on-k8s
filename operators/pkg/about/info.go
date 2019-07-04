@@ -21,12 +21,15 @@ const (
 	UUIDCfgMapKey = "uuid"
 )
 
+var defaultOperatorNamespaces = []string{"elastic-system", "elastic-namespace-operators"}
+
 // OperatorInfo contains information about the operator.
 type OperatorInfo struct {
-	UUID         types.UID `json:"uuid"`
-	Namespace    string    `json:"namespace"`
-	Distribution string    `json:"distribution"`
-	BuildInfo    BuildInfo `json:"build"`
+	OperatorUUID            types.UID `json:"operator_uuid"`
+	OperatorRoles           []string  `json:"operator_roles"`
+	CustomOperatorNamespace bool      `json:"custom_operator_namespace"`
+	Distribution            string    `json:"distribution"`
+	BuildInfo               BuildInfo `json:"build"`
 }
 
 // BuildInfo contains build metadata information.
@@ -39,16 +42,16 @@ type BuildInfo struct {
 
 // IsDefined returns true if the info's default values have been replaced.
 func (i OperatorInfo) IsDefined() bool {
-	return i.UUID != "" &&
-		i.Namespace != "" &&
+	return i.OperatorUUID != "" &&
 		i.Distribution != "" &&
 		i.BuildInfo.Version != "0.0.0" &&
 		i.BuildInfo.Hash != "00000000" &&
 		i.BuildInfo.Date != "1970-01-01T00:00:00Z"
 }
 
-// GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config and an operator namespace.
-func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (OperatorInfo, error) {
+// GetOperatorInfo returns an OperatorInfo given an operator client, a Kubernetes client config, an operator namespace
+// and operator roles.
+func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string, operatorRoles []string) (OperatorInfo, error) {
 	operatorUUID, err := getOperatorUUID(clientset, operatorNs)
 	if err != nil {
 		return OperatorInfo{}, err
@@ -59,10 +62,18 @@ func GetOperatorInfo(clientset kubernetes.Interface, operatorNs string) (Operato
 		return OperatorInfo{}, err
 	}
 
+	customOperatorNs := true
+	for _, ns := range defaultOperatorNamespaces {
+		if operatorNs == ns {
+			customOperatorNs = false
+		}
+	}
+
 	return OperatorInfo{
-		UUID:         operatorUUID,
-		Namespace:    operatorNs,
-		Distribution: distribution,
+		OperatorUUID:            operatorUUID,
+		OperatorRoles:           operatorRoles,
+		CustomOperatorNamespace: customOperatorNs,
+		Distribution:            distribution,
 		BuildInfo: BuildInfo{
 			version,
 			buildHash,
