@@ -27,7 +27,7 @@ const (
 
 func CheckKeystoreEntries(k *K8sClient, listOption client.ListOptions, KeystoreCmd []string, expectedKeys []string) Step {
 	return Step{
-		Name: "Kibana secure settings should eventually be set in all nodes keystore",
+		Name: "secure settings should eventually be set in all nodes keystore",
 		Test: Eventually(func() error {
 			pods, err := k.GetPods(listOption)
 			if err != nil {

@@ -48,7 +48,6 @@ func TestUpdateConfiguration(t *testing.T) {
 			Namespace: test.Namespace,
 		},
 		Data: map[string][]byte{
-			// this needs to be a valid configuration item, otherwise Kibana refuses to start
 			"logging.verbose": []byte("true"),
 		},
 	}

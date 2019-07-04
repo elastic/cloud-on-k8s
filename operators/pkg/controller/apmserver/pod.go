@@ -112,8 +112,8 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 			strings.ToLower(as.Kind),
 			DataVolumePath,
 		)
-		builder.WithInitContainers(p.keystoreResources.KeystoreInitContainer).
-			WithVolumes(p.keystoreResources.KeystoreVolume, dataVolume.Volume()).
+		builder.WithInitContainers(p.keystoreResources.InitContainer).
+			WithVolumes(p.keystoreResources.Volume, dataVolume.Volume()).
 			WithVolumeMounts(dataVolume.VolumeMount()).
 			WithInitContainerDefaults()
 	}

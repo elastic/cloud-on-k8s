@@ -63,8 +63,8 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1
 		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount())
 
 	if keystore != nil {
-		builder.WithVolumes(keystore.KeystoreVolume).
-			WithInitContainers(keystore.KeystoreInitContainer).
+		builder.WithVolumes(keystore.Volume).
+			WithInitContainers(keystore.InitContainer).
 			WithInitContainerDefaults()
 	}
 

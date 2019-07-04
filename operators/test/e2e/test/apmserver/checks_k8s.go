@@ -32,7 +32,7 @@ func CheckApmServerDeployment(b Builder, k *test.K8sClient) test.Step {
 			var dep appsv1.Deployment
 			err := k.Client.Get(types.NamespacedName{
 				Namespace: test.Namespace,
-				Name:      b.ApmServer.Name + "-apm",
+				Name:      b.ApmServer.Name + "-apm-server",
 			}, &dep)
 			if b.ApmServer.Spec.NodeCount == 0 && apierrors.IsNotFound(err) {
 				return nil

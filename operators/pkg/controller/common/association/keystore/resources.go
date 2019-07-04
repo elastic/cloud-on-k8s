@@ -20,11 +20,11 @@ var log = logf.Log.WithName("keystore")
 // Resources holds all the resources needed to create a keystore in Kibana or in the APM server.
 type Resources struct {
 	// volume which contains the keystore data as provided by the user
-	KeystoreVolume corev1.Volume
+	Volume corev1.Volume
 	// init container used to create the keystore
-	KeystoreInitContainer corev1.Container
+	InitContainer corev1.Container
 	// version of the secret provided by the user
-	KeystoreVersion string
+	Version string
 }
 
 // NewResources optionally returns a volume and init container to include in pods,
@@ -57,8 +57,8 @@ func NewResources(
 	}
 
 	return &Resources{
-		KeystoreVolume:        secretVolume.Volume(),
-		KeystoreInitContainer: initContainer,
-		KeystoreVersion:       version,
+		Volume:        secretVolume.Volume(),
+		InitContainer: initContainer,
+		Version:       version,
 	}, nil
 }

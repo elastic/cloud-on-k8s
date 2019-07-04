@@ -85,7 +85,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// This is done because Kibana does not support updating those without restarting the process.
 	configChecksum := sha256.New224()
 	if keystoreResources != nil {
-		configChecksum.Write([]byte(keystoreResources.KeystoreVersion))
+		configChecksum.Write([]byte(keystoreResources.Version))
 	}
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes

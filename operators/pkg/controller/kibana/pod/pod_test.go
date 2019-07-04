@@ -79,8 +79,8 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				},
 			},
 			keystore: &keystore.Resources{
-				KeystoreInitContainer: corev1.Container{Name: "init"},
-				KeystoreVolume:        corev1.Volume{Name: "vol"},
+				InitContainer: corev1.Container{Name: "init"},
+				Volume:        corev1.Volume{Name: "vol"},
 			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)

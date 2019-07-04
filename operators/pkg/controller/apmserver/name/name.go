@@ -17,6 +17,7 @@ const (
 	secretTokenSuffix = "token"
 	httpServiceSuffix = "http"
 	configSuffix      = "config"
+	deploymentSuffix  = "server"
 )
 
 // KBNamer is a Namer that is configured with the defaults for resources related to an APM resource.
@@ -34,7 +35,7 @@ func HTTPService(apmName string) string {
 }
 
 func Deployment(apmName string) string {
-	return APMNamer.Suffix(apmName)
+	return APMNamer.Suffix(apmName, deploymentSuffix)
 }
 
 func Config(apmName string) string {

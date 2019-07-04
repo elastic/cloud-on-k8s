@@ -7,16 +7,15 @@ package association
 import (
 	"testing"
 
-	v1alpha12 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var elasticsearhInlineAuth = v1alpha12.ElasticsearchInlineAuth{
+var elasticsearhInlineAuth = commonv1alpha1.ElasticsearchInlineAuth{
 	Username: "foo_username",
 	Password: "foo_password",
 }
@@ -52,7 +51,7 @@ func Test_getCredentials(t *testing.T) {
 						Output: v1alpha1.Output{
 							Elasticsearch: v1alpha1.ElasticsearchOutput{
 								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-								Auth: v1alpha12.ElasticsearchAuth{
+								Auth: commonv1alpha1.ElasticsearchAuth{
 									SecretKeyRef: &corev1.SecretKeySelector{
 										Key: "elastic-internal-apm",
 										LocalObjectReference: corev1.LocalObjectReference{
@@ -87,7 +86,7 @@ func Test_getCredentials(t *testing.T) {
 						Output: v1alpha1.Output{
 							Elasticsearch: v1alpha1.ElasticsearchOutput{
 								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-								Auth: v1alpha12.ElasticsearchAuth{
+								Auth: commonv1alpha1.ElasticsearchAuth{
 									Inline: &elasticsearhInlineAuth,
 								},
 							},

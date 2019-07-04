@@ -309,7 +309,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	configChecksum := sha256.New224()
 	configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
 	if keystoreResources != nil {
-		configChecksum.Write([]byte(keystoreResources.KeystoreVersion))
+		configChecksum.Write([]byte(keystoreResources.Version))
 	}
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 

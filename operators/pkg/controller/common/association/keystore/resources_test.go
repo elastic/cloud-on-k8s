@@ -142,11 +142,11 @@ echo "Keystore initialization successful."
 				require.Nil(t, resources)
 			} else {
 				require.NotNil(t, resources)
-				assert.Equal(t, resources.KeystoreInitContainer.Name, "init-keystore")
-				assert.Equal(t, resources.KeystoreInitContainer.Command, tt.wantContainers.Command)
-				assert.Equal(t, resources.KeystoreInitContainer.VolumeMounts, tt.wantContainers.VolumeMounts)
-				assert.Equal(t, resources.KeystoreInitContainer.SecurityContext, tt.wantContainers.SecurityContext)
-				assert.Equal(t, resources.KeystoreVersion, tt.wantVersion)
+				assert.Equal(t, resources.InitContainer.Name, "init-keystore")
+				assert.Equal(t, resources.InitContainer.Command, tt.wantContainers.Command)
+				assert.Equal(t, resources.InitContainer.VolumeMounts, tt.wantContainers.VolumeMounts)
+				assert.Equal(t, resources.InitContainer.SecurityContext, tt.wantContainers.SecurityContext)
+				assert.Equal(t, resources.Version, tt.wantVersion)
 			}
 
 		})
