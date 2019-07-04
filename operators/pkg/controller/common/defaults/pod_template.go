@@ -287,3 +287,14 @@ func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Contain
 
 	return b
 }
+
+// WithResources sets up the given resource requirements if both resources limits and requests
+// are nil in the main container.
+// If a zero-value (empty map) for at least one of limits or request is provided, the given resource requirements
+// are not applied: the user may want to use a LimitRange.
+func (b *PodTemplateBuilder) WithResources(resources corev1.ResourceRequirements) *PodTemplateBuilder {
+	if b.Container.Resources.Requests == nil && b.Container.Resources.Limits == nil {
+		b.Container.Resources = resources
+	}
+	return b
+}
