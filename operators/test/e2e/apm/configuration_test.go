@@ -24,11 +24,11 @@ import (
 )
 
 const (
-	APMKBin           = "/usr/share/apm-server/apm-server"
+	APMKeystoreBin    = "/usr/share/apm-server/apm-server"
 	APMKeystoreOption = "keystore"
 )
 
-var APMKeystoreCmd = []string{APMKBin, APMKeystoreOption}
+var APMKeystoreCmd = []string{APMKeystoreBin, APMKeystoreOption}
 
 type PartialApmConfiguration struct {
 	Output struct {
