@@ -128,13 +128,14 @@ install-crds: generate
 run: install-crds go-run
 
 go-run:
-    # Run the operator locally with role All, with operator image set to latest and operator namespace as for a global operator
+    # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
 	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
 			-tags "$(GO_TAGS)" \
 			./cmd/main.go manager \
 				--development --operator-roles=global,namespace \
+				--enable-debug-logs=true \
 				--ca-cert-validity=10h --ca-cert-rotate-before=1h \
 				--operator-namespace=default --namespace= \
 				--auto-install-webhooks=false
@@ -319,14 +320,14 @@ e2e-run:
 
 # Verify e2e tests compile with no errors, don't run them
 e2e-compile:
-	go test ./test/e2e -c -o /dev/null
+	go test ./test/e2e/... -run=dryrun > /dev/null
 
 # Run e2e tests locally (not as a k8s job), with a custom http dialer
 # that can reach ES services running in the k8s cluster through port-forwarding.
 e2e-local: e2e-setup e2e-run-local
 
 e2e-run-local:
-	go test -v -failfast -timeout 1h -tags=e2e ./test/e2e -run "$(TESTS_MATCH)"  --auto-port-forward
+	go test -v -failfast -timeout 1h -tags=e2e -p 1 ./test/e2e/... -run "$(TESTS_MATCH)"  --auto-port-forward
 
 # Clean k8s cluster from e2e resources
 clean-e2e:
