@@ -15,7 +15,7 @@
       - string:
           name: VERSION
           default: 1.12
-          description: "Kubernetes version, default is 1.11"
+          description: "Kubernetes version, default is 1.12"
     concurrent: true
     pipeline-scm:
       scm:
