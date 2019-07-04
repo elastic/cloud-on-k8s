@@ -5,6 +5,7 @@
 package apmserver
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
@@ -25,7 +26,8 @@ const (
 
 	SecretTokenKey string = "secret-token"
 
-	DataVolumePath = "/usr/share/apm-server/data"
+	DataVolumePath   = ApmBaseDir + "/data"
+	ConfigVolumePath = ApmBaseDir + "/config"
 )
 
 var readinessProbe = corev1.Probe{
@@ -54,7 +56,7 @@ var command = []string{
 	"-c", "config/config-secret/apm-server.yml",
 }
 
-var configVolume = volume.NewEmptyDirVolume("config-volume", "/usr/share/apm-server/config")
+var configVolume = volume.NewEmptyDirVolume("config-volume", ConfigVolumePath)
 
 type PodSpecParams struct {
 	Version         string
@@ -76,7 +78,7 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",
-		"/usr/share/apm-server/config/config-secret",
+		filepath.Join(ConfigVolumePath, "config-secret"),
 	)
 
 	env := []corev1.EnvVar{

@@ -6,6 +6,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
@@ -18,6 +19,9 @@ import (
 const (
 	// DefaultHTTPPort is the (default) port used by ApmServer
 	DefaultHTTPPort = 8200
+
+	// Certificates
+	CertificatesDir = "config/elasticsearch-certs"
 )
 
 // DefaultConfiguration is the default configuration of an APM server.
@@ -92,7 +96,7 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 				"output.elasticsearch.hosts":                       as.Spec.Output.Elasticsearch.Hosts,
 				"output.elasticsearch.username":                    username,
 				"output.elasticsearch.password":                    password,
-				"output.elasticsearch.ssl.certificate_authorities": []string{"config/elasticsearch-certs/" + certificates.CertFileName},
+				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},
 			},
 		),
 		userSettings,

@@ -7,6 +7,7 @@ package apmserver
 import (
 	"crypto/sha256"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"time"
@@ -46,14 +47,20 @@ const (
 	name                    = "apmserver-controller"
 	esCAChecksumLabelName   = "apm.k8s.elastic.co/es-ca-file-checksum"
 	configChecksumLabelName = "apm.k8s.elastic.co/config-file-checksum"
+
+	// ApmBaseDir is the base directory of the APM server
+	ApmBaseDir = "/usr/share/apm-server"
 )
 
 var (
 	log = logf.Log.WithName(name)
 
+	// ApmServerBin is the apm server binary file
+	ApmServerBin = filepath.Join(ApmBaseDir, "apm-server")
+
 	initContainerParameters = keystore.InitContainerParameters{
-		KeystoreCreateCommand:         "/usr/share/apm-server/apm-server keystore create --force",
-		KeystoreAddCommand:            "/usr/share/apm-server/apm-server keystore add",
+		KeystoreCreateCommand:         ApmServerBin + " keystore create --force",
+		KeystoreAddCommand:            ApmServerBin + " keystore add",
 		SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
 		DataVolumePath:                DataVolumePath,
 	}
@@ -321,7 +328,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		esCAVolume := volume.NewSecretVolumeWithMountPath(
 			esCASecretName,
 			"elasticsearch-certs",
-			"/usr/share/apm-server/config/elasticsearch-certs",
+			filepath.Join(ApmBaseDir, config.CertificatesDir),
 		)
 
 		// build a checksum of the cert file used by ES, which we can use to cause the Deployment to roll the Apm Server
