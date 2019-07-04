@@ -108,6 +108,8 @@ func createElasticsearchPod(
 		return err
 	}
 	if err := c.Create(&pod); err != nil {
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, stringsutil.Concat("Cannot create pod %s: %s", pod.Name, err.Error()))
+		log.Error(err, "Cannot create pod", "name", pod.Name, "namespace", pod.Namespace)
 		return err
 	}
 	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, stringsutil.Concat("Created pod ", pod.Name))
