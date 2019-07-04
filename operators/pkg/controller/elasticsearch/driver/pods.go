@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -108,8 +110,7 @@ func createElasticsearchPod(
 		return err
 	}
 	if err := c.Create(&pod); err != nil {
-		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, stringsutil.Concat("Cannot create pod %s: %s", pod.Name, err.Error()))
-		log.Error(err, "Cannot create pod", "name", pod.Name, "namespace", pod.Namespace)
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("Cannot create pod %s: %s", pod.Name, err.Error()))
 		return err
 	}
 	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, stringsutil.Concat("Created pod ", pod.Name))
