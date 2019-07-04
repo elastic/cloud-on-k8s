@@ -62,7 +62,7 @@ func UpdateZen1Discovery(
 	log.V(1).Info("Set minimum master nodes",
 		"how", "configuration",
 		"namespace", cluster.Namespace,
-		"name", cluster.Name,
+		"es_name", cluster.Name,
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,
@@ -110,7 +110,7 @@ func UpdateZen1Discovery(
 		// This is expected to happen from time to time
 		log.V(1).Info("Not enough masters to update the API",
 			"namespace", cluster.Namespace,
-			"name", cluster.Name,
+			"es_name", cluster.Name,
 			"current", currentAvailableMasterCount,
 			"required", minimumMasterNodes)
 		// We can't update the minimum master nodes right now, it is the case if a new master node is not created yet.
@@ -121,7 +121,7 @@ func UpdateZen1Discovery(
 	log.Info("Updating minimum master nodes",
 		"how", "api",
 		"namespace", cluster.Namespace,
-		"name", cluster.Name,
+		"es_name", cluster.Name,
 		"currentMasterCount", currentMasterCount,
 		"nextMasterCount", nextMasterCount,
 		"minimum_master_nodes", minimumMasterNodes,

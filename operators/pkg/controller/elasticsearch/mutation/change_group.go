@@ -156,7 +156,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 			"Scheduling a pod for creation",
 			"group_name", s.Name,
 			"change_stats", changeStats,
-			"name", newPodToCreate.Pod.Name,
+			"pod_name", newPodToCreate.Pod.Name,
 			"namespace", newPodToCreate.Pod.Namespace,
 			"mismatch_reasons", newPodToCreate.MismatchReasons,
 		)
@@ -195,7 +195,7 @@ func (s ChangeGroup) calculatePerformableChanges(
 		log.V(1).Info(
 			"Scheduling a pod for deletion",
 			"group_name", s.Name,
-			"name", pod.Pod.Name,
+			"pod_name", pod.Pod.Name,
 			"namespace", pod.Pod.Namespace,
 			"change_stats", changeStats,
 		)

@@ -72,9 +72,9 @@ func reconcileTrustRelationship(
 		"Reconciling TrustRelationship",
 		"name", name,
 		"local_namespace", local.Selector.Namespace,
-		"local_name", local.Selector.Name,
+		"local_es_name", local.Selector.Name,
 		"remote_namespace", remote.Selector.Namespace,
-		"remote_name", remote.Selector.Name,
+		"remote_es_name", remote.Selector.Name,
 	)
 
 	// Define the desired TrustRelationship object, it lives in the remote namespace.
@@ -109,7 +109,7 @@ func ensureTrustRelationshipIsDeleted(
 ) error {
 	tr := &v1alpha1.TrustRelationship{}
 	trObjectMeta := trustRelationshipObjectMeta(name, owner, cluster)
-	log.Info("Deleting TrustRelationship", "namespace", trObjectMeta.Namespace, "name", trObjectMeta.Name)
+	log.Info("Deleting TrustRelationship", "namespace", trObjectMeta.Namespace, "tr_name", trObjectMeta.Name)
 	err := c.Get(k8s.ExtractNamespacedName(&trObjectMeta), tr)
 	if err != nil {
 		if apierrors.IsNotFound(err) {

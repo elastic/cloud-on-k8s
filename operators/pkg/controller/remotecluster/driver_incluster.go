@@ -62,7 +62,7 @@ func doReconcile(
 			fmt.Errorf("missing local cluster label"),
 			ClusterNameLabelMissing,
 			"namespace", remoteCluster.Namespace,
-			"name", remoteCluster.Name,
+			"es_name", remoteCluster.Name,
 		)
 		r.recorder.Event(&remoteCluster, v1.EventTypeWarning, EventReasonConfigurationError, ClusterNameLabelMissing)
 		return updateStatusWithPhase(&remoteCluster, v1alpha1.RemoteClusterFailed), nil // Wait for the object to be updated
@@ -101,9 +101,9 @@ func doReconcile(
 	log.V(1).Info(
 		"Setting up remote cluster",
 		"local_namespace", localClusterSelector.Namespace,
-		"local_name", localClusterSelector.Namespace,
+		"local_es_name", localClusterSelector.Namespace,
 		"remote_namespace", remoteCluster.Spec.Remote.K8sLocalRef.Namespace,
-		"remote_name", remoteCluster.Spec.Remote.K8sLocalRef.Name,
+		"remote_es_name", remoteCluster.Spec.Remote.K8sLocalRef.Name,
 	)
 
 	local, err := newAssociatedCluster(r.Client, localClusterSelector)

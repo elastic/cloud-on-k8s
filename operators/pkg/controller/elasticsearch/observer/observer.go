@@ -93,7 +93,7 @@ func NewObserver(
 	}
 	observer.pmClientFactory = observer.createProcessManagerClient
 
-	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "name", cluster.Name)
+	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "es_name", cluster.Name)
 	return &observer
 }
 
@@ -140,7 +140,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 		case <-ticker.C:
 			o.retrieveState(ctx)
 		case <-ctx.Done():
-			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "name", o.cluster.Name)
+			log.Info("Stopping observer for cluster", "namespace", o.cluster.Namespace, "es_name", o.cluster.Name)
 			return
 		}
 	}
@@ -149,7 +149,7 @@ func (o *Observer) runPeriodically(ctx context.Context) {
 // retrieveState retrieves the current ES state, executes onObservation,
 // and stores the new state
 func (o *Observer) retrieveState(ctx context.Context) {
-	log.V(1).Info("Retrieving cluster state", "name", o.cluster.Name, "namespace", o.cluster.Namespace)
+	log.V(1).Info("Retrieving cluster state", "es_name", o.cluster.Name, "namespace", o.cluster.Namespace)
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 

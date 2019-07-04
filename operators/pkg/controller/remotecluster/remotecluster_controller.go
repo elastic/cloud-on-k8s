@@ -93,9 +93,9 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "rc_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "rc_name", request.Name)
 	}()
 
 	// Fetch the RemoteCluster instance
@@ -110,7 +110,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	if common.IsPaused(instance.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", instance.Namespace, "name", instance.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", instance.Namespace, "rc_name", instance.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -123,7 +123,7 @@ func (r *ReconcileRemoteCluster) Reconcile(request reconcile.Request) (reconcile
 			"Remote cluster controller is an enterprise feature. Enterprise features are disabled",
 			"iteration", currentIteration,
 			"namespace", request.Namespace,
-			"name", request.Name,
+			"rc_name", request.Name,
 		)
 		r.silentUpdateStatus(instance, v1alpha1.RemoteClusterStatus{
 			Phase: v1alpha1.RemoteClusterFeatureDisabled,
@@ -149,7 +149,7 @@ func (r *ReconcileRemoteCluster) silentUpdateStatus(
 	status v1alpha1.RemoteClusterStatus,
 ) {
 	if err := r.updateStatus(instance, status); err != nil {
-		log.Error(err, "Error while updating status")
+		log.Error(err, "Error while updating status", "namespace", instance.Namespace, "rc_name", instance.Name)
 	}
 }
 

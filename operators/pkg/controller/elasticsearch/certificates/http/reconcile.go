@@ -128,12 +128,12 @@ func reconcileHTTPInternalCertificatesSecret(
 
 	if needsUpdate {
 		if shouldCreateSecret {
-			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "name", secret.Name)
+			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 			if err := c.Create(&secret); err != nil {
 				return nil, err
 			}
 		} else {
-			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret", secret.Name)
+			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 			if err := c.Update(&secret); err != nil {
 				return nil, err
 			}
@@ -163,7 +163,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	if privateKeyData, ok := secret.Data[certificates.KeyFileName]; ok {
 		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
-			log.Error(err, "Unable to parse stored private key", "secret", secret.Name)
+			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
 		} else {
 			needsNewPrivateKey = false
 			privateKey = storedPrivateKey
@@ -187,7 +187,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		log.Info(
 			"Issuing new HTTP certificate",
 			"namespace", secret.Namespace,
-			"secret", secret.Name,
+			"secret_name", secret.Name,
 			"elasticsearch_name", es.Name,
 			"elasticsearch_namespace", es.Namespace,
 		)
@@ -253,7 +253,7 @@ func shouldIssueNewHTTPCertificate(
 	} else {
 		certs, err := certificates.ParsePEMCerts(certData)
 		if err != nil {
-			log.Error(err, "Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+			log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 			return true
 		}
 
@@ -284,7 +284,7 @@ func shouldIssueNewHTTPCertificate(
 			"subject", certificate.Subject,
 			"issuer", certificate.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
-			"name", secret.Name,
+			"secret_name", secret.Name,
 			"namespace", secret.Namespace,
 			"elasticsearch_name", es.Name,
 		)
@@ -292,7 +292,7 @@ func shouldIssueNewHTTPCertificate(
 	}
 
 	if time.Now().After(certificate.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "name", secret.Name)
+		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
 	}
 

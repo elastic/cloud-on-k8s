@@ -189,7 +189,7 @@ func (c *CoordinatedRestart) start() Step {
 			}
 
 			if podsDone != len(pods) {
-				log.V(1).Info("Some pods are not started yet", "namespace", c.Cluster.Namespace, "name", c.Cluster.Name, "expected", len(pods), "actual", podsDone)
+				log.V(1).Info("Some pods are not started yet", "namespace", c.Cluster.Namespace, "es_name", c.Cluster.Name, "expected", len(pods), "actual", podsDone)
 				return false, nil // requeue
 			}
 
@@ -202,12 +202,12 @@ func (c *CoordinatedRestart) start() Step {
 				return false, err
 			}
 			if !esReachable {
-				log.V(1).Info("Cluster is not ready to receive requests yet", "namespace", c.Cluster.Namespace, "name", c.Cluster.Name)
+				log.V(1).Info("Cluster is not ready to receive requests yet", "namespace", c.Cluster.Namespace, "es_name", c.Cluster.Name)
 				return false, nil // requeue
 			}
 
 			// re-enable shard allocation
-			log.V(1).Info("Enabling shards allocation", "namespace", c.Cluster.Namespace, "name", c.Cluster.Name)
+			log.V(1).Info("Enabling shards allocation", "namespace", c.Cluster.Namespace, "es_name", c.Cluster.Name)
 			ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 			defer cancel()
 			if err := c.EsClient.EnableShardAllocation(ctx); err != nil {
@@ -225,7 +225,7 @@ func (c *CoordinatedRestart) start() Step {
 				corev1.EventTypeNormal, events.EventReasonRestart,
 				fmt.Sprintf("Coordinated restart complete for cluster %s", c.Cluster.Name),
 			)
-			log.Info("Coordinated restart complete", "cluster", c.Cluster.Name)
+			log.Info("Coordinated restart complete", "es_name", c.Cluster.Name)
 
 			return true, nil
 		},

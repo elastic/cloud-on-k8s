@@ -109,9 +109,9 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "kibana_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "kibana_name", request.Name)
 	}()
 
 	// retrieve Kibana resource
@@ -148,7 +148,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 	}
 
 	if common.IsPaused(kibana.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "name", kibana.Name, "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kibana.Namespace, "kibana_name", kibana.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -159,7 +159,7 @@ func (r *ReconcileAssociation) Reconcile(request reconcile.Request) (reconcile.R
 		if err := r.Status().Update(&kibana); err != nil {
 			if apierrors.IsConflict(err) {
 				// Conflicts are expected and will be resolved on next loop
-				log.V(1).Info("Conflict while updating status")
+				log.V(1).Info("Conflict while updating status", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 				return reconcile.Result{Requeue: true}, nil
 			}
 
@@ -185,7 +185,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	// garbage collect leftover resources that are not required anymore
 	if err := deleteOrphanedResources(r, kibana); err != nil {
-		log.Error(err, "Error while trying to delete orphaned resources. Continuing.")
+		log.Error(err, "Error while trying to delete orphaned resources. Continuing.", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 	}
 
 	if kibana.Spec.ElasticsearchRef.Name == "" {
@@ -232,7 +232,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 			// remove connection details if they are set
 			if (kibana.Spec.Elasticsearch != kbtype.BackendElasticsearch{}) {
 				kibana.Spec.Elasticsearch = kbtype.BackendElasticsearch{}
-				log.Info("Removing Elasticsearch configuration from managed association", "namespace", kibana.Namespace, "name", kibana.Name)
+				log.Info("Removing Elasticsearch configuration from managed association", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 				if err := r.Update(&kibana); err != nil {
 					return commonv1alpha1.AssociationPending, err
 				}
@@ -259,7 +259,7 @@ func (r *ReconcileAssociation) reconcileInternal(kibana kbtype.Kibana) (commonv1
 
 	if !reflect.DeepEqual(kibana.Spec.Elasticsearch, expectedEsConfig) {
 		kibana.Spec.Elasticsearch = expectedEsConfig
-		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "name", kibana.Name)
+		log.Info("Updating Kibana spec with Elasticsearch backend configuration", "namespace", kibana.Namespace, "kibana_name", kibana.Name)
 		if err := r.Update(&kibana); err != nil {
 			return commonv1alpha1.AssociationPending, err
 		}
@@ -290,14 +290,14 @@ func deleteOrphanedResources(c k8s.Client, kibana kbtype.Kibana) error {
 			if !kibana.Spec.ElasticsearchRef.IsDefined() {
 				// look for association secrets owned by this kibana instance
 				// which should not exist since no ES referenced in the spec
-				log.Info("Deleting secret", "namespace", s.Namespace, "name", s.Name)
+				log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "kibana_name", kibana.Name)
 				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}
 			} else if value, ok := s.Labels[common.TypeLabelName]; ok && value == user.UserType &&
 				esRefNamespace != s.Namespace {
 				// User secret may live in an other namespace, check if it has changed
-				log.Info("Deleting secret", "namespace", s.Namespace, "name", s.Name)
+				log.Info("Deleting secret", "namespace", s.Namespace, "secretname", s.Name, "kibana_name", kibana.Name)
 				if err := c.Delete(&s); err != nil && !apierrors.IsNotFound(err) {
 					return err
 				}

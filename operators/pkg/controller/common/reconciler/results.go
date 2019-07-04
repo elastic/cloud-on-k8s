@@ -49,7 +49,7 @@ func (r *Results) WithResult(res reconcile.Result) *Results {
 func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, error)) *Results {
 	result, err := recoverableStep()
 	if err != nil {
-		log.Error(err, "Error during step, continuing", "step", step)
+		log.Error(err, "Recoverable error during step, continuing", "step", step)
 	}
 	return r.WithError(err).WithResult(result)
 }

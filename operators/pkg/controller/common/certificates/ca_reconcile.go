@@ -180,7 +180,7 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	certs, err := ParsePEMCerts(caBytes)
 	if err != nil {
-		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "name", caInternalSecret.Name)
+		log.Error(err, "Cannot parse PEM cert from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil
 	}
 	if len(certs) == 0 {
@@ -190,7 +190,7 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 		log.Info(
 			"More than 1 certificate in the CA secret, continuing with the first one",
 			"namespace", caInternalSecret.Namespace,
-			"name", caInternalSecret.Name,
+			"secret_name", caInternalSecret.Name,
 		)
 	}
 	cert := certs[0]
@@ -201,7 +201,7 @@ func buildCAFromSecret(caInternalSecret corev1.Secret) *CA {
 	}
 	privateKey, err := ParsePEMPrivateKey(privateKeyBytes)
 	if err != nil {
-		log.Error(err, "Cannot parse PEM private key from CA secret]")
+		log.Error(err, "Cannot parse PEM private key from CA secret, will create a new one", "namespace", caInternalSecret.Namespace, "secret_name", caInternalSecret.Name)
 		return nil
 	}
 	return NewCA(privateKey, cert)

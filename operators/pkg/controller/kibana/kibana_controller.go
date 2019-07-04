@@ -130,9 +130,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "kibana_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "kibana_name", request.Name)
 	}()
 
 	// Fetch the Kibana instance
@@ -149,7 +149,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -181,7 +181,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "name", kb.Name)
+		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return results.WithError(err).Aggregate()
@@ -195,7 +195,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", state.Kibana.Namespace, "name", state.Kibana.Name)
+	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
 	return r.Status().Update(state.Kibana)
 }
 

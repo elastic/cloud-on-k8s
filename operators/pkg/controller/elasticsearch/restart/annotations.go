@@ -83,7 +83,7 @@ func setPhase(client k8s.Client, pod corev1.Pod, phase Phase) error {
 	log.V(1).Info(
 		"Setting restart phase",
 		"namespace", pod.Namespace,
-		"pod", pod.Name,
+		"pod_name", pod.Name,
 		"phase", phase,
 	)
 	if pod.Annotations == nil {
@@ -118,7 +118,7 @@ func setScheduleRestartAnnotations(client k8s.Client, pod corev1.Pod, strategy S
 	log.V(1).Info(
 		"Scheduling restart",
 		"namespace", pod.Namespace,
-		"pod", pod.Name,
+		"pod_name", pod.Name,
 		"strategy", strategy,
 	)
 	if pod.Annotations == nil {

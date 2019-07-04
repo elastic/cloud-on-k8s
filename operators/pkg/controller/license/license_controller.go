@@ -51,16 +51,16 @@ func (r *ReconcileLicenses) Reconcile(request reconcile.Request) (reconcile.Resu
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
 	}()
 	result, err := r.reconcileInternal(request)
 	if result.Requeue {
-		log.Info("Re-queuing new license check immediately (rate-limited)", "namespace", request.Namespace, "name", request.Name)
+		log.Info("Re-queuing new license check immediately (rate-limited)", "namespace", request.Namespace, "es_name", request.Name)
 	}
 	if result.RequeueAfter > 0 {
-		log.Info("Re-queuing new license check", "namespace", request.Namespace, "name", request.Name, "RequeueAfter", result.RequeueAfter)
+		log.Info("Re-queuing new license check", "namespace", request.Namespace, "es_name", request.Name, "RequeueAfter", result.RequeueAfter)
 	}
 	return result, err
 }

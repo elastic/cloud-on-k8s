@@ -88,10 +88,10 @@ func UpdateSeedHostsConfigMap(
 				reconciled.Data = expected.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating seed hosts", "namespace", es.Namespace, "name", es.Name, "hosts", seedHosts)
+				log.Info("Creating seed hosts", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
 			},
 			PostUpdate: func() {
-				log.Info("Seed hosts updated", "namespace", es.Namespace, "name", es.Name, "hosts", seedHosts)
+				log.Info("Seed hosts updated", "namespace", es.Namespace, "es_name", es.Name, "hosts", seedHosts)
 				annotation.MarkPodsAsUpdated(c,
 					client.ListOptions{
 						Namespace:     es.Namespace,

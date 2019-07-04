@@ -56,7 +56,7 @@ func MarkPodAsUpdated(
 		"Updating annotation on pod",
 		"annotation", UpdateAnnotation,
 		"namespace", pod.Namespace,
-		"name", pod.Name,
+		"pod_name", pod.Name,
 	)
 	if pod.Annotations == nil {
 		pod.Annotations = map[string]string{}
@@ -66,12 +66,12 @@ func MarkPodAsUpdated(
 	if err := c.Update(&pod); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and will be handled on the next reconcile loop, no need to error out here
-			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "name", pod.Name)
+			log.V(1).Info("Conflict while updating pod annotation", "namespace", pod.Namespace, "pod_name", pod.Name)
 		} else {
 			log.Error(err, "failed to update pod annotation",
 				"annotation", UpdateAnnotation,
 				"namespace", pod.Namespace,
-				"name", pod.Name)
+				"pod_name", pod.Name)
 		}
 	}
 }

@@ -101,7 +101,6 @@ func (p *Process) updateState(action string, signal syscall.Signal, lastErr erro
 
 	err := p.state.Write()
 	if err != nil {
-		// TODO (sabo): is this necessary? seems helpful since it will be structured and easier to parse than an exit message
 		log.Error(err, "Failed to write process state, exiting")
 		Exit(fmt.Sprintf("Failed to write process state: %s", err), 1)
 	}

@@ -167,7 +167,7 @@ func (u *Updater) updateKeystore() (error, string) {
 
 	for _, file := range fileInfos {
 		if strings.HasPrefix(file.Name(), ".") {
-			log.Info("Ignoring file", "name", file.Name())
+			log.Info("Ignoring file", "file_name", file.Name())
 			continue
 		}
 

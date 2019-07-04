@@ -201,7 +201,7 @@ func (f *podForwarder) Run(ctx context.Context) error {
 	defer runCtxCancel()
 
 	if f.clientset != nil {
-		log.Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "name", f.podNSN.Name)
+		log.Info("Watching pod for changes", "namespace", f.podNSN.Namespace, "pod_name", f.podNSN.Name)
 		w, err := f.clientset.CoreV1().Pods(f.podNSN.Namespace).Watch(metav1.ListOptions{
 			FieldSelector: fields.OneTermEqualSelector("metadata.name", f.podNSN.Name).String(),
 		})
@@ -218,7 +218,7 @@ func (f *podForwarder) Run(ctx context.Context) error {
 						log.Info(
 							"Pod is deleted or watch failed/closed, closing pod forwarder",
 							"namespace", f.podNSN.Namespace,
-							"name", f.podNSN.Name,
+							"pod_name", f.podNSN.Name,
 						)
 						runCtxCancel()
 						return

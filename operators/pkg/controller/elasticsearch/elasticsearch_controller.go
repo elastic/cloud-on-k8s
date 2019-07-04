@@ -183,9 +183,9 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "name", request.Name)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "name", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_ame", request.Name)
 	}()
 
 	// Fetch the Elasticsearch instance
@@ -202,7 +202,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	if common.IsPaused(es.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -210,7 +210,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "name", es.Name)
+		log.V(1).Info("Conflict while updating status", "namespace", es.Namespace, "es_name", es.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return results.WithError(err).Aggregate()
@@ -268,7 +268,7 @@ func (r *ReconcileElasticsearch) updateStatus(
 	es elasticsearchv1alpha1.Elasticsearch,
 	reconcileState *esreconcile.State,
 ) error {
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", es.Namespace, "name", es.Name)
+	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", es.Namespace, "es_name", es.Name)
 	events, cluster := reconcileState.Apply()
 	for _, evt := range events {
 		log.V(1).Info("Recording event", "event", evt)

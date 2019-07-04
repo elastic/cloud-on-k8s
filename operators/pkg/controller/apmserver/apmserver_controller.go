@@ -170,7 +170,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 ) (State, error) {
 	if !as.Spec.Output.Elasticsearch.IsConfigured() {
 		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
-			"namespace", as.Namespace, "name", as.Name)
+			"namespace", as.Namespace, "as_name", as.Name)
 		return state, nil
 	}
 
@@ -223,10 +223,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "name", expectedApmServerSecret.Name)
+				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "name", expectedApmServerSecret.Name)
+				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name)
 			},
 		},
 	); err != nil {
@@ -272,10 +272,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledConfigSecret.Data = expectedConfigSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating config secret", "namespace", expectedConfigSecret.Namespace, "name", expectedConfigSecret.Name)
+				log.Info("Creating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating config secret", "namespace", expectedConfigSecret.Namespace, "name", expectedConfigSecret.Name)
+				log.Info("Updating config secret", "namespace", expectedConfigSecret.Namespace, "secret_name", expectedConfigSecret.Name)
 			},
 		},
 	); err != nil {
@@ -366,6 +366,6 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
-	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
 	return state.Result, r.Status().Update(state.ApmServer)
 }
