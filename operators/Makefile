@@ -272,7 +272,7 @@ docker-build:
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(RELEASE), true)
+ifeq ($(USE_ELASTIC_DOCKER_REGISTRY), true)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
