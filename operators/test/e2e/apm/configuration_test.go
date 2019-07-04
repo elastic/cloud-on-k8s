@@ -89,19 +89,8 @@ func TestUpdateConfiguration(t *testing.T) {
 			{
 				Name: "Check the value of a parameter in the configuration",
 				Test: func(t *testing.T) {
-					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					config, err := partialAPMConfiguration(k, name)
 					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
-
-					// exec into the pod to list keystore entries
-					stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&pods[0]), []string{"cat", "/usr/share/apm-server/config/config-secret/apm-server.yml"})
-					if err != nil {
-						require.NoError(t, errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr)))
-					}
-
-					var config PartialApmConfiguration
-					require.NoError(t, yaml.Unmarshal([]byte(stdout), &config))
 					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 5) // 5 is the expected default value
 				},
 			},
@@ -181,19 +170,8 @@ func TestUpdateConfiguration(t *testing.T) {
 			test.Step{
 				Name: "Check the value of a parameter in the configuration",
 				Test: func(t *testing.T) {
-					// get current pod id
-					pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+					config, err := partialAPMConfiguration(k, name)
 					require.NoError(t, err)
-					require.True(t, len(pods) == 1)
-
-					// exec into the pod to list keystore entries
-					stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&pods[0]), []string{"cat", "/usr/share/apm-server/config/config-secret/apm-server.yml"})
-					if err != nil {
-						require.NoError(t, errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr)))
-					}
-
-					var config PartialApmConfiguration
-					require.NoError(t, yaml.Unmarshal([]byte(stdout), &config))
 					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 1) // value should be updated to 1
 				},
 			},
@@ -211,14 +189,23 @@ func TestUpdateConfiguration(t *testing.T) {
 
 	test.Sequence(initStepsFn, stepsFn, esBuilder, apmBuilder).RunSequential(t)
 
-	/*
-		return helpers.TestStepList{}.
-			WithSteps(
+}
 
-				// Keystore should be empty
-				stack.CheckKeystoreEntries(k, helpers.ApmServerPodListOptions(s.ApmServer.Name), stack.APMKeystoreCmd, nil),
-
-				// Check that the key is loaded in the APM keystore
-				stack.CheckKeystoreEntries(k, helpers.ApmServerPodListOptions(s.ApmServer.Name), stack.APMKeystoreCmd, []string{"logging.verbose"}),
-			)*/
+func partialAPMConfiguration(k *test.K8sClient, name string) (PartialApmConfiguration, error) {
+	var config PartialApmConfiguration
+	// get current pod id
+	pods, err := k.GetPods(test.ApmServerPodListOptions(name))
+	if err != nil {
+		return config, err
+	}
+	// exec into the pod to list keystore entries
+	stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&pods[0]), []string{"cat", "/usr/share/apm-server/config/config-secret/apm-server.yml"})
+	if err != nil {
+		return config, errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
+	}
+	err = yaml.Unmarshal([]byte(stdout), &config)
+	if err != nil {
+		return config, err
+	}
+	return config, nil
 }
