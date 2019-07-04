@@ -14,6 +14,9 @@ const (
 
 	SecureSettingsVolumeName      = "elastic-internal-secure-settings"
 	SecureSettingsVolumeMountPath = "/mnt/elastic-internal/secure-settings"
+
+	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
+	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs"
 )
 
 // KibanaDataVolume is used to propagate the keystore file from the init container to

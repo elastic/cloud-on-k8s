@@ -361,9 +361,11 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 				testCluster,
 				tt.pod,
 				[]corev1.Service{testSvc},
-				testCA, tt.additionalTrustedCAsPemEncoded,
-				certificates.DefaultCertValidity,
-				certificates.DefaultRotateBefore,
+				testCA,
+				certificates.RotationParams{
+					Validity:     certificates.DefaultCertValidity,
+					RotateBefore: certificates.DefaultRotateBefore,
+				},
 			)
 			if tt.wantErr != nil {
 				tt.wantErr(t, err)

@@ -23,7 +23,7 @@ import (
 type CanonicalConfig ucfg.Config
 
 // Options are config options for the YAML file. Currently contains only support for dotted keys.
-var Options = []ucfg.Option{ucfg.PathSep(".")}
+var Options = []ucfg.Option{ucfg.PathSep("."), ucfg.AppendValues}
 
 // NewCanonicalConfig creates a new empty config.
 func NewCanonicalConfig() *CanonicalConfig {
@@ -112,16 +112,13 @@ func (c *CanonicalConfig) MergeWith(cfgs ...*CanonicalConfig) error {
 	return nil
 }
 
-// HasPrefixes returns all keys in c that have one of the given prefix keys.
-// Keys are expected in dotted form.
-func (c *CanonicalConfig) HasPrefixes(keys []string) []string {
+// HasKeys returns all keys in c that are also in keys
+func (c *CanonicalConfig) HasKeys(keys []string) []string {
 	var has []string
-	flatKeys := c.asUCfg().FlattenedKeys(Options...)
 	for _, s := range keys {
-		for _, k := range flatKeys {
-			if strings.HasPrefix(k, s) {
-				has = append(has, s)
-			}
+		hasKey, err := c.asUCfg().Has(s, 0, Options...)
+		if err != nil || hasKey {
+			has = append(has, s)
 		}
 	}
 	return has

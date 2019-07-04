@@ -48,7 +48,6 @@ var Blacklist = []string{
 	XPackSecurityHttpSslEnabled,
 	XPackSecurityHttpSslKey,
 	XPackSecurityTransportSslCertificate,
-	XPackSecurityTransportSslCertificateAuthorities,
 	XPackSecurityTransportSslEnabled,
 	XPackSecurityTransportSslKey,
 	XPackSecurityTransportSslVerificationMode,

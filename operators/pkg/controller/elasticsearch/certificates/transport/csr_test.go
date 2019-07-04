@@ -33,7 +33,7 @@ func roundTripSerialize(cert *certificates.ValidatedCertificateTemplate) (*x509.
 
 func Test_createValidatedCertificateTemplate(t *testing.T) {
 	// we expect this name to be used for both the common name as well as the es othername
-	cn := "test-pod-name.node.test-es-name.test-namespace.es.cluster.local"
+	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
 	validatedCert, err := CreateValidatedCertificateTemplate(
 		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
@@ -65,7 +65,7 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 }
 
 func Test_buildGeneralNames(t *testing.T) {
-	expectedCommonName := "test-pod-name.node.test-es-name.test-namespace.es.cluster.local"
+	expectedCommonName := "test-pod-name.node.test-es-name.test-namespace.es.local"
 	otherName, err := (&certificates.UTF8StringValuedOtherName{
 		OID:   certificates.CommonNameObjectIdentifier,
 		Value: expectedCommonName,

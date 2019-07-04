@@ -31,12 +31,13 @@ var (
 		string(label.NodeTypesMLLabelName),
 		label.VersionLabelName,
 	}
-	// requiredLabelMatch is the list of labels for which PVC values must match pod values to trigger PVC reuse
+	// requiredLabelMatch is the list of labels for which PVC values must match their reference values to trigger PVC reuse
 	requiredLabelMatch = []string{
 		label.ClusterNameLabelName,
 		common.TypeLabelName,
 		string(label.NodeTypesMasterLabelName),
 		string(label.NodeTypesDataLabelName),
+		string(label.VolumeNameLabelName),
 	}
 )
 
@@ -44,11 +45,8 @@ type OrphanedPersistentVolumeClaims struct {
 	orphanedPersistentVolumeClaims []corev1.PersistentVolumeClaim
 }
 
-// FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
-func FindOrphanedVolumeClaims(
-	c k8s.Client,
-	es v1alpha1.Elasticsearch,
-) (*OrphanedPersistentVolumeClaims, error) {
+// ListVolumeClaims lists the persistent volume claims for the given Elasticsearch cluster.
+func ListVolumeClaims(c k8s.Client, es v1alpha1.Elasticsearch) ([]corev1.PersistentVolumeClaim, error) {
 	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	// List PVC
 	listPVCOptions := client.ListOptions{
@@ -60,10 +58,24 @@ func FindOrphanedVolumeClaims(
 	if err := c.List(&listPVCOptions, &persistentVolumeClaims); err != nil {
 		return nil, err
 	}
+	return persistentVolumeClaims.Items, nil
+
+}
+
+// FindOrphanedVolumeClaims returns PVC which are not used in any Pod within a given namespace
+func FindOrphanedVolumeClaims(
+	c k8s.Client,
+	es v1alpha1.Elasticsearch,
+) (*OrphanedPersistentVolumeClaims, error) {
+
+	persistentVolumeClaims, err := ListVolumeClaims(c, es)
+	if err != nil {
+		return nil, err
+	}
 
 	// Maintain a map of the retrieved PVCs
 	pvcByName := map[string]corev1.PersistentVolumeClaim{}
-	for _, p := range persistentVolumeClaims.Items {
+	for _, p := range persistentVolumeClaims {
 		if p.DeletionTimestamp != nil {
 			continue // PVC is being deleted, ignore it
 		}
@@ -71,6 +83,7 @@ func FindOrphanedVolumeClaims(
 	}
 
 	// List running pods
+	labelSelector := label.NewLabelSelectorForElasticsearch(es)
 	listPodSOptions := client.ListOptions{
 		Namespace:     es.Namespace,
 		LabelSelector: labelSelector,
@@ -101,12 +114,11 @@ func FindOrphanedVolumeClaims(
 
 // GetOrphanedVolumeClaim extract and remove a matching existing and orphaned PVC, returns nil if none is found
 func (o *OrphanedPersistentVolumeClaims) GetOrphanedVolumeClaim(
-	podLabels map[string]string,
 	claim *corev1.PersistentVolumeClaim,
 ) *corev1.PersistentVolumeClaim {
 	for i := 0; i < len(o.orphanedPersistentVolumeClaims); i++ {
 		candidate := o.orphanedPersistentVolumeClaims[i]
-		if compareLabels(podLabels, candidate.Labels) &&
+		if compareLabels(claim.Labels, candidate.Labels) &&
 			compareStorageClass(claim, &candidate) &&
 			compareResources(claim, &candidate) {
 			o.orphanedPersistentVolumeClaims = append(o.orphanedPersistentVolumeClaims[:i], o.orphanedPersistentVolumeClaims[i+1:]...)
@@ -133,32 +145,32 @@ func compareStorageClass(claim, candidate *corev1.PersistentVolumeClaim) bool {
 	return reflect.DeepEqual(claim.Spec.StorageClassName, candidate.Spec.StorageClassName)
 }
 
-// compareLabels returns true if pvc labels match pod labels.
+// compareLabels returns true if pvc labels match expectd pvc labels.
 // It does not perform a strict comparison, but just compares the expected labels.
-// Both pod and pvc are allowed to have more labels than the expected ones.
+// Both expected pvc and existing pvc are allowed to have more labels than the expected ones.
 // It also explicitly compares the Elasticsearch version, to make sure we don't
 // run a old ES version with data from a newer ES version.
-func compareLabels(podLabels map[string]string, pvcLabels map[string]string) bool {
+func compareLabels(expectedLabels map[string]string, actualLabels map[string]string) bool {
 	// compare subset of labels that must match
 	for _, k := range requiredLabelMatch {
-		valueInPVC, existsInPVC := pvcLabels[k]
-		valueInPod, existsInPod := podLabels[k]
-		if !existsInPod || !existsInPVC || valueInPod != valueInPVC {
+		valueInActual, existsInActual := actualLabels[k]
+		valueInExpected, existsInExpected := expectedLabels[k]
+		if !existsInExpected || !existsInActual || valueInExpected != valueInActual {
 			return false
 		}
 	}
 	// only allow pvc to be used for a same or higher version of Elasticsearch
-	podVersion, err := version.Parse(podLabels[label.VersionLabelName])
+	expectedVersion, err := version.Parse(expectedLabels[label.VersionLabelName])
 	if err != nil {
 		log.Error(err, "Invalid version in labels", "key", label.VersionLabelName, "value", label.VersionLabelName)
 		return false
 	}
-	pvcVersion, err := version.Parse(pvcLabels[label.VersionLabelName])
+	actualVersion, err := version.Parse(actualLabels[label.VersionLabelName])
 	if err != nil {
 		log.Error(err, "Invalid version in labels", "key", label.VersionLabelName, "value", label.VersionLabelName)
 		return false
 	}
-	if !podVersion.IsSameOrAfter(*pvcVersion) {
+	if !expectedVersion.IsSameOrAfter(*actualVersion) {
 		// we are trying to run Elasticsearch with data from a newer version
 		return false
 	}
