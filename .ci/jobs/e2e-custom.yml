@@ -14,7 +14,7 @@
           description: "Docker image with ECK"
       - string:
           name: VERSION
-          default: 1.11
+          default: 1.12
           description: "Kubernetes version, default is 1.11"
     concurrent: true
     pipeline-scm:
