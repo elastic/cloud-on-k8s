@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/about"
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -59,7 +58,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileKi
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
-		operatorInfo:   params.OperatorInfo,
+		params:         params,
 	}
 }
 
@@ -118,10 +117,10 @@ type ReconcileKibana struct {
 	finalizers     finalizer.Handler
 	dynamicWatches watches.DynamicWatches
 
+	params operator.Parameters
+
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
-	// operatorInfo is information about the operator
-	operatorInfo about.OperatorInfo
 }
 
 // Reconcile reads that state of the cluster for a Kibana object and makes changes based on the state read and what is
@@ -177,7 +176,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	// version specific reconcile
-	results := driver.Reconcile(&state, kb, r.operatorInfo)
+	results := driver.Reconcile(&state, kb, r.params)
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {

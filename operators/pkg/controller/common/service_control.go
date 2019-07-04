@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
@@ -25,7 +24,7 @@ func ReconcileService(
 	scheme *runtime.Scheme,
 	expected *corev1.Service,
 	owner metav1.Object,
-) (reconcile.Result, error) {
+) (*corev1.Service, error) {
 	reconciled := &corev1.Service{}
 	err := reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
@@ -40,7 +39,7 @@ func ReconcileService(
 			reconciled.Spec = expected.Spec // only update spec, keep the rest
 		},
 	})
-	return reconcile.Result{}, err
+	return reconciled, err
 }
 
 func needsUpdate(expected *corev1.Service, reconciled *corev1.Service) bool {

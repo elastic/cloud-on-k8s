@@ -153,10 +153,10 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	svc := NewService(*as)
-	res, err := common.ReconcileService(r.Client, r.scheme, svc, as)
+	_, err = common.ReconcileService(r.Client, r.scheme, svc, as)
 	if err != nil {
 		// TODO: consider updating some status here?
-		return res, err
+		return reconcile.Result{}, err
 	}
 
 	state.UpdateApmServerExternalService(*svc)

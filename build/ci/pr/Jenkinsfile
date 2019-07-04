@@ -5,7 +5,7 @@ pipeline {
     }
 
     options {
-        timeout(time: 30, unit: 'MINUTES')
+        timeout(time: 45, unit: 'MINUTES')
     }
 
     environment {
@@ -31,7 +31,16 @@ pipeline {
                         sh 'make -C build/ci ci-pr'
                     }
                 }
+                stage("Run docs build") {
+                    steps {
+                        checkout scm
+                        sh 'make -C build/ci ci-build-docs'
+                    }
+                }
                 stage("Run smoke E2E tests") {
+                    agent {
+                        label 'linux'
+                    }
                     steps {
                         checkout scm
                         sh 'make -C build/ci ci-e2e'

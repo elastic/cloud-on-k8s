@@ -5,6 +5,8 @@
 package driver
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -108,6 +110,7 @@ func createElasticsearchPod(
 		return err
 	}
 	if err := c.Create(&pod); err != nil {
+		reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, fmt.Sprintf("Cannot create pod %s: %s", pod.Name, err.Error()))
 		return err
 	}
 	reconcileState.AddEvent(corev1.EventTypeNormal, events.EventReasonCreated, stringsutil.Concat("Created pod ", pod.Name))
@@ -138,7 +141,7 @@ func getOrCreatePVC(pod *corev1.Pod,
 	// Generate the desired PVC from the template
 	pvc := newPVCFromTemplate(claimTemplate, pod)
 	// Seek for an orphaned PVC that matches the desired one
-	orphanedPVC := orphanedPVCs.GetOrphanedVolumeClaim(pod.Labels, pvc)
+	orphanedPVC := orphanedPVCs.GetOrphanedVolumeClaim(pvc)
 
 	if orphanedPVC != nil {
 		// ReUSE the orphaned PVC
@@ -178,6 +181,7 @@ func newPVCFromTemplate(claimTemplate corev1.PersistentVolumeClaim, pod *corev1.
 	}
 	// Add the current pod name as a label
 	pvc.Labels[label.PodNameLabelName] = pod.Name
+	pvc.Labels[label.VolumeNameLabelName] = claimTemplate.Name
 	return pvc
 }
 

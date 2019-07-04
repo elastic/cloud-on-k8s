@@ -251,7 +251,7 @@ func execute() {
 		os.Exit(1)
 	}
 
-	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace)
+	operatorInfo, err := about.GetOperatorInfo(clientset, operatorNamespace, roles)
 	if err != nil {
 		log.Error(err, "unable to get operator info")
 		os.Exit(1)
@@ -282,8 +282,8 @@ func execute() {
 		os.Exit(1)
 	}
 
-	log.Info("Starting the manager", "uuid", operatorInfo.UUID,
-		"namespace", operatorInfo.Namespace, "version", operatorInfo.BuildInfo.Version,
+	log.Info("Starting the manager", "uuid", operatorInfo.OperatorUUID,
+		"namespace", operatorNamespace, "version", operatorInfo.BuildInfo.Version,
 		"build_hash", operatorInfo.BuildInfo.Hash, "build_date", operatorInfo.BuildInfo.Date,
 		"build_snapshot", operatorInfo.BuildInfo.Snapshot)
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {

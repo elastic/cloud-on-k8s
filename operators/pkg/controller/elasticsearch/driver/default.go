@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/remotecluster"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -211,16 +210,6 @@ func (d *defaultDriver) Reconcile(
 	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
 	if err != nil {
 		return results.WithError(err)
-	}
-
-	if esReachable {
-		err = remotecluster.UpdateRemoteCluster(d.Client, esClient, es, reconcileState)
-		if err != nil {
-			msg := "Could not update remote clusters in Elasticsearch settings"
-			reconcileState.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg)
-			log.Error(err, msg, "namespace", es.Namespace, "es_name", es.Name)
-			results.WithResult(defaultRequeue)
-		}
 	}
 
 	namespacedName := k8s.ExtractNamespacedName(&es)

@@ -25,8 +25,10 @@ func (r *Results) HasError() bool {
 
 // WithResults appends the results and error from the other Results.
 func (r *Results) WithResults(other *Results) *Results {
-	r.results = append(r.results, other.results...)
-	r.errors = append(r.errors, other.errors...)
+	if other != nil {
+		r.results = append(r.results, other.results...)
+		r.errors = append(r.errors, other.errors...)
+	}
 	return r
 }
 

@@ -26,20 +26,26 @@ var ports = []corev1.ContainerPort{
 	{Name: "http", ContainerPort: int32(HTTPPort), Protocol: corev1.ProtocolTCP},
 }
 
-// defaultReadinessProbe is the readiness probe for the Kibana container
-var defaultReadinessProbe = corev1.Probe{
-	FailureThreshold:    3,
-	InitialDelaySeconds: 10,
-	PeriodSeconds:       10,
-	SuccessThreshold:    1,
-	TimeoutSeconds:      5,
-	Handler: corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.FromInt(HTTPPort),
-			Path:   "/",
-			Scheme: corev1.URISchemeHTTP,
+// readinessProbe is the readiness probe for the Kibana container
+func readinessProbe(useTLS bool) corev1.Probe {
+	scheme := corev1.URISchemeHTTP
+	if useTLS {
+		scheme = corev1.URISchemeHTTPS
+	}
+	return corev1.Probe{
+		FailureThreshold:    3,
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.FromInt(HTTPPort),
+				Path:   "/",
+				Scheme: scheme,
+			},
 		},
-	},
+	}
 }
 
 func imageWithVersion(image string, version string) string {
@@ -50,7 +56,7 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, additionalVolumes []corev1.Volume, i
 	return defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
-		WithReadinessProbe(defaultReadinessProbe).
+		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithVolumes(append(additionalVolumes, volume.KibanaDataVolume.Volume())...).
 		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount()).

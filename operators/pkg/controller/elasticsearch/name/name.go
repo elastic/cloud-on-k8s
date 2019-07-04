@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/name"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -34,9 +33,6 @@ const (
 	licenseSecretSuffix         = "license"
 	defaultPodDisruptionBudget  = "default"
 	scriptsConfigMapSuffix      = "scripts"
-
-	certsPublicSecretName   = "certs-public"
-	certsInternalSecretName = "certs-internal"
 )
 
 // ESNamer is a Namer that is configured with the defaults for resources related to an ES cluster.
@@ -121,14 +117,6 @@ func UnicastHostsConfigMap(esName string) string {
 
 func ScriptsConfigMap(esName string) string {
 	return ESNamer.Suffix(esName, scriptsConfigMapSuffix)
-}
-
-func HTTPCertsInternalSecretName(esName string) string {
-	return ESNamer.Suffix(esName, string(certificates.HTTPCAType), certsInternalSecretName)
-}
-
-func CertsPublicSecretName(esName string, caType certificates.CAType) string {
-	return ESNamer.Suffix(esName, string(caType), certsPublicSecretName)
 }
 
 func LicenseSecretName(esName string) string {

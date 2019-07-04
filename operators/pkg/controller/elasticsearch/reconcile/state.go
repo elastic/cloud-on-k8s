@@ -99,16 +99,6 @@ func (s *State) UpdateElasticsearchMigrating(
 	return s.updateWithPhase(v1alpha1.ElasticsearchMigratingDataPhase, resourcesState, observedState)
 }
 
-// UpdateRemoteClusters updates the remote clusters saved in the persistent settings of the cluster.
-func (s *State) UpdateRemoteClusters(remoteCluster map[string]string) {
-	s.status.RemoteClusters = remoteCluster
-}
-
-// GetRemoteClusters returns the remote clusters that have been set in the cluster.
-func (s *State) GetRemoteClusters() map[string]string {
-	return s.status.RemoteClusters
-}
-
 // UpdateZen1MinimumMasterNodes updates the current minimum master nodes in the state.
 func (s *State) UpdateZen1MinimumMasterNodes(value int) {
 	s.status.ZenDiscovery = v1alpha1.ZenDiscoveryStatus{

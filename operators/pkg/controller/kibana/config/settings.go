@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -45,6 +46,7 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 
 	// merge the configuration with userSettings last so they take precedence
 	err = cfg.MergeWith(
+		settings.MustCanonicalConfig(kibanaTLSSettings(kb)),
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
 		settings.MustCanonicalConfig(esAuthSettings),
 		userSettings,
@@ -64,6 +66,18 @@ func baseSettings(kb v1alpha1.Kibana) map[string]interface{} {
 		XpackMonitoringUiContainerElasticsearchEnabled: true,
 	}
 }
+
+func kibanaTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
+	if !kb.Spec.HTTP.TLS.Enabled() {
+		return nil
+	}
+	return map[string]interface{}{
+		ServerSSLEnabled:     true,
+		ServerSSLCertificate: path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		ServerSSLKey:         path.Join(volume.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
+	}
+}
+
 func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 	esCertsVolumeMountPath := es.CaCertSecretVolume(kb).VolumeMount().MountPath
 	return map[string]interface{}{
