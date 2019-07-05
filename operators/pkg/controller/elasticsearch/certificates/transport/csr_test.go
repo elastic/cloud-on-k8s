@@ -35,8 +35,8 @@ func Test_createValidatedCertificateTemplate(t *testing.T) {
 	// we expect this name to be used for both the common name as well as the es othername
 	cn := "test-pod-name.node.test-es-name.test-namespace.es.local"
 
-	validatedCert, err := CreateValidatedCertificateTemplate(
-		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
+	validatedCert, err := createValidatedCertificateTemplate(
+		testPod, testES, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
 	require.NoError(t, err)
 
@@ -86,7 +86,7 @@ func Test_buildGeneralNames(t *testing.T) {
 		{
 			name: "no svcs and user-provided SANs",
 			args: args{
-				cluster: testCluster,
+				cluster: testES,
 				pod:     testPod,
 			},
 			want: []certificates.GeneralName{

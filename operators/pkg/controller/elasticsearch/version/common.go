@@ -111,6 +111,11 @@ func podSpecContext(
 		esvolume.HTTPCertificatesSecretVolumeName,
 		esvolume.HTTPCertificatesSecretVolumeMountPath,
 	)
+	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
+		name.TransportCertificatesSecret(p.Elasticsearch.Name),
+		esvolume.TransportCertificatesSecretVolumeName,
+		esvolume.TransportCertificatesSecretVolumeMountPath,
+	)
 
 	// A few secret volumes will be generated based on the pod name.
 	// At this point the (maybe future) pod does not have a name yet: we still want to
@@ -119,11 +124,6 @@ func podSpecContext(
 	// and secret refs in Volumes Mounts will be fixed right before pod creation,
 	// if this spec ends up leading to a new pod creation.
 	podNamePlaceholder := "pod-name-placeholder"
-	transportCertificatesVolume := volume.NewSecretVolumeWithMountPath(
-		name.TransportCertsSecret(podNamePlaceholder),
-		esvolume.TransportCertificatesSecretVolumeName,
-		esvolume.TransportCertificatesSecretVolumeMountPath,
-	)
 	configVolume := settings.ConfigSecretVolume(podNamePlaceholder)
 
 	// append future volumes from PVCs (not resolved to a claim yet)

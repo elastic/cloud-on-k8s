@@ -17,8 +17,21 @@ type TemplateParams struct {
 	LinkedFiles LinkedFilesArray
 	// ChownToElasticsearch are paths that need to be chowned to the Elasticsearch user/group.
 	ChownToElasticsearch []string
-	// TransportCertificatesKeyPath is a path that should exist when the transport certificates have been reconciled.
-	TransportCertificatesKeyPath string
+
+	// InitContainerTransportCertificatesSecretVolumeMountPath is the path to the volume in the init container that
+	// contains the transport certificates.
+	InitContainerTransportCertificatesSecretVolumeMountPath string
+
+	// InitContainerNodeTransportCertificatesKeyPath is the path within the init container where the private key for the
+	// node transport certificates should be found.
+	InitContainerNodeTransportCertificatesKeyPath string
+	// InitContainerNodeTransportCertificatesCertPath is the path within the init container where the certificate for
+	// the node transport should be found.
+	InitContainerNodeTransportCertificatesCertPath string
+
+	// TransportCertificatesSecretVolumeMountPath is the path to the volume in the es container that contains the
+	// transport certificates.
+	TransportCertificatesSecretVolumeMountPath string
 }
 
 // RenderScriptTemplate renders scriptTemplate using the given TemplateParams
@@ -105,14 +118,39 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	#  Wait for certs    #
 	######################
 
+	INIT_CONTAINER_LOCAL_KEY_PATH={{ .InitContainerTransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.key
+
 	# wait for the transport certificates to show up
-	echo "waiting for the transport certificates"
+	echo "waiting for the transport certificates (${INIT_CONTAINER_LOCAL_KEY_PATH})"
 	wait_start=$(date +%s)
-	while [ ! -f {{ .TransportCertificatesKeyPath }} ]
+	while [ ! -f ${INIT_CONTAINER_LOCAL_KEY_PATH} ]
 	do
 	  sleep 0.2
 	done
 	echo "wait duration: $(duration wait_start) sec."
+
+	######################
+	#  Certs linking     #
+	######################
+
+	KEY_SOURCE_PATH={{ .TransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.key
+	KEY_TARGET_PATH={{ .InitContainerNodeTransportCertificatesKeyPath }}
+
+	CERT_SOURCE_PATH={{ .TransportCertificatesSecretVolumeMountPath }}/${POD_NAME}.tls.crt
+	CERT_TARGET_PATH={{ .InitContainerNodeTransportCertificatesCertPath }}
+
+	# Link individual files from their mount location into the config dir
+	# to a volume, to be used by the ES container
+	ln_start=$(date +%s)
+
+	echo "Linking $CERT_SOURCE_PATH to $CERT_TARGET_PATH"
+	mkdir -p $(dirname $KEY_TARGET_PATH)
+	ln -sf $KEY_SOURCE_PATH $KEY_TARGET_PATH
+	echo "Linking $CERT_SOURCE_PATH to $CERT_TARGET_PATH"
+	mkdir -p $(dirname $CERT_TARGET_PATH)
+	ln -sf $CERT_SOURCE_PATH $CERT_TARGET_PATH
+
+	echo "Certs linking duration: $(duration $ln_start) sec."
 
 	######################
 	#         End        #

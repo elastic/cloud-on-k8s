@@ -18,8 +18,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// CreateValidatedCertificateTemplate validates a CSR and creates a certificate template.
-func CreateValidatedCertificateTemplate(
+// createValidatedCertificateTemplate validates a CSR and creates a certificate template.
+func createValidatedCertificateTemplate(
 	pod corev1.Pod,
 	cluster v1alpha1.Elasticsearch,
 	svcs []corev1.Service,

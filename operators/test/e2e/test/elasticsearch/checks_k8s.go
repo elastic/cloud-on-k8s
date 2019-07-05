@@ -64,7 +64,7 @@ func CheckPodCertificates(b Builder, k *test.K8sClient) test.Step {
 				return err
 			}
 			for _, pod := range pods {
-				_, _, err := k.GetTransportCert(pod.Name)
+				_, _, err := k.GetTransportCert(b.Elasticsearch.Name, pod.Name)
 				if err != nil {
 					return err
 				}
