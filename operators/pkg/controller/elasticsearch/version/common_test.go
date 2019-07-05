@@ -145,9 +145,6 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
-		return settings.NewCanonicalConfig(), nil
-	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
 		return []corev1.Container{
 			{
@@ -162,6 +159,10 @@ func Test_podSpec(t *testing.T) {
 	varTrue := true
 	varInt64 := int64(12)
 	es71 := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es71",
+		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version: "7.1.0",
 		},
@@ -463,6 +464,7 @@ func Test_podSpec(t *testing.T) {
 			params: pod.NewPodSpecParams{
 				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
+					Name: "node-spec-name",
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -478,19 +480,21 @@ func Test_podSpec(t *testing.T) {
 					"a":                          "b",
 					"c":                          "d",
 					"common.k8s.elastic.co/type": "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": "",
-					"elasticsearch.k8s.elastic.co/node-data":    "true",
-					"elasticsearch.k8s.elastic.co/node-ingest":  "true",
-					"elasticsearch.k8s.elastic.co/node-master":  "true",
-					"elasticsearch.k8s.elastic.co/node-ml":      "true",
-					"elasticsearch.k8s.elastic.co/version":      "7.1.0",
+					"elasticsearch.k8s.elastic.co/cluster-name":         "es71",
+					"elasticsearch.k8s.elastic.co/config-template-hash": hash.HashObject(settings.NewCanonicalConfig()),
+					"elasticsearch.k8s.elastic.co/node-data":            "true",
+					"elasticsearch.k8s.elastic.co/node-ingest":          "true",
+					"elasticsearch.k8s.elastic.co/node-master":          "true",
+					"elasticsearch.k8s.elastic.co/node-ml":              "true",
+					"elasticsearch.k8s.elastic.co/statefulset":          "es71-es-node-spec-name",
+					"elasticsearch.k8s.elastic.co/version":              "7.1.0",
 				}, specCtx.PodTemplate.Labels)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			spec, err := podSpecContext(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
+			spec, err := podSpecContext(tt.params, "operator-image", settings.NewCanonicalConfig(), newEnvVarsFn, newInitContainersFn)
 			require.NoError(t, err)
 			tt.assertions(t, spec)
 		})
