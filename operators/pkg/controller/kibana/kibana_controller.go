@@ -155,7 +155,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
 		if errors.IsConflict(err) {
 			// Conflicts are expected and should be resolved on next loop
-			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "name", kb.Name)
+			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
 		return reconcile.Result{}, err

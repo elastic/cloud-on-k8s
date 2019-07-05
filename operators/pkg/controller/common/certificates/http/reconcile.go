@@ -196,8 +196,8 @@ func ensureInternalSelfSignedCertificateSecretContents(
 			"Issuing new HTTP certificate",
 			"namespace", secret.Namespace,
 			"secret_name", secret.Name,
-			"es_namespace", owner.Namespace,
-			"es_name", owner.Name,
+			"owner_namespace", owner.Namespace,
+			"owner_name", owner.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -296,7 +296,7 @@ func shouldIssueNewHTTPCertificate(
 			"current_ca_subject", ca.Cert.Subject,
 			"secret_name", secret.Name,
 			"namespace", secret.Namespace,
-			"es_name", owner.Name,
+			"owner_name", owner.Name,
 		)
 		return true
 	}
