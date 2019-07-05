@@ -162,15 +162,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// Fetch the ApmServer resource
 	as := &apmv1alpha1.ApmServer{}
 	err := r.Get(request.NamespacedName, as)
-<<<<<<< HEAD
 
-	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name, "iteration", currentIteration)
-		return common.PauseRequeue, nil
-	}
-
-=======
->>>>>>> master
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -182,7 +174,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -397,12 +389,7 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
-<<<<<<< HEAD
 	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
-	return state.Result, r.Status().Update(state.ApmServer)
-=======
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-
 	err := r.Status().Update(state.ApmServer)
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status")
@@ -417,5 +404,4 @@ func (r *ReconcileApmServer) finalizersFor(as apmv1alpha1.ApmServer) []finalizer
 	return []finalizer.Finalizer{
 		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, &as),
 	}
->>>>>>> master
 }
