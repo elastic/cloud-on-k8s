@@ -568,41 +568,42 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 	return pods
 }
 
-// calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the
-// desired one.
-func (d *defaultDriver) calculateChanges(
-	internalUsers *user.InternalUsers,
-	es v1alpha1.Elasticsearch,
-	resourcesState reconcile.ResourcesState,
-) (*mutation.Changes, error) {
-	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
-		es,
-		pod.NewPodSpecParams{
-			ProbeUser:    internalUsers.ProbeUser.Auth(),
-			KeystoreUser: internalUsers.KeystoreUser.Auth(),
-			UnicastHostsVolume: volume.NewConfigMapVolume(
-				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
-			),
-		},
-		d.OperatorImage,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	changes, err := mutation.CalculateChanges(
-		es,
-		expectedPodSpecCtxs,
-		resourcesState,
-		func(ctx pod.PodSpecContext) corev1.Pod {
-			return esversion.NewPod(es, ctx)
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
-	return &changes, nil
-}
+//
+//// calculateChanges calculates the changes we'd need to perform to go from the current cluster configuration to the
+//// desired one.
+//func (d *defaultDriver) calculateChanges(
+//	internalUsers *user.InternalUsers,
+//	es v1alpha1.Elasticsearch,
+//	resourcesState reconcile.ResourcesState,
+//) (*mutation.Changes, error) {
+//	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
+//		es,
+//		pod.NewPodSpecParams{
+//			ProbeUser:    internalUsers.ProbeUser.Auth(),
+//			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+//			UnicastHostsVolume: volume.NewConfigMapVolume(
+//				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
+//			),
+//		},
+//		d.OperatorImage,
+//	)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	changes, err := mutation.CalculateChanges(
+//		es,
+//		expectedPodSpecCtxs,
+//		resourcesState,
+//		func(ctx pod.PodSpecContext) corev1.Pod {
+//			return esversion.NewPod(es, ctx)
+//		},
+//	)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return &changes, nil
+//}
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
 func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {

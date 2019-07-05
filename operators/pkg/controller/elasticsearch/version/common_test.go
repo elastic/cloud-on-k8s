@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -44,91 +43,92 @@ func Test_quantityToMegabytes(t *testing.T) {
 	}
 }
 
-func TestNewPod(t *testing.T) {
-	esMeta := metav1.ObjectMeta{
-		Namespace: "ns",
-		Name:      "name",
-	}
-	es := v1alpha1.Elasticsearch{
-		ObjectMeta: esMeta,
-		Spec: v1alpha1.ElasticsearchSpec{
-			Version: "7.1.0",
-		},
-	}
-	podTemplate := corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"a": "b",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name: "container1",
-				},
-			},
-		},
-	}
-	withCustomHostnameSubdomains := corev1.PodTemplateSpec{
-		ObjectMeta: podTemplate.ObjectMeta,
-		Spec: corev1.PodSpec{
-			Containers: podTemplate.Spec.Containers,
-			Hostname:   "custom-hostname",
-			Subdomain:  "custom-subdomain",
-		},
-	}
-
-	tests := []struct {
-		name       string
-		es         v1alpha1.Elasticsearch
-		podSpecCtx pod.PodSpecContext
-		want       func() corev1.Pod
-	}{
-		{
-			name:       "happy path",
-			es:         es,
-			podSpecCtx: pod.PodSpecContext{PodTemplate: podTemplate},
-			want: func() corev1.Pod {
-				p := corev1.Pod{
-					ObjectMeta: *podTemplate.ObjectMeta.DeepCopy(),
-					Spec:       *podTemplate.Spec.DeepCopy(),
-				}
-				p.Namespace = esMeta.Namespace
-				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(podTemplate)
-				p.Spec.Subdomain = es.Name
-				return p
-			},
-		},
-		{
-			name:       "with custom hostname and subdomain",
-			es:         es,
-			podSpecCtx: pod.PodSpecContext{PodTemplate: withCustomHostnameSubdomains},
-			want: func() corev1.Pod {
-				p := corev1.Pod{
-					ObjectMeta: *withCustomHostnameSubdomains.ObjectMeta.DeepCopy(),
-					Spec:       *withCustomHostnameSubdomains.Spec.DeepCopy(),
-				}
-				p.Namespace = esMeta.Namespace
-				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(withCustomHostnameSubdomains)
-				return p
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NewPod(tt.es, tt.podSpecCtx)
-			// since the name is random, don't test its equality and inject it to the expected output
-			require.NotEmpty(t, got.Name)
-			require.NotEmpty(t, got.Spec.Hostname)
-			want := tt.want()
-			want.Name = got.Name
-			if tt.podSpecCtx.PodTemplate.Spec.Hostname == "" {
-				want.Spec.Hostname = got.Spec.Hostname
-			}
-			require.Equal(t, want, got)
-		})
-	}
-}
+//
+//func TestNewPod(t *testing.T) {
+//	esMeta := metav1.ObjectMeta{
+//		Namespace: "ns",
+//		Name:      "name",
+//	}
+//	es := v1alpha1.Elasticsearch{
+//		ObjectMeta: esMeta,
+//		Spec: v1alpha1.ElasticsearchSpec{
+//			Version: "7.1.0",
+//		},
+//	}
+//	podTemplate := corev1.PodTemplateSpec{
+//		ObjectMeta: metav1.ObjectMeta{
+//			Labels: map[string]string{
+//				"a": "b",
+//			},
+//		},
+//		Spec: corev1.PodSpec{
+//			Containers: []corev1.Container{
+//				{
+//					Name: "container1",
+//				},
+//			},
+//		},
+//	}
+//	withCustomHostnameSubdomains := corev1.PodTemplateSpec{
+//		ObjectMeta: podTemplate.ObjectMeta,
+//		Spec: corev1.PodSpec{
+//			Containers: podTemplate.Spec.Containers,
+//			Hostname:   "custom-hostname",
+//			Subdomain:  "custom-subdomain",
+//		},
+//	}
+//
+//	tests := []struct {
+//		name       string
+//		es         v1alpha1.Elasticsearch
+//		podSpecCtx pod.PodSpecContext
+//		want       func() corev1.Pod
+//	}{
+//		{
+//			name:       "happy path",
+//			es:         es,
+//			podSpecCtx: pod.PodSpecContext{PodTemplate: podTemplate},
+//			want: func() corev1.Pod {
+//				p := corev1.Pod{
+//					ObjectMeta: *podTemplate.ObjectMeta.DeepCopy(),
+//					Spec:       *podTemplate.Spec.DeepCopy(),
+//				}
+//				p.Namespace = esMeta.Namespace
+//				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(podTemplate)
+//				p.Spec.Subdomain = es.Name
+//				return p
+//			},
+//		},
+//		{
+//			name:       "with custom hostname and subdomain",
+//			es:         es,
+//			podSpecCtx: pod.PodSpecContext{PodTemplate: withCustomHostnameSubdomains},
+//			want: func() corev1.Pod {
+//				p := corev1.Pod{
+//					ObjectMeta: *withCustomHostnameSubdomains.ObjectMeta.DeepCopy(),
+//					Spec:       *withCustomHostnameSubdomains.Spec.DeepCopy(),
+//				}
+//				p.Namespace = esMeta.Namespace
+//				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(withCustomHostnameSubdomains)
+//				return p
+//			},
+//		},
+//	}
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			got := NewPod(tt.es, tt.podSpecCtx)
+//			// since the name is random, don't test its equality and inject it to the expected output
+//			require.NotEmpty(t, got.Name)
+//			require.NotEmpty(t, got.Spec.Hostname)
+//			want := tt.want()
+//			want.Name = got.Name
+//			if tt.podSpecCtx.PodTemplate.Spec.Hostname == "" {
+//				want.Spec.Hostname = got.Spec.Hostname
+//			}
+//			require.Equal(t, want, got)
+//		})
+//	}
+//}
 
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides

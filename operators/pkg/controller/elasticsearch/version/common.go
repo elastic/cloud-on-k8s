@@ -266,36 +266,37 @@ func podSpecContext(
 	}, nil
 }
 
-// NewPod constructs a pod from the given parameters.
-func NewPod(
-	es v1alpha1.Elasticsearch,
-	podSpecCtx pod.PodSpecContext,
-) corev1.Pod {
-	// build a pod based on the podSpecCtx template
-	template := *podSpecCtx.PodTemplate.DeepCopy()
-	pod := corev1.Pod{
-		ObjectMeta: template.ObjectMeta,
-		Spec:       template.Spec,
-	}
-
-	// label the pod with a hash of its template, for comparison purpose,
-	// before it gets assigned a name
-	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
-
-	// set name & namespace
-	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	pod.Namespace = es.Namespace
-
-	// set hostname and subdomain based on pod and cluster names
-	if pod.Spec.Hostname == "" {
-		pod.Spec.Hostname = pod.Name
-	}
-	if pod.Spec.Subdomain == "" {
-		pod.Spec.Subdomain = es.Name
-	}
-
-	return pod
-}
+//
+//// NewPod constructs a pod from the given parameters.
+//func NewPod(
+//	es v1alpha1.Elasticsearch,
+//	podSpecCtx pod.PodSpecContext,
+//) corev1.Pod {
+//	// build a pod based on the podSpecCtx template
+//	template := *podSpecCtx.PodTemplate.DeepCopy()
+//	pod := corev1.Pod{
+//		ObjectMeta: template.ObjectMeta,
+//		Spec:       template.Spec,
+//	}
+//
+//	// label the pod with a hash of its template, for comparison purpose,
+//	// before it gets assigned a name
+//	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
+//
+//	// set name & namespace
+//	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
+//	pod.Namespace = es.Namespace
+//
+//	// set hostname and subdomain based on pod and cluster names
+//	if pod.Spec.Hostname == "" {
+//		pod.Spec.Hostname = pod.Name
+//	}
+//	if pod.Spec.Subdomain == "" {
+//		pod.Spec.Subdomain = es.Name
+//	}
+//
+//	return pod
+//}
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
