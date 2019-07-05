@@ -55,7 +55,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 	// filter out pods scheduled for deletion
 	for _, p := range allPods {
 		// retrieve es configuration
-		config, err := settings.GetESConfigContent(c, k8s.ExtractNamespacedName(&p))
+		config, err := settings.GetESConfigContent(c, p.Namespace, p.Labels[label.StatefulSetNameLabelName])
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				// We have an ES pod for which no configuration secret can be found.

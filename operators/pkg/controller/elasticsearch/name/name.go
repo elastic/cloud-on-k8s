@@ -87,8 +87,8 @@ func NewPVCName(podName string, pvcTemplateName string) string {
 	return esNoDefaultSuffixesNamer.Suffix(podName, pvcTemplateName)
 }
 
-func ConfigSecret(podName string) string {
-	return esNoDefaultSuffixesNamer.Suffix(podName, configSecretSuffix)
+func ConfigSecret(ssetName string) string {
+	return ESNamer.Suffix(ssetName, configSecretSuffix)
 }
 
 func SecureSettingsSecret(esName string) string {

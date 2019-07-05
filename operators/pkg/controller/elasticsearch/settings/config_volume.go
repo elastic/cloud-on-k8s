@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"reflect"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -29,33 +29,33 @@ const (
 	ConfigVolumeMountPath = "/mnt/elastic-internal/elasticsearch-config"
 )
 
-// ConfigSecretName is the name of the secret that holds the ES config for the given pod.
-func ConfigSecretName(podName string) string {
-	return name.ConfigSecret(podName)
+// ConfigSecretName is the name of the secret that holds the ES config for the given StatefulSet.
+func ConfigSecretName(ssetName string) string {
+	return name.ConfigSecret(ssetName)
 }
 
-// ConfigSecretVolume returns a SecretVolume to hold the config of the given pod.
-func ConfigSecretVolume(podName string) volume.SecretVolume {
+// ConfigSecretVolume returns a SecretVolume to hold the config of nodes in the given stateful set..
+func ConfigSecretVolume(ssetName string) volume.SecretVolume {
 	return volume.NewSecretVolumeWithMountPath(
-		ConfigSecretName(podName),
+		ConfigSecretName(ssetName),
 		ConfigVolumeName,
 		ConfigVolumeMountPath,
 	)
 }
 
-// GetESConfigContent retrieves the configuration secret of the given pod,
+// GetESConfigContent retrieves the configuration secret of the given stateful set,
 // and returns the corresponding CanonicalConfig.
-func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (CanonicalConfig, error) {
-	secret, err := GetESConfigSecret(client, esPod)
+func GetESConfigContent(client k8s.Client, namespace string, ssetName string) (CanonicalConfig, error) {
+	secret, err := GetESConfigSecret(client, namespace, ssetName)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
 	if len(secret.Data) == 0 {
-		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
 	}
 	content := secret.Data[ConfigFileName]
 	if len(content) == 0 {
-		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(esPod.Name))
+		return CanonicalConfig{}, fmt.Errorf("no configuration found in secret %s", ConfigSecretName(ssetName))
 	}
 
 	cfg, err := common.ParseConfig(content)
@@ -66,11 +66,11 @@ func GetESConfigContent(client k8s.Client, esPod types.NamespacedName) (Canonica
 }
 
 // GetESConfigSecret returns the secret holding the ES configuration for the given pod
-func GetESConfigSecret(client k8s.Client, esPod types.NamespacedName) (corev1.Secret, error) {
+func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (corev1.Secret, error) {
 	var secret corev1.Secret
 	if err := client.Get(types.NamespacedName{
-		Namespace: esPod.Namespace,
-		Name:      ConfigSecretName(esPod.Name),
+		Namespace: namespace,
+		Name:      ConfigSecretName(ssetName),
 	}, &secret); err != nil {
 		return corev1.Secret{}, err
 	}
@@ -78,18 +78,18 @@ func GetESConfigSecret(client k8s.Client, esPod types.NamespacedName) (corev1.Se
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod corev1.Pod, config CanonicalConfig) error {
+func ReconcileConfig(client k8s.Client, clusterName string, sset appsv1.StatefulSet, config CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err
 	}
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: pod.Namespace,
-			Name:      ConfigSecretName(pod.Name),
+			Namespace: sset.Namespace,
+			Name:      ConfigSecretName(sset.Name),
 			Labels: map[string]string{
-				label.ClusterNameLabelName: cluster.Name,
-				label.PodNameLabelName:     pod.Name,
+				label.ClusterNameLabelName:     clusterName,
+				label.StatefulSetNameLabelName: sset.Name,
 			},
 		},
 		Data: map[string][]byte{
@@ -103,7 +103,7 @@ func ReconcileConfig(client k8s.Client, cluster v1alpha1.Elasticsearch, pod core
 		NeedsUpdate: func() bool {
 			return !reflect.DeepEqual(reconciled.Data, expected.Data)
 		},
-		Owner:            &cluster,
+		Owner:            &sset,
 		Reconciled:       &reconciled,
 		Scheme:           scheme.Scheme,
 		UpdateReconciled: func() { reconciled.Data = expected.Data },

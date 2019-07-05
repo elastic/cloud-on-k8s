@@ -6,6 +6,7 @@ package version
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
@@ -154,14 +155,8 @@ func podSpecContext(
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
 
-	// A few secret volumes will be generated based on the pod name.
-	// At this point the (maybe future) pod does not have a name yet: we still want to
-	// create corresponding volumes and volume mounts for pod spec comparisons.
-	// Let's create them with a placeholder for the pod name. Volume mounts will be correct,
-	// and secret refs in Volumes Mounts will be fixed right before pod creation,
-	// if this spec ends up leading to a new pod creation.
-	podNamePlaceholder := "pod-name-placeholder"
-	configVolume := settings.ConfigSecretVolume(podNamePlaceholder)
+	ssetName := name.StatefulSet(p.Elasticsearch.Name, p.NodeSpec.Name)
+	configVolume := settings.ConfigSecretVolume(ssetName)
 
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(p.NodeSpec.VolumeClaimTemplates))
