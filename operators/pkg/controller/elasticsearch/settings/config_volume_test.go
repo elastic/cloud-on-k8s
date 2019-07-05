@@ -14,7 +14,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -96,23 +95,23 @@ func TestGetESConfigContent(t *testing.T) {
 func TestReconcileConfig(t *testing.T) {
 	err := v1alpha1.AddToScheme(scheme.Scheme)
 	assert.NoError(t, err)
-	clusterName := "cluster"
-	sset := appsv1.StatefulSet{
+	es := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "namespace",
-			Name:      "sset",
+			Namespace: "ns",
+			Name:      "cluster",
 		},
 	}
+	ssetName := "sset"
 	config := CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "d"})}
 	rendered, err := config.Render()
 	require.NoError(t, err)
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: sset.Namespace,
-			Name:      ConfigSecretName(sset.Name),
+			Namespace: es.Namespace,
+			Name:      ConfigSecretName(ssetName),
 			Labels: map[string]string{
-				label.ClusterNameLabelName:     clusterName,
-				label.StatefulSetNameLabelName: sset.Name,
+				label.ClusterNameLabelName:     es.Name,
+				label.StatefulSetNameLabelName: ssetName,
 			},
 		},
 		Data: map[string][]byte{
@@ -120,45 +119,45 @@ func TestReconcileConfig(t *testing.T) {
 		},
 	}
 	tests := []struct {
-		name        string
-		client      k8s.Client
-		clusterName string
-		sset        appsv1.StatefulSet
-		config      CanonicalConfig
-		wantErr     bool
+		name     string
+		client   k8s.Client
+		es       v1alpha1.Elasticsearch
+		ssetName string
+		config   CanonicalConfig
+		wantErr  bool
 	}{
 		{
-			name:        "config does not exist",
-			client:      k8s.WrapClient(fake.NewFakeClient()),
-			clusterName: clusterName,
-			sset:        sset,
-			config:      config,
-			wantErr:     false,
+			name:     "config does not exist",
+			client:   k8s.WrapClient(fake.NewFakeClient()),
+			es:       es,
+			ssetName: ssetName,
+			config:   config,
+			wantErr:  false,
 		},
 		{
-			name:        "config already exists",
-			client:      k8s.WrapClient(fake.NewFakeClient(&configSecret)),
-			clusterName: clusterName,
-			sset:        sset,
-			config:      config,
-			wantErr:     false,
+			name:     "config already exists",
+			client:   k8s.WrapClient(fake.NewFakeClient(&configSecret)),
+			es:       es,
+			ssetName: ssetName,
+			config:   config,
+			wantErr:  false,
 		},
 		{
-			name:        "config should be updated",
-			client:      k8s.WrapClient(fake.NewFakeClient(&configSecret)),
-			clusterName: clusterName,
-			sset:        sset,
-			config:      CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"})},
-			wantErr:     false,
+			name:     "config should be updated",
+			client:   k8s.WrapClient(fake.NewFakeClient(&configSecret)),
+			es:       es,
+			ssetName: ssetName,
+			config:   CanonicalConfig{common.MustCanonicalConfig(map[string]string{"a": "b", "c": "different"})},
+			wantErr:  false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := ReconcileConfig(tt.client, tt.clusterName, tt.sset, tt.config); (err != nil) != tt.wantErr {
+			if err := ReconcileConfig(tt.client, tt.es, tt.ssetName, tt.config); (err != nil) != tt.wantErr {
 				t.Errorf("ReconcileConfig() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			// config in the apiserver should be the expected one
-			parsed, err := GetESConfigContent(tt.client, sset.Namespace, sset.Name)
+			parsed, err := GetESConfigContent(tt.client, tt.es.Namespace, tt.ssetName)
 			require.NoError(t, err)
 			require.Equal(t, tt.config, parsed)
 		})

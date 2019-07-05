@@ -74,7 +74,7 @@ func NewDriver(opts Options) (Driver, error) {
 
 	switch opts.Version.Major {
 	case 7:
-		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
+		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
 
 		driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
 
@@ -85,7 +85,7 @@ func NewDriver(opts Options) (Driver, error) {
 		// TODO: only do this if there's 6.x masters in the cluster.
 		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	case 6:
-		driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
+		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
 		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)

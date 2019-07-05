@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"reflect"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -78,19 +78,16 @@ func GetESConfigSecret(client k8s.Client, namespace string, ssetName string) (co
 }
 
 // ReconcileConfig ensures the ES config for the pod is set in the apiserver.
-func ReconcileConfig(client k8s.Client, clusterName string, sset appsv1.StatefulSet, config CanonicalConfig) error {
+func ReconcileConfig(client k8s.Client, es v1alpha1.Elasticsearch, ssetName string, config CanonicalConfig) error {
 	rendered, err := config.Render()
 	if err != nil {
 		return err
 	}
 	expected := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: sset.Namespace,
-			Name:      ConfigSecretName(sset.Name),
-			Labels: map[string]string{
-				label.ClusterNameLabelName:     clusterName,
-				label.StatefulSetNameLabelName: sset.Name,
-			},
+			Namespace: es.Namespace,
+			Name:      ConfigSecretName(ssetName),
+			Labels:    label.NewConfigLabels(k8s.ExtractNamespacedName(&es), ssetName),
 		},
 		Data: map[string][]byte{
 			ConfigFileName: rendered,
@@ -103,7 +100,7 @@ func ReconcileConfig(client k8s.Client, clusterName string, sset appsv1.Stateful
 		NeedsUpdate: func() bool {
 			return !reflect.DeepEqual(reconciled.Data, expected.Data)
 		},
-		Owner:            &sset,
+		Owner:            &es,
 		Reconciled:       &reconciled,
 		Scheme:           scheme.Scheme,
 		UpdateReconciled: func() { reconciled.Data = expected.Data },

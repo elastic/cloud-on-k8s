@@ -14,6 +14,7 @@ import (
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -298,8 +299,8 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	// TODO: this is a mess, refactor
-	podTemplateSpecBuilder := func(nodeSpec v1alpha1.NodeSpec) (corev1.PodTemplateSpec, error) {
+	// TODO: this is a mess, refactor and unit test correctly
+	podTemplateSpecBuilder := func(nodeSpec v1alpha1.NodeSpec, cfg settings.CanonicalConfig) (corev1.PodTemplateSpec, error) {
 		return esversion.BuildPodTemplateSpec(
 			es,
 			nodeSpec,
@@ -315,8 +316,8 @@ func (d *defaultDriver) Reconcile(
 					esvolume.XPackFileRealmVolumeMountPath,
 				),
 			},
+			cfg,
 			version6.NewEnvironmentVars,
-			settings.NewMergedESConfig,
 			initcontainer.NewInitContainers,
 			d.OperatorImage,
 		)
@@ -378,7 +379,6 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// TODO:
-	//  - es config checksum
 	//  - safe sset replacement
 	//  - safe node removal (data migration)
 	//  - safe node upgrade (rollingUpdate.Partition + shards allocation)

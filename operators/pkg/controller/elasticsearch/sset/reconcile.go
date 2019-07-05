@@ -31,5 +31,4 @@ func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elas
 			expected.DeepCopyInto(&reconciled)
 		},
 	})
-	return reconciled, err
 }
