@@ -7,7 +7,8 @@ metadata:
 spec:
   version: "7.1.0"
   nodes:
-  - nodeCount: 3
+  - name: all
+    nodeCount: 3
     volumeClaimTemplates:
     - metadata:
         name: elasticsearch-data
