@@ -151,6 +151,12 @@ func getOrCreatePVC(pod *corev1.Pod,
 		if err != nil {
 			return nil, err
 		}
+
+		// update the hostname if we defaulted it earlier
+		if pod.Spec.Hostname == pod.Name {
+			pod.Spec.Hostname = podName
+		}
+
 		pod.Name = podName
 		log.Info("Reusing PVC", "pod", pod.Name, "pvc", pvc.Name)
 		return pvc, nil
