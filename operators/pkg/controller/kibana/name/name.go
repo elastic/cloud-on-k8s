@@ -16,8 +16,7 @@ const (
 	// this leaves 63 - 36 = 27 characters for a suffix.
 	MaxSuffixLength = MaxLabelLength - MaxElasticsearchNameLength
 
-	httpServiceSuffix          = "http"
-	secureSettingsSecretSuffix = "secure-settings"
+	httpServiceSuffix = "http"
 )
 
 // KBNamer is a Namer that is configured with the defaults for resources related to a Kibana resource.
@@ -32,8 +31,4 @@ func HTTPService(kbName string) string {
 
 func Deployment(kbName string) string {
 	return KBNamer.Suffix(kbName)
-}
-
-func SecureSettingsSecret(kbName string) string {
-	return KBNamer.Suffix(kbName, secureSettingsSecretSuffix)
 }

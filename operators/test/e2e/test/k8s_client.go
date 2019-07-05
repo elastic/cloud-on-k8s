@@ -14,7 +14,7 @@ import (
 	assoctype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/associations/v1alpha1"
 	estype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
+	apmlabels "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
@@ -323,8 +323,8 @@ func ApmServerPodListOptions(apmName string) client.ListOptions {
 	return client.ListOptions{
 		Namespace: Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
-			common.TypeLabelName:             apmserver.Type,
-			apmserver.ApmServerNameLabelName: apmName,
+			common.TypeLabelName:             apmlabels.Type,
+			apmlabels.ApmServerNameLabelName: apmName,
 		}))}
 }
 

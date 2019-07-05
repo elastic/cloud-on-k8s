@@ -14,7 +14,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 	caSecretName := "ca-dummy"
 	type fields struct {
 		URL                    string
-		Auth                   ElasticsearchAuth
+		Auth                   v1alpha1.ElasticsearchAuth
 		CertificateAuthorities v1alpha1.SecretRef
 	}
 	tests := []struct {
@@ -25,7 +25,7 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 		{
 			name: "empty backend is not configured",
 			fields: fields{
-				Auth: ElasticsearchAuth{},
+				Auth: v1alpha1.ElasticsearchAuth{},
 			},
 			want: false,
 		},
@@ -33,8 +33,8 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 			name: "some fields missing is not configured",
 			fields: fields{
 				URL: "i am an url",
-				Auth: ElasticsearchAuth{
-					Inline: &ElasticsearchInlineAuth{
+				Auth: v1alpha1.ElasticsearchAuth{
+					Inline: &v1alpha1.ElasticsearchInlineAuth{
 						Username: "foo",
 						Password: "bar",
 					},
@@ -46,8 +46,8 @@ func TestBackendElasticsearch_IsConfigured(t *testing.T) {
 			name: "all fields configured",
 			fields: fields{
 				URL: "i am an url",
-				Auth: ElasticsearchAuth{
-					Inline: &ElasticsearchInlineAuth{
+				Auth: v1alpha1.ElasticsearchAuth{
+					Inline: &v1alpha1.ElasticsearchInlineAuth{
 						Username: "foo",
 						Password: "bar",
 					},
