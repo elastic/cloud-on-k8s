@@ -71,6 +71,11 @@ func Basename(podName string) string {
 	return podName[0:idx]
 }
 
+// StatefulSet returns the name of the StatefulSet corresponding to the given NodeSpec.
+func StatefulSet(esName string, nodeSpecName string) string {
+	return ESNamer.Suffix(esName, nodeSpecName)
+}
+
 // NewPVCName returns a unique PVC name given a pod name and a PVC template name.
 // Uniqueness is guaranteed by the pod name that contains a random id.
 // The PVC template name is trimmed so that the PVC name does not exceed the max

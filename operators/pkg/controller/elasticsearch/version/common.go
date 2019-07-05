@@ -84,6 +84,43 @@ func NewExpectedPodSpecs(
 	return podSpecs, nil
 }
 
+// TODO: refactor
+type PodTemplateSpecBuilder func(v1alpha1.NodeSpec) (corev1.PodTemplateSpec, error)
+
+// TODO: refactor to avoid all the params mess
+func BuildPodTemplateSpec(
+	es v1alpha1.Elasticsearch,
+	nodeSpec v1alpha1.NodeSpec,
+	paramsTmpl pod.NewPodSpecParams,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
+	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
+	operatorImage string,
+) (corev1.PodTemplateSpec, error) {
+	params := pod.NewPodSpecParams{
+		// cluster-wide params
+		Elasticsearch: es,
+		// volumes
+		UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
+		ProbeUser:          paramsTmpl.ProbeUser,
+		KeystoreUser:       paramsTmpl.KeystoreUser,
+		UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
+		// pod params
+		NodeSpec: nodeSpec,
+	}
+	podSpecCtx, err := podSpecContext(
+		params,
+		operatorImage,
+		newEnvironmentVarsFn,
+		newESConfigFn,
+		newInitContainersFn,
+	)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	return podSpecCtx.PodTemplate, nil
+}
+
 // podSpecContext creates a new PodSpecContext for an Elasticsearch node
 func podSpecContext(
 	p pod.NewPodSpecParams,
