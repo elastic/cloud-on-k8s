@@ -43,7 +43,7 @@ Run `make check-requisites` to check that all dependencies are installed.
 
       or [GKE](https://cloud.google.com/kubernetes-engine/)
 
-      Make sure that the Docker credential helper is configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication#standalone_docker_credential_helper)
+      Make sure that container registry authentication is correctly configured as described [here](https://cloud.google.com/container-registry/docs/advanced-authentication).
 
       ```bash
       export GCLOUD_PROJECT=my-project-id
