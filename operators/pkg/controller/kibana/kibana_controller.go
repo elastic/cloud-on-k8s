@@ -14,9 +14,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	commonsecuresettings "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -201,6 +201,6 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 func (r *ReconcileKibana) finalizersFor(kb kibanav1alpha1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
 		secretWatchFinalizer(kb, r.dynamicWatches),
-		securesettings.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches),
+		commonsecuresettings.Finalizer("kibana", k8s.ExtractNamespacedName(&kb), r.dynamicWatches),
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
@@ -23,9 +24,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,7 +58,18 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
-	volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(d.client, d.recorder, d.dynamicWatches, *kb)
+	volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(
+		d.client,
+		d.recorder,
+		d.dynamicWatches,
+		"kibana-keystore",
+		kb,
+		k8s.ExtractNamespacedName(kb),
+		kb.Spec.SecureSettings,
+		volume.SecureSettingsVolumeName,
+		volume.SecureSettingsVolumeMountPath,
+		volume.KibanaDataVolume.VolumeMount(),
+	)
 	if err != nil {
 		return nil, err
 	}

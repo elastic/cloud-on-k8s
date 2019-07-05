@@ -8,23 +8,22 @@ import (
 	"fmt"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	kbvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
 
 // secureSettingsVolume creates a volume from the optional user-provided secure settings secret.
 //
-// Secure settings are provided by the user in the Kibana Spec through a secret reference.
-// This secret is mounted into Kibana pods for secure settings to be injected into Kibana keystore.
+// Secure settings are provided by the user in the Spec through a secret reference.
+// This secret is mounted into pods for secure settings to be injected into the keystore.
 // The user-provided secret is watched to reconcile on any change.
 // The user secret resource version is returned along with the volume, so that
 // any change in the user secret leads to pod rotation.
@@ -32,22 +31,29 @@ func secureSettingsVolume(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	kb v1alpha1.Kibana,
+	owner runtime.Object,
+	namespacedName types.NamespacedName,
+	secureSettingsVolumeName string,
+	secureSettingsVolumeMountPath string,
+	secureSettingsSecretsRef *commonv1alpha1.SecretRef,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	userSecretRef := kb.Spec.SecureSettings
-	err := watchSecureSettings(watches, userSecretRef, k8s.ExtractNamespacedName(&kb))
+	err := watchSecureSettings(watches, secureSettingsSecretsRef, namespacedName)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if userSecretRef == nil {
+	if secureSettingsSecretsRef == nil {
 		// no secure settings secret specified
 		return nil, "", nil
 	}
 
-	// retrieve the secret referenced by the user in the Kibana namespace
-	userSecret, exists, err := retrieveUserSecret(c, kb, recorder, kb.Namespace, userSecretRef.SecretName)
+	// retrieve the secret referenced by the user in the namespace of the custom resource owner
+	secureSettingsSecret, exists, err := retrieveUserSecret(c, recorder,
+		owner,
+		namespacedName.Namespace,
+		secureSettingsSecretsRef.SecretName,
+	)
 	if err != nil {
 		return nil, "", err
 	}
@@ -58,25 +64,31 @@ func secureSettingsVolume(
 
 	// build a volume from that secret
 	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		userSecret.Name,
-		kbvolume.SecureSettingsVolumeName,
-		kbvolume.SecureSettingsVolumeMountPath,
+		secureSettingsSecret.Name,
+		secureSettingsVolumeName,
+		secureSettingsVolumeMountPath,
 	)
 
-	// resource version will be included in Kibana pod labels,
+	// resource version will be included in pod labels,
 	// to recreate pods on any secret change.
-	resourceVersion := userSecret.GetResourceVersion()
+	resourceVersion := secureSettingsSecret.GetResourceVersion()
 
 	return &secureSettingsVolume, resourceVersion, nil
 }
 
-func retrieveUserSecret(c k8s.Client, kibana v1alpha1.Kibana, recorder record.EventRecorder, namespace string, name string) (*corev1.Secret, bool, error) {
+func retrieveUserSecret(
+	c k8s.Client,
+	recorder record.EventRecorder,
+	owner runtime.Object,
+	namespace string,
+	name string,
+) (*corev1.Secret, bool, error) {
 	userSecret := corev1.Secret{}
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: name}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		log.Info(msg, "name", name)
-		recorder.Event(&kibana, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
+		recorder.Event(owner, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err
@@ -84,10 +96,10 @@ func retrieveUserSecret(c k8s.Client, kibana v1alpha1.Kibana, recorder record.Ev
 	return &userSecret, true, nil
 }
 
-// secureSettingsWatchName returns the watch name according to the Kibana deployment name.
-// It is unique per Kibana deployment.
-func secureSettingsWatchName(kibana types.NamespacedName) string {
-	return fmt.Sprintf("%s-%s-secure-settings", kibana.Namespace, kibana.Name)
+// secureSettingsWatchName returns the watch name according to the owner name.
+// It is unique per owner.
+func secureSettingsWatchName(namespacedName types.NamespacedName) string {
+	return fmt.Sprintf("%s-%s-secure-settings", namespacedName.Namespace, namespacedName.Name)
 }
 
 // watchSecureSettings registers a watch for the given secure settings.
@@ -95,8 +107,8 @@ func secureSettingsWatchName(kibana types.NamespacedName) string {
 // Only one watch per cluster is registered:
 // - if it already exists with a different secret, it is replaced to watch the new secret.
 // - if the given user secret is nil, the watch is removed.
-func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *commonv1alpha1.SecretRef, kibana types.NamespacedName) error {
-	watchName := secureSettingsWatchName(kibana)
+func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *commonv1alpha1.SecretRef, namespacedName types.NamespacedName) error {
+	watchName := secureSettingsWatchName(namespacedName)
 	if secureSettingsRef == nil {
 		watched.Secrets.RemoveHandlerForKey(watchName)
 		return nil
@@ -104,19 +116,19 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *comm
 	return watched.Secrets.AddHandler(watches.NamedWatch{
 		Name: watchName,
 		Watched: types.NamespacedName{
-			Namespace: kibana.Namespace,
+			Namespace: namespacedName.Namespace,
 			Name:      secureSettingsRef.SecretName,
 		},
-		Watcher: kibana,
+		Watcher: namespacedName,
 	})
 }
 
 // Finalizer removes any dynamic watches on external user created secret.
-func Finalizer(kibana types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
+func Finalizer(name string, namespacedName types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers.kibana.k8s.elastic.co",
+		Name: fmt.Sprintf("secure-settings.finalizers.%s.k8s.elastic.co", name),
 		Execute: func() error {
-			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(kibana))
+			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
 			return nil
 		},
 	}

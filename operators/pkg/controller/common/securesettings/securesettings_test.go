@@ -11,6 +11,7 @@ import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	watches2 "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
+	kbvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +86,18 @@ func TestResources(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
 			watches := watches2.NewDynamicWatches()
 			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			wantVolumes, wantContainers, wantVersion, err := Resources(tt.client, recorder, watches, tt.kb)
+			wantVolumes, wantContainers, wantVersion, err := Resources(
+				tt.client,
+				recorder,
+				watches,
+				"kibana-keystore",
+				&tt.kb,
+				k8s.ExtractNamespacedName(&tt.kb),
+				tt.kb.Spec.SecureSettings,
+				kbvolume.SecureSettingsVolumeName,
+				kbvolume.SecureSettingsVolumeMountPath,
+				kbvolume.KibanaDataVolume.VolumeMount(),
+			)
 			require.NoError(t, err)
 			if !reflect.DeepEqual(len(wantVolumes), tt.wantVolumes) {
 				t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)

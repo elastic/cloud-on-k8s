@@ -5,26 +5,43 @@
 package securesettings
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var log = logf.Log.WithName("secure-settings")
 
-// Resources optionally returns a volume and init container to include in Kibana pods,
-// in order to create a Keystore from secure settings referenced in the Kibana spec.
+// Resources optionally returns a volume and init container to include in pods,
+// in order to create a keystore from secure settings referenced in the spec of the custom resource.
 func Resources(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	kb v1alpha1.Kibana,
+	keystoreBinaryName string,
+	owner runtime.Object,
+	namespacedName types.NamespacedName,
+	secureSettingsSecretsRef *commonv1alpha1.SecretRef,
+	secureSettingsVolumeName string,
+	secureSettingsVolumeMountPath string,
+	dataVolumeMount corev1.VolumeMount,
 ) ([]corev1.Volume, []corev1.Container, string, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, kb)
+	secretVolume, version, err := secureSettingsVolume(
+		c,
+		recorder,
+		watches,
+		owner,
+		namespacedName,
+		secureSettingsVolumeName,
+		secureSettingsVolumeMountPath,
+		secureSettingsSecretsRef,
+	)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -33,8 +50,13 @@ func Resources(
 		return nil, nil, "", nil
 	}
 
-	// build an init container to create Kibana keystore from the secure settings volume
-	initContainer := initContainer(*secretVolume)
+	// build an init container to create the keystore from the secure settings volume
+	initContainer := initContainer(
+		*secretVolume,
+		secureSettingsVolumeMountPath,
+		dataVolumeMount,
+		keystoreBinaryName,
+	)
 
 	return []corev1.Volume{secretVolume.Volume()}, []corev1.Container{initContainer}, version, nil
 }

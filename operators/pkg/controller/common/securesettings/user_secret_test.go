@@ -91,7 +91,15 @@ func Test_secureSettingsVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
-			vol, version, err := secureSettingsVolume(tt.c, recorder, tt.w, tt.kb)
+			vol, version, err := secureSettingsVolume(tt.c,
+				recorder,
+				tt.w,
+				&tt.kb,
+				k8s.ExtractNamespacedName(&tt.kb),
+				kbvolume.SecureSettingsVolumeName,
+				kbvolume.SecureSettingsVolumeMountPath,
+				tt.kb.Spec.SecureSettings,
+			)
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(vol, tt.wantVolume) {
