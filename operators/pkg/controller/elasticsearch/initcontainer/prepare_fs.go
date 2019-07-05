@@ -5,11 +5,9 @@
 package initcontainer
 
 import (
-	"fmt"
 	"path"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	volume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
@@ -19,7 +17,7 @@ import (
 )
 
 const (
-	transportCertificatesVolumeMountPath = "/mnt/elastic-internal/transport-certificates"
+	initContainerTransportCertificatesVolumeMountPath = "/mnt/elastic-internal/transport-certificates"
 )
 
 // Volumes that are shared between the prepare-fs init container and the ES container
@@ -35,7 +33,7 @@ var (
 	EsConfigSharedVolume = SharedVolume{
 		Name:                   "elastic-internal-elasticsearch-config-local",
 		InitContainerMountPath: "/mnt/elastic-internal/elasticsearch-config-local",
-		EsContainerMountPath:   "/usr/share/elasticsearch/config",
+		EsContainerMountPath:   esvolume.ConfigVolumeMountPath,
 	}
 
 	// EsPluginsSharedVolume contains the ES plugins/ directory
@@ -93,7 +91,7 @@ func NewPrepareFSInitContainer(
 	// will attempt to move all the files under the configuration directory to a different volume, and it should not
 	// be attempting to move files from this secret volume mount (any attempt to do so will be logged as errors).
 	certificatesVolumeMount := transportCertificatesVolume.VolumeMount()
-	certificatesVolumeMount.MountPath = transportCertificatesVolumeMountPath
+	certificatesVolumeMount.MountPath = initContainerTransportCertificatesVolumeMountPath
 
 	scriptsVolume := volume.NewConfigMapVolumeWithMode(
 		name.ScriptsConfigMap(clusterName),
@@ -108,6 +106,11 @@ func NewPrepareFSInitContainer(
 		Name:            prepareFilesystemContainerName,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
+		},
+		Env: []corev1.EnvVar{
+			{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+			}},
 		},
 		Command: []string{"bash", "-c", path.Join(esvolume.ScriptsVolumeMountPath, PrepareFsScriptConfigKey)},
 		VolumeMounts: append(
@@ -130,9 +133,17 @@ func RenderPrepareFsScript() (string, error) {
 			esvolume.ElasticsearchDataMountPath,
 			esvolume.ElasticsearchLogsMountPath,
 		},
-		TransportCertificatesKeyPath: fmt.Sprintf(
-			"%s/%s",
-			transportCertificatesVolumeMountPath,
-			certificates.KeyFileName),
+		InitContainerTransportCertificatesSecretVolumeMountPath: initContainerTransportCertificatesVolumeMountPath,
+		InitContainerNodeTransportCertificatesKeyPath: path.Join(
+			EsConfigSharedVolume.InitContainerMountPath,
+			esvolume.NodeTransportCertificatePathSegment,
+			esvolume.NodeTransportCertificateKeyFile,
+		),
+		InitContainerNodeTransportCertificatesCertPath: path.Join(
+			EsConfigSharedVolume.InitContainerMountPath,
+			esvolume.NodeTransportCertificatePathSegment,
+			esvolume.NodeTransportCertificateCertFile,
+		),
+		TransportCertificatesSecretVolumeMountPath: esvolume.TransportCertificatesSecretVolumeMountPath,
 	})
 }

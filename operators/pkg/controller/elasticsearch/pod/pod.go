@@ -121,3 +121,12 @@ func PodMapToNames(pods map[string]corev1.Pod) []string {
 	}
 	return names
 }
+
+// PodsByName returns a map of pod names to pods
+func PodsByName(pods []corev1.Pod) map[string]corev1.Pod {
+	podMap := make(map[string]corev1.Pod, len(pods))
+	for _, pod := range pods {
+		podMap[pod.Name] = pod
+	}
+	return podMap
+}

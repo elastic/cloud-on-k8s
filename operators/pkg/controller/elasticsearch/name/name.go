@@ -22,17 +22,17 @@ const (
 	// podRandomSuffixLength represents the length of the random suffix that is appended in NewPodName.
 	podRandomSuffixLength = 10
 
-	configSecretSuffix          = "config"
-	secureSettingsSecretSuffix  = "secure-settings"
-	certsSecretSuffix           = "certs"
-	httpServiceSuffix           = "http"
-	elasticUserSecretSuffix     = "elastic-user"
-	xpackFileRealmSecretSuffix  = "xpack-file-realm"
-	internalUsersSecretSuffix   = "internal-users"
-	unicastHostsConfigMapSuffix = "unicast-hosts"
-	licenseSecretSuffix         = "license"
-	defaultPodDisruptionBudget  = "default"
-	scriptsConfigMapSuffix      = "scripts"
+	configSecretSuffix                = "config"
+	secureSettingsSecretSuffix        = "secure-settings"
+	httpServiceSuffix                 = "http"
+	elasticUserSecretSuffix           = "elastic-user"
+	xpackFileRealmSecretSuffix        = "xpack-file-realm"
+	internalUsersSecretSuffix         = "internal-users"
+	unicastHostsConfigMapSuffix       = "unicast-hosts"
+	licenseSecretSuffix               = "license"
+	defaultPodDisruptionBudget        = "default"
+	scriptsConfigMapSuffix            = "scripts"
+	transportCertificatesSecretSuffix = "transport-certificates"
 )
 
 // ESNamer is a Namer that is configured with the defaults for resources related to an ES cluster.
@@ -90,8 +90,8 @@ func SecureSettingsSecret(esName string) string {
 	return ESNamer.Suffix(esName, secureSettingsSecretSuffix)
 }
 
-func TransportCertsSecret(podName string) string {
-	return esNoDefaultSuffixesNamer.Suffix(podName, certsSecretSuffix)
+func TransportCertificatesSecret(esName string) string {
+	return ESNamer.Suffix(esName, transportCertificatesSecretSuffix)
 }
 
 func HTTPService(esName string) string {

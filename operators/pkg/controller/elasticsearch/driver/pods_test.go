@@ -151,19 +151,11 @@ func Test_createElasticsearchPod(t *testing.T) {
 	err = client.Get(k8s.ExtractNamespacedName(&pod), &pod)
 	require.NoError(t, err)
 
-	// should have a volume for transport certs (existing one replaced)
-	found := false
-	for _, v := range pod.Spec.Volumes {
-		if v.Name == esvolume.TransportCertificatesSecretVolumeName {
-			require.NotEqual(t, "should-be-replaced", v.Secret.SecretName)
-			found = true
-		}
-	}
-	require.True(t, found)
 	// should have a volume for config (existing one replaced)
-	found = false
+	found := false
+	configSecretVolumeName := settings.ConfigSecretVolume(pod.Name).Name()
 	for _, v := range pod.Spec.Volumes {
-		if v.Name == esvolume.TransportCertificatesSecretVolumeName {
+		if v.Name == configSecretVolumeName {
 			require.NotEqual(t, "should-be-replaced", v.Secret.SecretName)
 			found = true
 		}

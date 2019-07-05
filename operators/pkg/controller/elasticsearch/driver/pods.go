@@ -7,16 +7,8 @@ package driver
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates/transport"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
@@ -24,9 +16,13 @@ import (
 	pvcutils "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // createElasticsearchPod creates the given elasticsearch pod
@@ -78,26 +74,6 @@ func createElasticsearchPod(
 		}
 		pod = replaceVolume(pod, vol)
 	}
-
-	// create the transport certificates secret for this pod because it must exist before we're able to create the
-	// pod
-	log.Info("Ensuring that transport certificate secret exists for pod", "pod", pod.Name)
-	transportCertificatesSecret, err := transport.EnsureTransportCertificateSecretExists(
-		c,
-		scheme,
-		es,
-		pod,
-	)
-	if err != nil {
-		return err
-	}
-
-	// we finally have the transport certificates secret made, so we can inject the secret volume into the pod
-	transportCertsVolume := volume.NewSecretVolumeWithMountPath(
-		transportCertificatesSecret.Name,
-		esvolume.TransportCertificatesSecretVolumeName,
-		esvolume.TransportCertificatesSecretVolumeMountPath).Volume()
-	pod = replaceVolume(pod, transportCertsVolume)
 
 	// create the config volume for this pod, now that we have a proper name for the pod
 	if err := settings.ReconcileConfig(c, es, pod, podSpecCtx.Config); err != nil {
@@ -151,6 +127,12 @@ func getOrCreatePVC(pod *corev1.Pod,
 		if err != nil {
 			return nil, err
 		}
+
+		// update the hostname if we defaulted it earlier
+		if pod.Spec.Hostname == pod.Name {
+			pod.Spec.Hostname = podName
+		}
+
 		pod.Name = podName
 		log.Info("Reusing PVC", "pod", pod.Name, "pvc", pvc.Name)
 		return pvc, nil
