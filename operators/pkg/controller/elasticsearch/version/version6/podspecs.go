@@ -37,15 +37,15 @@ func ExpectedPodSpecs(
 	return version.NewExpectedPodSpecs(
 		es,
 		paramsTmpl,
-		newEnvironmentVars,
+		NewEnvironmentVars,
 		settings.NewMergedESConfig,
 		initcontainer.NewInitContainers,
 		operatorImage,
 	)
 }
 
-// newEnvironmentVars returns the environment vars to be associated to a pod
-func newEnvironmentVars(
+// NewEnvironmentVars returns the environment vars to be associated to a pod
+func NewEnvironmentVars(
 	p pod.NewPodSpecParams,
 	httpCertificatesVolume volume.SecretVolume,
 	keystoreUserSecretVolume volume.SecretVolume,

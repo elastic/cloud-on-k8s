@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -25,20 +24,20 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pdb"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version6"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
@@ -192,7 +191,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	podsState := mutation.NewPodsState(*resourcesState, observedState)
+	//podsState := mutation.NewPodsState(*resourcesState, observedState)
 
 	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods.Pods()); err != nil {
 		return results.WithError(err)
@@ -213,58 +212,58 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	namespacedName := k8s.ExtractNamespacedName(&es)
-
-	// There might be some ongoing creations and deletions our k8s client cache
-	// hasn't seen yet. In such case, requeue until we are in-sync.
-	// Otherwise, we could end up re-creating multiple times the same pod with
-	// different generated names through multiple reconciliation iterations.
-	if !d.PodsExpectations.Fulfilled(namespacedName) {
-		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
-		return results.WithResult(defaultRequeue)
-	}
-
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	log.Info(
-		"Calculated all required changes",
-		"to_create:", len(changes.ToCreate),
-		"to_keep:", len(changes.ToKeep),
-		"to_delete:", len(changes.ToDelete),
-	)
-
-	// restart ES processes that need to be restarted before going on with other changes
-	done, err := restart.HandleESRestarts(
-		restart.RestartContext{
-			Cluster:        es,
-			EventsRecorder: reconcileState.Recorder,
-			K8sClient:      d.Client,
-			Changes:        *changes,
-			Dialer:         d.Dialer,
-			EsClient:       esClient,
-		},
-	)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !done {
-		log.V(1).Info("Pods restart is not over yet, re-queueing.")
-		return results.WithResult(defaultRequeue)
-	}
-
-	// figure out what changes we can perform right now
-	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	log.Info(
-		"Calculated performable changes",
-		"schedule_for_creation_count", len(performableChanges.ToCreate),
-		"schedule_for_deletion_count", len(performableChanges.ToDelete),
-	)
+	//
+	//// There might be some ongoing creations and deletions our k8s client cache
+	//// hasn't seen yet. In such case, requeue until we are in-sync.
+	//// Otherwise, we could end up re-creating multiple times the same pod with
+	//// different generated names through multiple reconciliation iterations.
+	//if !d.PodsExpectations.Fulfilled(namespacedName) {
+	//	log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
+	//	return results.WithResult(defaultRequeue)
+	//}
+	//
+	//changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	//if err != nil {
+	//	return results.WithError(err)
+	//}
+	//
+	//log.Info(
+	//	"Calculated all required changes",
+	//	"to_create:", len(changes.ToCreate),
+	//	"to_keep:", len(changes.ToKeep),
+	//	"to_delete:", len(changes.ToDelete),
+	//)
+	//
+	//// restart ES processes that need to be restarted before going on with other changes
+	//done, err := restart.HandleESRestarts(
+	//	restart.RestartContext{
+	//		Cluster:        es,
+	//		EventsRecorder: reconcileState.Recorder,
+	//		K8sClient:      d.Client,
+	//		Changes:        *changes,
+	//		Dialer:         d.Dialer,
+	//		EsClient:       esClient,
+	//	},
+	//)
+	//if err != nil {
+	//	return results.WithError(err)
+	//}
+	//if !done {
+	//	log.V(1).Info("Pods restart is not over yet, re-queueing.")
+	//	return results.WithResult(defaultRequeue)
+	//}
+	//
+	//// figure out what changes we can perform right now
+	//performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
+	//if err != nil {
+	//	return results.WithError(err)
+	//}
+	//
+	//log.Info(
+	//	"Calculated performable changes",
+	//	"schedule_for_creation_count", len(performableChanges.ToCreate),
+	//	"schedule_for_deletion_count", len(performableChanges.ToDelete),
+	//)
 
 	results.Apply(
 		"reconcile-cluster-license",
@@ -286,65 +285,131 @@ func (d *defaultDriver) Reconcile(
 			return controller.Result{}, err
 		},
 	)
-
-	if d.clusterInitialMasterNodesEnforcer != nil {
-		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
-		if err != nil {
-			return results.WithError(err)
-		}
-	}
+	//
+	//if d.clusterInitialMasterNodesEnforcer != nil {
+	//	performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
+	//	if err != nil {
+	//		return results.WithError(err)
+	//	}
+	//}
 
 	// Compute seed hosts based on current masters with a podIP
 	if err := settings.UpdateSeedHostsConfigMap(d.Client, d.Scheme, es, resourcesState.AllPods); err != nil {
 		return results.WithError(err)
 	}
 
-	// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
-	// correct value for minimum_master_nodes.
-	// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
-	// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
-	if d.zen1SettingsUpdater != nil {
-		requeue, err := d.zen1SettingsUpdater(
+	// TODO: this is a mess, refactor
+	podTemplateSpecBuilder := func(nodeSpec v1alpha1.NodeSpec) (corev1.PodTemplateSpec, error) {
+		return esversion.BuildPodTemplateSpec(
 			es,
-			d.Client,
-			esClient,
-			resourcesState.AllPods,
-			performableChanges,
-			reconcileState,
+			nodeSpec,
+			pod.NewPodSpecParams{
+				ProbeUser:    internalUsers.ProbeUser.Auth(),
+				KeystoreUser: internalUsers.KeystoreUser.Auth(),
+				UnicastHostsVolume: volume.NewConfigMapVolume(
+					name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
+				),
+				UsersSecretVolume: volume.NewSecretVolumeWithMountPath(
+					user.XPackFileRealmSecretName(es.Name),
+					esvolume.XPackFileRealmVolumeName,
+					esvolume.XPackFileRealmVolumeMountPath,
+				),
+			},
+			version6.NewEnvironmentVars,
+			settings.NewMergedESConfig,
+			initcontainer.NewInitContainers,
+			d.OperatorImage,
 		)
-
-		if err != nil {
-			return results.WithError(err)
-		}
-
-		if requeue {
-			results.WithResult(defaultRequeue)
-		}
 	}
 
-	// List the orphaned PVCs before the Pods are created.
-	// If there are some orphaned PVCs they will be adopted and remove sequentially from the list when Pods are created.
-	orphanedPVCs, err := pvc.FindOrphanedVolumeClaims(d.Client, es)
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, namespacedName)
 	if err != nil {
 		return results.WithError(err)
 	}
 
-	for _, change := range performableChanges.ToCreate {
-		d.PodsExpectations.ExpectCreation(namespacedName)
-		if err := createElasticsearchPod(
-			d.Client,
-			d.Scheme,
-			es,
-			reconcileState,
-			change.Pod,
-			change.PodSpecCtx,
-			orphanedPVCs,
-		); err != nil {
-			// pod was not created, cancel our expectation by marking it observed
-			d.PodsExpectations.CreationObserved(namespacedName)
+	nodeSpecResources, err := nodespec.ExpectedNodesResources(es, podTemplateSpecBuilder)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	// create or update all expected ssets
+	// TODO: safe upgrades
+	for _, nodeSpec := range nodeSpecResources {
+		reconciledSset, err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, nodeSpec.StatefulSet)
+		if err != nil {
 			return results.WithError(err)
 		}
+		if err := settings.ReconcileConfig(d.Client, es.Name, reconciledSset, nodeSpec.Config); err != nil {
+			return results.WithError(err)
+		}
+		// reconcile certs
 	}
+
+	// delete all unexpected ssets
+	for _, actual := range actualStatefulSets {
+		if _, shouldExist := nodeSpecResources.StatefulSets().GetByName(actual.Name); !shouldExist {
+			// TODO: safe node removal
+			if err := d.Client.Delete(&actual); err != nil {
+				return results.WithError(err)
+			}
+		}
+	}
+
+	// TODO:
+	//  - es config checksum
+	//  - safe sset replacement
+	//  - safe node removal (data migration)
+	//  - safe node upgrade (rollingUpdate.Partition + shards allocation)
+	//  - change budget
+	//  - zen1, zen2
+
+	//
+	//// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
+	//// correct value for minimum_master_nodes.
+	//// For instance if a 3 master nodes cluster is updated and a grow-and-shrink strategy of one node is applied then
+	//// minimum_master_nodes is increased from 2 to 3 for new and current nodes.
+	//if d.zen1SettingsUpdater != nil {
+	//	requeue, err := d.zen1SettingsUpdater(
+	//		es,
+	//		d.Client,
+	//		esClient,
+	//		resourcesState.AllPods,
+	//		performableChanges,
+	//		reconcileState,
+	//	)
+	//
+	//	if err != nil {
+	//		return results.WithError(err)
+	//	}
+	//
+	//	if requeue {
+	//		results.WithResult(defaultRequeue)
+	//	}
+	//}
+	//
+	//// List the orphaned PVCs before the Pods are created.
+	//// If there are some orphaned PVCs they will be adopted and remove sequentially from the list when Pods are created.
+	//orphanedPVCs, err := pvc.FindOrphanedVolumeClaims(d.Client, es)
+	//if err != nil {
+	//	return results.WithError(err)
+	//}
+	//
+	//for _, change := range performableChanges.ToCreate {
+	//	d.PodsExpectations.ExpectCreation(namespacedName)
+	//	if err := createElasticsearchPod(
+	//		d.Client,
+	//		d.Scheme,
+	//		es,
+	//		reconcileState,
+	//		change.Pod,
+	//		change.PodSpecCtx,
+	//		orphanedPVCs,
+	//	); err != nil {
+	//		// pod was not created, cancel our expectation by marking it observed
+	//		d.PodsExpectations.CreationObserved(namespacedName)
+	//		return results.WithError(err)
+	//	}
+	//}
 	// passed this point, any pods resource listing should check expectations first
 
 	if !esReachable {
@@ -358,117 +423,118 @@ func (d *defaultDriver) Reconcile(
 
 		return results.WithResult(defaultRequeue)
 	}
-
-	if d.zen2SettingsUpdater != nil {
-		// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
-		if err := d.zen2SettingsUpdater(
-			esClient,
-			*min,
-			*changes,
-			*performableChanges,
-		); err != nil {
-			return results.WithResult(defaultRequeue).WithError(err)
-		}
-	}
-
-	if !changes.HasChanges() {
-		// Current state matches expected state
-		reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
-		return results
-	}
-
-	// Start migrating data away from all pods to be deleted
-	leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete.Pods())
-	if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
-		return results.WithError(errors.Wrap(err, "error during migrate data"))
-	}
-
-	// Shrink clusters by deleting deprecated pods
-	if err = d.attemptPodsDeletion(
-		performableChanges,
-		reconcileState,
-		resourcesState,
-		observedState,
-		results,
-		esClient,
-		es,
-	); err != nil {
-		return results.WithError(err)
-	}
-	// past this point, any pods resource listing should check expectations first
-
-	if changes.HasChanges() && !performableChanges.HasChanges() {
-		// if there are changes we'd like to perform, but none that were performable, we try again later
-		results.WithResult(defaultRequeue)
-	}
+	//
+	//if d.zen2SettingsUpdater != nil {
+	//	// TODO: would prefer to do this after MigrateData iff there's no changes? or is that an premature optimization?
+	//	if err := d.zen2SettingsUpdater(
+	//		esClient,
+	//		*min,
+	//		*changes,
+	//		*performableChanges,
+	//	); err != nil {
+	//		return results.WithResult(defaultRequeue).WithError(err)
+	//	}
+	//}
+	//
+	//if !changes.HasChanges() {
+	//	// Current state matches expected state
+	//	reconcileState.UpdateElasticsearchOperational(*resourcesState, observedState)
+	//	return results
+	//}
+	//
+	//// Start migrating data away from all pods to be deleted
+	//leavingNodeNames := pod.PodListToNames(performableChanges.ToDelete.Pods())
+	//if err = migration.MigrateData(esClient, leavingNodeNames); err != nil {
+	//	return results.WithError(errors.Wrap(err, "error during migrate data"))
+	//}
+	//
+	//// Shrink clusters by deleting deprecated pods
+	//if err = d.attemptPodsDeletion(
+	//	performableChanges,
+	//	reconcileState,
+	//	resourcesState,
+	//	observedState,
+	//	results,
+	//	esClient,
+	//	es,
+	//); err != nil {
+	//	return results.WithError(err)
+	//}
+	//// past this point, any pods resource listing should check expectations first
+	//
+	//if changes.HasChanges() && !performableChanges.HasChanges() {
+	//	// if there are changes we'd like to perform, but none that were performable, we try again later
+	//	results.WithResult(defaultRequeue)
+	//}
 
 	reconcileState.UpdateElasticsearchState(*resourcesState, observedState)
 
 	return results
 }
 
-// attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
-func (d *defaultDriver) attemptPodsDeletion(
-	changes *mutation.PerformableChanges,
-	reconcileState *reconcile.State,
-	resourcesState *reconcile.ResourcesState,
-	observedState observer.State,
-	results *reconciler.Results,
-	esClient esclient.Client,
-	elasticsearch v1alpha1.Elasticsearch,
-) error {
-	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
-	copy(newState, resourcesState.CurrentPods.Pods())
-	for _, pod := range changes.ToDelete.Pods() {
-		newState = removePodFromList(newState, pod)
-		preDelete := func() error {
-			if d.zen1SettingsUpdater != nil {
-				requeue, err := d.zen1SettingsUpdater(
-					elasticsearch,
-					d.Client,
-					esClient,
-					newState,
-					changes,
-					reconcileState)
-
-				if err != nil {
-					return err
-				}
-
-				if requeue {
-					results.WithResult(defaultRequeue)
-				}
-			}
-			return nil
-		}
-
-		// do not delete a pod or expect a deletion if a data migration is in progress
-		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
-		if isMigratingData {
-			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
-			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
-			results.WithResult(defaultRequeue)
-			continue
-		}
-
-		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
-		d.PodsExpectations.ExpectDeletion(namespacedName)
-		result, err := deleteElasticsearchPod(
-			d.Client,
-			reconcileState,
-			*resourcesState,
-			pod,
-			preDelete,
-		)
-		if err != nil {
-			// pod was not deleted, cancel our expectation by marking it observed
-			d.PodsExpectations.DeletionObserved(namespacedName)
-			return err
-		}
-		results.WithResult(result)
-	}
-	return nil
-}
+//
+//// attemptPodsDeletion deletes a list of pods after checking there is no migrating data for each of them
+//func (d *defaultDriver) attemptPodsDeletion(
+//	changes *mutation.PerformableChanges,
+//	reconcileState *reconcile.State,
+//	resourcesState *reconcile.ResourcesState,
+//	observedState observer.State,
+//	results *reconciler.Results,
+//	esClient esclient.Client,
+//	elasticsearch v1alpha1.Elasticsearch,
+//) error {
+//	newState := make([]corev1.Pod, len(resourcesState.CurrentPods))
+//	copy(newState, resourcesState.CurrentPods.Pods())
+//	for _, pod := range changes.ToDelete.Pods() {
+//		newState = removePodFromList(newState, pod)
+//		preDelete := func() error {
+//			if d.zen1SettingsUpdater != nil {
+//				requeue, err := d.zen1SettingsUpdater(
+//					elasticsearch,
+//					d.Client,
+//					esClient,
+//					newState,
+//					changes,
+//					reconcileState)
+//
+//				if err != nil {
+//					return err
+//				}
+//
+//				if requeue {
+//					results.WithResult(defaultRequeue)
+//				}
+//			}
+//			return nil
+//		}
+//
+//		// do not delete a pod or expect a deletion if a data migration is in progress
+//		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
+//		if isMigratingData {
+//			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
+//			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
+//			results.WithResult(defaultRequeue)
+//			continue
+//		}
+//
+//		namespacedName := k8s.ExtractNamespacedName(&elasticsearch)
+//		d.PodsExpectations.ExpectDeletion(namespacedName)
+//		result, err := deleteElasticsearchPod(
+//			d.Client,
+//			reconcileState,
+//			*resourcesState,
+//			pod,
+//			preDelete,
+//		)
+//		if err != nil {
+//			// pod was not deleted, cancel our expectation by marking it observed
+//			d.PodsExpectations.DeletionObserved(namespacedName)
+//			return err
+//		}
+//		results.WithResult(result)
+//	}
+//	return nil
+//}
 
 // removePodFromList removes a single pod from the list, matching by pod name.
 func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {

@@ -89,7 +89,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume,
+			got := NewEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume,
 				tt.args.keystoreUserVolume, tt.args.secureSettingsVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
