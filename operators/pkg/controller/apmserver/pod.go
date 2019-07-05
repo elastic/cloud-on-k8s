@@ -5,14 +5,17 @@
 package apmserver
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
+	"path/filepath"
+	"strings"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -22,6 +25,9 @@ const (
 	defaultImageRepositoryAndName string = "docker.elastic.co/apm/apm-server"
 
 	SecretTokenKey string = "secret-token"
+
+	DataVolumePath   = ApmBaseDir + "/data"
+	ConfigVolumePath = ApmBaseDir + "/config"
 )
 
 var readinessProbe = corev1.Probe{
@@ -50,7 +56,7 @@ var command = []string{
 	"-c", "config/config-secret/apm-server.yml",
 }
 
-var configVolume = volume.NewEmptyDirVolume("config-volume", "/usr/share/apm-server/config")
+var configVolume = volume.NewEmptyDirVolume("config-volume", ConfigVolumePath)
 
 type PodSpecParams struct {
 	Version         string
@@ -60,17 +66,19 @@ type PodSpecParams struct {
 
 	ApmServerSecret corev1.Secret
 	ConfigSecret    corev1.Secret
+
+	keystoreResources *keystore.Resources
 }
 
 func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
+func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec {
 	configSecretVolume := volume.NewSecretVolumeWithMountPath(
 		p.ConfigSecret.Name,
 		"config",
-		"/usr/share/apm-server/config/config-secret",
+		filepath.Join(ConfigVolumePath, "config-secret"),
 	)
 
 	env := []corev1.EnvVar{
@@ -91,7 +99,7 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		},
 	}
 
-	return defaults.NewPodTemplateBuilder(
+	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, v1alpha1.APMServerContainerName).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
 		WithReadinessProbe(readinessProbe).
@@ -99,6 +107,18 @@ func NewPodSpec(p PodSpecParams) corev1.PodTemplateSpec {
 		WithCommand(command).
 		WithVolumes(configVolume.Volume(), configSecretVolume.Volume()).
 		WithVolumeMounts(configVolume.VolumeMount(), configSecretVolume.VolumeMount()).
-		WithEnv(env...).
-		PodTemplate
+		WithEnv(env...)
+
+	if p.keystoreResources != nil {
+		dataVolume := keystore.DataVolume(
+			strings.ToLower(as.Kind),
+			DataVolumePath,
+		)
+		builder.WithInitContainers(p.keystoreResources.InitContainer).
+			WithVolumes(p.keystoreResources.Volume, dataVolume.Volume()).
+			WithVolumeMounts(dataVolume.VolumeMount()).
+			WithInitContainerDefaults()
+	}
+
+	return builder.PodTemplate
 }

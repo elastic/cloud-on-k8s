@@ -6,7 +6,6 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
@@ -62,7 +61,7 @@ type BackendElasticsearch struct {
 	URL string `json:"url"`
 
 	// Auth configures authentication for Kibana to use.
-	Auth ElasticsearchAuth `json:"auth,omitempty"`
+	Auth commonv1alpha1.ElasticsearchAuth `json:"auth,omitempty"`
 
 	// CertificateAuthorities names a secret that contains a CA file entry to use.
 	CertificateAuthorities commonv1alpha1.SecretRef `json:"certificateAuthorities,omitempty"`
@@ -71,26 +70,6 @@ type BackendElasticsearch struct {
 // IsConfigured returns true if the backend configuration is populated with non-default values.
 func (b BackendElasticsearch) IsConfigured() bool {
 	return b.URL != "" && b.Auth.IsConfigured() && b.CertificateAuthorities.SecretName != ""
-}
-
-// ElasticsearchAuth contains auth config for Kibana to use with an Elasticsearch cluster
-type ElasticsearchAuth struct {
-	// Inline is auth provided as plaintext inline credentials.
-	Inline       *ElasticsearchInlineAuth `json:"inline,omitempty"`
-	SecretKeyRef *v1.SecretKeySelector    `json:"secret,omitempty"`
-}
-
-// IsConfigured returns true if one of the possible auth mechanisms is configured.
-func (ea ElasticsearchAuth) IsConfigured() bool {
-	return ea.Inline != nil || ea.SecretKeyRef != nil
-}
-
-// ElasticsearchInlineAuth is a basic username/password combination.
-type ElasticsearchInlineAuth struct {
-	// User is the username to use.
-	Username string `json:"username"`
-	// Password is the password to use.
-	Password string `json:"password"`
 }
 
 // KibanaHealth expresses the status of the Kibana instances.
@@ -116,11 +95,19 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 }
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
-func (e Kibana) IsMarkedForDeletion() bool {
-	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
+func (k Kibana) IsMarkedForDeletion() bool {
+	if k.DeletionTimestamp.IsZero() { // already handles nil pointer
 		return false
 	}
 	return true
+}
+
+func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
+	return k.Spec.Elasticsearch.Auth
+}
+
+func (k *Kibana) SecureSettings() *commonv1alpha1.SecretRef {
+	return k.Spec.SecureSettings
 }
 
 // +genclient
