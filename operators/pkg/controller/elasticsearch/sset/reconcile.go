@@ -13,9 +13,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet) (appsv1.StatefulSet, error) {
+func ReconcileStatefulSet(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch, expected appsv1.StatefulSet) error {
 	var reconciled appsv1.StatefulSet
-	err := reconciler.ReconcileResource(reconciler.Params{
+	return reconciler.ReconcileResource(reconciler.Params{
 		Client:     c,
 		Scheme:     scheme,
 		Owner:      &es,

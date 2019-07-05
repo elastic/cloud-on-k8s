@@ -5,61 +5,71 @@
 package sset
 
 import (
-	"k8s.io/apimachinery/pkg/types"
-
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-func HeadlessService(ssetName string) corev1.Service {
+// HeadlessServiceName returns the name of the headless service for the given StatefulSet.
+func HeadlessServiceName(ssetName string) string {
+	// just use the sset name
+	return ssetName
+}
+
+// HeadlessService returns a headless service for the given StatefulSet
+func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   ssetName,
-			Labels: StatefulSetSelector(ssetName),
+			Namespace: es.Namespace,
+			Name:      HeadlessServiceName(ssetName),
+			Labels:    label.NewStatefulSetLabels(es, ssetName),
 		},
 		Spec: corev1.ServiceSpec{
 			Type:      corev1.ServiceTypeClusterIP,
 			ClusterIP: corev1.ClusterIPNone,
-			Selector:  StatefulSetSelector(ssetName),
+			Selector:  label.NewStatefulSetLabels(es, ssetName),
 		},
 	}
 }
 
-func StatefulSetSelector(ssetName string) map[string]string {
-	return map[string]string{
-		label.StatefulSetNameLabelName: ssetName,
-	}
-}
+func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, cfg settings.CanonicalConfig, podTemplateBuilder version.PodTemplateSpecBuilder) (appsv1.StatefulSet, error) {
+	statefulSetName := name.StatefulSet(es.Name, nodes.Name)
 
-func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, podTemplateBuilder version.PodTemplateSpecBuilder) (appsv1.StatefulSet, error) {
-	podTemplate, err := podTemplateBuilder(nodes)
+	// ssetSelector is used to match the sset pods
+	ssetSelector := label.NewStatefulSetLabels(es, statefulSetName)
+
+	// add default PVCs to the node spec
+	nodes.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+		nodes.VolumeClaimTemplates, nodes.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
+	)
+	// build pod template
+	podTemplate, err := podTemplateBuilder(nodes, cfg)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
-	statefulSetName := name.StatefulSet(es.Name, nodes.Name)
 
-	// make sure all labels from the sset selector are applied to the pod template
-	selector := StatefulSetSelector(statefulSetName)
-	for k, v := range selector {
-		podTemplate.Labels[k] = v
+	// build sset labels on top of the selector
+	// TODO: inherit user-provided labels and annotations from the CRD?
+	ssetLabels := make(map[string]string)
+	for k, v := range ssetSelector {
+		ssetLabels[k] = v
 	}
-
-	labels := StatefulSetSelector(statefulSetName)
-	labels[label.ClusterNameLabelName] = es.Name
 
 	sset := appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: es.Namespace,
 			Name:      statefulSetName,
-			Labels:    labels,
-			// TODO: inherit labels and annotations from the CRD
+			Labels:    ssetLabels,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			// we manage the partition ordinal to orchestrate nodes upgrades
@@ -74,10 +84,10 @@ func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, podTempl
 			PodManagementPolicy: appsv1.ParallelPodManagement,
 			// use default revision history limit
 			RevisionHistoryLimit: nil,
-			// build a headless service per statefulset, matching the statefulset name label
-			ServiceName: HeadlessService(statefulSetName).Name,
+			// build a headless service per StatefulSet, matching the StatefulSet labels
+			ServiceName: HeadlessServiceName(statefulSetName),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: StatefulSetSelector(statefulSetName),
+				MatchLabels: ssetSelector,
 			},
 
 			Replicas:             &nodes.NodeCount,

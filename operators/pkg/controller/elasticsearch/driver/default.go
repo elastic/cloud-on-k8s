@@ -327,7 +327,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	nodeSpecResources, err := nodespec.ExpectedNodesResources(es, podTemplateSpecBuilder)
+	nodeSpecResources, err := nodespec.BuildExpectedResources(es, podTemplateSpecBuilder)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -356,14 +356,15 @@ func (d *defaultDriver) Reconcile(
 	// create or update all expected ssets
 	// TODO: safe upgrades
 	for _, nodeSpec := range nodeSpecResources {
-		reconciledSset, err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, nodeSpec.StatefulSet)
-		if err != nil {
+		if err := settings.ReconcileConfig(d.Client, es, nodeSpec.StatefulSet.Name, nodeSpec.Config); err != nil {
 			return results.WithError(err)
 		}
-		if err := settings.ReconcileConfig(d.Client, es.Name, reconciledSset, nodeSpec.Config); err != nil {
+		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpec.HeadlessService, &es); err != nil {
 			return results.WithError(err)
 		}
-		// reconcile certs
+		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, nodeSpec.StatefulSet); err != nil {
+			return results.WithError(err)
+		}
 	}
 
 	// delete all unexpected ssets
