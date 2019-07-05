@@ -332,6 +332,27 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
+	// TODO: handle zen2 initial master nodes more cleanly
+	//  should be empty once cluster is bootstraped
+	var initialMasters []string
+	// TODO: refactor/move
+	for _, res := range nodeSpecResources {
+		cfg, err := res.Config.Unpack()
+		if err != nil {
+			return results.WithError(err)
+		}
+		if cfg.Node.Master {
+			for i := 0; i < int(*res.StatefulSet.Spec.Replicas); i++ {
+				initialMasters = append(initialMasters, fmt.Sprintf("%s-%d", res.StatefulSet.Name, i))
+			}
+		}
+	}
+	for i := range nodeSpecResources {
+		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, initialMasters...); err != nil {
+			return results.WithError(err)
+		}
+	}
+
 	// create or update all expected ssets
 	// TODO: safe upgrades
 	for _, nodeSpec := range nodeSpecResources {
