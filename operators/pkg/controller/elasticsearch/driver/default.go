@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/securesettings"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -152,10 +153,6 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
-		return results.WithError(err)
-	}
-
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -223,7 +220,24 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	// setup a keystore with secure settings in an init container, if specified by the user
+	secureSettings, err := securesettings.Resources(
+		d.Client,
+		d.Recorder,
+		d.DynamicWatches,
+		"elasticsearch-keystore",
+		&es,
+		namespacedName,
+		es.Spec.SecureSettings,
+		esvolume.SecureSettingsVolumeName,
+		esvolume.SecureSettingsVolumeMountPath,
+		initcontainer.EsConfigSharedVolume.EsContainerVolumeMount(),
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, secureSettings)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -486,6 +500,7 @@ func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
+	secureSettings securesettings.SecureSettings,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
@@ -495,6 +510,7 @@ func (d *defaultDriver) calculateChanges(
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
+			SecureSettings: secureSettings,
 		},
 		d.OperatorImage,
 	)

@@ -15,6 +15,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/securesettings"
 	commonversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
@@ -22,7 +23,6 @@ import (
 	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -210,7 +210,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	if err := r.finalizers.Handle(&es, r.finalizersFor(es, r.dynamicWatches)...); err != nil {
+	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
 		return results.WithError(err)
 	}
 
@@ -235,8 +235,9 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
-		Client: r.Client,
-		Scheme: r.scheme,
+		Client:   r.Client,
+		Scheme:   r.scheme,
+		Recorder: r.recorder,
 
 		Version: *ver,
 
@@ -269,15 +270,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 }
 
 // finalizersFor returns the list of finalizers applying to a given es cluster
-func (r *ReconcileElasticsearch) finalizersFor(
-	es elasticsearchv1alpha1.Elasticsearch,
-	watched watches.DynamicWatches,
-) []finalizer.Finalizer {
+func (r *ReconcileElasticsearch) finalizersFor(es elasticsearchv1alpha1.Elasticsearch) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
-		settings.SecureSettingsFinalizer(clusterName, watched),
+		securesettings.Finalizer("elasticsearch", k8s.ExtractNamespacedName(&es), r.dynamicWatches),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),
 	}
 }

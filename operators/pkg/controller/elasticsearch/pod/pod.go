@@ -5,6 +5,7 @@
 package pod
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/securesettings"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -95,6 +96,8 @@ type NewPodSpecParams struct {
 	KeystoreUser client.UserAuth
 	// UnicastHostsVolume contains a file with the seed hosts.
 	UnicastHostsVolume volume.ConfigMapVolume
+	// SecureSettings contains k8s resources to load secure settings in the keystore
+	SecureSettings securesettings.SecureSettings
 }
 
 // PodSpecContext contains a pod template and some additional context pertaining to its creation.

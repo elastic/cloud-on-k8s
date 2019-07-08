@@ -26,6 +26,8 @@ const (
 	ClusterNameLabelName = "elasticsearch.k8s.elastic.co/cluster-name"
 	// VersionLabelName used to store the Elasticsearch version of the resource
 	VersionLabelName = "elasticsearch.k8s.elastic.co/version"
+	// SecureSettingsLabelName used to store secure settings checksum
+	SecureSettingsLabelName = "elasticsearch.k8s.elastic.co/secure-settings"
 	// PodNameLabelName used to store the name of the pod on other objects
 	PodNameLabelName = "elasticsearch.k8s.elastic.co/pod-name"
 	// VolumeNameLabelName is the name of the volume e.g. elasticsearch-data a PVC was used for.
@@ -76,11 +78,12 @@ func NewLabels(es types.NamespacedName) map[string]string {
 }
 
 // NewPodLabels returns labels to apply for a new Elasticsearch pod.
-func NewPodLabels(es v1alpha1.Elasticsearch, version version.Version, cfg v1alpha1.ElasticsearchSettings) map[string]string {
+func NewPodLabels(es v1alpha1.Elasticsearch, version version.Version, cfg v1alpha1.ElasticsearchSettings, secureSettingsVersion string) map[string]string {
 	// cluster name based labels
 	labels := NewLabels(k8s.ExtractNamespacedName(&es))
 	// version label
 	labels[VersionLabelName] = version.String()
+	labels[SecureSettingsLabelName] = secureSettingsVersion
 	// node types labels
 	NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
 	NodeTypesDataLabelName.Set(cfg.Node.Data, labels)

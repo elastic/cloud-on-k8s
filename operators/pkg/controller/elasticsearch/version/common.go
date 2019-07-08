@@ -52,6 +52,8 @@ func NewExpectedPodSpecs(
 				ProbeUser:          paramsTmpl.ProbeUser,
 				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
+				// secure settings volume and init container
+				SecureSettings: paramsTmpl.SecureSettings,
 				// pod params
 				NodeSpec: node,
 			}
@@ -89,11 +91,6 @@ func podSpecContext(
 	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.KeystoreUserVolumeName,
 		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
-	)
-	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		name.SecureSettingsSecret(p.Elasticsearch.Name),
-		esvolume.SecureSettingsVolumeName,
-		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		certificates.HTTPCertsInternalSecretName(name.ESNamer, p.Elasticsearch.Name),
@@ -137,7 +134,7 @@ func podSpecContext(
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
 		WithAffinity(pod.DefaultAffinity(p.Elasticsearch.Name)).
-		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
+		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(
@@ -170,7 +167,6 @@ func podSpecContext(
 					probeSecret.Volume(),
 					transportCertificatesVolume.Volume(),
 					keystoreUserSecret.Volume(),
-					secureSettingsVolume.Volume(),
 					httpCertificatesVolume.Volume(),
 					scriptsVolume.Volume(),
 					configVolume.Volume(),
@@ -186,13 +182,21 @@ func podSpecContext(
 				probeSecret.VolumeMount(),
 				transportCertificatesVolume.VolumeMount(),
 				keystoreUserSecret.VolumeMount(),
-				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
 				configVolume.VolumeMount(),
 			)...).
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
+
+	// maybe load secure settings in the keystore
+	if p.SecureSettings.Version != "" {
+		p.SecureSettings.InitContainer.Image = builder.Container.Image
+
+		builder = builder.
+			WithInitContainers(p.SecureSettings.InitContainer).
+			WithVolumes(p.SecureSettings.Volume)
+	}
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
@@ -214,7 +218,7 @@ func podSpecContext(
 	if err != nil {
 		return pod.PodSpecContext{}, err
 	}
-	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
+	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg, p.SecureSettings.Version))
 
 	return pod.PodSpecContext{
 		NodeSpec:    p.NodeSpec,
