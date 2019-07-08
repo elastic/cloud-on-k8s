@@ -22,6 +22,8 @@ Make sure that you have link:https://kubernetes.io/docs/tasks/tools/install-kube
 
 NOTE: If you are using GKE, make sure your user has `cluster-admin` permissions. For more information, see link:https://cloud.google.com/kubernetes-engine/docs/how-to/role-based-access-control#iam-rolebinding-bootstrap[Prerequisites for using Kubernetes RBAC on GKE].
 
+NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is allowed to communicate with nodes port 443. This is required for communication with the Validating Webhook. For more information, see link:https://docs.aws.amazon.com/eks/latest/userguide/sec-group-reqs.html[Recommended inbound traffic].
+
 . Install link:https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/[custom resource definitions] and the operator with its RBAC rules:
 +
 [source,sh]
