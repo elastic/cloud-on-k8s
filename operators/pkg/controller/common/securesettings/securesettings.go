@@ -17,7 +17,8 @@ import (
 
 var log = logf.Log.WithName("secure-settings")
 
-type SecureSettings struct {
+// KeystoreUpdater groups a volume, an init container and a version to load secure settings in a keystore
+type KeystoreUpdater struct {
 	Volume        corev1.Volume
 	InitContainer corev1.Container
 	Version       string
@@ -36,7 +37,7 @@ func Resources(
 	secureSettingsVolumeName string,
 	secureSettingsVolumeMountPath string,
 	dataVolumeMount corev1.VolumeMount,
-) (SecureSettings, error) {
+) (KeystoreUpdater, error) {
 	// setup a volume from the user-provided secure settings secret
 	secretVolume, version, err := secureSettingsVolume(
 		c,
@@ -49,11 +50,11 @@ func Resources(
 		secureSettingsSecretsRef,
 	)
 	if err != nil {
-		return SecureSettings{}, err
+		return KeystoreUpdater{}, err
 	}
 	if secretVolume == nil {
 		// nothing to do
-		return SecureSettings{}, nil
+		return KeystoreUpdater{}, nil
 	}
 
 	// build an init container to create the keystore from the secure settings volume
@@ -64,7 +65,7 @@ func Resources(
 		keystoreBinaryName,
 	)
 
-	return SecureSettings{
+	return KeystoreUpdater{
 		secretVolume.Volume(),
 		initContainer,
 		version,

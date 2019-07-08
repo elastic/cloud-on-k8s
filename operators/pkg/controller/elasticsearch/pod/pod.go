@@ -96,8 +96,8 @@ type NewPodSpecParams struct {
 	KeystoreUser client.UserAuth
 	// UnicastHostsVolume contains a file with the seed hosts.
 	UnicastHostsVolume volume.ConfigMapVolume
-	// SecureSettings contains k8s resources to load secure settings in the keystore
-	SecureSettings securesettings.SecureSettings
+	// KeystoreUpdater contains k8s resources to load secure settings in the keystore
+	KeystoreUpdater securesettings.KeystoreUpdater
 }
 
 // PodSpecContext contains a pod template and some additional context pertaining to its creation.

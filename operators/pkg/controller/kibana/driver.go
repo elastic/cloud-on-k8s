@@ -58,7 +58,7 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
-	secureSettings, err := securesettings.Resources(
+	keystoreUpdater, err := securesettings.Resources(
 		d.client,
 		d.recorder,
 		d.dynamicWatches,
@@ -75,13 +75,13 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	}
 
 	kibanaPodSpec := pod.NewPodTemplateSpec(*kb,
-		[]corev1.Volume{secureSettings.Volume}, []corev1.Container{secureSettings.InitContainer})
+		[]corev1.Volume{keystoreUpdater.Volume}, []corev1.Container{keystoreUpdater.InitContainer})
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
 	// This is done because Kibana does not support updating those without restarting the process.
 	configChecksum := sha256.New224()
-	configChecksum.Write([]byte(secureSettings.Version))
+	configChecksum.Write([]byte(keystoreUpdater.Version))
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {

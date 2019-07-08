@@ -221,7 +221,7 @@ func (d *defaultDriver) Reconcile(
 	}
 
 	// setup a keystore with secure settings in an init container, if specified by the user
-	secureSettings, err := securesettings.Resources(
+	keystoreUpdater, err := securesettings.Resources(
 		d.Client,
 		d.Recorder,
 		d.DynamicWatches,
@@ -237,7 +237,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, secureSettings)
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, keystoreUpdater)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -500,7 +500,7 @@ func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
-	secureSettings securesettings.SecureSettings,
+	keystoreUpdater securesettings.KeystoreUpdater,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
@@ -510,7 +510,7 @@ func (d *defaultDriver) calculateChanges(
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
-			SecureSettings: secureSettings,
+			KeystoreUpdater: keystoreUpdater,
 		},
 		d.OperatorImage,
 	)

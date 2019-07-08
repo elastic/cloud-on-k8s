@@ -53,7 +53,7 @@ func NewExpectedPodSpecs(
 				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
 				// secure settings volume and init container
-				SecureSettings: paramsTmpl.SecureSettings,
+				KeystoreUpdater: paramsTmpl.KeystoreUpdater,
 				// pod params
 				NodeSpec: node,
 			}
@@ -190,12 +190,12 @@ func podSpecContext(
 		WithInitContainers(initContainers...)
 
 	// maybe load secure settings in the keystore
-	if p.SecureSettings.Version != "" {
-		p.SecureSettings.InitContainer.Image = builder.Container.Image
+	if p.KeystoreUpdater.Version != "" {
+		p.KeystoreUpdater.InitContainer.Image = builder.Container.Image
 
 		builder = builder.
-			WithInitContainers(p.SecureSettings.InitContainer).
-			WithVolumes(p.SecureSettings.Volume)
+			WithInitContainers(p.KeystoreUpdater.InitContainer).
+			WithVolumes(p.KeystoreUpdater.Volume)
 	}
 
 	// generate the configuration
@@ -218,7 +218,7 @@ func podSpecContext(
 	if err != nil {
 		return pod.PodSpecContext{}, err
 	}
-	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg, p.SecureSettings.Version))
+	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg, p.KeystoreUpdater.Version))
 
 	return pod.PodSpecContext{
 		NodeSpec:    p.NodeSpec,
