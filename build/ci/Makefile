@@ -103,6 +103,7 @@ ci-release: vault-public-key vault-docker-creds
 
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
 	docker run --rm -t \
         -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         -w $(GO_MOUNT_PATH) \
@@ -111,6 +112,16 @@ yaml-upload: vault-aws-creds
         cloud-on-k8s-ci-release \
         bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
+
+# Run check for existence of release Docker image
+image-check:
+	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
+	docker run --rm -t \
+    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+        -w $(GO_MOUNT_PATH) \
+        -e "TAG_NAME=$(TAG_NAME)" \
+        cloud-on-k8s-ci-release \
+        bash -c "make -C image-checker"
 
 ## -- End-to-end tests job
 

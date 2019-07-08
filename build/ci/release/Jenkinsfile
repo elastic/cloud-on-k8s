@@ -21,11 +21,21 @@ pipeline {
 
     stages {
         stage('Build and push release image') {
+            when {
+                expression {
+                    checkReleaseImageExistence()
+                }
+            }
             steps {
                 sh 'make -C build/ci ci-release'
             }
         }
         stage('Upload yaml to S3') {
+            when {
+                expression {
+                    checkReleaseImageExistence()
+                }
+            }
             steps {
                 sh 'make -C build/ci yaml-upload'
             }
@@ -61,4 +71,10 @@ pipeline {
         }
     }
 
+}
+
+def checkReleaseImageExistence() {
+    def statusCode = sh script:'make -C build/ci image-check', returnStatus:true
+    if (statusCode != 0) return false
+    else return true
 }
