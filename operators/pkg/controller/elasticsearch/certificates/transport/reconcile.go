@@ -37,7 +37,7 @@ func ReconcileTransportCertificateSecrets(
 	services []corev1.Service,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
-	log.Info("Reconciling transport certificate secrets")
+	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "es_name", es.Name)
 
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
@@ -49,7 +49,7 @@ func ReconcileTransportCertificateSecrets(
 
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
-			log.Info("Skipping pod because it has no IP yet", "pod", pod.Name)
+			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "pod_name", pod.Name)
 			continue
 		}
 
@@ -92,7 +92,7 @@ func doReconcileTransportCertificateSecret(
 	if privateKeyData, ok := secret.Data[certificates.KeyFileName]; ok {
 		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
-			log.Error(err, "Unable to parse stored private key", "secret", secret.Name)
+			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
 		} else {
 			needsNewPrivateKey = false
 			privateKey = storedPrivateKey
@@ -116,8 +116,9 @@ func doReconcileTransportCertificateSecret(
 	if issueNewCertificate {
 		log.Info(
 			"Issuing new certificate",
-			"pod", pod.Name,
-			"es", k8s.ExtractNamespacedName(&es),
+			"namespace", pod.Namespace,
+			"pod_name", pod.Name,
+			"es_name", es.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -155,7 +156,7 @@ func doReconcileTransportCertificateSecret(
 	}
 
 	if needsNewPrivateKey || issueNewCertificate || updateTrustedCACerts {
-		log.Info("Updating transport certificate secret", "secret", secret.Name)
+		log.Info("Updating transport certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name, "es_name", es.Name, "pod_name", pod.Name)
 		if err := c.Update(secret); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -169,13 +170,13 @@ func doReconcileTransportCertificateSecret(
 func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certificate {
 	certData, ok := secret.Data[certificates.CertFileName]
 	if !ok {
-		log.Info("No tls certificate found in secret", "secret", secret.Name)
+		log.Info("No tls certificate found in secret", "namespace", secret.Namespace, "secret, name", secret.Name)
 		return nil
 	}
 
 	certs, err := certificates.ParsePEMCerts(certData)
 	if err != nil {
-		log.Error(err, "Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return nil
 	}
 
@@ -188,7 +189,8 @@ func extractTransportCert(secret corev1.Secret, commonName string) *x509.Certifi
 		names = append(names, c.Subject.CommonName)
 	}
 
-	log.Info("Did not found a certificate with the expected common name", "secret", secret.Name, "expected", commonName, "found", names)
+	log.Info("Did not find a certificate with the expected common name", "namespace", secret.Namespace,
+		"secret_name", secret.Name, "expected", commonName, "actual", names)
 
 	return nil
 }
@@ -213,7 +215,7 @@ func shouldIssueNewCertificate(
 
 	generalNames, err := buildGeneralNames(cluster, svcs, pod)
 	if err != nil {
-		log.Error(err, "Cannot create GeneralNames for the TLS certificate", "pod", pod.Name)
+		log.Error(err, "Cannot create GeneralNames for the TLS certificate", "namespace", pod.Namespace, "pod_name", pod.Name, "es_name", cluster.Name)
 		return true
 	}
 
@@ -225,10 +227,13 @@ func shouldIssueNewCertificate(
 	publicKey, publicKeyOk := cert.PublicKey.(*rsa.PublicKey)
 	if !publicKeyOk || publicKey.N.Cmp(privateKey.PublicKey.N) != 0 || publicKey.E != privateKey.PublicKey.E {
 		log.Info(
-			"Certificate belongs do a different public key, should issue new",
+			"Certificate belongs to a different public key, should issue new",
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"secret_name", secret.Name,
+			"namespace", secret.Namespace,
+			"es_name", cluster.Name,
 		)
 		return true
 	}
@@ -241,24 +246,27 @@ func shouldIssueNewCertificate(
 		Intermediates: pool,
 	}
 	if _, err := cert.Verify(verifyOpts); err != nil {
+		// this is not necessarily an error because the certificate may be expired
 		log.Info(
 			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
 			"subject", cert.Subject,
 			"issuer", cert.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"namespace", secret.Namespace,
+			"secret_name", secret.Name,
 		)
 		return true
 	}
 
 	if time.Now().After(cert.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
+		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
 	}
 
 	// compare actual vs. expected SANs
 	expected, err := certificates.MarshalToSubjectAlternativeNamesData(generalNames)
 	if err != nil {
-		log.Error(err, "Cannot marshal subject alternative names", "secret", secret.Name)
+		log.Error(err, "Cannot marshal subject alternative names", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
 	}
 	extraExtensionFound := false
@@ -268,12 +276,12 @@ func shouldIssueNewCertificate(
 		}
 		extraExtensionFound = true
 		if !reflect.DeepEqual(ext.Value, expected) {
-			log.Info("Certificate SANs do not match expected one, should issue new", "secret", secret.Name)
+			log.Info("Certificate SANs do not match expected one, should issue new", "namespace", secret.Namespace, "secret_name", secret.Name)
 			return true
 		}
 	}
 	if !extraExtensionFound {
-		log.Info("SAN extra extension not found, should issue new certificate", "secret", secret.Name)
+		log.Info("SAN extra extension not found, should issue new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
 	}
 

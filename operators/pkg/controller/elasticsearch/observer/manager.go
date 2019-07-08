@@ -53,7 +53,7 @@ func (m *Manager) Observe(cluster types.NamespacedName, caCerts []*x509.Certific
 	case !exists:
 		return m.createObserver(cluster, caCerts, esClient)
 	case exists && (!observer.esClient.Equal(esClient) || !reflect.DeepEqual(observer.caCerts, caCerts)):
-		log.Info("Replacing observer HTTP client", "cluster", cluster)
+		log.Info("Replacing observer HTTP client", "namespace", cluster.Namespace, "es_name", cluster.Name)
 		m.StopObserving(cluster)
 		return m.createObserver(cluster, caCerts, esClient)
 	default:

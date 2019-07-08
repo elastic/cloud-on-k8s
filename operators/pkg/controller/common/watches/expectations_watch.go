@@ -54,7 +54,7 @@ func (p *ExpectationsWatch) Create(evt event.CreateEvent, q workqueue.RateLimiti
 	resource, exists := p.resourceRetriever(evt.Meta)
 	if exists {
 		p.expectations.CreationObserved(resource)
-		log.V(4).Info("Marking creation observed in expectations", "resource", resource)
+		log.V(1).Info("Marking creation observed in expectations", "name", resource.Name, "namespace", resource.Namespace)
 	}
 }
 
@@ -63,7 +63,7 @@ func (p *ExpectationsWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimiti
 	resource, exists := p.resourceRetriever(evt.Meta)
 	if exists {
 		p.expectations.DeletionObserved(resource)
-		log.V(4).Info("Marking deletion observed in expectations", "resource", resource)
+		log.V(1).Info("Marking deletion observed in expectations", "name", resource.Name, "namespace", resource.Namespace)
 	}
 }
 

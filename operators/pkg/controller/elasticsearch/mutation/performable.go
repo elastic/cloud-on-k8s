@@ -59,7 +59,7 @@ func CalculatePerformableChanges(
 	if err != nil {
 		return nil, err
 	}
-	log.V(3).Info("Created change groups", "count", len(changeGroups))
+	log.V(1).Info("Created change groups", "name", AllGroupName, "count", len(changeGroups))
 
 	podRestrictions := NewPodRestrictions(allPodsState)
 

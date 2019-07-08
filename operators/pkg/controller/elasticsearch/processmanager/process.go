@@ -216,7 +216,7 @@ func exitCode(err error) int {
 				exitCode = waitStatus.ExitStatus()
 			}
 		} else {
-			log.Info("Failed to terminate process", "err", err.Error())
+			log.Error(err, "Failed to terminate process")
 			exitCode = 1
 		}
 	}

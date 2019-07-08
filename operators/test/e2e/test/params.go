@@ -33,5 +33,5 @@ func init() {
 	flag.Parse()
 
 	logf.SetLogger(logf.ZapLogger(true))
-	log.Info("Info", "version", ElasticStackVersion, "ns", Namespace)
+	log.Info("Info", "version", ElasticStackVersion, "namespace", Namespace)
 }
