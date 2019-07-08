@@ -27,11 +27,9 @@ func TestUpdateESSecureSettings(t *testing.T) {
 			Namespace: test.Namespace,
 		},
 		Data: map[string][]byte{
-			"key.without.prefix": []byte("string value"),
-			"string.setting1":    []byte("string value"),
-			"string.setting2":    []byte("string value"),
-			"file.setting1":      []byte("file content"),
-			"file.setting2":      []byte("file content"),
+			// this needs to be a valid configuration item, otherwise Kibana refuses to start
+			"path.logs":                    []byte("/tmp/logs"),
+			"xpack.security.audit.enabled": []byte("false"),
 		},
 	}
 
@@ -60,7 +58,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 		WithSteps(test.StepList{
 			// initial secure settings should be there in all nodes keystore
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
-				"file.setting1", "file.setting2", "key.without.prefix", "string.setting1", "string.setting2"}),
+				"path.logs", "xpack.security.audit.enabled"}),
 
 			// modify the secure settings secret
 			test.Step{
@@ -68,9 +66,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 				Test: func(t *testing.T) {
 					// remove some keys, add new ones
 					secureSettings.Data = map[string][]byte{
-						"string.setting1":     []byte("new string content"), // the actual value update cannot be checked :(
-						"new.string.setting2": []byte("string content"),
-						"new.file.setting":    []byte("file content"),
+						"path.logs": []byte("/tmp/logs2"), // the actual value update cannot be checked :(
 					}
 					err := k.Client.Update(&secureSettings)
 					require.NoError(t, err)
@@ -79,7 +75,7 @@ func TestUpdateESSecureSettings(t *testing.T) {
 
 			// keystore should be updated accordingly
 			elasticsearch.CheckESKeystoreEntries(k, b.Elasticsearch, []string{
-				"new.file.setting", "new.string.setting2", "string.setting1"}),
+				"path.logs"}),
 
 			// remove the secure settings reference
 			test.Step{
