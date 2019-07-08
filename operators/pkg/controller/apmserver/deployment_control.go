@@ -63,10 +63,9 @@ func (r *ReconcileApmServer) ReconcileDeployment(expected appsv1.Deployment, own
 				!reflect.DeepEqual(expected.Spec.Template.ObjectMeta, reconciled.Spec.Template.ObjectMeta) ||
 				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Name, reconciled.Spec.Template.Spec.Containers[0].Name) ||
 				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Env, reconciled.Spec.Template.Spec.Containers[0].Env) ||
-				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, reconciled.Spec.Template.Spec.Containers[0].Image)
-			// TODO: do something better than reflect.DeepEqual above?
-			// TODO: containers[0] is a bit flaky
-			// TODO: technically not only the Spec may be different, but deployment labels etc.
+				!reflect.DeepEqual(expected.Spec.Template.Spec.Containers[0].Image, reconciled.Spec.Template.Spec.Containers[0].Image) ||
+				!reflect.DeepEqual(expected.Spec.Template.Spec.InitContainers, reconciled.Spec.Template.Spec.InitContainers)
+			// TODO: use a hash
 		},
 		UpdateReconciled: func() {
 			// Update the found object and write the result back if there are any changes

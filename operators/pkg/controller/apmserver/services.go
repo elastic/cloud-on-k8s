@@ -6,8 +6,9 @@ package apmserver
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
+	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
-
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -18,9 +19,9 @@ func NewService(as v1alpha1.ApmServer) *corev1.Service {
 	}
 
 	svc.ObjectMeta.Namespace = as.Namespace
-	svc.ObjectMeta.Name = PseudoNamespacedResourceName(as)
+	svc.ObjectMeta.Name = apmname.HTTPService(as.Name)
 
-	labels := NewLabels(as.Name)
+	labels := labels.NewLabels(as.Name)
 	ports := []corev1.ServicePort{
 		{
 			Protocol: corev1.ProtocolTCP,

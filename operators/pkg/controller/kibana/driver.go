@@ -10,6 +10,7 @@ import (
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
@@ -23,15 +24,23 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	kbname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version6"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/version/version7"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
+
+// initContainersParameters is used to generate the init container that will load the secure settings into a keystore
+var initContainersParameters = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/kibana/bin/kibana-keystore create",
+	KeystoreAddCommand:            "/usr/share/kibana/bin/kibana-keystore add",
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+	DataVolumePath:                volume.DataVolumeMountPath,
+}
 
 type driver struct {
 	client          k8s.Client
@@ -57,18 +66,27 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
-	volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(d.client, d.recorder, d.dynamicWatches, *kb)
+	//volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(d.client, d.recorder, d.dynamicWatches, *kb)
+	keystoreResources, err := keystore.NewResources(
+		d.client,
+		d.recorder,
+		d.dynamicWatches,
+		kb,
+		initContainersParameters,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, volumes, initContainers)
+	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, keystoreResources)
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
 	// This is done because Kibana does not support updating those without restarting the process.
 	configChecksum := sha256.New224()
-	configChecksum.Write([]byte(secureSettingsVersion))
+	if keystoreResources != nil {
+		configChecksum.Write([]byte(keystoreResources.Version))
+	}
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
 	if kb.Spec.Elasticsearch.Auth.SecretKeyRef != nil {

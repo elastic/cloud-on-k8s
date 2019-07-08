@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -898,6 +899,147 @@ func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 			got := b.WithInitContainers(tt.initContainers...).PodTemplate.Spec.InitContainers
 
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestPodTemplateBuilder_WithDefaultResources(t *testing.T) {
+	containerName := "default-container"
+	tests := []struct {
+		name             string
+		PodTemplate      corev1.PodTemplateSpec
+		defaultResources corev1.ResourceRequirements
+		want             corev1.ResourceRequirements
+	}{
+		{
+			name: "no resource set (nil values): use defaults",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+		},
+		{
+			name: "resource limits set: don't use defaults",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "resource requests set: don't use defaults",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{
+									corev1.ResourceMemory: resource.MustParse("4Gi"),
+								},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("4Gi"),
+				},
+			},
+		},
+		{
+			name: "resource requests explicitly empty (not nil): don't use defaults",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Requests: map[corev1.ResourceName]resource.Quantity{},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{},
+			},
+		},
+		{
+			name: "resource limits explicitly empty (not nil): don't use defaults",
+			PodTemplate: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: containerName,
+							Resources: corev1.ResourceRequirements{
+								Limits: map[corev1.ResourceName]resource.Quantity{},
+							},
+						},
+					},
+				},
+			},
+			defaultResources: corev1.ResourceRequirements{
+				Requests: map[corev1.ResourceName]resource.Quantity{
+					corev1.ResourceMemory: resource.MustParse("2Gi"),
+				},
+			},
+			want: corev1.ResourceRequirements{
+				Limits: map[corev1.ResourceName]resource.Quantity{},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewPodTemplateBuilder(tt.PodTemplate, containerName)
+			if got := b.WithResources(tt.defaultResources).Container.Resources; !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("PodTemplateBuilder.WithResources() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
