@@ -177,10 +177,7 @@ generate-all-in-one:
 
 # Deploy an all in one operator against the current k8s cluster
 deploy-all-in-one: GO_TAGS ?= release
-deploy-all-in-one:
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	$(MAKE) docker-build docker-push
-endif
+deploy-all-in-one: docker-build docker-push
 	kubectl apply -f config/all-in-one.yaml
 
 logs-namespace-operator:
