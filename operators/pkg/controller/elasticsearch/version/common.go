@@ -38,55 +38,6 @@ var (
 	}
 )
 
-//
-//// NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
-//func NewExpectedPodSpecs(
-//	es v1alpha1.Elasticsearch,
-//	paramsTmpl pod.NewPodSpecParams,
-//	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
-//	newESConfigFn func(clusterName string, config settings.CanonicalConfig) (settings.CanonicalConfig, error),
-//	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
-//	operatorImage string,
-//) ([]pod.PodSpecContext, error) {
-//	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
-//
-//	for _, node := range es.Spec.Nodes {
-//		// add default PVCs to the node spec
-//		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-//			node.VolumeClaimTemplates, node.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
-//		)
-//
-//		for i := int32(0); i < node.NodeCount; i++ {
-//			params := pod.NewPodSpecParams{
-//				// cluster-wide params
-//				Elasticsearch: es,
-//				// volumes
-//				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
-//				ProbeUser:          paramsTmpl.ProbeUser,
-//				KeystoreUser:       paramsTmpl.KeystoreUser,
-//				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
-//				// pod params
-//				NodeSpec: node,
-//			}
-//			podSpecCtx, err := podSpecContext(
-//				params,
-//				operatorImage,
-//				config,
-//				newEnvironmentVarsFn,
-//				newESConfigFn,
-//				newInitContainersFn,
-//			)
-//			if err != nil {
-//				return nil, err
-//			}
-//
-//			podSpecs = append(podSpecs, podSpecCtx)
-//		}
-//	}
-//
-//	return podSpecs, nil
-//}
-
 // TODO: refactor
 type PodTemplateSpecBuilder func(v1alpha1.NodeSpec, settings.CanonicalConfig) (corev1.PodTemplateSpec, error)
 
@@ -265,38 +216,6 @@ func podSpecContext(
 		PodTemplate: builder.PodTemplate,
 	}, nil
 }
-
-//
-//// NewPod constructs a pod from the given parameters.
-//func NewPod(
-//	es v1alpha1.Elasticsearch,
-//	podSpecCtx pod.PodSpecContext,
-//) corev1.Pod {
-//	// build a pod based on the podSpecCtx template
-//	template := *podSpecCtx.PodTemplate.DeepCopy()
-//	pod := corev1.Pod{
-//		ObjectMeta: template.ObjectMeta,
-//		Spec:       template.Spec,
-//	}
-//
-//	// label the pod with a hash of its template, for comparison purpose,
-//	// before it gets assigned a name
-//	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
-//
-//	// set name & namespace
-//	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-//	pod.Namespace = es.Namespace
-//
-//	// set hostname and subdomain based on pod and cluster names
-//	if pod.Spec.Hostname == "" {
-//		pod.Spec.Hostname = pod.Name
-//	}
-//	if pod.Spec.Subdomain == "" {
-//		pod.Spec.Subdomain = es.Name
-//	}
-//
-//	return pod
-//}
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
 func quantityToMegabytes(q resource.Quantity) int {
