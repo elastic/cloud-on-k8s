@@ -17,6 +17,12 @@ import (
 
 var log = logf.Log.WithName("secure-settings")
 
+type SecureSettings struct {
+	Volume        corev1.Volume
+	InitContainer corev1.Container
+	Version       string
+}
+
 // Resources optionally returns a volume and init container to include in pods,
 // in order to create a keystore from secure settings referenced in the spec of the custom resource.
 func Resources(
@@ -30,7 +36,7 @@ func Resources(
 	secureSettingsVolumeName string,
 	secureSettingsVolumeMountPath string,
 	dataVolumeMount corev1.VolumeMount,
-) ([]corev1.Volume, []corev1.Container, string, error) {
+) (SecureSettings, error) {
 	// setup a volume from the user-provided secure settings secret
 	secretVolume, version, err := secureSettingsVolume(
 		c,
@@ -43,11 +49,11 @@ func Resources(
 		secureSettingsSecretsRef,
 	)
 	if err != nil {
-		return nil, nil, "", err
+		return SecureSettings{}, err
 	}
 	if secretVolume == nil {
 		// nothing to do
-		return nil, nil, "", nil
+		return SecureSettings{}, nil
 	}
 
 	// build an init container to create the keystore from the secure settings volume
@@ -58,5 +64,9 @@ func Resources(
 		keystoreBinaryName,
 	)
 
-	return []corev1.Volume{secretVolume.Volume()}, []corev1.Container{initContainer}, version, nil
+	return SecureSettings{
+		secretVolume.Volume(),
+		initContainer,
+		version,
+	}, nil
 }

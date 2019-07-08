@@ -86,7 +86,7 @@ func TestResources(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
 			watches := watches2.NewDynamicWatches()
 			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			wantVolumes, wantContainers, wantVersion, err := Resources(
+			wantSecureSettings, err := Resources(
 				tt.client,
 				recorder,
 				watches,
@@ -99,12 +99,15 @@ func TestResources(t *testing.T) {
 				kbvolume.KibanaDataVolume.VolumeMount(),
 			)
 			require.NoError(t, err)
+			wantVolumes := []corev1.Volume{wantSecureSettings.Volume}
 			if !reflect.DeepEqual(len(wantVolumes), tt.wantVolumes) {
 				t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)
 			}
+			wantContainers := []corev1.Container{wantSecureSettings.InitContainer}
 			if !reflect.DeepEqual(len(wantContainers), tt.wantContainers) {
 				t.Errorf("Resources() got1 = %v, want %v", wantContainers, tt.wantContainers)
 			}
+			wantVersion := wantSecureSettings.Version
 			if wantVersion != tt.wantVersion {
 				t.Errorf("Resources() got2 = %v, want %v", wantVersion, tt.wantVersion)
 			}
