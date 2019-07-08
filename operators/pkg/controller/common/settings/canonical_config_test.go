@@ -409,3 +409,42 @@ func TestCanonicalConfig_SetStrings(t *testing.T) {
 		})
 	}
 }
+
+func TestNewCanonicalConfigFrom(t *testing.T) {
+	type args struct {
+		data untypedDict
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *CanonicalConfig
+		wantErr bool
+	}{
+		{
+			name: "should normalize numeric types",
+			args: args{
+				data: map[string]interface{}{
+					"a": float64(1), // after json round trip or deep copy typically a float
+					"b": 1.2,
+				},
+			},
+			want: MustCanonicalConfig(map[string]interface{}{
+				"a": 1,
+				"b": 1.2,
+			}),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewCanonicalConfigFrom(tt.args.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewCanonicalConfigFrom() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if diff := got.Diff(tt.want, nil); len(diff) > 0 {
+				t.Error(diff)
+			}
+		})
+	}
+}
