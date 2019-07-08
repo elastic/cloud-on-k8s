@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
@@ -26,7 +25,6 @@ import (
 )
 
 var testProbeUser = client.UserAuth{Name: "username1", Password: "supersecure"}
-var testKeystoreUser = client.UserAuth{Name: "username2", Password: "supersecure"}
 var testObjectMeta = metav1.ObjectMeta{
 	Name:      "my-es",
 	Namespace: "default",
@@ -37,7 +35,6 @@ func TestNewEnvironmentVars(t *testing.T) {
 		p                      pod.NewPodSpecParams
 		httpCertificatesVolume volume.SecretVolume
 		privateKeyVolume       volume.SecretVolume
-		keystoreUserVolume     volume.SecretVolume
 		secureSettingsVolume   volume.SecretVolume
 	}
 	tests := []struct {
@@ -49,8 +46,7 @@ func TestNewEnvironmentVars(t *testing.T) {
 			name: "2 nodes",
 			args: args{
 				p: pod.NewPodSpecParams{
-					ProbeUser:    testProbeUser,
-					KeystoreUser: testKeystoreUser,
+					ProbeUser: testProbeUser,
 					Elasticsearch: v1alpha1.Elasticsearch{
 						Spec: v1alpha1.ElasticsearchSpec{
 							Version: "7.1.0",
@@ -59,7 +55,6 @@ func TestNewEnvironmentVars(t *testing.T) {
 				},
 				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
 				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
-				keystoreUserVolume:     volume.NewSecretVolumeWithMountPath("creds", "/creds", "/creds"),
 				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
@@ -75,22 +70,15 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
 				{Name: processmanager.EnvTLS, Value: "true"},
+				{Name: processmanager.EnvKeystoreUpdater, Value: "false"},
 				{Name: processmanager.EnvCertPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: processmanager.EnvKeyPath, Value: path.Join("/certs", certificates.KeyFileName)},
-				{Name: keystore.EnvSourceDir, Value: "/secure-settings"},
-				{Name: keystore.EnvReloadCredentials, Value: "true"},
-				{Name: keystore.EnvEsUsername, Value: "username2"},
-				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
-				{Name: keystore.EnvEsCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
-				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
-				{Name: keystore.EnvEsVersion, Value: "7.1.0"},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume,
-				tt.args.keystoreUserVolume, tt.args.secureSettingsVolume)
+			got := newEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
@@ -196,10 +184,10 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodTemplate.Spec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 3, len(esPodSpec.InitContainers))
-	assert.Equal(t, 15, len(esPodSpec.Volumes))
+	assert.Equal(t, 13, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
-	assert.Equal(t, 15, len(esContainer.VolumeMounts))
+	assert.Equal(t, 13, len(esContainer.VolumeMounts))
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)

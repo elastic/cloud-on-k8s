@@ -62,7 +62,7 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder(name),
 
-		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
+		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
 		dynamicWatches:   watches.NewDynamicWatches(),

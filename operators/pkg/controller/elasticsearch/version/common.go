@@ -44,7 +44,7 @@ var (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 	operatorImage string,
@@ -64,7 +64,6 @@ func NewExpectedPodSpecs(
 				// volumes
 				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
 				ProbeUser:          paramsTmpl.ProbeUser,
-				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
 				// volume and init container for the keystore
 				KeystoreResources: paramsTmpl.KeystoreResources,
@@ -93,7 +92,7 @@ func NewExpectedPodSpecs(
 func podSpecContext(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (pod.PodSpecContext, error) {
@@ -101,15 +100,6 @@ func podSpecContext(
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.ProbeUserVolumeName,
 		esvolume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
-	)
-	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.KeystoreUserVolumeName,
-		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
-	)
-	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		name.SecureSettingsSecret(p.Elasticsearch.Name),
-		esvolume.SecureSettingsVolumeName,
-		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		certificates.HTTPCertsInternalSecretName(name.ESNamer, p.Elasticsearch.Name),
@@ -154,7 +144,7 @@ func podSpecContext(
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
 		WithAffinity(pod.DefaultAffinity(p.Elasticsearch.Name)).
-		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
+		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(
@@ -186,8 +176,6 @@ func podSpecContext(
 					p.UnicastHostsVolume.Volume(),
 					probeSecret.Volume(),
 					transportCertificatesVolume.Volume(),
-					keystoreUserSecret.Volume(),
-					secureSettingsVolume.Volume(),
 					httpCertificatesVolume.Volume(),
 					scriptsVolume.Volume(),
 					configVolume.Volume(),
@@ -202,8 +190,6 @@ func podSpecContext(
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				transportCertificatesVolume.VolumeMount(),
-				keystoreUserSecret.VolumeMount(),
-				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
 				configVolume.VolumeMount(),

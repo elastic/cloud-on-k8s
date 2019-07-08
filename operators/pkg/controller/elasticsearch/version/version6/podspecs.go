@@ -8,10 +8,8 @@ import (
 	"path"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
@@ -48,8 +46,6 @@ func ExpectedPodSpecs(
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
 	httpCertificatesVolume volume.SecretVolume,
-	keystoreUserSecretVolume volume.SecretVolume,
-	secureSettingsSecretVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
 		// inject pod name and IP as environment variables dynamically,
@@ -66,14 +62,6 @@ func newEnvironmentVars(
 	}
 
 	vars = append(vars, processmanager.NewEnvVars(httpCertificatesVolume)...)
-	vars = append(vars, keystore.NewEnvVars(
-		keystore.NewEnvVarsParams{
-			SourceDir:          secureSettingsSecretVolume.VolumeMount().MountPath,
-			ESUsername:         p.KeystoreUser.Name,
-			ESPasswordFilepath: path.Join(keystoreUserSecretVolume.VolumeMount().MountPath, p.KeystoreUser.Name),
-			ESCertsPath:        path.Join(httpCertificatesVolume.VolumeMount().MountPath, certificates.CertFileName),
-			ESVersion:          p.Elasticsearch.Spec.Version,
-		})...)
 
 	return vars
 }

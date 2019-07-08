@@ -78,7 +78,7 @@ type defaultDriver struct {
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -180,7 +180,6 @@ func (d *defaultDriver) Reconcile(
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
@@ -512,8 +511,7 @@ func (d *defaultDriver) calculateChanges(
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ProbeUser:    internalUsers.ProbeUser.Auth(),
-			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+			ProbeUser: internalUsers.ProbeUser.Auth(),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),

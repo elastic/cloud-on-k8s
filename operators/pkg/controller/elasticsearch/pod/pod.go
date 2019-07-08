@@ -92,8 +92,6 @@ type NewPodSpecParams struct {
 	UsersSecretVolume volume.SecretVolume
 	// ProbeUser is the user that should be used for the readiness probes.
 	ProbeUser client.UserAuth
-	// KeystoreUser is the user that should be used for reloading the credentials.
-	KeystoreUser client.UserAuth
 	// UnicastHostsVolume contains a file with the seed hosts.
 	UnicastHostsVolume volume.ConfigMapVolume
 	// KeystoreResources are k8s resources to load user-provided secure settings in the Elastisearch keystore
