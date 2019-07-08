@@ -67,7 +67,7 @@ func (b Builder) InitTestSteps(k *test.K8sClient) test.StepList {
 						return err
 					}
 					if err == nil {
-						return fmt.Errorf("elasticsearch %s is still there", k8s.ExtractNamespacedName(&stack.Elasticsearch))
+						return fmt.Errorf("elasticsearch %s is still there", k8s.ExtractNamespacedName(&b.Elasticsearch))
 					}
 					return nil
 				})(t)
