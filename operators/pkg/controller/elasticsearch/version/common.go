@@ -30,7 +30,7 @@ import (
 func NewExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 	operatorImage string,
@@ -79,7 +79,7 @@ func NewExpectedPodSpecs(
 func podSpecContext(
 	p pod.NewPodSpecParams,
 	operatorImage string,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs volume.SecretVolume) []corev1.EnvVar,
 	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (pod.PodSpecContext, error) {
@@ -134,7 +134,7 @@ func podSpecContext(
 		WithReadinessProbe(*pod.NewReadinessProbe()).
 		WithCommand([]string{processmanager.CommandPath}).
 		WithAffinity(pod.DefaultAffinity(p.Elasticsearch.Name)).
-		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret)...)
+		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(
