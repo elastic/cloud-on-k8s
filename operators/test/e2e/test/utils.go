@@ -7,17 +7,56 @@ package test
 import (
 	"fmt"
 	"os"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/retry"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	DefaultRetryDelay = 3 * time.Second
 	defaultTimeout    = 5 * time.Minute
 )
+
+func CheckKeystoreEntries(k *K8sClient, listOption client.ListOptions, KeystoreCmd []string, expectedKeys []string) Step {
+	return Step{
+		Name: "secure settings should eventually be set in all nodes keystore",
+		Test: Eventually(func() error {
+			pods, err := k.GetPods(listOption)
+			if err != nil {
+				return err
+			}
+			return OnAllPods(pods, func(p corev1.Pod) error {
+				// exec into the pod to list keystore entries
+				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), append(KeystoreCmd, "list"))
+				if err != nil {
+					return errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
+				}
+
+				// parse entries from stdout
+				var entries []string
+				// remove trailing newlines and whitespaces
+				trimmed := strings.TrimSpace(stdout)
+				// split by lines, unless no output
+				if trimmed != "" {
+					entries = strings.Split(trimmed, "\n")
+				}
+
+				if !reflect.DeepEqual(expectedKeys, entries) {
+					return fmt.Errorf("invalid keystore entries. Expected: %s. Actual: %s", expectedKeys, entries)
+				}
+				return nil
+			})
+		}),
+	}
+}
 
 // ExitOnErr exits with code 1 if the given error is not nil
 func ExitOnErr(err error) {

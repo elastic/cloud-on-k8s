@@ -83,7 +83,7 @@ func CheckServices(b Builder, k *test.K8sClient) test.Step {
 		Name: "ApmServer services should be created",
 		Test: test.Eventually(func() error {
 			for _, s := range []string{
-				b.ApmServer.Name + "-apm-server",
+				b.ApmServer.Name + "-apm-http",
 			} {
 				if _, err := k.GetService(s); err != nil {
 					return err
@@ -100,7 +100,7 @@ func CheckServicesEndpoints(b Builder, k *test.K8sClient) test.Step {
 		Name: "ApmServer services should have endpoints",
 		Test: test.Eventually(func() error {
 			for endpointName, addrCount := range map[string]int{
-				b.ApmServer.Name + "-apm-server": int(b.ApmServer.Spec.NodeCount),
+				b.ApmServer.Name + "-apm-http": int(b.ApmServer.Spec.NodeCount),
 			} {
 				endpoints, err := k.GetEndpoints(endpointName)
 				if err != nil {

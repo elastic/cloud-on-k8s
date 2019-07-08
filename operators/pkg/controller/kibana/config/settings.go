@@ -9,6 +9,7 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/es"
@@ -37,7 +38,7 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 		return CanonicalConfig{}, err
 	}
 
-	esAuthSettings, err := elasticsearchAuthSettings(client, kb)
+	username, password, err := association.ElasticsearchAuthSettings(client, &kb)
 	if err != nil {
 		return CanonicalConfig{}, err
 	}
@@ -48,7 +49,12 @@ func NewConfigSettings(client k8s.Client, kb v1alpha1.Kibana) (CanonicalConfig, 
 	err = cfg.MergeWith(
 		settings.MustCanonicalConfig(kibanaTLSSettings(kb)),
 		settings.MustCanonicalConfig(elasticsearchTLSSettings(kb)),
-		settings.MustCanonicalConfig(esAuthSettings),
+		settings.MustCanonicalConfig(
+			map[string]interface{}{
+				ElasticsearchUsername: username,
+				ElasticsearchPassword: password,
+			},
+		),
 		userSettings,
 	)
 	if err != nil {
@@ -84,26 +90,4 @@ func elasticsearchTLSSettings(kb v1alpha1.Kibana) map[string]interface{} {
 		ElasticsearchSslCertificateAuthorities: path.Join(esCertsVolumeMountPath, certificates.CertFileName),
 		ElasticsearchSslVerificationMode:       "certificate",
 	}
-}
-
-func elasticsearchAuthSettings(client k8s.Client, kb v1alpha1.Kibana) (map[string]interface{}, error) {
-	authSettings := map[string]interface{}{}
-	auth := kb.Spec.Elasticsearch.Auth
-	if auth.Inline != nil {
-		authSettings = map[string]interface{}{
-			ElasticsearchUsername: auth.Inline.Username,
-			ElasticsearchPassword: auth.Inline.Password,
-		}
-	}
-	if auth.SecretKeyRef != nil {
-		secret, err := es.GetAuthSecret(client, kb)
-		if err != nil {
-			return nil, err
-		}
-		authSettings = map[string]interface{}{
-			ElasticsearchUsername: auth.SecretKeyRef.Key,
-			ElasticsearchPassword: string(secret.Data[auth.SecretKeyRef.Key]),
-		}
-	}
-	return authSettings, nil
 }

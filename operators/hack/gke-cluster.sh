@@ -58,7 +58,7 @@ create_cluster() {
         exit 0
     fi
 
-    local PSP_OPTION
+    local PSP_OPTION=""
     if [ "$PSP" == "1" ]; then
         PSP_OPTION="--enable-pod-security-policy"
     fi

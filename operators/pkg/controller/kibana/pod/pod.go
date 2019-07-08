@@ -6,6 +6,7 @@ package pod
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
@@ -52,17 +53,22 @@ func imageWithVersion(image string, version string) string {
 	return stringsutil.Concat(image, ":", version)
 }
 
-func NewPodTemplateSpec(kb v1alpha1.Kibana, additionalVolumes []corev1.Volume, initContainers []corev1.Container) corev1.PodTemplateSpec {
-	return defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
+func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1.PodTemplateSpec {
+	builder := defaults.NewPodTemplateBuilder(kb.Spec.PodTemplate, v1alpha1.KibanaContainerName).
 		WithLabels(label.NewLabels(kb.Name)).
 		WithDockerImage(kb.Spec.Image, imageWithVersion(defaultImageRepositoryAndName, kb.Spec.Version)).
 		WithReadinessProbe(readinessProbe(kb.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
-		WithVolumes(append(additionalVolumes, volume.KibanaDataVolume.Volume())...).
-		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount()).
-		WithInitContainers(initContainers...).
-		WithInitContainerDefaults().
-		PodTemplate
+		WithVolumes(volume.KibanaDataVolume.Volume()).
+		WithVolumeMounts(volume.KibanaDataVolume.VolumeMount())
+
+	if keystore != nil {
+		builder.WithVolumes(keystore.Volume).
+			WithInitContainers(keystore.InitContainer).
+			WithInitContainerDefaults()
+	}
+
+	return builder.PodTemplate
 }
 
 // GetKibanaContainer returns the Kibana container from the given podSpec.

@@ -188,7 +188,7 @@ func Test_podSpec(t *testing.T) {
 				esContainer := podSpec.Containers[0]
 				require.NotEmpty(t, esContainer.VolumeMounts)
 				require.Len(t, esContainer.Env, 2)
-				require.Nil(t, esContainer.Resources.Requests)
+				require.Equal(t, DefaultResources, esContainer.Resources)
 				require.Equal(t, pod.DefaultContainerPorts, esContainer.Ports)
 				require.Equal(t, pod.NewReadinessProbe(), esContainer.ReadinessProbe)
 				require.Equal(t, []string{processmanager.CommandPath}, esContainer.Command)
