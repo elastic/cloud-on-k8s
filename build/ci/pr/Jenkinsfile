@@ -23,6 +23,11 @@ pipeline {
         stage('Run tests in parallel') {
             parallel {
                 stage("Run unit and integration tests") {
+                    when {
+                        expression {
+                            notOnlyDocs()
+                        }
+                    }
                     agent {
                         label 'linux'
                     }
@@ -38,6 +43,11 @@ pipeline {
                     }
                 }
                 stage("Run smoke E2E tests") {
+                    when {
+                        expression {
+                            notOnlyDocs()
+                        }
+                    }
                     agent {
                         label 'linux'
                     }
@@ -57,4 +67,15 @@ pipeline {
         }
     }
 
+}
+
+def notOnlyDocs() {
+    sh 'git diff --name-status HEAD~1 HEAD > $WORKSPACE/changes.txt'
+    File file = new File(env.WORKSPACE + "/changes.txt")
+    def lines = file.readLines()
+    def counter = 0
+    for (line in lines) {
+        if (line.contains("docs/")) counter++
+    }
+    return counter != lines.size()
 }
