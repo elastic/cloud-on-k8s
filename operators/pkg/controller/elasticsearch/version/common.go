@@ -5,6 +5,9 @@
 package version
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -63,6 +66,8 @@ func NewExpectedPodSpecs(
 				ProbeUser:          paramsTmpl.ProbeUser,
 				KeystoreUser:       paramsTmpl.KeystoreUser,
 				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
+				// volume and init container for the keystore
+				KeystoreResources: paramsTmpl.KeystoreResources,
 				// pod params
 				NodeSpec: node,
 			}
@@ -206,6 +211,13 @@ func podSpecContext(
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
 
+	if p.KeystoreResources != nil {
+		builder = builder.
+			WithVolumes(p.KeystoreResources.Volume).
+			WithInitContainers(p.KeystoreResources.InitContainer).
+			WithInitContainerDefaults()
+	}
+
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
 	config := p.NodeSpec.Config
@@ -226,7 +238,13 @@ func podSpecContext(
 	if err != nil {
 		return pod.PodSpecContext{}, err
 	}
-	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
+	labels := label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg)
+	if p.KeystoreResources != nil {
+		configChecksum := sha256.New224()
+		configChecksum.Write([]byte(p.KeystoreResources.Version))
+		labels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
+	}
+	builder = builder.WithLabels(labels)
 
 	return pod.PodSpecContext{
 		NodeSpec:    p.NodeSpec,

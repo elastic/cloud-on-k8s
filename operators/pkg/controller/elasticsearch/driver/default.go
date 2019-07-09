@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,6 +43,14 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
+
+// initContainerParams is used to generate the init container that will load the secure settings into a keystore
+var initContainerParams = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add",
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+}
 
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
@@ -152,10 +161,6 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
-		return results.WithError(err)
-	}
-
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -223,7 +228,19 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	// setup a keystore with secure settings in an init container, if specified by the user
+	keystoreResources, err := keystore.NewResources(
+		d.Client,
+		d.Recorder,
+		d.DynamicWatches,
+		&es,
+		initContainerParams,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -490,6 +507,7 @@ func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
+	keystoreResources *keystore.Resources,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
@@ -499,6 +517,7 @@ func (d *defaultDriver) calculateChanges(
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
+			KeystoreResources: keystoreResources,
 		},
 		d.OperatorImage,
 	)
