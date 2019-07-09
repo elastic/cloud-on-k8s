@@ -83,12 +83,15 @@ func NewPodLabels(es v1alpha1.Elasticsearch, version version.Version, cfg v1alph
 	labels := NewLabels(k8s.ExtractNamespacedName(&es))
 	// version label
 	labels[VersionLabelName] = version.String()
-	labels[SecureSettingsLabelName] = secureSettingsVersion
 	// node types labels
 	NodeTypesMasterLabelName.Set(cfg.Node.Master, labels)
 	NodeTypesDataLabelName.Set(cfg.Node.Data, labels)
 	NodeTypesIngestLabelName.Set(cfg.Node.Ingest, labels)
 	NodeTypesMLLabelName.Set(cfg.Node.ML, labels)
+	// optional secure settings label
+	if secureSettingsVersion != "" {
+		labels[SecureSettingsLabelName] = secureSettingsVersion
+	}
 
 	return labels
 }
