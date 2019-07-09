@@ -101,19 +101,19 @@ func Test_sortPodsToCreateByMasterNodesFirstThenNameAsc(t *testing.T) {
 			name: "sample",
 			args: args{
 				pods: []PodToCreate{
-					PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
+					{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
 					masterNode6,
-					PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
+					{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
 					masterNode5,
-					PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
+					{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
 				},
 			},
 			want: []PodToCreate{
 				masterNode5,
 				masterNode6,
-				PodToCreate{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
-				PodToCreate{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
-				PodToCreate{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
+				{Pod: namedPodWithCreationTimestamp("3", time.Unix(3, 0)).Pod},
+				{Pod: namedPodWithCreationTimestamp("4", time.Unix(4, 0)).Pod},
+				{Pod: namedPodWithCreationTimestamp("6", time.Unix(6, 0)).Pod},
 			},
 		},
 	}

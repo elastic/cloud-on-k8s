@@ -116,7 +116,7 @@ endif
 	go vet ./pkg/... ./cmd/...
 
 lint:
-	golangci-lint run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
+	golangci-lint run 
 
 
 #############################

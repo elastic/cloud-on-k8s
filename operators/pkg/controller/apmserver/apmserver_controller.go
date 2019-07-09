@@ -314,9 +314,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
 	configChecksum := sha256.New224()
-	configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
+	_, _ = configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
 	if keystoreResources != nil {
-		configChecksum.Write([]byte(keystoreResources.Version))
+		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
@@ -349,12 +349,12 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCAVolume.Volume())
 
-		for i, container := range podSpec.Spec.InitContainers {
-			podSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCAVolume.VolumeMount())
+		for i := range podSpec.Spec.InitContainers {
+			podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, esCAVolume.VolumeMount())
 		}
 
-		for i, container := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCAVolume.VolumeMount())
+		for i := range podSpec.Spec.Containers {
+			podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, esCAVolume.VolumeMount())
 		}
 	}
 

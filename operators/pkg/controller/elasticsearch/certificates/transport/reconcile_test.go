@@ -120,7 +120,7 @@ func init() {
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
 	}
-	testCSR, err = x509.ParseCertificateRequest(testCSRBytes)
+	testCSR, _ = x509.ParseCertificateRequest(testCSRBytes)
 
 	validatedCertificateTemplate, err = CreateValidatedCertificateTemplate(
 		testPod, testCluster, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity)
@@ -379,6 +379,7 @@ func Test_doReconcileTransportCertificateSecret(t *testing.T) {
 
 			var updatedPod corev1.Pod
 			err = fakeClient.Get(k8s.ExtractNamespacedName(&tt.pod), &updatedPod)
+			require.NoError(t, err)
 
 			isUpdated := !reflect.DeepEqual(tt.secret, updatedSecret)
 			require.Equal(t, tt.wantSecretUpdated, isUpdated, "want secret updated")

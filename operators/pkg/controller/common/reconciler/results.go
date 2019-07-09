@@ -17,10 +17,7 @@ type Results struct {
 
 // HasError returns true if Results contains one or more errors.
 func (r *Results) HasError() bool {
-	if len(r.errors) > 0 {
-		return true
-	}
-	return false
+	return len(r.errors) > 0
 }
 
 // WithResults appends the results and error from the other Results.
@@ -77,7 +74,7 @@ func nextResultTakesPrecedence(current, next reconcile.Result) bool {
 		return false // no need to replace the result
 	}
 	if next.Requeue && !current.Requeue && current.RequeueAfter <= 0 {
-		return true // next requests requeue current does not, next takes precendence
+		return true // next requests requeue current does not, next takes precedence
 	}
 	if next.RequeueAfter > 0 && (current.RequeueAfter == 0 || next.RequeueAfter < current.RequeueAfter) {
 		return true // next requests a requeue and current does not or wants it only later

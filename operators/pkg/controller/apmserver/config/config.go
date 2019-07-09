@@ -64,5 +64,9 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		outputCfg,
 		userSettings,
 	)
+
+	if err != nil {
+		return nil, err
+	}
 	return cfg, nil
 }

@@ -160,14 +160,15 @@ func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
 	selected.MasterNodePod = source.MasterNodePod
 
 	for _, pod := range pods {
-		if movePodToFrom(pod, selected.Pending, source.Pending) {
-		} else if movePodToFrom(pod, selected.RunningJoining, source.RunningJoining) {
-		} else if movePodToFrom(pod, selected.RunningReady, source.RunningReady) {
-		} else if movePodToFrom(pod, selected.RunningUnknown, source.RunningUnknown) {
-		} else if movePodToFrom(pod, selected.Unknown, source.Unknown) {
-		} else if movePodToFrom(pod, selected.Terminal, source.Terminal) {
-		} else if movePodToFrom(pod, selected.Deleting, source.Deleting) {
-		} else {
+		switch {
+		case movePodToFrom(pod, selected.Pending, source.Pending):
+		case movePodToFrom(pod, selected.RunningJoining, source.RunningJoining):
+		case movePodToFrom(pod, selected.RunningReady, source.RunningReady):
+		case movePodToFrom(pod, selected.RunningUnknown, source.RunningUnknown):
+		case movePodToFrom(pod, selected.Unknown, source.Unknown):
+		case movePodToFrom(pod, selected.Terminal, source.Terminal):
+		case movePodToFrom(pod, selected.Deleting, source.Deleting):
+		default:
 			log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
 		}
 	}

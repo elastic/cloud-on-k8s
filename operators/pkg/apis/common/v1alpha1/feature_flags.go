@@ -13,8 +13,7 @@ func (f FeatureFlags) Get(flag FeatureFlag) FeatureFlagState {
 		return state
 	}
 
-	switch flag {
-	case FeatureFlagExample:
+	if flag == FeatureFlagExample {
 		return FeatureFlagExampleDefaultState
 	}
 

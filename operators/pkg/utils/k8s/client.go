@@ -33,7 +33,7 @@ type Client interface {
 	// WithContext returns a client configured to use the provided context on
 	// subsequent requests, instead of one created from the preconfigured timeout.
 	WithContext(ctx context.Context) Client
-	// WithTimeout returns a client with an overriden timeout value,
+	// WithTimeout returns a client with an overridden timeout value,
 	// to be used when no explicit context is passed.
 	WithTimeout(timeout time.Duration) Client
 
@@ -66,7 +66,7 @@ func (w *clientWrapper) WithContext(ctx context.Context) Client {
 	}
 }
 
-// WithTimeout returns a client with an overriden timeout value,
+// WithTimeout returns a client with an overridden timeout value,
 // to be used when no explicit context is passed.
 func (w *clientWrapper) WithTimeout(timeout time.Duration) Client {
 	return &clientWrapper{

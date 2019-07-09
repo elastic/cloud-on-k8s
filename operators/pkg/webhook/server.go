@@ -47,6 +47,10 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		WithManager(mgr).
 		Build()
 
+	if err != nil {
+		return err
+	}
+
 	disabled := !params.AutoInstall
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
 		Port:                          serverPort,
