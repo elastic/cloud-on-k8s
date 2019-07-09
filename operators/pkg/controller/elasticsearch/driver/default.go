@@ -8,10 +8,14 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/migration"
+	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
@@ -39,7 +43,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version6"
-	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -212,7 +215,6 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
-	namespacedName := k8s.ExtractNamespacedName(&es)
 	//
 	//// There might be some ongoing creations and deletions our k8s client cache
 	//// hasn't seen yet. In such case, requeue until we are in-sync.
@@ -323,67 +325,9 @@ func (d *defaultDriver) Reconcile(
 		)
 	}
 
-	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, namespacedName)
-	if err != nil {
+	if err := d.reconcileNodeSpecs(results, es, podTemplateSpecBuilder, esClient, observedState); err != nil {
 		return results.WithError(err)
 	}
-
-	nodeSpecResources, err := nodespec.BuildExpectedResources(es, podTemplateSpecBuilder)
-	if err != nil {
-		return results.WithError(err)
-	}
-
-	// TODO: handle zen2 initial master nodes more cleanly
-	//  should be empty once cluster is bootstraped
-	var initialMasters []string
-	// TODO: refactor/move
-	for _, res := range nodeSpecResources {
-		cfg, err := res.Config.Unpack()
-		if err != nil {
-			return results.WithError(err)
-		}
-		if cfg.Node.Master {
-			for i := 0; i < int(*res.StatefulSet.Spec.Replicas); i++ {
-				initialMasters = append(initialMasters, fmt.Sprintf("%s-%d", res.StatefulSet.Name, i))
-			}
-		}
-	}
-	for i := range nodeSpecResources {
-		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, initialMasters...); err != nil {
-			return results.WithError(err)
-		}
-	}
-
-	// create or update all expected ssets
-	// TODO: safe upgrades
-	for _, nodeSpec := range nodeSpecResources {
-		if err := settings.ReconcileConfig(d.Client, es, nodeSpec.StatefulSet.Name, nodeSpec.Config); err != nil {
-			return results.WithError(err)
-		}
-		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpec.HeadlessService, &es); err != nil {
-			return results.WithError(err)
-		}
-		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, nodeSpec.StatefulSet); err != nil {
-			return results.WithError(err)
-		}
-	}
-
-	// delete all unexpected ssets
-	for _, actual := range actualStatefulSets {
-		if _, shouldExist := nodeSpecResources.StatefulSets().GetByName(actual.Name); !shouldExist {
-			// TODO: safe node removal
-			if err := d.Client.Delete(&actual); err != nil {
-				return results.WithError(err)
-			}
-		}
-	}
-
-	// TODO:
-	//  - safe sset replacement
-	//  - safe node removal (data migration)
-	//  - safe node upgrade (rollingUpdate.Partition + shards allocation)
-	//  - change budget
-	//  - zen1, zen2
 
 	//
 	//// Call Zen1 setting updater before new masters are created to ensure that they immediately start with the
@@ -566,6 +510,161 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 		}
 	}
 	return pods
+}
+
+func (d *defaultDriver) reconcileNodeSpecs(
+	results *reconciler.Results,
+	es v1alpha1.Elasticsearch,
+	podSpecBuilder esversion.PodTemplateSpecBuilder,
+	esClient esclient.Client,
+	observedState observer.State,
+) error {
+
+	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&es))
+	if err != nil {
+		return err
+	}
+
+	nodeSpecResources, err := nodespec.BuildExpectedResources(es, podSpecBuilder)
+	if err != nil {
+		return err
+	}
+
+	// TODO: handle zen2 initial master nodes more cleanly
+	//  should be empty once cluster is bootstraped
+	var initialMasters []string
+	// TODO: refactor/move
+	for _, res := range nodeSpecResources {
+		cfg, err := res.Config.Unpack()
+		if err != nil {
+			return err
+		}
+		if cfg.Node.Master {
+			for i := 0; i < int(*res.StatefulSet.Spec.Replicas); i++ {
+				initialMasters = append(initialMasters, fmt.Sprintf("%s-%d", res.StatefulSet.Name, i))
+			}
+		}
+	}
+	for i := range nodeSpecResources {
+		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, initialMasters...); err != nil {
+			return err
+		}
+	}
+
+	// Phase 1: apply expected StatefulSets resources, but don't scale down.
+	// The goal is to:
+	// 1. scale sset up (eg. go from 3 to 5 replicas).
+	// 2. apply configuration changes on the sset resource, to be used for future pods creation/recreation,
+	//    but do not rotate pods yet.
+	// 3. do **not** apply replicas scale down, otherwise nodes would be deleted before
+	//    we handle a clean deletion.
+	for _, nodeSpec := range nodeSpecResources {
+		// always reconcile config (will apply to new & recreated pods)
+		if err := settings.ReconcileConfig(d.Client, es, nodeSpec.StatefulSet.Name, nodeSpec.Config); err != nil {
+			return err
+		}
+		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpec.HeadlessService, &es); err != nil {
+			return err
+		}
+		ssetToApply := nodeSpec.StatefulSet.DeepCopy()
+		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
+		if exists && *ssetToApply.Spec.Replicas < *actual.Spec.Replicas {
+			// sset needs to be scaled down
+			// update the sset to use the new spec but don't scale replicas down for now
+			ssetToApply.Spec.Replicas = actual.Spec.Replicas
+		}
+		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, *ssetToApply); err != nil {
+			return err
+		}
+	}
+
+	// Phase 2: handle sset scale down.
+	// We want to safely remove nodes from the cluster, either because the sset requires less replicas,
+	// or because it should be removed entirely.
+	for i, actual := range actualStatefulSets {
+		expected, shouldExist := nodeSpecResources.StatefulSets().GetByName(actual.Name)
+		switch {
+		// stateful set removal
+		case !shouldExist:
+			target := 0
+			if err := d.scaleStatefulSetDown(results, &actualStatefulSets[i], target, esClient, observedState); err != nil {
+				return err
+			}
+		// stateful set downscale
+		case actual.Spec.Replicas != nil && *expected.Spec.Replicas < *actual.Spec.Replicas:
+			target := int(*expected.Spec.Replicas)
+			if err := d.scaleStatefulSetDown(results, &actualStatefulSets[i], target, esClient, observedState); err != nil {
+				return err
+			}
+		}
+	}
+
+	// TODO:
+	//  - safe node upgrade (rollingUpdate.Partition + shards allocation)
+	//  - change budget
+	//  - zen1, zen2
+	return nil
+}
+
+func (d *defaultDriver) scaleStatefulSetDown(
+	results *reconciler.Results,
+	statefulSet *appsv1.StatefulSet,
+	targetReplicas int,
+	esClient esclient.Client,
+	observedState observer.State,
+) error {
+	logger := log.WithValues("statefulset", k8s.ExtractNamespacedName(statefulSet))
+
+	if *statefulSet.Spec.Replicas == 0 && targetReplicas == 0 {
+		// we don't expect any new replicas in this statefulset, remove it
+		logger.Info("Deleting statefulset")
+		if err := d.Client.Delete(statefulSet); err != nil {
+			return err
+		}
+	}
+	// copy the current replicas, to be decremented with nodes to remove
+	updatedReplicas := int32(*statefulSet.Spec.Replicas)
+
+	// leaving nodes names can be built from StatefulSet name and ordinals
+	var leavingNodes []string
+	for i := int(*statefulSet.Spec.Replicas) - 1; i > targetReplicas-1; i-- {
+		leavingNodes = append(leavingNodes, sset.PodName(statefulSet.Name, i))
+	}
+
+	// TODO: don't remove last master/last data nodes?
+	// TODO: detect cases where data migration cannot happen since no nodes to host shards?
+
+	// migrate data away from these nodes before removing them
+	logger.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
+	if err := migration.MigrateData(esClient, leavingNodes); err != nil {
+		return err
+	}
+
+	for _, node := range leavingNodes {
+		if migration.IsMigratingData(observedState, node, leavingNodes) {
+			// data migration not over yet: schedule a requeue
+			logger.V(1).Info("Data migration not over yet, skipping node deletion", "node", node)
+			results.WithResult(defaultRequeue)
+			// no need to check other nodes since we remove them in order and this one isn't ready anyway
+			break
+		}
+		// data migration over: allow pod to be removed
+		updatedReplicas--
+	}
+
+	if updatedReplicas != *statefulSet.Spec.Replicas {
+		// update cluster coordination settings to account for nodes deletion
+		// TODO: update zen1/zen2
+
+		// trigger deletion of nodes whose data migration is over
+		logger.V(1).Info("Scaling replicas down", "from", *statefulSet.Spec.Replicas, "to", updatedReplicas)
+		statefulSet.Spec.Replicas = &updatedReplicas
+		if err := d.Client.Update(statefulSet); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 //
