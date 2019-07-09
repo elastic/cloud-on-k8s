@@ -9,6 +9,19 @@ import (
 	"sync/atomic"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
@@ -25,16 +38,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const name = "elasticsearch-controller"
@@ -87,29 +90,36 @@ func addWatches(c controller.Controller, r *ReconcileElasticsearch) error {
 		return err
 	}
 
-	// Watch pods
-	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}}, r.dynamicWatches.Pods); err != nil {
+	// Watch StatefulSets
+	if err := c.Watch(
+		&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+			IsController: true,
+			OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
+		},
+	); err != nil {
 		return err
 	}
-	if err := r.dynamicWatches.Pods.AddHandlers(
-		// trigger reconciliation loop on ES pods owned by this controller
-		&watches.OwnerWatch{
-			EnqueueRequestForOwner: handler.EnqueueRequestForOwner{
-				IsController: true,
-				OwnerType:    &elasticsearchv1alpha1.Elasticsearch{},
-			},
-		},
-		// Reconcile pods expectations.
-		// This does not technically need to be part of a dynamic watch, since it will
-		// stay there forever (nothing dynamic here).
-		// Turns out our dynamic watch mechanism happens to be a pretty nice way to
-		// setup multiple "static" handlers for a single watch.
-		watches.NewExpectationsWatch(
-			"pods-expectations",
-			r.podsExpectations,
-			// retrieve cluster name from pod labels
-			label.ClusterFromResourceLabels,
-		)); err != nil {
+
+	// Watch pods belonging to ES clusters
+	if err := c.Watch(&source.Kind{Type: &corev1.Pod{}},
+		&handler.EnqueueRequestsFromMapFunc{
+			ToRequests: handler.ToRequestsFunc(
+				func(object handler.MapObject) []reconcile.Request {
+					labels := object.Meta.GetLabels()
+					clusterName, isSet := labels[label.ClusterNameLabelName]
+					if !isSet {
+						return nil
+					}
+					return []reconcile.Request{
+						{
+							NamespacedName: types.NamespacedName{
+								Namespace: object.Meta.GetNamespace(),
+								Name:      clusterName,
+							},
+						},
+					}
+				}),
+		}); err != nil {
 		return err
 	}
 
