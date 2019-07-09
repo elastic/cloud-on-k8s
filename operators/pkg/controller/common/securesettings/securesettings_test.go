@@ -49,36 +49,36 @@ var (
 
 func TestResources(t *testing.T) {
 	tests := []struct {
-		name           string
-		client         k8s.Client
-		kb             v1alpha1.Kibana
-		wantVolumes    int
-		wantContainers int
-		wantVersion    string
+		name               string
+		client             k8s.Client
+		kb                 v1alpha1.Kibana
+		wantVolumes        int
+		wantInitContainers int
+		wantVersion        string
 	}{
 		{
-			name:           "no secure settings specified: no resources",
-			client:         k8s.WrapClient(fake.NewFakeClient()),
-			kb:             v1alpha1.Kibana{},
-			wantVolumes:    0,
-			wantContainers: 0,
-			wantVersion:    "",
+			name:               "no secure settings specified: no resources",
+			client:             k8s.WrapClient(fake.NewFakeClient()),
+			kb:                 v1alpha1.Kibana{},
+			wantVolumes:        0,
+			wantInitContainers: 0,
+			wantVersion:        "",
 		},
 		{
-			name:           "secure settings specified: return volume, init container and version",
-			client:         k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
-			kb:             testKibanaWithSecureSettings,
-			wantVolumes:    1,
-			wantContainers: 1,
-			wantVersion:    testSecureSettingsSecret.ResourceVersion,
+			name:               "secure settings specified: return volume, init container and version",
+			client:             k8s.WrapClient(fake.NewFakeClient(&testSecureSettingsSecret)),
+			kb:                 testKibanaWithSecureSettings,
+			wantVolumes:        1,
+			wantInitContainers: 1,
+			wantVersion:        testSecureSettingsSecret.ResourceVersion,
 		},
 		{
-			name:           "secure settings specified but secret not there: no resources",
-			client:         k8s.WrapClient(fake.NewFakeClient()),
-			kb:             testKibanaWithSecureSettings,
-			wantVolumes:    0,
-			wantContainers: 0,
-			wantVersion:    "",
+			name:               "secure settings specified but secret not there: no resources",
+			client:             k8s.WrapClient(fake.NewFakeClient()),
+			kb:                 testKibanaWithSecureSettings,
+			wantVolumes:        0,
+			wantInitContainers: 0,
+			wantVersion:        "",
 		},
 	}
 	for _, tt := range tests {
@@ -86,7 +86,7 @@ func TestResources(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
 			watches := watches2.NewDynamicWatches()
 			require.NoError(t, watches.InjectScheme(scheme.Scheme))
-			wantKeystoreUpdater, err := Resources(
+			keystoreUpdater, err := Resources(
 				tt.client,
 				recorder,
 				watches,
@@ -99,17 +99,23 @@ func TestResources(t *testing.T) {
 				kbvolume.KibanaDataVolume.VolumeMount(),
 			)
 			require.NoError(t, err)
-			wantVolumes := []corev1.Volume{wantKeystoreUpdater.Volume}
-			if !reflect.DeepEqual(len(wantVolumes), tt.wantVolumes) {
-				t.Errorf("Resources() got = %v, want %v", wantVolumes, tt.wantVolumes)
+
+			var volumes []corev1.Volume
+			var initContainers []corev1.Container
+			version := keystoreUpdater.Version
+			if version != "" {
+				volumes = append(volumes, keystoreUpdater.Volume)
+				initContainers = append(initContainers, keystoreUpdater.InitContainer)
 			}
-			wantContainers := []corev1.Container{wantKeystoreUpdater.InitContainer}
-			if !reflect.DeepEqual(len(wantContainers), tt.wantContainers) {
-				t.Errorf("Resources() got1 = %v, want %v", wantContainers, tt.wantContainers)
+
+			if !reflect.DeepEqual(len(volumes), tt.wantVolumes) {
+				t.Errorf("Resources() got = %v, want %v", volumes, tt.wantVolumes)
 			}
-			wantVersion := wantKeystoreUpdater.Version
-			if wantVersion != tt.wantVersion {
-				t.Errorf("Resources() got2 = %v, want %v", wantVersion, tt.wantVersion)
+			if !reflect.DeepEqual(len(initContainers), tt.wantInitContainers) {
+				t.Errorf("Resources() got1 = %v, want %v", initContainers, tt.wantInitContainers)
+			}
+			if version != tt.wantVersion {
+				t.Errorf("Resources() got2 = %v, want %v", version, tt.wantVersion)
 			}
 		})
 	}
