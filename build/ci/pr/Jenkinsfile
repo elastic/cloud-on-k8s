@@ -70,12 +70,9 @@ pipeline {
 }
 
 def notOnlyDocs() {
-    sh 'git diff --name-status HEAD~1 HEAD > $WORKSPACE/changes.txt'
-    File file = new File(env.WORKSPACE + "/changes.txt")
-    def lines = file.readLines()
-    def counter = 0
-    for (line in lines) {
-        if (line.contains("docs/")) counter++
-    }
-    return counter != lines.size()
+    // grep succeeds if there is at least one line without docs/
+    return sh (
+        script: "git diff --name-status HEAD~1 HEAD | grep -v docs/",
+    	returnStatus: true
+    ) == 0
 }
