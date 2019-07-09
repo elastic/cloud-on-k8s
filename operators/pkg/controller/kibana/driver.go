@@ -74,8 +74,14 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		return nil, err
 	}
 
-	kibanaPodSpec := pod.NewPodTemplateSpec(*kb,
-		[]corev1.Volume{keystoreUpdater.Volume}, []corev1.Container{keystoreUpdater.InitContainer})
+	var additionalVolumes []corev1.Volume
+	var initContainers []corev1.Container
+	if keystoreUpdater.Version != "" {
+		additionalVolumes = []corev1.Volume{keystoreUpdater.Volume}
+		initContainers = []corev1.Container{keystoreUpdater.InitContainer}
+	}
+
+	kibanaPodSpec := pod.NewPodTemplateSpec(*kb, additionalVolumes, initContainers)
 
 	// Build a checksum of the configuration, which we can use to cause the Deployment to roll Kibana
 	// instances in case of any change in the CA file, secure settings or credentials contents.
