@@ -38,7 +38,10 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(TAG)
+OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
+ifeq ($(SNAPSHOT_RELEASE), false)
+	OPERATOR_IMAGE = $(IMG):$(TAG)
+endif
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
@@ -269,7 +272,7 @@ docker-build:
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(RELEASE), true)
+ifeq ($(USE_ELASTIC_DOCKER_REGISTRY), true)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
@@ -346,9 +349,10 @@ ci-bootstrap-gke:
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
-ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/eck/eck-operator:$(TAG)
+ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/$(REPOSITORY)/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
+	@ echo $(OPERATOR_IMAGE) was pushed!
 
 
 ##########################
