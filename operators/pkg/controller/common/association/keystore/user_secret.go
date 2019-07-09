@@ -71,11 +71,12 @@ func secureSettingsVolume(
 
 func retrieveUserSecret(c k8s.Client, associated commonv1alpha1.Associated, recorder record.EventRecorder) (*corev1.Secret, bool, error) {
 	secretName := associated.SecureSettings().SecretName
+	namespace := associated.GetNamespace()
 	userSecret := corev1.Secret{}
-	err := c.Get(types.NamespacedName{Namespace: associated.GetNamespace(), Name: secretName}, &userSecret)
+	err := c.Get(types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "name", secretName)
+		log.Info(msg, "namespace", namespace, "secret_name", secretName)
 		recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 		return nil, false, nil
 	} else if err != nil {

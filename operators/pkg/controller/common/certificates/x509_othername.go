@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"errors"
-	"fmt"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -209,7 +208,7 @@ func ParseSANGeneralNamesOtherNamesOnly(c *x509.Certificate) ([]GeneralName, err
 							},
 						})
 					default:
-						log.Info(fmt.Sprintf("Ignoring unsupported GeneralNames tag [%d]", generalName.Tag))
+						log.Info("Ignoring unsupported GeneralNames tag", "tag", generalName.Tag, "subject", c.Subject)
 					}
 				}
 			}
