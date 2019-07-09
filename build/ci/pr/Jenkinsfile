@@ -25,6 +25,7 @@ pipeline {
                 stage("Run unit and integration tests") {
                     when {
                         expression {
+                            checkout scm
                             notOnlyDocs()
                         }
                     }
@@ -32,7 +33,6 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
                         sh 'make -C build/ci ci-pr'
                     }
                 }
@@ -45,6 +45,7 @@ pipeline {
                 stage("Run smoke E2E tests") {
                     when {
                         expression {
+                            checkout scm
                             notOnlyDocs()
                         }
                     }
@@ -52,7 +53,6 @@ pipeline {
                         label 'linux'
                     }
                     steps {
-                        checkout scm
                         sh 'make -C build/ci ci-e2e'
                     }
                 }
