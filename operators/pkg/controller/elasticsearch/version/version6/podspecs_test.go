@@ -17,7 +17,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
@@ -75,15 +74,9 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
 				{Name: processmanager.EnvTLS, Value: "true"},
+				{Name: processmanager.EnvKeystoreUpdater, Value: "false"},
 				{Name: processmanager.EnvCertPath, Value: path.Join("/certs", certificates.CertFileName)},
 				{Name: processmanager.EnvKeyPath, Value: path.Join("/certs", certificates.KeyFileName)},
-				{Name: keystore.EnvSourceDir, Value: "/secure-settings"},
-				{Name: keystore.EnvReloadCredentials, Value: "true"},
-				{Name: keystore.EnvEsUsername, Value: "username2"},
-				{Name: keystore.EnvEsPasswordFile, Value: "/creds/username2"},
-				{Name: keystore.EnvEsCertsPath, Value: path.Join("/certs", certificates.CertFileName)},
-				{Name: keystore.EnvEsEndpoint, Value: "https://127.0.0.1:9200"},
-				{Name: keystore.EnvEsVersion, Value: "7.1.0"},
 			},
 		},
 	}
@@ -195,10 +188,10 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 	esPodSpec := podSpec[0].PodTemplate.Spec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
 	assert.Equal(t, 3, len(esPodSpec.InitContainers))
-	assert.Equal(t, 15, len(esPodSpec.Volumes))
+	assert.Equal(t, 14, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
-	assert.Equal(t, 15, len(esContainer.VolumeMounts))
+	assert.Equal(t, 14, len(esContainer.VolumeMounts))
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)

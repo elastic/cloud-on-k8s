@@ -100,9 +100,9 @@ func TestResources(t *testing.T) {
 			)
 			require.NoError(t, err)
 
+			version := keystoreUpdater.Version
 			var volumes []corev1.Volume
 			var initContainers []corev1.Container
-			version := keystoreUpdater.Version
 			if version != "" {
 				volumes = append(volumes, keystoreUpdater.Volume)
 				initContainers = append(initContainers, keystoreUpdater.InitContainer)
