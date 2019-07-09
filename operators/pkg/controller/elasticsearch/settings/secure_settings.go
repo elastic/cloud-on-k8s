@@ -84,7 +84,7 @@ func retrieveUserSecret(c k8s.Client, eventsRecorder *events.Recorder, namespace
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: name}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
-		log.Info(msg, "name", name)
+		log.Info(msg, "namespace", namespace, "secret_name", name)
 		eventsRecorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+name)
 	} else if err != nil {
 		return nil, err

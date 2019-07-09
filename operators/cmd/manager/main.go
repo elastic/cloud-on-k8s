@@ -212,11 +212,14 @@ func execute() {
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
+
+	// only expose prometheus metrics if provided a specific port
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
+		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
-		log.Info(fmt.Sprintf("Exposing Prometheus metrics on /metrics%s", opts.MetricsBindAddress))
 	}
+
 	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")

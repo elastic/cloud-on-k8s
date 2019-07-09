@@ -156,10 +156,22 @@ ci-e2e-delete-cluster: vault-gke-creds
     	cloud-on-k8s-ci-e2e \
     	bash -c "make -C operators set-context-gke delete-gke"
 
+# Remove all unused resources in GKE
+ci-gke-cleanup: ci-e2e-delete-cluster
+	docker run --rm -t \
+    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+    	-w $(GO_MOUNT_PATH) \
+    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
+    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+    	cloud-on-k8s-ci-e2e \
+    	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
+    	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
+
 # Run docs build
 ci-build-docs:
 	docker run --rm -t \
-        -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         docker.elastic.co/docs/build:1 \
         bash -c "git clone https://github.com/elastic/docs.git && \
         	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html --chunk 1 && \

@@ -5,10 +5,7 @@
 package reconciler
 
 import (
-	"fmt"
-
 	k8serrors "k8s.io/apimachinery/pkg/util/errors"
-
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -54,7 +51,7 @@ func (r *Results) WithResult(res reconcile.Result) *Results {
 func (r *Results) Apply(step string, recoverableStep func() (reconcile.Result, error)) *Results {
 	result, err := recoverableStep()
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error during %s, continuing", step))
+		log.Error(err, "Recoverable error during step, continuing", "step", step)
 	}
 	return r.WithError(err).WithResult(result)
 }
@@ -69,7 +66,7 @@ func (r *Results) Aggregate() (reconcile.Result, error) {
 			current = next
 		}
 	}
-	log.Info(fmt.Sprintf("Aggregate reconcile result is %+v", current))
+	log.Info("Aggregated reconciliation results complete", "result", current)
 	return current, k8serrors.NewAggregate(r.errors)
 }
 
