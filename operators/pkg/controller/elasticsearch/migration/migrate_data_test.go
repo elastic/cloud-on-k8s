@@ -8,10 +8,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 )
 
 func TestEnoughRedundancy(t *testing.T) {
@@ -126,5 +126,44 @@ func TestMigrateData(t *testing.T) {
 		err := setAllocationExcludes(esClient, tt.input)
 		require.NoError(t, err)
 		assert.Contains(t, esClient.getAndReset(), tt.want)
+	}
+}
+
+func TestIsMigratingData(t *testing.T) {
+	type args struct {
+		state      observer.State
+		podName    string
+		exclusions []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "cluster state is nil",
+			args: args{
+				state:      observer.State{ClusterState: nil},
+				podName:    "pod",
+				exclusions: nil,
+			},
+			want: true,
+		},
+		{
+			name: "cluster state is empty",
+			args: args{
+				state:      observer.State{ClusterState: &client.ClusterState{}},
+				podName:    "pod",
+				exclusions: nil,
+			},
+			want: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := IsMigratingData(tt.args.state, tt.args.podName, tt.args.exclusions); got != tt.want {
+				t.Errorf("IsMigratingData() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
