@@ -158,6 +158,17 @@ func TestIsMigratingData(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "no data migration in progress",
+			args: args{
+				state: observer.State{ClusterState: &client.ClusterState{
+					ClusterName: "name",
+				}},
+				podName:    "pod",
+				exclusions: nil,
+			},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
