@@ -158,7 +158,7 @@ func (s *State) UpdateElasticsearchInvalid(results []validation.Result) {
 	}
 }
 
-// UpdateElasticsearchControllerVersion sets the elasticsearch operator version that last updated the ES cluster
+// UpdateElasticsearchControllerVersion sets the elasticsearch controller version that last updated the ES cluster
 func (s *State) UpdateElasticsearchControllerVersion(version string) {
 	s.status.ControllerVersion = version
 }
