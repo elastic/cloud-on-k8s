@@ -6,7 +6,7 @@ metadata:
 spec:
   version: "7.1.0"
   nodes:
-  - name: all
+  - name: default
     nodeCount: 1
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1

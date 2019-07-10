@@ -6,7 +6,7 @@ metadata:
 spec:
   version: "7.1.0"
   nodes:
-  - name: all
+  - name: default
     config:
       # most Elasticsearch configuration parameters are possible to set, e.g:
       node.attr.attr_name: attr_value
