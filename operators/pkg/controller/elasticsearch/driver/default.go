@@ -559,15 +559,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	//    but do not rotate pods yet.
 	// 3. do **not** apply replicas scale down, otherwise nodes would be deleted before
 	//    we handle a clean deletion.
-	for _, nodeSpec := range nodeSpecResources {
+	for _, nodeSpecRes := range nodeSpecResources {
 		// always reconcile config (will apply to new & recreated pods)
-		if err := settings.ReconcileConfig(d.Client, es, nodeSpec.StatefulSet.Name, nodeSpec.Config); err != nil {
+		if err := settings.ReconcileConfig(d.Client, es, nodeSpecRes.StatefulSet.Name, nodeSpecRes.Config); err != nil {
 			return results.WithError(err)
 		}
-		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpec.HeadlessService, &es); err != nil {
+		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpecRes.HeadlessService, &es); err != nil {
 			return results.WithError(err)
 		}
-		ssetToApply := nodeSpec.StatefulSet.DeepCopy()
+		ssetToApply := nodeSpecRes.StatefulSet.DeepCopy()
 		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
 		if exists && *ssetToApply.Spec.Replicas < *actual.Spec.Replicas {
 			// sset needs to be scaled down
