@@ -45,6 +45,7 @@ func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
 	}
 	resources := make([]runtime.Object, len(secrets.Items))
 	for i, s := range secrets.Items {
+		s := s
 		resources[i] = &s
 	}
 	return cleanupFromPodReference(c, es.Namespace, resources)
