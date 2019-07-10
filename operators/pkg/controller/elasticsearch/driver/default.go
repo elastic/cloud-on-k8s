@@ -325,8 +325,9 @@ func (d *defaultDriver) Reconcile(
 		)
 	}
 
-	if err := d.reconcileNodeSpecs(results, es, podTemplateSpecBuilder, esClient, observedState); err != nil {
-		return results.WithError(err)
+	res = d.reconcileNodeSpecs(es, podTemplateSpecBuilder, esClient, observedState)
+	if results.WithResults(res).HasError() {
+		return results
 	}
 
 	//
@@ -513,21 +514,21 @@ func removePodFromList(pods []corev1.Pod, pod corev1.Pod) []corev1.Pod {
 }
 
 func (d *defaultDriver) reconcileNodeSpecs(
-	results *reconciler.Results,
 	es v1alpha1.Elasticsearch,
 	podSpecBuilder esversion.PodTemplateSpecBuilder,
 	esClient esclient.Client,
 	observedState observer.State,
-) error {
+) *reconciler.Results {
+	results := &reconciler.Results{}
 
 	actualStatefulSets, err := sset.RetrieveActualStatefulSets(d.Client, k8s.ExtractNamespacedName(&es))
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	nodeSpecResources, err := nodespec.BuildExpectedResources(es, podSpecBuilder)
 	if err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	// TODO: handle zen2 initial master nodes more cleanly
@@ -537,7 +538,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	for _, res := range nodeSpecResources {
 		cfg, err := res.Config.Unpack()
 		if err != nil {
-			return err
+			return results.WithError(err)
 		}
 		if cfg.Node.Master {
 			for i := 0; i < int(*res.StatefulSet.Spec.Replicas); i++ {
@@ -547,7 +548,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	}
 	for i := range nodeSpecResources {
 		if err := nodeSpecResources[i].Config.SetStrings(settings.ClusterInitialMasterNodes, initialMasters...); err != nil {
-			return err
+			return results.WithError(err)
 		}
 	}
 
@@ -561,10 +562,10 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	for _, nodeSpec := range nodeSpecResources {
 		// always reconcile config (will apply to new & recreated pods)
 		if err := settings.ReconcileConfig(d.Client, es, nodeSpec.StatefulSet.Name, nodeSpec.Config); err != nil {
-			return err
+			return results.WithError(err)
 		}
 		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpec.HeadlessService, &es); err != nil {
-			return err
+			return results.WithError(err)
 		}
 		ssetToApply := nodeSpec.StatefulSet.DeepCopy()
 		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
@@ -574,7 +575,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 			ssetToApply.Spec.Replicas = actual.Spec.Replicas
 		}
 		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, *ssetToApply); err != nil {
-			return err
+			return results.WithError(err)
 		}
 	}
 
@@ -587,14 +588,17 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		// stateful set removal
 		case !shouldExist:
 			target := 0
-			if err := d.scaleStatefulSetDown(results, &actualStatefulSets[i], target, esClient, observedState); err != nil {
-				return err
+			removalResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
+			results.WithResults(removalResult)
+			if removalResult.HasError() {
+				return results
 			}
 		// stateful set downscale
 		case actual.Spec.Replicas != nil && *expected.Spec.Replicas < *actual.Spec.Replicas:
 			target := int(*expected.Spec.Replicas)
-			if err := d.scaleStatefulSetDown(results, &actualStatefulSets[i], target, esClient, observedState); err != nil {
-				return err
+			downscaleResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
+			if downscaleResult.HasError() {
+				return results
 			}
 		}
 	}
@@ -603,23 +607,23 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	//  - safe node upgrade (rollingUpdate.Partition + shards allocation)
 	//  - change budget
 	//  - zen1, zen2
-	return nil
+	return results
 }
 
 func (d *defaultDriver) scaleStatefulSetDown(
-	results *reconciler.Results,
 	statefulSet *appsv1.StatefulSet,
 	targetReplicas int,
 	esClient esclient.Client,
 	observedState observer.State,
-) error {
+) *reconciler.Results {
+	results := &reconciler.Results{}
 	logger := log.WithValues("statefulset", k8s.ExtractNamespacedName(statefulSet))
 
 	if *statefulSet.Spec.Replicas == 0 && targetReplicas == 0 {
 		// we don't expect any new replicas in this statefulset, remove it
 		logger.Info("Deleting statefulset")
 		if err := d.Client.Delete(statefulSet); err != nil {
-			return err
+			return results.WithError(err)
 		}
 	}
 	// copy the current replicas, to be decremented with nodes to remove
@@ -637,7 +641,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 	// migrate data away from these nodes before removing them
 	logger.V(1).Info("Migrating data away from nodes", "nodes", leavingNodes)
 	if err := migration.MigrateData(esClient, leavingNodes); err != nil {
-		return err
+		return results.WithError(err)
 	}
 
 	for _, node := range leavingNodes {
@@ -660,7 +664,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 		logger.V(1).Info("Scaling replicas down", "from", *statefulSet.Spec.Replicas, "to", updatedReplicas)
 		statefulSet.Spec.Replicas = &updatedReplicas
 		if err := d.Client.Update(statefulSet); err != nil {
-			return err
+			return results.WithError(err)
 		}
 	}
 
