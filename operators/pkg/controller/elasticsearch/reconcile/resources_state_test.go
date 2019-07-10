@@ -27,6 +27,7 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 	// This test focuses on the edge case where
 	// no configuration secret is found for a given pod.
 	v1alpha1.AddToScheme(scheme.Scheme)
+	ssetName := "sset"
 	cluster := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
@@ -48,16 +49,22 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 	}
 	oldPod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:         "ns",
-			Name:              "pod",
+			Namespace: "ns",
+			Name:      "pod",
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: ssetName,
+			},
 			CreationTimestamp: metav1.NewTime(time.Now().Add(-cleanup.DeleteAfter).Add(-1 * time.Minute)),
 		},
 	}
 	deletionTimestamp := metav1.NewTime(time.Now().Add(1 * time.Hour))
 	deletingPod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:         "ns",
-			Name:              "pod",
+			Namespace: "ns",
+			Name:      "pod",
+			Labels: map[string]string{
+				label.StatefulSetNameLabelName: ssetName,
+			},
 			CreationTimestamp: metav1.NewTime(time.Now().Add(-cleanup.DeleteAfter).Add(-1 * time.Minute)),
 			DeletionTimestamp: &deletionTimestamp,
 		},
@@ -68,10 +75,10 @@ func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 	configSecret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      settings.ConfigSecretName(oldPod.Name),
+			Name:      settings.ConfigSecretName(ssetName),
 			Labels: map[string]string{
-				label.ClusterNameLabelName: cluster.Name,
-				label.PodNameLabelName:     oldPod.Name,
+				label.ClusterNameLabelName:     cluster.Name,
+				label.StatefulSetNameLabelName: oldPod.Name,
 			},
 		},
 		Data: map[string][]byte{

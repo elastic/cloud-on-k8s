@@ -66,7 +66,7 @@ func UpdateZen1Discovery(
 		"minimum_master_nodes", minimumMasterNodes,
 	)
 	for _, p := range allPods {
-		config, err := settings.GetESConfigContent(c, k8s.ExtractNamespacedName(&p))
+		config, err := settings.GetESConfigContent(c, p.Namespace, p.Labels[label.StatefulSetNameLabelName])
 		if err != nil {
 			return false, err
 		}
@@ -79,9 +79,10 @@ func UpdateZen1Discovery(
 		if err != nil {
 			return false, err
 		}
-		if err := settings.ReconcileConfig(c, cluster, p, config); err != nil {
-			return false, err
-		}
+		// TODO: fix for sset
+		//if err := settings.ReconcileConfig(c, cluster, p, config); err != nil {
+		//	return false, err
+		//}
 	}
 
 	// Update the current value for each new pod that is about to be created

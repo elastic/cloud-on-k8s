@@ -100,6 +100,7 @@ func TestReconcile(t *testing.T) {
 			SetVMMaxMapCount: &varFalse,
 			Nodes: []v1alpha1.NodeSpec{
 				{
+					Name:      "all",
 					NodeCount: 3,
 				},
 			},

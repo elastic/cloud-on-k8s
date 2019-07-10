@@ -6,13 +6,14 @@ package version
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
@@ -37,61 +38,53 @@ var (
 	}
 )
 
-// NewExpectedPodSpecs creates PodSpecContexts for all Elasticsearch nodes in the given Elasticsearch cluster
-func NewExpectedPodSpecs(
+// TODO: refactor
+type PodTemplateSpecBuilder func(v1alpha1.NodeSpec, settings.CanonicalConfig) (corev1.PodTemplateSpec, error)
+
+// TODO: refactor to avoid all the params mess
+func BuildPodTemplateSpec(
 	es v1alpha1.Elasticsearch,
+	nodeSpec v1alpha1.NodeSpec,
 	paramsTmpl pod.NewPodSpecParams,
+	cfg settings.CanonicalConfig,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 	operatorImage string,
-) ([]pod.PodSpecContext, error) {
-	podSpecs := make([]pod.PodSpecContext, 0, es.Spec.NodeCount())
-
-	for _, node := range es.Spec.Nodes {
-		// add default PVCs to the node spec
-		node.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-			node.VolumeClaimTemplates, node.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
-		)
-
-		for i := int32(0); i < node.NodeCount; i++ {
-			params := pod.NewPodSpecParams{
-				// cluster-wide params
-				Elasticsearch: es,
-				// volumes
-				UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
-				ProbeUser:          paramsTmpl.ProbeUser,
-				KeystoreUser:       paramsTmpl.KeystoreUser,
-				UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
-				// pod params
-				NodeSpec: node,
-			}
-			podSpecCtx, err := podSpecContext(
-				params,
-				operatorImage,
-				newEnvironmentVarsFn,
-				newESConfigFn,
-				newInitContainersFn,
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			podSpecs = append(podSpecs, podSpecCtx)
-		}
+) (corev1.PodTemplateSpec, error) {
+	params := pod.NewPodSpecParams{
+		// cluster-wide params
+		Elasticsearch: es,
+		// volumes
+		UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
+		ProbeUser:          paramsTmpl.ProbeUser,
+		KeystoreUser:       paramsTmpl.KeystoreUser,
+		UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
+		// pod params
+		NodeSpec: nodeSpec,
 	}
-
-	return podSpecs, nil
+	podSpecCtx, err := podSpecContext(
+		params,
+		operatorImage,
+		cfg,
+		newEnvironmentVarsFn,
+		newInitContainersFn,
+	)
+	if err != nil {
+		return corev1.PodTemplateSpec{}, err
+	}
+	return podSpecCtx.PodTemplate, nil
 }
 
 // podSpecContext creates a new PodSpecContext for an Elasticsearch node
 func podSpecContext(
 	p pod.NewPodSpecParams,
 	operatorImage string,
+	cfg settings.CanonicalConfig,
 	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newESConfigFn func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error),
 	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (pod.PodSpecContext, error) {
+	statefulSetName := name.StatefulSet(p.Elasticsearch.Name, p.NodeSpec.Name)
+
 	// setup volumes
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.ProbeUserVolumeName,
@@ -117,14 +110,8 @@ func podSpecContext(
 		esvolume.TransportCertificatesSecretVolumeMountPath,
 	)
 
-	// A few secret volumes will be generated based on the pod name.
-	// At this point the (maybe future) pod does not have a name yet: we still want to
-	// create corresponding volumes and volume mounts for pod spec comparisons.
-	// Let's create them with a placeholder for the pod name. Volume mounts will be correct,
-	// and secret refs in Volumes Mounts will be fixed right before pod creation,
-	// if this spec ends up leading to a new pod creation.
-	podNamePlaceholder := "pod-name-placeholder"
-	configVolume := settings.ConfigSecretVolume(podNamePlaceholder)
+	ssetName := name.StatefulSet(p.Elasticsearch.Name, p.NodeSpec.Name)
+	configVolume := settings.ConfigSecretVolume(ssetName)
 
 	// append future volumes from PVCs (not resolved to a claim yet)
 	persistentVolumes := make([]corev1.Volume, 0, len(p.NodeSpec.VolumeClaimTemplates))
@@ -206,64 +193,28 @@ func podSpecContext(
 		WithInitContainerDefaults().
 		WithInitContainers(initContainers...)
 
-	// generate the configuration
-	// actual volumes to propagate it will be created later on
-	config := p.NodeSpec.Config
-	if config == nil {
-		config = &commonv1alpha1.Config{}
-	}
-	esConfig, err := newESConfigFn(p.Elasticsearch.Name, *config)
-	if err != nil {
-		return pod.PodSpecContext{}, err
-	}
-	unpackedCfg, err := esConfig.Unpack()
-	if err != nil {
-		return pod.PodSpecContext{}, err
-	}
-
 	// set labels
 	version, err := version.Parse(p.Elasticsearch.Spec.Version)
 	if err != nil {
 		return pod.PodSpecContext{}, err
 	}
-	builder = builder.WithLabels(label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg))
+	unpackedCfg, err := cfg.Unpack()
+	if err != nil {
+		return pod.PodSpecContext{}, err
+	}
+	nodeRoles := unpackedCfg.Node
+	// label with a hash of the config to rotate the pod on config changes
+	cfgHash := hash.HashObject(cfg)
+	podLabels, err := label.NewPodLabels(k8s.ExtractNamespacedName(&p.Elasticsearch), statefulSetName, *version, nodeRoles, cfgHash)
+	if err != nil {
+		return pod.PodSpecContext{}, err
+	}
+	builder = builder.WithLabels(podLabels)
 
 	return pod.PodSpecContext{
 		NodeSpec:    p.NodeSpec,
 		PodTemplate: builder.PodTemplate,
-		Config:      esConfig,
 	}, nil
-}
-
-// NewPod constructs a pod from the given parameters.
-func NewPod(
-	es v1alpha1.Elasticsearch,
-	podSpecCtx pod.PodSpecContext,
-) corev1.Pod {
-	// build a pod based on the podSpecCtx template
-	template := *podSpecCtx.PodTemplate.DeepCopy()
-	pod := corev1.Pod{
-		ObjectMeta: template.ObjectMeta,
-		Spec:       template.Spec,
-	}
-
-	// label the pod with a hash of its template, for comparison purpose,
-	// before it gets assigned a name
-	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
-
-	// set name & namespace
-	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	pod.Namespace = es.Namespace
-
-	// set hostname and subdomain based on pod and cluster names
-	if pod.Spec.Hostname == "" {
-		pod.Spec.Hostname = pod.Name
-	}
-	if pod.Spec.Subdomain == "" {
-		pod.Spec.Subdomain = es.Name
-	}
-
-	return pod
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity

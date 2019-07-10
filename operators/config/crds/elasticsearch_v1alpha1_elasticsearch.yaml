@@ -123,7 +123,7 @@ spec:
                     description: Name is a logical name for this set of nodes. Used
                       as a part of the managed Elasticsearch node.name setting.
                     maxLength: 12
-                    pattern: '[a-zA-Z0-9-]*'
+                    pattern: '[a-zA-Z0-9-]+'
                     type: string
                   nodeCount:
                     description: NodeCount defines how many nodes have this topology
@@ -147,6 +147,8 @@ spec:
                     items:
                       type: object
                     type: array
+                required:
+                - name
                 type: object
               type: array
             podDisruptionBudget:

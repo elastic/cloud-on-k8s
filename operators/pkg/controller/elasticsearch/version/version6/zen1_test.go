@@ -52,12 +52,15 @@ func fakeEsClient(raiseError bool) client.Client {
 	})
 }
 
-func newMasterPod(name, namespace string) corev1.Pod {
+func newMasterPod(name, namespace, ssetName string) corev1.Pod {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			Labels:    map[string]string{string(label.NodeTypesMasterLabelName): strconv.FormatBool(true)},
+			Labels: map[string]string{
+				string(label.NodeTypesMasterLabelName): strconv.FormatBool(true),
+				label.StatefulSetNameLabelName:         ssetName,
+			},
 		},
 		Status: corev1.PodStatus{
 			Conditions: []corev1.PodCondition{
@@ -75,11 +78,11 @@ func newMasterPod(name, namespace string) corev1.Pod {
 	return pod
 }
 
-func podConfig(podName, namespace string) *corev1.Secret {
+func ssetConfig(namespace, ssetName string) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: namespace,
-			Name:      settings.ConfigSecretName(podName),
+			Name:      settings.ConfigSecretName(ssetName),
 		},
 		Data: map[string][]byte{
 			settings.ConfigFileName: []byte("a: b\nc: d\n"),
@@ -102,6 +105,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			Name:      "es1",
 		},
 	}
+	ssetName := "master-nodes"
 	type args struct {
 		cluster            v1alpha1.Elasticsearch
 		c                  k8s.Client
@@ -121,12 +125,12 @@ func TestUpdateZen1Discovery(t *testing.T) {
 			name: "Update a one master node cluster",
 			args: args{
 				esClient: fakeEsClient(true), // second master is not created, raise an error if API is called
-				c:        k8s.WrapClient(fake.NewFakeClientWithScheme(s, podConfig("master1", "ns1"))),
+				c:        k8s.WrapClient(fake.NewFakeClientWithScheme(s, ssetConfig("ns1", ssetName))),
 				performableChanges: &mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{
 							{
-								Pod: newMasterPod("master2", "ns1"),
+								Pod: newMasterPod("master2", "ns1", ssetName),
 								PodSpecCtx: pod.PodSpecContext{
 									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
@@ -135,7 +139,7 @@ func TestUpdateZen1Discovery(t *testing.T) {
 					},
 				},
 				allPods: []corev1.Pod{
-					newMasterPod("master1", "ns1"),
+					newMasterPod("master1", "ns1", ssetName),
 				},
 				state: reconcile.NewState(cluster),
 			},
@@ -149,17 +153,14 @@ func TestUpdateZen1Discovery(t *testing.T) {
 				esClient: fakeEsClient(false), // a majority of master is available, call the API
 				c: k8s.WrapClient(fake.NewFakeClientWithScheme(
 					s,
-					podConfig("master1", "ns1"),
-					podConfig("master2", "ns1"),
-					podConfig("master3", "ns1"),
-					podConfig("master4", "ns1"),
+					ssetConfig("ns1", ssetName),
 				),
 				),
 				performableChanges: &mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{
 							{
-								Pod: newMasterPod("master5", "ns1"),
+								Pod: newMasterPod("master5", "ns1", ssetName),
 								PodSpecCtx: pod.PodSpecContext{
 									Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
 								},
@@ -168,10 +169,10 @@ func TestUpdateZen1Discovery(t *testing.T) {
 					},
 				},
 				allPods: []corev1.Pod{
-					newMasterPod("master1", "ns1"),
-					newMasterPod("master2", "ns1"),
-					newMasterPod("master3", "ns1"),
-					newMasterPod("master4", "ns1"),
+					newMasterPod("master1", "ns1", ssetName),
+					newMasterPod("master2", "ns1", ssetName),
+					newMasterPod("master3", "ns1", ssetName),
+					newMasterPod("master4", "ns1", ssetName),
 				},
 				state: reconcile.NewState(cluster),
 			},

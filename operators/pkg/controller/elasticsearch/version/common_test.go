@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
@@ -44,92 +43,6 @@ func Test_quantityToMegabytes(t *testing.T) {
 	}
 }
 
-func TestNewPod(t *testing.T) {
-	esMeta := metav1.ObjectMeta{
-		Namespace: "ns",
-		Name:      "name",
-	}
-	es := v1alpha1.Elasticsearch{
-		ObjectMeta: esMeta,
-		Spec: v1alpha1.ElasticsearchSpec{
-			Version: "7.1.0",
-		},
-	}
-	podTemplate := corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Labels: map[string]string{
-				"a": "b",
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name: "container1",
-				},
-			},
-		},
-	}
-	withCustomHostnameSubdomains := corev1.PodTemplateSpec{
-		ObjectMeta: podTemplate.ObjectMeta,
-		Spec: corev1.PodSpec{
-			Containers: podTemplate.Spec.Containers,
-			Hostname:   "custom-hostname",
-			Subdomain:  "custom-subdomain",
-		},
-	}
-
-	tests := []struct {
-		name       string
-		es         v1alpha1.Elasticsearch
-		podSpecCtx pod.PodSpecContext
-		want       func() corev1.Pod
-	}{
-		{
-			name:       "happy path",
-			es:         es,
-			podSpecCtx: pod.PodSpecContext{PodTemplate: podTemplate},
-			want: func() corev1.Pod {
-				p := corev1.Pod{
-					ObjectMeta: *podTemplate.ObjectMeta.DeepCopy(),
-					Spec:       *podTemplate.Spec.DeepCopy(),
-				}
-				p.Namespace = esMeta.Namespace
-				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(podTemplate)
-				p.Spec.Subdomain = es.Name
-				return p
-			},
-		},
-		{
-			name:       "with custom hostname and subdomain",
-			es:         es,
-			podSpecCtx: pod.PodSpecContext{PodTemplate: withCustomHostnameSubdomains},
-			want: func() corev1.Pod {
-				p := corev1.Pod{
-					ObjectMeta: *withCustomHostnameSubdomains.ObjectMeta.DeepCopy(),
-					Spec:       *withCustomHostnameSubdomains.Spec.DeepCopy(),
-				}
-				p.Namespace = esMeta.Namespace
-				p.Labels[hash.TemplateHashLabelName] = hash.HashObject(withCustomHostnameSubdomains)
-				return p
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := NewPod(tt.es, tt.podSpecCtx)
-			// since the name is random, don't test its equality and inject it to the expected output
-			require.NotEmpty(t, got.Name)
-			require.NotEmpty(t, got.Spec.Hostname)
-			want := tt.want()
-			want.Name = got.Name
-			if tt.podSpecCtx.PodTemplate.Spec.Hostname == "" {
-				want.Spec.Hostname = got.Spec.Hostname
-			}
-			require.Equal(t, want, got)
-		})
-	}
-}
-
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides
 	// setup mocks for env vars func, es config func and init-containers func
@@ -145,9 +58,6 @@ func Test_podSpec(t *testing.T) {
 			},
 		}
 	}
-	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
-		return settings.NewCanonicalConfig(), nil
-	}
 	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
 		return []corev1.Container{
 			{
@@ -162,6 +72,10 @@ func Test_podSpec(t *testing.T) {
 	varTrue := true
 	varInt64 := int64(12)
 	es71 := v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "es71",
+		},
 		Spec: v1alpha1.ElasticsearchSpec{
 			Version: "7.1.0",
 		},
@@ -463,6 +377,7 @@ func Test_podSpec(t *testing.T) {
 			params: pod.NewPodSpecParams{
 				Elasticsearch: es71,
 				NodeSpec: v1alpha1.NodeSpec{
+					Name: "node-spec-name",
 					PodTemplate: corev1.PodTemplateSpec{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -478,19 +393,21 @@ func Test_podSpec(t *testing.T) {
 					"a":                          "b",
 					"c":                          "d",
 					"common.k8s.elastic.co/type": "elasticsearch",
-					"elasticsearch.k8s.elastic.co/cluster-name": "",
-					"elasticsearch.k8s.elastic.co/node-data":    "true",
-					"elasticsearch.k8s.elastic.co/node-ingest":  "true",
-					"elasticsearch.k8s.elastic.co/node-master":  "true",
-					"elasticsearch.k8s.elastic.co/node-ml":      "true",
-					"elasticsearch.k8s.elastic.co/version":      "7.1.0",
+					"elasticsearch.k8s.elastic.co/cluster-name":         "es71",
+					"elasticsearch.k8s.elastic.co/config-template-hash": hash.HashObject(settings.NewCanonicalConfig()),
+					"elasticsearch.k8s.elastic.co/node-data":            "true",
+					"elasticsearch.k8s.elastic.co/node-ingest":          "true",
+					"elasticsearch.k8s.elastic.co/node-master":          "true",
+					"elasticsearch.k8s.elastic.co/node-ml":              "true",
+					"elasticsearch.k8s.elastic.co/statefulset":          "es71-es-node-spec-name",
+					"elasticsearch.k8s.elastic.co/version":              "7.1.0",
 				}, specCtx.PodTemplate.Labels)
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			spec, err := podSpecContext(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
+			spec, err := podSpecContext(tt.params, "operator-image", settings.NewCanonicalConfig(), newEnvVarsFn, newInitContainersFn)
 			require.NoError(t, err)
 			tt.assertions(t, spec)
 		})
