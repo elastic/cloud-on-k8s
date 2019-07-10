@@ -73,7 +73,11 @@ pipeline {
             }
         }
         cleanup {
-            sh 'make -C build/ci ci-gke-cleanup'
+            script {
+                if (notOnlyDocs()) {
+                    sh 'make -C build/ci ci-gke-cleanup'
+                }
+            }
             cleanWs()
         }
     }
