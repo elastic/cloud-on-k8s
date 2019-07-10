@@ -630,6 +630,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 	updatedReplicas := int32(*statefulSet.Spec.Replicas)
 
 	// leaving nodes names can be built from StatefulSet name and ordinals
+	// nodes are ordered by highest ordinal first
 	var leavingNodes []string
 	for i := int(*statefulSet.Spec.Replicas) - 1; i > targetReplicas-1; i-- {
 		leavingNodes = append(leavingNodes, sset.PodName(statefulSet.Name, i))
