@@ -283,7 +283,7 @@ func (b *PodTemplateBuilder) WithInitContainers(initContainers ...corev1.Contain
 		}
 	}
 
-	b.PodTemplate.Spec.InitContainers = append(containers, b.PodTemplate.Spec.InitContainers...)
+	b.PodTemplate.Spec.InitContainers = append(b.PodTemplate.Spec.InitContainers, containers...)
 
 	return b
 }
