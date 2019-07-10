@@ -219,7 +219,7 @@ func (d *defaultDriver) Reconcile(
 	// Otherwise, we could end up re-creating multiple times the same pod with
 	// different generated names through multiple reconciliation iterations.
 	if !d.PodsExpectations.Fulfilled(namespacedName) {
-		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.")
+		log.Info("Pods creations and deletions expectations are not satisfied yet. Requeuing.", "namespace", es.Namespace, "es_name", es.Name)
 		return results.WithResult(defaultRequeue)
 	}
 
@@ -233,6 +233,8 @@ func (d *defaultDriver) Reconcile(
 		"to_create:", len(changes.ToCreate),
 		"to_keep:", len(changes.ToKeep),
 		"to_delete:", len(changes.ToDelete),
+		"namespace", es.Namespace,
+		"es_name", es.Name,
 	)
 
 	// restart ES processes that need to be restarted before going on with other changes
@@ -250,7 +252,7 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 	if !done {
-		log.V(1).Info("Pods restart is not over yet, re-queueing.")
+		log.V(1).Info("Pods restart is not over yet, re-queueing.", "namespace", es.Namespace, "es_name", es.Name)
 		return results.WithResult(defaultRequeue)
 	}
 
@@ -264,6 +266,8 @@ func (d *defaultDriver) Reconcile(
 		"Calculated performable changes",
 		"schedule_for_creation_count", len(performableChanges.ToCreate),
 		"schedule_for_deletion_count", len(performableChanges.ToDelete),
+		"namespace", es.Namespace,
+		"es_name", es.Name,
 	)
 
 	results.Apply(
@@ -352,7 +356,7 @@ func (d *defaultDriver) Reconcile(
 		// cannot be reached, hence we cannot delete pods.
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
-		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.")
+		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.", "namespace", es.Namespace, "es_name", es.Name)
 
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
 
@@ -445,7 +449,7 @@ func (d *defaultDriver) attemptPodsDeletion(
 		// do not delete a pod or expect a deletion if a data migration is in progress
 		isMigratingData := migration.IsMigratingData(observedState, pod, changes.ToDelete.Pods())
 		if isMigratingData {
-			log.Info("Skipping deletion because of migrating data", "pod", pod.Name)
+			log.Info("Skipping deletion because of migrating data", "namespace", elasticsearch.Namespace, "es_name", elasticsearch.Name, "pod_name", pod.Name)
 			reconcileState.UpdateElasticsearchMigrating(*resourcesState, observedState)
 			results.WithResult(defaultRequeue)
 			continue

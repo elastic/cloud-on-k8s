@@ -135,11 +135,10 @@ func init() {
 	)
 	Cmd.Flags().String(
 		DebugHTTPServerListenAddressFlag,
-		":6060",
+		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
 
-	viper.BindPFlags(Cmd.Flags())
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
@@ -212,11 +211,14 @@ func execute() {
 		// restrict the operator to watch resources within a single namespace, unless empty
 		Namespace: viper.GetString(NamespaceFlagName),
 	}
+
+	// only expose prometheus metrics if provided a specific port
 	metricsPort := viper.GetInt(MetricsPortFlag)
 	if metricsPort != 0 {
+		log.Info("Exposing Prometheus metrics on /metrics", "port", metricsPort)
 		opts.MetricsBindAddress = fmt.Sprintf(":%d", metricsPort)
-		log.Info(fmt.Sprintf("Exposing Prometheus metrics on /metrics%s", opts.MetricsBindAddress))
 	}
+
 	mgr, err := manager.New(cfg, opts)
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")

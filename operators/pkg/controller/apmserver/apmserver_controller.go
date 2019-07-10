@@ -154,14 +154,15 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "as_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "as_name", request.Name)
 	}()
 
 	// Fetch the ApmServer resource
 	as := &apmv1alpha1.ApmServer{}
 	err := r.Get(request.NamespacedName, as)
+
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Object not found, return.  Created objects are automatically garbage collected.
@@ -173,7 +174,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	if common.IsPaused(as.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", as.Namespace, "as_name", as.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
@@ -218,7 +219,8 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	as *apmv1alpha1.ApmServer,
 ) (State, error) {
 	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured")
+		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
+			"namespace", as.Namespace, "as_name", as.Name)
 		return state, nil
 	}
 
@@ -270,10 +272,10 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				reconciledApmServerSecret.Data = expectedApmServerSecret.Data
 			},
 			PreCreate: func() {
-				log.Info("Creating apm server secret", "name", expectedApmServerSecret.Name)
+				log.Info("Creating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 			PreUpdate: func() {
-				log.Info("Updating apm server secret", "name", expectedApmServerSecret.Name)
+				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 		},
 	); err != nil {
@@ -387,8 +389,7 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 	if state.ApmServer.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Apm Server health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
-
+	log.Info("Updating status", "namespace", state.ApmServer.Namespace, "as_name", state.ApmServer.Name, "iteration", atomic.LoadInt64(&r.iteration))
 	err := r.Status().Update(state.ApmServer)
 	if err != nil && errors.IsConflict(err) {
 		log.V(1).Info("Conflict while updating status")
