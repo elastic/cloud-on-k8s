@@ -27,8 +27,8 @@ type ResourcesList []Resources
 
 func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	ssetList := make(sset.StatefulSetList, 0, len(l))
-	for _, nodeSpec := range l {
-		ssetList = append(ssetList, nodeSpec.StatefulSet)
+	for _, resource := range l {
+		ssetList = append(ssetList, resource.StatefulSet)
 	}
 	return ssetList
 }
