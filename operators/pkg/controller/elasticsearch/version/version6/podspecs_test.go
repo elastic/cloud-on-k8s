@@ -58,15 +58,15 @@ func TestNewEnvironmentVars(t *testing.T) {
 				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
+				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
+				{Name: settings.EnvProbeUsername, Value: "username1"},
+				{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, "username1")},
 				{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
 				}},
 				{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 				}},
-				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
-				{Name: settings.EnvProbeUsername, Value: "username1"},
-				{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, "username1")},
 				{Name: processmanager.EnvProcName, Value: "es"},
 				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
 				{Name: processmanager.EnvTLS, Value: "true"},

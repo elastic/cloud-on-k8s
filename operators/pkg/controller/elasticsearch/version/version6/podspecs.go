@@ -9,6 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
@@ -48,19 +49,11 @@ func newEnvironmentVars(
 	httpCertificatesVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
-		// inject pod name and IP as environment variables dynamically,
-		// to be referenced in elasticsearch configuration file
-		{Name: settings.EnvPodName, Value: "", ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
-		}},
-		{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
-			FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
-		}},
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
 		{Name: settings.EnvProbeUsername, Value: p.ProbeUser.Name},
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
-
+	vars = append(vars, env.DynamicPodEnvVars...)
 	vars = append(vars, processmanager.NewEnvVars(httpCertificatesVolume)...)
 
 	return vars
