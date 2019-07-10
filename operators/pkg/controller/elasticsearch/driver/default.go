@@ -567,14 +567,14 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		if _, err := common.ReconcileService(d.Client, d.Scheme, &nodeSpecRes.HeadlessService, &es); err != nil {
 			return results.WithError(err)
 		}
-		ssetToApply := nodeSpecRes.StatefulSet.DeepCopy()
+		ssetToApply := *nodeSpecRes.StatefulSet.DeepCopy()
 		actual, exists := actualStatefulSets.GetByName(ssetToApply.Name)
-		if exists && *ssetToApply.Spec.Replicas < *actual.Spec.Replicas {
+		if exists && sset.Replicas(ssetToApply) < sset.Replicas(actual) {
 			// sset needs to be scaled down
 			// update the sset to use the new spec but don't scale replicas down for now
 			ssetToApply.Spec.Replicas = actual.Spec.Replicas
 		}
-		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, *ssetToApply); err != nil {
+		if err := sset.ReconcileStatefulSet(d.Client, d.Scheme, es, ssetToApply); err != nil {
 			return results.WithError(err)
 		}
 	}
@@ -587,15 +587,15 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		switch {
 		// stateful set removal
 		case !shouldExist:
-			target := 0
+			target := int32(0)
 			removalResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
 			results.WithResults(removalResult)
 			if removalResult.HasError() {
 				return results
 			}
 		// stateful set downscale
-		case actual.Spec.Replicas != nil && *expected.Spec.Replicas < *actual.Spec.Replicas:
-			target := int(*expected.Spec.Replicas)
+		case actual.Spec.Replicas != nil && sset.Replicas(expected) < sset.Replicas(actual):
+			target := sset.Replicas(expected)
 			downscaleResult := d.scaleStatefulSetDown(&actualStatefulSets[i], target, esClient, observedState)
 			if downscaleResult.HasError() {
 				return results
@@ -612,14 +612,14 @@ func (d *defaultDriver) reconcileNodeSpecs(
 
 func (d *defaultDriver) scaleStatefulSetDown(
 	statefulSet *appsv1.StatefulSet,
-	targetReplicas int,
+	targetReplicas int32,
 	esClient esclient.Client,
 	observedState observer.State,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 	logger := log.WithValues("statefulset", k8s.ExtractNamespacedName(statefulSet))
 
-	if *statefulSet.Spec.Replicas == 0 && targetReplicas == 0 {
+	if sset.Replicas(*statefulSet) == 0 && targetReplicas == 0 {
 		// we don't expect any new replicas in this statefulset, remove it
 		logger.Info("Deleting statefulset")
 		if err := d.Client.Delete(statefulSet); err != nil {
@@ -627,13 +627,14 @@ func (d *defaultDriver) scaleStatefulSetDown(
 		}
 	}
 	// copy the current replicas, to be decremented with nodes to remove
-	updatedReplicas := int32(*statefulSet.Spec.Replicas)
+	initialReplicas := sset.Replicas(*statefulSet)
+	updatedReplicas := initialReplicas
 
 	// leaving nodes names can be built from StatefulSet name and ordinals
 	// nodes are ordered by highest ordinal first
 	var leavingNodes []string
-	for i := int(*statefulSet.Spec.Replicas) - 1; i > targetReplicas-1; i-- {
-		leavingNodes = append(leavingNodes, sset.PodName(statefulSet.Name, i))
+	for i := initialReplicas - 1; i > targetReplicas-1; i-- {
+		leavingNodes = append(leavingNodes, sset.PodName(statefulSet.Name, int(i)))
 	}
 
 	// TODO: don't remove last master/last data nodes?
@@ -657,12 +658,12 @@ func (d *defaultDriver) scaleStatefulSetDown(
 		updatedReplicas--
 	}
 
-	if updatedReplicas != *statefulSet.Spec.Replicas {
+	if updatedReplicas != initialReplicas {
 		// update cluster coordination settings to account for nodes deletion
 		// TODO: update zen1/zen2
 
 		// trigger deletion of nodes whose data migration is over
-		logger.V(1).Info("Scaling replicas down", "from", *statefulSet.Spec.Replicas, "to", updatedReplicas)
+		logger.V(1).Info("Scaling replicas down", "from", initialReplicas, "to", updatedReplicas)
 		statefulSet.Spec.Replicas = &updatedReplicas
 		if err := d.Client.Update(statefulSet); err != nil {
 			return results.WithError(err)
