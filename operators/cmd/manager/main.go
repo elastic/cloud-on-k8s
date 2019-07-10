@@ -135,11 +135,10 @@ func init() {
 	)
 	Cmd.Flags().String(
 		DebugHTTPServerListenAddressFlag,
-		":6060",
+		"localhost:6060",
 		"Listen address for debug HTTP server (only available in development mode)",
 	)
 
-	viper.BindPFlags(Cmd.Flags())
 	// enable using dashed notation in flags and underscores in env
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
