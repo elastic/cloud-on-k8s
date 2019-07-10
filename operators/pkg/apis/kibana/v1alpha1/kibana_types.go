@@ -88,7 +88,7 @@ type KibanaStatus struct {
 	Health            KibanaHealth                     `json:"health,omitempty"`
 	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
 	// ControllerVersion is the version of the controller that last updated the Kibana instance
-	ControllerVersion string `json"controllerVersion.omitempty"`
+	ControllerVersion string `json:"controllerVersion,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
