@@ -879,14 +879,14 @@ func TestPodTemplateBuilder_WithInitContainers(t *testing.T) {
 			},
 			want: []corev1.Container{
 				{
-					Name:  "init-container1",
-					Image: "init-image",
-				},
-				{
 					Name: "user-init-container1",
 				},
 				{
 					Name: "user-init-container2",
+				},
+				{
+					Name:  "init-container1",
+					Image: "init-image",
 				},
 			},
 		},

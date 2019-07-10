@@ -305,12 +305,6 @@ func Test_podSpec(t *testing.T) {
 				podSpec := specCtx.PodTemplate.Spec
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "init-container1",
-					},
-					{
-						Name: "init-container2",
-					},
-					{
 						Name:         "user-init-container-1",
 						Image:        "my-custom-image",
 						VolumeMounts: podSpec.Containers[0].VolumeMounts,
@@ -325,6 +319,12 @@ func Test_podSpec(t *testing.T) {
 							}},
 							podSpec.Containers[0].VolumeMounts...,
 						),
+					},
+					{
+						Name: "init-container1",
+					},
+					{
+						Name: "init-container2",
 					},
 				}, podSpec.InitContainers)
 			},
