@@ -21,7 +21,6 @@ type Resources struct {
 	StatefulSet     appsv1.StatefulSet
 	HeadlessService corev1.Service
 	Config          settings.CanonicalConfig
-	// TLS certs
 }
 
 type ResourcesList []Resources
