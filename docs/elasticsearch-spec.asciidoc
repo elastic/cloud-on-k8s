@@ -104,10 +104,19 @@ $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 [id="{p}-virtual-memory"]
 === Virtual memory
 
-By default, Elasticsearch is using memory mapping (mmap) to efficiently access indexes. Usually, default values for virtual address space on Linux distributions is too low for Elasticsearch to work properly, which may result in out of memory exceptions. To increase virtual memory please configure nodes of your Kubernetes cluster according to:
+By default, Elasticsearch is using memory mapping (mmap) to efficiently access indexes. Usually, default values for virtual address space on Linux distributions is too low for Elasticsearch to work properly, which may result in out of memory exceptions. To increase virtual memory ECK will set recommended value by default. This is requires the kubelet to allow running privileged containers.
+You may disable it by explicitly setting value to `false`
+[source,yaml]
+----
+spec:
+  setVmMaxMapCount: false
+----
+
+
+To get more info about this setting you cah check Elasticsearch documentation:
 https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
 
-Optionally, you can select a different type of storage. Here you can find information about possible options:
+Optionally, you can select a different type of storage for your Elasticsearch cluster. Here you can find information about possible options:
 https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html
 
 [source,yaml]
