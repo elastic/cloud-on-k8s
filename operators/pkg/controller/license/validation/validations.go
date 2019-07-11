@@ -39,10 +39,6 @@ type Context struct {
 	Proposed corev1.Secret
 }
 
-func (v Context) isCreate() bool {
-	return v.Current == nil
-}
-
 // Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.
 func Validate(sec corev1.Secret) []validation.Result {
 	vCtx := Context{

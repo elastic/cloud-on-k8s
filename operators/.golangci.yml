@@ -16,14 +16,16 @@ linters:
     - scopelint
 issues:
   exclude-rules:
+    - linters:
+        - golint
+      text: 'name .* stutters'
+
     - path: (^test/.*\.go|.*_test\.go)
       linters:
         - goconst
         - unparam
     - path: pkg/controller/apmserver/config/reconcile\.go
       text: 'G101: Potential hardcoded credentials'
-    - path: pkg/controller/common/hash/hash\.go
-      text: 'func name will be used as hash\.HashObject by other packages, and that stutters'
     - path: pkg/controller/common/settings/canonical_config\.go
       text: 'Consider preallocating `result`'
     - path: pkg/controller/elasticsearch/certificates/transport/csr\.go
@@ -44,8 +46,6 @@ issues:
       text: 'Consider preallocating `volumeAndPVCs`'
     - path: pkg/controller/elasticsearch/name/name\.go
       text: 'G101: Potential hardcoded credentials'
-    - path: pkg/controller/elasticsearch/pod/pod\.go
-      text: 'name .* stutters'
     - path: pkg/controller/elasticsearch/processmanager/client\.go
       text: '`\(\*DefaultClient\)\.doRequest` \- `method` always receives `\"GET\"`'
     - path: pkg/controller/elasticsearch/processmanager/client\.go
@@ -74,7 +74,5 @@ issues:
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/license/validation/validations\.go
       text: 'Consider preallocating `errs`'
-    - path: test/e2e/test/apmserver/http_client\.go
-      text: 'name .* stutters'
     - path: test/e2e/test/elasticsearch/steps_license\.go
       text: 'G101: Potential hardcoded credentials'

@@ -5,7 +5,6 @@
 package keystore
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -84,10 +83,6 @@ func (c keystore) ListSettings() (string, error) {
 func (c keystore) AddSetting(filename string) error {
 	cmd := exec.Command(c.binaryPath, "add-file", filename, path.Join(c.settingsPath, filename))
 	return c.cmdRunner.Run(cmd)
-}
-
-func (c keystore) readSettingFileContent(filename string) ([]byte, error) {
-	return ioutil.ReadFile(path.Join(c.settingsPath, filename))
 }
 
 func (c keystore) Delete() (bool, error) {
