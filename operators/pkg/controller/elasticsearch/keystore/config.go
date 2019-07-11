@@ -118,7 +118,7 @@ func NewConfigFromFlags() (Config, error) {
 		pass := viper.GetString(esPasswordFlag)
 
 		if user == "" {
-			return Config{}, errors.New("invalid user")
+			return Config{}, errors.New("user should not be empty")
 		}
 
 		if pass == "" {
@@ -131,7 +131,7 @@ func NewConfigFromFlags() (Config, error) {
 		}
 
 		if pass == "" {
-			return Config{}, errors.New("invalid password")
+			return Config{}, errors.New("password should not be empty")
 		}
 
 		config.EsUser = client.UserAuth{Name: user, Password: pass}
