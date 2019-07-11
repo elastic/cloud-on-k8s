@@ -87,6 +87,8 @@ hulk-kb-http        LoadBalancer   10.19.247.151   35.242.197.228   5601:31380/T
 
 This section only covers TLS certificates for the HTTP layer. Those for the transport layer used for internal communication between nodes in a cluster are managed by ECK and are not configurable.
 
+[float]
+[id="{p}-default-self-signed-certificate"]
 ==== Default self-signed certificate
 
 By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch and Kibana.
@@ -133,7 +135,7 @@ spec:
 ----
 
 [float]
-[id="{p}-static-ip-custom-domain"]
+[id="{p}-setting-up-your-own-certificate"]
 ==== Setting up your own certificate
 
 You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the cluster is encrypted.
