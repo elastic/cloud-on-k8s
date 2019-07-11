@@ -69,7 +69,7 @@ var (
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr)
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileApmServer {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
@@ -86,6 +86,7 @@ func newReconciler(mgr manager.Manager) *ReconcileApmServer {
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		Parameters:     params,
 	}
 }
 
@@ -143,7 +144,7 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	finalizers     finalizer.Handler
-
+	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -192,6 +193,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	state := NewState(request, as)
+	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
 
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {

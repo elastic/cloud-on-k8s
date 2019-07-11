@@ -36,3 +36,13 @@ func (s State) UpdateKibanaState(deployment v1.Deployment) {
 		}
 	}
 }
+
+// UpdateKibanaControllerVersion updates the Kibana status with the controller version that last updated the Kibana instance
+func (s *State) UpdateKibanaControllerVersion(version string) {
+	s.Kibana.Status.ControllerVersion = version
+}
+
+// GetKibanaControllerVersion returns the controller version that last updated the Kibana instance
+func (s *State) GetKibanaControllerVersion() string {
+	return s.Kibana.Status.ControllerVersion
+}

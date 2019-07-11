@@ -98,6 +98,8 @@ type ApmServerStatus struct {
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1alpha1.AssociationStatus
+	// ControllerVersion is the version of the controller that last updated the ApmServer instance
+	ControllerVersion string `json:"controllerVersion,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
