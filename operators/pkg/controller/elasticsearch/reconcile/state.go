@@ -163,7 +163,7 @@ func (s *State) UpdateElasticsearchControllerVersion(version string) {
 	s.status.ControllerVersion = version
 }
 
-// GetElasticsearchControllerVersion returns the elasticsearch operator version that last updated the ES cluster
+// GetElasticsearchControllerVersion returns the elasticsearch controller version that last updated the ES cluster
 func (s *State) GetElasticsearchControllerVersion() string {
 	return s.status.ControllerVersion
 }
