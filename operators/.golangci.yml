@@ -28,6 +28,8 @@ issues:
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/common/settings/canonical_config\.go
       text: 'Consider preallocating `result`'
+    - path: pkg/controller/common/user/external\.go
+      text: 'method Id should be ID'
     - path: pkg/controller/elasticsearch/certificates/transport/csr\.go
       text: '`buildGeneralNames` \- `svcs` is unused'
     - path: pkg/controller/elasticsearch/certificates/transport/reconcile\.go
@@ -54,8 +56,12 @@ issues:
       text: 'struct of size 96 bytes could be of size 80 bytes'
     - path: pkg/controller/elasticsearch/reconcile/resources_state\.go
       text: 'ifElseChain: rewrite if\-else to switch statement'
+    - path: pkg/controller/elasticsearch/settings/fields\.go
+      text: 'const .* should be'
     - path: pkg/controller/elasticsearch/user/reconciler\.go
       text: 'Consider preallocating `allUsers`'
+    - path: pkg/controller/elasticsearch/user/user\.go
+      text: 'method Id should be ID'
     - path: pkg/controller/elasticsearch/validation/validation\.go
       text: 'Consider preallocating `errs`'
     - path: pkg/controller/elasticsearch/version/running_versions\.go
