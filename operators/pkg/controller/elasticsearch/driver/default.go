@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
@@ -172,6 +173,8 @@ func (d *defaultDriver) Reconcile(
 	if min == nil {
 		min = &d.Version
 	}
+
+	warnUnsupportedDistro(es, resourcesState.AllPods, d.Recorder)
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
@@ -544,4 +547,18 @@ func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1
 	}
 
 	return nil
+}
+
+// warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
+// distribution by looking at if the prepare fs init container terminated with the UnsupportedDistro exit code.
+func warnUnsupportedDistro(es v1alpha1.Elasticsearch, pods []corev1.Pod, recorder record.EventRecorder) {
+	for _, p := range pods {
+		for _, s := range p.Status.InitContainerStatuses {
+			state := s.LastTerminationState.Terminated
+			if s.Name == initcontainer.PrepareFilesystemContainerName &&
+				state != nil && state.ExitCode == initcontainer.UnsupportedDistroExitCode {
+				recorder.Event(&es, corev1.EventTypeWarning, events.EventReasonUnexpected, "Unsupported distribution")
+			}
+		}
+	}
 }

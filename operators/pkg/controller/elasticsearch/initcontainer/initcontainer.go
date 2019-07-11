@@ -18,7 +18,7 @@ const (
 	// osSettingsContainerName is the name of the container that tweaks os-level settings
 	osSettingsContainerName = "elastic-internal-init-os-settings"
 	// prepareFilesystemContainerName is the name of the container that prepares the filesystem
-	prepareFilesystemContainerName = "elastic-internal-init-filesystem"
+	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 )
 
 // NewInitContainers creates init containers according to the given parameters
