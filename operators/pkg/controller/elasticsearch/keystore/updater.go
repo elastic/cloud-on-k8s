@@ -84,7 +84,7 @@ func (u *Updater) watchForUpdate() {
 	// on each filesystem event for config.SourceDir, update the keystore
 	onEvent := func(files fs.FilesCRC) (stop bool, e error) {
 		log.Info("On event")
-		err, msg := u.updateKeystore()
+		msg, err := u.updateKeystore()
 		if err != nil {
 			log.Error(err, "Cannot update keystore", "msg", msg)
 			u.updateStatus(FailedState, msg, err)
@@ -103,7 +103,7 @@ func (u *Updater) watchForUpdate() {
 		return
 	}
 	// execute at least once with the initial fs content
-	err, msg := u.updateKeystore()
+	msg, err := u.updateKeystore()
 	if err != nil {
 		log.Error(err, "Cannot update keystore", "msg", msg)
 		u.updateStatus(FailedState, msg, err)
@@ -144,11 +144,11 @@ func (u *Updater) coalescingRetry() {
 
 // updateKeystore reconciles the source directory with the Elasticsearch keystore by recreating the
 // keystore and adding a setting for each file in the source directory.
-func (u *Updater) updateKeystore() (error, string) {
+func (u *Updater) updateKeystore() (string, error) {
 	// TODO: can we do that to a running cluster?
 	ok, err := u.keystore.Delete()
 	if err != nil {
-		return err, "could not delete keystore file"
+		return "could not delete keystore file", err
 	}
 	if ok {
 		log.Info("Deleted keystore", "keystore-path", u.config.KeystorePath)
@@ -157,12 +157,12 @@ func (u *Updater) updateKeystore() (error, string) {
 	log.Info("Creating keystore", "keystore-path", u.config.KeystorePath)
 	err = u.keystore.Create()
 	if err != nil {
-		return err, "could not create new keystore"
+		return "could not create new keystore", err
 	}
 
 	fileInfos, err := ioutil.ReadDir(u.config.SecretsSourceDir)
 	if err != nil {
-		return err, "could not read settings source directory"
+		return "could not read settings source directory", err
 	}
 
 	for _, file := range fileInfos {
@@ -174,13 +174,13 @@ func (u *Updater) updateKeystore() (error, string) {
 		log.Info("Adding setting to keystore", "file", file.Name())
 		err = u.keystore.AddSetting(file.Name())
 		if err != nil {
-			return err, fmt.Sprintf("could not add setting %s", file.Name())
+			return fmt.Sprintf("could not add setting %s", file.Name()), err
 		}
 	}
 
 	settings, err := u.keystore.ListSettings()
 	if err != nil {
-		return err, "error during listing keystore settings"
+		return "error during listing keystore settings", err
 	}
 	log.Info("Keystore updated", "settings", settings)
 
@@ -188,5 +188,5 @@ func (u *Updater) updateKeystore() (error, string) {
 		u.reloadQueue.Add(attemptReload)
 	}
 
-	return nil, ""
+	return "", nil
 }
