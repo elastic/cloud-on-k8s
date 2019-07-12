@@ -28,5 +28,4 @@ func TestApmStandalone(t *testing.T) {
 
 	test.Sequence(nil, test.EmptySteps, apmBuilder).
 		RunSequential(t)
-	// TODO: is it possible to verify that it would also show up properly in Kibana?
 }
