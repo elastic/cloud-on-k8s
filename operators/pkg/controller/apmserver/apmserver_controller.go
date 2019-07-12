@@ -276,7 +276,6 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	state State,
 	as *apmv1alpha1.ApmServer,
 ) (State, error) {
-
 	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
 	if err != nil {
 		return state, err
