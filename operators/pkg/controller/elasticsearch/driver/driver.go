@@ -21,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version7"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -46,9 +45,8 @@ type Options struct {
 	// Version is the version of Elasticsearch we want to reconcile towards
 	Version version.Version
 	// Client is used to access the Kubernetes API
-	Client   k8s.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Client k8s.Client
+	Scheme *runtime.Scheme
 
 	// Observers that observe es clusters state
 	Observers *observer.Manager

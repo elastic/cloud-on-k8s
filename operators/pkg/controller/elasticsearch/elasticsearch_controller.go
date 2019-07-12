@@ -235,9 +235,8 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
-		Client:   r.Client,
-		Scheme:   r.scheme,
-		Recorder: r.recorder,
+		Client: r.Client,
+		Scheme: r.scheme,
 
 		Version: *ver,
 
