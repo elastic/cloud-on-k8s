@@ -14,6 +14,9 @@ linters:
     - interfacer
     - lll
     - scopelint
+linters-settings:
+  maligned:
+    suggest-new: true
 issues:
   exclude-rules:
     - linters:
