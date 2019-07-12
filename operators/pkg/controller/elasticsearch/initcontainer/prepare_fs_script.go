@@ -44,7 +44,7 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	set -eu
 
 	# the operator only works with the default ES distribution
-	license=/usr/share/elasticsearch/modules/x-pack-core/LICENSE.txt
+	license=/usr/share/elasticsearch/LICENSE.txt
 	if [[ ! -f $license || $(grep -Fxc "ELASTIC LICENSE AGREEMENT" $license) -ne 1 ]]; then
 		>&2 echo "unsupported_distro"
 		exit ` + fmt.Sprintf("%d", UnsupportedDistroExitCode) + `
