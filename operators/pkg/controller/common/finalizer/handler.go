@@ -49,7 +49,7 @@ func (h *Handler) Handle(resource runtime.Object, finalizers ...Finalizer) error
 	var finalizerErr error
 	if metaObject.GetDeletionTimestamp().IsZero() {
 		// resource is not being deleted, make sure all finalizers are there
-		needUpdate = h.reconcileFinalizers(finalizers, metaObject, resource)
+		needUpdate = h.reconcileFinalizers(finalizers, metaObject)
 	} else {
 		// resource is being deleted, let's execute finalizers
 		needUpdate, finalizerErr = h.executeFinalizers(finalizers, metaObject, resource)
@@ -62,15 +62,14 @@ func (h *Handler) Handle(resource runtime.Object, finalizers ...Finalizer) error
 	return finalizerErr
 }
 
-// ReconcileFinalizers makes sure all finalizers exist in the given objectMeta.
-// If some finalizers need to be added to objectMeta,
-// an update to the apiserver will be issued for the given resource.
-func (h *Handler) reconcileFinalizers(finalizers []Finalizer, object metav1.Object, resource runtime.Object) bool {
+// reconcileFinalizers ensures all finalizers exist in the given objectMeta.
+// Returns a bool indicating if an update is required to the object
+func (h *Handler) reconcileFinalizers(finalizers []Finalizer, object metav1.Object) bool {
 	needUpdate := false
 	for _, finalizer := range finalizers {
 		// add finalizer if not already there
 		if !stringsutil.StringInSlice(finalizer.Name, object.GetFinalizers()) {
-			log.Info("Registering finalizer", "name", finalizer.Name)
+			log.Info("Registering finalizer", "finalizer_name", finalizer.Name, "namespace", object.GetNamespace(), "name", object.GetName())
 			object.SetFinalizers(append(object.GetFinalizers(), finalizer.Name))
 			needUpdate = true
 		}
@@ -87,7 +86,7 @@ func (h *Handler) executeFinalizers(finalizers []Finalizer, object metav1.Object
 	for _, finalizer := range finalizers {
 		// for each registered finalizer, execute it, then remove from the list
 		if stringsutil.StringInSlice(finalizer.Name, object.GetFinalizers()) {
-			log.Info("Executing finalizer", "name", finalizer.Name)
+			log.Info("Executing finalizer", "finalizer_name", finalizer.Name, "namespace", object.GetNamespace(), "name", object.GetName())
 			if finalizerErr = finalizer.Execute(); finalizerErr != nil {
 				break
 			}

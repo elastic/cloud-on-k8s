@@ -2,7 +2,7 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package securesettings
+package keystore
 
 import (
 	"reflect"
@@ -11,7 +11,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	kbvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
@@ -27,8 +26,8 @@ func Test_secureSettingsWatchName(t *testing.T) {
 func Test_secureSettingsVolume(t *testing.T) {
 	expectedSecretVolume := volume.NewSecretVolumeWithMountPath(
 		testSecureSettingsSecret.Name,
-		kbvolume.SecureSettingsVolumeName,
-		kbvolume.SecureSettingsVolumeMountPath,
+		SecureSettingsVolumeName,
+		SecureSettingsVolumeMountPath,
 	)
 	createWatches := func(handlerName string) watches.DynamicWatches {
 		w := watches.NewDynamicWatches()
@@ -91,7 +90,7 @@ func Test_secureSettingsVolume(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			recorder := record.NewFakeRecorder(1000)
-			vol, version, err := secureSettingsVolume(tt.c, recorder, tt.w, tt.kb)
+			vol, version, err := secureSettingsVolume(tt.c, recorder, tt.w, &tt.kb)
 			require.NoError(t, err)
 
 			if !reflect.DeepEqual(vol, tt.wantVolume) {

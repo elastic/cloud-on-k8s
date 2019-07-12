@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -45,11 +45,10 @@ func Test_imageWithVersion(t *testing.T) {
 
 func TestNewPodTemplateSpec(t *testing.T) {
 	tests := []struct {
-		name              string
-		kb                v1alpha1.Kibana
-		additionalVolumes []corev1.Volume
-		initContainers    []corev1.Container
-		assertions        func(pod corev1.PodTemplateSpec)
+		name       string
+		kb         v1alpha1.Kibana
+		keystore   *keystore.Resources
+		assertions func(pod corev1.PodTemplateSpec)
 	}{
 		{
 			name: "defaults",
@@ -58,6 +57,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					Version: "7.1.0",
 				},
 			},
+			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, false, *pod.Spec.AutomountServiceAccountToken)
 				assert.Len(t, pod.Spec.Containers, 1)
@@ -72,14 +72,16 @@ func TestNewPodTemplateSpec(t *testing.T) {
 			},
 		},
 		{
-			name: "with additional volumes and init containers",
+			name: "with additional volumes and init containers for the Keystore",
 			kb: v1alpha1.Kibana{
 				Spec: v1alpha1.KibanaSpec{
 					Version: "7.1.0",
 				},
 			},
-			additionalVolumes: []corev1.Volume{{Name: "vol"}},
-			initContainers:    []corev1.Container{{Name: "init"}},
+			keystore: &keystore.Resources{
+				InitContainer: corev1.Container{Name: "init"},
+				Volume:        corev1.Volume{Name: "vol"},
+			},
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
 				assert.Len(t, pod.Spec.Volumes, 2)
@@ -91,6 +93,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 				Image:   "my-custom-image:1.0.0",
 				Version: "7.1.0",
 			}},
+			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Equal(t, "my-custom-image:1.0.0", GetKibanaContainer(pod.Spec).Image)
 			},
@@ -108,12 +111,14 @@ func TestNewPodTemplateSpec(t *testing.T) {
 					},
 				},
 			}},
+			keystore: nil,
 			assertions: func(pod corev1.PodTemplateSpec) {
 				assert.Len(t, pod.Spec.InitContainers, 1)
 			},
 		},
 		{
-			name: "with user-provided labels",
+			name:     "with user-provided labels",
+			keystore: nil,
 			kb: v1alpha1.Kibana{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "kibana-name",
@@ -191,7 +196,7 @@ func TestNewPodTemplateSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewPodTemplateSpec(tt.kb, tt.additionalVolumes, tt.initContainers)
+			got := NewPodTemplateSpec(tt.kb, tt.keystore)
 			tt.assertions(got)
 		})
 	}

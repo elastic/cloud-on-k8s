@@ -72,6 +72,8 @@ spec:
                       - password
                       type: object
                     secret:
+                      description: SecretKeyRef is a secret that contains the credentials
+                        to use.
                       type: object
                   type: object
                 certificateAuthorities:
@@ -186,6 +188,10 @@ spec:
         status:
           properties:
             associationStatus:
+              type: string
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the Kibana instance
               type: string
             health:
               type: string

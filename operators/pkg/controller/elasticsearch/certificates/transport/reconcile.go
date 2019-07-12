@@ -37,7 +37,7 @@ func ReconcileTransportCertificatesSecrets(
 	services []corev1.Service,
 	rotationParams certificates.RotationParams,
 ) (reconcile.Result, error) {
-	log.Info("Reconciling transport certificates secrets")
+	log.Info("Reconciling transport certificate secrets", "namespace", es.Namespace, "es_name", es.Name)
 
 	var pods corev1.PodList
 	if err := c.List(&client.ListOptions{
@@ -56,7 +56,7 @@ func ReconcileTransportCertificatesSecrets(
 
 	for _, pod := range pods.Items {
 		if pod.Status.PodIP == "" {
-			log.Info("Skipping pod because it has no IP yet", "pod", pod.Name)
+			log.Info("Skipping pod because it has no IP yet", "namespace", pod.Namespace, "pod_name", pod.Name)
 			continue
 		}
 
@@ -85,7 +85,7 @@ func ReconcileTransportCertificatesSecrets(
 		}
 	}
 	if len(keysToPrune) > 0 {
-		log.Info("Pruning keys from certificates secret", "keys", keysToPrune)
+		log.Info("Pruning keys from certificates secret", "namespace", es.Namespace, "secret_name", secret.Name, "keys", keysToPrune)
 
 		for _, keyToRemove := range keysToPrune {
 			delete(secret.Data, keyToRemove)

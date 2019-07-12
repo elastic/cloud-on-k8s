@@ -11,12 +11,12 @@ import (
 
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/securesettings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -129,9 +129,9 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// atomically update the iteration to support concurrent runs.
 	currentIteration := atomic.AddInt64(&r.iteration, 1)
 	iterationStartTime := time.Now()
-	log.Info("Start reconcile iteration", "iteration", currentIteration)
+	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "kibana_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime))
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "kibana_name", request.Name)
 	}()
 
 	// Fetch the Kibana instance
@@ -148,13 +148,14 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	}
 
 	if common.IsPaused(kb.ObjectMeta) {
-		log.Info("Paused : skipping reconciliation", "iteration", currentIteration)
+		log.Info("Object is paused. Skipping reconciliation", "namespace", kb.Namespace, "kibana_name", kb.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
 	}
 
 	if err := r.finalizers.Handle(kb, r.finalizersFor(*kb)...); err != nil {
 		if errors.IsConflict(err) {
-			log.V(1).Info("Conflict while handling secret watch finalizer")
+			// Conflicts are expected and should be resolved on next loop
+			log.V(1).Info("Conflict while handling secret watch finalizer", "namespace", kb.Namespace, "kibana_name", kb.Name)
 			return reconcile.Result{Requeue: true}, nil
 		}
 		return reconcile.Result{}, err
@@ -170,6 +171,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	state := NewState(request, kb)
+	state.UpdateKibanaControllerVersion(r.params.OperatorInfo.BuildInfo.Version)
 	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -179,7 +181,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
-		log.V(1).Info("Conflict while updating status")
+		log.V(1).Info("Conflict while updating status", "namespace", kb.Namespace, "kibana_name", kb.Name)
 		return reconcile.Result{Requeue: true}, nil
 	}
 	return results.WithError(err).Aggregate()
@@ -193,7 +195,7 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 	if state.Kibana.Status.IsDegraded(current.Status) {
 		r.recorder.Event(current, corev1.EventTypeWarning, events.EventReasonUnhealthy, "Kibana health degraded")
 	}
-	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration))
+	log.Info("Updating status", "iteration", atomic.LoadInt64(&r.iteration), "namespace", state.Kibana.Namespace, "kibana_name", state.Kibana.Name)
 	return r.Status().Update(state.Kibana)
 }
 
@@ -201,6 +203,6 @@ func (r *ReconcileKibana) updateStatus(state State) error {
 func (r *ReconcileKibana) finalizersFor(kb kibanav1alpha1.Kibana) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
 		secretWatchFinalizer(kb, r.dynamicWatches),
-		securesettings.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&kb), r.dynamicWatches, &kb),
 	}
 }

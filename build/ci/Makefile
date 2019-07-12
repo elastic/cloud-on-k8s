@@ -97,7 +97,8 @@ ci-release: vault-public-key vault-docker-creds
     	-e "REPOSITORY=$(REPOSITORY)" \
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
     	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
-    	-e "RELEASE=true" \
+    	-e "USE_ELASTIC_DOCKER_REGISTRY=true" \
+    	-e "SNAPSHOT_RELEASE=$(SNAPSHOT_RELEASE)" \
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
@@ -130,7 +131,26 @@ ci-e2e: vault-gke-creds
 		-e "TESTS_MATCH=$(TESTS_MATCH)" \
 		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
 		cloud-on-k8s-ci-e2e \
-		bash -c "make -C operators ci-e2e GKE_MACHINE_TYPE=n1-standard-8"
+		bash -c "make -C operators ci-e2e"
+
+# Run e2e tests in GKE against provided ECK image
+ci-e2e-rc: vault-gke-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
+	docker run --rm -t \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-w $(GO_MOUNT_PATH) \
+		-e "IMG_SUFFIX=-ci" \
+		-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+		-e "REGISTRY=$(REGISTRY)" \
+		-e "REPOSITORY=$(GCLOUD_PROJECT)" \
+		-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
+		-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+		-e "TESTS_MATCH=$(TESTS_MATCH)" \
+		-e "GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION)" \
+		-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+		cloud-on-k8s-ci-e2e \
+		bash -c "make -C operators ci-e2e-rc"
 
 # Remove k8s cluster
 ci-e2e-delete-cluster: vault-gke-creds
@@ -145,10 +165,22 @@ ci-e2e-delete-cluster: vault-gke-creds
     	cloud-on-k8s-ci-e2e \
     	bash -c "make -C operators set-context-gke delete-gke"
 
+# Remove all unused resources in GKE
+ci-gke-cleanup: ci-e2e-delete-cluster
+	docker run --rm -t \
+    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+    	-w $(GO_MOUNT_PATH) \
+    	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
+    	-e "GKE_CLUSTER_NAME=$(GKE_CLUSTER_NAME)" \
+    	-e "GKE_SERVICE_ACCOUNT_KEY_FILE=$(GO_MOUNT_PATH)/build/ci/$(GKE_CREDS_FILE)" \
+    	cloud-on-k8s-ci-e2e \
+    	bash -c "GKE_CLUSTER_VERSION=1.11 $(GO_MOUNT_PATH)/operators/hack/gke-cluster.sh auth && \
+    	 	$(GO_MOUNT_PATH)/build/ci/delete_unused_disks.py"
+
 # Run docs build
 ci-build-docs:
 	docker run --rm -t \
-        -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
+		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         docker.elastic.co/docs/build:1 \
         bash -c "git clone https://github.com/elastic/docs.git && \
         	/docs/build_docs.pl --doc $(GO_MOUNT_PATH)/docs/index.asciidoc --out $(GO_MOUNT_PATH)/docs/html --chunk 1 && \

@@ -7,7 +7,6 @@ package v1alpha1
 import (
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,6 +23,9 @@ type ApmServerSpec struct {
 	// NodeCount defines how many nodes the Apm Server deployment must have.
 	NodeCount int32 `json:"nodeCount,omitempty"`
 
+	// Config represents the APM configuration.
+	Config *commonv1alpha1.Config `json:"config,omitempty"`
+
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
@@ -35,6 +37,13 @@ type ApmServerSpec struct {
 	// affinity, resources, etc. for the pods created from this NodeSpec.
 	// +optional
 	PodTemplate corev1.PodTemplateSpec `json:"podTemplate,omitempty"`
+
+	// SecureSettings reference a secret containing secure settings, to be injected
+	// into the APM keystore on each node.
+	// Each individual key/value entry in the referenced secret is considered as an
+	// individual secure setting to be injected.
+	// The secret must exist in the same namespace as the APM resource.
+	SecureSettings *commonv1alpha1.SecretRef `json:"secureSettings,omitempty"`
 
 	// FeatureFlags are apm-specific flags that enable or disable specific experimental features
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
@@ -56,7 +65,7 @@ type ElasticsearchOutput struct {
 	Hosts []string `json:"hosts,omitempty"`
 
 	// Auth configures authentication for APM Server to use.
-	Auth ElasticsearchAuth `json:"auth,omitempty"`
+	Auth commonv1alpha1.ElasticsearchAuth `json:"auth,omitempty"`
 
 	// SSL configures TLS-related configuration for Elasticsearch
 	SSL ElasticsearchOutputSSL `json:"ssl,omitempty"`
@@ -89,6 +98,8 @@ type ApmServerStatus struct {
 	SecretTokenSecretName string `json:"secretTokenSecret,omitempty"`
 	// Association is the status of any auto-linking to Elasticsearch clusters.
 	Association commonv1alpha1.AssociationStatus
+	// ControllerVersion is the version of the controller that last updated the ApmServer instance
+	ControllerVersion string `json:"controllerVersion,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -99,23 +110,6 @@ func (as ApmServerStatus) IsDegraded(prev ApmServerStatus) bool {
 // IsConfigured returns true if the output configuration is populated with non-default values.
 func (e ElasticsearchOutput) IsConfigured() bool {
 	return len(e.Hosts) > 0
-}
-
-// ElasticsearchAuth contains auth config for APM Server to use with an Elasticsearch cluster
-// TODO: this is a good candidate for sharing/reuse between this and Kibana due to association reuse potential.
-type ElasticsearchAuth struct {
-	// Inline is auth provided as plaintext inline credentials.
-	Inline *ElasticsearchInlineAuth `json:"inline,omitempty"`
-	// SecretKeyRef is a secret that contains the credentials to use.
-	SecretKeyRef *v1.SecretKeySelector `json:"secret,omitempty"`
-}
-
-// ElasticsearchInlineAuth is a basic username/password combination.
-type ElasticsearchInlineAuth struct {
-	// User is the username to use.
-	Username string `json:"username,omitempty"`
-	// Password is the password to use.
-	Password string `json:"password,omitempty"`
 }
 
 // +genclient
@@ -148,4 +142,20 @@ type ApmServerList struct {
 
 func init() {
 	SchemeBuilder.Register(&ApmServer{}, &ApmServerList{})
+}
+
+// IsMarkedForDeletion returns true if the APM is going to be deleted
+func (as *ApmServer) IsMarkedForDeletion() bool {
+	if as.DeletionTimestamp.IsZero() { // already handles nil pointer
+		return false
+	}
+	return true
+}
+
+func (as *ApmServer) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
+	return as.Spec.Output.Elasticsearch.Auth
+}
+
+func (as *ApmServer) SecureSettings() *commonv1alpha1.SecretRef {
+	return as.Spec.SecureSettings
 }

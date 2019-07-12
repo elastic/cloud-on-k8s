@@ -7,13 +7,45 @@ package apmserver
 import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Builder to create APM Servers
 type Builder struct {
 	ApmServer apmtype.ApmServer
+}
+
+func NewBuilder(name string) Builder {
+	meta := metav1.ObjectMeta{
+		Name:      name,
+		Namespace: test.Namespace,
+	}
+	return Builder{
+		ApmServer: apmtype.ApmServer{
+			ObjectMeta: meta,
+			Spec: apmtype.ApmServerSpec{
+				NodeCount: 1,
+				Version:   test.ElasticStackVersion,
+				Output: apmtype.Output{
+					Elasticsearch: apmtype.ElasticsearchOutput{
+						ElasticsearchRef: &commonv1alpha1.ObjectSelector{
+							Name:      name,
+							Namespace: test.Namespace,
+						},
+					},
+				},
+				PodTemplate: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						SecurityContext: test.DefaultSecurityContext(),
+					},
+				},
+			},
+		},
+	}
 }
 
 func (b Builder) WithRestrictedSecurityContext() Builder {

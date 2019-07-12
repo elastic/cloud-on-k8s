@@ -9,7 +9,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -135,12 +134,12 @@ func reconcileHTTPInternalCertificatesSecret(
 
 	if needsUpdate {
 		if shouldCreateSecret {
-			log.Info("Creating HTTP internal certificate secret", "secret", secret.Name)
+			log.Info("Creating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 			if err := c.Create(&secret); err != nil {
 				return nil, err
 			}
 		} else {
-			log.Info("Updating HTTP internal certificate secret", "secret", secret.Name)
+			log.Info("Updating HTTP internal certificate secret", "namespace", secret.Namespace, "secret_name", secret.Name)
 			if err := c.Update(&secret); err != nil {
 				return nil, err
 			}
@@ -172,7 +171,7 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	if privateKeyData, ok := secret.Data[certificates.KeyFileName]; ok {
 		storedPrivateKey, err := certificates.ParsePEMPrivateKey(privateKeyData)
 		if err != nil {
-			log.Error(err, "Unable to parse stored private key", "secret", secret.Name)
+			log.Error(err, "Unable to parse stored private key", "namespace", secret.Namespace, "secret_name", secret.Name)
 		} else {
 			needsNewPrivateKey = false
 			privateKey = storedPrivateKey
@@ -195,9 +194,10 @@ func ensureInternalSelfSignedCertificateSecretContents(
 	if shouldIssueNewHTTPCertificate(owner, namer, tls, secret, svcs, ca, rotationParam.RotateBefore) {
 		log.Info(
 			"Issuing new HTTP certificate",
-			"secret", secret.Name,
-			"namespace", owner.Namespace,
-			"name", owner.Name,
+			"namespace", secret.Namespace,
+			"secret_name", secret.Name,
+			"owner_namespace", owner.Namespace,
+			"owner_name", owner.Name,
 		)
 
 		csr, err := x509.CreateCertificateRequest(cryptorand.Reader, &x509.CertificateRequest{}, privateKey)
@@ -263,7 +263,7 @@ func shouldIssueNewHTTPCertificate(
 	} else {
 		certs, err := certificates.ParsePEMCerts(certData)
 		if err != nil {
-			log.Error(err, "Invalid certificate data found, issuing new certificate", "secret", secret.Name)
+			log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
 			return true
 		}
 
@@ -289,16 +289,20 @@ func shouldIssueNewHTTPCertificate(
 	}
 	if _, err := certificate.Verify(verifyOpts); err != nil {
 		log.Info(
-			fmt.Sprintf("Certificate was not valid, should issue new: %s", err),
+			"Certificate was not valid, should issue new",
+			"validation_failure", err,
 			"subject", certificate.Subject,
 			"issuer", certificate.Issuer,
 			"current_ca_subject", ca.Cert.Subject,
+			"secret_name", secret.Name,
+			"namespace", secret.Namespace,
+			"owner_name", owner.Name,
 		)
 		return true
 	}
 
 	if time.Now().After(certificate.NotAfter.Add(-certReconcileBefore)) {
-		log.Info("Certificate soon to expire, should issue new", "secret", secret.Name)
+		log.Info("Certificate soon to expire, should issue new", "namespace", secret.Namespace, "secret_name", secret.Name)
 		return true
 	}
 

@@ -176,6 +176,8 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
+	warnUnsupportedDistro(resourcesState.AllPods, reconcileState.Recorder)
+
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
 		certificateResources.TrustedHTTPCertificates,
@@ -384,7 +386,7 @@ func (d *defaultDriver) Reconcile(
 		// cannot be reached, hence we cannot delete pods.
 		// Probably it was just created and is not ready yet.
 		// Let's retry in a while.
-		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.")
+		log.Info("ES external service not ready yet for shard migration reconciliation. Requeuing.", "namespace", es.Namespace, "es_name", es.Name)
 
 		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
 
@@ -621,7 +623,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 
 	if sset.Replicas(*statefulSet) == 0 && targetReplicas == 0 {
 		// we don't expect any new replicas in this statefulset, remove it
-		logger.Info("Deleting statefulset")
+		logger.Info("Deleting statefulset", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
 		if err := d.Client.Delete(statefulSet); err != nil {
 			return results.WithError(err)
 		}
@@ -734,4 +736,19 @@ func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1
 	}
 
 	return nil
+}
+
+// warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
+// distribution by looking at if the prepare fs init container terminated with the UnsupportedDistro exit code.
+func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
+	for _, p := range pods {
+		for _, s := range p.Status.InitContainerStatuses {
+			state := s.LastTerminationState.Terminated
+			if s.Name == initcontainer.PrepareFilesystemContainerName &&
+				state != nil && state.ExitCode == initcontainer.UnsupportedDistroExitCode {
+				recorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected,
+					"Unsupported distribution")
+			}
+		}
+	}
 }
