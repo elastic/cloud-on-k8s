@@ -46,7 +46,6 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 		Handlers(&license.ValidationHandler{}).
 		WithManager(mgr).
 		Build()
-
 	if err != nil {
 		return err
 	}
@@ -61,5 +60,6 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	if err != nil {
 		return err
 	}
+
 	return svr.Register(esWh, licWh)
 }
