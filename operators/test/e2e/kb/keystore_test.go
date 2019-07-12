@@ -17,6 +17,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	KibanaKeystoreBin = "/usr/share/kibana/bin/kibana-keystore"
+)
+
+var KibanaKeystoreCmd = []string{KibanaKeystoreBin}
+
 func TestUpdateKibanaSecureSettings(t *testing.T) {
 	// user-provided secure settings secret
 	secureSettingsSecretName := "secure-settings-secret"
@@ -55,7 +61,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 	}
 	stepsFn := func(k *test.K8sClient) test.StepList {
 		return test.StepList{
-			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, []string{"logging.verbose"}),
+			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(name), KibanaKeystoreCmd, []string{"logging.verbose"}),
 			// modify the secure settings secret
 			test.Step{
 				Name: "Modify secure settings secret",
@@ -71,7 +77,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, []string{"logging.json", "logging.verbose"}),
+			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(name), KibanaKeystoreCmd, []string{"logging.json", "logging.verbose"}),
 
 			// remove the secure settings reference
 			test.Step{
@@ -89,7 +95,7 @@ func TestUpdateKibanaSecureSettings(t *testing.T) {
 			},
 
 			// keystore should be updated accordingly
-			kibana.CheckKibanaKeystoreEntries(k, kbBuilder.Kibana, nil),
+			test.CheckKeystoreEntries(k, test.KibanaPodListOptions(name), KibanaKeystoreCmd, nil),
 
 			// cleanup extra resources
 			test.Step{

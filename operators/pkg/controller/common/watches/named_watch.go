@@ -28,32 +28,32 @@ var _ handler.EventHandler = &NamedWatch{}
 
 func (w NamedWatch) Create(evt event.CreateEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Meta) {
-		log.V(4).Info("Create event transformed", "key", w.Key())
+		log.V(1).Info("Create event transformed", "key", w.Key())
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Update(evt event.UpdateEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.MetaOld) {
-		log.V(4).Info("Update event transformed (old)", "key", w.Key())
+		log.V(1).Info("Update event transformed (old)", "key", w.Key())
 		q.Add(req)
 	}
 	for _, req := range w.toReconcileRequest(evt.MetaNew) {
-		log.V(4).Info("Update event transformed (new)", "key", w.Key())
+		log.V(1).Info("Update event transformed (new)", "key", w.Key())
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Delete(evt event.DeleteEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Meta) {
-		log.V(4).Info("Delete event transformed", "key", w.Key())
+		log.V(1).Info("Delete event transformed", "key", w.Key())
 		q.Add(req)
 	}
 }
 
 func (w NamedWatch) Generic(evt event.GenericEvent, q workqueue.RateLimitingInterface) {
 	for _, req := range w.toReconcileRequest(evt.Meta) {
-		log.V(4).Info("Generic event transformed", "key", w.Key())
+		log.V(1).Info("Generic event transformed", "key", w.Key())
 		q.Add(req)
 	}
 }

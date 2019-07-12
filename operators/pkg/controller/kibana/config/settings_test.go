@@ -21,6 +21,8 @@ var defaultConfig = []byte(`
 elasticsearch:
   hosts:
   - ""
+  username: ""
+  password: ""
   ssl:
     certificateAuthorities: /usr/share/kibana/config/elasticsearch-certs/tls.crt
     verificationMode: certificate

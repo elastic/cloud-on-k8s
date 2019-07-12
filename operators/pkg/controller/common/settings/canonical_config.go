@@ -30,9 +30,19 @@ func NewCanonicalConfig() *CanonicalConfig {
 	return fromConfig(ucfg.New())
 }
 
-// NewCanonicalConfigFrom creates a new config from the API type.
+// NewCanonicalConfigFrom creates a new config from the API type after normalizing the data.
 func NewCanonicalConfigFrom(data untypedDict) (*CanonicalConfig, error) {
-	config, err := ucfg.NewFrom(data, Options...)
+	// not great: round trip through yaml to normalize untyped dict before creating config
+	// to avoid  numeric differences in configs due to JSON marshalling/deep copies being restricted to float
+	bytes, err := yaml.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	var normalized untypedDict
+	if err := yaml.Unmarshal(bytes, &normalized); err != nil {
+		return nil, err
+	}
+	config, err := ucfg.NewFrom(normalized, Options...)
 	if err != nil {
 		return nil, err
 	}

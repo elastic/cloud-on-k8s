@@ -101,6 +101,7 @@ func (p *Process) updateState(action string, signal syscall.Signal, lastErr erro
 
 	err := p.state.Write()
 	if err != nil {
+		log.Error(err, "Failed to write process state, exiting")
 		Exit(fmt.Sprintf("Failed to write process state: %s", err), 1)
 	}
 

@@ -38,13 +38,19 @@ endif
 IMG_SUFFIX ?= -$(subst _,,$(USER))
 IMG ?= $(REGISTRY)/$(REPOSITORY)/$(NAME)$(IMG_SUFFIX)
 TAG ?= $(shell git rev-parse --short --verify HEAD)
-OPERATOR_IMAGE ?= $(IMG):$(TAG)
+OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
+ifeq ($(SNAPSHOT_RELEASE), false)
+	OPERATOR_IMAGE = $(IMG):$(TAG)
+endif
 OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildSnapshot=$(SNAPSHOT)
+
+# Setting for CI, if set to true will prevent building and using local Docker image
+SKIP_DOCKER_COMMAND ?= false
 
 ## -- Namespaces
 
@@ -146,7 +152,11 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds docker-build docker-push apply-operators
+deploy: check-gke install-crds
+ifeq ($(SKIP_DOCKER_COMMAND), false)
+	$(MAKE) docker-build docker-push
+endif
+	$(MAKE) apply-operators
 
 apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
@@ -235,8 +245,10 @@ bootstrap-gke: require-gcloud-project
 ifeq ($(PSP), 1)
 	kubectl apply -f config/dev/elastic-psp.yaml
 endif
+ifeq ($(SKIP_DOCKER_COMMAND), false)
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
+endif
 
 delete-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
@@ -269,7 +281,7 @@ docker-build:
 		-t $(OPERATOR_IMAGE)
 
 docker-push:
-ifeq ($(RELEASE), true)
+ifeq ($(USE_ELASTIC_DOCKER_REGISTRY), true)
 	@ docker login -u $(ELASTIC_DOCKER_LOGIN) -p $(ELASTIC_DOCKER_PASSWORD) push.docker.elastic.co
 endif
 ifeq ($(KUBECTL_CLUSTER), minikube)
@@ -341,14 +353,19 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
 ci-e2e: ci-bootstrap-gke e2e
 
+# Run e2e tests in gke using custom operator image
+ci-e2e-rc: export SKIP_DOCKER_COMMAND=true
+ci-e2e-rc: ci-bootstrap-gke e2e
+
 ci-bootstrap-gke:
 	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke
 
 ci-release: export GO_TAGS = release
 ci-release: export LICENSE_PUBKEY = $(ROOT_DIR)/build/ci/license.key
-ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/eck/eck-operator:$(TAG)
+ci-release: export LATEST_RELEASED_IMG = docker.elastic.co/$(REPOSITORY)/eck-operator:$(TAG)
 ci-release:
 	@ $(MAKE) dep-vendor-only generate docker-build docker-push
+	@ echo $(OPERATOR_IMAGE) was pushed!
 
 
 ##########################

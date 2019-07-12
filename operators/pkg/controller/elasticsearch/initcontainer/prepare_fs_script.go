@@ -6,6 +6,7 @@ package initcontainer
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 )
 
@@ -43,7 +44,10 @@ func RenderScriptTemplate(params TemplateParams) (string, error) {
 	return tplBuffer.String(), nil
 }
 
-const PrepareFsScriptConfigKey = "prepare-fs.sh"
+const (
+	PrepareFsScriptConfigKey  = "prepare-fs.sh"
+	UnsupportedDistroExitCode = 42
+)
 
 // scriptTemplate is the main script to be run
 // in the prepare-fs init container before ES starts
@@ -51,6 +55,13 @@ var scriptTemplate = template.Must(template.New("").Parse(
 	`#!/usr/bin/env bash
 
 	set -eu
+
+	# the operator only works with the default ES distribution
+	license=/usr/share/elasticsearch/LICENSE.txt
+	if [[ ! -f $license || $(grep -Fxc "ELASTIC LICENSE AGREEMENT" $license) -ne 1 ]]; then
+		>&2 echo "unsupported_distribution"
+		exit ` + fmt.Sprintf("%d", UnsupportedDistroExitCode) + `
+	fi
 
 	# compute time in seconds since the given start time
 	function duration() {
