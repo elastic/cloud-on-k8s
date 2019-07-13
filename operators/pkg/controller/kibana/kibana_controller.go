@@ -171,13 +171,13 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	state := NewState(request, kb)
-	state.UpdateKibanaControllerVersion(r.params.OperatorInfo.BuildInfo.Version)
+
 	err = annotation.UpdateControllerVersion(r.Client, kb, r.params.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	state := NewState(request, kb)
 	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
 	if err != nil {
 		return reconcile.Result{}, err

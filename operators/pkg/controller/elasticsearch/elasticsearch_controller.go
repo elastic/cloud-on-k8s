@@ -194,13 +194,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
-	state := esreconcile.NewState(es)
-	state.UpdateElasticsearchControllerVersion(r.OperatorInfo.BuildInfo.Version)
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	state := esreconcile.NewState(es)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {

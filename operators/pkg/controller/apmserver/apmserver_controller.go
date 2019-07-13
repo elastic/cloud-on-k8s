@@ -193,13 +193,12 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	state := NewState(request, as)
-	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
 	err = annotation.UpdateControllerVersion(r.Client, as, r.OperatorInfo.BuildInfo.Version)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
+	state := NewState(request, as)
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
 		if errors.IsConflict(err) {
