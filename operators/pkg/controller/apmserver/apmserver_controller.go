@@ -17,6 +17,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
@@ -194,6 +195,10 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 
 	state := NewState(request, as)
 	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
+	err = annotation.UpdateControllerVersion(r.Client, as, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
