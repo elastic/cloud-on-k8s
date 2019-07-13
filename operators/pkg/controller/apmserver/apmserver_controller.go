@@ -216,18 +216,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	return r.updateStatus(state)
 }
 
-func (r *ReconcileApmServer) reconcileApmServerDeployment(
-	state State,
-	as *apmv1alpha1.ApmServer,
-) (State, error) {
-	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
-			"namespace", as.Namespace, "as_name", as.Name)
-		return state, nil
-	}
-
-	// TODO: move server secret into separate method
-
+func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1alpha1.ApmServer) (*corev1.Secret, error) {
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -239,7 +228,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		},
 	}
 	reconciledApmServerSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
+	return reconciledApmServerSecret, reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: r.Client,
 			Scheme: r.scheme,
@@ -280,10 +269,17 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 		},
-	); err != nil {
+	)
+}
+
+func (r *ReconcileApmServer) reconcileApmServerDeployment(
+	state State,
+	as *apmv1alpha1.ApmServer,
+) (State, error) {
+	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
+	if err != nil {
 		return state, err
 	}
-
 	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
 	if err != nil {
 		return state, err
@@ -379,7 +375,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, *expectedApmServerSecret)
+	state.UpdateApmServerState(result, *reconciledApmServerSecret)
 	return state, nil
 }
 
