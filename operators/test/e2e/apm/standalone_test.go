@@ -12,9 +12,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
 )
 
-// TestApmStandalone runs a test suite using the sample ApmServer + ES + Kibana
+// TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch
 func TestApmStandalone(t *testing.T) {
-
 	apmBuilder := apmserver.NewBuilder("standalone").
 		WithNamespace(test.Namespace).
 		WithVersion(test.ElasticStackVersion).
