@@ -331,8 +331,10 @@ func createValidatedHTTPCertificateTemplate(
 	certValidity time.Duration,
 ) (*certificates.ValidatedCertificateTemplate, error) {
 
+	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
+	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(certificates.HTTPCAType)
 	cnNameParts := []string{
-		owner.Name,
+		shortName,
 		owner.Namespace,
 	}
 	cnNameParts = append(cnNameParts, namer.DefaultSuffixes...)
@@ -342,7 +344,8 @@ func createValidatedHTTPCertificateTemplate(
 	certCommonName := strings.Join(cnNameParts, ".")
 
 	dnsNames := []string{
-		certCommonName,
+		certCommonName, // eg. clusterName-es-http.default.es.local
+		shortName,      // eg. clusterName-es-http
 	}
 	var ipAddresses []net.IP
 
