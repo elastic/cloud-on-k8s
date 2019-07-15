@@ -18,7 +18,7 @@ func prepareClusterForStop(esClient client.Client) error {
 	log.V(1).Info("Disabling shards allocation for coordinated restart")
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultReqTimeout)
 	defer cancel()
-	if err := esClient.DisableShardAllocation(ctx); err != nil {
+	if err := esClient.DisableReplicaShardsAllocation(ctx); err != nil {
 		return err
 	}
 
