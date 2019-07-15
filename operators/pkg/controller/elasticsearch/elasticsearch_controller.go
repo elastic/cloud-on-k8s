@@ -194,6 +194,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	}
 
 	state := esreconcile.NewState(es)
+	state.UpdateElasticsearchControllerVersion(r.OperatorInfo.BuildInfo.Version)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {

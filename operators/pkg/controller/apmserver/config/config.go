@@ -24,41 +24,6 @@ const (
 	CertificatesDir = "config/elasticsearch-certs"
 )
 
-// DefaultConfiguration is the default configuration of an APM server.
-// These defaults are taken (without scaling) from a defaulted ECE install
-// TODO: consider scaling the default values provided based on the apm server resources
-var DefaultConfiguration = []byte(`
-apm-server:
-  concurrent_requests: 1
-  max_unzipped_size: 5242880
-  read_timeout: 3600
-  rum:
-    enabled: true
-    rate_limit: 10
-  shutdown_timeout: 30s
-  ssl:
-    enabled: false
-logging:
-  json: true
-  metrics.enabled: true
-output:
-  elasticsearch:
-    compression_level: 5
-    max_bulk_size: 267
-    worker: 5
-queue:
-  mem:
-    events: 2000
-    flush:
-      min_events: 267
-      timeout: 1s
-setup.template.settings.index:
-  auto_expand_replicas: 0-2
-  number_of_replicas: 1
-  number_of_shards: 1
-xpack.monitoring.enabled: true
-`)
-
 func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.CanonicalConfig, error) {
 	specConfig := as.Spec.Config
 	if specConfig == nil {
@@ -70,10 +35,22 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		return nil, err
 	}
 
-	// Get username and password
-	username, password, err := association.ElasticsearchAuthSettings(c, &as)
-	if err != nil {
-		return nil, err
+	outputCfg := settings.NewCanonicalConfig()
+	if as.Spec.Output.Elasticsearch.IsConfigured() {
+		// Get username and password
+		username, password, err := association.ElasticsearchAuthSettings(c, &as)
+		if err != nil {
+			return nil, err
+		}
+		outputCfg = settings.MustCanonicalConfig(
+			map[string]interface{}{
+				"output.elasticsearch.hosts":                       as.Spec.Output.Elasticsearch.Hosts,
+				"output.elasticsearch.username":                    username,
+				"output.elasticsearch.password":                    password,
+				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},
+			},
+		)
+
 	}
 
 	// Create a base configuration.
@@ -82,23 +59,9 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		"apm-server.secret_token": "${SECRET_TOKEN}",
 	})
 
-	// Build the default configuration
-	defaultCfg, err := settings.ParseConfig(DefaultConfiguration)
-	if err != nil {
-		return nil, err
-	}
-
 	// Merge the configuration with userSettings last so they take precedence.
 	err = cfg.MergeWith(
-		defaultCfg,
-		settings.MustCanonicalConfig(
-			map[string]interface{}{
-				"output.elasticsearch.hosts":                       as.Spec.Output.Elasticsearch.Hosts,
-				"output.elasticsearch.username":                    username,
-				"output.elasticsearch.password":                    password,
-				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},
-			},
-		),
+		outputCfg,
 		userSettings,
 	)
 	return cfg, nil
