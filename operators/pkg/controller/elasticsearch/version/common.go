@@ -193,16 +193,17 @@ func podSpecContext(
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
 				configVolume.VolumeMount(),
-			)...).
-		WithInitContainerDefaults().
-		WithInitContainers(initContainers...)
+			)...)
 
 	if p.KeystoreResources != nil {
 		builder = builder.
 			WithVolumes(p.KeystoreResources.Volume).
-			WithInitContainers(p.KeystoreResources.InitContainer).
-			WithInitContainerDefaults()
+			WithInitContainers(p.KeystoreResources.InitContainer)
 	}
+
+	builder = builder.
+		WithInitContainers(initContainers...).
+		WithInitContainerDefaults()
 
 	// generate the configuration
 	// actual volumes to propagate it will be created later on
