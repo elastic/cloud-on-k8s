@@ -12,7 +12,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
@@ -39,14 +38,12 @@ func ExpectedPodSpecs(
 		newEnvironmentVars,
 		settings.NewMergedESConfig,
 		initcontainer.NewInitContainers,
-		operatorImage,
 	)
 }
 
 // newEnvironmentVars returns the environment vars to be associated to a pod
 func newEnvironmentVars(
 	p pod.NewPodSpecParams,
-	httpCertificatesVolume volume.SecretVolume,
 ) []corev1.EnvVar {
 	vars := []corev1.EnvVar{
 		{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
@@ -54,7 +51,6 @@ func newEnvironmentVars(
 		{Name: settings.EnvProbePasswordFile, Value: path.Join(esvolume.ProbeUserSecretMountPath, p.ProbeUser.Name)},
 	}
 	vars = append(vars, env.DynamicPodEnvVars...)
-	vars = append(vars, processmanager.NewEnvVars(httpCertificatesVolume)...)
 
 	return vars
 }

@@ -71,7 +71,7 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator check-license-header
 
 ## -- build
 
@@ -90,9 +90,6 @@ generate:
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
-
-process-manager:
-	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
 fmt:
 	goimports -w pkg cmd
