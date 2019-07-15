@@ -125,7 +125,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
 				pod.NewPodSpecParams{ProbeUser: testProbeUser},
-				"operator-image-dummy",
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
@@ -162,7 +161,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 				esvolume.UnicastHostsVolumeMountPath,
 			),
 		},
-		"operator-image-dummy",
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))

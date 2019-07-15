@@ -23,7 +23,6 @@ import (
 func ExpectedPodSpecs(
 	es v1alpha1.Elasticsearch,
 	paramsTmpl pod.NewPodSpecParams,
-	operatorImage string,
 ) ([]pod.PodSpecContext, error) {
 	// the contents of the file realm volume needs to be symlinked into place
 	paramsTmpl.UsersSecretVolume = volume.NewSecretVolumeWithMountPath(
