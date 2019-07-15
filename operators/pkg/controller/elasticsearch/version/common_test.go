@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -305,19 +306,27 @@ func Test_podSpec(t *testing.T) {
 				podSpec := specCtx.PodTemplate.Spec
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "init-container1",
+						Name:         "init-container1",
+						Image:        podSpec.Containers[0].Image,
+						Env:          env.DynamicPodEnvVars,
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
-						Name: "init-container2",
+						Name:         "init-container2",
+						Image:        podSpec.Containers[0].Image,
+						Env:          env.DynamicPodEnvVars,
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
 						Name:         "user-init-container-1",
 						Image:        "my-custom-image",
+						Env:          env.DynamicPodEnvVars,
 						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
 						Name:  "user-init-container-2",
 						Image: podSpec.Containers[0].Image,
+						Env:   env.DynamicPodEnvVars,
 						VolumeMounts: append(
 							[]corev1.VolumeMount{{
 								Name:      "foo",

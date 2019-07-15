@@ -9,7 +9,6 @@ import (
 	"text/template"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -81,6 +80,5 @@ func initContainer(
 			// write the keystore in the data volume
 			DataVolume(volumePrefix, parameters.DataVolumePath).VolumeMount(),
 		},
-		Env: env.DynamicPodEnvVars,
 	}, nil
 }

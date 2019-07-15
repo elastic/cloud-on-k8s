@@ -7,6 +7,7 @@ package defaults
 import (
 	"sort"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -243,6 +244,8 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 				c.VolumeMounts = append(c.VolumeMounts, volumeMount)
 			}
 		}
+
+		c.Env = append(c.Env, env.DynamicPodEnvVars...)
 	}
 	return b
 }
