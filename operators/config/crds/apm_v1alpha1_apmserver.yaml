@@ -195,6 +195,10 @@ spec:
           type: object
         status:
           properties:
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the ApmServer instance
+              type: string
             health:
               type: string
             secretTokenSecret:

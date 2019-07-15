@@ -49,6 +49,9 @@ GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(V
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildDate=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ') \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildSnapshot=$(SNAPSHOT)
 
+# Setting for CI, if set to true will prevent building and using local Docker image
+SKIP_DOCKER_COMMAND ?= false
+
 ## -- Namespaces
 
 # namespace in which the global operator is deployed (see config/global-operator)
@@ -149,7 +152,11 @@ endif
 endif
 
 # Deploy both the global and namespace operators against the current k8s cluster
-deploy: check-gke install-crds docker-build docker-push apply-operators
+deploy: check-gke install-crds
+ifeq ($(SKIP_DOCKER_COMMAND), false)
+	$(MAKE) docker-build docker-push
+endif
+	$(MAKE) apply-operators
 
 apply-operators:
 	OPERATOR_IMAGE=$(OPERATOR_IMAGE) \
@@ -238,8 +245,10 @@ bootstrap-gke: require-gcloud-project
 ifeq ($(PSP), 1)
 	kubectl apply -f config/dev/elastic-psp.yaml
 endif
+ifeq ($(SKIP_DOCKER_COMMAND), false)
 	# push "latest" operator image to be used for init containers when running the operator locally
 	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
+endif
 
 delete-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
@@ -343,6 +352,10 @@ ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-
 # Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.
 ci-e2e: ci-bootstrap-gke e2e
+
+# Run e2e tests in gke using custom operator image
+ci-e2e-rc: export SKIP_DOCKER_COMMAND=true
+ci-e2e-rc: ci-bootstrap-gke e2e
 
 ci-bootstrap-gke:
 	PSP=1 GKE_MACHINE_TYPE=n1-standard-8 $(MAKE) bootstrap-gke

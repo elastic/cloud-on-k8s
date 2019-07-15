@@ -244,6 +244,10 @@ spec:
           properties:
             clusterUUID:
               type: string
+            controllerVersion:
+              description: ControllerVersion is the version of the controller that
+                last updated the Elasticsearch cluster
+              type: string
             health:
               type: string
             masterNode:

@@ -171,6 +171,7 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 		return reconcile.Result{}, err
 	}
 	state := NewState(request, kb)
+	state.UpdateKibanaControllerVersion(r.params.OperatorInfo.BuildInfo.Version)
 	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
 	if err != nil {
 		return reconcile.Result{}, err
