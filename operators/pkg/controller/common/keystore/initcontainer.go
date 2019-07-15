@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	InitContainerName = "init-keystore"
+	InitContainerName = "elastic-internal-init-keystore"
 )
 
 // InitContainerParameters helps to create a valid keystore init script for Kibana or the APM server.
