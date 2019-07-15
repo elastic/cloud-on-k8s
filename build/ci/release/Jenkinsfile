@@ -75,7 +75,7 @@ pipeline {
 
 def releaseImageNotExist() {
     return sh (
-        script: "docker pull $LATEST_RELEASED_IMG &>/dev/null; echo \$?",
+        script: "docker pull $LATEST_RELEASED_IMG &>/dev/null",
         returnStatus: true
     ) == 1
 }
