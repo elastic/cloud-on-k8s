@@ -105,7 +105,7 @@ func NewPrepareFSInitContainer(
 	container := corev1.Container{
 		Image:           imageName,
 		ImagePullPolicy: corev1.PullIfNotPresent,
-		Name:            prepareFilesystemContainerName,
+		Name:            PrepareFilesystemContainerName,
 		SecurityContext: &corev1.SecurityContext{
 			Privileged: &privileged,
 		},

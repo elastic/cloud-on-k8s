@@ -13,6 +13,7 @@ pipeline {
         IMG_NAME = 'eck-operator'
         IMG_SUFFIX = ''
         LATEST_RELEASED_IMG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}:${TAG_NAME}"
+        SNAPSHOT_RELEASE = 'false'
     }
 
     options {

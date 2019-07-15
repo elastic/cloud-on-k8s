@@ -69,7 +69,7 @@ var (
 // Add creates a new ApmServer Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler := newReconciler(mgr)
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) *ReconcileApmServer {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileApmServer {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServer{
 		Client:         client,
@@ -86,6 +86,7 @@ func newReconciler(mgr manager.Manager) *ReconcileApmServer {
 		recorder:       mgr.GetRecorder(name),
 		dynamicWatches: watches.NewDynamicWatches(),
 		finalizers:     finalizer.NewHandler(client),
+		Parameters:     params,
 	}
 }
 
@@ -143,7 +144,7 @@ type ReconcileApmServer struct {
 	recorder       record.EventRecorder
 	dynamicWatches watches.DynamicWatches
 	finalizers     finalizer.Handler
-
+	operator.Parameters
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
 }
@@ -192,6 +193,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	state := NewState(request, as)
+	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
 
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
@@ -214,18 +216,7 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	return r.updateStatus(state)
 }
 
-func (r *ReconcileApmServer) reconcileApmServerDeployment(
-	state State,
-	as *apmv1alpha1.ApmServer,
-) (State, error) {
-	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
-			"namespace", as.Namespace, "as_name", as.Name)
-		return state, nil
-	}
-
-	// TODO: move server secret into separate method
-
+func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1alpha1.ApmServer) (*corev1.Secret, error) {
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -237,7 +228,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		},
 	}
 	reconciledApmServerSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
+	return reconciledApmServerSecret, reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: r.Client,
 			Scheme: r.scheme,
@@ -278,10 +269,17 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 		},
-	); err != nil {
+	)
+}
+
+func (r *ReconcileApmServer) reconcileApmServerDeployment(
+	state State,
+	as *apmv1alpha1.ApmServer,
+) (State, error) {
+	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
+	if err != nil {
 		return state, err
 	}
-
 	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
 	if err != nil {
 		return state, err
@@ -377,7 +375,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, *expectedApmServerSecret)
+	state.UpdateApmServerState(result, *reconciledApmServerSecret)
 	return state, nil
 }
 
