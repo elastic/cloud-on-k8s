@@ -104,7 +104,9 @@ $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 [id="{p}-virtual-memory"]
 === Virtual memory
 
-By default, Elasticsearch is using memory mapping (mmap) to efficiently access indices. Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out of memory exceptions. To increase virtual memory ECK sets the recommended value by default.
+By default, Elasticsearch is using memory mapping (mmap) to efficiently access indices.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out of memory exceptions.
+To increase virtual memory ECK sets the recommended value by default.
 
 A dedicated init container will set the kernel setting `vm.max_map_count=262144` on the host.
 This requires the init container to be privileged.
