@@ -11,32 +11,41 @@ import (
 )
 
 // ControllerVersionAnnotation is the annotation name that indicates the last controller version to update a resource
-const ControllerVersionAnnotation = "k8s.elastic.co/controller-version"
+const ControllerVersionAnnotation = "common.k8s.elastic.co/controller-version"
 
 // UpdateControllerVersion updates the controller version annotation to the current version if necessary
 func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version string) error {
-	metaObject, err := meta.Accessor(obj)
+	accessor := meta.NewAccessor()
+	namespace, err := accessor.Namespace(obj)
 	if err != nil {
-		log.Error(err, "error converting runtime object to metav1 object")
+		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 		return err
 	}
-	annotations := metaObject.GetAnnotations()
+	name, err := accessor.Name(obj)
+	if err != nil {
+		log.Error(err, "error getting name", "namespace", namespace, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+		return err
+	}
+	annotations, err := accessor.Annotations(obj)
+	if err != nil {
+		log.Error(err, "error getting annotations", "namespace", namespace, "name", name, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
+		return err
+	}
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
 
-	// do not send extraneous update if the value would not change
+	// do not send unnecessary update if the value would not change
 	if annotations[ControllerVersionAnnotation] == version {
 		return nil
 	}
 
 	annotations[ControllerVersionAnnotation] = version
-	accessor := meta.NewAccessor()
 	err = accessor.SetAnnotations(obj, annotations)
 	if err != nil {
-		log.Error(err, "error updating controller version annotation", "namespace", metaObject.GetNamespace(), "name", metaObject.GetName(), "kind", obj.GetObjectKind())
+		log.Error(err, "error updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
 		return err
 	}
-	log.V(1).Info("updating controller version annotation", "namespace", metaObject.GetNamespace(), "name", metaObject.GetName(), "kind", obj.GetObjectKind())
+	log.V(1).Info("updating controller version annotation", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
 	return client.Update(obj)
 }
