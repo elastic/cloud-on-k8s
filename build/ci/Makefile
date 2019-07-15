@@ -113,16 +113,6 @@ yaml-upload: vault-aws-creds
         bash -c "aws s3 cp $(GO_MOUNT_PATH)/operators/config/all-in-one.yaml \
 		s3://download.elasticsearch.org/downloads/eck/$(TAG_NAME)/all-in-one.yaml"
 
-# Run check for existence of release Docker image
-image-check:
-	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
-	docker run --rm -t \
-    	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
-        -w $(GO_MOUNT_PATH) \
-        -e "TAG_NAME=$(TAG_NAME)" \
-        cloud-on-k8s-ci-release \
-        bash -c "make -C image-checker"
-
 ## -- End-to-end tests job
 
 # Spawn a k8s cluster, and run e2e tests against it
