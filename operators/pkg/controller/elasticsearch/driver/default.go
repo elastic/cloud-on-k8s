@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
@@ -238,25 +237,6 @@ func (d *defaultDriver) Reconcile(
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 	)
-
-	// restart ES processes that need to be restarted before going on with other changes
-	done, err := restart.HandleESRestarts(
-		restart.RestartContext{
-			Cluster:        es,
-			EventsRecorder: reconcileState.Recorder,
-			K8sClient:      d.Client,
-			Changes:        *changes,
-			Dialer:         d.Dialer,
-			EsClient:       esClient,
-		},
-	)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !done {
-		log.V(1).Info("Pods restart is not over yet, re-queueing.", "namespace", es.Namespace, "es_name", es.Name)
-		return results.WithResult(defaultRequeue)
-	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
