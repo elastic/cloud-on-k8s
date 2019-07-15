@@ -51,6 +51,8 @@ type defaultDriver struct {
 	// Options are the options that the driver was created with.
 	Options
 
+	expectations *Expectations
+
 	// supportedVersions verifies whether we can support upgrading from the current pods.
 	supportedVersions esversion.LowestHighestSupportedVersions
 

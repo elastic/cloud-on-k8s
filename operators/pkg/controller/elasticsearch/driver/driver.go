@@ -52,9 +52,9 @@ type Options struct {
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
 	DynamicWatches watches.DynamicWatches
-	// PodsExpectations control ongoing pod creations and deletions
-	// that might not be in-sync yet with our k8s client cache
-	PodsExpectations *reconciler.Expectations
+	// Expectations control some expectations set on resources in the cache, in order to
+	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
+	Expectations *Expectations
 }
 
 // NewDriver returns a Driver that can operate the provided version
@@ -66,6 +66,7 @@ func NewDriver(opts Options) (Driver, error) {
 	driver := &defaultDriver{
 		Options: opts,
 
+		expectations:           NewGenerationExpectations(),
 		observedStateResolver:  opts.Observers.ObservedStateResolver,
 		resourcesStateResolver: esreconcile.NewResourcesStateFromAPI,
 		usersReconciler:        user.ReconcileUsers,
