@@ -261,6 +261,10 @@ func (e Elasticsearch) IsMarkedForDeletion() bool {
 	return true
 }
 
+func (e Elasticsearch) SecureSettings() *commonv1alpha1.SecretRef {
+	return e.Spec.SecureSettings
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // ElasticsearchList contains a list of Elasticsearch clusters
