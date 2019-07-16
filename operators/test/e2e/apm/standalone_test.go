@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
 )
@@ -15,13 +16,30 @@ import (
 // TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch
 func TestApmStandalone(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone").
-		WithNamespace(test.Namespace).
-		WithVersion(test.ElasticStackVersion).
-		WithRestrictedSecurityContext().
 		WithOutput(apmtype.Output{}).
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
 				"pretty": true,
+			},
+		})
+
+	test.Sequence(nil, test.EmptySteps, apmBuilder).
+		RunSequential(t)
+}
+
+func TestApmStandaloneNoTLS(t *testing.T) {
+	apmBuilder := apmserver.NewBuilder("standalone-no-tls").
+		WithOutput(apmtype.Output{}).
+		WithConfig(map[string]interface{}{
+			"output.console": map[string]interface{}{
+				"pretty": true,
+			},
+		}).
+		WithHTTPCfg(v1alpha1.HTTPConfig{
+			TLS: v1alpha1.TLSOptions{
+				SelfSignedCertificate: &v1alpha1.SelfSignedCertificate{
+					Disabled: true,
+				},
 			},
 		})
 
