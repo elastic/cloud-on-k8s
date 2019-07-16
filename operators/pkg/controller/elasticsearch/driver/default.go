@@ -73,7 +73,6 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.Elasticsearch,
 		paramsTmpl pod.NewPodSpecParams,
-		operatorImage string,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
@@ -499,7 +498,6 @@ func (d *defaultDriver) calculateChanges(
 			),
 			KeystoreResources: keystoreResources,
 		},
-		d.OperatorImage,
 	)
 	if err != nil {
 		return nil, err

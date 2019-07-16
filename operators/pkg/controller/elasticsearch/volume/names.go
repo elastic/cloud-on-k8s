@@ -22,8 +22,6 @@ const (
 	UnicastHostsVolumeMountPath = "/mnt/elastic-internal/unicast-hosts"
 	UnicastHostsFile            = "unicast_hosts.txt"
 
-	ProcessManagerEmptyDirMountPath = "/mnt/elastic-internal/process-manager"
-
 	ElasticsearchDataVolumeName = "elasticsearch-data"
 	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
 

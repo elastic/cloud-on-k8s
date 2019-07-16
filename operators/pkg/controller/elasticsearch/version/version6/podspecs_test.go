@@ -14,12 +14,10 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
@@ -32,10 +30,7 @@ var testObjectMeta = metav1.ObjectMeta{
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {
-		p                      pod.NewPodSpecParams
-		httpCertificatesVolume volume.SecretVolume
-		privateKeyVolume       volume.SecretVolume
-		secureSettingsVolume   volume.SecretVolume
+		p pod.NewPodSpecParams
 	}
 	tests := []struct {
 		name    string
@@ -53,9 +48,6 @@ func TestNewEnvironmentVars(t *testing.T) {
 						},
 					},
 				},
-				httpCertificatesVolume: volume.NewSecretVolumeWithMountPath("certs", "/certs", "/certs"),
-				privateKeyVolume:       volume.NewSecretVolumeWithMountPath("key", "/key", "/key"),
-				secureSettingsVolume:   volume.NewSecretVolumeWithMountPath("secure-settings", "/secure-settings", "/secure-settings"),
 			},
 			wantEnv: []corev1.EnvVar{
 				{Name: settings.EnvReadinessProbeProtocol, Value: "https"},
@@ -67,18 +59,12 @@ func TestNewEnvironmentVars(t *testing.T) {
 				{Name: settings.EnvPodIP, Value: "", ValueFrom: &corev1.EnvVarSource{
 					FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
 				}},
-				{Name: processmanager.EnvProcName, Value: "es"},
-				{Name: processmanager.EnvProcCmd, Value: "/usr/local/bin/docker-entrypoint.sh"},
-				{Name: processmanager.EnvTLS, Value: "true"},
-				{Name: processmanager.EnvKeystoreUpdater, Value: "false"},
-				{Name: processmanager.EnvCertPath, Value: path.Join("/certs", certificates.CertFileName)},
-				{Name: processmanager.EnvKeyPath, Value: path.Join("/certs", certificates.KeyFileName)},
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newEnvironmentVars(tt.args.p, tt.args.httpCertificatesVolume)
+			got := newEnvironmentVars(tt.args.p)
 			assert.Equal(t, tt.wantEnv, got)
 		})
 	}
@@ -139,7 +125,6 @@ func TestCreateExpectedPodSpecsReturnsCorrectNodeCount(t *testing.T) {
 			podSpecs, err := ExpectedPodSpecs(
 				tt.es,
 				pod.NewPodSpecParams{ProbeUser: testProbeUser},
-				"operator-image-dummy",
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedPodCount, len(podSpecs))
@@ -176,18 +161,17 @@ func TestCreateExpectedPodSpecsReturnsCorrectPodSpec(t *testing.T) {
 				esvolume.UnicastHostsVolumeMountPath,
 			),
 		},
-		"operator-image-dummy",
 	)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(podSpec))
 
 	esPodSpec := podSpec[0].PodTemplate.Spec
 	assert.Equal(t, 1, len(esPodSpec.Containers))
-	assert.Equal(t, 3, len(esPodSpec.InitContainers))
-	assert.Equal(t, 13, len(esPodSpec.Volumes))
+	assert.Equal(t, 2, len(esPodSpec.InitContainers))
+	assert.Equal(t, 12, len(esPodSpec.Volumes))
 
 	esContainer := esPodSpec.Containers[0]
-	assert.Equal(t, 13, len(esContainer.VolumeMounts))
+	assert.Equal(t, 12, len(esContainer.VolumeMounts))
 	assert.NotEqual(t, 0, esContainer.Env)
 	// esContainer.Env actual values are tested in environment_test.go
 	assert.Equal(t, "custom-image", esContainer.Image)
