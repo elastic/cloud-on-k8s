@@ -70,7 +70,7 @@ package reconciler
 //   counter to -1 if it was already at 0 (could be a leftover creation from a previous controller that
 //   we don't care about, since we don't have expectations for it).
 // * Once an expectations TTL is reached, we consider we probably missed an event, hence we choose to
-//   reset expectations to 0 explicitely, instead of keeping counters value but still consider expectations
+//   reset expectations to 0 explicitly, instead of keeping counters value but still consider expectations
 //   to be fulfilled.
 // * `controller.UIDTrackingControllerExpectations` is an extended expectations implementation meant to handle
 //   update events that have a non-zero DeletionTimestamp (can be issued multiple times but should be counted
@@ -262,10 +262,7 @@ func (e *expectationsCounters) isExpired() bool {
 		return false
 	}
 	timestamp := atomic.LoadInt64(e.timestamp)
-	if timestampNow()-timestamp > e.ttl {
-		return true
-	}
-	return false
+	return timestampNow()-timestamp > e.ttl
 }
 
 // resetTimestamp sets the timestamp value to the current time.
@@ -301,7 +298,7 @@ func (e *expectationsCounters) add(ptr *int64, value int64) {
 	e.resetTimestamp()
 	newValue := atomic.AddInt64(ptr, value)
 	if newValue < 0 && value < 0 {
-		// We are reaching a negative value after a substraction:
+		// We are reaching a negative value after a subtraction:
 		// cancel what we just did.
 		// The value is still negative in-between these 2 atomic ops.
 		atomic.AddInt64(ptr, -value)

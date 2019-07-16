@@ -116,7 +116,7 @@ endif
 	go vet ./pkg/... ./cmd/...
 
 lint:
-	golangci-lint run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
+	golangci-lint run
 
 
 #############################
@@ -347,7 +347,7 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.

@@ -126,20 +126,20 @@ func (e *esClusterChecks) CheckESNodesTopology(es estype.Elasticsearch) test.Ste
 				}
 			}
 			// match each actual node to an expected node
-			for nodeId, node := range nodes.Nodes {
+			for nodeID, node := range nodes.Nodes {
 				nodeRoles := rolesToConfig(node.Roles)
 
 				var found bool
 				for k := range nodesStats.Nodes {
-					if k == nodeId {
+					if k == nodeID {
 						found = true
 					}
 				}
 				if !found {
-					return fmt.Errorf("%s was not in %+v", nodeId, nodesStats.Nodes)
+					return fmt.Errorf("%s was not in %+v", nodeID, nodesStats.Nodes)
 				}
 
-				nodeStats := nodesStats.Nodes[nodeId]
+				nodeStats := nodesStats.Nodes[nodeID]
 				for i, topoElem := range expectedTopology {
 					cfg, err := v1alpha1.UnpackConfig(topoElem.Config)
 					if err != nil {

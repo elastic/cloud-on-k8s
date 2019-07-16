@@ -57,6 +57,7 @@ func TestMarkPodAsUpdated(t *testing.T) {
 			assert.NoError(t, tt.args.c.Get(key, actualPod))
 			assert.NotNil(t, actualPod.Annotations)
 			newValue, ok := actualPod.Annotations[UpdateAnnotation]
+			assert.True(t, ok)
 			assert.True(t, newValue > previousValue)
 		})
 	}

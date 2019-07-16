@@ -84,7 +84,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	// This is done because Kibana does not support updating those without restarting the process.
 	configChecksum := sha256.New224()
 	if keystoreResources != nil {
-		configChecksum.Write([]byte(keystoreResources.Version))
+		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
 
 	// we need to deref the secret here (if any) to include it in the checksum otherwise Kibana will not be rolled on contents changes
@@ -102,7 +102,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		if err := d.client.Get(esAuthSecret, &sec); err != nil {
 			return nil, err
 		}
-		configChecksum.Write(sec.Data[ref.Key])
+		_, _ = configChecksum.Write(sec.Data[ref.Key])
 	} else {
 		d.dynamicWatches.Secrets.RemoveHandlerForKey(secretWatchKey(*kb))
 	}
@@ -124,7 +124,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			return nil, err
 		}
 		if certPem, ok := esPublicCASecret.Data[certificates.CertFileName]; ok {
-			configChecksum.Write(certPem)
+			_, _ = configChecksum.Write(certPem)
 		}
 
 		// TODO: this is a little ugly as it reaches into the ES controller bits
@@ -134,8 +134,8 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 		kibanaPodSpec.Spec.Volumes = append(kibanaPodSpec.Spec.Volumes,
 			esCertsVolume.Volume(), configVolume.Volume())
 
-		for i, container := range kibanaPodSpec.Spec.InitContainers {
-			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts,
+		for i := range kibanaPodSpec.Spec.InitContainers {
+			kibanaPodSpec.Spec.InitContainers[i].VolumeMounts = append(kibanaPodSpec.Spec.InitContainers[i].VolumeMounts,
 				esCertsVolume.VolumeMount())
 		}
 
@@ -155,7 +155,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 			return nil, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
-			configChecksum.Write(httpCert)
+			_, _ = configChecksum.Write(httpCert)
 		}
 
 		// add volume/mount for http certs to pod spec
@@ -172,7 +172,7 @@ func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) 
 	if err != nil {
 		return nil, err
 	}
-	configChecksum.Write(configSecret.Data[config.SettingsFilename])
+	_, _ = configChecksum.Write(configSecret.Data[config.SettingsFilename])
 
 	// add the checksum to a label for the deployment and its pods (the important bit is that the pod template
 	// changes, which will trigger a rolling update)

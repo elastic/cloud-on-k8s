@@ -54,7 +54,6 @@ func TestEnsureTransportCertificateSecretExists(t *testing.T) {
 		scheme *runtime.Scheme
 		owner  v1alpha1.Elasticsearch
 		pod    corev1.Pod
-		labels map[string]string
 	}
 	tests := []struct {
 		name    string

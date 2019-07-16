@@ -9,7 +9,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	pkgerrors "github.com/pkg/errors"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 const (
@@ -20,8 +19,6 @@ const (
 	parseStoredVersionErrMsg = "Cannot parse current Elasticsearch version"
 	invalidSanIPErrMsg       = "invalid SAN IP address"
 )
-
-var log = logf.Log.WithName("es-validation")
 
 // Validation is a function from a currently stored Elasticsearch spec and proposed new spec
 // (both inside a Context struct) to a validation.Result.

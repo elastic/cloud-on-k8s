@@ -30,7 +30,6 @@ const (
 )
 
 var Config *rest.Config
-var log = logf.Log.WithName("integration-test")
 
 // RunWithK8s starts a local Kubernetes server and runs tests in m.
 func RunWithK8s(m *testing.M, crdPath string) {

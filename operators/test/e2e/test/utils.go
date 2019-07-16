@@ -25,7 +25,7 @@ const (
 	defaultTimeout    = 5 * time.Minute
 )
 
-func CheckKeystoreEntries(k *K8sClient, listOption client.ListOptions, KeystoreCmd []string, expectedKeys []string) Step {
+func CheckKeystoreEntries(k *K8sClient, listOption client.ListOptions, keystoreCmd []string, expectedKeys []string) Step {
 	return Step{
 		Name: "secure settings should eventually be set in all nodes keystore",
 		Test: Eventually(func() error {
@@ -35,7 +35,7 @@ func CheckKeystoreEntries(k *K8sClient, listOption client.ListOptions, KeystoreC
 			}
 			return OnAllPods(pods, func(p corev1.Pod) error {
 				// exec into the pod to list keystore entries
-				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), append(KeystoreCmd, "list"))
+				stdout, stderr, err := k.Exec(k8s.ExtractNamespacedName(&p), append(keystoreCmd, "list"))
 				if err != nil {
 					return errors.Wrap(err, fmt.Sprintf("stdout:\n%s\nstderr:\n%s", stdout, stderr))
 				}
