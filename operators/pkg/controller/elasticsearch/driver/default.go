@@ -34,7 +34,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
@@ -173,6 +172,8 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
+	warnUnsupportedDistro(resourcesState.AllPods, reconcileState.Recorder)
+
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
 		certificateResources.TrustedHTTPCertificates,
@@ -236,25 +237,6 @@ func (d *defaultDriver) Reconcile(
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 	)
-
-	// restart ES processes that need to be restarted before going on with other changes
-	done, err := restart.HandleESRestarts(
-		restart.RestartContext{
-			Cluster:        es,
-			EventsRecorder: reconcileState.Recorder,
-			K8sClient:      d.Client,
-			Changes:        *changes,
-			Dialer:         d.Dialer,
-			EsClient:       esClient,
-		},
-	)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !done {
-		log.V(1).Info("Pods restart is not over yet, re-queueing.", "namespace", es.Namespace, "es_name", es.Name)
-		return results.WithResult(defaultRequeue)
-	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
@@ -544,4 +526,19 @@ func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1
 	}
 
 	return nil
+}
+
+// warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
+// distribution by looking at if the prepare fs init container terminated with the UnsupportedDistro exit code.
+func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
+	for _, p := range pods {
+		for _, s := range p.Status.InitContainerStatuses {
+			state := s.LastTerminationState.Terminated
+			if s.Name == initcontainer.PrepareFilesystemContainerName &&
+				state != nil && state.ExitCode == initcontainer.UnsupportedDistroExitCode {
+				recorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected,
+					"Unsupported distribution")
+			}
+		}
+	}
 }

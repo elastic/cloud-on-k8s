@@ -43,3 +43,11 @@ func (s State) UpdateApmServerState(deployment v1.Deployment, apmServerSecret co
 func (s State) UpdateApmServerExternalService(svc corev1.Service) {
 	s.ApmServer.Status.ExternalService = svc.Name
 }
+
+func (s *State) UpdateApmServerControllerVersion(version string) {
+	s.ApmServer.Status.ControllerVersion = version
+}
+
+func (s *State) GetApmServerControllerVersion() string {
+	return s.ApmServer.Status.ControllerVersion
+}

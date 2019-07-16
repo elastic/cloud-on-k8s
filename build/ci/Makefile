@@ -104,6 +104,7 @@ ci-release: vault-public-key vault-docker-creds
 
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
+	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
 	docker run --rm -t \
         -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         -w $(GO_MOUNT_PATH) \

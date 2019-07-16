@@ -74,6 +74,18 @@ func (b Builder) WithNodeCount(count int) Builder {
 	return b
 }
 
+func (b Builder) WithOutput(out apmtype.Output) Builder {
+	b.ApmServer.Spec.Output = out
+	return b
+}
+
+func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
+	b.ApmServer.Spec.Config = &commonv1alpha1.Config{
+		Data: cfg,
+	}
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

@@ -14,13 +14,14 @@ There are a number of settings which need to be considered before going into pro
 
 **<<{p}-advanced-settings>>**
 
-- Virtual memory
+- <<{p}-virtual-memory>>
 - <<{p}-custom-http-certificate>>
 - Secure settings
 - Custom plugins and bundles
 - <<{p}-init-containers-plugin-downloads>>
 - Pod disruption budget
-- Change budget (maxUnavailable, maxSurge)
+- <<{p}-change-budget>>
+- <<{p}-group-definitions>>
 
 [id="{p}-basic-settings"]
 == Basic settings
@@ -86,6 +87,38 @@ spec:
 
 [id="{p}-advanced-settings"]
 == Advanced Settings
+
+[id="{p}-virtual-memory"]
+=== Virtual memory
+
+By default, Elasticsearch is using memory mapping (mmap) to efficiently access indices.
+Usually, default values for virtual address space on Linux distributions are too low for Elasticsearch to work properly, which may result in out of memory exceptions.
+To increase virtual memory ECK sets the recommended value by default.
+
+A dedicated init container will set the kernel setting `vm.max_map_count=262144` on the host.
+This requires the init container to be privileged.
+This kernel setting can also be set on the host directly.
+In such case, you may disable the init container explicitly in the Elasticsearch specification:
+[source,yaml]
+----
+spec:
+  setVmMaxMapCount: false
+----
+
+To get more info about this setting you can consult the Elasticsearch documentation:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+
+Optionally, you can select a different type of file system implementation for the storage. Here you can find information about possible options:
+https://www.elastic.co/guide/en/elasticsearch/reference/current/index-modules-store.html
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - nodeCount: 3
+    config:
+      index.store.type: niofs
+----
 
 [id="{p}-custom-http-certificate"]
 === Custom HTTP certificate
@@ -194,3 +227,141 @@ To install a custom plugin, you can install them before the Elasticsearch contai
 ----
 
 You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options.
+
+[id="{p}-update-strategy"]
+=== Update strategy
+
+The Elasticsearch cluster configuration can be updated at any time to:
+
+* add new nodes
+* remove some nodes
+* change Elasticsearch configuration
+* change pod resources (example: memory limits, cpu limit, environment variables, etc.)
+
+On any change, ECK reconciles Kubernetes resources towards the desired cluster definition. Changes are done in a rolling fashion: the state of the cluster is continuously monitored, to allow addition of new nodes and removal of deprecated nodes.
+
+[id="{p}-change-budget"]
+=== Change budget
+
+No downtime should be expected when the cluster topology changes. Shards on deprecated nodes are migrated away so the node can be safely removed.
+
+For example, in order to mutate a 3-nodes cluster with 16GB memory limit on each node to a 3-nodes cluster with 32GB memory limit on each node, ECK will:
+
+1. add a new 32GB node: the cluster temporarily has 4 nodes
+2. migrate data away from the first 16GB node
+3. once data is migrated, remove the first 16GB node
+4. follow the same steps for the 2 other 16GB nodes
+
+The cluster health stays green during the entire process.
+By default, only one extra node can be added on top of the expected ones. In the example above, a 3-nodes cluster may temporarily be composed of 4 nodes while data migration is in progress.
+
+This behaviour can be controlled through the `changeBudget` section of the Cluster specification `updateStrategy`. If not specified, it defaults to the following:
+
+[source,yaml]
+----
+spec:
+  updateStrategy:
+    changeBudget:
+      maxSurge: 1
+      maxUnavailable: 0
+----
+
+* `maxSurge` specifies the number of pods that can be added to the cluster, on top of the desired number of nodes in the spec during cluster updates
+* `maxUnavailable` specifies the number of pods that can be made unavailable during cluster updates
+
+The default of `maxSurge: 1; maxUnavailable: 0` spins up an additional Elasticsearch node during cluster updates.
+It is possible to speed up cluster topology changes by increasing `maxSurge`. For example, setting `maxSurge: 3` would allow 3 new nodes to be created while the original 3 migrate data in parallel.
+The cluster would then temporarily have 6 nodes.
+
+Setting `maxSurge` to 0 and `maxUnavailable` to a positive value only allows a maximum number of pods to exist on the Kubernetes cluster.
+For example, `maxSurge: 0; maxUnavailable: 1` would perform the 3 nodes upgrade this way:
+
+1. migrate data away from the first 16GB node
+2. once data is migrated, remove the 16GB node: the cluster temporarily has 2 nodes
+3. add a new 32GB node: the cluster grows to 3 nodes
+4. follow the same steps for the 2 other 16GB nodes
+
+Even though any `changeBudget` can be specified, ECK will make sure some invariants are respected while a mutation is in progress:
+
+* there must be at least one master node alive in the cluster
+* there must be at least one data node alive in the cluster
+
+Under certain circumstances, ECK will therefore ignore the change budget. For example, a safe migration from a 1-node cluster to another 1-node cluster can only be done by temporarily setting up a 2-nodes cluster.
+
+It is possible to configure the `changeBudget` to optimize for reusing Persistent Volumes instead of migrating data across nodes. This feature is not supported yet: more details to come in the next release.
+
+[id="{p}-group-definitions"]
+=== Group definitions
+
+To optimize upgrades for highly available setups, ECK can take into account arbitrary nodes grouping. It prioritizes recovery of entire availability zones in catastrophic scenarios.
+
+For example, let's create a zone-aware Elasticsearch cluster. Some nodes will be created in `europe-west3-a`, and some others in `europe-west3-b`:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+    config:
+      node.attr.zone: europe-west3-a
+      cluster.routing.allocation.awareness.attributes: zone
+    podTemplate:
+      meta:
+        labels:
+          nodesGroup: group-a
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: failure-domain.beta.kubernetes.io/zone
+                  operator: In
+                  values:
+                  - europe-west3-a
+  - nodeCount: 3
+    config:
+      node.attr.zone: europe-west3-b
+      cluster.routing.allocation.awareness.attributes: zone
+    podTemplate:
+      meta:
+        labels:
+          nodesGroup: group-b
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: failure-domain.beta.kubernetes.io/zone
+                  operator: In
+                  values:
+                  - europe-west3-b
+  updateStrategy:
+    changeBudget:
+      maxSurge: 1
+      maxUnavailable: 0
+    groups:
+    - selector:
+        matchLabels:
+          nodesGroup: group-a
+    - selector:
+        matchLabels:
+          nodesGroup: group-b
+----
+
+If a modification is applied to the Elasticsearch configuration of these 6 nodes, ECK will slowly upgrade the cluster nodes, taking the provided `changeBudget` into account.
+In this example, it will spawn one additional node at a time, and migrate data away from one node at a time.
+
+Imagine a catastrophic situation occurs while the mutation is in progress: all nodes in `europe-west3-b` suddenly disappear.
+ECK will detect it, and recreate the 3 missing nodes as expected. However, since a cluster upgrade is already in progress, the current `changeBudget may already be maxed out, preventing new nodes to be created in `europe-west3-b`.
+
+In this situation, it would be preferable to first recreate the missing nodes in `europe-west-3b`, then continue the cluster upgrade.
+
+In order to do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
+Nodes grouping is expressed through labels on the resources. In the example above, 3 pods are labeled with `group-a`, and the 3 other pods with `group-b`.
