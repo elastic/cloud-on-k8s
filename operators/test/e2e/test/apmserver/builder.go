@@ -86,6 +86,11 @@ func (b Builder) WithConfig(cfg map[string]interface{}) Builder {
 	return b
 }
 
+func (b Builder) WithHTTPCfg(cfg commonv1alpha1.HTTPConfig) Builder {
+	b.ApmServer.Spec.HTTP = cfg
+	return b
+}
+
 // -- Helper functions
 
 func (b Builder) RuntimeObjects() []runtime.Object {

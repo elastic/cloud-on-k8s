@@ -28,12 +28,12 @@ func Reconcile(
 	watches watches.DynamicWatches,
 	services []coverv1.Service,
 	rotation certificates.RotationParams,
-) *reconciler.Results {
+) reconciler.Results {
+	results := reconciler.Results{}
 	selfSignedCert := apm.Spec.HTTP.TLS.SelfSignedCertificate
 	if selfSignedCert != nil && selfSignedCert.Disabled {
-		return nil
+		return results
 	}
-	results := reconciler.Results{}
 
 	labels := labels.NewLabels(apm.Name)
 
@@ -48,7 +48,7 @@ func Reconcile(
 		rotation,
 	)
 	if err != nil {
-		return results.WithError(err)
+		return *results.WithError(err)
 	}
 
 	// handle CA expiry via requeue
@@ -70,9 +70,9 @@ func Reconcile(
 		rotation, // todo correct rotation
 	)
 	if err != nil {
-		return results.WithError(err)
+		return *results.WithError(err)
 	}
 	// reconcile http public cert secret
 	results.WithError(http.ReconcileHTTPCertsPublicSecret(c, scheme, &apm, name.APMNamer, httpCertificates))
-	return &results
+	return results
 }
