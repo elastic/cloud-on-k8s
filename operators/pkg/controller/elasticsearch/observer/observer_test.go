@@ -17,11 +17,9 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/test"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func fakeEsClient200(user client.UserAuth) client.Client {
@@ -38,9 +36,8 @@ func fakeEsClient200(user client.UserAuth) client.Client {
 }
 
 func createAndRunTestObserver(onObs OnObservation) *Observer {
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	fakeEsClient := fakeEsClient200(client.UserAuth{})
-	obs := NewObserver(fakeK8sClient, nil, nil, cluster("cluster"), fakeEsClient, Settings{
+	obs := NewObserver(cluster("cluster"), fakeEsClient, Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
 	}, onObs)
@@ -53,10 +50,8 @@ func TestObserver_retrieveState(t *testing.T) {
 	onObservation := func(cluster types.NamespacedName, previousState State, newState State) {
 		atomic.AddInt32(&counter, 1)
 	}
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	fakeEsClient := fakeEsClient200(client.UserAuth{})
 	observer := Observer{
-		k8sClient:     fakeK8sClient,
 		esClient:      fakeEsClient,
 		onObservation: onObservation,
 	}
@@ -68,10 +63,8 @@ func TestObserver_retrieveState(t *testing.T) {
 
 func TestObserver_retrieveState_nilFunction(t *testing.T) {
 	var nilFunc OnObservation
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	fakeEsClient := fakeEsClient200(client.UserAuth{})
 	observer := Observer{
-		k8sClient:     fakeK8sClient,
 		esClient:      fakeEsClient,
 		onObservation: nilFunc,
 	}
