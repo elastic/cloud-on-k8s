@@ -53,7 +53,7 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 [id="{p}-volume-claim-templates"]
 === Volume Claim Templates
 
-By default the operator will create for each node in a cluster a `PVC` with a capacity of 1Gi. This is to ensure that there is no data loss if a Pod is deleted.
+By default the operator will create a `PVC` with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
 
 You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs:
 
