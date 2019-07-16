@@ -11,9 +11,6 @@ import (
 const (
 	DataVolumeName      = "kibana-data"
 	DataVolumeMountPath = "/usr/share/kibana/data"
-
-	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs"
 )
 
 // KibanaDataVolume is used to propagate the keystore file from the init container to

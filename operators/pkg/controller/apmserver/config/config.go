@@ -6,12 +6,14 @@ package config
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
@@ -22,6 +24,13 @@ const (
 
 	// Certificates
 	CertificatesDir = "config/elasticsearch-certs"
+
+	APMServerHost        = "apm-server.host"
+	APMServerSecretToken = "apm-server.secret_token"
+
+	APMServerSSLEnabled     = "apm-server.ssl.enabled"
+	APMServerSSLKey         = "apm-server.ssl.key"
+	APMServerSSLCertificate = "apm-server.ssl.certificate"
 )
 
 func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.CanonicalConfig, error) {
@@ -54,14 +63,16 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 	}
 
 	// Create a base configuration.
+
 	cfg := settings.MustCanonicalConfig(map[string]interface{}{
-		"apm-server.host":         fmt.Sprintf(":%d", DefaultHTTPPort),
-		"apm-server.secret_token": "${SECRET_TOKEN}",
+		APMServerHost:        fmt.Sprintf(":%d", DefaultHTTPPort),
+		APMServerSecretToken: "${SECRET_TOKEN}",
 	})
 
 	// Merge the configuration with userSettings last so they take precedence.
 	err = cfg.MergeWith(
 		outputCfg,
+		settings.MustCanonicalConfig(tlsSettings(as)),
 		userSettings,
 	)
 	if err != nil {
@@ -69,4 +80,16 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 	}
 
 	return cfg, nil
+}
+
+func tlsSettings(as v1alpha1.ApmServer) map[string]interface{} {
+	if !as.Spec.HTTP.TLS.Enabled() {
+		return nil
+	}
+	return map[string]interface{}{
+		APMServerSSLEnabled:     true,
+		APMServerSSLCertificate: path.Join(http.HTTPCertificatesSecretVolumeMountPath, certificates.CertFileName),
+		APMServerSSLKey:         path.Join(http.HTTPCertificatesSecretVolumeMountPath, certificates.KeyFileName),
+	}
+
 }
