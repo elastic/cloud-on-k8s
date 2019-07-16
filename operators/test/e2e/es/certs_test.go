@@ -126,8 +126,8 @@ func getPublicIP(k *test.K8sClient, ns string, esName string) (string, error) {
 	return "", errors.New("no external IP found")
 }
 
-func requestESWithCA(IP string, caCert []byte) (int, error) {
-	url := fmt.Sprintf("https://%s:9200", IP)
+func requestESWithCA(ip string, caCert []byte) (int, error) {
+	url := fmt.Sprintf("https://%s:9200", ip)
 
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)

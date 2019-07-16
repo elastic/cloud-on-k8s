@@ -76,9 +76,9 @@ func (b Builder) WithHTTPLoadBalancer() Builder {
 	return b
 }
 
-func (b Builder) WithHTTPSAN(IP string) Builder {
+func (b Builder) WithHTTPSAN(ip string) Builder {
 	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{
-		SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{{IP: IP}},
+		SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{{IP: ip}},
 	}
 	return b
 }

@@ -221,14 +221,14 @@ func podSpecContext(
 	}
 
 	// set labels
-	version, err := version.Parse(p.Elasticsearch.Spec.Version)
+	esVersion, err := version.Parse(p.Elasticsearch.Spec.Version)
 	if err != nil {
 		return pod.PodSpecContext{}, err
 	}
-	labels := label.NewPodLabels(p.Elasticsearch, *version, unpackedCfg)
+	labels := label.NewPodLabels(p.Elasticsearch, *esVersion, unpackedCfg)
 	if p.KeystoreResources != nil {
 		configChecksum := sha256.New224()
-		configChecksum.Write([]byte(p.KeystoreResources.Version))
+		_, _ = configChecksum.Write([]byte(p.KeystoreResources.Version))
 		labels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	}
 	builder = builder.WithLabels(labels)
@@ -247,28 +247,28 @@ func NewPod(
 ) corev1.Pod {
 	// build a pod based on the podSpecCtx template
 	template := *podSpecCtx.PodTemplate.DeepCopy()
-	pod := corev1.Pod{
+	esPod := corev1.Pod{
 		ObjectMeta: template.ObjectMeta,
 		Spec:       template.Spec,
 	}
 
 	// label the pod with a hash of its template, for comparison purpose,
 	// before it gets assigned a name
-	pod.Labels = hash.SetTemplateHashLabel(pod.Labels, template)
+	esPod.Labels = hash.SetTemplateHashLabel(esPod.Labels, template)
 
 	// set name & namespace
-	pod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
-	pod.Namespace = es.Namespace
+	esPod.Name = name.NewPodName(es.Name, podSpecCtx.NodeSpec)
+	esPod.Namespace = es.Namespace
 
 	// set hostname and subdomain based on pod and cluster names
-	if pod.Spec.Hostname == "" {
-		pod.Spec.Hostname = pod.Name
+	if esPod.Spec.Hostname == "" {
+		esPod.Spec.Hostname = esPod.Name
 	}
-	if pod.Spec.Subdomain == "" {
-		pod.Spec.Subdomain = es.Name
+	if esPod.Spec.Subdomain == "" {
+		esPod.Spec.Subdomain = es.Name
 	}
 
-	return pod
+	return esPod
 }
 
 // quantityToMegabytes returns the megabyte value of the provided resource.Quantity
