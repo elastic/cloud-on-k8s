@@ -87,7 +87,7 @@ spec:
     type: Container
 ----
 
-But if there is no `resources` declared in the specification then Pod can't be created and the following event is generated:
+But if there is no `resources` declared in the specification then the Pod can't be created and the following event is generated:
 
 ...................................
 default     0s          Warning   Unexpected              elasticsearch/elasticsearch-sample                                            Cannot create pod elasticsearch-sample-es-ldbgj48c7r: pods "elasticsearch-sample-es-ldbgj48c7r" is forbidden: minimum memory usage per Container is 3Gi, but request is 2Gi
