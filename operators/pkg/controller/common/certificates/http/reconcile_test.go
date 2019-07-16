@@ -240,7 +240,8 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				},
 			},
 			want: func(t *testing.T, cert *certificates.ValidatedCertificateTemplate) {
-				expectedCommonName := "test.test.es.local"
+				expectedCommonName := "test-es-http.test.es.local"
+				assert.Contains(t, cert.Subject.CommonName, expectedCommonName)
 				assert.Contains(t, cert.DNSNames, expectedCommonName)
 				assert.Contains(t, cert.DNSNames, "svc-name.svc-namespace.svc")
 				assert.Contains(t, cert.DNSNames, sanDNS1)
