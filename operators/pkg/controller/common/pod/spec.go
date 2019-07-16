@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// ContainerByName returns a reference to container with name name from the given pod spec.
+// ContainerByName returns a reference to a container with the name from the given pod spec.
 func ContainerByName(podSpec corev1.PodSpec, name string) *corev1.Container {
 	for i, c := range podSpec.Containers {
 		if c.Name == name {

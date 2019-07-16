@@ -72,7 +72,7 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1
 	return builder.PodTemplate
 }
 
-// GetKibanaContainer retuarns the Kibana container from the given podSpec.
+// GetKibanaContainer returns the Kibana container from the given podSpec.
 func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
 	return pod.ContainerByName(podSpec, v1alpha1.KibanaContainerName)
 }
