@@ -44,7 +44,7 @@ issues:
     - path: pkg/controller/elasticsearch/client/model\.go
       text: 'struct of size 136 bytes could be of size 128 bytes'
     - path: pkg/controller/elasticsearch/driver/default.go
-      text: 'cyclomatic complexity 39 of func `\(\*defaultDriver\)\.Reconcile` is high'
+      text: 'cyclomatic complexity \d+ of func `\(\*defaultDriver\)\.Reconcile` is high'
     - path: pkg/controller/elasticsearch/keystore/environment\.go
       text: 'G101: Potential hardcoded credentials'
     - path: pkg/controller/elasticsearch/mutation/comparison/pvc\.go
