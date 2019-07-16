@@ -245,6 +245,7 @@ func (b *PodTemplateBuilder) WithInitContainerDefaults() *PodTemplateBuilder {
 			}
 		}
 
+		// append the dynamic pod name and IP env vars
 		c.Env = append(c.Env, env.DynamicPodEnvVars...)
 	}
 	return b
