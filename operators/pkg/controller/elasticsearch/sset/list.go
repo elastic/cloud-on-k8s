@@ -5,13 +5,19 @@
 package sset
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
+
+var log = logf.Log.WithName("statefulset")
 
 type StatefulSetList []appsv1.StatefulSet
 
@@ -61,6 +67,24 @@ func (l StatefulSetList) PodNames() []string {
 	return names
 }
 
+// GetActualPods returns the list of pods currently existing in the StatefulSetList.
+// Some "expected" pods may be missing from the returned list if they don't exist yet
+// or are temporarily down.
+func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
+	if len(l) == 0 {
+		return nil, nil
+	}
+	var allPods []corev1.Pod
+	for _, statefulSet := range l {
+		pods, err := GetActualPods(c, statefulSet)
+		if err != nil {
+			return nil, err
+		}
+		allPods = append(allPods, pods...)
+	}
+	return allPods, nil
+}
+
 // GetUpdatePartition returns the updateStrategy.Partition index, or falls back to the number of replicas if not set.
 func GetUpdatePartition(statefulSet appsv1.StatefulSet) int32 {
 	if statefulSet.Spec.UpdateStrategy.RollingUpdate.Partition != nil {
@@ -70,4 +94,26 @@ func GetUpdatePartition(statefulSet appsv1.StatefulSet) int32 {
 		return *statefulSet.Spec.Replicas
 	}
 	return 0
+}
+
+func ForStatefulSet(statefulSet appsv1.StatefulSet) (*version.Version, error) {
+	return label.ExtractVersion(statefulSet.Spec.Template.Labels)
+}
+
+func ESVersionMatch(statefulSet appsv1.StatefulSet, condition func(v version.Version) bool) bool {
+	v, err := ForStatefulSet(statefulSet)
+	if err != nil || v == nil {
+		log.Error(err, "cannot parse version from StatefulSet", "namespace", statefulSet.Namespace, "name", statefulSet.Name)
+		return false
+	}
+	return condition(*v)
+}
+
+func AtLeastOneESVersionMatch(statefulSets StatefulSetList, condition func(v version.Version) bool) bool {
+	for _, s := range statefulSets {
+		if ESVersionMatch(s, condition) {
+			return true
+		}
+	}
+	return false
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 
 	"github.com/pkg/errors"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -54,20 +55,24 @@ func IsMasterNode(pod corev1.Pod) bool {
 	return NodeTypesMasterLabelName.HasValue(true, pod.Labels)
 }
 
+func IsMasterNodeSet(statefulSet appsv1.StatefulSet) bool {
+	return NodeTypesMasterLabelName.HasValue(true, statefulSet.Spec.Template.Labels)
+}
+
 // IsDataNode returns true if the pod has the data node label
 func IsDataNode(pod corev1.Pod) bool {
 	return NodeTypesDataLabelName.HasValue(true, pod.Labels)
 }
 
-// ExtractVersion extracts the Elasticsearch version from a pod label.
-func ExtractVersion(pod corev1.Pod) (*version.Version, error) {
-	labelValue, ok := pod.Labels[VersionLabelName]
+// ExtractVersion extracts the Elasticsearch version from the given labels.
+func ExtractVersion(labels map[string]string) (*version.Version, error) {
+	labelValue, ok := labels[VersionLabelName]
 	if !ok {
-		return nil, fmt.Errorf("pod %s is missing the version label %s", pod.Name, VersionLabelName)
+		return nil, fmt.Errorf("version label %s is missing", VersionLabelName)
 	}
 	v, err := version.Parse(labelValue)
 	if err != nil {
-		return nil, errors.Wrapf(err, "pod %s has an invalid version label", pod.Name)
+		return nil, errors.Wrapf(err, "version label %s is invalid: %s", VersionLabelName, labelValue)
 	}
 	return v, nil
 }

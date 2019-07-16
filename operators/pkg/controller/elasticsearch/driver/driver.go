@@ -17,8 +17,6 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version6"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/version7"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -78,18 +76,18 @@ func NewDriver(opts Options) (Driver, error) {
 	switch opts.Version.Major {
 	case 7:
 		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
-
-		driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
+		//
+		//driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
 
 		// version 7 uses zen2 instead of zen
-		driver.zen2SettingsUpdater = version7.UpdateZen2Settings
+		//driver.zen2SettingsUpdater = version7.UpdateZen2Settings
 		// .. except we still have to manage minimum_master_nodes while doing a rolling upgrade from 6 -> 7
 		// we approximate this by also handling zen 1, even in 7
 		// TODO: only do this if there's 6.x masters in the cluster.
-		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
+		//driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	case 6:
 		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
-		driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
+		//driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
 	default:
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
 	}
