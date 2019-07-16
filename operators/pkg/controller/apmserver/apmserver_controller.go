@@ -198,10 +198,8 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	state := NewState(request, as)
 	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
 
-	svc := NewService(*as)
-	_, err = common.ReconcileService(r.Client, r.scheme, svc, as)
+	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
-		// TODO: consider updating some status here?
 		return reconcile.Result{}, err
 	}
 	results := apmcerts.Reconcile(r.Client, r.scheme, *as, r.dynamicWatches, []corev1.Service{*svc}, r.CACertRotation)
