@@ -7,6 +7,7 @@ package apmserver
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	v1 "k8s.io/api/core/v1"
@@ -40,11 +42,22 @@ func NewApmServerClient(as apmtype.ApmServer, k *test.K8sClient) (*ApmClient, er
 		return nil, err
 	}
 
+	scheme := "http"
+	var caCerts []*x509.Certificate
+	if as.Spec.HTTP.TLS.Enabled() {
+		scheme = "https"
+		crts, err := k.GetHTTPCerts(name.APMNamer, as.Name)
+		if err != nil {
+			return nil, err
+		}
+		caCerts = crts
+	}
+
 	inClusterURL := fmt.Sprintf(
-		"http://%s.%s.svc:%d", as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
+		"%s://%s.%s.svc:%d", scheme, as.Status.ExternalService, as.Namespace, config.DefaultHTTPPort,
 	)
 
-	client := test.NewHTTPClient(nil)
+	client := test.NewHTTPClient(caCerts)
 
 	secretToken, ok := secretTokenSecret.Data[apmserver.SecretTokenKey]
 	if !ok {

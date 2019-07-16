@@ -8,6 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
@@ -71,12 +72,7 @@ func NewPodTemplateSpec(kb v1alpha1.Kibana, keystore *keystore.Resources) corev1
 	return builder.PodTemplate
 }
 
-// GetKibanaContainer returns the Kibana container from the given podSpec.
+// GetKibanaContainer retuarns the Kibana container from the given podSpec.
 func GetKibanaContainer(podSpec corev1.PodSpec) *corev1.Container {
-	for i, c := range podSpec.Containers {
-		if c.Name == v1alpha1.KibanaContainerName {
-			return &podSpec.Containers[i]
-		}
-	}
-	return nil
+	return pod.ContainerByName(podSpec, v1alpha1.KibanaContainerName)
 }
