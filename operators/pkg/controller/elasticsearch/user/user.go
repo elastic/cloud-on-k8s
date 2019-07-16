@@ -63,7 +63,7 @@ func (u User) PasswordMatches(hash []byte) bool {
 
 // Password returns the password of this user.
 func (u User) Password() string {
-	return string(u.password)
+	return u.password
 }
 
 // Roles returns any roles of this user.

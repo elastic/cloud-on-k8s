@@ -57,14 +57,15 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	if err == nil {
 		current = &onServer
 	}
-	var results []commonvalidation.Result
 	validationCtx, err := validation.NewValidationContext(current, esCluster)
 	if err != nil {
 		log.Error(err, "while creating validation context")
 		return admission.ValidationResponse(false, err.Error())
 	}
-	for _, v := range validation.Validations {
-		results = append(results, v(*validationCtx))
+
+	results := make([]commonvalidation.Result, len(validation.Validations))
+	for i, v := range validation.Validations {
+		results[i] = v(*validationCtx)
 	}
 	return aggregate(results)
 }

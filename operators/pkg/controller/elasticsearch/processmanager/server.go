@@ -114,7 +114,7 @@ func (s *ProcessServer) EsStart(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	writeJson(w, s.esProcess.Status())
+	writeJSON(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
@@ -126,7 +126,7 @@ func (s *ProcessServer) EsStop(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
-	writeJson(w, s.esProcess.Status())
+	writeJSON(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
@@ -138,11 +138,11 @@ func (s *ProcessServer) EsKill(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	}
 
-	writeJson(w, s.esProcess.Status())
+	writeJSON(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) EsStatus(w http.ResponseWriter, req *http.Request) {
-	writeJson(w, s.esProcess.Status())
+	writeJSON(w, s.esProcess.Status())
 }
 
 func (s *ProcessServer) KeystoreStatus(w http.ResponseWriter, req *http.Request) {
@@ -152,7 +152,7 @@ func (s *ProcessServer) KeystoreStatus(w http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	writeJson(w, status)
+	writeJSON(w, status)
 }
 
 // HTTP utilities
@@ -165,7 +165,7 @@ func ko(w http.ResponseWriter, msg string) {
 	write(w, http.StatusInternalServerError, fmt.Sprintf(`{"error": "%s"}`, msg))
 }
 
-func writeJson(w http.ResponseWriter, obj interface{}) {
+func writeJSON(w http.ResponseWriter, obj interface{}) {
 	bytes, _ := json.Marshal(obj)
 	_, _ = w.Write(bytes)
 }

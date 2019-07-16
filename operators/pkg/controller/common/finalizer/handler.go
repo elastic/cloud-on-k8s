@@ -52,7 +52,7 @@ func (h *Handler) Handle(resource runtime.Object, finalizers ...Finalizer) error
 		needUpdate = h.reconcileFinalizers(finalizers, metaObject)
 	} else {
 		// resource is being deleted, let's execute finalizers
-		needUpdate, finalizerErr = h.executeFinalizers(finalizers, metaObject, resource)
+		needUpdate, finalizerErr = h.executeFinalizers(finalizers, metaObject)
 	}
 	if needUpdate {
 		if updateErr := h.client.Update(resource); updateErr != nil {
@@ -80,7 +80,7 @@ func (h *Handler) reconcileFinalizers(finalizers []Finalizer, object metav1.Obje
 // executeFinalizers runs all registered finalizers in the given objectMeta.
 // Once a finalizer is executed, it is removed from the objectMeta's list,
 // and an update to the apiserver is issued for the given resource.
-func (h *Handler) executeFinalizers(finalizers []Finalizer, object metav1.Object, resource runtime.Object) (bool, error) {
+func (h *Handler) executeFinalizers(finalizers []Finalizer, object metav1.Object) (bool, error) {
 	needUpdate := false
 	var finalizerErr error
 	for _, finalizer := range finalizers {

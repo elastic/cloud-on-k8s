@@ -17,7 +17,7 @@ import (
 // TODO: this file pretty much duplicates kibana/deployment_control.go
 
 var (
-	defaultRevisionHistoryLimit int32 = 0
+	defaultRevisionHistoryLimit int32
 )
 
 type DeploymentParams struct {

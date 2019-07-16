@@ -6,11 +6,8 @@ package webhook
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 func init() {
-	Register(operator.WebhookServer, func(mgr manager.Manager, params Parameters) error {
-		return RegisterValidations(mgr, params)
-	})
+	Register(operator.WebhookServer, RegisterValidations)
 }

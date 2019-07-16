@@ -20,7 +20,7 @@ const (
 	deploymentSuffix  = "server"
 )
 
-// KBNamer is a Namer that is configured with the defaults for resources related to an APM resource.
+// APMNamer is a Namer that is configured with the defaults for resources related to an APM resource.
 var APMNamer = common_name.Namer{
 	MaxSuffixLength: MaxSuffixLength,
 	DefaultSuffixes: []string{"apm"},

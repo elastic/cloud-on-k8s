@@ -87,14 +87,11 @@ func init() {
 	if err != nil {
 		panic("Failed to create CSR:" + err.Error())
 	}
-	testCSR, err := x509.ParseCertificateRequest(testCSRBytes)
+	testCSR, _ := x509.ParseCertificateRequest(testCSRBytes)
 
-	validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
+	validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
 		k8s.ExtractNamespacedName(&testES), name.ESNamer, testES.Spec.HTTP.TLS, []corev1.Service{testSvc}, testCSR, certificates.DefaultCertValidity,
 	)
-	if err != nil {
-		panic("Failed to create validated cert template:" + err.Error())
-	}
 
 	certData, err := testCA.CreateCertificate(*validatedCertificateTemplate)
 	if err != nil {
@@ -106,12 +103,10 @@ func init() {
 
 func TestReconcileHTTPCertificates(t *testing.T) {
 	type args struct {
-		c                k8s.Client
-		es               v1alpha1.Elasticsearch
-		ca               *certificates.CA
-		services         []corev1.Service
-		certValidity     time.Duration
-		certRotateBefore time.Duration
+		c        k8s.Client
+		es       v1alpha1.Elasticsearch
+		ca       *certificates.CA
+		services []corev1.Service
 	}
 	tests := []struct {
 		name    string
@@ -194,10 +189,9 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 		certValidity time.Duration
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    func(t *testing.T, cert *certificates.ValidatedCertificateTemplate)
-		wantErr bool
+		name string
+		args args
+		want func(t *testing.T, cert *certificates.ValidatedCertificateTemplate)
 	}{
 		{
 			name: "with svcs and user-provided SANs",
@@ -253,7 +247,7 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := createValidatedHTTPCertificateTemplate(
+			got := createValidatedHTTPCertificateTemplate(
 				k8s.ExtractNamespacedName(&tt.args.es),
 				name.ESNamer,
 				tt.args.es.Spec.HTTP.TLS,
@@ -261,10 +255,6 @@ func Test_createValidatedHTTPCertificateTemplate(t *testing.T) {
 				&x509.CertificateRequest{},
 				tt.args.certValidity,
 			)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("createValidatedHTTPCertificateTemplate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
 			if tt.want != nil {
 				tt.want(t, got)
 			}

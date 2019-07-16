@@ -5,6 +5,7 @@
 package certificates
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -40,11 +41,11 @@ func ParsePEMCerts(pemData []byte) ([]*x509.Certificate, error) {
 
 // EncodePEMCert encodes the given certificate blocks as a PEM certificate
 func EncodePEMCert(certBlocks ...[]byte) []byte {
-	var result []byte
+	var buf bytes.Buffer
 	for _, block := range certBlocks {
-		result = append(result, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block})...)
+		_, _ = buf.Write(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: block}))
 	}
-	return result
+	return buf.Bytes()
 }
 
 // EncodePEMPrivateKey encodes the given private key in the PEM format

@@ -63,8 +63,8 @@ func TestExpectations(t *testing.T) {
 			name:   "empty",
 			events: func(e *Expectations) {},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{0, 0},
-				nsn2: [2]int64{0, 0},
+				nsn1: {0, 0},
+				nsn2: {0, 0},
 			},
 		},
 		{
@@ -73,8 +73,8 @@ func TestExpectations(t *testing.T) {
 				e.ExpectCreation(nsn1)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{1, 0},
-				nsn2: [2]int64{0, 0},
+				nsn1: {1, 0},
+				nsn2: {0, 0},
 			},
 		},
 		{
@@ -84,8 +84,8 @@ func TestExpectations(t *testing.T) {
 				e.ExpectCreation(nsn1)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{3, 0},
-				nsn2: [2]int64{0, 0},
+				nsn1: {3, 0},
+				nsn2: {0, 0},
 			},
 		},
 		{
@@ -94,8 +94,8 @@ func TestExpectations(t *testing.T) {
 				e.ExpectCreation(nsn2)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{3, 0},
-				nsn2: [2]int64{1, 0},
+				nsn1: {3, 0},
+				nsn2: {1, 0},
 			},
 		},
 		{
@@ -104,8 +104,8 @@ func TestExpectations(t *testing.T) {
 				e.CreationObserved(nsn1)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{2, 0},
-				nsn2: [2]int64{1, 0},
+				nsn1: {2, 0},
+				nsn2: {1, 0},
 			},
 		},
 		{
@@ -115,8 +115,8 @@ func TestExpectations(t *testing.T) {
 				e.CreationObserved(nsn1)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{0, 0},
-				nsn2: [2]int64{1, 0},
+				nsn1: {0, 0},
+				nsn2: {1, 0},
 			},
 		},
 		{
@@ -125,8 +125,8 @@ func TestExpectations(t *testing.T) {
 				e.CreationObserved(nsn2)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{0, 0},
-				nsn2: [2]int64{0, 0},
+				nsn1: {0, 0},
+				nsn2: {0, 0},
 			},
 		},
 		{
@@ -135,8 +135,8 @@ func TestExpectations(t *testing.T) {
 				e.CreationObserved(nsn1)
 			},
 			expected: map[types.NamespacedName][2]int64{
-				nsn1: [2]int64{0, 0},
-				nsn2: [2]int64{0, 0},
+				nsn1: {0, 0},
+				nsn2: {0, 0},
 			},
 		},
 	}

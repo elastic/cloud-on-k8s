@@ -62,7 +62,7 @@ func main() {
 }
 
 func waitForSignal() os.Signal {
-	sigs := make(chan os.Signal)
+	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	sig := <-sigs
 	return sig

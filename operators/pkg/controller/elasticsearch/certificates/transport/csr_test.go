@@ -78,10 +78,9 @@ func Test_buildGeneralNames(t *testing.T) {
 		pod     corev1.Pod
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []certificates.GeneralName
-		wantErr bool
+		name string
+		args args
+		want []certificates.GeneralName
 	}{
 		{
 			name: "no svcs and user-provided SANs",

@@ -59,10 +59,10 @@ func (v *ValidationHandler) Handle(ctx context.Context, r types.Request) types.R
 	if err == nil {
 		current = &onServer
 	}
-	var results []commonvalidation.Result
+	results := make([]commonvalidation.Result, len(validation.Validations))
 	validationCtx := &validation.Context{Current: current, Proposed: license}
-	for _, v := range validation.Validations {
-		results = append(results, v(*validationCtx))
+	for i, v := range validation.Validations {
+		results[i] = v(*validationCtx)
 	}
 	return Aggregate(results)
 }
