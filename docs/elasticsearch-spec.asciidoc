@@ -226,7 +226,7 @@ To install a custom plugin, you can install them before the Elasticsearch contai
             bin/elasticsearch-plugin install --batch repository-gcs
 ----
 
-You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options.
+You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
 
 [id="{p}-update-strategy"]
 === Update strategy
