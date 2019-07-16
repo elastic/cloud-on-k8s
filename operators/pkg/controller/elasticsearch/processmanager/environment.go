@@ -35,6 +35,7 @@ func NewEnvVars(httpCertsSecretVolume volume.VolumeLike) []corev1.EnvVar {
 		{Name: EnvProcName, Value: "es"},
 		{Name: EnvProcCmd, Value: ElasticsearchCommand},
 		{Name: EnvTLS, Value: "true"},
+		{Name: EnvKeystoreUpdater, Value: "false"},
 		{Name: EnvCertPath, Value: path.Join(httpCertsSecretVolume.VolumeMount().MountPath, certificates.CertFileName)},
 		{Name: EnvKeyPath, Value: path.Join(httpCertsSecretVolume.VolumeMount().MountPath, certificates.KeyFileName)},
 	}
