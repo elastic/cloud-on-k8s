@@ -55,6 +55,7 @@ func TestAnnotationCreated(t *testing.T) {
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, obj))
 	err := UpdateControllerVersion(client, obj, "newversion")
+	require.NoError(t, err)
 	actualKibana := &kibanav1alpha1.Kibana{}
 	err = client.Get(types.NamespacedName{
 		Namespace: obj.Namespace,
