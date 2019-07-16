@@ -12,7 +12,7 @@ import (
 
 const (
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
-	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs"
+	HTTPCertificatesSecretVolumeMountPath = "/mnt/elastic-internal/http-certs" // nolint
 )
 
 // HTTPCertSecretVolume returns a SecretVolume to hold the HTTP certs for the given resource.

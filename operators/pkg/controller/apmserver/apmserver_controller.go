@@ -374,7 +374,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 			return state, err
 		}
 		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
-			configChecksum.Write(httpCert)
+			_, _ = configChecksum.Write(httpCert)
 		}
 		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
