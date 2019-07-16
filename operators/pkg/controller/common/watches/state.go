@@ -31,8 +31,7 @@ type DynamicWatches struct {
 // InjectScheme is used by the ControllerManager to inject Scheme into Sources, EventHandlers, Predicates, and
 // Reconciles
 func (w DynamicWatches) InjectScheme(scheme *runtime.Scheme) error {
-	w.Secrets.InjectScheme(scheme)
-	return nil
+	return w.Secrets.InjectScheme(scheme)
 }
 
 // DynamicWatches implements inject.Scheme mostly to facilitate testing. In production code injection happens on

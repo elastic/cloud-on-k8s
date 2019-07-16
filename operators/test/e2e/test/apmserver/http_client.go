@@ -198,14 +198,17 @@ func (c *ApmClient) IntakeV2Events(ctx context.Context, payload []byte) (*Events
 		return nil, err
 	}
 
-	defer request.Body.Close()
+	defer func() {
+		request.Body.Close()
+		resp.Body.Close()
+	}()
 
 	// if it was accepted, there were no errors
 	if resp.StatusCode == http.StatusAccepted {
 		return nil, nil
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(eventsErrorResponse); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&eventsErrorResponse); err != nil {
 		return nil, err
 	}
 

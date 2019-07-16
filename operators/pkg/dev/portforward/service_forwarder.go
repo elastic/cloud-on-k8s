@@ -19,21 +19,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// serviceForwarder forwards one port of a service
-type serviceForwarder struct {
+// ServiceForwarder forwards one port of a service
+type ServiceForwarder struct {
 	network, addr string
 	serviceNSN    types.NamespacedName
 
 	// client is used to look up the service and pods selected by the service during dialing
 	client client.Client
 
-	store *forwarderStore
+	store *ForwarderStore
 
 	// podForwarderFactory enables injecting a custom forwarder factory in tests
 	podForwarderFactory ForwarderFactory
 }
 
-var _ Forwarder = &serviceForwarder{}
+var _ Forwarder = &ServiceForwarder{}
 
 // defaultPodForwarderFactory is the default pod forwarder factory used outside of tests
 var defaultPodForwarderFactory = ForwarderFactory(func(network, addr string) (Forwarder, error) {
@@ -45,13 +45,13 @@ var defaultPodForwarderFactory = ForwarderFactory(func(network, addr string) (Fo
 })
 
 // NewServiceForwarder returns a new initialized service forwarder
-func NewServiceForwarder(client client.Client, network, addr string) (*serviceForwarder, error) {
+func NewServiceForwarder(client client.Client, network, addr string) (*ServiceForwarder, error) {
 	serviceNSN, err := parseServiceAddr(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	return &serviceForwarder{
+	return &ServiceForwarder{
 		network: network,
 		addr:    addr,
 
@@ -77,7 +77,7 @@ func parseServiceAddr(addr string) (*types.NamespacedName, error) {
 }
 
 // Run starts the service forwarder, blocking until it's done
-func (f *serviceForwarder) Run(ctx context.Context) error {
+func (f *ServiceForwarder) Run(ctx context.Context) error {
 	// TODO: /could/ consider snipping connections here when pods turn unready, but that does not match the default
 	// Service behavior
 	<-ctx.Done()
@@ -87,7 +87,7 @@ func (f *serviceForwarder) Run(ctx context.Context) error {
 // DialContext dials one of the ready pods behind this service forwarder.
 //
 // As an approximation to load balancing, a random ready pod will be chosen for each dialing attempt.
-func (f *serviceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
+func (f *ServiceForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	_, servicePortStr, err := net.SplitHostPort(f.addr)
 	if err != nil {
 		return nil, err

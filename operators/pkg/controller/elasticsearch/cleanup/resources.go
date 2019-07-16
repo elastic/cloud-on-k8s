@@ -31,15 +31,11 @@ const DeleteAfter = 10 * time.Minute
 // or delete an object due to a (temporary) out-of-sync cache.
 func IsTooYoungForGC(object metav1.Object) bool {
 	creationTime := object.GetCreationTimestamp()
-	if time.Now().Sub(creationTime.Time) > DeleteAfter {
-		return false
-	}
-	return true
+	return time.Since(creationTime.Time) < DeleteAfter
 }
 
 // DeleteOrphanedSecrets cleans up secrets that are not needed anymore for the given es cluster.
 func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
-	var resources []runtime.Object
 	var secrets corev1.SecretList
 	if err := c.List(&client.ListOptions{
 		Namespace:     es.Namespace,
@@ -47,8 +43,9 @@ func DeleteOrphanedSecrets(c k8s.Client, es v1alpha1.Elasticsearch) error {
 	}, &secrets); err != nil {
 		return err
 	}
+	resources := make([]runtime.Object, len(secrets.Items))
 	for i := range secrets.Items {
-		resources = append(resources, &secrets.Items[i])
+		resources[i] = &secrets.Items[i]
 	}
 	return cleanupFromPodReference(c, es.Namespace, resources)
 }

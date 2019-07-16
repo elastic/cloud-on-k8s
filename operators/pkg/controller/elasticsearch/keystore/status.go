@@ -5,7 +5,6 @@
 package keystore
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -30,5 +29,5 @@ type Status struct {
 }
 
 func (s State) ToString() string {
-	return fmt.Sprintf("%s", s)
+	return string(s)
 }

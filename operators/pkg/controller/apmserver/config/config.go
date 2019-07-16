@@ -75,6 +75,10 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		settings.MustCanonicalConfig(tlsSettings(as)),
 		userSettings,
 	)
+	if err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
 }
 

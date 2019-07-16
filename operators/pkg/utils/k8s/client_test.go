@@ -19,9 +19,9 @@ import (
 type ctxKey struct{}
 
 var (
-	userProvidedContextKey = ctxKey{}
-	userProvidedContext    = errors.New("using user-provided context")
-	defaultTimeoutContext  = errors.New("using default timeout context")
+	userProvidedContextKey        = ctxKey{}
+	errUsingUserProvidedContext   = errors.New("using user-provided context")
+	errUsingDefaultTimeoutContext = errors.New("using default timeout context")
 )
 
 func TestClient(t *testing.T) {
@@ -66,13 +66,13 @@ func TestClient(t *testing.T) {
 			c := WrapClient(mockedClient{}).WithTimeout(1 * time.Millisecond)
 			err := tt.call(c)
 			// make sure the timeout context was correctly passed to the underlying client
-			require.Equal(t, defaultTimeoutContext, err)
+			require.Equal(t, errUsingDefaultTimeoutContext, err)
 
 			// pass a custom context with the call
 			ctx := context.WithValue(context.Background(), userProvidedContextKey, userProvidedContextKey)
 			err = tt.call(c.WithContext(ctx))
 			// make sure this custom context was used and not the timeout one
-			require.Equal(t, userProvidedContext, err)
+			require.Equal(t, errUsingUserProvidedContext, err)
 		})
 	}
 }
@@ -86,11 +86,11 @@ func (m mockedClient) checkCtx(ctx context.Context) error {
 		return errors.New("using no context")
 	}
 	if ctx.Value(userProvidedContextKey) == userProvidedContextKey {
-		return userProvidedContext
+		return errUsingUserProvidedContext
 	}
 	// should be the init timeout context
 	<-ctx.Done()
-	return defaultTimeoutContext
+	return errUsingDefaultTimeoutContext
 }
 
 func (m mockedClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {

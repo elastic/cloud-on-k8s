@@ -29,7 +29,9 @@ func (lh LowestHighestSupportedVersions) VerifySupportsExistingPods(
 		if err != nil {
 			return err
 		}
-		return errors.Wrap(lh.Supports(*v), fmt.Sprintf("%s has incompatible version", pod.Name))
+		if err := lh.Supports(*v); err != nil {
+			return errors.Wrapf(err, "%s has incompatible version", pod.Name)
+		}
 	}
 	return nil
 }

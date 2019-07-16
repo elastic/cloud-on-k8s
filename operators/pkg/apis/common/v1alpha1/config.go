@@ -56,5 +56,4 @@ func (c *Config) DeepCopyInto(out *Config) {
 		panic(err)
 	}
 	out.Data = copy
-	return
 }

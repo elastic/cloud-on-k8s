@@ -61,7 +61,10 @@ func (d *DynamicEnqueueRequest) AddHandler(handler HandlerRegistration) error {
 	}
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
-	inject.SchemeInto(d.scheme, handler)
+	if _, err := inject.SchemeInto(d.scheme, handler); err != nil {
+		log.Error(err, "Failed to add handler to dynamic enqueue request")
+		return err
+	}
 	d.registrations[handler.Key()] = handler
 	log.V(1).Info("Added new handler registration", "current_registrations", d.registrations)
 	return nil
