@@ -3,24 +3,31 @@
 
 There are a number of settings which need to be considered before going into production related to Elasticsearch but also to Kubernetes.
 
-Basic settings
+**<<{p}-basic-settings>>**
 
-- JVM heap size
-- Node configuration
-- HTTP settings & TLS SANs
-- Resource limits
-- Pod Template
+- <<{p}-jvm-heap-size>>
+- <<{p}-node-configuration>>
+- <<{p}-http-settings-tls-sans>>
+- <<{p}-pod-template>>
+- <<{p}-resource-requests-limits>>
 - Volume claim templates
 
-Advanced settings
+**<<{p}-advanced-settings>>**
 
 - Virtual memory
-- Custom HTTP certificate
+- <<{p}-custom-http-certificate>>
 - Secure settings
 - Custom plugins and bundles
-- Init containers for plugin downloads
+- <<{p}-init-containers-plugin-downloads>>
 - Pod disruption budget
 - Change budget (maxUnavailable, maxSurge)
+
+[id="{p}-basic-settings"]
+== Basic settings
+
+[id="{p}-jvm-heap-size"]
+=== JVM heap size
+
 
 [id="{p}-node-configuration"]
 === Node configuration
@@ -77,6 +84,9 @@ spec:
         - dns: hulk.example.com
 ----
 
+[id="{p}-advanced-settings"]
+== Advanced Settings
+
 [id="{p}-custom-http-certificate"]
 === Custom HTTP certificate
 
@@ -100,3 +110,87 @@ Example to create a Kubernetes TLS secret with a self-signed certificate:
 $ openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt -days 365 -nodes
 $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 ----
+
+
+[id="{p}-pod-template"]
+=== Pod Template
+
+Pod templates are the same pod templates you know and love from stateful sets and deployments. You can provide your own to add new settings or merge settings with our defaults. For instance, if you want to add new labels to your pods, you can apply a pod template like so:
+
+[source,yaml]
+----
+    podTemplate:
+      metadata:
+        labels:
+          # additional labels for pods
+          foo: bar
+----
+
+
+More common is setting resource requests and limits, which is covered in the section <<{p}-resource-requests-limits>>.
+
+You may want to also install additional plugins, which is described in the <<{p}-init-containers-plugin-downloads>> section.
+
+You may want to set environment variables to configure Elasticsearch, for instance to set the minimum and maximum heap size to `2g` and `4g` respectively you may modify the environment variables of the `elasticsearch` container as follows:
+
+[source,yaml]
+----
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: "-Xms2g -Xmx4g"
+----
+
+
+You can also refer to the Kubernetes documentation here for more information on pod templates:
+https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/#pod-templates[Pod Templates Overview]
+
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podtemplatespec-v1-core[Pod Template Spec API Reference]
+
+
+[id="{p}-resource-requests-limits"]
+=== Resource Requests and Limits
+
+Resource requests and limits define how much RAM and CPU each individual container requires and how much they are allowed to use. You may want to set these in addition to the heap size as mentioned , though by default we will set the heap size to half of the container memory limit.
+
+To set the minimum and maximum memory of the `elasticsearch` container, as well as the minimum and maximum CPU resources, you would modify the pod template in your Elasticsearch spec as follows.
+[source,yaml]
+----
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              memory: "16Gi"
+              cpu: "250m"
+            limits:
+              memory: "32Gi"
+              cpu: "4"
+----
+
+The https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Kubernetes documentation] has more detail on managing compute resources for containers.
+
+[id="{p}-init-containers-plugin-downloads"]
+=== Init containers for plugin downloads
+
+To install a custom plugin, you can install them before the Elasticsearch container starts with an initContainer. For example:
+
+[source,yaml]
+----
+  - podTemplate:
+      spec:
+        initContainers:
+        - name: install-plugins
+          image: docker.elastic.co/elasticsearch/elasticsearch:7.1.0"
+          command:
+          - sh
+          - -c
+          - |
+            bin/elasticsearch-plugin install --batch repository-gcs
+----
+
+You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options.
