@@ -43,22 +43,22 @@ type K8sClient struct {
 }
 
 func NewK8sClient() (*K8sClient, error) {
-	kClient, err := CreateClient()
+	client, err := CreateClient()
 	if err != nil {
 		return nil, err
 	}
 	return &K8sClient{
-		Client: kClient,
+		Client: client,
 	}, nil
 }
 
 func NewK8sClientOrFatal() *K8sClient {
-	kClient, err := NewK8sClient()
+	client, err := NewK8sClient()
 	if err != nil {
 		fmt.Println("Cannot create K8s client", err)
 		os.Exit(1)
 	}
-	return kClient
+	return client
 }
 
 func CreateClient() (k8s.Client, error) {
@@ -78,11 +78,11 @@ func CreateClient() (k8s.Client, error) {
 	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	kClient, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		return nil, err
 	}
-	return k8s.WrapClient(kClient), nil
+	return k8s.WrapClient(client), nil
 }
 
 func ServerVersion() (*version.Info, error) {
