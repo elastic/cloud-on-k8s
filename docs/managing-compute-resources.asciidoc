@@ -1,7 +1,7 @@
 [id="{p}-managing-compute-resources"]
 == Managing compute resources
 
-When a Pod is created it may request CPU and RAM resources. It may also specify the maximum resources that the containers are allowed to consume. Both Pod `limits` and `requests` can be set in the specification of any object managed by the operator (Elasticsearch, Kibana, APM server). For more information about how this is used by Kubernetes please see https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers]
+When a Pod is created it may request CPU and RAM resources. It may also specify the maximum resources that the containers are allowed to consume. Both Pod `limits` and `requests` can be set in the specification of any object managed by the operator (Elasticsearch, Kibana or the APM server). For more information about how this is used by Kubernetes please see https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Managing Compute Resources for Containers]
 
 [float]
 [id="{p}-custom-resources"]
