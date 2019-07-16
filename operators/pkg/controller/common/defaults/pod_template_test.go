@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -754,11 +755,13 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:         "user-init-container1",
 					Image:        "user-image",
+					Env:          env.DynamicPodEnvVars,
 					VolumeMounts: defaultVolumeMounts,
 				},
 				{
 					Name:  "user-init-container2",
 					Image: "default-image",
+					Env:   env.DynamicPodEnvVars,
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "foo",
 						MountPath: "/foo",
@@ -768,6 +771,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:  "user-init-container3",
 					Image: "default-image",
+					Env:   env.DynamicPodEnvVars,
 					// uses the same mount path as a default mount, so default mount should not be used
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      "bar",
@@ -777,6 +781,7 @@ func TestPodTemplateBuilder_WithInitContainerDefaults(t *testing.T) {
 				{
 					Name:  "user-init-container4",
 					Image: "default-image",
+					Env:   env.DynamicPodEnvVars,
 					// uses the same name as a default mount, so default mount should not be used
 					VolumeMounts: []corev1.VolumeMount{{
 						Name:      defaultVolumeMount.Name,

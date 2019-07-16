@@ -10,10 +10,10 @@ import (
 
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
@@ -67,7 +67,6 @@ func secretWatchFinalizer(kibana kbtype.Kibana, watches watches.DynamicWatches) 
 
 func (d *driver) deploymentParams(kb *kbtype.Kibana) (*DeploymentParams, error) {
 	// setup a keystore with secure settings in an init container, if specified by the user
-	//volumes, initContainers, secureSettingsVersion, err := securesettings.Resources(d.client, d.recorder, d.dynamicWatches, *kb)
 	keystoreResources, err := keystore.NewResources(
 		d.client,
 		d.recorder,

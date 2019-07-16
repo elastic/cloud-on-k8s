@@ -145,6 +145,7 @@ func requestESWithCA(ip string, caCert []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer resp.Body.Close()
 
 	return resp.StatusCode, nil
 }

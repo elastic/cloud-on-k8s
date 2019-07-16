@@ -34,7 +34,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp" // auth on gke
 	"k8s.io/client-go/tools/remotecommand"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
@@ -78,7 +78,7 @@ func CreateClient() (k8s.Client, error) {
 	if err := apmtype.AddToScheme(scheme.Scheme); err != nil {
 		return nil, err
 	}
-	client, err := client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	client, err := k8sclient.New(cfg, k8sclient.Options{Scheme: scheme.Scheme})
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func ServerVersion() (*version.Info, error) {
 	return dc.ServerVersion()
 }
 
-func (k *K8sClient) GetPods(listOpts client.ListOptions) ([]corev1.Pod, error) {
+func (k *K8sClient) GetPods(listOpts k8sclient.ListOptions) ([]corev1.Pod, error) {
 	var podList corev1.PodList
 	if err := k.Client.List(&listOpts, &podList); err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func (k *K8sClient) DeletePod(pod corev1.Pod) error {
 	return k.Client.Delete(&pod)
 }
 
-func (k *K8sClient) CheckPodCount(listOpts client.ListOptions, expectedCount int) error {
+func (k *K8sClient) CheckPodCount(listOpts k8sclient.ListOptions, expectedCount int) error {
 	pods, err := k.GetPods(listOpts)
 	if err != nil {
 		return err
@@ -302,8 +302,8 @@ func (k *K8sClient) Exec(pod types.NamespacedName, cmd []string) (string, string
 	return stdout.String(), stderr.String(), err
 }
 
-func ESPodListOptions(esName string) client.ListOptions {
-	return client.ListOptions{
+func ESPodListOptions(esName string) k8sclient.ListOptions {
+	return k8sclient.ListOptions{
 		Namespace: Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:       label.Type,
@@ -311,16 +311,16 @@ func ESPodListOptions(esName string) client.ListOptions {
 		}))}
 }
 
-func KibanaPodListOptions(kbName string) client.ListOptions {
-	return client.ListOptions{
+func KibanaPodListOptions(kbName string) k8sclient.ListOptions {
+	return k8sclient.ListOptions{
 		Namespace: Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			kblabel.KibanaNameLabelName: kbName,
 		}))}
 }
 
-func ApmServerPodListOptions(apmName string) client.ListOptions {
-	return client.ListOptions{
+func ApmServerPodListOptions(apmName string) k8sclient.ListOptions {
+	return k8sclient.ListOptions{
 		Namespace: Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set(map[string]string{
 			common.TypeLabelName:             apmlabels.Type,
