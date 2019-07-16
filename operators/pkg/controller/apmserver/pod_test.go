@@ -21,6 +21,7 @@ func TestNewPodSpec(t *testing.T) {
 		"/usr/share/apm-server/config/config-secret",
 	)
 	varFalse := false
+	probe := readinessProbe(true)
 	tests := []struct {
 		name string
 		as   v1alpha1.ApmServer
@@ -79,7 +80,7 @@ func TestNewPodSpec(t *testing.T) {
 									},
 								},
 							},
-							ReadinessProbe: &readinessProbe,
+							ReadinessProbe: &probe,
 							Ports:          ports,
 							Command:        command,
 							VolumeMounts: []corev1.VolumeMount{
