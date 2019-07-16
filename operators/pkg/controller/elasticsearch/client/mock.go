@@ -25,7 +25,7 @@ func NewMockClient(v version.Version, fn RoundTripFunc) Client {
 func NewMockClientWithUser(v version.Version, u UserAuth, fn RoundTripFunc) Client {
 	baseClient := &baseClient{
 		HTTP: &http.Client{
-			Transport: RoundTripFunc(fn),
+			Transport: fn,
 		},
 		Endpoint: "http://example.com",
 		User:     u,

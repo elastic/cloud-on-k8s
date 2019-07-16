@@ -253,10 +253,11 @@ type Elasticsearch struct {
 
 // IsMarkedForDeletion returns true if the Elasticsearch is going to be deleted
 func (e Elasticsearch) IsMarkedForDeletion() bool {
-	if e.DeletionTimestamp.IsZero() { // already handles nil pointer
-		return false
-	}
-	return true
+	return !e.DeletionTimestamp.IsZero()
+}
+
+func (e Elasticsearch) SecureSettings() *commonv1alpha1.SecretRef {
+	return e.Spec.SecureSettings
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

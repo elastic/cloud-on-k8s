@@ -68,7 +68,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 	type test struct {
 		name    string
 		fields  fields
-		tweaks  func(f *serviceForwarder)
+		tweaks  func(f *ServiceForwarder)
 		args    args
 		want    net.Conn
 		wantErr error
@@ -117,7 +117,7 @@ func Test_serviceForwarder_DialContext(t *testing.T) {
 					},
 				),
 			},
-			tweaks: func(f *serviceForwarder) {
+			tweaks: func(f *ServiceForwarder) {
 				f.podForwarderFactory = func(network, addr string) (Forwarder, error) {
 					return &stubForwarder{
 						onDialContext: func(ctx context.Context) (net.Conn, error) {

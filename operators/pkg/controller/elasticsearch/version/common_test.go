@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/env"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -18,7 +19,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 )
 
@@ -133,7 +133,7 @@ func TestNewPod(t *testing.T) {
 func Test_podSpec(t *testing.T) {
 	// this test focuses on testing user-provided pod template overrides
 	// setup mocks for env vars func, es config func and init-containers func
-	newEnvVarsFn := func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar {
+	newEnvVarsFn := func(p pod.NewPodSpecParams) []corev1.EnvVar {
 		return []corev1.EnvVar{
 			{
 				Name:  "var1",
@@ -148,7 +148,7 @@ func Test_podSpec(t *testing.T) {
 	newESConfigFn := func(clusterName string, config commonv1alpha1.Config) (settings.CanonicalConfig, error) {
 		return settings.NewCanonicalConfig(), nil
 	}
-	newInitContainersFn := func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
+	newInitContainersFn := func(elasticsearchImage string, setVMMaxMapCount *bool, nodeCertificatesVolume volume.SecretVolume, clusterName string) ([]corev1.Container, error) {
 		return []corev1.Container{
 			{
 				Name: "init-container1",
@@ -191,7 +191,6 @@ func Test_podSpec(t *testing.T) {
 				require.Equal(t, DefaultResources, esContainer.Resources)
 				require.Equal(t, pod.DefaultContainerPorts, esContainer.Ports)
 				require.Equal(t, pod.NewReadinessProbe(), esContainer.ReadinessProbe)
-				require.Equal(t, []string{processmanager.CommandPath}, esContainer.Command)
 			},
 		},
 		{
@@ -305,19 +304,27 @@ func Test_podSpec(t *testing.T) {
 				podSpec := specCtx.PodTemplate.Spec
 				require.Equal(t, []corev1.Container{
 					{
-						Name: "init-container1",
+						Name:         "init-container1",
+						Image:        podSpec.Containers[0].Image,
+						Env:          env.DynamicPodEnvVars,
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
-						Name: "init-container2",
+						Name:         "init-container2",
+						Image:        podSpec.Containers[0].Image,
+						Env:          env.DynamicPodEnvVars,
+						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
 						Name:         "user-init-container-1",
 						Image:        "my-custom-image",
+						Env:          env.DynamicPodEnvVars,
 						VolumeMounts: podSpec.Containers[0].VolumeMounts,
 					},
 					{
 						Name:  "user-init-container-2",
 						Image: podSpec.Containers[0].Image,
+						Env:   env.DynamicPodEnvVars,
 						VolumeMounts: append(
 							[]corev1.VolumeMount{{
 								Name:      "foo",
@@ -490,7 +497,7 @@ func Test_podSpec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			spec, err := podSpecContext(tt.params, "operator-image", newEnvVarsFn, newESConfigFn, newInitContainersFn)
+			spec, err := podSpecContext(tt.params, newEnvVarsFn, newESConfigFn, newInitContainersFn)
 			require.NoError(t, err)
 			tt.assertions(t, spec)
 		})

@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-// forwarderStore is a store for Forwarders that handles the forwarder lifecycle.
-type forwarderStore struct {
+// ForwarderStore is a store for Forwarders that handles the forwarder lifecycle.
+type ForwarderStore struct {
 	forwarders map[string]Forwarder
 	sync.Mutex
 }
@@ -20,8 +20,8 @@ type forwarderStore struct {
 type ForwarderFactory func(network, addr string) (Forwarder, error)
 
 // NewForwarderStore creates a new initialized forwarderStore
-func NewForwarderStore() *forwarderStore {
-	return &forwarderStore{
+func NewForwarderStore() *ForwarderStore {
+	return &ForwarderStore{
 		forwarders: make(map[string]Forwarder),
 	}
 }
@@ -29,7 +29,7 @@ func NewForwarderStore() *forwarderStore {
 // GetOrCreateForwarder returns a cached Forwarder if it exists, or a new one.
 //
 // The forwarder will be running when returned and automatically removed from the store when it stops running.
-func (s *forwarderStore) GetOrCreateForwarder(network, addr string, factory ForwarderFactory) (Forwarder, error) {
+func (s *ForwarderStore) GetOrCreateForwarder(network, addr string, factory ForwarderFactory) (Forwarder, error) {
 	s.Lock()
 	defer s.Unlock()
 

@@ -14,23 +14,23 @@ import (
 )
 
 func listAffectedLicenses(c k8s.Client, licenseName string) ([]reconcile.Request, error) {
-	var requests []reconcile.Request
 	var list = corev1.SecretList{}
 	// list all cluster licenses referencing the given enterprise license
 	err := c.List(&client.ListOptions{
 		LabelSelector: license.NewLicenseByNameSelector(licenseName),
 	}, &list)
 	if err != nil {
-		return requests, err
+		return nil, err
 	}
 
 	// enqueue a reconcile request for each cluster license found leveraging the fact that cluster and license
 	// share the same name
-	for _, cl := range list.Items {
-		requests = append(requests, reconcile.Request{NamespacedName: types.NamespacedName{
+	requests := make([]reconcile.Request, len(list.Items))
+	for i, cl := range list.Items {
+		requests[i] = reconcile.Request{NamespacedName: types.NamespacedName{
 			Namespace: cl.Namespace,
 			Name:      cl.Name,
-		}})
+		}}
 	}
 	return requests, nil
 }

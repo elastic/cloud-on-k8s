@@ -13,18 +13,15 @@ import (
 const defaultInitContainerRunAsUser int64 = 0
 
 const (
-	// injectProcessManagerContainerName is the name of the container that injects the process manager
-	injectProcessManagerContainerName = "elastic-internal-init-process-manager"
 	// osSettingsContainerName is the name of the container that tweaks os-level settings
 	osSettingsContainerName = "elastic-internal-init-os-settings"
 	// prepareFilesystemContainerName is the name of the container that prepares the filesystem
-	prepareFilesystemContainerName = "elastic-internal-init-filesystem"
+	PrepareFilesystemContainerName = "elastic-internal-init-filesystem"
 )
 
 // NewInitContainers creates init containers according to the given parameters
 func NewInitContainers(
 	elasticsearchImage string,
-	operatorImage string,
 	setVMMaxMapCount *bool,
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
@@ -43,12 +40,7 @@ func NewInitContainers(
 		return nil, err
 	}
 
-	injectProcessManager, err := NewInjectProcessManagerInitContainer(operatorImage)
-	if err != nil {
-		return nil, err
-	}
-
-	containers = append(containers, prepareFsContainer, injectProcessManager)
+	containers = append(containers, prepareFsContainer)
 
 	return containers, nil
 }

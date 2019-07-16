@@ -96,10 +96,7 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
 func (k Kibana) IsMarkedForDeletion() bool {
-	if k.DeletionTimestamp.IsZero() { // already handles nil pointer
-		return false
-	}
-	return true
+	return !k.DeletionTimestamp.IsZero()
 }
 
 func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {

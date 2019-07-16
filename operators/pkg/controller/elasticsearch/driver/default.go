@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +35,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pvc"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/restart"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
@@ -42,6 +42,14 @@ import (
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
+
+// initContainerParams is used to generate the init container that will load the secure settings into a keystore
+var initContainerParams = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add",
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+}
 
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
@@ -65,11 +73,10 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.Elasticsearch,
 		paramsTmpl pod.NewPodSpecParams,
-		operatorImage string,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -152,10 +159,6 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
-		return results.WithError(err)
-	}
-
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -173,9 +176,10 @@ func (d *defaultDriver) Reconcile(
 		min = &d.Version
 	}
 
+	warnUnsupportedDistro(resourcesState.AllPods, reconcileState.Recorder)
+
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
@@ -223,7 +227,19 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	// setup a keystore with secure settings in an init container, if specified by the user
+	keystoreResources, err := keystore.NewResources(
+		d.Client,
+		d.Recorder,
+		d.DynamicWatches,
+		&es,
+		initContainerParams,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -236,25 +252,6 @@ func (d *defaultDriver) Reconcile(
 		"namespace", es.Namespace,
 		"es_name", es.Name,
 	)
-
-	// restart ES processes that need to be restarted before going on with other changes
-	done, err := restart.HandleESRestarts(
-		restart.RestartContext{
-			Cluster:        es,
-			EventsRecorder: reconcileState.Recorder,
-			K8sClient:      d.Client,
-			Changes:        *changes,
-			Dialer:         d.Dialer,
-			EsClient:       esClient,
-		},
-	)
-	if err != nil {
-		return results.WithError(err)
-	}
-	if !done {
-		log.V(1).Info("Pods restart is not over yet, re-queueing.", "namespace", es.Namespace, "es_name", es.Name)
-		return results.WithResult(defaultRequeue)
-	}
 
 	// figure out what changes we can perform right now
 	performableChanges, err := mutation.CalculatePerformableChanges(es.Spec.UpdateStrategy, *changes, podsState)
@@ -490,17 +487,17 @@ func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
+	keystoreResources *keystore.Resources,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ProbeUser:    internalUsers.ProbeUser.Auth(),
-			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+			ProbeUser: internalUsers.ProbeUser.Auth(),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
+			KeystoreResources: keystoreResources,
 		},
-		d.OperatorImage,
 	)
 	if err != nil {
 		return nil, err
@@ -544,4 +541,19 @@ func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1
 	}
 
 	return nil
+}
+
+// warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
+// distribution by looking at if the prepare fs init container terminated with the UnsupportedDistro exit code.
+func warnUnsupportedDistro(pods []corev1.Pod, recorder *events.Recorder) {
+	for _, p := range pods {
+		for _, s := range p.Status.InitContainerStatuses {
+			state := s.LastTerminationState.Terminated
+			if s.Name == initcontainer.PrepareFilesystemContainerName &&
+				state != nil && state.ExitCode == initcontainer.UnsupportedDistroExitCode {
+				recorder.AddEvent(corev1.EventTypeWarning, events.EventReasonUnexpected,
+					"Unsupported distribution")
+			}
+		}
+	}
 }

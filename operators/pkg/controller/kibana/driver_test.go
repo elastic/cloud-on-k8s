@@ -10,6 +10,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	kbtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/kibana/volume"
@@ -69,7 +70,7 @@ func expectedDeploymentParams() *DeploymentParams {
 						},
 					},
 					{
-						Name: volume.HTTPCertificatesSecretVolumeName,
+						Name: http.HTTPCertificatesSecretVolumeName,
 						VolumeSource: corev1.VolumeSource{
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "test-kb-http-certs-internal",
@@ -96,9 +97,9 @@ func expectedDeploymentParams() *DeploymentParams {
 							MountPath: "/usr/share/kibana/config",
 						},
 						{
-							Name:      volume.HTTPCertificatesSecretVolumeName,
+							Name:      http.HTTPCertificatesSecretVolumeName,
 							ReadOnly:  true,
-							MountPath: volume.HTTPCertificatesSecretVolumeMountPath,
+							MountPath: http.HTTPCertificatesSecretVolumeMountPath,
 						},
 					},
 					Image: "my-image",

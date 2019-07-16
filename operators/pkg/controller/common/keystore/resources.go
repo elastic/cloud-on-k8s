@@ -11,6 +11,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -27,17 +29,26 @@ type Resources struct {
 	Version string
 }
 
+// HasKeystore interface represents an Elastic Stack application that offers a keystore which in ECK
+// is populated using a user-provided secret containing secure settings.
+type HasKeystore interface {
+	metav1.Object
+	runtime.Object
+	SecureSettings() *commonv1alpha1.SecretRef
+}
+
 // NewResources optionally returns a volume and init container to include in pods,
-// in order to create a Keystore from secure settings referenced in the Kibana spec.
+// in order to create a Keystore from a Secret containing secure settings provided by
+// the user and referenced in the Elastic Stack application spec.
 func NewResources(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	associated commonv1alpha1.Associated,
+	hasKeystore HasKeystore,
 	initContainerParams InitContainerParameters,
 ) (*Resources, error) {
 	// setup a volume from the user-provided secure settings secret
-	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, associated)
+	secretVolume, version, err := secureSettingsVolume(c, recorder, watches, hasKeystore)
 	if err != nil {
 		return nil, err
 	}
@@ -46,10 +57,10 @@ func NewResources(
 		return nil, nil
 	}
 
-	// build an init container to create Kibana keystore from the secure settings volume
+	// build an init container to create the keystore from the secure settings volume
 	initContainer, err := initContainer(
 		*secretVolume,
-		strings.ToLower(associated.GetObjectKind().GroupVersionKind().Kind),
+		strings.ToLower(hasKeystore.GetObjectKind().GroupVersionKind().Kind),
 		initContainerParams,
 	)
 	if err != nil {

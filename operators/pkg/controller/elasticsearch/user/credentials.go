@@ -269,9 +269,10 @@ func getUsersRolesFileBytes(users []common.User) ([]byte, error) {
 			rolesUsers[role] = append(roleUsers, user.Id())
 		}
 	}
-	var lines []string
+
+	lines := make([]string, 0, len(rolesUsers))
 	for role, users := range rolesUsers {
-		lines = append(lines, role+":"+strings.Join(users, ","))
+		lines = append(lines, fmt.Sprintf("%s:%s", role, strings.Join(users, ",")))
 	}
 
 	// sort to avoid unnecessary diffs and API resource updates

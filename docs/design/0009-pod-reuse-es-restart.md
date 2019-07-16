@@ -1,6 +1,6 @@
 # Reusing pods by restarting the ES process with a new configuration
 
-* Status: proposed
+* Status: rejected (implementation removed) in July 2019, in favor of moving towards the StatefulSet way of doing rolling restarts. The process-manager is also out of the picture. We don't reuse pods. Main benefits are code and architecture simplicity as well as respecting k8s standards.
 * Deciders: cloud-on-k8s team
 * Date: 2019-03-20
 

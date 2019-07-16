@@ -17,9 +17,9 @@ func compareConfigs(actual settings.CanonicalConfig, expected settings.Canonical
 		return ComparisonMatch
 	}
 
-	var reasons []string
-	for _, mismatch := range diff {
-		reasons = append(reasons, fmt.Sprintf("Configuration setting mismatch: %s.", mismatch))
+	reasons := make([]string, len(diff))
+	for i, mismatch := range diff {
+		reasons[i] = fmt.Sprintf("Configuration setting mismatch: %s.", mismatch)
 	}
 	return ComparisonMismatch(reasons...)
 }
