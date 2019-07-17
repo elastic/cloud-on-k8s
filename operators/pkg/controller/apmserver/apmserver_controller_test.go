@@ -40,8 +40,8 @@ func (tp testParams) withVolume(i int, volume corev1.Volume) testParams {
 }
 
 func (tp testParams) withVolumeMount(i int, mnt corev1.VolumeMount) testParams {
-	for i := range tp.PodTemplateSpec.Spec.Containers {
-		mounts := tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts
+	for j := range tp.PodTemplateSpec.Spec.Containers {
+		mounts := tp.PodTemplateSpec.Spec.Containers[j].VolumeMounts
 		mounts = append(mounts[:i], append([]corev1.VolumeMount{mnt}, mounts[i:]...)...)
 		tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts = mounts
 	}
