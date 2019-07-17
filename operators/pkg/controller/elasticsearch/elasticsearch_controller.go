@@ -67,9 +67,9 @@ func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileE
 
 		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
 
-		finalizers:       finalizer.NewHandler(client),
-		dynamicWatches:   watches.NewDynamicWatches(),
-		podsExpectations: reconciler.NewExpectations(),
+		finalizers:     finalizer.NewHandler(client),
+		dynamicWatches: watches.NewDynamicWatches(),
+		expectations:   driver.NewGenerationExpectations(),
 
 		Parameters: params,
 	}, nil
@@ -166,9 +166,9 @@ type ReconcileElasticsearch struct {
 
 	dynamicWatches watches.DynamicWatches
 
-	// podsExpectations help dealing with inconsistencies in our client cache,
-	// by marking Pods creation/deletion as expected, and waiting til they are effectively observed.
-	podsExpectations *reconciler.Expectations
+	// expectations help dealing with inconsistencies in our client cache,
+	// by marking resources updates as expected, and skipping some operations if the cache is not up-to-date.
+	expectations *driver.Expectations
 
 	// iteration is the number of times this controller has run its Reconcile method
 	iteration int64
@@ -250,10 +250,10 @@ func (r *ReconcileElasticsearch) internalReconcile(
 
 		Version: *ver,
 
-		Observers:        r.esObservers,
-		DynamicWatches:   r.dynamicWatches,
-		PodsExpectations: r.podsExpectations,
-		Parameters:       r.Parameters,
+		Expectations:   r.expectations,
+		Observers:      r.esObservers,
+		DynamicWatches: r.dynamicWatches,
+		Parameters:     r.Parameters,
 	})
 	if err != nil {
 		return results.WithError(err)
@@ -285,7 +285,6 @@ func (r *ReconcileElasticsearch) finalizersFor(
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
-		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
 		settings.SecureSettingsFinalizer(clusterName, watched),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),

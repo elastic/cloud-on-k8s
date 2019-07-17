@@ -69,13 +69,15 @@ type Client interface {
 	GetClusterInfo(ctx context.Context) (Info, error)
 	// GetClusterState returns the current cluster state
 	GetClusterState(ctx context.Context) (ClusterState, error)
+	// GetClusterRoutingAllocation retrieves the cluster routing allocation settings.
+	GetClusterRoutingAllocation(ctx context.Context) (ClusterRoutingAllocation, error)
 	// UpdateSettings updates the settings of a cluster.
 	UpdateSettings(ctx context.Context, settings Settings) error
 	// ExcludeFromShardAllocation takes a comma-separated string of node names and
 	// configures transient allocation excludes for the given nodes.
 	ExcludeFromShardAllocation(ctx context.Context, nodes string) error
-	// DisableShardAllocation disables shards allocation on the cluster.
-	DisableShardAllocation(ctx context.Context) error
+	// DisableReplicaShardsAllocation disables shards allocation on the cluster (only primaries are allocated).
+	DisableReplicaShardsAllocation(ctx context.Context) error
 	// EnableShardAllocation enables shards allocation on the cluster.
 	EnableShardAllocation(ctx context.Context) error
 	// SyncedFlush requests a synced flush on the cluster.
