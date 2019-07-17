@@ -22,6 +22,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -38,11 +39,16 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	return sc
 }
 
+var esNN = types.NamespacedName{
+	Namespace: "ns1",
+	Name:      "foo",
+}
+
 func newElasticsearch() *v1alpha1.Elasticsearch {
 	return &v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns1",
-			Name:      "foo",
+			Namespace: esNN.Namespace,
+			Name:      esNN.Name,
 		},
 	}
 }
@@ -97,10 +103,11 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 		resourcesState     reconcile.ResourcesState
 	}
 	tests := []struct {
-		name       string
-		args       args
-		assertions func(t *testing.T, changes *mutation.PerformableChanges)
-		wantErr    bool
+		name                      string
+		args                      args
+		assertions                func(t *testing.T, changes *mutation.PerformableChanges)
+		wantClusterUUIDAnnotation bool
+		wantErr                   bool
 	}{
 		{
 			name: "not set when likely already bootstrapped",
@@ -128,6 +135,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
 				assertInitialMasterNodes(t, changes, false)
 			},
+			wantClusterUUIDAnnotation: true,
 		},
 		{
 			name: "set when likely not bootstrapped",
@@ -151,6 +159,34 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
 				assertInitialMasterNodes(t, changes, true, "b")
 			},
+		},
+		{
+			name: "just been bootstrapped, annotation should be set",
+			args: args{
+				cluster: newElasticsearch(),
+				clusterState: observer.State{
+					ClusterState: &esclient.ClusterState{
+						ClusterUUID: defaultClusterUUID,
+					},
+				},
+				performableChanges: mutation.PerformableChanges{
+					Changes: mutation.Changes{
+						ToCreate: []mutation.PodToCreate{{
+							Pod: newPod("b", true).Pod,
+							PodSpecCtx: pod.PodSpecContext{
+								Config: settings.CanonicalConfig{CanonicalConfig: common.NewCanonicalConfig()},
+							},
+						}},
+					},
+				},
+				resourcesState: reconcile.ResourcesState{
+					CurrentPods: pod.PodsWithConfig{newPod("a", true)},
+				},
+			},
+			assertions: func(t *testing.T, changes *mutation.PerformableChanges) {
+				assertInitialMasterNodes(t, changes, false)
+			},
+			wantClusterUUIDAnnotation: true,
 		},
 		{
 			name: "all masters are informed of all masters",
@@ -213,6 +249,11 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 				t.Errorf("ClusterInitialMasterNodesEnforcer() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+			var es v1alpha1.Elasticsearch
+			err = client.Get(esNN, &es)
+			assert.NoError(t, err)
+			annotation := es.Annotations != nil && len(es.Annotations[ClusterUUIDAnnotationName]) > 0
+			assert.Equal(t, tt.wantClusterUUIDAnnotation, annotation)
 
 			tt.assertions(t, got)
 		})

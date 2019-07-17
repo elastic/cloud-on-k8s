@@ -70,7 +70,7 @@ func ClusterInitialMasterNodesEnforcer(
 	return &performableChanges, nil
 }
 
-// isBootstrapped checks if the cluster has already been bootstrapped once
+// isBootstrapped checks if the cluster has already been bootstrapped
 func isBootstrapped(cluster v1alpha1.Elasticsearch, clusterState observer.State, c k8s.Client) (bool, error) {
 	_, ok := cluster.Annotations[ClusterUUIDAnnotationName]
 	if ok {
