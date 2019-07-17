@@ -29,11 +29,11 @@ func ClusterInitialMasterNodesEnforcer(
 ) (*mutation.PerformableChanges, error) {
 
 	// Check if the cluster has an UUID, if not try to fetch it from the observer state and store it as an annotation.
-	hasBeenBootstrapped, err := hasBeenBootstrapped(cluster, clusterState, c)
+	isBootstrapped, err := isBootstrapped(cluster, clusterState, c)
 	if err != nil {
 		return nil, err
 	}
-	if hasBeenBootstrapped {
+	if isBootstrapped {
 		return &performableChanges, nil
 	}
 
@@ -70,8 +70,8 @@ func ClusterInitialMasterNodesEnforcer(
 	return &performableChanges, nil
 }
 
-// hasBeenBootstrapped checks if the cluster has already been bootstrapped once
-func hasBeenBootstrapped(cluster v1alpha1.Elasticsearch, clusterState observer.State, c k8s.Client) (bool, error) {
+// isBootstrapped checks if the cluster has already been bootstrapped once
+func isBootstrapped(cluster v1alpha1.Elasticsearch, clusterState observer.State, c k8s.Client) (bool, error) {
 	_, ok := cluster.Annotations[ClusterUUIDAnnotationName]
 	if ok {
 		// existence of the annotation shows that the cluster has been bootstrapped
