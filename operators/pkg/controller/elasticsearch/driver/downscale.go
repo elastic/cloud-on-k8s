@@ -5,7 +5,6 @@
 package driver
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
@@ -20,7 +19,6 @@ import (
 )
 
 func (d *defaultDriver) HandleDownscale(
-	es v1alpha1.Elasticsearch,
 	expectedStatefulSets sset.StatefulSetList,
 	actualStatefulSets sset.StatefulSetList,
 	esClient esclient.Client,
@@ -40,7 +38,7 @@ func (d *defaultDriver) HandleDownscale(
 		if shouldExist {           // sset downscale
 			targetReplicas = sset.Replicas(expected)
 		}
-		leaving, removalResult := d.scaleStatefulSetDown(es, actualStatefulSets, &actualStatefulSets[i], targetReplicas, esClient, observedState, reconcileState)
+		leaving, removalResult := d.scaleStatefulSetDown(actualStatefulSets, &actualStatefulSets[i], targetReplicas, esClient, observedState, reconcileState)
 		results.WithResults(removalResult)
 		if removalResult.HasError() {
 			return results
@@ -60,7 +58,6 @@ func (d *defaultDriver) HandleDownscale(
 // scaleStatefulSetDown scales the given StatefulSet down to targetReplicas, if possible.
 // It returns the names of the nodes that will leave the cluster.
 func (d *defaultDriver) scaleStatefulSetDown(
-	es v1alpha1.Elasticsearch,
 	allStatefulSets sset.StatefulSetList,
 	ssetToScaleDown *appsv1.StatefulSet,
 	targetReplicas int32,
@@ -111,7 +108,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 
 		if label.IsMasterNodeSet(*ssetToScaleDown) {
 			// Update Zen1 minimum master nodes API, accounting for the updated downscaled replicas.
-			_, err := zen1.UpdateMinimumMasterNodes(d.Client, es, esClient, allStatefulSets, reconcileState)
+			_, err := zen1.UpdateMinimumMasterNodes(d.Client, d.ES, esClient, allStatefulSets, reconcileState)
 			if err != nil {
 				return nil, results.WithError(err)
 			}
@@ -129,7 +126,7 @@ func (d *defaultDriver) scaleStatefulSetDown(
 			return nil, results.WithError(err)
 		}
 		// Expect the updated statefulset in the cache for next reconciliation.
-		d.expectations.ExpectGeneration(ssetToScaleDown.ObjectMeta)
+		d.Expectations.ExpectGeneration(ssetToScaleDown.ObjectMeta)
 	}
 
 	return leavingNodes, results

@@ -21,7 +21,6 @@ import (
 )
 
 func (d *defaultDriver) handleRollingUpgrades(
-	es v1alpha1.Elasticsearch,
 	esClient esclient.Client,
 	statefulSets sset.StatefulSetList,
 ) *reconciler.Results {
@@ -31,18 +30,17 @@ func (d *defaultDriver) handleRollingUpgrades(
 	esState := NewLazyESState(esClient)
 
 	// Maybe upgrade some of the nodes.
-	res := d.doRollingUpgrade(es, statefulSets, esClient, esState)
+	res := d.doRollingUpgrade(statefulSets, esClient, esState)
 	results.WithResults(res)
 
 	// Maybe re-enable shards allocation if upgraded nodes are back into the cluster.
-	res = d.MaybeEnableShardsAllocation(es, esClient, esState, statefulSets)
+	res = d.MaybeEnableShardsAllocation(esClient, esState, statefulSets)
 	results.WithResults(res)
 
 	return results
 }
 
 func (d *defaultDriver) doRollingUpgrade(
-	es v1alpha1.Elasticsearch,
 	statefulSets sset.StatefulSetList,
 	esClient esclient.Client,
 	esState ESState,
@@ -103,7 +101,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Is the cluster ready for the node upgrade?
-			clusterReady, err := clusterReadyForNodeRestart(es, esState)
+			clusterReady, err := clusterReadyForNodeRestart(d.ES, esState)
 			if err != nil {
 				return results.WithError(err)
 			}
@@ -112,7 +110,7 @@ func (d *defaultDriver) doRollingUpgrade(
 				return results.WithResult(defaultRequeue)
 			}
 
-			log.Info("Preparing cluster for node restart", "namespace", es.Namespace, "es_name", es.Name)
+			log.Info("Preparing cluster for node restart", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 			if err := prepareClusterForNodeRestart(esClient, esState); err != nil {
 				return results.WithError(err)
 			}
@@ -251,7 +249,6 @@ func doSyncFlush(esClient esclient.Client) error {
 }
 
 func (d *defaultDriver) MaybeEnableShardsAllocation(
-	es v1alpha1.Elasticsearch,
 	esClient esclient.Client,
 	esState ESState,
 	statefulSets sset.StatefulSetList,
@@ -273,8 +270,8 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	if !scheduledUpgradesDone {
 		log.V(1).Info(
 			"Rolling upgrade not over yet, some pods don't have the updated revision, keeping shard allocations disabled",
-			"namespace", es.Namespace,
-			"es_name", es.Name,
+			"namespace", d.ES.Namespace,
+			"es_name", d.ES.Name,
 		)
 		return results.WithResult(defaultRequeue)
 	}
@@ -287,13 +284,13 @@ func (d *defaultDriver) MaybeEnableShardsAllocation(
 	if !nodesInCluster {
 		log.V(1).Info(
 			"Some upgraded nodes are not back in the cluster yet, keeping shard allocations disabled",
-			"namespace", es.Namespace,
-			"es_name", es.Name,
+			"namespace", d.ES.Namespace,
+			"es_name", d.ES.Name,
 		)
 		return results.WithResult(defaultRequeue)
 	}
 
-	log.Info("Enabling shards allocation", "namespace", es.Namespace, "es_name", es.Name)
+	log.Info("Enabling shards allocation", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
 	ctx, cancel := context.WithTimeout(context.Background(), esclient.DefaultReqTimeout)
 	defer cancel()
 	if err := esClient.EnableShardAllocation(ctx); err != nil {
