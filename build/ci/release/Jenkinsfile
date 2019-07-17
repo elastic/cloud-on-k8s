@@ -45,14 +45,16 @@ pipeline {
     post {
         success {
             script {
-                def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
+                if (releaseImageNotExist()) {
+                    def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
                           "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
                           "Congratulations!"
-                slackSend botUser: true,
-                    channel: '#cloud-k8s',
-                    color: 'good',
-                    message: msg,
-                    tokenCredentialId: 'cloud-ci-slack-integration-token'
+                    slackSend botUser: true,
+                        channel: '#cloud-k8s',
+                        color: 'good',
+                        message: msg,
+                        tokenCredentialId: 'cloud-ci-slack-integration-token'
+                }
             }
         }
         unsuccessful {
@@ -75,7 +77,7 @@ pipeline {
 
 def releaseImageNotExist() {
     return sh (
-        script: "docker pull $LATEST_RELEASED_IMG &>/dev/null",
+        script: "docker pull $LATEST_RELEASED_IMG",
         returnStatus: true
     ) == 1
 }
