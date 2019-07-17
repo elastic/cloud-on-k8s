@@ -42,7 +42,7 @@ pipeline {
             script {
                 def version = sh(returnStdout: true, script: 'cat $WORKSPACE/operators/VERSION')
                 def date = new Date()
-                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-SNAPSHOT-" + date.format("yyyy-MM-dd")
+                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd")
                 currentBuild.description = image
 
                 build job: 'cloud-on-k8s-versions-gke',
