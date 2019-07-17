@@ -201,7 +201,7 @@ func extractTransportCert(secret corev1.Secret, pod corev1.Pod, commonName strin
 	}
 
 	// look for the certificate based on the CommonName
-	var names []string
+	names := make([]string, 0, len(certs))
 	for _, c := range certs {
 		if c.Subject.CommonName == commonName {
 			return c

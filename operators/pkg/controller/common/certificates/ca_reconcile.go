@@ -17,7 +17,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // CAType is a type of CA
@@ -100,7 +99,7 @@ func renewCA(
 ) (*CA, error) {
 	ca, err := NewSelfSignedCA(CABuilderOptions{
 		Subject: pkix.Name{
-			CommonName:         string(caType) + "-" + rand.String(16),
+			CommonName:         owner.GetName() + "-" + string(caType),
 			OrganizationalUnit: []string{owner.GetName()},
 		},
 		ExpireIn: &expireIn,

@@ -219,6 +219,7 @@ func Test_renewCA(t *testing.T) {
 			ca, err := renewCA(tt.client, testNamer, &testCluster, nil, tt.expireIn, scheme.Scheme, TransportCAType)
 			require.NoError(t, err)
 			require.NotNil(t, ca)
+			assert.Equal(t, ca.Cert.Issuer.CommonName, testName+"-"+string(TransportCAType))
 			checkCASecrets(t, tt.client, testCluster, TransportCAType, ca, nil, tt.notExpected, tt.expireIn)
 		})
 	}

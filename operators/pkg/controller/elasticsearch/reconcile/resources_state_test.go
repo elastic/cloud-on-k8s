@@ -26,7 +26,7 @@ import (
 func TestNewResourcesStateFromAPI_MissingPodConfiguration(t *testing.T) {
 	// This test focuses on the edge case where
 	// no configuration secret is found for a given pod.
-	v1alpha1.AddToScheme(scheme.Scheme)
+	require.NoError(t, v1alpha1.AddToScheme(scheme.Scheme))
 	ssetName := "sset"
 	cluster := v1alpha1.Elasticsearch{
 		ObjectMeta: metav1.ObjectMeta{

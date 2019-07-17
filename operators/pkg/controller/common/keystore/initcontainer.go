@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	InitContainerName = "init-keystore"
+	InitContainerName = "elastic-internal-init-keystore"
 )
 
 // InitContainerParameters helps to create a valid keystore init script for Kibana or the APM server.
@@ -53,7 +53,7 @@ echo "Keystore initialization successful."
 var scriptTemplate = template.Must(template.New("").Parse(script))
 
 // initContainer returns an init container that executes a bash script
-// to create the APM Keystore.
+// to load secure settings in a Keystore.
 func initContainer(
 	secureSettingsSecret volume.SecretVolume,
 	volumePrefix string,
@@ -61,6 +61,7 @@ func initContainer(
 ) (corev1.Container, error) {
 	privileged := false
 	tplBuffer := bytes.Buffer{}
+
 	if err := scriptTemplate.Execute(&tplBuffer, parameters); err != nil {
 		return corev1.Container{}, err
 	}

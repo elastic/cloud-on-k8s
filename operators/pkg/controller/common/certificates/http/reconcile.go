@@ -212,12 +212,9 @@ func ensureInternalSelfSignedCertificateSecretContents(
 		}
 
 		// validate the csr
-		validatedCertificateTemplate, err := createValidatedHTTPCertificateTemplate(
+		validatedCertificateTemplate := createValidatedHTTPCertificateTemplate(
 			owner, namer, tls, svcs, parsedCSR, rotationParam.Validity,
 		)
-		if err != nil {
-			return secretWasChanged, err
-		}
 		// sign the certificate
 		certData, err := ca.CreateCertificate(*validatedCertificateTemplate)
 		if err != nil {
@@ -249,35 +246,32 @@ func shouldIssueNewHTTPCertificate(
 	ca *certificates.CA,
 	certReconcileBefore time.Duration,
 ) bool {
-	validatedTemplate, err := createValidatedHTTPCertificateTemplate(
+	validatedTemplate := createValidatedHTTPCertificateTemplate(
 		owner, namer, tls, svcs, &x509.CertificateRequest{}, certReconcileBefore,
 	)
-	if err != nil {
-		return true
-	}
 
 	var certificate *x509.Certificate
 
-	if certData, ok := secret.Data[certificates.CertFileName]; !ok {
+	certData, ok := secret.Data[certificates.CertFileName]
+	if !ok {
 		return true
-	} else {
-		certs, err := certificates.ParsePEMCerts(certData)
-		if err != nil {
-			log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
-			return true
-		}
+	}
+	certs, err := certificates.ParsePEMCerts(certData)
+	if err != nil {
+		log.Error(err, "Invalid certificate data found, issuing new certificate", "namespace", secret.Namespace, "secret_name", secret.Name)
+		return true
+	}
 
-		// look for the certificate based on the CommonName
-		for _, c := range certs {
-			if c.Subject.CommonName == validatedTemplate.Subject.CommonName {
-				certificate = c
-				break
-			}
+	// look for the certificate based on the CommonName
+	for _, c := range certs {
+		if c.Subject.CommonName == validatedTemplate.Subject.CommonName {
+			certificate = c
+			break
 		}
+	}
 
-		if certificate == nil {
-			return true
-		}
+	if certificate == nil {
+		return true
 	}
 
 	pool := x509.NewCertPool()
@@ -329,10 +323,12 @@ func createValidatedHTTPCertificateTemplate(
 	svcs []corev1.Service,
 	csr *x509.CertificateRequest,
 	certValidity time.Duration,
-) (*certificates.ValidatedCertificateTemplate, error) {
+) *certificates.ValidatedCertificateTemplate {
 
+	defaultSuffixes := strings.Join(namer.DefaultSuffixes, "-")
+	shortName := owner.Name + "-" + defaultSuffixes + "-" + string(certificates.HTTPCAType)
 	cnNameParts := []string{
-		owner.Name,
+		shortName,
 		owner.Namespace,
 	}
 	cnNameParts = append(cnNameParts, namer.DefaultSuffixes...)
@@ -342,7 +338,8 @@ func createValidatedHTTPCertificateTemplate(
 	certCommonName := strings.Join(cnNameParts, ".")
 
 	dnsNames := []string{
-		certCommonName,
+		certCommonName, // eg. clusterName-es-http.default.es.local
+		shortName,      // eg. clusterName-es-http
 	}
 	var ipAddresses []net.IP
 
@@ -383,5 +380,5 @@ func createValidatedHTTPCertificateTemplate(
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	})
 
-	return &certificateTemplate, nil
+	return &certificateTemplate
 }

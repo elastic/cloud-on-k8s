@@ -53,8 +53,8 @@ func TestShouldUpdateDeployment(t *testing.T) {
 	}{
 		{
 			name:     "exact same deployment",
-			expected: func() appsv1.Deployment { return testDeployment() },
-			actual:   func() appsv1.Deployment { return testDeployment() },
+			expected: testDeployment,
+			actual:   testDeployment,
 			want:     false,
 		},
 		{
@@ -64,7 +64,7 @@ func TestShouldUpdateDeployment(t *testing.T) {
 				d.Labels["newlabel"] = "newvalue"
 				return withTemplateHash(d)
 			},
-			actual: func() appsv1.Deployment { return testDeployment() },
+			actual: testDeployment,
 			want:   true,
 		},
 		{
@@ -74,12 +74,12 @@ func TestShouldUpdateDeployment(t *testing.T) {
 				d.Spec.Template.Labels["newlabel"] = "newvalue"
 				return withTemplateHash(d)
 			},
-			actual: func() appsv1.Deployment { return testDeployment() },
+			actual: testDeployment,
 			want:   true,
 		},
 		{
 			name:     "actual deployment has additional labels: should not replace",
-			expected: func() appsv1.Deployment { return testDeployment() },
+			expected: testDeployment,
 			actual: func() appsv1.Deployment {
 				d := testDeployment()
 				d.Labels["newlabel"] = "newvalue"
@@ -94,7 +94,7 @@ func TestShouldUpdateDeployment(t *testing.T) {
 				d.Spec.Template.Spec.Containers[0].Name = "newContainerName"
 				return withTemplateHash(d)
 			},
-			actual: func() appsv1.Deployment { return testDeployment() },
+			actual: testDeployment,
 			want:   true,
 		},
 		{
@@ -105,7 +105,7 @@ func TestShouldUpdateDeployment(t *testing.T) {
 					corev1.EnvVar{Name: "newEnvVar", Value: "value"})
 				return withTemplateHash(d)
 			},
-			actual: func() appsv1.Deployment { return testDeployment() },
+			actual: testDeployment,
 			want:   true,
 		},
 	}

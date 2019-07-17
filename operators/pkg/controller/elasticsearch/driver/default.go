@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,6 +47,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
+// initContainerParams is used to generate the init container that will load the secure settings into a keystore
+var initContainerParams = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add",
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+}
+
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
 	// Options are the options that the driver was created with.
@@ -67,14 +76,13 @@ type defaultDriver struct {
 	// Elasticsearch cluster.
 	//
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
-	expectedPodsAndResourcesResolver func(
-		es v1alpha1.Elasticsearch,
-		paramsTmpl pod.NewPodSpecParams,
-		operatorImage string,
-	) ([]pod.PodSpecContext, error)
+	//expectedPodsAndResourcesResolver func(
+	//	es v1alpha1.Elasticsearch,
+	//	paramsTmpl pod.NewPodSpecParams,
+	//) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -157,10 +165,6 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
-		return results.WithError(err)
-	}
-
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -182,7 +186,6 @@ func (d *defaultDriver) Reconcile(
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
@@ -250,14 +253,25 @@ func (d *defaultDriver) Reconcile(
 		return results.WithError(err)
 	}
 
+	// setup a keystore with secure settings in an init container, if specified by the user
+	keystoreResources, err := keystore.NewResources(
+		d.Client,
+		d.Recorder,
+		d.DynamicWatches,
+		&es,
+		initContainerParams,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
 	// TODO: this is a mess, refactor and unit test correctly
 	podTemplateSpecBuilder := func(nodeSpec v1alpha1.NodeSpec, cfg settings.CanonicalConfig) (corev1.PodTemplateSpec, error) {
 		return esversion.BuildPodTemplateSpec(
 			es,
 			nodeSpec,
 			pod.NewPodSpecParams{
-				ProbeUser:    internalUsers.ProbeUser.Auth(),
-				KeystoreUser: internalUsers.KeystoreUser.Auth(),
+				ProbeUser: internalUsers.ProbeUser.Auth(),
 				UnicastHostsVolume: volume.NewConfigMapVolume(
 					name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 				),
@@ -266,11 +280,11 @@ func (d *defaultDriver) Reconcile(
 					esvolume.XPackFileRealmVolumeName,
 					esvolume.XPackFileRealmVolumeMountPath,
 				),
+				KeystoreResources: keystoreResources,
 			},
 			cfg,
 			version6.NewEnvironmentVars,
 			initcontainer.NewInitContainers,
-			d.OperatorImage,
 		)
 	}
 

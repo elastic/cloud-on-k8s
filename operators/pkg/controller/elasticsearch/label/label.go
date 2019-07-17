@@ -31,6 +31,8 @@ const (
 	StatefulSetNameLabelName = "elasticsearch.k8s.elastic.co/statefulset"
 	// VolumeNameLabelName is the name of the volume e.g. elasticsearch-data a PVC was used for.
 	VolumeNameLabelName = "elasticsearch.k8s.elastic.co/volume-name"
+	// ConfigChecksumLabelName used to store the checksum of the Elasticsearch configuration
+	ConfigChecksumLabelName = "elasticsearch.k8s.elastic.co/config-checksum"
 
 	// NodeTypesMasterLabelName is a label set to true on nodes with the master role
 	NodeTypesMasterLabelName common.TrueFalseLabel = "elasticsearch.k8s.elastic.co/node-master"

@@ -118,7 +118,7 @@ func (d *defaultDriver) doRollingUpgrade(
 			}
 
 			// Upgrade the pod.
-			if err := d.upgradeStatefulSetPartition(es, &statefulSets[i], esClient, partition); err != nil {
+			if err := d.upgradeStatefulSetPartition(&statefulSets[i], partition); err != nil {
 				return results.WithError(err)
 			}
 			scheduledUpgrades++
@@ -128,9 +128,7 @@ func (d *defaultDriver) doRollingUpgrade(
 }
 
 func (d *defaultDriver) upgradeStatefulSetPartition(
-	es v1alpha1.Elasticsearch,
 	statefulSet *appsv1.StatefulSet,
-	esClient esclient.Client,
 	newPartition int32,
 ) error {
 	// TODO: zen1, zen2

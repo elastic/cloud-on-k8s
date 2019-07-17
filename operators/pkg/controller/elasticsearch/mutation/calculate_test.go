@@ -4,87 +4,59 @@
 
 package mutation
 
-import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
+//
+//var es = v1alpha1.Elasticsearch{
+//	ObjectMeta: metav1.ObjectMeta{
+//		Name: "elasticsearch",
+//	},
+//}
 
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-var defaultCPULimit = "800m"
-var defaultImage = "image"
-var defaultPodSpecCtxV2 = ESPodSpecContext(defaultImage, "1000m")
-
-var es = v1alpha1.Elasticsearch{
-	ObjectMeta: metav1.ObjectMeta{
-		Name: "elasticsearch",
-	},
-}
-
-func ESPodWithConfig(image string, cpuLimit string) pod.PodWithConfig {
-	tpl := ESPodSpecContext(image, cpuLimit).PodTemplate
-	return pod.PodWithConfig{
-		Pod: corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:   name.NewPodName(es.Name, v1alpha1.NodeSpec{}),
-				Labels: hash.SetTemplateHashLabel(nil, tpl),
-			},
-			Spec: tpl.Spec,
-		},
-	}
-}
-
-func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
-	return pod.PodSpecContext{
-		PodTemplate: corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{
-				Labels: map[string]string{
-					label.ClusterNameLabelName: es.Name,
-				},
-			},
-			Spec: corev1.PodSpec{
-				Containers: []corev1.Container{{
-					Image:           image,
-					ImagePullPolicy: corev1.PullIfNotPresent,
-					Name:            v1alpha1.ElasticsearchContainerName,
-					Ports:           pod.DefaultContainerPorts,
-					// TODO: Hardcoded resource limits and requests
-					Resources: corev1.ResourceRequirements{
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse(cpuLimit),
-							corev1.ResourceMemory: resource.MustParse("2Gi"),
-						},
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse("100m"),
-							corev1.ResourceMemory: resource.MustParse("2Gi"),
-						},
-					},
-					ReadinessProbe: &corev1.Probe{
-						FailureThreshold:    3,
-						InitialDelaySeconds: 10,
-						PeriodSeconds:       5,
-						SuccessThreshold:    1,
-						TimeoutSeconds:      5,
-						Handler: corev1.Handler{
-							Exec: &corev1.ExecAction{
-								Command: []string{
-									"sh",
-									"-c",
-									"script here",
-								},
-							},
-						},
-					},
-				}},
-			},
-		},
-	}
-}
+//func ESPodSpecContext(image string, cpuLimit string) pod.PodSpecContext {
+//	return pod.PodSpecContext{
+//		PodTemplate: corev1.PodTemplateSpec{
+//			ObjectMeta: metav1.ObjectMeta{
+//				Labels: map[string]string{
+//					label.ClusterNameLabelName: es.Name,
+//				},
+//			},
+//			Spec: corev1.PodSpec{
+//				Containers: []corev1.Container{{
+//					Image:           image,
+//					ImagePullPolicy: corev1.PullIfNotPresent,
+//					Name:            v1alpha1.ElasticsearchContainerName,
+//					Ports:           pod.DefaultContainerPorts,
+//					// TODO: Hardcoded resource limits and requests
+//					Resources: corev1.ResourceRequirements{
+//						Limits: corev1.ResourceList{
+//							corev1.ResourceCPU:    resource.MustParse(cpuLimit),
+//							corev1.ResourceMemory: resource.MustParse("2Gi"),
+//						},
+//						Requests: corev1.ResourceList{
+//							corev1.ResourceCPU:    resource.MustParse("100m"),
+//							corev1.ResourceMemory: resource.MustParse("2Gi"),
+//						},
+//					},
+//					ReadinessProbe: &corev1.Probe{
+//						FailureThreshold:    3,
+//						InitialDelaySeconds: 10,
+//						PeriodSeconds:       5,
+//						SuccessThreshold:    1,
+//						TimeoutSeconds:      5,
+//						Handler: corev1.Handler{
+//							Exec: &corev1.ExecAction{
+//								Command: []string{
+//									"sh",
+//									"-c",
+//									"script here",
+//								},
+//							},
+//						},
+//					},
+//				}},
+//			},
+//		},
+//	}
+//}
 
 //
 //func TestCalculateChanges(t *testing.T) {

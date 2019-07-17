@@ -5,25 +5,26 @@
 package version
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"crypto/sha256"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 )
 
@@ -47,9 +48,8 @@ func BuildPodTemplateSpec(
 	nodeSpec v1alpha1.NodeSpec,
 	paramsTmpl pod.NewPodSpecParams,
 	cfg settings.CanonicalConfig,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, securecommon volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(imageName string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
-	operatorImage string,
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams) []corev1.EnvVar,
+	newInitContainersFn func(imageName string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (corev1.PodTemplateSpec, error) {
 	params := pod.NewPodSpecParams{
 		// cluster-wide params
@@ -57,14 +57,14 @@ func BuildPodTemplateSpec(
 		// volumes
 		UsersSecretVolume:  paramsTmpl.UsersSecretVolume,
 		ProbeUser:          paramsTmpl.ProbeUser,
-		KeystoreUser:       paramsTmpl.KeystoreUser,
 		UnicastHostsVolume: paramsTmpl.UnicastHostsVolume,
+		// volume and init container for the keystore
+		KeystoreResources: paramsTmpl.KeystoreResources,
 		// pod params
 		NodeSpec: nodeSpec,
 	}
 	podSpecCtx, err := podSpecContext(
 		params,
-		operatorImage,
 		cfg,
 		newEnvironmentVarsFn,
 		newInitContainersFn,
@@ -78,10 +78,9 @@ func BuildPodTemplateSpec(
 // podSpecContext creates a new PodSpecContext for an Elasticsearch node
 func podSpecContext(
 	p pod.NewPodSpecParams,
-	operatorImage string,
 	cfg settings.CanonicalConfig,
-	newEnvironmentVarsFn func(p pod.NewPodSpecParams, certs, creds, keystore volume.SecretVolume) []corev1.EnvVar,
-	newInitContainersFn func(elasticsearchImage string, operatorImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
+	newEnvironmentVarsFn func(p pod.NewPodSpecParams) []corev1.EnvVar,
+	newInitContainersFn func(elasticsearchImage string, setVMMaxMapCount *bool, transportCerts volume.SecretVolume, clusterName string) ([]corev1.Container, error),
 ) (pod.PodSpecContext, error) {
 	statefulSetName := name.StatefulSet(p.Elasticsearch.Name, p.NodeSpec.Name)
 
@@ -89,15 +88,6 @@ func podSpecContext(
 	probeSecret := volume.NewSelectiveSecretVolumeWithMountPath(
 		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.ProbeUserVolumeName,
 		esvolume.ProbeUserSecretMountPath, []string{p.ProbeUser.Name},
-	)
-	keystoreUserSecret := volume.NewSelectiveSecretVolumeWithMountPath(
-		user.ElasticInternalUsersSecretName(p.Elasticsearch.Name), esvolume.KeystoreUserVolumeName,
-		esvolume.KeystoreUserSecretMountPath, []string{p.KeystoreUser.Name},
-	)
-	secureSettingsVolume := volume.NewSecretVolumeWithMountPath(
-		name.SecureSettingsSecret(p.Elasticsearch.Name),
-		esvolume.SecureSettingsVolumeName,
-		esvolume.SecureSettingsVolumeMountPath,
 	)
 	httpCertificatesVolume := volume.NewSecretVolumeWithMountPath(
 		certificates.HTTPCertsInternalSecretName(name.ESNamer, p.Elasticsearch.Name),
@@ -134,14 +124,12 @@ func podSpecContext(
 		WithTerminationGracePeriod(pod.DefaultTerminationGracePeriodSeconds).
 		WithPorts(pod.DefaultContainerPorts).
 		WithReadinessProbe(*pod.NewReadinessProbe()).
-		WithCommand([]string{processmanager.CommandPath}).
 		WithAffinity(pod.DefaultAffinity(p.Elasticsearch.Name)).
-		WithEnv(newEnvironmentVarsFn(p, httpCertificatesVolume, keystoreUserSecret, secureSettingsVolume)...)
+		WithEnv(newEnvironmentVarsFn(p)...)
 
 	// setup init containers
 	initContainers, err := newInitContainersFn(
 		builder.Container.Image,
-		operatorImage,
 		p.Elasticsearch.Spec.SetVMMaxMapCount,
 		transportCertificatesVolume,
 		p.Elasticsearch.Name)
@@ -163,13 +151,10 @@ func podSpecContext(
 				append(
 					initcontainer.PluginVolumes.Volumes(),
 					esvolume.DefaultLogsVolume,
-					initcontainer.ProcessManagerVolume.Volume(),
 					p.UsersSecretVolume.Volume(),
 					p.UnicastHostsVolume.Volume(),
 					probeSecret.Volume(),
 					transportCertificatesVolume.Volume(),
-					keystoreUserSecret.Volume(),
-					secureSettingsVolume.Volume(),
 					httpCertificatesVolume.Volume(),
 					scriptsVolume.Volume(),
 					configVolume.Volume(),
@@ -179,19 +164,24 @@ func podSpecContext(
 				initcontainer.PluginVolumes.EsContainerVolumeMounts(),
 				esvolume.DefaultDataVolumeMount,
 				esvolume.DefaultLogsVolumeMount,
-				initcontainer.ProcessManagerVolume.EsContainerVolumeMount(),
 				p.UsersSecretVolume.VolumeMount(),
 				p.UnicastHostsVolume.VolumeMount(),
 				probeSecret.VolumeMount(),
 				transportCertificatesVolume.VolumeMount(),
-				keystoreUserSecret.VolumeMount(),
-				secureSettingsVolume.VolumeMount(),
 				httpCertificatesVolume.VolumeMount(),
 				scriptsVolume.VolumeMount(),
 				configVolume.VolumeMount(),
-			)...).
-		WithInitContainerDefaults().
-		WithInitContainers(initContainers...)
+			)...)
+
+	if p.KeystoreResources != nil {
+		builder = builder.
+			WithVolumes(p.KeystoreResources.Volume).
+			WithInitContainers(p.KeystoreResources.InitContainer)
+	}
+
+	builder = builder.
+		WithInitContainers(initContainers...).
+		WithInitContainerDefaults()
 
 	// set labels
 	version, err := version.Parse(p.Elasticsearch.Spec.Version)
@@ -208,6 +198,13 @@ func podSpecContext(
 	podLabels, err := label.NewPodLabels(k8s.ExtractNamespacedName(&p.Elasticsearch), statefulSetName, *version, nodeRoles, cfgHash)
 	if err != nil {
 		return pod.PodSpecContext{}, err
+	}
+	if p.KeystoreResources != nil {
+		// label with a checksum of the secure settings to rotate the pod on secure settings change
+		// TODO: use hash.HashObject instead && fix the config checksum label name?
+		configChecksum := sha256.New224()
+		_, _ = configChecksum.Write([]byte(p.KeystoreResources.Version))
+		podLabels[label.ConfigChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 	}
 	builder = builder.WithLabels(podLabels)
 

@@ -16,9 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var defaultPodWithConfig = ESPodWithConfig(defaultImage, defaultCPULimit)
 var emptyPodWithConfig = pod.PodWithConfig{Pod: corev1.Pod{}}
-var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
 func namedPod(name string) pod.PodWithConfig {
 	return pod.PodWithConfig{
@@ -74,7 +72,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to create has changes",
 			fields: fields{
-				ToCreate: []PodToCreate{PodToCreate{}},
+				ToCreate: []PodToCreate{{}},
 			},
 			want: true,
 		},
@@ -88,7 +86,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "create and delete has changes",
 			fields: fields{
-				ToCreate: []PodToCreate{PodToCreate{}},
+				ToCreate: []PodToCreate{{}},
 				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
 			},
 			want: true,

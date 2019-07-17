@@ -9,7 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// AssociationStatus is the status of an assocation resource.
+// AssociationStatus is the status of an association resource.
 type AssociationStatus string
 
 const (
@@ -26,5 +26,4 @@ type Associated interface {
 	metav1.Object
 	runtime.Object
 	ElasticsearchAuth() ElasticsearchAuth
-	SecureSettings() *SecretRef
 }

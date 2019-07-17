@@ -62,13 +62,6 @@ func (n *lazyNodes) initialize() error {
 	return nil
 }
 
-func (n *lazyNodes) nodeInCluster(nodeName string) (bool, error) {
-	if err := initOnce(&n.once, n.initialize); err != nil {
-		return false, err
-	}
-	return stringsutil.StringInSlice(nodeName, n.nodes), nil
-}
-
 func (n *lazyNodes) NodesInCluster(nodeNames []string) (bool, error) {
 	if err := initOnce(&n.once, n.initialize); err != nil {
 		return false, err
@@ -79,9 +72,9 @@ func (n *lazyNodes) NodesInCluster(nodeNames []string) (bool, error) {
 // -- Shards allocation enabled
 
 type lazyShardsAllocationEnabled struct {
+	enabled  bool
 	once     sync.Once
 	esClient esclient.Client
-	enabled  bool
 }
 
 func (s *lazyShardsAllocationEnabled) initialize() error {
@@ -105,9 +98,9 @@ func (s *lazyShardsAllocationEnabled) ShardAllocationsEnabled() (bool, error) {
 // -- Green health
 
 type lazyGreenHealth struct {
+	greenHealth bool
 	once        sync.Once
 	esClient    esclient.Client
-	greenHealth bool
 }
 
 func (h *lazyGreenHealth) initialize() error {

@@ -114,15 +114,15 @@ func NewVerifier(pubKeyBytes []byte) (*Verifier, error) {
 	}, nil
 }
 
-// signer signs Enterprise licenses.
-type signer struct {
+// Signer signs Enterprise licenses.
+type Signer struct {
 	Verifier
 	privateKey *rsa.PrivateKey
 }
 
 // NewSigner creates a new license signer from a private key.
-func NewSigner(privKey *rsa.PrivateKey) *signer {
-	return &signer{
+func NewSigner(privKey *rsa.PrivateKey) *Signer {
+	return &Signer{
 		Verifier: Verifier{
 			PublicKey: &privKey.PublicKey,
 		},
@@ -131,7 +131,7 @@ func NewSigner(privKey *rsa.PrivateKey) *signer {
 }
 
 // Sign signs the given Enterprise license.
-func (s *signer) Sign(l EnterpriseLicense) ([]byte, error) {
+func (s *Signer) Sign(l EnterpriseLicense) ([]byte, error) {
 	spec := toVerifiableSpec(l)
 	toSign, err := json.Marshal(spec)
 	if err != nil {
@@ -190,7 +190,7 @@ func (s *signer) Sign(l EnterpriseLicense) ([]byte, error) {
 }
 
 type licenseSpec struct {
-	Uid                string `json:"uid"`
+	UID                string `json:"uid"`
 	LicenseType        string `json:"type"`
 	IssueDate          string `json:"issue_date,omitempty"`
 	StartDate          string `json:"start_date,omitempty"`
@@ -205,7 +205,7 @@ type licenseSpec struct {
 
 func toVerifiableSpec(l EnterpriseLicense) licenseSpec {
 	return licenseSpec{
-		Uid:                l.License.UID,
+		UID:                l.License.UID,
 		LicenseType:        string(l.License.Type),
 		IssueDateInMillis:  l.License.IssueDateInMillis,
 		StartDateInMillis:  l.License.StartDateInMillis,

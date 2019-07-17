@@ -11,6 +11,7 @@ import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test/apmserver"
@@ -33,7 +34,8 @@ var APMKeystoreCmd = []string{APMKeystoreBin, APMKeystoreOption}
 type PartialApmConfiguration struct {
 	Output struct {
 		Elasticsearch struct {
-			CompressionLevel int `yaml:"compression_level"`
+			Hosts            []string `yaml:"hosts"`
+			CompressionLevel int      `yaml:"compression_level"`
 		} `yaml:"elasticsearch"`
 	} `yaml:"output"`
 }
@@ -90,7 +92,9 @@ func TestUpdateConfiguration(t *testing.T) {
 				Test: func(t *testing.T) {
 					config, err := partialAPMConfiguration(k, name)
 					require.NoError(t, err)
-					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 5) // 5 is the expected default value
+					esHost := services.ExternalServiceURL(esBuilder.Elasticsearch)
+					require.Equal(t, config.Output.Elasticsearch.Hosts[0], esHost)
+					require.Equal(t, config.Output.Elasticsearch.CompressionLevel, 0) // CompressionLevel is not set by default
 				},
 			},
 			test.Step{

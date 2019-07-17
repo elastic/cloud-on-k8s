@@ -13,16 +13,19 @@ import (
 	"time"
 
 	apmv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
+	apmcerts "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
@@ -195,6 +198,15 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 	state := NewState(request, as)
 	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
 
+	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	results := apmcerts.Reconcile(r.Client, r.scheme, *as, r.dynamicWatches, []corev1.Service{*svc}, r.CACertRotation)
+	if results.HasError() {
+		return results.Aggregate()
+	}
+
 	state, err = r.reconcileApmServerDeployment(state, as)
 	if err != nil {
 		if errors.IsConflict(err) {
@@ -204,30 +216,12 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return state.Result, err
 	}
 
-	svc := NewService(*as)
-	_, err = common.ReconcileService(r.Client, r.scheme, svc, as)
-	if err != nil {
-		// TODO: consider updating some status here?
-		return reconcile.Result{}, err
-	}
-
 	state.UpdateApmServerExternalService(*svc)
 
 	return r.updateStatus(state)
 }
 
-func (r *ReconcileApmServer) reconcileApmServerDeployment(
-	state State,
-	as *apmv1alpha1.ApmServer,
-) (State, error) {
-	if !as.Spec.Output.Elasticsearch.IsConfigured() {
-		log.Info("Aborting ApmServer deployment reconciliation as no Elasticsearch output is configured",
-			"namespace", as.Namespace, "as_name", as.Name)
-		return state, nil
-	}
-
-	// TODO: move server secret into separate method
-
+func (r *ReconcileApmServer) reconcileApmServerSecret(as *apmv1alpha1.ApmServer) (*corev1.Secret, error) {
 	expectedApmServerSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: as.Namespace,
@@ -239,7 +233,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 		},
 	}
 	reconciledApmServerSecret := &corev1.Secret{}
-	if err := reconciler.ReconcileResource(
+	return reconciledApmServerSecret, reconciler.ReconcileResource(
 		reconciler.Params{
 			Client: r.Client,
 			Scheme: r.scheme,
@@ -280,10 +274,17 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 				log.Info("Updating apm server secret", "namespace", expectedApmServerSecret.Namespace, "secret_name", expectedApmServerSecret.Name, "as_name", as.Name)
 			},
 		},
-	); err != nil {
+	)
+}
+
+func (r *ReconcileApmServer) reconcileApmServerDeployment(
+	state State,
+	as *apmv1alpha1.ApmServer,
+) (State, error) {
+	reconciledApmServerSecret, err := r.reconcileApmServerSecret(as)
+	if err != nil {
 		return state, err
 	}
-
 	reconciledConfigSecret, err := config.Reconcile(r.Client, r.scheme, as)
 	if err != nil {
 		return state, err
@@ -318,9 +319,9 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 	// Build a checksum of the configuration, add it to the pod labels so a change triggers a rolling update
 	configChecksum := sha256.New224()
-	configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
+	_, _ = configChecksum.Write(reconciledConfigSecret.Data[config.ApmCfgSecretKey])
 	if keystoreResources != nil {
-		configChecksum.Write([]byte(keystoreResources.Version))
+		_, _ = configChecksum.Write([]byte(keystoreResources.Version))
 	}
 	podLabels[configChecksumLabelName] = fmt.Sprintf("%x", configChecksum.Sum(nil))
 
@@ -353,13 +354,32 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 
 		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, esCAVolume.Volume())
 
-		for i, container := range podSpec.Spec.InitContainers {
-			podSpec.Spec.InitContainers[i].VolumeMounts = append(container.VolumeMounts, esCAVolume.VolumeMount())
+		for i := range podSpec.Spec.InitContainers {
+			podSpec.Spec.InitContainers[i].VolumeMounts = append(podSpec.Spec.InitContainers[i].VolumeMounts, esCAVolume.VolumeMount())
 		}
 
-		for i, container := range podSpec.Spec.Containers {
-			podSpec.Spec.Containers[i].VolumeMounts = append(container.VolumeMounts, esCAVolume.VolumeMount())
+		for i := range podSpec.Spec.Containers {
+			podSpec.Spec.Containers[i].VolumeMounts = append(podSpec.Spec.Containers[i].VolumeMounts, esCAVolume.VolumeMount())
 		}
+	}
+
+	if as.Spec.HTTP.TLS.Enabled() {
+		// fetch the secret to calculate the checksum
+		var httpCerts corev1.Secret
+		err := r.Client.Get(types.NamespacedName{
+			Namespace: as.Namespace,
+			Name:      certificates.HTTPCertsInternalSecretName(apmname.APMNamer, as.Name),
+		}, &httpCerts)
+		if err != nil {
+			return state, err
+		}
+		if httpCert, ok := httpCerts.Data[certificates.CertFileName]; ok {
+			_, _ = configChecksum.Write(httpCert)
+		}
+		httpCertsVolume := http.HTTPCertSecretVolume(apmname.APMNamer, as.Name)
+		podSpec.Spec.Volumes = append(podSpec.Spec.Volumes, httpCertsVolume.Volume())
+		apmServerContainer := pod.ContainerByName(podSpec.Spec, apmv1alpha1.APMServerContainerName)
+		apmServerContainer.VolumeMounts = append(apmServerContainer.VolumeMounts, httpCertsVolume.VolumeMount())
 	}
 
 	// TODO: also need to hash secret token?
@@ -379,7 +399,7 @@ func (r *ReconcileApmServer) reconcileApmServerDeployment(
 	if err != nil {
 		return state, err
 	}
-	state.UpdateApmServerState(result, *expectedApmServerSecret)
+	state.UpdateApmServerState(result, *reconciledApmServerSecret)
 	return state, nil
 }
 
