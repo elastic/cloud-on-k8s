@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var certSecretName = "test-apm-server-apm-http-certs-internal"
+var certSecretName = "test-apm-server-apm-http-certs-internal" // nolint
 
 type testParams = DeploymentParams
 
@@ -41,8 +41,9 @@ func (tp testParams) withVolume(i int, volume corev1.Volume) testParams {
 
 func (tp testParams) withVolumeMount(i int, mnt corev1.VolumeMount) testParams {
 	for i := range tp.PodTemplateSpec.Spec.Containers {
-		existing := tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts
-		tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts = append(existing[:i], append([]corev1.VolumeMount{mnt}, existing[i:]...)...)
+		mounts := tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts
+		mounts = append(mounts[:i], append([]corev1.VolumeMount{mnt}, mounts[i:]...)...)
+		tp.PodTemplateSpec.Spec.Containers[i].VolumeMounts = mounts
 	}
 	return tp
 }
@@ -94,7 +95,7 @@ func (tp testParams) withInitContainer() testParams {
 
 func expectedDeploymentParams() testParams {
 	false := false
-	return testParams(DeploymentParams{
+	return DeploymentParams{
 		Name:      "test-apm-server-apm-server",
 		Namespace: "",
 		Selector:  map[string]string{"apm.k8s.elastic.co/name": "test-apm-server", "common.k8s.elastic.co/type": "apm-server"},
@@ -205,7 +206,7 @@ func expectedDeploymentParams() testParams {
 			},
 		},
 		Replicas: 0,
-	})
+	}
 
 }
 
