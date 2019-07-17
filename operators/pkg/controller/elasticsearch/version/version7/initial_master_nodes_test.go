@@ -7,17 +7,53 @@ package version7
 import (
 	"testing"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	common "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/settings"
+	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+const (
+	defaultClusterUUID = "jiMyMA1hQ-WMPK3vEStZuw"
+)
+
+func setupScheme(t *testing.T) *runtime.Scheme {
+	sc := scheme.Scheme
+	if err := v1alpha1.SchemeBuilder.AddToScheme(sc); err != nil {
+		assert.Fail(t, "failed to add Es types")
+	}
+	return sc
+}
+
+func newElasticsearch() *v1alpha1.Elasticsearch {
+	return &v1alpha1.Elasticsearch{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns1",
+			Name:      "foo",
+		},
+	}
+}
+
+func withAnnotation(es *v1alpha1.Elasticsearch, name, value string) *v1alpha1.Elasticsearch {
+	if es.Annotations == nil {
+		es.Annotations = make(map[string]string)
+	}
+	es.Annotations[name] = value
+	return es
+}
 
 // newPod creates a new named potentially labeled as master
 func newPod(name string, master bool) pod.PodWithConfig {
@@ -53,7 +89,10 @@ func assertInitialMasterNodes(t *testing.T, changes *mutation.PerformableChanges
 }
 
 func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
+	s := setupScheme(t)
 	type args struct {
+		cluster            *v1alpha1.Elasticsearch
+		clusterState       observer.State
 		performableChanges mutation.PerformableChanges
 		resourcesState     reconcile.ResourcesState
 	}
@@ -66,6 +105,12 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 		{
 			name: "not set when likely already bootstrapped",
 			args: args{
+				cluster: withAnnotation(newElasticsearch(), ClusterUUIDAnnotationName, defaultClusterUUID),
+				clusterState: observer.State{
+					ClusterState: &esclient.ClusterState{
+						ClusterUUID: defaultClusterUUID,
+					},
+				},
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
@@ -87,6 +132,8 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 		{
 			name: "set when likely not bootstrapped",
 			args: args{
+				cluster:      newElasticsearch(),
+				clusterState: observer.State{},
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{{
@@ -108,6 +155,7 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 		{
 			name: "all masters are informed of all masters",
 			args: args{
+				cluster: newElasticsearch(),
 				performableChanges: mutation.PerformableChanges{
 					Changes: mutation.Changes{
 						ToCreate: []mutation.PodToCreate{
@@ -153,7 +201,14 @@ func TestClusterInitialMasterNodesEnforcer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ClusterInitialMasterNodesEnforcer(tt.args.performableChanges, tt.args.resourcesState)
+			client := k8s.WrapClient(fake.NewFakeClientWithScheme(s, tt.args.cluster))
+			got, err := ClusterInitialMasterNodesEnforcer(
+				*tt.args.cluster,
+				tt.args.clusterState,
+				client,
+				tt.args.performableChanges,
+				tt.args.resourcesState,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ClusterInitialMasterNodesEnforcer() error = %v, wantErr %v", err, tt.wantErr)
 				return
