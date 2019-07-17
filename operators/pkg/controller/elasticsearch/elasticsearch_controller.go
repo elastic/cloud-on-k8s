@@ -24,6 +24,7 @@ import (
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	semver "github.com/hashicorp/go-version"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -277,4 +278,32 @@ func (r *ReconcileElasticsearch) finalizersFor(
 		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, &es),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),
 	}
+}
+
+// At the beginning of each reconciliation, retrieve the current resource version from annotations
+// if the annotation is set, use it (eg. return 0.9)
+// if the annotation isn't set, 2 possibilities:
+// a. the resource was just created and does not have the annotation yet
+// b. the resource was created with ECK 0.8
+// To detect if we are in case b, list pods and secrets labeled with the ES cluster name (or APM or Kibana): if there are some, then the resource was created with ECK 0.8 (return 0.8). If there are none (length 0), return noVersion. Listing pods and secrets from the cache should be a very cheap operation.
+// Check compatibility of the resource version with the operator version. Each ECK version comes with its own comparison logic (but in most cases, it should probably just check the annotated resource version is in the backward compatibility range of the operator version).
+// If not compatible, log and return. Don't reconcile.
+// If compatible:
+// Make sure the resource is annotated with the current operator version. If it isn't, annotate it and requeue. What we want to avoid here is moving on with creating pods/secrets while the resource isn't yet annotated in the cache (we would end up in the 0.8 scenario if newly created pods and secrets appear in the cache before the annotated resource appears).
+// Move on to normal reconciliation
+
+func (r *ReconcileElasticsearch) checkCompatibility(es *elasticsearchv1alpha1.Elasticsearch) (bool, error) {
+	var (
+		compatible bool
+		err        error
+	)
+	if es.Annotations == nil {
+		// skip to
+		return compatible, err
+	}
+	currentVersion, err := semver.NewVersion(es.Annotations["test"])
+	minVersion, err := semver.NewVersion("0.9.0")
+	operatorVersion, err := semver.NewVersion(r.OperatorInfo.BuildInfo.Version)
+
+	return compatible, err
 }
