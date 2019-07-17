@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
@@ -20,10 +19,6 @@ import (
 )
 
 var testProbeUser = client.UserAuth{Name: "username1", Password: "supersecure"}
-var testObjectMeta = metav1.ObjectMeta{
-	Name:      "my-es",
-	Namespace: "default",
-}
 
 func TestNewEnvironmentVars(t *testing.T) {
 	type args struct {

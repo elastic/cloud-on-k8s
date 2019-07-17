@@ -16,9 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var defaultPodWithConfig = ESPodWithConfig(defaultImage, defaultCPULimit)
 var emptyPodWithConfig = pod.PodWithConfig{Pod: corev1.Pod{}}
-var defaultPodSpecCtx = ESPodSpecContext(defaultImage, defaultCPULimit)
 
 func namedPod(name string) pod.PodWithConfig {
 	return pod.PodWithConfig{

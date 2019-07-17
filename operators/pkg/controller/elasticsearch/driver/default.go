@@ -76,10 +76,10 @@ type defaultDriver struct {
 	// Elasticsearch cluster.
 	//
 	// paramsTmpl argument is a partially filled NewPodSpecParams (TODO: refactor into its own params struct)
-	expectedPodsAndResourcesResolver func(
-		es v1alpha1.Elasticsearch,
-		paramsTmpl pod.NewPodSpecParams,
-	) ([]pod.PodSpecContext, error)
+	//expectedPodsAndResourcesResolver func(
+	//	es v1alpha1.Elasticsearch,
+	//	paramsTmpl pod.NewPodSpecParams,
+	//) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
 	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State

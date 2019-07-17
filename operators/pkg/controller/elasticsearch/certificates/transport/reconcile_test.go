@@ -43,7 +43,6 @@ func Test_ensureTransportCertificateSecretExists(t *testing.T) {
 		c      k8s.Client
 		scheme *runtime.Scheme
 		owner  v1alpha1.Elasticsearch
-		labels map[string]string
 	}
 	tests := []struct {
 		name    string

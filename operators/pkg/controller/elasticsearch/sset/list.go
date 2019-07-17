@@ -54,7 +54,7 @@ func (l StatefulSetList) RevisionUpdateScheduled() bool {
 
 // PodNames returns the names of the pods for all StatefulSets in the list.
 func (l StatefulSetList) PodNames() []string {
-	var names []string
+	names := make([]string, 0, len(l))
 	for _, s := range l {
 		names = append(names, PodNames(s)...)
 	}
