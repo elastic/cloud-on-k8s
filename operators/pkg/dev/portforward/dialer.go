@@ -16,7 +16,7 @@ import (
 
 // ForwardingDialer is a dialer that uses a podForwarder to redirect connections when dialing
 type ForwardingDialer struct {
-	store *forwarderStore
+	store *ForwarderStore
 
 	initOnce sync.Once
 	client   client.Client

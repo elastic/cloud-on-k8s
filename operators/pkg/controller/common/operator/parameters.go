@@ -12,8 +12,6 @@ import (
 
 // Parameters contain parameters to create new operators.
 type Parameters struct {
-	// OperatorImage is the operator docker image. The operator needs to be aware of its image to use it in sidecars.
-	OperatorImage string
 	// OperatorNamespace is the control plane namespace of the operator.
 	OperatorNamespace string
 	// OperatorInfo is information about the operator

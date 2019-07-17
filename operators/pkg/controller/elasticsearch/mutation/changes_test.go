@@ -74,7 +74,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "something to create has changes",
 			fields: fields{
-				ToCreate: []PodToCreate{PodToCreate{}},
+				ToCreate: []PodToCreate{{}},
 			},
 			want: true,
 		},
@@ -88,7 +88,7 @@ func TestChanges_HasChanges(t *testing.T) {
 		{
 			name: "create and delete has changes",
 			fields: fields{
-				ToCreate: []PodToCreate{PodToCreate{}},
+				ToCreate: []PodToCreate{{}},
 				ToDelete: pod.PodsWithConfig{emptyPodWithConfig},
 			},
 			want: true,

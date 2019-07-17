@@ -23,20 +23,20 @@ const (
 	licenseSecretName = "e2e-enterprise-license"
 )
 
-type licenseTestContext struct {
+type LicenseTestContext struct {
 	esClient client.Client
 	k        *test.K8sClient
 	es       estype.Elasticsearch
 }
 
-func NewLicenseTestContext(k *test.K8sClient, es estype.Elasticsearch) licenseTestContext {
-	return licenseTestContext{
+func NewLicenseTestContext(k *test.K8sClient, es estype.Elasticsearch) LicenseTestContext {
+	return LicenseTestContext{
 		k:  k,
 		es: es,
 	}
 }
 
-func (ltctx *licenseTestContext) Init() test.Step {
+func (ltctx *LicenseTestContext) Init() test.Step {
 	return test.Step{
 		Name: "Creating Elasticsearch client",
 		Test: func(t *testing.T) {
@@ -47,7 +47,7 @@ func (ltctx *licenseTestContext) Init() test.Step {
 	}
 }
 
-func (ltctx *licenseTestContext) CheckElasticsearchLicense(expectedTypes ...license.ElasticsearchLicenseType) test.Step {
+func (ltctx *LicenseTestContext) CheckElasticsearchLicense(expectedTypes ...license.ElasticsearchLicenseType) test.Step {
 	return test.Step{
 		Name: fmt.Sprintf("Elasticsearch license should be %v", expectedTypes),
 		Test: test.Eventually(func() error {
@@ -70,7 +70,7 @@ func (ltctx *licenseTestContext) CheckElasticsearchLicense(expectedTypes ...lice
 	}
 }
 
-func (ltctx *licenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []byte) test.Step {
+func (ltctx *LicenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []byte) test.Step {
 	return test.Step{
 		Name: "Creating enterprise license secret",
 		Test: func(t *testing.T) {
@@ -91,7 +91,7 @@ func (ltctx *licenseTestContext) CreateEnterpriseLicenseSecret(licenseBytes []by
 	}
 }
 
-func (ltctx *licenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
+func (ltctx *LicenseTestContext) DeleteEnterpriseLicenseSecret() test.Step {
 	return test.Step{
 		Name: "Removing any test enterprise licenses",
 		Test: func(t *testing.T) {

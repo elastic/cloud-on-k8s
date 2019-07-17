@@ -51,7 +51,7 @@ func NewResourcesStateFromAPI(c k8s.Client, es v1alpha1.Elasticsearch) (*Resourc
 
 	deletingPods := make(pod.PodsWithConfig, 0)
 	currentPods := make(pod.PodsWithConfig, 0, len(allPods))
-	currentPodsByPhase := make(map[corev1.PodPhase]pod.PodsWithConfig, 0)
+	currentPodsByPhase := make(map[corev1.PodPhase]pod.PodsWithConfig)
 	// filter out pods scheduled for deletion
 	for _, p := range allPods {
 		// retrieve es configuration

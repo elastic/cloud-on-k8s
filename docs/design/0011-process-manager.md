@@ -1,6 +1,10 @@
 # 11. Process manager for keystore update and Elasticsearch restart
 
-* Status: proposed 
+* Status: rejected (implementation removed) in July 2019. The keystore updater is moved into an init container to adopt the same 
+pattern used for Kibana and APM server. With the move towards the StatefulSet way of doing rolling restarts, we no longer need a
+process manager to perform Elasticsearch cluster restart. The zombie reaping problem only exists when another process is started
+in the container (e.g. kubectl exec) and should probably be handled in the official images.
+Main benefits are code and architecture simplicity as well as respecting k8s standards.
 * Deciders: cloud-on-k8s team
 * Date: 2019-05-28
 

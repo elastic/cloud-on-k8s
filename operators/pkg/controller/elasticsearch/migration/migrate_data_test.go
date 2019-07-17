@@ -16,60 +16,60 @@ import (
 
 func TestEnoughRedundancy(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
 	assert.False(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "valid copy exists elsewhere")
 }
 
 func TestNothingToMigrate(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
 	assert.False(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "no data on node A")
 }
 
 func TestOnlyCopyNeedsMigration(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 1, State: client.STARTED, Node: "B"},
-		client.Shard{Index: "index-1", Shard: 2, State: client.STARTED, Node: "C"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		{Index: "index-1", Shard: 1, State: client.STARTED, Node: "B"},
+		{Index: "index-1", Shard: 2, State: client.STARTED, Node: "C"},
 	}
 	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "no copy somewhere else")
 }
 
 func TestRelocationIsMigration(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.RELOCATING, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.RELOCATING, Node: "A"},
+		{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
 	}
 	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "await shard copy being relocated")
 }
 
 func TestCopyIsInitializing(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		{Index: "index-1", Shard: 0, State: client.INITIALIZING, Node: "B"},
 	}
 	assert.True(t, nodeIsMigratingData("A", shards, make(map[string]struct{})), "shard copy exists but is still initializing")
 }
 
 func TestIgnoresOtherMigrationCandidatesOtherCopyExists(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
 	assert.False(t, nodeIsMigratingData("A", shards, exclusionMap([]string{"A", "B"})), "valid copy exists in C")
 }
 
 func TestIgnoresOtherMigrationCandidatesNoOtherCopy(t *testing.T) {
 	shards := []client.Shard{
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
-		client.Shard{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "A"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "B"},
+		{Index: "index-1", Shard: 0, State: client.STARTED, Node: "C"},
 	}
 	assert.True(t, nodeIsMigratingData("A", shards, exclusionMap([]string{"B", "C"})), "no valid copy all nodes are excluded")
 }

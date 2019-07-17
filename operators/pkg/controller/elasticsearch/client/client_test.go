@@ -36,9 +36,9 @@ func TestParseRoutingTable(t *testing.T) {
 			name: "Can parse populated routing table",
 			args: fixtures.ClusterStateSample,
 			want: []Shard{
-				Shard{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
-				Shard{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
-				Shard{Index: "sample-data-2", Shard: 2, Primary: true, State: UNASSIGNED, Node: ""},
+				{Index: "sample-data-2", Shard: 0, Primary: true, State: STARTED, Node: "stack-sample-es-lkrjf7224s"},
+				{Index: "sample-data-2", Shard: 1, Primary: false, State: STARTED, Node: "stack-sample-es-4fxm76vnwj"},
+				{Index: "sample-data-2", Shard: 2, Primary: true, State: UNASSIGNED, Node: ""},
 			},
 		},
 		{
@@ -181,9 +181,9 @@ func TestClient_request(t *testing.T) {
 	testPath := "/_i_am_an/elasticsearch/endpoint"
 	testClient := &baseClient{
 		HTTP: &http.Client{
-			Transport: RoundTripFunc(requestAssertion(func(req *http.Request) {
+			Transport: requestAssertion(func(req *http.Request) {
 				assert.Equal(t, testPath, req.URL.Path)
-			})),
+			}),
 		},
 		Endpoint: "http://example.com",
 	}

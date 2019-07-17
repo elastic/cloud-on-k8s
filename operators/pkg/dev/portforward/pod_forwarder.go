@@ -23,8 +23,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-// podForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
-type podForwarder struct {
+// PodForwarder enables redirecting tcp connections through "kubectl port-forward" tooling
+type PodForwarder struct {
 	network, addr string
 	podNSN        types.NamespacedName
 
@@ -48,7 +48,7 @@ type podForwarder struct {
 	dialerFunc dialerFunc
 }
 
-var _ Forwarder = &podForwarder{}
+var _ Forwarder = &PodForwarder{}
 
 // PortForwarderFactory is a factory for port forwarders
 type PortForwarderFactory func(
@@ -67,13 +67,13 @@ type PortForwarder interface {
 type dialerFunc func(ctx context.Context, network, address string) (net.Conn, error)
 
 // NewPodForwarder returns a new initialized podForwarder
-func NewPodForwarder(network, addr string, clientset *kubernetes.Clientset) (*podForwarder, error) {
+func NewPodForwarder(network, addr string, clientset *kubernetes.Clientset) (*PodForwarder, error) {
 	podNSN, err := parsePodAddr(addr, clientset)
 	if err != nil {
 		return nil, err
 	}
 
-	return &podForwarder{
+	return &PodForwarder{
 		network: network,
 		addr:    addr,
 
@@ -160,7 +160,7 @@ var defaultDialerFunc dialerFunc = func(ctx context.Context, network, address st
 }
 
 // DialContext connects to the podForwarder address using the provided context.
-func (f *podForwarder) DialContext(ctx context.Context) (net.Conn, error) {
+func (f *PodForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 	// wait until we're initialized or context is done
 	select {
 	case <-f.initChan:
@@ -182,7 +182,7 @@ func (f *podForwarder) DialContext(ctx context.Context) (net.Conn, error) {
 }
 
 // Run starts a port forwarder and blocks until either the port forwarding fails or the context is done.
-func (f *podForwarder) Run(ctx context.Context) error {
+func (f *PodForwarder) Run(ctx context.Context) error {
 	log.Info("Running port-forwarder for", "addr", f.addr)
 	defer log.Info("No longer running port-forwarder for", "addr", f.addr)
 

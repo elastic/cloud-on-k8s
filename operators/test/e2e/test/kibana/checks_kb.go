@@ -64,6 +64,9 @@ func (check *kbChecks) CheckKbLoginHealthy(kb kbtype.Kibana) test.Step {
 			}
 			defer resp.Body.Close()
 			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
 			// this is of course fragile and relying on potentially version specific implementation detail
 			// verified to be present in 6.x and 7.x
 			if !strings.Contains(string(body), "allowLogin&quot;:true") {

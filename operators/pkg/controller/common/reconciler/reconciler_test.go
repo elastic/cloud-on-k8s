@@ -248,13 +248,13 @@ func TestReconcileResource(t *testing.T) {
 			},
 			argAssertion: func(args args) {
 				// should be updated to the server state
-				assert.Equal(t, "other", string(args.Reconciled.(*corev1.Secret).Labels["label"]))
+				assert.Equal(t, "other", args.Reconciled.(*corev1.Secret).Labels["label"])
 			},
 			clientAssertion: func(c k8s.Client) {
 				var found corev1.Secret
 				assert.NoError(t, c.Get(objectKey, &found))
 				// should be unchanged as it is ignored by the custom differ
-				assert.Equal(t, "other", string(found.Labels["label"]))
+				assert.Equal(t, "other", found.Labels["label"])
 			},
 		},
 	}

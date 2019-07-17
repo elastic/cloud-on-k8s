@@ -72,11 +72,6 @@ func init() {
 		"",
 		"namespace in which this operator should manage resources (defaults to all namespaces)",
 	)
-	Cmd.Flags().String(
-		operator.ImageFlag,
-		"",
-		"image containing the binaries for this operator",
-	)
 	Cmd.Flags().Bool(
 		AutoPortForwardFlagName,
 		false,
@@ -183,13 +178,6 @@ func execute() {
 		dialer = portforward.NewForwardingDialer()
 	}
 
-	operatorImage := viper.GetString(operator.ImageFlag)
-	if operatorImage == "" {
-		log.Error(fmt.Errorf("%s is a required flag", operator.ImageFlag),
-			"required configuration missing")
-		os.Exit(1)
-	}
-
 	operatorNamespace := viper.GetString(OperatorNamespaceFlag)
 	if operatorNamespace == "" {
 		log.Error(fmt.Errorf("%s is a required flag", OperatorNamespaceFlag),
@@ -259,7 +247,6 @@ func execute() {
 	log.Info("Setting up controllers", "roles", roles)
 	if err := controller.AddToManager(mgr, roles, operator.Parameters{
 		Dialer:            dialer,
-		OperatorImage:     operatorImage,
 		OperatorNamespace: operatorNamespace,
 		OperatorInfo:      operatorInfo,
 		CACertRotation: certificates.RotationParams{

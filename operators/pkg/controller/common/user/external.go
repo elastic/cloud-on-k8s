@@ -69,7 +69,7 @@ func (u ExternalUser) PasswordHash() ([]byte, error) {
 
 // PasswordMatches compares the given hash with the password of this user.
 func (u *ExternalUser) PasswordMatches(hash []byte) bool {
-	return bytes.Equal([]byte(u.password), hash)
+	return bytes.Equal(u.password, hash)
 }
 
 // Roles are any Elasticsearch roles associated with this user

@@ -31,7 +31,7 @@ func (v Version) String() string {
 var (
 	// TooFewSegmentsErrorMessage is used as an error message when a version has too few dot-separated segments
 	TooFewSegmentsErrorMessage = "version string has too few segments"
-	// TooFewSegmentsErrorMessage is used as an error message when a version has too many dot-separated segments
+	// TooManySegmentsErrorMessage is used as an error message when a version has too many dot-separated segments
 	TooManySegmentsErrorMessage = "version string has too many segments"
 )
 
