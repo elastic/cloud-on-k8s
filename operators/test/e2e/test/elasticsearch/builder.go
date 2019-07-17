@@ -71,6 +71,18 @@ func (b Builder) WithVersion(version string) Builder {
 	return b
 }
 
+func (b Builder) WithHTTPLoadBalancer() Builder {
+	b.Elasticsearch.Spec.HTTP.Service.Spec.Type = corev1.ServiceTypeLoadBalancer
+	return b
+}
+
+func (b Builder) WithHTTPSAN(ip string) Builder {
+	b.Elasticsearch.Spec.HTTP.TLS.SelfSignedCertificate = &commonv1alpha1.SelfSignedCertificate{
+		SubjectAlternativeNames: []commonv1alpha1.SubjectAlternativeName{{IP: ip}},
+	}
+	return b
+}
+
 // -- ES Nodes
 
 func (b Builder) WithNoESTopology() Builder {

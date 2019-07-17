@@ -9,11 +9,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // DefaultTimeout is a reasonable timeout to use with the Client.
@@ -33,7 +29,7 @@ type Client interface {
 	// WithContext returns a client configured to use the provided context on
 	// subsequent requests, instead of one created from the preconfigured timeout.
 	WithContext(ctx context.Context) Client
-	// WithTimeout returns a client with an overriden timeout value,
+	// WithTimeout returns a client with an overridden timeout value,
 	// to be used when no explicit context is passed.
 	WithTimeout(timeout time.Duration) Client
 
@@ -66,7 +62,7 @@ func (w *clientWrapper) WithContext(ctx context.Context) Client {
 	}
 }
 
-// WithTimeout returns a client with an overriden timeout value,
+// WithTimeout returns a client with an overridden timeout value,
 // to be used when no explicit context is passed.
 func (w *clientWrapper) WithTimeout(timeout time.Duration) Client {
 	return &clientWrapper{
@@ -145,24 +141,4 @@ func (s StatusWriter) Update(obj runtime.Object) error {
 	return s.w.callWithContext(func(ctx context.Context) error {
 		return s.StatusWriter.Update(ctx, obj)
 	})
-}
-
-// NewClientGo initializes and returns a new Kubernetes client.
-func NewClientGo(cfg *rest.Config) (client.Client, error) {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-
-	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := client.New(cfg, client.Options{Scheme: scheme.Scheme, Mapper: mapper})
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
 }

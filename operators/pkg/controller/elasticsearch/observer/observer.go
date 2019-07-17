@@ -6,17 +6,10 @@ package observer
 
 import (
 	"context"
-	"crypto/x509"
-	"fmt"
-	"net"
 	"sync"
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	netutils "github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
@@ -46,18 +39,11 @@ var DefaultSettings = Settings{
 // OnObservation is a function that gets executed when a new state is observed
 type OnObservation func(cluster types.NamespacedName, previousState State, newState State)
 
-// pmClientFactory is a function to create process manager client (to ease testing)
-type pmClientFactory func(pod corev1.Pod) processmanager.Client
-
 // Observer regularly requests an ES endpoint for cluster state,
 // in a thread-safe way
 type Observer struct {
-	k8sClient       k8s.Client
-	dialer          netutils.Dialer
-	caCerts         []*x509.Certificate
-	pmClientFactory pmClientFactory
-	cluster         types.NamespacedName
-	esClient        client.Client
+	cluster  types.NamespacedName
+	esClient client.Client
 
 	settings Settings
 
@@ -73,15 +59,8 @@ type Observer struct {
 }
 
 // NewObserver creates and starts an Observer
-func NewObserver(
-	k8sClient k8s.Client, dialer netutils.Dialer, caCerts []*x509.Certificate,
-	cluster types.NamespacedName, esClient client.Client,
-	settings Settings, onObservation OnObservation,
-) *Observer {
+func NewObserver(cluster types.NamespacedName, esClient client.Client, settings Settings, onObservation OnObservation) *Observer {
 	observer := Observer{
-		k8sClient:     k8sClient,
-		dialer:        dialer,
-		caCerts:       caCerts,
 		cluster:       cluster,
 		esClient:      esClient,
 		creationTime:  time.Now(),
@@ -91,7 +70,6 @@ func NewObserver(
 		onObservation: onObservation,
 		mutex:         sync.RWMutex{},
 	}
-	observer.pmClientFactory = observer.createProcessManagerClient
 
 	log.Info("Creating observer for cluster", "namespace", cluster.Namespace, "es_name", cluster.Name)
 	return &observer
@@ -153,7 +131,7 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, o.settings.RequestTimeout)
 	defer cancel()
 
-	newState := RetrieveState(timeoutCtx, o.cluster, o.esClient, o.k8sClient, o.pmClientFactory)
+	newState := RetrieveState(timeoutCtx, o.cluster, o.esClient)
 
 	if o.onObservation != nil {
 		o.onObservation(o.cluster, o.LastState(), newState)
@@ -162,10 +140,4 @@ func (o *Observer) retrieveState(ctx context.Context) {
 	o.mutex.Lock()
 	o.lastState = newState
 	o.mutex.Unlock()
-}
-
-func (o *Observer) createProcessManagerClient(pod corev1.Pod) processmanager.Client {
-	podIP := net.ParseIP(pod.Status.PodIP)
-	url := fmt.Sprintf("https://%s:%d", podIP.String(), processmanager.DefaultPort)
-	return processmanager.NewClient(url, o.caCerts, o.dialer)
 }

@@ -18,11 +18,6 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/net"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-)
-
-var (
-	log = logf.Log.WithName("client")
 )
 
 const (

@@ -46,10 +46,7 @@ var (
 // Add creates a new ApmServerElasticsearchAssociation Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, _ operator.Parameters) error {
-	r, err := newReconciler(mgr)
-	if err != nil {
-		return err
-	}
+	r := newReconciler(mgr)
 	c, err := add(mgr, r)
 	if err != nil {
 		return err
@@ -58,14 +55,14 @@ func Add(mgr manager.Manager, _ operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) (*ReconcileApmServerElasticsearchAssociation, error) {
+func newReconciler(mgr manager.Manager) *ReconcileApmServerElasticsearchAssociation {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileApmServerElasticsearchAssociation{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
 		watches:  watches.NewDynamicWatches(),
 		recorder: mgr.GetRecorder(name),
-	}, nil
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -164,12 +161,8 @@ func elasticsearchWatchName(assocKey types.NamespacedName) string {
 	return assocKey.Namespace + "-" + assocKey.Name + "-es-watch"
 }
 
-func apmServerWatchName(assocKey types.NamespacedName) string {
-	return assocKey.Namespace + "-" + assocKey.Name + "-apm-server-watch"
-}
-
 // watchFinalizer ensure that we remove watches for Elasticsearch clusters that we are no longer interested in
-// because the assocation to the APM server has been deleted.
+// because the association to the APM server has been deleted.
 func watchFinalizer(assocKey types.NamespacedName, w watches.DynamicWatches) finalizer.Finalizer {
 	return finalizer.Finalizer{
 		Name: "dynamic-watches.finalizers.apm.k8s.elastic.co",

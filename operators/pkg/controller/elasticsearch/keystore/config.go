@@ -5,8 +5,6 @@
 package keystore
 
 import (
-	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -15,6 +13,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -87,22 +86,22 @@ func BindEnvToFlags(cmd *cobra.Command) error {
 }
 
 // NewConfigFromFlags creates a new configuration from the flags.
-func NewConfigFromFlags() (Config, error, string) {
+func NewConfigFromFlags() (Config, error) {
 	sourceDir := viper.GetString(sourceDirFlag)
 	_, err := os.Stat(sourceDir)
 	if os.IsNotExist(err) {
-		return Config{}, err, "source directory does not exist"
+		return Config{}, errors.Wrap(err, "source directory does not exist")
 	}
 
 	keystoreBinary := viper.GetString(keystoreBinaryFlag)
 	_, err = os.Stat(keystoreBinary)
 	if os.IsNotExist(err) {
-		return Config{}, err, "keystore binary does not exist"
+		return Config{}, errors.Wrap(err, "keystore binary does not exist")
 	}
 
 	v, err := version.Parse(viper.GetString(esVersionFlag))
 	if err != nil {
-		return Config{}, err, "no or invalid version"
+		return Config{}, errors.Wrap(err, "no or invalid version")
 	}
 
 	shouldReload := viper.GetBool(reloadCredentialsFlag)
@@ -119,20 +118,20 @@ func NewConfigFromFlags() (Config, error, string) {
 		pass := viper.GetString(esPasswordFlag)
 
 		if user == "" {
-			return Config{}, errors.New("user is empty"), "invalid user"
+			return Config{}, errors.New("user should not be empty")
 		}
 
 		if pass == "" {
 			passwordFile := viper.GetString(esPasswordFileFlag)
 			bytes, err := ioutil.ReadFile(passwordFile)
 			if err != nil {
-				return Config{}, err, fmt.Sprintf("password file %s could not be read", passwordFile)
+				return Config{}, errors.Wrapf(err, "password file %s could not be read", passwordFile)
 			}
 			pass = string(bytes)
 		}
 
 		if pass == "" {
-			return Config{}, errors.New("password is empty"), "invalid password"
+			return Config{}, errors.New("password should not be empty")
 		}
 
 		config.EsUser = client.UserAuth{Name: user, Password: pass}
@@ -140,11 +139,11 @@ func NewConfigFromFlags() (Config, error, string) {
 		esCerts := viper.GetString(esCertsPathFlag)
 		_, err = loadCerts(esCerts)
 		if err != nil {
-			return Config{}, err, "CA certificates are required when reloading credentials but could not be read"
+			return Config{}, errors.Wrap(err, "CA certificates are required when reloading credentials but could not be read")
 		}
 		config.EsCertsPath = esCerts
 		config.EsEndpoint = viper.GetString(esEndpointFlag)
 	}
 
-	return config, nil, ""
+	return config, nil
 }

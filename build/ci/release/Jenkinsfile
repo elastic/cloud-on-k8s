@@ -4,6 +4,10 @@ pipeline {
         label 'linux'
     }
 
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
     environment {
         VAULT_ADDR = credentials('vault-addr')
         VAULT_ROLE_ID = credentials('vault-role-id')
@@ -16,19 +20,24 @@ pipeline {
         SNAPSHOT_RELEASE = 'false'
     }
 
-    options {
-        timeout(time: 1, unit: 'HOURS')
-    }
-
     stages {
-        stage('Build and push release image') {
-            steps {
-                sh 'make -C build/ci ci-release'
+        stage('Doing release') {
+            when {
+                expression {
+                    releaseImageNotExist()
+                }
             }
-        }
-        stage('Upload yaml to S3') {
-            steps {
-                sh 'make -C build/ci yaml-upload'
+            stages {
+                stage('Build and push release image') {
+                    steps {
+                        sh 'make -C build/ci ci-release'
+                    }
+                }
+                stage('Upload yaml to S3') {
+                    steps {
+                        sh 'make -C build/ci yaml-upload'
+                    }
+                }
             }
         }
     }
@@ -62,4 +71,11 @@ pipeline {
         }
     }
 
+}
+
+def releaseImageNotExist() {
+    return sh (
+        script: "docker pull $LATEST_RELEASED_IMG &>/dev/null",
+        returnStatus: true
+    ) == 1
 }

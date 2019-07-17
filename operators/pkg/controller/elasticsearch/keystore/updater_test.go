@@ -147,7 +147,7 @@ func TestWatchForUpdate(t *testing.T) {
 	s, err := updater.Status()
 	assert.NoError(t, err)
 	assert.Equal(t, string(RunningState), string(s.State))
-	assert.Equal(t, string(KeystoreUpdatedReason), string(s.Reason))
+	assert.Equal(t, string(KeystoreUpdatedReason), s.Reason)
 }
 
 func TestStart_WaitingEs(t *testing.T) {

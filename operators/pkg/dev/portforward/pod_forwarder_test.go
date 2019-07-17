@@ -33,7 +33,7 @@ func (d *capturingDialer) DialContext(ctx context.Context, network, address stri
 	return nil, nil
 }
 
-func NewPodForwarderWithTest(t *testing.T, network, addr string) *podForwarder {
+func NewPodForwarderWithTest(t *testing.T, network, addr string) *PodForwarder {
 	fwd, err := NewPodForwarder(network, addr, nil)
 	require.NoError(t, err)
 	return fwd
@@ -54,8 +54,8 @@ func Test_podForwarder_DialContext(t *testing.T) {
 	}
 	tests := []struct {
 		name         string
-		forwarder    *podForwarder
-		tweaks       func(t *testing.T, f *podForwarder)
+		forwarder    *PodForwarder
+		tweaks       func(t *testing.T, f *PodForwarder)
 		args         args
 		wantDialArgs []string
 		wantErr      bool
@@ -63,7 +63,7 @@ func Test_podForwarder_DialContext(t *testing.T) {
 		{
 			name:      "pod should be forwarded",
 			forwarder: NewPodForwarderWithTest(t, "tcp", "foo.bar.pod:9200"),
-			tweaks: func(t *testing.T, f *podForwarder) {
+			tweaks: func(t *testing.T, f *PodForwarder) {
 				f.ephemeralPortFinder = func() (string, error) {
 					return "12345", nil
 				}
