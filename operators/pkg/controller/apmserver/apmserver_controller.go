@@ -363,7 +363,6 @@ func (r *ReconcileApmServer) deploymentParams(
 		Labels:          deploymentLabels,
 		PodTemplateSpec: podSpec,
 	}, nil
-
 }
 
 func (r *ReconcileApmServer) reconcileApmServerDeployment(
