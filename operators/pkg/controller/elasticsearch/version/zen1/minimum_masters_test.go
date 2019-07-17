@@ -164,13 +164,13 @@ func TestUpdateMinimumMasterNodes(t *testing.T) {
 	podsReady1[2] = *podsReady3[2].DeepCopy()
 
 	tests := []struct {
-		name               string
+		wantCalled         bool
+		wantRequeue        bool
+		wantCalledWith     int
 		c                  k8s.Client
+		name               string
 		actualStatefulSets sset.StatefulSetList
 		reconcileState     *reconcile.State
-		wantCalled         bool
-		wantCalledWith     int
-		wantRequeue        bool
 	}{
 		{
 			name:               "no v6 nodes",

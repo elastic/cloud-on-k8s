@@ -8,11 +8,12 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
@@ -29,7 +30,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
@@ -88,36 +88,6 @@ type defaultDriver struct {
 		c k8s.Client,
 		es v1alpha1.Elasticsearch,
 	) (*reconcile.ResourcesState, error)
-
-	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
-	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
-	clusterInitialMasterNodesEnforcer func(
-		cluster v1alpha1.Elasticsearch,
-		clusterState observer.State,
-		c k8s.Client,
-		performableChanges mutation.PerformableChanges,
-		resourcesState reconcile.ResourcesState,
-	) (*mutation.PerformableChanges, error)
-
-	// zen1SettingsUpdater updates the zen1 settings for the current pods.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is >= 7)
-	zen1SettingsUpdater func(
-		cluster v1alpha1.Elasticsearch,
-		c k8s.Client,
-		esClient esclient.Client,
-		allPods []corev1.Pod,
-		performableChanges *mutation.PerformableChanges,
-		reconcileState *reconcile.State,
-	) (bool, error)
-
-	// zen2SettingsUpdater updates the zen2 settings for the current changes.
-	// this can safely be set to nil when it's not relevant (e.g when all nodes in the cluster is <7)
-	zen2SettingsUpdater func(
-		esClient esclient.Client,
-		minVersion version.Version,
-		changes mutation.Changes,
-		performableChanges mutation.PerformableChanges,
-	) error
 
 	// TODO: implement
 	// // apiObjectsGarbageCollector garbage collects API objects for older versions once they are no longer needed.

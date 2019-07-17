@@ -31,7 +31,7 @@ func (d *defaultDriver) HandleDownscale(
 
 	// compute the list of nodes leaving the cluster, from which
 	// data should be migrated away
-	var leavingNodes []string
+	leavingNodes := []string{}
 
 	// process each statefulset for downscale
 	for i, actual := range actualStatefulSets {

@@ -74,7 +74,7 @@ func (l StatefulSetList) GetActualPods(c k8s.Client) ([]corev1.Pod, error) {
 	if len(l) == 0 {
 		return nil, nil
 	}
-	var allPods []corev1.Pod
+	allPods := make([]corev1.Pod, 0, len(l))
 	for _, statefulSet := range l {
 		pods, err := GetActualPods(c, statefulSet)
 		if err != nil {
