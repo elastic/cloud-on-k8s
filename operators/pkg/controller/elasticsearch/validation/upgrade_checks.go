@@ -9,7 +9,7 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/driver"
+	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 )
 
 const (
@@ -39,7 +39,7 @@ func validUpgradePath(ctx Context) validation.Result {
 		return validation.OK
 	}
 
-	v := driver.SupportedVersions(ctx.Proposed.Version)
+	v := esversion.SupportedVersions(ctx.Proposed.Version)
 	if v == nil {
 		return validation.Result{Allowed: false, Reason: unsupportedVersion(&ctx.Proposed.Version)}
 	}

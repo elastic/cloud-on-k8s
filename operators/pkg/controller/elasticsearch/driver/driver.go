@@ -59,7 +59,7 @@ type Options struct {
 
 // NewDriver returns a Driver that can operate the provided version
 func NewDriver(opts Options) (Driver, error) {
-	supported := SupportedVersions(opts.Version)
+	supported := esversion.SupportedVersions(opts.Version)
 	if supported == nil {
 		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
 	}
@@ -73,45 +73,5 @@ func NewDriver(opts Options) (Driver, error) {
 		supportedVersions:      *supported,
 	}
 
-	switch opts.Version.Major {
-	case 7:
-		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
-		//
-		//driver.clusterInitialMasterNodesEnforcer = version7.ClusterInitialMasterNodesEnforcer
-
-		// version 7 uses zen2 instead of zen
-		//driver.zen2SettingsUpdater = version7.UpdateZen2Settings
-		// .. except we still have to manage minimum_master_nodes while doing a rolling upgrade from 6 -> 7
-		// we approximate this by also handling zen 1, even in 7
-		// TODO: only do this if there's 6.x masters in the cluster.
-		//driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
-	case 6:
-		//driver.expectedPodsAndResourcesResolver = version6.ExpectedPodSpecs
-		//driver.zen1SettingsUpdater = version6.UpdateZen1Discovery
-	default:
-		return nil, fmt.Errorf("unsupported version: %s", opts.Version)
-	}
-
 	return driver, nil
-}
-
-func SupportedVersions(v version.Version) *esversion.LowestHighestSupportedVersions {
-	var res *esversion.LowestHighestSupportedVersions
-	switch v.Major {
-	case 6:
-		res = &esversion.LowestHighestSupportedVersions{
-			// Min. version is 6.7.0 for now. Will be 6.8.0 soon.
-			LowestSupportedVersion: version.MustParse("6.7.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("6.99.99"),
-		}
-	case 7:
-		res = &esversion.LowestHighestSupportedVersions{
-			// 6.7.0 is the lowest wire compatibility version for 7.x
-			LowestSupportedVersion: version.MustParse("6.7.0"),
-			// higher may be possible, but not proven yet, lower may also be a requirement...
-			HighestSupportedVersion: version.MustParse("7.99.99"),
-		}
-	}
-	return res
 }
