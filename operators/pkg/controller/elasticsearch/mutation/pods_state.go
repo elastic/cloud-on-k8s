@@ -6,7 +6,6 @@ package mutation
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -206,13 +205,13 @@ func (s PodsState) Summary() PodsStateSummary {
 		summary.MasterNodeName = s.MasterNodePod.Name
 	}
 
-	summary.Pending = pod.PodMapToNames(s.Pending)
-	summary.RunningJoining = pod.PodMapToNames(s.RunningJoining)
-	summary.RunningReady = pod.PodMapToNames(s.RunningReady)
-	summary.RunningUnknown = pod.PodMapToNames(s.RunningUnknown)
-	summary.Unknown = pod.PodMapToNames(s.Unknown)
-	summary.Terminal = pod.PodMapToNames(s.Terminal)
-	summary.Deleting = pod.PodMapToNames(s.Deleting)
+	summary.Pending = PodMapToNames(s.Pending)
+	summary.RunningJoining = PodMapToNames(s.RunningJoining)
+	summary.RunningReady = PodMapToNames(s.RunningReady)
+	summary.RunningUnknown = PodMapToNames(s.RunningUnknown)
+	summary.Unknown = PodMapToNames(s.Unknown)
+	summary.Terminal = PodMapToNames(s.Terminal)
+	summary.Deleting = PodMapToNames(s.Deleting)
 
 	return summary
 }
@@ -294,4 +293,13 @@ func mapCopy(dst, src map[string]corev1.Pod) {
 	for k, v := range src {
 		dst[k] = v
 	}
+}
+
+// PodMapToNames returns a list of pod names from a map of pod names to pods
+func PodMapToNames(pods map[string]corev1.Pod) []string {
+	names := make([]string, 0, len(pods))
+	for podName := range pods {
+		names = append(names, podName)
+	}
+	return names
 }
