@@ -29,29 +29,6 @@ func (p PodsWithConfig) Pods() []corev1.Pod {
 	return pods
 }
 
-// NewPodSpecParams is used to build resources associated with an Elasticsearch Cluster
-type NewPodSpecParams struct {
-	// Elasticsearch is the Elasticsearch cluster specification.
-	Elasticsearch v1alpha1.Elasticsearch
-
-	// DiscoveryZenMinimumMasterNodes is the setting for minimum master node in Zen Discovery
-	DiscoveryZenMinimumMasterNodes int
-
-	// NodeSpec is the user-provided spec to apply on the target pod
-	NodeSpec v1alpha1.NodeSpec
-
-	// ESConfigVolume is the secret volume that contains elasticsearch.yml configuration
-	ESConfigVolume volume.SecretVolume
-	// UsersSecretVolume is the volume that contains x-pack configuration (users, users_roles)
-	UsersSecretVolume volume.SecretVolume
-	// ProbeUser is the user that should be used for the readiness probes.
-	ProbeUser client.UserAuth
-	// UnicastHostsVolume contains a file with the seed hosts.
-	UnicastHostsVolume volume.ConfigMapVolume
-	// KeystoreResources are k8s resources to load user-provided secure settings in the Elastisearch keystore
-	KeystoreResources *keystore.Resources
-}
-
 // PodSpecContext contains a pod template and some additional context pertaining to its creation.
 type PodSpecContext struct {
 	PodTemplate corev1.PodTemplateSpec

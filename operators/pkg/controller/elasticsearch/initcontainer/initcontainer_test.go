@@ -59,6 +59,7 @@ func TestNewInitContainers(t *testing.T) {
 				tt.args.SetVMMaxMapCount,
 				volume.SecretVolume{},
 				"clusterName",
+				nil,
 			)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expectedNumberOfContainers, len(containers))

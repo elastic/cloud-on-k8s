@@ -10,10 +10,10 @@ import (
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -34,7 +34,7 @@ func (l ResourcesList) StatefulSets() sset.StatefulSetList {
 	return ssetList
 }
 
-func BuildExpectedResources(es v1alpha1.Elasticsearch, podTemplateBuilder version.PodTemplateSpecBuilder) (ResourcesList, error) {
+func BuildExpectedResources(es v1alpha1.Elasticsearch, keystoreResources *keystore.Resources) (ResourcesList, error) {
 	nodesResources := make(ResourcesList, 0, len(es.Spec.Nodes))
 
 	for _, nodeSpec := range es.Spec.Nodes {
@@ -49,11 +49,11 @@ func BuildExpectedResources(es v1alpha1.Elasticsearch, podTemplateBuilder versio
 		}
 
 		// build stateful set and associated headless service
-		statefulSet, err := sset.BuildStatefulSet(k8s.ExtractNamespacedName(&es), nodeSpec, cfg, podTemplateBuilder)
+		statefulSet, err := BuildStatefulSet(es, nodeSpec, cfg, keystoreResources)
 		if err != nil {
 			return nil, err
 		}
-		headlessSvc := sset.HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
+		headlessSvc := HeadlessService(k8s.ExtractNamespacedName(&es), statefulSet.Name)
 
 		nodesResources = append(nodesResources, Resources{
 			StatefulSet:     statefulSet,

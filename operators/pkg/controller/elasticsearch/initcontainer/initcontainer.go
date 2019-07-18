@@ -5,6 +5,7 @@
 package initcontainer
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -25,6 +26,7 @@ func NewInitContainers(
 	setVMMaxMapCount *bool,
 	transportCertificatesVolume volume.SecretVolume,
 	clusterName string,
+	keystoreResources *keystore.Resources,
 ) ([]corev1.Container, error) {
 	var containers []corev1.Container
 	// create the privileged init container if not explicitly disabled by the user
@@ -39,8 +41,11 @@ func NewInitContainers(
 	if err != nil {
 		return nil, err
 	}
-
 	containers = append(containers, prepareFsContainer)
+
+	if keystoreResources != nil {
+		containers = append(containers, prepareFsContainer)
+	}
 
 	return containers, nil
 }

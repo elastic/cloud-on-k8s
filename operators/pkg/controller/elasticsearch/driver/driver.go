@@ -11,7 +11,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	controller "sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
@@ -22,7 +21,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/cleanup"
@@ -30,18 +28,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/configmap"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/initcontainer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/license"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/network"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pdb"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/pod"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/services"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
-	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
@@ -223,30 +217,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	// TODO: this is a mess, refactor and unit test correctly
-	podTemplateSpecBuilder := func(nodeSpec v1alpha1.NodeSpec, cfg settings.CanonicalConfig) (corev1.PodTemplateSpec, error) {
-		return esversion.BuildPodTemplateSpec(
-			d.ES,
-			nodeSpec,
-			pod.NewPodSpecParams{
-				ProbeUser: internalUsers.ProbeUser.Auth(),
-				UnicastHostsVolume: volume.NewConfigMapVolume(
-					name.UnicastHostsConfigMap(d.ES.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
-				),
-				UsersSecretVolume: volume.NewSecretVolumeWithMountPath(
-					user.XPackFileRealmSecretName(d.ES.Name),
-					esvolume.XPackFileRealmVolumeName,
-					esvolume.XPackFileRealmVolumeMountPath,
-				),
-				KeystoreResources: keystoreResources,
-			},
-			cfg,
-			zen1.NewEnvironmentVars,
-			initcontainer.NewInitContainers,
-		)
-	}
-
-	res = d.reconcileNodeSpecs(esReachable, podTemplateSpecBuilder, esClient, d.ReconcileState, observedState, *resourcesState)
+	res = d.reconcileNodeSpecs(esReachable, esClient, d.ReconcileState, observedState, *resourcesState, keystoreResources)
 	if results.WithResults(res).HasError() {
 		return results
 	}
@@ -257,7 +228,12 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 }
 
 // newElasticsearchClient creates a new Elasticsearch HTTP client for this cluster using the provided user
-func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {
+func (d *defaultDriver) newElasticsearchClient(
+	service corev1.Service,
+	user user.User,
+	v version.Version,
+	caCerts []*x509.Certificate,
+) esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
 }

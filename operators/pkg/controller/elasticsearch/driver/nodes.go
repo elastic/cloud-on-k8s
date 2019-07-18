@@ -2,6 +2,7 @@ package driver
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	esclient "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/nodespec"
@@ -9,7 +10,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/sset"
-	esversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version/zen2"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
@@ -17,11 +17,11 @@ import (
 
 func (d *defaultDriver) reconcileNodeSpecs(
 	esReachable bool,
-	podSpecBuilder esversion.PodTemplateSpecBuilder,
 	esClient esclient.Client,
 	reconcileState *reconcile.State,
 	observedState observer.State,
 	resourcesState reconcile.ResourcesState,
+	keystoreResources *keystore.Resources,
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
@@ -38,7 +38,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 		return results.WithResult(defaultRequeue)
 	}
 
-	nodeSpecResources, err := nodespec.BuildExpectedResources(d.ES, podSpecBuilder)
+	nodeSpecResources, err := nodespec.BuildExpectedResources(d.ES, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
