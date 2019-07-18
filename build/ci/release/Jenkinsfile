@@ -38,25 +38,25 @@ pipeline {
                         sh 'make -C build/ci yaml-upload'
                     }
                 }
+                stage('Send message to Slack') {
+                    steps {
+                        script {
+                            def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
+                                "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
+                                "Congratulations!"
+                            slackSend botUser: true,
+                                channel: '#cloud-k8s',
+                                color: 'good',
+                                message: msg,
+                                tokenCredentialId: 'cloud-ci-slack-integration-token'
+                        }
+                    }
+                }
             }
         }
     }
 
     post {
-        success {
-            script {
-                if (releaseImageNotExist()) {
-                    def msg = "${LATEST_RELEASED_IMG} was pushed \r\n" +
-                          "https://download.elastic.co/downloads/eck/${TAG_NAME}/all-in-one.yaml was uploaded \r\n" +
-                          "Congratulations!"
-                    slackSend botUser: true,
-                        channel: '#cloud-k8s',
-                        color: 'good',
-                        message: msg,
-                        tokenCredentialId: 'cloud-ci-slack-integration-token'
-                }
-            }
-        }
         unsuccessful {
             script {
                 def msg = "Release job failed! \r\n" +
