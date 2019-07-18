@@ -16,6 +16,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
@@ -102,13 +103,9 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	genericResources, res := reconcileGenericResources(
-		d.Client,
-		d.Scheme,
-		d.ES,
-	)
-	if results.WithResults(res).HasError() {
-		return results
+	externalService, err := common.ReconcileService(d.Client, d.Scheme, services.NewExternalService(d.ES), &d.ES)
+	if err != nil {
+		return results.WithError(err)
 	}
 
 	certificateResources, res := certificates.Reconcile(
@@ -116,7 +113,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.Scheme,
 		d.DynamicWatches,
 		d.ES,
-		[]corev1.Service{genericResources.ExternalService},
+		[]corev1.Service{*externalService},
 		d.OperatorParameters.CACertRotation,
 		d.OperatorParameters.CertRotation,
 	)
@@ -146,7 +143,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	observedState := d.Observers.ObservedStateResolver(
 		k8s.ExtractNamespacedName(&d.ES),
 		d.newElasticsearchClient(
-			genericResources.ExternalService,
+			*externalService,
 			internalUsers.ControllerUser,
 			*min,
 			certificateResources.TrustedHTTPCertificates,
@@ -167,14 +164,14 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 
 	// TODO: support user-supplied certificate (non-ca)
 	esClient := d.newElasticsearchClient(
-		genericResources.ExternalService,
+		*externalService,
 		internalUsers.ControllerUser,
 		*min,
 		certificateResources.TrustedHTTPCertificates,
 	)
 	defer esClient.Close()
 
-	esReachable, err := services.IsServiceReady(d.Client, genericResources.ExternalService)
+	esReachable, err := services.IsServiceReady(d.Client, *externalService)
 	if err != nil {
 		return results.WithError(err)
 	}
