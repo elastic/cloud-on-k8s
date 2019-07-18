@@ -45,14 +45,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
-// initContainerParams is used to generate the init container that will load the secure settings into a keystore
-var initContainerParams = keystore.InitContainerParameters{
-	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
-	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add",
-	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
-	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
-}
-
 var (
 	log            = logf.Log.WithName("driver")
 	defaultRequeue = controller.Result{Requeue: true, RequeueAfter: 10 * time.Second}
@@ -225,7 +217,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		d.Recorder,
 		d.DynamicWatches,
 		&d.ES,
-		initContainerParams,
+		initcontainer.KeystoreParams,
 	)
 	if err != nil {
 		return results.WithError(err)
