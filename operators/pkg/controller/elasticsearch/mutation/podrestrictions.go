@@ -16,6 +16,9 @@ var (
 	ErrNotEnoughMasterEligiblePods = errors.New("not enough master eligible pods left")
 	// ErrNotEnoughDataEligiblePods is an error used if a data-eligible pod cannot be deleted.
 	ErrNotEnoughDataEligiblePods = errors.New("not enough data eligible pods left")
+
+	// empty is used internally when referring to an empty struct instance
+	empty struct{}
 )
 
 // PodRestrictions can be used to verify that invariants around available pods are not broken.

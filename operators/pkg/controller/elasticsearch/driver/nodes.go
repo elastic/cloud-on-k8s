@@ -85,7 +85,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if !esReachable {
 		// Cannot perform next operations if we cannot request Elasticsearch.
 		log.Info("ES external service not ready yet for further reconciliation, re-queuing.", "namespace", d.ES.Namespace, "es_name", d.ES.Name)
-		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods.Pods())
+		reconcileState.UpdateElasticsearchPending(resourcesState.CurrentPods)
 		return results.WithResult(defaultRequeue)
 	}
 

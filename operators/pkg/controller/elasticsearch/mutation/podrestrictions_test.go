@@ -9,9 +9,24 @@ import (
 	"testing"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
+
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func namedPod(name string) corev1.Pod {
+	return corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: name,
+		},
+	}
+}
+
+func withLabels(p corev1.Pod, labels map[string]string) corev1.Pod {
+	p.Labels = labels
+	return p
+}
 
 func podListToSetLike(pods []corev1.Pod) map[string]struct{} {
 	result := make(map[string]struct{})
@@ -21,9 +36,17 @@ func podListToSetLike(pods []corev1.Pod) map[string]struct{} {
 	return result
 }
 
+func podListToMap(pods []corev1.Pod) map[string]corev1.Pod {
+	result := make(map[string]corev1.Pod)
+	for _, pod := range pods {
+		result[pod.Name] = pod
+	}
+	return result
+}
+
 func TestNewPodRestrictions(t *testing.T) {
-	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true)).Pod
-	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true)).Pod
+	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true))
+	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true))
 
 	type args struct {
 		podsState PodsState
@@ -38,7 +61,7 @@ func TestNewPodRestrictions(t *testing.T) {
 			args: args{
 				podsState: initializePodsState(PodsState{
 					RunningReady: podListToMap([]corev1.Pod{
-						namedPod("foo").Pod,
+						namedPod("foo"),
 						masterPod,
 						dataPod,
 					}),
@@ -60,8 +83,8 @@ func TestNewPodRestrictions(t *testing.T) {
 }
 
 func TestPodRestrictions_CanDelete(t *testing.T) {
-	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true)).Pod
-	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true)).Pod
+	masterPod := withLabels(namedPod("master"), label.NodeTypesMasterLabelName.AsMap(true))
+	dataPod := withLabels(namedPod("data"), label.NodeTypesDataLabelName.AsMap(true))
 
 	type args struct {
 		pod corev1.Pod
@@ -85,7 +108,7 @@ func TestPodRestrictions_CanDelete(t *testing.T) {
 		{
 			name: "can delete non-last master node",
 			podRestrictions: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod, namedPod("bar").Pod}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{masterPod, namedPod("bar")}),
 			},
 			args: args{
 				pod: masterPod,
@@ -104,7 +127,7 @@ func TestPodRestrictions_CanDelete(t *testing.T) {
 		{
 			name: "can delete non-last data node",
 			podRestrictions: PodRestrictions{
-				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod, namedPod("bar").Pod}),
+				DataNodeNames: podListToSetLike([]corev1.Pod{dataPod, namedPod("bar")}),
 			},
 			args: args{
 				pod: dataPod,
@@ -137,21 +160,21 @@ func TestPodRestrictions_Remove(t *testing.T) {
 		{
 			name: "can delete",
 			podRestrictions: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("foo").Pod, namedPod("bar").Pod}),
-				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("foo").Pod, namedPod("bar").Pod}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
+				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("foo"), namedPod("bar")}),
 			},
 			args: args{
-				pod: namedPod("foo").Pod,
+				pod: namedPod("foo"),
 			},
 			want: PodRestrictions{
-				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("bar").Pod}),
-				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("bar").Pod}),
+				MasterNodeNames: podListToSetLike([]corev1.Pod{namedPod("bar")}),
+				DataNodeNames:   podListToSetLike([]corev1.Pod{namedPod("bar")}),
 			},
 		},
 		{
 			name: "can delete nonexistent without failing",
 			args: args{
-				pod: namedPod("foo").Pod,
+				pod: namedPod("foo"),
 			},
 		},
 	}

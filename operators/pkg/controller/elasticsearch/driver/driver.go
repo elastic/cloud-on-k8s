@@ -130,7 +130,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 	if err != nil {
 		return results.WithError(err)
 	}
-	min, err := esversion.MinVersion(resourcesState.CurrentPods.Pods())
+	min, err := esversion.MinVersion(resourcesState.CurrentPods)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -158,7 +158,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods.Pods()); err != nil {
+	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
 	}
 
