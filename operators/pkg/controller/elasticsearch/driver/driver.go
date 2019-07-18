@@ -112,7 +112,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := reconcileScriptsConfigMap(d.Client, d.Scheme, d.ES); err != nil {
+	if err := configmap.ReconcileScriptsConfigMap(d.Client, d.Scheme, d.ES); err != nil {
 		return results.WithError(err)
 	}
 
@@ -268,26 +268,6 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 func (d *defaultDriver) newElasticsearchClient(service corev1.Service, user user.User, v version.Version, caCerts []*x509.Certificate) esclient.Client {
 	url := fmt.Sprintf("https://%s.%s.svc:%d", service.Name, service.Namespace, network.HTTPPort)
 	return esclient.NewElasticsearchClient(d.OperatorParameters.Dialer, url, user.Auth(), v, caCerts)
-}
-
-func reconcileScriptsConfigMap(c k8s.Client, scheme *runtime.Scheme, es v1alpha1.Elasticsearch) error {
-	fsScript, err := initcontainer.RenderPrepareFsScript()
-	if err != nil {
-		return err
-	}
-
-	scriptsConfigMap := configmap.NewConfigMapWithData(
-		types.NamespacedName{Namespace: es.Namespace, Name: name.ScriptsConfigMap(es.Name)},
-		map[string]string{
-			pod.ReadinessProbeScriptConfigKey:      pod.ReadinessProbeScript,
-			initcontainer.PrepareFsScriptConfigKey: fsScript,
-		})
-
-	if err := configmap.ReconcileConfigMap(c, scheme, es, scriptsConfigMap); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // warnUnsupportedDistro sends an event of type warning if the Elasticsearch Docker image is not a supported
