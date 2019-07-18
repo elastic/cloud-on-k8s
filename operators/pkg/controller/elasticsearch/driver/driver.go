@@ -64,8 +64,8 @@ type DefaultDriverParameters struct {
 
 	// ES is the Elasticsearch resource to reconcile
 	ES v1alpha1.Elasticsearch
-	// State holds the accumulated state during the reconcile loop
-	ReconcileState *reconcile.State
+	// SupportedVersions verifies whether we can support upgrading from the current pods.
+	SupportedVersions esversion.LowestHighestSupportedVersions
 
 	// Version is the version of Elasticsearch we want to reconcile towards.
 	Version version.Version
@@ -74,6 +74,8 @@ type DefaultDriverParameters struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 
+	// State holds the accumulated state during the reconcile loop
+	ReconcileState *reconcile.State
 	// Observers that observe es clusters state.
 	Observers *observer.Manager
 	// DynamicWatches are handles to currently registered dynamic watches.
@@ -81,8 +83,6 @@ type DefaultDriverParameters struct {
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
 	Expectations *reconciler.Expectations
-	// supportedVersions verifies whether we can support upgrading from the current pods.
-	supportedVersions esversion.LowestHighestSupportedVersions
 }
 
 // defaultDriver is the default Driver implementation
@@ -158,7 +158,7 @@ func (d *defaultDriver) Reconcile() *reconciler.Results {
 		return results.WithError(err)
 	}
 
-	if err := d.supportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
+	if err := d.SupportedVersions.VerifySupportsExistingPods(resourcesState.CurrentPods); err != nil {
 		return results.WithError(err)
 	}
 
