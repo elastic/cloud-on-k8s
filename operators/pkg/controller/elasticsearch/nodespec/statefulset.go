@@ -2,17 +2,18 @@
 // or more contributor license agreements. Licensed under the Elastic License;
 // you may not use this file except in compliance with the Elastic License.
 
-package sset
+package nodespec
 
 import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/hash"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/version"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -42,18 +43,23 @@ func HeadlessService(es types.NamespacedName, ssetName string) corev1.Service {
 	}
 }
 
-func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, cfg settings.CanonicalConfig, podTemplateBuilder version.PodTemplateSpecBuilder) (appsv1.StatefulSet, error) {
-	statefulSetName := name.StatefulSet(es.Name, nodes.Name)
+func BuildStatefulSet(
+	es v1alpha1.Elasticsearch,
+	nodeSpec v1alpha1.NodeSpec,
+	cfg settings.CanonicalConfig,
+	keystoreResources *keystore.Resources,
+) (appsv1.StatefulSet, error) {
+	statefulSetName := name.StatefulSet(es.Name, nodeSpec.Name)
 
 	// ssetSelector is used to match the sset pods
-	ssetSelector := label.NewStatefulSetLabels(es, statefulSetName)
+	ssetSelector := label.NewStatefulSetLabels(k8s.ExtractNamespacedName(&es), statefulSetName)
 
 	// add default PVCs to the node spec
-	nodes.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
-		nodes.VolumeClaimTemplates, nodes.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
+	nodeSpec.VolumeClaimTemplates = defaults.AppendDefaultPVCs(
+		nodeSpec.VolumeClaimTemplates, nodeSpec.PodTemplate.Spec, esvolume.DefaultVolumeClaimTemplates...,
 	)
 	// build pod template
-	podTemplate, err := podTemplateBuilder(nodes, cfg)
+	podTemplate, err := BuildPodTemplateSpec(es, nodeSpec, cfg, keystoreResources)
 	if err != nil {
 		return appsv1.StatefulSet{}, err
 	}
@@ -76,7 +82,7 @@ func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, cfg sett
 			UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
 				Type: appsv1.RollingUpdateStatefulSetStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
-					Partition: &nodes.NodeCount,
+					Partition: &nodeSpec.NodeCount,
 				},
 			},
 			// we don't care much about pods creation ordering, and manage deletion ordering ourselves,
@@ -90,8 +96,8 @@ func BuildStatefulSet(es types.NamespacedName, nodes v1alpha1.NodeSpec, cfg sett
 				MatchLabels: ssetSelector,
 			},
 
-			Replicas:             &nodes.NodeCount,
-			VolumeClaimTemplates: nodes.VolumeClaimTemplates,
+			Replicas:             &nodeSpec.NodeCount,
+			VolumeClaimTemplates: nodeSpec.VolumeClaimTemplates,
 			Template:             podTemplate,
 		},
 	}
