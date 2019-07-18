@@ -219,8 +219,6 @@ type ElasticsearchStatus struct {
 	MasterNode      string                          `json:"masterNode,omitempty"`
 	ExternalService string                          `json:"service,omitempty"`
 	ZenDiscovery    ZenDiscoveryStatus              `json:"zenDiscovery,omitempty"`
-	// ControllerVersion is the version of the controller that last updated the Elasticsearch cluster
-	ControllerVersion string `json:"controllerVersion,omitempty"`
 }
 
 type ZenDiscoveryStatus struct {

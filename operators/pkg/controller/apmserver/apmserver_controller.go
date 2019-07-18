@@ -18,6 +18,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/labels"
 	apmname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
@@ -195,9 +196,12 @@ func (r *ReconcileApmServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, nil
 	}
 
-	state := NewState(request, as)
-	state.UpdateApmServerControllerVersion(r.OperatorInfo.BuildInfo.Version)
+	err = annotation.UpdateControllerVersion(r.Client, as, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
 
+	state := NewState(request, as)
 	svc, err := common.ReconcileService(r.Client, r.scheme, NewService(*as), as)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -435,6 +439,6 @@ func (r *ReconcileApmServer) updateStatus(state State) (reconcile.Result, error)
 // finalizersFor returns the list of finalizers applying to a given APM deployment
 func (r *ReconcileApmServer) finalizersFor(as apmv1alpha1.ApmServer) []finalizer.Finalizer {
 	return []finalizer.Finalizer{
-		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, &as),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&as), r.dynamicWatches, "apmserver"),
 	}
 }
