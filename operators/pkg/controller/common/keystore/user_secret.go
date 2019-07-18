@@ -6,7 +6,6 @@ package keystore
 
 import (
 	"fmt"
-	"strings"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -16,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
@@ -113,14 +111,10 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *comm
 	})
 }
 
-func getKind(object runtime.Object) string {
-	return strings.ToLower(object.GetObjectKind().GroupVersionKind().Kind)
-}
-
 // Finalizer removes any dynamic watches on external user created secret.
-func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, object runtime.Object) finalizer.Finalizer {
+func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers." + getKind(object) + ".k8s.elastic.co",
+		Name: "secure-settings.finalizers." + kind + ".k8s.elastic.co",
 		Execute: func() error {
 			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
 			return nil
