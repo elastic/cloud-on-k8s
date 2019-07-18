@@ -93,7 +93,7 @@ type DefaultDriverParameters struct {
 	DynamicWatches watches.DynamicWatches
 	// Expectations control some expectations set on resources in the cache, in order to
 	// avoid doing certain operations if the cache hasn't seen an up-to-date resource yet.
-	Expectations *Expectations
+	Expectations *reconciler.Expectations
 	// supportedVersions verifies whether we can support upgrading from the current pods.
 	supportedVersions esversion.LowestHighestSupportedVersions
 }
