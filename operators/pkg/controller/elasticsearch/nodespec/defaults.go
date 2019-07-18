@@ -18,7 +18,30 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/user"
 	esvolume "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/volume"
 )
+
+const (
+	// DefaultImageRepository is the default image name without a tag
+	DefaultImageRepository string = "docker.elastic.co/elasticsearch/elasticsearch"
+
+	// DefaultTerminationGracePeriodSeconds is the termination grace period for the Elasticsearch containers
+	DefaultTerminationGracePeriodSeconds int64 = 120
+)
+
 var (
+	// DefaultContainerPorts are the default Elasticsearch port mappings
+	DefaultContainerPorts = []corev1.ContainerPort{
+		{Name: "http", ContainerPort: network.HTTPPort, Protocol: corev1.ProtocolTCP},
+		{Name: "transport", ContainerPort: network.TransportPort, Protocol: corev1.ProtocolTCP},
+	}
+
+	// DefaultResources for the Elasticsearch container. The JVM default heap size is 1Gi, so we
+	// request at least 2Gi for the container to make sure ES can work properly.
+	// Not applying this minimum default would make ES randomly crash (OOM) on small machines.
+	DefaultResources = corev1.ResourceRequirements{
+		Requests: map[corev1.ResourceName]resource.Quantity{
+			corev1.ResourceMemory: resource.MustParse("2Gi"),
+		},
+	}
 
 	// EnvVars are environment variables injected into Elasticsearch pods.
 	EnvVars = append(
@@ -30,3 +53,25 @@ var (
 		}...,
 	)
 )
+
+// DefaultAffinity returns the default affinity for pods in a cluster.
+func DefaultAffinity(esName string) *corev1.Affinity {
+	return &corev1.Affinity{
+		// prefer to avoid two pods in the same cluster being co-located on a single node
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{
+				{
+					Weight: 100,
+					PodAffinityTerm: corev1.PodAffinityTerm{
+						TopologyKey: "kubernetes.io/hostname",
+						LabelSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								label.ClusterNameLabelName: esName,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
