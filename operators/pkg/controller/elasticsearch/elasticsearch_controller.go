@@ -10,6 +10,7 @@ import (
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
@@ -169,7 +170,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	iterationStartTime := time.Now()
 	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_ame", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
 	}()
 
 	// Fetch the Elasticsearch instance
@@ -190,8 +191,12 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
+	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := esreconcile.NewState(es)
-	state.UpdateElasticsearchControllerVersion(r.OperatorInfo.BuildInfo.Version)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {

@@ -11,6 +11,7 @@ import (
 
 	kibanav1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/kibana/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
@@ -170,14 +171,20 @@ func (r *ReconcileKibana) Reconcile(request reconcile.Request) (reconcile.Result
 	if err != nil {
 		return reconcile.Result{}, err
 	}
+
+	err = annotation.UpdateControllerVersion(r.Client, kb, r.params.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := NewState(request, kb)
-	state.UpdateKibanaControllerVersion(r.params.OperatorInfo.BuildInfo.Version)
 	driver, err := newDriver(r, r.scheme, *ver, r.dynamicWatches, r.recorder)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	// version specific reconcile
 	results := driver.Reconcile(&state, kb, r.params)
+
 	// update status
 	err = r.updateStatus(state)
 	if err != nil && errors.IsConflict(err) {
