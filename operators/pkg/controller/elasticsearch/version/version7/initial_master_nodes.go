@@ -20,6 +20,7 @@ const (
 )
 
 // ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
+// It's also save the cluster UUID as an annotation to ensure that it's not set if the cluster has already been bootstrapped.
 func ClusterInitialMasterNodesEnforcer(
 	cluster v1alpha1.Elasticsearch,
 	clusterState observer.State,
@@ -29,11 +30,22 @@ func ClusterInitialMasterNodesEnforcer(
 ) (*mutation.PerformableChanges, error) {
 
 	// Check if the cluster has an UUID, if not try to fetch it from the observer state and store it as an annotation.
-	isBootstrapped, err := isBootstrapped(cluster, clusterState, c)
-	if err != nil {
-		return nil, err
+	_, ok := cluster.Annotations[ClusterUUIDAnnotationName]
+	if ok {
+		// existence of the annotation shows that the cluster has been bootstrapped
+		return &performableChanges, nil
 	}
-	if isBootstrapped {
+
+	// no annotation, let see if the cluster has been bootstrapped by looking at it's UUID
+	if clusterState.ClusterState != nil && len(clusterState.ClusterState.ClusterUUID) > 0 {
+		// UUID is set, let's update the annotation on the Elasticsearch object
+		if cluster.Annotations == nil {
+			cluster.Annotations = make(map[string]string)
+		}
+		cluster.Annotations[ClusterUUIDAnnotationName] = clusterState.ClusterState.ClusterUUID
+		if err := c.Update(&cluster); err != nil {
+			return nil, err
+		}
 		return &performableChanges, nil
 	}
 
@@ -68,27 +80,4 @@ func ClusterInitialMasterNodesEnforcer(
 	}
 
 	return &performableChanges, nil
-}
-
-// isBootstrapped checks if the cluster has already been bootstrapped
-func isBootstrapped(cluster v1alpha1.Elasticsearch, clusterState observer.State, c k8s.Client) (bool, error) {
-	_, ok := cluster.Annotations[ClusterUUIDAnnotationName]
-	if ok {
-		// existence of the annotation shows that the cluster has been bootstrapped
-		return true, nil
-	}
-
-	// no annotation, let see if the cluster has been bootstrapped by looking at it's UUID
-	if clusterState.ClusterState != nil && len(clusterState.ClusterState.ClusterUUID) > 0 {
-		// UUID is set, let's update the annotation on the Elasticsearch object
-		if cluster.Annotations == nil {
-			cluster.Annotations = make(map[string]string)
-		}
-		cluster.Annotations[ClusterUUIDAnnotationName] = clusterState.ClusterState.ClusterUUID
-		if err := c.Update(&cluster); err != nil {
-			return false, err
-		}
-		return true, nil
-	}
-	return false, nil
 }
