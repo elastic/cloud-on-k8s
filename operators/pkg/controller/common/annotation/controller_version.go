@@ -37,6 +37,7 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 
 	// do not send unnecessary update if the value would not change
 	if annotations[ControllerVersionAnnotation] == version {
+		log.V(1).Info("Skipping controller version annotation update, version already matches", "namespace", namespace, "name", name, "kind", obj.GetObjectKind())
 		return nil
 	}
 
