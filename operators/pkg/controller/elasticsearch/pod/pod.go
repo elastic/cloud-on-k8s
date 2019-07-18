@@ -6,44 +6,7 @@ package pod
 
 import (
 	corev1 "k8s.io/api/core/v1"
-
-	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 )
-
-// PodWithConfig contains a pod and its configuration
-type PodWithConfig struct {
-	Pod    corev1.Pod
-	Config settings.CanonicalConfig
-}
-
-// PodsWithConfig is simply a list of PodWithConfig
-type PodsWithConfig []PodWithConfig
-
-// Pods is a helper method to retrieve pods only (no configuration)
-func (p PodsWithConfig) Pods() []corev1.Pod {
-	pods := make([]corev1.Pod, len(p))
-	for i, withConfig := range p {
-		pods[i] = withConfig.Pod
-	}
-	return pods
-}
-
-// PodSpecContext contains a pod template and some additional context pertaining to its creation.
-type PodSpecContext struct {
-	PodTemplate corev1.PodTemplateSpec
-	NodeSpec    v1alpha1.NodeSpec
-	Config      settings.CanonicalConfig
-}
-
-// PodListToNames returns a list of pod names from the list of pods.
-func PodListToNames(pods []corev1.Pod) []string {
-	names := make([]string, len(pods))
-	for i, pod := range pods {
-		names[i] = pod.Name
-	}
-	return names
-}
 
 // PodMapToNames returns a list of pod names from a map of pod names to pods
 func PodMapToNames(pods map[string]corev1.Pod) []string {
