@@ -24,11 +24,11 @@ spec:
             value: -Xms2048M -Xmx2048M
           resources:
             requests:
-              memory: 4Gi
+              memory: 2Gi
               cpu: 1
             limits:
               memory: 4Gi
-              cpu: 1
+              cpu: 2
 ----
 
 This example also demonstrates how to set the JVM memory options accordingly using the `ES_JAVA_OPTS` environment variable.
@@ -43,9 +43,12 @@ spec:
       containers:
       - name: kibana
         resources:
-          limits:
-            cpu: "1"
+          requests:
             memory: 1Gi
+            cpu: 1
+          limits:
+            cpu: 2
+            memory: 2Gi
 ----
 
 And here is how to set custom resources on the APM server:
@@ -58,9 +61,12 @@ spec:
       containers:
       - name: apm-server
         resources:
-          limits:
-            cpu: "1"
+          requests:
             memory: 1Gi
+            cpu: 1
+          limits:
+            cpu: 2
+            memory: 2Gi
 ----
 
 [float]

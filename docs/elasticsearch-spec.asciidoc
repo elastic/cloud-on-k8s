@@ -53,9 +53,9 @@ For more information on Elasticsearch settings, see https://www.elastic.co/guide
 [id="{p}-volume-claim-templates"]
 === Volume Claim Templates
 
-By default the operator creates a `PVC` with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
+By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
 
-You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs:
+You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs, the name in the template must be `elasticsearch-data`:
 
 [source,yaml]
 ----
@@ -87,7 +87,7 @@ spec:
           emptyDir: {}
 ----
 
-Keep in mind that using `emptyDir` may result in data loss and is highly deprecated.
+Keep in mind that using `emptyDir` may result in data loss and is not recommended.
 
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
