@@ -23,7 +23,7 @@ const (
 // It's also save the cluster UUID as an annotation to ensure that it's not set if the cluster has already been bootstrapped.
 func ClusterInitialMasterNodesEnforcer(
 	cluster v1alpha1.Elasticsearch,
-	clusterState observer.State,
+	observedState observer.State,
 	c k8s.Client,
 	performableChanges mutation.PerformableChanges,
 	resourcesState reconcile.ResourcesState,
@@ -37,12 +37,12 @@ func ClusterInitialMasterNodesEnforcer(
 	}
 
 	// no annotation, let see if the cluster has been bootstrapped by looking at it's UUID
-	if clusterState.ClusterState != nil && len(clusterState.ClusterState.ClusterUUID) > 0 {
+	if observedState.ClusterState != nil && len(observedState.ClusterState.ClusterUUID) > 0 {
 		// UUID is set, let's update the annotation on the Elasticsearch object
 		if cluster.Annotations == nil {
 			cluster.Annotations = make(map[string]string)
 		}
-		cluster.Annotations[ClusterUUIDAnnotationName] = clusterState.ClusterState.ClusterUUID
+		cluster.Annotations[ClusterUUIDAnnotationName] = observedState.ClusterState.ClusterUUID
 		if err := c.Update(&cluster); err != nil {
 			return nil, err
 		}
