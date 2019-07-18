@@ -5,27 +5,55 @@
 package version7
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/mutation"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+)
+
+const (
+	// ClusterUUIDAnnotationName used to store the cluster UUID as an annotation when cluster has been bootstrapped.
+	ClusterUUIDAnnotationName = "elasticsearch.k8s.elastic.co/cluster-uuid"
 )
 
 // ClusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set if the cluster is bootstrapping.
+// It's also save the cluster UUID as an annotation to ensure that it's not set if the cluster has already been bootstrapped.
 func ClusterInitialMasterNodesEnforcer(
+	cluster v1alpha1.Elasticsearch,
+	observedState observer.State,
+	c k8s.Client,
 	performableChanges mutation.PerformableChanges,
 	resourcesState reconcile.ResourcesState,
 ) (*mutation.PerformableChanges, error) {
+
+	// Check if the cluster has an UUID, if not try to fetch it from the observer state and store it as an annotation.
+	_, ok := cluster.Annotations[ClusterUUIDAnnotationName]
+	if ok {
+		// existence of the annotation shows that the cluster has been bootstrapped
+		return &performableChanges, nil
+	}
+
+	// no annotation, let see if the cluster has been bootstrapped by looking at it's UUID
+	if observedState.ClusterState != nil && len(observedState.ClusterState.ClusterUUID) > 0 {
+		// UUID is set, let's update the annotation on the Elasticsearch object
+		if cluster.Annotations == nil {
+			cluster.Annotations = make(map[string]string)
+		}
+		cluster.Annotations[ClusterUUIDAnnotationName] = observedState.ClusterState.ClusterUUID
+		if err := c.Update(&cluster); err != nil {
+			return nil, err
+		}
+		return &performableChanges, nil
+	}
+
 	var masterEligibleNodeNames []string
 	for _, pod := range resourcesState.CurrentPods {
 		if label.IsMasterNode(pod.Pod) {
 			masterEligibleNodeNames = append(masterEligibleNodeNames, pod.Pod.Name)
 		}
-	}
-
-	// if we have masters in the cluster, we can relatively safely assume that it's already bootstrapped
-	if len(masterEligibleNodeNames) > 0 {
-		return &performableChanges, nil
 	}
 
 	// collect the master eligible node names from the pods we're about to create
