@@ -10,6 +10,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -64,6 +66,12 @@ func TestNewPodSpec(t *testing.T) {
 							Name:  v1alpha1.APMServerContainerName,
 							Image: imageWithVersion(defaultImageRepositoryAndName, "7.0.1"),
 							Env: []corev1.EnvVar{
+								{
+									Name: settings.EnvPodIP,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "status.podIP"},
+									},
+								},
 								{
 									Name: "POD_NAME",
 									ValueFrom: &corev1.EnvVarSource{
