@@ -17,7 +17,7 @@ GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
-VERSION    	?= 0.9.0-SNAPSHOT
+VERSION    	?= $(shell cat VERSION)
 SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
