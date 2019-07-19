@@ -101,6 +101,75 @@ $ openssl req -x509 -newkey rsa:4096 -keyout tls.key -out tls.crt -days 365 -nod
 $ kubectl create secret tls my-cert --cert tls.crt --key tls.key
 ----
 
+[id="{p}-es-secure-settings"]
+=== Secure Settings
+
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/secure-settings.html[Secure settings] can be specified via a Kubernetes secret.
+The secret should contain a key-value pair for each secure setting you want to add. Reference that secret in the Elasticsearch
+resource spec for ECK to automatically inject those settings into the keystore on each node before it starts Elasticsearch.
+
+[source,yaml]
+----
+spec:
+  secureSettings:
+    secretName: your-secure-settings-secret
+----
+
+See link:snapshots.asciidoc[How to create automated snapshots] for an example use case.
+
+
+[id="{p}-bundles-plugins"]
+=== Custom Configuration Files and Plugins
+
+To run Elasticsearch with specific plugins or configurations files installed on ECK you have two options:
+
+1. create a custom Docker image with the plugins or files pre-installed
+2. install the plugins or configuration files at pod startup time
+
+NOTE: The first option has the advantage that you can verify the correctness of the image before rolling it out to your ECK installation, while the second option gives you
+maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
+and downloads each plugin multiple times, once for each Elasticsearch node.
+
+Building your custom Docker images is outside the scope of this documentation despite being the better solution for most users.
+
+The following therefore describes option 2 using a repository plugin as the example. To install the plugin before the Elasticsearch
+nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].
+
+[source,yaml]
+----
+podTemplate:
+  spec:
+    initContainers:
+    - name: install-plugins
+      command:
+      - sh
+      - -c
+      - |
+        bin/elasticsearch-plugin install --batch repository-azure
+----
+
+To install custom configuration files you can use volumes and volume mounts. The next example shows how to add a synonyms file for the
+link:https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html[synonym token filter] in Elasticsearch.
+But you can use the same approach for any kind of file you want to mount into the configuration directory of Elasticsearch.
+
+[source,yaml]
+----
+podTemplate:
+  spec:
+    containers:
+    - name: elasticsearch <1>
+      volumeMounts:
+      - name: synonyms
+        mountPath: /usr/share/elasticsearch/config/dictionaries
+    volumes:
+    - name: synonyms
+      configMap:
+        name: synonyms <2>
+----
+
+<1> Elasticsearch runs by convention in a container called 'elasticsearch'
+<2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
+
 [id="{p}-virtual-memory"]
 === Virtual memory
 
