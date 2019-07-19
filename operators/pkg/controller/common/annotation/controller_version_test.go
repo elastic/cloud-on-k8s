@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -90,8 +91,8 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 	}
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
-
-	compat, err := ReconcileCompatibility(client, es, "0.9.0-SNAPSHOT")
+	selector := getElasticsearchSelector(es)
+	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
 	require.NoError(t, err)
 	assert.False(t, compat)
 
@@ -126,7 +127,8 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 	sc := setupScheme(t)
 	// client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es, svc))
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
-	compat, err := ReconcileCompatibility(client, es, "0.9.0-SNAPSHOT")
+	selector := getElasticsearchSelector(es)
+	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
 	require.NoError(t, err)
 	assert.True(t, compat)
 
@@ -148,7 +150,8 @@ func TestSameAnnotation(t *testing.T) {
 	}
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
-	compat, err := ReconcileCompatibility(client, es, "0.9.0-SNAPSHOT")
+	selector := getElasticsearchSelector(es)
+	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
 	require.NoError(t, err)
 	assert.True(t, compat)
 	assert.Equal(t, "0.9.0-SNAPSHOT", es.Annotations[ControllerVersionAnnotation])
@@ -166,7 +169,8 @@ func TestIncompatibleAnnotation(t *testing.T) {
 	}
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
-	compat, err := ReconcileCompatibility(client, es, "0.9.0-SNAPSHOT")
+	selector := getElasticsearchSelector(es)
+	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
 	require.NoError(t, err)
 	assert.False(t, compat)
 	// check we did not update the annotation
@@ -185,7 +189,8 @@ func TestNewerAnnotation(t *testing.T) {
 	}
 	sc := setupScheme(t)
 	client := k8s.WrapClient(fake.NewFakeClientWithScheme(sc, es))
-	compat, err := ReconcileCompatibility(client, es, "0.9.0-SNAPSHOT")
+	selector := getElasticsearchSelector(es)
+	compat, err := ReconcileCompatibility(client, es, selector, "0.9.0-SNAPSHOT")
 	assert.NoError(t, err)
 	assert.True(t, compat)
 }
@@ -202,4 +207,8 @@ func setupScheme(t *testing.T) *runtime.Scheme {
 	err = kibanav1alpha1.SchemeBuilder.AddToScheme(sc)
 	require.NoError(t, err)
 	return sc
+}
+
+func getElasticsearchSelector(es *v1alpha1.Elasticsearch) labels.Selector {
+	return labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
 }

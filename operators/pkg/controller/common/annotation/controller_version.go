@@ -5,7 +5,6 @@
 package annotation
 
 import (
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	semver "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
@@ -61,7 +60,7 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 // controller versions 0.9.0+ cannot reconcile resources created with earlier controllers, so this lets our controller skip those resources until they can be manually recreated
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
-func ReconcileCompatibility(client k8s.Client, obj runtime.Object, controllerVersion string) (bool, error) {
+func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labels.Selector, controllerVersion string) (bool, error) {
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
@@ -84,7 +83,7 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, controllerVer
 	// if the annotation does not exist, it might indicate it was reconciled by an older controller version that did not add the version annotation,
 	// in which case it is incompatible with the current controller, or it is a brand new resource that has not been reconciled by any controller yet
 	if !annExists {
-		exist, err := checkExistingResources(client, obj)
+		exist, err := checkExistingResources(client, obj, selector)
 		if err != nil {
 			return false, err
 		}
@@ -125,7 +124,7 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, controllerVer
 }
 
 // checkExistingResources returns a bool indicating if there are existing resources created for a given resource
-func checkExistingResources(client k8s.Client, obj runtime.Object) (bool, error) {
+func checkExistingResources(client k8s.Client, obj runtime.Object, selector labels.Selector) (bool, error) {
 
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
@@ -133,17 +132,12 @@ func checkExistingResources(client k8s.Client, obj runtime.Object) (bool, error)
 		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 		return false, err
 	}
-	name, err := accessor.Name(obj)
-	if err != nil {
-		log.Error(err, "error getting name", "namespace", namespace, "kind", obj.GetObjectKind().GroupVersionKind().Kind)
-		return false, err
-	}
 	// if there's no controller version annotation on the ES instance, then we need to see maybe the CR has been reconciled by an older, incompatible controller version
 	// TODO pass in the selector? we need to find out what object it is
-	selector := labels.Set(map[string]string{
-		// TODO account for others
-		label.ClusterNameLabelName: name,
-	}).AsSelector()
+	// selector := labels.Set(map[string]string{
+	// 	// TODO account for others
+	// 	label.ClusterNameLabelName: name,
+	// }).AsSelector()
 	opts := ctrlclient.ListOptions{
 		LabelSelector: selector,
 		Namespace:     namespace,
