@@ -38,14 +38,14 @@ type Builder struct {
 func NewBuilder(name string) Builder {
 	meta := metav1.ObjectMeta{
 		Name:      name,
-		Namespace: test.Namespace,
+		Namespace: test.Ctx().ManagedNamespace(0),
 	}
 	return Builder{
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
 				SetVMMaxMapCount: test.BoolPtr(false),
-				Version:          test.ElasticStackVersion,
+				Version:          test.Ctx().ElasticStackVersion,
 			},
 		},
 	}

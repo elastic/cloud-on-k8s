@@ -1,0 +1,219 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .GlobalOperator.Namespace }}
+  labels:
+    test-run: {{ .TestRun }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .GlobalOperator.Name }}
+  namespace: {{ .GlobalOperator.Namespace }}
+  labels:
+    test-run: {{ .TestRun }}
+---
+# The global operator has cluster-wide permissions on all required resources.
+# Same resources as the namespace operator, except for the addition of:
+# - enterpriselicenses
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-global-operator
+  labels:
+    test-run: {{ .TestRun }}
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - endpoints
+  - events
+  - persistentvolumeclaims
+  - secrets
+  - services
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - batch
+  resources:
+  - cronjobs
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - elasticsearch.k8s.elastic.co
+  resources:
+  - elasticsearches
+  - elasticsearches/status
+  - elasticsearches/finalizers
+  - enterpriselicenses
+  - enterpriselicenses/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - kibana.k8s.elastic.co
+  resources:
+  - kibanas
+  - kibanas/status
+  - kibanas/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - apm.k8s.elastic.co
+  resources:
+  - apmservers
+  - apmservers/status
+  - apmservers/finalizers
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - associations.k8s.elastic.co
+  resources:
+  - apmserverelasticsearchassociations
+  - apmserverelasticsearchassociations/status
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-global-operator
+  labels:
+    test-run: {{ .TestRun }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: elastic-global-operator
+subjects:
+- kind: ServiceAccount
+  name: {{ .GlobalOperator.Name }}
+  namespace: {{ .GlobalOperator.Namespace }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .GlobalOperator.Name }}
+  namespace: {{ .GlobalOperator.Namespace }}
+  labels:
+    control-plane: {{ .GlobalOperator.Name }}
+    test-run: {{ .TestRun }}
+spec:
+  selector:
+    matchLabels:
+      control-plane: {{ .GlobalOperator.Name }}
+  serviceName: {{ .GlobalOperator.Name }}
+  template:
+    metadata:
+      labels:
+        control-plane: {{ .GlobalOperator.Name }}
+        test-run: {{ .TestRun }}
+    spec:
+      serviceAccountName: {{ .GlobalOperator.Name }}
+      containers:
+      - image: {{ .OperatorImage }}
+        imagePullPolicy: Always
+        name: manager
+        args: ["manager", "--operator-roles", "global,webhook"]
+        env:
+          - name: OPERATOR_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: WEBHOOK_SECRET
+            value: webhook-server-secret
+          - name: WEBHOOK_PODS_LABEL
+            value: {{ .GlobalOperator.Name }}
+          - name: OPERATOR_IMAGE
+            value: {{ .OperatorImage }}
+        resources:
+          limits:
+            cpu: 1
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
+        ports:
+        - containerPort: 9876
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/cert
+          name: cert
+          readOnly: true
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: webhook-server-secret
+  namespace: {{ .GlobalOperator.Namespace }}
+  labels:
+    test-run: {{ .TestRun }}

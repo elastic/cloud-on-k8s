@@ -16,12 +16,12 @@ import (
 
 func TestEnterpriseLicenseSingle(t *testing.T) {
 	// only execute this test if we have a test license to work with
-	if test.TestLicense == "" {
+	if test.Ctx().TestLicence == "" {
 		t.SkipNow()
 	}
 	k := test.NewK8sClientOrFatal()
 
-	licenseBytes, err := ioutil.ReadFile(test.TestLicense)
+	licenseBytes, err := ioutil.ReadFile(test.Ctx().TestLicence)
 	require.NoError(t, err)
 
 	// create a single node cluster

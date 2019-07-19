@@ -212,7 +212,7 @@ func TestDeleteElasticUserSecret(t *testing.T) {
 				Name: "Delete elastic user secret",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: test.Namespace,
+						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-elastic-user",
 					}
 					var secret corev1.Secret
@@ -235,7 +235,7 @@ func TestDeleteCACert(t *testing.T) {
 				Name: "Delete CA cert",
 				Test: func(t *testing.T) {
 					key := types.NamespacedName{
-						Namespace: test.Namespace,
+						Namespace: test.Ctx().ManagedNamespace(0),
 						Name:      b.Elasticsearch.Name + "-es-transport-ca-internal", // ~that's the CA cert secret name \o/~ ... oops not anymore
 					}
 					var secret corev1.Secret
