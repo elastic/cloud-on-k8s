@@ -1,0 +1,13 @@
+[id="{p}-release-notes"]
+= Release notes
+
+[partintro]
+--
+
+This section summarizes the changes in each release.
+
+* <<release-notes-0.9.0>>
+
+--
+
+include::release-notes/0.9.0.asciidoc[]
