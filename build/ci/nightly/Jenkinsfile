@@ -16,8 +16,7 @@ pipeline {
         REGISTRY = "push.docker.elastic.co"
         REPOSITORY = "eck-snapshots"
         IMG_NAME = "eck-operator"
-        IMG_SUFFIX = ""
-        SNAPSHOT_RELEASE = "true"
+        SNAPSHOT = "true"
         DOCKER_IMAGE_NO_TAG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}"
     }
 
@@ -30,7 +29,8 @@ pipeline {
         stage('Build and push Docker image') {
             steps {
                 sh """
-                    export TAG_NAME=\$(date +%F)
+                    export VERSION=\$(cat $WORKSPACE/operators/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
+                    export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     make -C build/ci ci-release
                 """
             }
@@ -41,8 +41,9 @@ pipeline {
         success {
             script {
                 def version = sh(returnStdout: true, script: 'cat $WORKSPACE/operators/VERSION')
+                def hash = sh(returnStdout: true, script: 'git rev-parse --short --verify HEAD')
                 def date = new Date()
-                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd")
+                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd") + "-" + hash
                 currentBuild.description = image
 
                 build job: 'cloud-on-k8s-versions-gke',
