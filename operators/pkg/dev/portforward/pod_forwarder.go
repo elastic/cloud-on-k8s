@@ -98,7 +98,7 @@ func newDefaultKubernetesClientset() (*kubernetes.Clientset, error) {
 }
 
 // podDNSRegex matches pods FQDN such as {name}.{namespace}.pod
-var podDNSRegex = regexp.MustCompile(`^.+\..+\..*$`)
+var podDNSRegex = regexp.MustCompile(`^.+\..+$`)
 
 // podIPRegex matches any ipv4 address.
 var podIPv4Regex = regexp.MustCompile(`^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`)
@@ -118,7 +118,7 @@ func parsePodAddr(addr string, clientSet *kubernetes.Clientset) (*types.Namespac
 		// retrieve pod name and namespace from addr
 		// TODO: subdomains in pod names would change this.
 		parts := strings.SplitN(host, ".", 3)
-		if len(parts) <= 2 {
+		if len(parts) <= 1 {
 			return nil, fmt.Errorf("unsupported pod address format: %s", host)
 		}
 		return &types.NamespacedName{Namespace: parts[1], Name: parts[0]}, nil

@@ -144,9 +144,14 @@ func Test_parsePodAddr(t *testing.T) {
 			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
+			name: "pod DNS with pod and namespace only",
+			args: args{addr: "foopod.barnamespace:1234"},
+			want: types.NamespacedName{Namespace: "barnamespace", Name: "foopod"},
+		},
+		{
 			name:    "invalid",
-			args:    args{addr: "example.com:1234"},
-			wantErr: errors.New("unsupported pod address format: example.com"),
+			args:    args{addr: "foobar:1234"},
+			wantErr: errors.New("unsupported pod address format: foobar"),
 		},
 	}
 	for _, tt := range tests {
