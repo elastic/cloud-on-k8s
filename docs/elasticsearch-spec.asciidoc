@@ -271,3 +271,50 @@ In this situation, it would be preferable to first recreate the missing nodes in
 In order to do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
 Nodes grouping is expressed through labels on the resources. In the example above, 3 pods are labeled with `group-a`, and the 3 other pods with `group-b`.
 
+[id="{p}-pod-disruption-budget"]
+=== Pod disruption budget
+
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of pods while the Kubernetes cluster administrator manages cluster nodes.
+With Elasticsearch, we'd like to make sure some indices don't become unavailable, or more than half the masters are removed at once.
+
+A default PDB of 1 `maxUnavailable` pod on the entire cluster is enforced by default.
+
+This default can be tweaked in the Elasticsearch specification:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+  podDisruptionBudget:
+    spec:
+      maxUnavailable: 1
+      selector:
+        matchLabels:
+          elasticsearch.k8s.elastic.co/cluster-name: elasticsearch-sample
+----
+
+It can also be explicitly disabled:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.1.0
+  nodes:
+  - nodeCount: 3
+  podDisruptionBudget:
+    spec:
+      maxUnavailable: 1
+      selector:
+        matchLabels:
+          elasticsearch.k8s.elastic.co/cluster-name: elasticsearch-sample
+----
