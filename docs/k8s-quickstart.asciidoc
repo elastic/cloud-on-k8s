@@ -126,7 +126,7 @@ A default user named `elastic` is automatically created. Its password is stored 
 +
 [source,sh]
 ----
-PASSWORD=$(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+PASSWORD=$(kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ----
 
 . Request the Elasticsearch endpoint.
@@ -236,7 +236,7 @@ Login with the `elastic` user. Retrieve its password with:
 +
 [source,sh]
 ----
-echo $(kubectl get secret quickstart-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
+echo $(kubectl get secret quickstart-es-elastic-user -o=jsonpath='{.data.elastic}' | base64 --decode)
 ----
 
 [float]
