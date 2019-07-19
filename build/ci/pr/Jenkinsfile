@@ -65,11 +65,14 @@ pipeline {
             withEnv([
                 'REGISTRY=push.docker.elastic.co',
                 'REPOSITORY=eck-snapshots',
-                'IMG_SUFFIX=',
-                'SNAPSHOT_RELEASE=true',
-                'TAG_NAME=${ghprbPullId}'
+                'IMG_NAME=eck-operator',
+                'SNAPSHOT=true'
                 ]) {
-                sh 'make -C build/ci ci-release'
+                sh """
+                    export VERSION=$(cat $WORKSPACE/operators/VERSION)-${ghprbPullId}
+                    export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:${VERSION}
+                    make -C build/ci ci-release'
+                """
             }
         }
         cleanup {

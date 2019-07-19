@@ -90,15 +90,12 @@ ci-release: vault-public-key vault-docker-creds
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
-    	-e "TAG=$(TAG_NAME)" \
-    	-e "IMG_SUFFIX=$(IMG_SUFFIX)" \
-    	-e "IMG_NAME=$(IMG_NAME)" \
-    	-e "REGISTRY=$(REGISTRY)" \
-    	-e "REPOSITORY=$(REPOSITORY)" \
     	-e "ELASTIC_DOCKER_LOGIN=$(DOCKER_LOGIN)" \
     	-e "ELASTIC_DOCKER_PASSWORD=$(shell cat $(DOCKER_CREDENTIALS_FILE))" \
     	-e "USE_ELASTIC_DOCKER_REGISTRY=true" \
-    	-e "SNAPSHOT_RELEASE=$(SNAPSHOT_RELEASE)" \
+    	-e "OPERATOR_IMAGE=$(OPERATOR_IMAGE)" \
+    	-e "VERSION=$(VERSION)" \
+    	-e "SNAPSHOT=$(SNAPSHOT)" \
     	cloud-on-k8s-ci-release \
     	bash -c "make -C operators ci-release"
 
