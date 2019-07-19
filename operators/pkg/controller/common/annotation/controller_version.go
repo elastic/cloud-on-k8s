@@ -5,8 +5,8 @@
 package annotation
 
 import (
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
-	semver "github.com/hashicorp/go-version"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -97,29 +97,28 @@ func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labe
 		return true, err
 	}
 
-	// if we have an annotation we need to check if it is compatible
-	currentVersion, err := semver.NewVersion(annotations[ControllerVersionAnnotation])
+	currentVersion, err := version.Parse(annotations[ControllerVersionAnnotation])
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing current version on resource")
 	}
-	minVersion, err := semver.NewVersion("0.9.0-ALPHA")
+	minVersion, err := version.Parse("0.9.0-ALPHA")
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing minimum compatible version")
 	}
-	ctrlVersion, err := semver.NewVersion(controllerVersion)
+	ctrlVersion, err := version.Parse(controllerVersion)
 	if err != nil {
 		return false, errors.Wrap(err, "Error parsing controller version")
 	}
 
 	// if the current version is gte the minimum version then they are compatible
-	if currentVersion.GreaterThanOrEqual(minVersion) {
-		log.V(1).Info("Current controller version on resource is compatible with running controller version", "controller_version", ctrlVersion.String(),
-			"resource_controller_version", currentVersion.String(), "namespace", namespace, "name", name)
+	if currentVersion.IsSameOrAfter(*minVersion) {
+		log.V(1).Info("Current controller version on resource is compatible with running controller version", "controller_version", ctrlVersion,
+			"resource_controller_version", currentVersion, "namespace", namespace, "name", name)
 		return true, nil
 	}
 
-	log.Info("Resource was created with older version of operator, will not take action", "controller_version", ctrlVersion.String(),
-		"resource_controller_version", currentVersion.String(), "namespace", namespace, "name", name)
+	log.Info("Resource was created with older version of operator, will not take action", "controller_version", ctrlVersion,
+		"resource_controller_version", currentVersion, "namespace", namespace, "name", name)
 	return false, nil
 }
 
