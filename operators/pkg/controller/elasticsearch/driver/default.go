@@ -93,6 +93,9 @@ type defaultDriver struct {
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
 	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
+		cluster v1alpha1.Elasticsearch,
+		clusterState observer.State,
+		c k8s.Client,
 		performableChanges mutation.PerformableChanges,
 		resourcesState reconcile.ResourcesState,
 	) (*mutation.PerformableChanges, error)
@@ -240,6 +243,7 @@ func (d *defaultDriver) Reconcile(
 			return controller.Result{}, err
 		},
 	)
+
 	//
 	//if d.clusterInitialMasterNodesEnforcer != nil {
 	//	performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)

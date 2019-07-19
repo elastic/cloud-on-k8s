@@ -189,10 +189,6 @@ spec:
           properties:
             associationStatus:
               type: string
-            controllerVersion:
-              description: ControllerVersion is the version of the controller that
-                last updated the Kibana instance
-              type: string
             health:
               type: string
           type: object

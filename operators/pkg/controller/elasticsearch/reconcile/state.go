@@ -157,13 +157,3 @@ func (s *State) UpdateElasticsearchInvalid(results []validation.Result) {
 		s.AddEvent(corev1.EventTypeWarning, events.EventReasonValidation, r.Reason)
 	}
 }
-
-// UpdateElasticsearchControllerVersion sets the elasticsearch controller version that last updated the ES cluster
-func (s *State) UpdateElasticsearchControllerVersion(version string) {
-	s.status.ControllerVersion = version
-}
-
-// GetElasticsearchControllerVersion returns the elasticsearch controller version that last updated the ES cluster
-func (s *State) GetElasticsearchControllerVersion() string {
-	return s.status.ControllerVersion
-}

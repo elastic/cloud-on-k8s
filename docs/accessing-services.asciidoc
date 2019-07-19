@@ -21,7 +21,7 @@ All Elastic Stack resources deployed by the ECK Operator are secured by default.
 [id="{p}-authentication"]
 ==== Authentication
 
-To access Elasticsearch and Kibana, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
+To access Elasticsearch, Kibana or APM Server, the operator manages a default user named `elastic` with the `superuser` role. Its password is stored in a `Secret` named `<name>-elastic-user`.
 
 [source,sh]
 ----
@@ -33,13 +33,13 @@ To access Elasticsearch and Kibana, the operator manages a default user named `e
 [id="{p}-services"]
 === Services
 
-You can access Elasticsearch and Kibana by using native Kubernetes services that are not reachable from the public Internet by default.
+You can access Elasticsearch, Kibana or APM Server by using native Kubernetes services that are not reachable from the public Internet by default.
 
 [float]
 [id="{p}-kubernetes-service"]
 ==== Managing Kubernetes services
 
-For each resource, `Elasticsearch` or `Kibana`, the operator manages a Kubernetes service named `<name>-[es|kb]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
+For each resource, `Elasticsearch`, `Kibana` or `ApmServer`, the operator manages a Kubernetes service named `<name>-[es|kb|apm]-http`, which is of type `ClusterIP` by default. `ClusterIP` exposes the service on a cluster-internal IP and makes the service only reachable from the cluster.
 
 [source,sh]
 ----
@@ -85,13 +85,13 @@ hulk-kb-http        LoadBalancer   10.19.247.151   35.242.197.228   5601:31380/T
 [id="{p}-tls-certificates"]
 === TLS Certificates
 
-This section only covers TLS certificates for the HTTP layer. Those for the transport layer used for internal communication between nodes in a cluster are managed by ECK and are not configurable.
+This section only covers TLS certificates for the HTTP layer. Those for the transport layer used for Elasticsearch internal communication between nodes in a cluster are managed by ECK and are not configurable.
 
 [float]
 [id="{p}-default-self-signed-certificate"]
 ==== Default self-signed certificate
 
-By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch and Kibana.
+By default, the operator manages a self-signed certificate with a custom CA for Elasticsearch, Kibana and APM Server.
 The CA, the certificate and the private key are each stored in a `Secret`.
 
 [source,sh]

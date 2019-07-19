@@ -56,7 +56,7 @@ func TestUpdateConfiguration(t *testing.T) {
 
 	name := "test-apm-configuration"
 	esBuilder := elasticsearch.NewBuilder(name).
-		WithESMasterDataNodes(1, elasticsearch.DefaultResources)
+		WithESMasterDataNodes(3, elasticsearch.DefaultResources)
 	apmBuilder := apmserver.NewBuilder(name).
 		WithNamespace(test.Namespace).
 		WithVersion(test.ElasticStackVersion).
