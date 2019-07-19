@@ -29,10 +29,10 @@ func TestMissingAnnotationOldVersion(t *testing.T) {
 			Name:      "es",
 		},
 	}
-	pod := &corev1.Pod{
+	pod := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "ns",
-			Name:      "pod",
+			Name:      "svc",
 			Labels: map[string]string{
 				label.ClusterNameLabelName: "es",
 			},
@@ -57,16 +57,20 @@ func TestMissingAnnotationNewObject(t *testing.T) {
 		},
 	}
 	// add existing pod that is not part of cluster to make sure we have label selectors correct
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "ns",
-			Name:      "pod",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: "notes",
-			},
-		},
-	}
-	r := makeFakeReconciler(t, es, pod)
+	// TODO this is currently broken due to an upstream bug in the fake client. when we upgrade controller runtime
+	// to a version that contains this PR we can uncomment this and add the service to the client
+	// https://github.com/kubernetes-sigs/controller-runtime/pull/311
+	// svc := &corev1.Service{
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Namespace: "ns",
+	// 		Name:      "svc",
+	// 		Labels: map[string]string{
+	// 			label.ClusterNameLabelName: "literallyanything",
+	// 		},
+	// 	},
+	// }
+	// r := makeFakeReconciler(t, es, svc)
+	r := makeFakeReconciler(t, es)
 	compat, err := r.reconcileCompatibility(es)
 	require.NoError(t, err)
 	assert.True(t, compat)
@@ -128,7 +132,7 @@ func TestNewerAnnotation(t *testing.T) {
 	assert.True(t, compat)
 }
 
-// makeFakeReconciler generates a fake test
+// makeFakeReconciler generates a fake reconciler
 func makeFakeReconciler(t *testing.T, objs ...runtime.Object) ReconcileElasticsearch {
 	sc := scheme.Scheme
 	err := v1alpha1.AddToScheme(sc)

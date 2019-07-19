@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"k8s.io/apimachinery/pkg/selection"
-
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
@@ -351,23 +349,20 @@ func (r *ReconcileElasticsearch) reconcileCompatibility(es *elasticsearchv1alpha
 // checkExistingResources returns a bool indicating if there are existing resources created for a given resource
 func (r *ReconcileElasticsearch) checkExistingResources(es *elasticsearchv1alpha1.Elasticsearch) (bool, error) {
 	// if there's no controller version annotation on the ES instance, then we need to see maybe the CR has been reconciled by an older, incompatible controller version
-	selector := labels.NewSelector()
-	req, err := labels.NewRequirement(label.ClusterNameLabelName, selection.Equals, []string{es.Name})
-	if err != nil {
-		return false, err
-	}
-	selector.Add(*req)
+	selector := labels.Set(map[string]string{
+		label.ClusterNameLabelName: es.Name,
+	}).AsSelector()
 	opts := ctrlclient.ListOptions{
 		LabelSelector: selector,
 		Namespace:     es.Namespace,
 	}
-	pods := v1.PodList{}
-	err = r.Client.List(&opts, &pods)
+	var svcs v1.ServiceList
+	err := r.Client.List(&opts, &svcs)
 	if err != nil {
 		return false, err
 	}
-	// if we listed any pods successfully, then we know this cluster was reconciled by an old version since any CRs reconciled by a 0.9.0+ operator would have a label
-	if len(pods.Items) != 0 {
+	// if we listed any services successfully, then we know this cluster was reconciled by an old version since any CRs reconciled by a 0.9.0+ operator would have a label
+	if len(svcs.Items) != 0 {
 		return true, err
 	}
 	return false, nil
