@@ -111,9 +111,9 @@ func TestBuildPodTemplateSpec(t *testing.T) {
 	)
 	require.NoError(t, err)
 	// should be patched with volume and env
-	for i, c := range initContainers {
-		initContainers[i].Env = append(defaults.PodDownwardEnvVars, c.Env...)
-		initContainers[i].VolumeMounts = append(volumeMounts, c.VolumeMounts...)
+	for i := range initContainers {
+		initContainers[i].Env = append(initContainers[i].Env, defaults.PodDownwardEnvVars...)
+		initContainers[i].VolumeMounts = append(initContainers[i].VolumeMounts, volumeMounts...)
 	}
 
 	// remove the prepare-fs init-container from comparison, it has its own volume mount logic
