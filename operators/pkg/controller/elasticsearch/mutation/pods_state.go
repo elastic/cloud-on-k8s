@@ -132,57 +132,6 @@ func (s PodsState) CurrentPodsCount() int {
 		len(s.Deleting)
 }
 
-// partitionByPods partitions the PodsState into two:
-// - one set that contains pods in the provided list of pods
-// - one set containing the rest
-func (s PodsState) partitionByPods(pods []corev1.Pod) (PodsState, PodsState) {
-	source := s.Copy()
-
-	selected := NewEmptyPodsState()
-	selected.MasterNodePod = source.MasterNodePod
-
-	for _, pod := range pods {
-		switch {
-		case movePodToFrom(pod, selected.Pending, source.Pending):
-		case movePodToFrom(pod, selected.RunningJoining, source.RunningJoining):
-		case movePodToFrom(pod, selected.RunningReady, source.RunningReady):
-		case movePodToFrom(pod, selected.RunningUnknown, source.RunningUnknown):
-		case movePodToFrom(pod, selected.Unknown, source.Unknown):
-		case movePodToFrom(pod, selected.Terminal, source.Terminal):
-		case movePodToFrom(pod, selected.Deleting, source.Deleting):
-		default:
-			log.Info("Unable to find pod in pods state", "pod_name", pod.Name)
-		}
-	}
-
-	return selected, source
-}
-
-// movePodToFrom moves a pod from one map to another if it existed in from, returning true if the pod was moved
-func movePodToFrom(pod corev1.Pod, to, from map[string]corev1.Pod) bool {
-	if _, ok := from[pod.Name]; ok {
-		to[pod.Name] = pod
-		delete(from, pod.Name)
-		return true
-	}
-	return false
-}
-
-// mergeFrom merges the provided PodsState into this one. If some pods exist in both, values in "other" take precedence.
-func (s *PodsState) mergeFrom(other PodsState) {
-	if other.MasterNodePod != nil {
-		s.MasterNodePod = other.MasterNodePod
-	}
-
-	mapCopy(s.Pending, other.Pending)
-	mapCopy(s.RunningJoining, other.RunningJoining)
-	mapCopy(s.RunningReady, other.RunningReady)
-	mapCopy(s.RunningUnknown, other.RunningUnknown)
-	mapCopy(s.Unknown, other.Unknown)
-	mapCopy(s.Terminal, other.Terminal)
-	mapCopy(s.Deleting, other.Deleting)
-}
-
 // PodsStateSummary contains a shorter summary of a PodsState
 type PodsStateSummary struct {
 	Pending        []string `json:"pending,omitempty"`
