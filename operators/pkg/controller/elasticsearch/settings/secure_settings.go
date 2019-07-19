@@ -8,21 +8,19 @@ import (
 	"fmt"
 	"reflect"
 
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // ReconcileSecureSettings ensures a secret containing secure settings exists for the cluster.
@@ -117,15 +115,4 @@ func watchUserSecret(watched watches.DynamicWatches, userSecretRef *commonv1alph
 		},
 		Watcher: cluster,
 	})
-}
-
-// SecureSettingsFinalizer removes any dynamic watches on external user created secret.
-func SecureSettingsFinalizer(cluster types.NamespacedName, watched watches.DynamicWatches) finalizer.Finalizer {
-	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers.elasticsearch.k8s.elastic.co",
-		Execute: func() error {
-			watched.Secrets.RemoveHandlerForKey(userSecretWatchName(cluster))
-			return nil
-		},
-	}
 }
