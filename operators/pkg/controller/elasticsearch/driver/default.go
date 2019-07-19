@@ -295,7 +295,7 @@ func (d *defaultDriver) reconcileNodeSpecs(
 	if err := zen1.SetupMinimumMasterNodesConfig(nodeSpecResources); err != nil {
 		return results.WithError(err)
 	}
-	if err := zen2.SetupInitialMasterNodes(nodeSpecResources); err != nil {
+	if err := zen2.SetupInitialMasterNodes(es, observedState, d.Client, nodeSpecResources); err != nil {
 		return results.WithError(err)
 	}
 
