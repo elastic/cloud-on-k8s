@@ -25,7 +25,7 @@ import (
 
 func TestKillOneDataNode(t *testing.T) {
 	// 1 master + 2 data nodes
-	b := elasticsearch.NewBuilder("test-failure-kill-one-data-node").
+	b := elasticsearch.NewBuilder("test-failure-kill-a-data-node").
 		WithESMasterNodes(1, elasticsearch.DefaultResources).
 		WithESDataNodes(2, elasticsearch.DefaultResources)
 
@@ -40,7 +40,7 @@ func TestKillOneDataNode(t *testing.T) {
 
 func TestKillOneMasterNode(t *testing.T) {
 	// 2 master + 2 data nodes
-	b := elasticsearch.NewBuilder("test-failure-kill-one-master-node").
+	b := elasticsearch.NewBuilder("test-failure-kill-a-master-node").
 		WithESMasterNodes(2, elasticsearch.DefaultResources).
 		WithESDataNodes(2, elasticsearch.DefaultResources)
 
