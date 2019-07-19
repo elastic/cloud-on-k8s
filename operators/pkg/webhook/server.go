@@ -41,7 +41,7 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	licWh, err := builder.NewWebhookBuilder().
 		Name("validation.license.elastic.co").
 		Validating().
-		FailurePolicy(admission.Fail).
+		FailurePolicy(admission.Ignore).
 		ForType(&corev1.Secret{}).
 		Handlers(&license.ValidationHandler{}).
 		WithManager(mgr).
