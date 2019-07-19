@@ -44,8 +44,7 @@ func NewBuilder(name string) Builder {
 		Elasticsearch: estype.Elasticsearch{
 			ObjectMeta: meta,
 			Spec: estype.ElasticsearchSpec{
-				SetVMMaxMapCount: test.BoolPtr(false),
-				Version:          test.ElasticStackVersion,
+				Version: test.ElasticStackVersion,
 			},
 		},
 	}
