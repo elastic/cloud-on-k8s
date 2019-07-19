@@ -127,10 +127,12 @@ To run Elasticsearch with specific plugins or configurations files installed on 
 2. install the plugins or configuration files at pod startup time
 
 NOTE: The first option has the advantage that you can verify the correctness of the image before rolling it out to your ECK installation, while the second option gives you
-maximum flexibility. But the second options also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
+maximum flexibility. But the second option also means you might catch any errors only at runtime. Plugin installation at runtime has another drawback in that it needs access to the Internet from your cluster
 and downloads each plugin multiple times, once for each Elasticsearch node.
 
-The following describes option 2 using a repository plugin as the example. To install the plugin before the Elasticsearch
+Building your custom Docker images is outside the scope of this documentation despite being the better solution for most users.
+
+The following therefore describes option 2 using a repository plugin as the example. To install the plugin before the Elasticsearch
 nodes start, use an init container to run the link:https://www.elastic.co/guide/en/elasticsearch/plugins/current/installation.html[plugin installation tool].
 
 [source,yaml]
@@ -146,7 +148,7 @@ podTemplate:
         bin/elasticsearch-plugin install --batch repository-azure
 ----
 
-To install custom configuration files you can use volumes and volume mounts.  The next example shows how to add a synonyms file for the
+To install custom configuration files you can use volumes and volume mounts. The next example shows how to add a synonyms file for the
 link:https://www.elastic.co/guide/en/elasticsearch/reference/current/analysis-synonym-tokenfilter.html[synonym token filter] in Elasticsearch.
 But you can use the same approach for any kind of file you want to mount into the configuration directory of Elasticsearch.
 
@@ -166,7 +168,7 @@ podTemplate:
 ----
 
 <1> Elasticsearch runs by convention in a container called 'elasticsearch'
-<2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synoyms file(s)
+<2> assuming you have created a config map in the same namespace as Elasticsearch with the name 'synonyms' containing the synonyms file(s)
 
 [id="{p}-virtual-memory"]
 === Virtual memory
