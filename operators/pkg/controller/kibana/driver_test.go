@@ -116,7 +116,7 @@ func expectedDeploymentParams() *DeploymentParams {
 						Handler: corev1.Handler{
 							HTTPGet: &corev1.HTTPGetAction{
 								Port:   intstr.FromInt(5601),
-								Path:   "/",
+								Path:   "/login",
 								Scheme: corev1.URISchemeHTTPS,
 							},
 						},
