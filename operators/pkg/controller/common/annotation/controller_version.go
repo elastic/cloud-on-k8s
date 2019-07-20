@@ -8,7 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -131,24 +131,17 @@ func checkExistingResources(client k8s.Client, obj runtime.Object, selector labe
 		log.Error(err, "error getting namespace", "kind", obj.GetObjectKind().GroupVersionKind().Kind)
 		return false, err
 	}
-	// if there's no controller version annotation on the ES instance, then we need to see maybe the CR has been reconciled by an older, incompatible controller version
-	// TODO pass in the selector? we need to find out what object it is
-	// selector := labels.Set(map[string]string{
-	// 	// TODO account for others
-	// 	label.ClusterNameLabelName: name,
-	// }).AsSelector()
+	// if there's no controller version annotation on the object, then we need to see maybe the object has been reconciled by an older, incompatible controller version
 	opts := ctrlclient.ListOptions{
 		LabelSelector: selector,
 		Namespace:     namespace,
 	}
-	var svcs v1.ServiceList
+	var svcs corev1.ServiceList
 	err = client.List(&opts, &svcs)
 	if err != nil {
 		return false, err
 	}
-	// if we listed any services successfully, then we know this cluster was reconciled by an old version since any CRs reconciled by a 0.9.0+ operator would have a label
-	if len(svcs.Items) != 0 {
-		return true, nil
-	}
-	return false, nil
+	// if we listed any services successfully, then we know this cluster was reconciled by an old version since any objects reconciled by a 0.9.0+ operator would have a label
+	return len(svcs.Items) != 0, nil
+
 }
