@@ -100,7 +100,6 @@ func fetch(url string, out interface{}) (string, error) {
 		return "", err
 	}
 	return nextLink, nil
-
 }
 
 func extractNextLink(headers http.Header) string {
