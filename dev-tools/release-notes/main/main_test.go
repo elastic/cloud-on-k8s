@@ -226,21 +226,20 @@ func Test_extractRelatedIssues(t *testing.T) {
 }
 
 func Test_extractNextLink(t *testing.T) {
-	testFixture := "https://api.github.com/repositories/155368246/issues?page=2"
 	type args struct {
 		headers http.Header
 	}
 	tests := []struct {
 		name string
 		args args
-		want *string
+		want string
 	}{
 		{
 			name: "no link",
 			args: args{
 				headers: http.Header{},
 			},
-			want: nil,
+			want: "",
 		},
 		{
 			name: "with next link",
@@ -251,20 +250,13 @@ func Test_extractNextLink(t *testing.T) {
 					},
 				},
 			},
-			want: &testFixture,
+			want: "https://api.github.com/repositories/155368246/issues?page=2",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := extractNextLink(tt.args.headers); got != tt.want {
-				if got != nil && tt.want != nil {
-					if *got != *tt.want {
-						t.Errorf("extractNextLink() = %v, want %v", *got, *tt.want)
-					}
-				} else {
-					t.Errorf("extractNextLink() = %v, want %v", got, tt.want)
-				}
-
+				t.Errorf("extractNextLink() = %v, want %v", got, tt.want)
 			}
 		})
 	}

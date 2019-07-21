@@ -59,42 +59,62 @@ var (
 	}
 )
 
-func fetch(url string, out interface{}) (*string, error) {
+// Label models a subset of a GitHub label.
+type Label struct {
+	Name string `json:"name"`
+}
+
+// Issue models a subset of a Github issue.
+type Issue struct {
+	Labels        []Label           `json:"labels"`
+	Body          string            `json:"body"`
+	Title         string            `json:"title"`
+	Number        int               `json:"number"`
+	PullRequest   map[string]string `json:"pull_request,omitempty"`
+	RelatedIssues []int
+}
+
+type GroupedIssues = map[string][]Issue
+
+type TemplateParams struct {
+	Version     string
+	Repo        string
+	GroupLabels map[string]string
+	Groups      GroupedIssues
+}
+
+func fetch(url string, out interface{}) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	nextLink := extractNextLink(resp.Header)
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, errors.New(fmt.Sprintf("%s: %d %s ", url, resp.StatusCode, resp.Status))
+		return "", errors.New(fmt.Sprintf("%s: %d %s ", url, resp.StatusCode, resp.Status))
 	}
 
 	defer resp.Body.Close()
 	if err = json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return nil, err
+		return "", err
 	}
 	return nextLink, nil
 
 }
 
-func extractNextLink(headers http.Header) *string {
-	var nextLink *string
+func extractNextLink(headers http.Header) string {
+	var nextLink string
 	nextRe := regexp.MustCompile(`<([^>]+)>; rel="next"`)
 	links := headers["Link"]
 	for _, lnk := range links {
 		matches := nextRe.FindAllStringSubmatch(lnk, 1)
 		if matches != nil && matches[0][1] != "" {
-			nextLink = &matches[0][1]
+			nextLink = matches[0][1]
 			break
 		}
 	}
 	return nextLink
-}
-
-type Label struct {
-	Name string `json:"name"`
 }
 
 func fetchVersionLabels() ([]string, error) {
@@ -111,24 +131,13 @@ FETCH:
 			versionLabels = append(versionLabels, l.Name)
 		}
 	}
-	if next != nil {
-		url = *next
+	if next != "" {
+		url = next
 		goto FETCH
 	}
 
 	return versionLabels, nil
 }
-
-type Issue struct {
-	Labels        []Label           `json:"labels"`
-	Body          string            `json:"body"`
-	Title         string            `json:"title"`
-	Number        int               `json:"number"`
-	PullRequest   map[string]string `json:"pull_request,omitempty"`
-	RelatedIssues []int
-}
-
-type GroupedIssues = map[string][]Issue
 
 func fetchIssues(version string) (GroupedIssues, error) {
 	url := fmt.Sprintf("%s%sissues?labels=%s&pagesize=100&state=all&page=1", baseURL, repo, version)
@@ -145,8 +154,8 @@ FETCH:
 			prs = append(prs, issue)
 		}
 	}
-	if next != nil {
-		url = *next
+	if next != "" {
+		url = next
 		goto FETCH
 	}
 	result := make(GroupedIssues)
@@ -198,13 +207,6 @@ func extractRelatedIssues(issue *Issue) error {
 	}
 	sort.Ints(issue.RelatedIssues)
 	return nil
-}
-
-type TemplateParams struct {
-	Version     string
-	Repo        string
-	GroupLabels map[string]string
-	Groups      GroupedIssues
 }
 
 func dumpIssues(params TemplateParams, out io.Writer) {
