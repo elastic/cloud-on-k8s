@@ -11,7 +11,7 @@ NOTE: Only Elasticsearch and Kibana are supported on Openshift or with a secured
 
 . Set  virtual memory settings on the nodes
 +
-Before deploying an Elasticsearch cluster with ECK you have to ensure that the `vm.max_map_count` setting is correctly set on all the nodes of your cluster. This is because the Pods created by ECK are likely to run with the `restricted` SCC, they will run with a limited set of privileges and will not be able to tune this setting. You can refer to the following https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[documentation] for more information.
+Before deploying an Elasticsearch cluster with ECK you must ensure that the `vm.max_map_count` setting is correctly applied on all the nodes of your cluster. This is because the Pods created by ECK are likely to run with the `restricted` SCC, they will run with a limited set of privileges and will not be able to tune this setting. You can refer to the following https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[documentation] for more information.
 
 === Deploy the operator
 . Apply the all in one template as described in the quickstart
