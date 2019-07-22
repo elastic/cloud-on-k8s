@@ -88,6 +88,7 @@ func fetch(url string, out interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
 	nextLink := extractNextLink(resp.Header)
 
@@ -95,7 +96,6 @@ func fetch(url string, out interface{}) (string, error) {
 		return "", errors.New(fmt.Sprintf("%s: %d %s ", url, resp.StatusCode, resp.Status))
 	}
 
-	defer resp.Body.Close()
 	if err = json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return "", err
 	}
