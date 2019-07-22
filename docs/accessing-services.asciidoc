@@ -141,8 +141,9 @@ spec:
 You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the cluster is encrypted.
 
 Create a Kubernetes secret with:
-. tls.crt: the certificate (or a chain).
-. tls.key: the private key to the first certificate in the certificate chain.
+
+- tls.crt: the certificate (or a chain).
+- tls.key: the private key to the first certificate in the certificate chain.
 
 [source,sh]
 ----
