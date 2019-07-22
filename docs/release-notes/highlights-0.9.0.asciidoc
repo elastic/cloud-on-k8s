@@ -1,0 +1,29 @@
+[[release-highlights-0.9.0]]
+== 0.9.0 release highlights
+
+==== Kubernetes Distribution support
+
+In addition to Google Kubernetes Engine (GKE) and vanilla Kubernetes ECK now also works on
+Azure Kubernetes Service (AKS), Amazon Container Service for Kubernetes (EKS) and with the some restrictions for APM server
+on Red Hat OpenShift 3.11+
+
+==== APM Server
+
+ECK 0.9.0 brings support for a new custom resource that allows you to deploy APM server on Kubernetes.
+The ECK operator takes care of linking it up to an Elasticsearch output, if desired, as well.
+
+==== User Provided HTTP Certificates
+
+In addition to self-signed certificates which ECK uses as a default, we now support user provided certificates for
+HTTP connections to Elasticsearch, Kibana or APM. Configure them via a regular k8s TLS secrets and
+reference them in the Elastic resource of choice in the new TLS options attribute.
+
+==== User Provided Pod Templates
+
+This release introduces support for user provided pod templates in Elasticsearch, Kibana and APM server. This allows you configure, for example,
+your own init containers to run code before Elasticsearch, Kibana or APM start up. Or you can use the pod template to mount
+additional volumes with configuration files e.g. to configure SAML , synonym files or specifiy `imagePullSecrets` for your private Docker registry.
+
+
+
+
