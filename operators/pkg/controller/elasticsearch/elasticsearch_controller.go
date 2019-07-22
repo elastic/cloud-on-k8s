@@ -290,7 +290,7 @@ func (r *ReconcileElasticsearch) finalizersFor(
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
-		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, "elasticsearch"),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, es.Kind()),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),
 	}
 }
