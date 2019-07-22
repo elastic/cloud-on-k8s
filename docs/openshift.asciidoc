@@ -1,15 +1,15 @@
 [id="{p}-openshift"]
 == Openshift
 
-This section will help you run ECK on Openshift
+This section will help you run ECK on Openshift.
 
-NOTE: Only Elasticsearch and Kibana are supported on Openshift or with a secured cluster for the moment.
+NOTE: Only Elasticsearch and Kibana are supported on Openshift.
 
 === Prerequisites 
 
 . The following instructions must be run as the `system:admin` user or as a `User` with some privileges to create  `Projects`, `CRDs` and `RBACs` resources at the cluster level.
 
-. Set  virtual memory settings on the nodes
+. Set virtual memory settings on the nodes
 +
 Before deploying an Elasticsearch cluster with ECK you must ensure that the `vm.max_map_count` setting is correctly applied on all the nodes of your cluster. This is because the Pods created by ECK are likely to run with the `restricted` SCC, they will run with a limited set of privileges and will not be able to tune this setting. You can refer to the following https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html[documentation] for more information.
 
