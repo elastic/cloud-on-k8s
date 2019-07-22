@@ -47,8 +47,8 @@ spec:
             memory: 1Gi
             cpu: 1
           limits:
-            cpu: 2
             memory: 2Gi
+            cpu: 2
 ----
 
 And here is how to set custom resources on the APM server:
@@ -65,8 +65,8 @@ spec:
             memory: 1Gi
             cpu: 1
           limits:
-            cpu: 2
             memory: 2Gi
+            cpu: 2
 ----
 
 [float]
