@@ -25,7 +25,7 @@ To access Elasticsearch and Kibana, the operator manages a default user named `e
 
 [source,sh]
 ----
-> kubectl get secret hulk-elastic-user -o go-template='{{.data.elastic | base64decode }}'
+> kubectl get secret hulk-es-elastic-user -o go-template='{{.data.elastic | base64decode }}'
 42xyz42citsale42xyz42
 ----
 
@@ -141,8 +141,9 @@ spec:
 You can bring your own certificate to configure TLS to ensure that communication between HTTP clients and the cluster is encrypted.
 
 Create a Kubernetes secret with:
-. tls.crt: the certificate (or a chain).
-. tls.key: the private key to the first certificate in the certificate chain.
+
+- tls.crt: the certificate (or a chain).
+- tls.key: the private key to the first certificate in the certificate chain.
 
 [source,sh]
 ----
@@ -178,7 +179,7 @@ NAME=hulk
 kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
 PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
 
-curl --cacert ca.pem -u elastic:$PW https://$NAME-es:9200/
+curl --cacert ca.pem -u elastic:$PW https://$NAME-es-http:9200/
 ----
 
 *Outside the Kubernetes cluster*
@@ -191,11 +192,11 @@ curl --cacert ca.pem -u elastic:$PW https://$NAME-es:9200/
 ----
 NAME=hulk
 
-kubectl get secret "$NAME-ca" -o go-template='{{index .data "ca.pem" | base64decode }}' > ca.pem
-IP=$(kubectl get svc "$NAME-es" -o jsonpath='{.status.loadBalancer.ingress[].ip}')
-PW=$(kubectl get secret "$NAME-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
+kubectl get secret "$NAME-es-http-certs-public" -o go-template='{{index .data "tls.crt" | base64decode }}' > tls.crt
+IP=$(kubectl get svc "$NAME-es-http" -o jsonpath='{.status.loadBalancer.ingress[].ip}')
+PW=$(kubectl get secret "$NAME-es-elastic-user" -o go-template='{{.data.elastic | base64decode }}')
 
-curl --cacert ca.pem -u elastic:$PW https://$IP:9200/
+curl --cacert tls.crt -u elastic:$PW https://$IP:9200/
 ----
 
 Now you should get this message:
