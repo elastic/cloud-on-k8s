@@ -1,5 +1,5 @@
 [id="{p}-release-notes"]
-= Release notes
+= Release Notes
 
 [partintro]
 --

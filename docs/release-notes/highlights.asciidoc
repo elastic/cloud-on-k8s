@@ -1,10 +1,10 @@
-[[release-highlights]]
-= Release highlights
+[id="{p}-release-highlights"]
+= Release Highlights
 
 [partintro]
 --
 This section summarizes the most important changes in each release. For the
-full list, see Release Notes .
+full list, see <<{p}-release-notes>> .
 
 * <<release-highlights-0.9.0>>
 
