@@ -69,7 +69,7 @@ pipeline {
                 'SNAPSHOT=true'
                 ]) {
                 sh """
-                    export VERSION=\$(cat $WORKSPACE/operators/VERSION)-${ghprbPullId}
+                    export VERSION=\$(cat $WORKSPACE/operators/VERSION)-${ghprbPullId}-\$(git rev-parse --short --verify HEAD)
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
                     make -C build/ci ci-release
                 """
