@@ -104,7 +104,7 @@ Since the ECK operator is just a standard Pod running in the Kubernetes cluster,
 
 [source,sh]
 ----
-kubectl logs -f elastic-operator-0 -n elastic-system
+kubectl -n elastic-system logs -f statefulset.apps/elastic-operator
 ----
 
 The operator is constantly attempting to reconcile Kubernetes resources to match the desired state.
@@ -184,7 +184,7 @@ kubectl annotate elasticsearch quickstart --overwrite common.k8s.elastic.co/paus
 [id="{p}-get-k8s-events"]
 === Get Kubernetes events
 
-ECK will emit some events when:
+ECK will emit events when:
 
 * important operations are performed (example: a new Elasticsearch Pod was created)
 * something is wrong, and the user should know about it
@@ -200,7 +200,7 @@ kubectl get events
 28s       25m       52        elasticsearch-sample-es-wxpnzfhqbt.15b3ae4d86bc269f   Pod                             Warning   FailedScheduling    default-scheduler                                         0/3 nodes are available: 1 node(s) had no available volume zone, 2 Insufficient memory.
 ----
 
-The list of events can be filtered to a particular Elasticsearch cluster:
+The list of events can be filtered to show only those relevant for a particular Elasticsearch cluster:
 
 [source,sh]
 ----
@@ -233,4 +233,4 @@ This can also be done for Kibana and APM Server.
 === Ask for help
 
 * link:https://discuss.elastic.co/c/eck[ECK Discuss forums] to ask any question
-* link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and features
+* link:https://github.com/elastic/cloud-on-k8s/issues[Github issues] for bugs and feature requests
