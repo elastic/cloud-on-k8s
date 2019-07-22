@@ -5,11 +5,12 @@
 package keystore
 
 import (
-	"strings"
-
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/watches"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
+
+	"strings"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,6 +36,9 @@ type HasKeystore interface {
 	metav1.Object
 	runtime.Object
 	SecureSettings() *commonv1alpha1.SecretRef
+	// Kind can technically be retrieved from metav1.Object, but there is a bug preventing us to retrieve it
+	// see https://github.com/kubernetes-sigs/controller-runtime/issues/406
+	Kind() string
 }
 
 // NewResources optionally returns a volume and init container to include in pods,
@@ -60,7 +64,7 @@ func NewResources(
 	// build an init container to create the keystore from the secure settings volume
 	initContainer, err := initContainer(
 		*secretVolume,
-		strings.ToLower(hasKeystore.GetObjectKind().GroupVersionKind().Kind),
+		strings.ToLower(hasKeystore.Kind()),
 		initContainerParams,
 	)
 	if err != nil {
