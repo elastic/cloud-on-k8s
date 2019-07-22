@@ -230,7 +230,7 @@ Use `kubectl port-forward` to access Kibana from your local workstation:
 kubectl port-forward service/quickstart-kb-http 5601
 ----
 +
-Open `https://localhost:5601` in your browser.
+Open `https://localhost:5601` in your browser. Your browser will show a warning because the self-signed certificate configured by default is not verified by a third party certificate authority and not trusted by your browser. You can either configure a link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[valid certificate] or acknowledge the warning for the purposes of this quick start.
 +
 Login with the `elastic` user. Retrieve its password with:
 +
