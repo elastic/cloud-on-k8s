@@ -36,8 +36,8 @@ func (l StatefulSetList) GetByName(ssetName string) (appsv1.StatefulSet, bool) {
 
 func (l StatefulSetList) ObjectMetas() []metav1.ObjectMeta {
 	objs := make([]metav1.ObjectMeta, len(l))
-	for _, sset := range l {
-		objs = append(objs, sset.ObjectMeta)
+	for i, sset := range l {
+		objs[i] = sset.ObjectMeta
 	}
 	return objs
 }
