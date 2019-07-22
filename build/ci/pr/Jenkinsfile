@@ -71,7 +71,7 @@ pipeline {
                 sh """
                     export VERSION=\$(cat $WORKSPACE/operators/VERSION)-${ghprbPullId}
                     export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
-                    make -C build/ci ci-release'
+                    make -C build/ci ci-release
                 """
             }
         }
