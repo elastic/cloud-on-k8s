@@ -27,6 +27,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -189,6 +190,16 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	if common.IsPaused(es.ObjectMeta) {
 		log.Info("Object is paused. Skipping reconciliation", "namespace", es.Namespace, "es_name", es.Name, "iteration", currentIteration)
 		return common.PauseRequeue, nil
+	}
+
+	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
 	}
 
 	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
