@@ -1,99 +1,96 @@
 :issue: https://github.com/elastic/cloud-on-k8s/issues/
-:pull:  https://github.com/elastic/cloud-on-k8s/pull/
+:pull: https://github.com/elastic/cloud-on-k8s/pull/
 
 [[release-notes-0.9.0]]
 == {n} version 0.9.0
+
+
 
 [[feature-0.9.0]]
 [float]
 === New features
 
-* APM configuration {pull}1181[#1181] (issue: {issue}53[#53])
-* Kibana HTTP certificates {pull}1148[#1148] (issue: {issue}90[#90])
+* APM configuration {pull}1181[#1181]
+* Kibana HTTP certificates {pull}1148[#1148]
 * Fix status comparison in Openshift {pull}1136[#1136]
-* Utility to dump info to diagnose problems {pull}1115[#1115] (issue: {issue}46[#46])
-* Expose Kibana keystore for secure settings {pull}1063[#1063] (issue: {issue}755[#755])
-* Update base operator Docker image to centos:7 {pull}1043[#1043] (issue: {issue}1042[#1042])
-* Add a custom config parameter to the Kibana spec. {pull}1030[#1030] (issue: {issue}740[#740])
+* Utility to dump info to diagnose problems {pull}1115[#1115]
+* Expose Kibana keystore for secure settings {pull}1063[#1063]
+* Add support for Kibana configuration {pull}1030[#1030] (issue: {issue}740[#740])
 * Add basic telemetry {pull}1023[#1023]
-* Add support for using custom HTTP certificates in ES. {pull}1013[#1013]
-
-
+* Add support for using custom HTTP certificates in ES {pull}1013[#1013]
+* Build Kibana Deployment pod template on top of user-provided podTemplate {pull}952[#952] (issue: {issue}772[#772])
+* Build ES pod on top of user-provided podTemplate {pull}943[#943] (issue: {issue}765[#765])
 
 [[enhancement-0.9.0]]
 [float]
 === Enhancements
 
-* Ignore resources created in 0.8.x [OPEN] [ISSUE] {pull}1241[#1241]
-* Remove process manager {pull}1249[#1249] (issue: {issue}1199[#1199])
-* Change CN and SAN naming {pull}1243[#1243] (issue: {issue}1217[#1217])
+* Ignore resources reconciled by older controllers {pull}1286[#1286] (issue: {issue}1241[#1241])
+* Remove process manager {pull}1249[#1249]
+* Change CN and SAN naming {pull}1243[#1243]
 * Remove APM server defaults and allow standalone operation {pull}1231[#1231]
-* Warn if unsupported distribution {pull}1228[#1228] (issue: {issue}1172[#1172])
+* Warn if unsupported distribution {pull}1228[#1228]
 * Add operator version to resources {pull}1224[#1224] (issue: {issue}1137[#1137])
-* Move the ES keystore update into an init container {pull}1202[#1202] (issue: {issue}1200[#1200])
+* Move the ES keystore update into an init container {pull}1202[#1202]
 * Set a default memory resources request for Elasticsearch {pull}1180[#1180] (issue: {issue}1097[#1097])
 * Add flag for debug logs {pull}1166[#1166] (issue: {issue}305[#305])
-* Remove RemoteCluster and TrustRelationship {pull}1164[#1164] (issue: {issue}963[#963])
+* Remove RemoteCluster and TrustRelationship {pull}1164[#1164]
 * Update operator information {pull}1139[#1139]
-* Allow users to specify transport certificate authorities {pull}1133[#1133] (issue: {issue}962[#962])
-* Improve pod-pvc labelling and comparison {pull}1129[#1129] (issue: {issue}878[#878])
-* Improve Kibana deployment comparison with a hash {pull}1110[#1110] (issues: {issue}170[#170], {issue}772[#772])
-* Improve ES pods comparison using a hash of the spec {pull}1103[#1103] (issues: {issue}1046[#1046], {issue}851[#851])
-* Move prepare-fs script to scripts configmap {pull}1070[#1070] (issue: {issue}932[#932])
-* Change default mode to allow running as non root {pull}1069[#1069] (issue: {issue}1062[#1062])
-* Remove plugins from prepare-fs script in init container {pull}1060[#1060] (issues: {issue}1022[#1022], {issue}620[#620])
-* Move readiness probe script to configmap {pull}1054[#1054] (issue: {issue}932[#932])
-* Add rbac on */finalizers {pull}1041[#1041]
-* Do not require root privileges when not needed {pull}1039[#1039] (issues: {issue}541[#541], {issue}966[#966])
+* Allow users to specify transport certificate authorities {pull}1133[#1133]
+* Improve pod-pvc labelling and comparison {pull}1129[#1129]
+* Improve Kibana deployment comparison with a hash {pull}1110[#1110]
+* Improve ES pods comparison using a hash of the spec {pull}1103[#1103] (issues: {issue}851[#851], {issue}1046[#1046])
+* Move prepare-fs script to scripts configmap {pull}1070[#1070]
+* Change default mode to allow running as non root {pull}1069[#1069]
+* Remove plugins from prepare-fs script in init container {pull}1060[#1060]
+* Move readiness probe script to configmap {pull}1054[#1054]
+* Update base operator Docker image to centos:7 {pull}1043[#1043]
+* Add rbac on */finalizers to support Openshift {pull}1041[#1041]
+* Do not require root privileges when not needed {pull}1039[#1039]
 * Remove JVM DNS cache policy tweaks {pull}1033[#1033] (issues: {issue}323[#323], {issue}931[#931])
 * Use persistent storage by default for ES data {pull}1028[#1028] (issue: {issue}913[#913])
 * Provide a default Affinity for ES Pods. {pull}1026[#1026] (issue: {issue}915[#915])
 * Create a default PDB for ES Pods. {pull}1025[#1025] (issue: {issue}914[#914])
-* Normalize elasticsearch pod related naming {pull}1024[#1024] (issue: {issue}547[#547])
+* Normalize Elasticsearch pod related naming {pull}1024[#1024] (issue: {issue}547[#547])
 * Provide default images and volume mounts to user-provided init containers {pull}1022[#1022]
-* Remove enterprise license CRD {pull}1018[#1018] (issue: {issue}607[#607])
+* Remove enterprise license CRD {pull}1018[#1018]
 * Allow additional labels to be set on the tranport cert secrets {pull}1008[#1008]
-* Don't override user-provided labels from Kibana podTemplate {pull}1006[#1006]
+* Don&#39;t override user-provided labels from Kibana podTemplate {pull}1006[#1006]
 * Make .spec.http.service fully configurable by default {pull}1004[#1004]
 * Remove default discovery service {pull}995[#995]
-* Move Kibana configuration in a Secret {pull}977[#977] (issue: {issue}946[#946])
+* Move Kibana configuration in a Secret {pull}977[#977]
 * Set a default subdomain=es.name and name=pod.name on new Pods {pull}974[#974]
-* Remove cluster license CRD {pull}969[#969] (issue: {issue}607[#607])
-* Don't override user-provided labels {pull}957[#957]
-* Build Kibana Deployment pod template on top of user-provided podTemplate {pull}952[#952] (issue: {issue}772[#772])
-* Remove User CRD {pull}948[#948] (issues: {issue}526[#526], {issue}727[#727])
-* Build ES pod on top of user-provided podTemplate {pull}943[#943] (issue: {issue}765[#765])
+* Remove cluster license CRD {pull}969[#969]
+* Don&#39;t override user-provided labels {pull}957[#957]
+* Remove User CRD {pull}948[#948]
 * Separate HTTP/Transport certificates and CAs {pull}929[#929]
-
-
 
 [[bug-0.9.0]]
 [float]
 === Bug fixes
 
+* Don&#39;t rely on buggy metaObject Kind {pull}1324[#1324]
+* Add console output to standalone APM sample {pull}1321[#1321]
 * Allow license secret webhook to fail {pull}1301[#1301]
-* Kibana 7.2. does not run as root and ECK is not setting a security context [ISSUE] {pull}1280[#1280]
-* Secure settings finalizer: do not rely on object.GetObjectKind() {pull}1279[#1279] (issue: {issue}1275[#1275])
-* Do not set initial_master_nodes if cluster has been bootstrapped {pull}1272[#1272] (issue: {issue}1201[#1201])
-* Add http certs to config checksum {pull}1267[#1267] (issue: {issue}1261[#1261])
-* Respect TLSOptions for apm server {pull}1246[#1246] (issue: {issue}1196[#1196])
-* Normalize the raw config when creating canonical configs {pull}1208[#1208] (issue: {issue}1190[#1190])
+* Secure settings finalizer: do not rely on object.GetObjectKind() {pull}1279[#1279]
+* Do not set initial_master_nodes if cluster has been bootstrapped {pull}1272[#1272]
+* Add http certs to config checksum {pull}1267[#1267]
+* Respect TLSOptions for apm server {pull}1246[#1246]
+* Normalize the raw config when creating canonical configs {pull}1208[#1208]
 * Update PodSpec with Hostname from PVC when re-using {pull}1204[#1204]
 * Error message typo {pull}1179[#1179]
 * Do not move files when preparing the fs, copy them instead {pull}1128[#1128]
 * Set the operator-namespace to default when running locally {pull}1125[#1125]
-* Respect volume name when reusing PVCs {pull}1122[#1122] (issue: {issue}877[#877])
+* Respect volume name when reusing PVCs {pull}1122[#1122]
 * Fixes issue where explicit non-pvc volume in template was ignored {pull}1079[#1079]
 * Fix scripts invocation {pull}1077[#1077]
-* Support all 7.x versions of Elasticsearch {pull}1075[#1075] (issue: {issue}1065[#1065])
+* Support all 7.x versions of Elasticsearch {pull}1075[#1075]
 * Standard might not be the default storage class {pull}1061[#1061]
 * PVC may be stolen by an other pod {pull}1052[#1052]
 * Adds missing Namespace to some client.ListOptions structs {pull}1020[#1020]
 * Add missing namespace to Pod Listing when reconciling transport secrets {pull}1019[#1019]
 * Consider more defaulted values when comparing Services for reconciliation {pull}1011[#1011]
 * Fix object deletion in association {pull}1009[#1009]
-* Move directories only if not empty in prepare-fs script {pull}937[#937] (issue: {issue}801[#801])
-* Elasticsearch fails to start: cannot create elasticsearch.keystore.tmp [ISSUE] {pull}643[#643]
-
+* Move directories only if not empty in prepare-fs script {pull}937[#937]
 
 
