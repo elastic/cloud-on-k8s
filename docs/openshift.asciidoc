@@ -1,7 +1,7 @@
 [id="{p}-openshift"]
 == Openshift
 
-This section will help you to run the quickstart on Openshift.
+This section will help you run ECK on Openshift
 
 NOTE: Only Elasticsearch and Kibana are supported on Openshift or with a secured cluster for the moment.
 
