@@ -23,7 +23,7 @@ func TestRenderScriptTemplate(t *testing.T) {
 				PluginVolumes: PluginVolumes,
 				LinkedFiles: LinkedFilesArray{
 					Array: []LinkedFile{
-						LinkedFile{
+						{
 							Source: "/secrets/users",
 							Target: "/usr/share/elasticsearch/users"}}},
 			},

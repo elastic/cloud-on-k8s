@@ -111,10 +111,10 @@ func TestUpdateZen1Discovery(t *testing.T) {
 		state              *reconcile.State
 	}
 	tests := []struct {
-		name                      string
 		args                      args
-		want                      bool
+		name                      string
 		expectedMinimumMasterNode string
+		want                      bool
 		wantErr                   bool
 	}{
 		{

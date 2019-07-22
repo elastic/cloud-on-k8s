@@ -27,12 +27,12 @@ func NewSecretVolumeWithMountPath(secretName string, name string, mountPath stri
 
 // NewSelectiveSecretVolumeWithMountPath creates a new SecretVolume that projects only the specified secrets into the file system.
 func NewSelectiveSecretVolumeWithMountPath(secretName string, name string, mountPath string, projectedSecrets []string) SecretVolume {
-	var keyToPaths []corev1.KeyToPath
-	for _, s := range projectedSecrets {
-		keyToPaths = append(keyToPaths, corev1.KeyToPath{
+	keyToPaths := make([]corev1.KeyToPath, len(projectedSecrets))
+	for i, s := range projectedSecrets {
+		keyToPaths[i] = corev1.KeyToPath{
 			Key:  s,
 			Path: s,
-		})
+		}
 	}
 	return SecretVolume{
 		name:       name,

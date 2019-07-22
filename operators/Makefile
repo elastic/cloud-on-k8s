@@ -17,7 +17,7 @@ GKE_CLUSTER_VERSION ?= 1.12
 
 REPOSITORY 	?= eck
 NAME       	?= eck-operator
-VERSION    	?= 0.9.0-SNAPSHOT
+VERSION    	?= $(shell cat VERSION)
 SNAPSHOT   	?= true
 
 LATEST_RELEASED_IMG ?= "docker.elastic.co/eck/$(NAME):0.8.0"
@@ -42,7 +42,6 @@ OPERATOR_IMAGE ?= $(IMG):$(VERSION)-$(TAG)
 ifeq ($(SNAPSHOT_RELEASE), false)
 	OPERATOR_IMAGE = $(IMG):$(TAG)
 endif
-OPERATOR_IMAGE_LATEST ?= $(IMG):latest
 
 GO_LDFLAGS := -X github.com/elastic/cloud-on-k8s/operators/pkg/about.version=$(VERSION) \
 	-X github.com/elastic/cloud-on-k8s/operators/pkg/about.buildHash=$(TAG) \
@@ -71,7 +70,7 @@ PSP ?= 0
 ##  --       Development       --  ##
 #####################################
 
-all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator process-manager check-license-header
+all: dep-vendor-only unit integration e2e-compile check-fmt elastic-operator check-license-header
 
 ## -- build
 
@@ -90,9 +89,6 @@ generate:
 
 elastic-operator: generate
 	go build -ldflags "$(GO_LDFLAGS)" -tags='$(GO_TAGS)' -o bin/elastic-operator github.com/elastic/cloud-on-k8s/operators/cmd
-
-process-manager:
-	go build  -tags='$(GO_TAGS)' -o bin/process-manager github.com/elastic/cloud-on-k8s/operators/cmd/process-manager
 
 fmt:
 	goimports -w pkg cmd
@@ -116,7 +112,7 @@ endif
 	go vet ./pkg/... ./cmd/...
 
 lint:
-	golangci-lint run $(LINTER_ARGS) ./pkg/... ./cmd/... ./test/...
+	golangci-lint run
 
 
 #############################
@@ -132,7 +128,7 @@ run: install-crds go-run
 
 go-run:
     # Run the operator locally with role All, with debug logs, operator image set to latest and operator namespace for a global operator
-	AUTO_PORT_FORWARD=true OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST) \
+	AUTO_PORT_FORWARD=true \
 		go run \
 			-ldflags "$(GO_LDFLAGS)" \
 			-tags "$(GO_TAGS)" \
@@ -223,7 +219,7 @@ set-context-minikube:
 
 bootstrap-minikube:
 	hack/minikube-cluster.sh
-	$(MAKE) set-context-minikube registry lazy-push-latest-operator-image-in-local-registry cluster-bootstrap
+	$(MAKE) set-context-minikube cluster-bootstrap
 
 ## -- gke
 
@@ -247,28 +243,11 @@ ifeq ($(PSP), 1)
 endif
 ifeq ($(SKIP_DOCKER_COMMAND), false)
 	# push "latest" operator image to be used for init containers when running the operator locally
-	$(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
+	$(MAKE) docker-build docker-push
 endif
 
 delete-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete
-
-## -- registry in the cluster
-
-registry:
-	@ echo "-> Deploying registry..."
-	@ hack/registry.sh create
-
-lazy-push-latest-operator-image-in-local-registry:
-	@ hack/registry.sh port-forward start
-	@ docker pull $(OPERATOR_IMAGE_LATEST) || $(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
-	@ hack/registry.sh port-forward stop
-
-force-push-latest-operator-image-in-local-registry:
-	@ hack/registry.sh port-forward start
-	@ $(MAKE) docker-build docker-push OPERATOR_IMAGE=$(OPERATOR_IMAGE_LATEST)
-	@ hack/registry.sh port-forward stop
-
 
 #################################
 ##  --    Docker images    --  ##
@@ -347,7 +326,7 @@ clean-e2e:
 ##  --    Continuous integration    --  ##
 ##########################################
 
-ci: dep-vendor-only check-fmt generate check-local-changes unit integration e2e-compile docker-build
+ci: dep-vendor-only check-fmt lint generate check-local-changes unit integration e2e-compile docker-build
 
 # Run e2e tests in a dedicated gke cluster, that we delete if everything went fine.
 # Let's use n1-standard-8 machine to have enough room for multiple pods on a single node.

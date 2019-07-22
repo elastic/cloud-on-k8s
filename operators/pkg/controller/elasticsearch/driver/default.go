@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -42,6 +43,14 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 )
 
+// initContainerParams is used to generate the init container that will load the secure settings into a keystore
+var initContainerParams = keystore.InitContainerParameters{
+	KeystoreCreateCommand:         "/usr/share/elasticsearch/bin/elasticsearch-keystore create",
+	KeystoreAddCommand:            "/usr/share/elasticsearch/bin/elasticsearch-keystore add",
+	SecureSettingsVolumeMountPath: keystore.SecureSettingsVolumeMountPath,
+	DataVolumePath:                esvolume.ElasticsearchDataMountPath,
+}
+
 // defaultDriver is the default Driver implementation
 type defaultDriver struct {
 	// Options are the options that the driver was created with.
@@ -64,11 +73,10 @@ type defaultDriver struct {
 	expectedPodsAndResourcesResolver func(
 		es v1alpha1.Elasticsearch,
 		paramsTmpl pod.NewPodSpecParams,
-		operatorImage string,
 	) ([]pod.PodSpecContext, error)
 
 	// observedStateResolver resolves the currently observed state of Elasticsearch from the ES API
-	observedStateResolver func(clusterName types.NamespacedName, caCerts []*x509.Certificate, esClient esclient.Client) observer.State
+	observedStateResolver func(clusterName types.NamespacedName, esClient esclient.Client) observer.State
 
 	// resourcesStateResolver resolves the current state of the K8s resources from the K8s API
 	resourcesStateResolver func(
@@ -79,6 +87,9 @@ type defaultDriver struct {
 	// clusterInitialMasterNodesEnforcer enforces that cluster.initial_master_nodes is set where relevant
 	// this can safely be set to nil when it's not relevant (e.g for ES <= 6)
 	clusterInitialMasterNodesEnforcer func(
+		cluster v1alpha1.Elasticsearch,
+		clusterState observer.State,
+		c k8s.Client,
 		performableChanges mutation.PerformableChanges,
 		resourcesState reconcile.ResourcesState,
 	) (*mutation.PerformableChanges, error)
@@ -151,10 +162,6 @@ func (d *defaultDriver) Reconcile(
 		return results
 	}
 
-	if err := settings.ReconcileSecureSettings(d.Client, reconcileState.Recorder, d.Scheme, d.DynamicWatches, es); err != nil {
-		return results.WithError(err)
-	}
-
 	internalUsers, err := d.usersReconciler(d.Client, d.Scheme, es)
 	if err != nil {
 		return results.WithError(err)
@@ -176,7 +183,6 @@ func (d *defaultDriver) Reconcile(
 
 	observedState := d.observedStateResolver(
 		k8s.ExtractNamespacedName(&es),
-		certificateResources.TrustedHTTPCertificates,
 		d.newElasticsearchClient(
 			genericResources.ExternalService,
 			internalUsers.ControllerUser,
@@ -224,7 +230,19 @@ func (d *defaultDriver) Reconcile(
 		return results.WithResult(defaultRequeue)
 	}
 
-	changes, err := d.calculateChanges(internalUsers, es, *resourcesState)
+	// setup a keystore with secure settings in an init container, if specified by the user
+	keystoreResources, err := keystore.NewResources(
+		d.Client,
+		d.Recorder,
+		d.DynamicWatches,
+		&es,
+		initContainerParams,
+	)
+	if err != nil {
+		return results.WithError(err)
+	}
+
+	changes, err := d.calculateChanges(internalUsers, es, *resourcesState, keystoreResources)
 	if err != nil {
 		return results.WithError(err)
 	}
@@ -274,7 +292,13 @@ func (d *defaultDriver) Reconcile(
 	)
 
 	if d.clusterInitialMasterNodesEnforcer != nil {
-		performableChanges, err = d.clusterInitialMasterNodesEnforcer(*performableChanges, *resourcesState)
+		performableChanges, err = d.clusterInitialMasterNodesEnforcer(
+			es,
+			observedState,
+			d.Client,
+			*performableChanges,
+			*resourcesState,
+		)
 		if err != nil {
 			return results.WithError(err)
 		}
@@ -472,17 +496,17 @@ func (d *defaultDriver) calculateChanges(
 	internalUsers *user.InternalUsers,
 	es v1alpha1.Elasticsearch,
 	resourcesState reconcile.ResourcesState,
+	keystoreResources *keystore.Resources,
 ) (*mutation.Changes, error) {
 	expectedPodSpecCtxs, err := d.expectedPodsAndResourcesResolver(
 		es,
 		pod.NewPodSpecParams{
-			ProbeUser:    internalUsers.ProbeUser.Auth(),
-			KeystoreUser: internalUsers.KeystoreUser.Auth(),
+			ProbeUser: internalUsers.ProbeUser.Auth(),
 			UnicastHostsVolume: volume.NewConfigMapVolume(
 				name.UnicastHostsConfigMap(es.Name), esvolume.UnicastHostsVolumeName, esvolume.UnicastHostsVolumeMountPath,
 			),
+			KeystoreResources: keystoreResources,
 		},
-		d.OperatorImage,
 	)
 	if err != nil {
 		return nil, err

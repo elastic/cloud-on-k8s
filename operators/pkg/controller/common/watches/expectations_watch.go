@@ -19,7 +19,7 @@ import (
 // to it (see `label.ClusterFromResourceLabels`).
 type ExpectationsResourceRetriever func(metaObject metav1.Object) (types.NamespacedName, bool)
 
-// ExpectationsWatch is an event handler for watches that markes resources creations and deletions
+// ExpectationsWatch is an event handler for watches that marks resources creations and deletions
 // as observed for the given reconciler expectations.
 type ExpectationsWatch struct {
 	handlerKey        string

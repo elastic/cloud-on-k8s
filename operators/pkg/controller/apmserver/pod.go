@@ -10,8 +10,8 @@ import (
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/apmserver/config"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/association/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/defaults"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/volume"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/stringsutil"
 	corev1 "k8s.io/api/core/v1"
@@ -30,19 +30,25 @@ const (
 	ConfigVolumePath = ApmBaseDir + "/config"
 )
 
-var readinessProbe = corev1.Probe{
-	FailureThreshold:    3,
-	InitialDelaySeconds: 10,
-	PeriodSeconds:       10,
-	SuccessThreshold:    1,
-	TimeoutSeconds:      5,
-	Handler: corev1.Handler{
-		HTTPGet: &corev1.HTTPGetAction{
-			Port:   intstr.FromInt(HTTPPort),
-			Path:   "/",
-			Scheme: corev1.URISchemeHTTP,
+func readinessProbe(tls bool) corev1.Probe {
+	scheme := corev1.URISchemeHTTP
+	if tls {
+		scheme = corev1.URISchemeHTTPS
+	}
+	return corev1.Probe{
+		FailureThreshold:    3,
+		InitialDelaySeconds: 10,
+		PeriodSeconds:       10,
+		SuccessThreshold:    1,
+		TimeoutSeconds:      5,
+		Handler: corev1.Handler{
+			HTTPGet: &corev1.HTTPGetAction{
+				Port:   intstr.FromInt(HTTPPort),
+				Path:   "/",
+				Scheme: scheme,
+			},
 		},
-	},
+	}
 }
 
 var ports = []corev1.ContainerPort{
@@ -102,7 +108,7 @@ func newPodSpec(as *v1alpha1.ApmServer, p PodSpecParams) corev1.PodTemplateSpec 
 	builder := defaults.NewPodTemplateBuilder(
 		p.PodTemplate, v1alpha1.APMServerContainerName).
 		WithDockerImage(p.CustomImageName, imageWithVersion(defaultImageRepositoryAndName, p.Version)).
-		WithReadinessProbe(readinessProbe).
+		WithReadinessProbe(readinessProbe(as.Spec.HTTP.TLS.Enabled())).
 		WithPorts(ports).
 		WithCommand(command).
 		WithVolumes(configVolume.Volume(), configSecretVolume.Volume()).

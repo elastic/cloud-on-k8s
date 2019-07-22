@@ -148,7 +148,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer, es 
 			return !hasExpectedLabels(expectedEsUser, &reconciledSecret) ||
 				!bytes.Equal(expectedEsUser.Data["Name"], reconciledEsSecret.Data["Name"]) ||
 				!bytes.Equal(expectedEsUser.Data["UserRoles"], reconciledEsSecret.Data["UserRoles"]) ||
-				bcrypt.CompareHashAndPassword(reconciledPw, []byte(reconciledEsSecret.Data["PasswordHash"])) == nil
+				bcrypt.CompareHashAndPassword(reconciledPw, reconciledEsSecret.Data["PasswordHash"]) == nil
 		},
 		UpdateReconciled: func() {
 			setExpectedLabels(expectedEsUser, &reconciledEsSecret)

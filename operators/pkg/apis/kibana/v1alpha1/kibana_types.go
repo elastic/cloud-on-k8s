@@ -87,8 +87,6 @@ type KibanaStatus struct {
 	commonv1alpha1.ReconcilerStatus
 	Health            KibanaHealth                     `json:"health,omitempty"`
 	AssociationStatus commonv1alpha1.AssociationStatus `json:"associationStatus,omitempty"`
-	// ControllerVersion is the version of the controller that last updated the Kibana instance
-	ControllerVersion string `json:"controllerVersion,omitempty"`
 }
 
 // IsDegraded returns true if the current status is worse than the previous.
@@ -98,10 +96,7 @@ func (ks KibanaStatus) IsDegraded(prev KibanaStatus) bool {
 
 // IsMarkedForDeletion returns true if the Kibana is going to be deleted
 func (k Kibana) IsMarkedForDeletion() bool {
-	if k.DeletionTimestamp.IsZero() { // already handles nil pointer
-		return false
-	}
-	return true
+	return !k.DeletionTimestamp.IsZero()
 }
 
 func (k *Kibana) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {

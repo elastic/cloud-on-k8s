@@ -6,7 +6,6 @@ package keystore
 
 import (
 	"fmt"
-	"strings"
 
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/events"
@@ -16,7 +15,6 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 )
@@ -32,21 +30,21 @@ func secureSettingsVolume(
 	c k8s.Client,
 	recorder record.EventRecorder,
 	watches watches.DynamicWatches,
-	associated commonv1alpha1.Associated,
+	hasKeystore HasKeystore,
 ) (*volume.SecretVolume, string, error) {
 	// setup (or remove) watches for the user-provided secret to reconcile on any change
-	err := watchSecureSettings(watches, associated.SecureSettings(), k8s.ExtractNamespacedName(associated))
+	err := watchSecureSettings(watches, hasKeystore.SecureSettings(), k8s.ExtractNamespacedName(hasKeystore))
 	if err != nil {
 		return nil, "", err
 	}
 
-	if associated.SecureSettings() == nil {
+	if hasKeystore.SecureSettings() == nil {
 		// no secure settings secret specified
 		return nil, "", nil
 	}
 
 	// retrieve the secret referenced by the user in the same namespace
-	userSecret, exists, err := retrieveUserSecret(c, associated, recorder)
+	userSecret, exists, err := retrieveUserSecret(c, recorder, hasKeystore)
 	if err != nil {
 		return nil, "", err
 	}
@@ -69,15 +67,16 @@ func secureSettingsVolume(
 	return &secureSettingsVolume, resourceVersion, nil
 }
 
-func retrieveUserSecret(c k8s.Client, associated commonv1alpha1.Associated, recorder record.EventRecorder) (*corev1.Secret, bool, error) {
-	secretName := associated.SecureSettings().SecretName
-	namespace := associated.GetNamespace()
-	userSecret := corev1.Secret{}
+func retrieveUserSecret(c k8s.Client, recorder record.EventRecorder, hasKeystore HasKeystore) (*corev1.Secret, bool, error) {
+	secretName := hasKeystore.SecureSettings().SecretName
+	namespace := hasKeystore.GetNamespace()
+
+	var userSecret corev1.Secret
 	err := c.Get(types.NamespacedName{Namespace: namespace, Name: secretName}, &userSecret)
 	if err != nil && apierrors.IsNotFound(err) {
 		msg := "Secure settings secret not found"
 		log.Info(msg, "namespace", namespace, "secret_name", secretName)
-		recorder.Event(associated, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
+		recorder.Event(hasKeystore, corev1.EventTypeWarning, events.EventReasonUnexpected, msg+": "+secretName)
 		return nil, false, nil
 	} else if err != nil {
 		return nil, false, err
@@ -112,14 +111,12 @@ func watchSecureSettings(watched watches.DynamicWatches, secureSettingsRef *comm
 	})
 }
 
-func getKind(object runtime.Object) string {
-	return strings.ToLower(object.GetObjectKind().GroupVersionKind().Kind)
-}
-
 // Finalizer removes any dynamic watches on external user created secret.
-func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, object runtime.Object) finalizer.Finalizer {
+// TODO: Kind of an object can be retrieved programmatically with object.GetObjectKind(), unfortunately it does not seem
+//  to be reliable with controller-runtime < v0.2.0-beta.4
+func Finalizer(namespacedName types.NamespacedName, watched watches.DynamicWatches, kind string) finalizer.Finalizer {
 	return finalizer.Finalizer{
-		Name: "secure-settings.finalizers." + getKind(object) + ".k8s.elastic.co",
+		Name: "secure-settings.finalizers." + kind + ".k8s.elastic.co",
 		Execute: func() error {
 			watched.Secrets.RemoveHandlerForKey(secureSettingsWatchName(namespacedName))
 			return nil

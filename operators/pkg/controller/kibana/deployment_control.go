@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	defaultRevisionHistoryLimit int32 = 0
+	defaultRevisionHistoryLimit int32
 )
 
 type DeploymentParams struct {

@@ -41,11 +41,14 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	licWh, err := builder.NewWebhookBuilder().
 		Name("validation.license.elastic.co").
 		Validating().
-		FailurePolicy(admission.Fail).
+		FailurePolicy(admission.Ignore).
 		ForType(&corev1.Secret{}).
 		Handlers(&license.ValidationHandler{}).
 		WithManager(mgr).
 		Build()
+	if err != nil {
+		return err
+	}
 
 	disabled := !params.AutoInstall
 	svr, err := webhook.NewServer(admissionServerName, mgr, webhook.ServerOptions{
@@ -57,5 +60,6 @@ func RegisterValidations(mgr manager.Manager, params Parameters) error {
 	if err != nil {
 		return err
 	}
+
 	return svr.Register(esWh, licWh)
 }

@@ -42,7 +42,7 @@ func (b Builder) DeletionTestSteps(k *test.K8sClient) test.StepList {
 							continue
 						}
 					}
-					return errors.New("expected 404 not found API error here")
+					return errors.Wrap(err, "expected 404 not found API error here")
 
 				}
 				return nil

@@ -9,17 +9,11 @@ const (
 	ProbeUserSecretMountPath = "/mnt/elastic-internal/probe-user"
 	ProbeUserVolumeName      = "elastic-internal-probe-user"
 
-	KeystoreUserSecretMountPath = "/mnt/elastic-internal/keystore-user"
-	KeystoreUserVolumeName      = "elastic-internal-keystore-user"
-
 	TransportCertificatesSecretVolumeName      = "elastic-internal-transport-certificates"
 	TransportCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/transport-certs"
 
 	HTTPCertificatesSecretVolumeName      = "elastic-internal-http-certificates"
 	HTTPCertificatesSecretVolumeMountPath = "/usr/share/elasticsearch/config/http-certs"
-
-	SecureSettingsVolumeName      = "elastic-internal-secure-settings"
-	SecureSettingsVolumeMountPath = "/mnt/elastic-internal/secure-settings"
 
 	XPackFileRealmVolumeName      = "elastic-internal-xpack-file-realm"
 	XPackFileRealmVolumeMountPath = "/mnt/elastic-internal/xpack-file-realm"
@@ -27,8 +21,6 @@ const (
 	UnicastHostsVolumeName      = "elastic-internal-unicast-hosts"
 	UnicastHostsVolumeMountPath = "/mnt/elastic-internal/unicast-hosts"
 	UnicastHostsFile            = "unicast_hosts.txt"
-
-	ProcessManagerEmptyDirMountPath = "/mnt/elastic-internal/process-manager"
 
 	ElasticsearchDataVolumeName = "elasticsearch-data"
 	ElasticsearchDataMountPath  = "/usr/share/elasticsearch/data"
