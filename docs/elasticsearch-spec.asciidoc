@@ -6,8 +6,6 @@ There are a number of settings which need to be considered before going into pro
 **<<{p}-basic-settings>>**
 
 - <<{p}-pod-template>>
-- <<{p}-jvm-heap-size>>
-- <<{p}-resource-requests-limits>>
 - <<{p}-node-configuration>>
 - <<{p}-volume-claim-templates>>
 - <<{p}-http-settings-tls-sans>>
@@ -40,11 +38,11 @@ Pod templates are the same pod templates you know and love from stateful sets an
           foo: bar
 ----
 
-More common is setting resource requests and limits, which is covered in the section <<{p}-resource-requests-limits>>. You will also likely want to modify the JVM heap size, which is covered in the section <<{p}-jvm-heap-size>>.
+More common is setting resource requests and limits, which is covered in link:managing-compute-resources.asciidoc[Managing compute resources].
 
 You may want to also install additional plugins, which is described in the <<{p}-init-containers-plugin-downloads>> section.
 
-You may want to set environment variables to configure Elasticsearch, for instance to set the minimum and maximum heap size to `2g` and `4g` respectively you may modify the environment variables of the `elasticsearch` container as follows:
+You may want to set environment variables to configure Elasticsearch. For instance to set the minimum and maximum JVM heap size to `2g` and `4g` respectively you may modify the environment variables of the `elasticsearch` container as follows:
 
 [source,yaml]
 ----
@@ -64,31 +62,6 @@ You can also refer to the Kubernetes documentation here for more information on 
 
 - https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podtemplatespec-v1-core[Pod Template Spec API Reference]
 
-[id="{p}-jvm-heap-size"]
-=== JVM heap size
-
-[id="{p}-resource-requests-limits"]
-=== Resource Requests and Limits
-
-Resource requests and limits define how much RAM and CPU each individual container requires and how much they are allowed to use. You may want to set these in addition to the heap size as mentioned , though by default we will set the heap size to half of the container memory limit.
-
-To set the minimum and maximum memory of the `elasticsearch` container, as well as the minimum and maximum CPU resources, you would modify the pod template in your Elasticsearch spec as follows.
-[source,yaml]
-----
-    podTemplate:
-      spec:
-        containers:
-        - name: elasticsearch
-          resources:
-            requests:
-              memory: "16Gi"
-              cpu: "250m"
-            limits:
-              memory: "32Gi"
-              cpu: "4"
-----
-
-The https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/[Kubernetes documentation] has more detail on managing compute resources for containers.
 
 [id="{p}-node-configuration"]
 === Node configuration
@@ -258,7 +231,6 @@ spec:
 ----
 
 See link:snapshots.asciidoc[How to create automated snapshots] for an example use case.
-
 
 [id="{p}-bundles-plugins"]
 === Custom Configuration Files and Plugins
