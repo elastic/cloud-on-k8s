@@ -6,7 +6,6 @@ package apmserver
 
 import (
 	apmtype "github.com/elastic/cloud-on-k8s/operators/pkg/apis/apm/v1alpha1"
-	common "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	commonv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/common/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/test/e2e/test"
 	corev1 "k8s.io/api/core/v1"
@@ -30,13 +29,9 @@ func NewBuilder(name string) Builder {
 			Spec: apmtype.ApmServerSpec{
 				NodeCount: 1,
 				Version:   test.ElasticStackVersion,
-				Output: apmtype.Output{
-					Elasticsearch: apmtype.ElasticsearchOutput{
-						ElasticsearchRef: &commonv1alpha1.ObjectSelector{
-							Name:      name,
-							Namespace: test.Namespace,
-						},
-					},
+				ElasticsearchRef: commonv1alpha1.ObjectSelector{
+					Name:      name,
+					Namespace: test.Namespace,
 				},
 				PodTemplate: corev1.PodTemplateSpec{
 					Spec: corev1.PodSpec{
@@ -55,12 +50,7 @@ func (b Builder) WithRestrictedSecurityContext() Builder {
 
 func (b Builder) WithNamespace(namespace string) Builder {
 	b.ApmServer.ObjectMeta.Namespace = namespace
-	ref := b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef
-	if ref == nil {
-		ref = &common.ObjectSelector{}
-	}
-	ref.Namespace = namespace
-	b.ApmServer.Spec.Output.Elasticsearch.ElasticsearchRef = ref
+	b.ApmServer.Spec.ElasticsearchRef.Namespace = namespace
 	return b
 }
 
@@ -74,8 +64,8 @@ func (b Builder) WithNodeCount(count int) Builder {
 	return b
 }
 
-func (b Builder) WithOutput(out apmtype.Output) Builder {
-	b.ApmServer.Spec.Output = out
+func (b Builder) WithOutput(out apmtype.ElasticsearchOutput) Builder {
+	b.ApmServer.Spec.Elasticsearch = out
 	return b
 }
 

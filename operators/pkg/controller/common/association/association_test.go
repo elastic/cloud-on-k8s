@@ -48,15 +48,13 @@ func Test_getCredentials(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1alpha1.ApmServerSpec{
-						Output: v1alpha1.Output{
-							Elasticsearch: v1alpha1.ElasticsearchOutput{
-								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-								Auth: commonv1alpha1.ElasticsearchAuth{
-									SecretKeyRef: &corev1.SecretKeySelector{
-										Key: "elastic-internal-apm",
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "apmelasticsearchassociation-sample-elastic-internal-apm",
-										},
+						Elasticsearch: v1alpha1.ElasticsearchOutput{
+							Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
+							Auth: commonv1alpha1.ElasticsearchAuth{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "elastic-internal-apm",
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "apmelasticsearchassociation-sample-elastic-internal-apm",
 									},
 								},
 							},
@@ -83,12 +81,10 @@ func Test_getCredentials(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1alpha1.ApmServerSpec{
-						Output: v1alpha1.Output{
-							Elasticsearch: v1alpha1.ElasticsearchOutput{
-								Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
-								Auth: commonv1alpha1.ElasticsearchAuth{
-									Inline: &elasticsearhInlineAuth,
-								},
+						Elasticsearch: v1alpha1.ElasticsearchOutput{
+							Hosts: []string{"https://elasticsearch-sample-es-http.default.svc:9200"},
+							Auth: commonv1alpha1.ElasticsearchAuth{
+								Inline: &elasticsearhInlineAuth,
 							},
 						},
 					},

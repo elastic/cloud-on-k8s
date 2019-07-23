@@ -307,7 +307,7 @@ func (r *ReconcileApmServer) deploymentParams(
 		_, _ = configChecksum.Write([]byte(params.keystoreResources.Version))
 	}
 
-	esCASecretName := as.Spec.Output.Elasticsearch.SSL.CertificateAuthorities.SecretName
+	esCASecretName := as.Spec.Elasticsearch.SSL.CertificateAuthorities.SecretName
 	if esCASecretName != "" {
 		// TODO: use apmServerCa to generate cert for deployment
 

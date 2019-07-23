@@ -29,8 +29,13 @@ type ApmServerSpec struct {
 	// HTTP contains settings for HTTP.
 	HTTP commonv1alpha1.HTTPConfig `json:"http,omitempty"`
 
+	// ElasticsearchRef references an Elasticsearch resource in the Kubernetes cluster.
+	// If the namespace is not specified, the current resource namespace will be used.
+	ElasticsearchRef commonv1alpha1.ObjectSelector `json:"elasticsearchRef,omitempty"`
+
+	// Elasticsearch configures how the APM server connects to Elasticsearch
 	// +optional
-	Output Output `json:"output,omitempty"`
+	Elasticsearch ElasticsearchOutput `json:"elasticsearch,omitempty"`
 
 	// PodTemplate can be used to propagate configuration to APM Server pods.
 	// This allows specifying custom annotations, labels, environment variables,
@@ -49,17 +54,8 @@ type ApmServerSpec struct {
 	FeatureFlags commonv1alpha1.FeatureFlags `json:"featureFlags,omitempty"`
 }
 
-// Output contains output configuration for supported outputs
-type Output struct {
-	// Elasticsearch configures the Elasticsearch output
-	// +optional
-	Elasticsearch ElasticsearchOutput `json:"elasticsearch,omitempty"`
-}
-
 // Elasticsearch contains configuration for the Elasticsearch output
 type ElasticsearchOutput struct {
-	// ElasticsearchRef allows users to reference a Elasticsearch cluster inside k8s to automatically derive the other fields.
-	ElasticsearchRef *commonv1alpha1.ObjectSelector `json:"ref,omitempty"`
 
 	// Hosts are the URLs of the output Elasticsearch nodes.
 	Hosts []string `json:"hosts,omitempty"`
@@ -148,7 +144,7 @@ func (as *ApmServer) IsMarkedForDeletion() bool {
 }
 
 func (as *ApmServer) ElasticsearchAuth() commonv1alpha1.ElasticsearchAuth {
-	return as.Spec.Output.Elasticsearch.Auth
+	return as.Spec.Elasticsearch.Auth
 }
 
 func (as *ApmServer) SecureSettings() *commonv1alpha1.SecretRef {

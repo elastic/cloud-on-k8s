@@ -61,6 +61,11 @@ func UpdateControllerVersion(client k8s.Client, obj runtime.Object, version stri
 // if an object does not have an annotation, it will determine if it is a new object or if it has been previously reconciled by an older controller version, as this annotation
 // was not applied by earlier controller versions. it will update the object's annotations indicating it is incompatible if so
 func ReconcileCompatibility(client k8s.Client, obj runtime.Object, selector labels.Selector, controllerVersion string) (bool, error) {
+
+	if controllerVersion == "0.0.0" {
+		return true, nil
+	}
+
 	accessor := meta.NewAccessor()
 	namespace, err := accessor.Namespace(obj)
 	if err != nil {
