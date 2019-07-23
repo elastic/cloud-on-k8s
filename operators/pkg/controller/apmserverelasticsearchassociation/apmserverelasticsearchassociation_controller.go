@@ -204,13 +204,16 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
-	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// no auto-association nothing to do
 	elasticsearchRef := apmServer.Spec.ElasticsearchRef
 	if !elasticsearchRef.IsDefined() {
 		return "", nil
 	}
-
+	if elasticsearchRef.Namespace == "" {
+		// no namespace provided: default to the APM server namespace
+		elasticsearchRef.Namespace = apmServer.Namespace
+	}
+	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// Make sure we see events from Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces

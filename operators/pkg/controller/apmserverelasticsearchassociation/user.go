@@ -39,8 +39,14 @@ func userKey(apm apmtype.ApmServer) *types.NamespacedName {
 	if !ref.IsDefined() {
 		return nil
 	}
+
+	esNamespace := apm.Spec.ElasticsearchRef.Namespace
+	if esNamespace == "" {
+		// no namespace given, default to APM's one
+		esNamespace = apm.Namespace
+	}
 	return &types.NamespacedName{
-		Namespace: ref.Namespace,
+		Namespace: esNamespace,
 		Name:      userName(apm),
 	}
 }
