@@ -34,13 +34,18 @@ func apmUserObjectName(assocName string) string {
 
 // userKey is the namespaced name to identify the customer user resource created by the controller.
 func userKey(apm apmtype.ApmServer) *types.NamespacedName {
-
-	ref := apm.Spec.Output.Elasticsearch.ElasticsearchRef
-	if ref == nil {
+	esRef := apm.Spec.ElasticsearchRef
+	if !esRef.IsDefined() {
 		return nil
 	}
+
+	esNamespace := esRef.Namespace
+	if esNamespace == "" {
+		// no namespace given, default to APM's one
+		esNamespace = apm.Namespace
+	}
 	return &types.NamespacedName{
-		Namespace: ref.Namespace,
+		Namespace: esNamespace,
 		Name:      userName(apm),
 	}
 }
@@ -76,7 +81,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer, es 
 	secretLabels := labels.NewLabels(apm.Name)
 	secretLabels[AssociationLabelName] = apm.Name
 	// add ES labels
-	for k, v := range label.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName()) {
+	for k, v := range label.NewLabels(apm.Spec.ElasticsearchRef.NamespacedName()) {
 		secretLabels[k] = v
 	}
 	secKey := secretKey(apm)
@@ -120,7 +125,7 @@ func reconcileEsUser(c k8s.Client, s *runtime.Scheme, apm apmtype.ApmServer, es 
 	}
 
 	// analogous to the secret: the user goes on the Elasticsearch side of the association, we apply the ES labels for visibility
-	userLabels := common.NewLabels(apm.Spec.Output.Elasticsearch.ElasticsearchRef.NamespacedName())
+	userLabels := common.NewLabels(apm.Spec.ElasticsearchRef.NamespacedName())
 	userLabels[AssociationLabelName] = apm.Name
 	userLabels[AssociationLabelNamespace] = apm.Namespace
 	expectedEsUser := &corev1.Secret{

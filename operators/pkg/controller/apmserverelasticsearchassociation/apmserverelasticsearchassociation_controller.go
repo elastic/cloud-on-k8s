@@ -204,13 +204,16 @@ func resultFromStatus(status commonv1alpha1.AssociationStatus) reconcile.Result 
 }
 
 func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer apmtype.ApmServer) (commonv1alpha1.AssociationStatus, error) {
-	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// no auto-association nothing to do
-	elasticsearchRef := apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
-	if elasticsearchRef == nil {
+	elasticsearchRef := apmServer.Spec.ElasticsearchRef
+	if !elasticsearchRef.IsDefined() {
 		return "", nil
 	}
-
+	if elasticsearchRef.Namespace == "" {
+		// no namespace provided: default to the APM server namespace
+		elasticsearchRef.Namespace = apmServer.Namespace
+	}
+	assocKey := k8s.ExtractNamespacedName(&apmServer)
 	// Make sure we see events from Elasticsearch using a dynamic watch
 	// will become more relevant once we refactor user handling to CRDs and implement
 	// syncing of user credentials across namespaces
@@ -240,8 +243,6 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	}
 
 	var expectedEsConfig apmtype.ElasticsearchOutput
-	expectedEsConfig.ElasticsearchRef = apmServer.Spec.Output.Elasticsearch.ElasticsearchRef
-
 	// TODO: look up public certs secret name from the ES cluster resource instead of relying on naming convention
 	var publicCertsSecret corev1.Secret
 	publicCertsSecretKey := http.PublicCertsSecretRef(
@@ -257,8 +258,8 @@ func (r *ReconcileApmServerElasticsearchAssociation) reconcileInternal(apmServer
 	expectedEsConfig.Auth.SecretKeyRef = clearTextSecretKeySelector(apmServer)
 
 	// TODO: this is a bit rough
-	if !reflect.DeepEqual(apmServer.Spec.Output.Elasticsearch, expectedEsConfig) {
-		apmServer.Spec.Output.Elasticsearch = expectedEsConfig
+	if !reflect.DeepEqual(apmServer.Spec.Elasticsearch, expectedEsConfig) {
+		apmServer.Spec.Elasticsearch = expectedEsConfig
 		log.Info("Updating Apm Server spec with Elasticsearch output configuration", "namespace", apmServer.Namespace, "as_name", apmServer.Name)
 		if err := r.Update(&apmServer); err != nil {
 			return commonv1alpha1.AssociationPending, err
@@ -285,7 +286,7 @@ func deleteOrphanedResources(c k8s.Client, apm apmtype.ApmServer) error {
 
 	for _, s := range secrets.Items {
 		controlledBy := metav1.IsControlledBy(&s, &apm)
-		if controlledBy && !apm.Spec.Output.Elasticsearch.ElasticsearchRef.IsDefined() {
+		if controlledBy && !apm.Spec.ElasticsearchRef.IsDefined() {
 			log.Info("Deleting secret", "namespace", s.Namespace, "secret_name", s.Name, "as_name", apm.Name)
 			if err := c.Delete(&s); err != nil {
 				return err
