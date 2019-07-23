@@ -26,7 +26,7 @@ reference them in the Elastic resource of choice in the new TLS options attribut
 
 This release introduces support for user provided pod templates in Elasticsearch, Kibana and APM server. This allows you configure, for example,
 your own init containers to run code before Elasticsearch, Kibana or APM start up. Or you can use the pod template to mount
-additional volumes with configuration files e.g. to configure SAML , synonym files or specifiy `imagePullSecrets` for your private Docker registry.
+additional volumes with configuration files e.g. to configure SAML or synonym files, or to specify `imagePullSecrets` for your private Docker registry.
 
 
 
