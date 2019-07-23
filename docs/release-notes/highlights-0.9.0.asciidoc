@@ -2,7 +2,7 @@
 == 0.9.0 Release Highlights
 
 [float]
-=== Kubernetes Distribution support
+=== Kubernetes Distribution Support
 
 In addition to Google Kubernetes Engine (GKE) and vanilla Kubernetes ECK now also works on
 Azure Kubernetes Service (AKS), Amazon Container Service for Kubernetes (EKS) and with the some restrictions for APM server
