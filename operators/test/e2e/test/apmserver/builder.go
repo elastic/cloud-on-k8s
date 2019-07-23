@@ -64,8 +64,8 @@ func (b Builder) WithNodeCount(count int) Builder {
 	return b
 }
 
-func (b Builder) WithOutput(out apmtype.ElasticsearchOutput) Builder {
-	b.ApmServer.Spec.Elasticsearch = out
+func (b Builder) WithElasticsearchRef(ref commonv1alpha1.ObjectSelector) Builder {
+	b.ApmServer.Spec.ElasticsearchRef = ref
 	return b
 }
 

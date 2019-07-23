@@ -15,6 +15,7 @@ import (
 // TestApmStandalone runs a test suite on an APM server that is not outputting to Elasticsearch
 func TestApmStandalone(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone").
+		WithElasticsearchRef(v1alpha1.ObjectSelector{}).
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
 				"pretty": true,
@@ -27,6 +28,7 @@ func TestApmStandalone(t *testing.T) {
 
 func TestApmStandaloneNoTLS(t *testing.T) {
 	apmBuilder := apmserver.NewBuilder("standalone-no-tls").
+		WithElasticsearchRef(v1alpha1.ObjectSelector{}).
 		WithConfig(map[string]interface{}{
 			"output.console": map[string]interface{}{
 				"pretty": true,
