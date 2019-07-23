@@ -164,6 +164,23 @@ spec:
 ----
 
 [float]
+[id="{p}-disable-tls"]
+==== Disable TLS
+
+You can explicitly disable TLS for Kibana or APM Server if you want to.
+
+[source,yaml]
+----
+spec:
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+----
+
+TLS cannot be disabled for Elasticsearch.
+
+[float]
 [id="{p}-request-elasticsearch-endpoint"]
 === Requesting the Elasticsearch endpoint
 
