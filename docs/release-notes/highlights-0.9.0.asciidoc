@@ -6,7 +6,7 @@
 
 In addition to Google Kubernetes Engine (GKE) and vanilla Kubernetes, ECK now also works on
 Azure Kubernetes Service (AKS), Amazon Elastic Kubernetes Service (EKS) and
-on Red Hat OpenShift 3.11+
+Red Hat OpenShift 3.11+ (with some restrictions on APM server functionality)
 
 [float]
 === APM Server
