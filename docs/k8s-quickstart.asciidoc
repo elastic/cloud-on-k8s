@@ -28,7 +28,7 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 +
 [source,sh]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/0.8.0/all-in-one.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
 ----
 
 . Monitor the operator logs:
