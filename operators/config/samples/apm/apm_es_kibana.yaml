@@ -16,11 +16,8 @@ metadata:
 spec:
   version: "7.2.0"
   nodeCount: 1
-  output:
-    elasticsearch:
-      ref:
-        name: elasticsearch-sample
-        namespace: default
+  elasticsearchRef:
+    name: "elasticsearch-sample"
 ---
 apiVersion: kibana.k8s.elastic.co/v1alpha1
 kind: Kibana
