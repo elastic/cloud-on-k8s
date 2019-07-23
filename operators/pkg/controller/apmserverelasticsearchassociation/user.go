@@ -34,13 +34,12 @@ func apmUserObjectName(assocName string) string {
 
 // userKey is the namespaced name to identify the customer user resource created by the controller.
 func userKey(apm apmtype.ApmServer) *types.NamespacedName {
-
-	ref := apm.Spec.ElasticsearchRef
-	if !ref.IsDefined() {
+	esRef := apm.Spec.ElasticsearchRef
+	if !esRef.IsDefined() {
 		return nil
 	}
 
-	esNamespace := apm.Spec.ElasticsearchRef.Namespace
+	esNamespace := esRef.Namespace
 	if esNamespace == "" {
 		// no namespace given, default to APM's one
 		esNamespace = apm.Namespace
