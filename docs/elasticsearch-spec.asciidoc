@@ -10,17 +10,17 @@ There are a number of settings which need to be considered before going into pro
 - <<{p}-http-settings-tls-sans>>
 - <<{p}-pod-template>>
 - <<{p}-resource-requests-limits>>
-- Volume claim templates
+- <<{p}-volume-claim-templates>>
 
 **<<{p}-advanced-settings>>**
 
 - <<{p}-virtual-memory>>
 - <<{p}-custom-http-certificate>>
-- Secure settings
-- Custom plugins and bundles
+- <<{p}-es-secure-settings>>
+- <<{p}-bundles-plugins>>
 - <<{p}-init-containers-plugin-downloads>>
-- Pod disruption budget
-- <<{p}-change-budget>>
+- <<{p}-update-strategy>>
+  - <<{p}-change-budget>>
 - <<{p}-group-definitions>>
 
 [id="{p}-basic-settings"]
@@ -328,7 +328,6 @@ To install a custom plugin, you can install them before the Elasticsearch contai
       spec:
         initContainers:
         - name: install-plugins
-          image: docker.elastic.co/elasticsearch/elasticsearch:7.1.0"
           command:
           - sh
           - -c
@@ -337,6 +336,8 @@ To install a custom plugin, you can install them before the Elasticsearch contai
 ----
 
 You can also override the Elasticsearch container image to use your own image with the plugins already installed. The link:snapshots.asciidoc[snapshots] doc has more information on both of these options. The Kubernetes doc on https://kubernetes.io/docs/concepts/workloads/pods/init-containers/[init containers] has more information on their usage as well.
+
+The init container inherits the image of the main container image if one is not explicitly set. It also inherits the volume mounts as long as the name and mount path do not conflict. It will also inherit the pod name and IP address environment variables.
 
 [id="{p}-update-strategy"]
 === Update strategy
@@ -351,7 +352,7 @@ The Elasticsearch cluster configuration can be updated at any time to:
 On any change, ECK reconciles Kubernetes resources towards the desired cluster definition. Changes are done in a rolling fashion: the state of the cluster is continuously monitored, to allow addition of new nodes and removal of deprecated nodes.
 
 [id="{p}-change-budget"]
-=== Change budget
+==== Change budget
 
 No downtime should be expected when the cluster topology changes. Shards on deprecated nodes are migrated away so the node can be safely removed.
 
