@@ -238,10 +238,6 @@ bootstrap-gke: require-gcloud-project
 ifeq ($(PSP), 1)
 	kubectl apply -f config/dev/elastic-psp.yaml
 endif
-ifeq ($(SKIP_DOCKER_COMMAND), false)
-	# push "latest" operator image to be used for init containers when running the operator locally
-	$(MAKE) docker-build docker-push
-endif
 
 delete-gke: require-gcloud-project
 	GKE_CLUSTER_VERSION=$(GKE_CLUSTER_VERSION) ./hack/gke-cluster.sh delete

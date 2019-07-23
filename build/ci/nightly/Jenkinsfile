@@ -1,0 +1,59 @@
+pipeline {
+
+    agent {
+        label 'linux'
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+    }
+
+    environment {
+        VAULT_ADDR = credentials('vault-addr')
+        VAULT_ROLE_ID = credentials('vault-role-id')
+        VAULT_SECRET_ID = credentials('vault-secret-id')
+        GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        REGISTRY = "push.docker.elastic.co"
+        REPOSITORY = "eck-snapshots"
+        IMG_NAME = "eck-operator"
+        SNAPSHOT = "true"
+        DOCKER_IMAGE_NO_TAG = "docker.elastic.co/${REPOSITORY}/${IMG_NAME}"
+    }
+
+    stages {
+        stage('Run unit and integration tests') {
+            steps {
+                sh 'make -C build/ci ci-pr'
+            }
+        }
+        stage('Build and push Docker image') {
+            steps {
+                sh """
+                    export VERSION=\$(cat $WORKSPACE/operators/VERSION)-\$(date +%F)-\$(git rev-parse --short --verify HEAD)
+                    export OPERATOR_IMAGE=${REGISTRY}/${REPOSITORY}/${IMG_NAME}:\$VERSION
+                    make -C build/ci ci-release
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                def version = sh(returnStdout: true, script: 'cat $WORKSPACE/operators/VERSION')
+                def hash = sh(returnStdout: true, script: 'git rev-parse --short --verify HEAD')
+                def date = new Date()
+                def image = env.DOCKER_IMAGE_NO_TAG + ":" + version + "-" + date.format("yyyy-MM-dd") + "-" + hash
+                currentBuild.description = image
+
+                build job: 'cloud-on-k8s-versions-gke',
+                      parameters: [string(name: 'IMAGE', value: image)],
+                      wait: false
+            }
+        }
+        cleanup {
+            cleanWs()
+        }
+    }
+
+}
