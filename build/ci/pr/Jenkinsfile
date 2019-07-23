@@ -38,8 +38,15 @@ pipeline {
                 }
                 stage("Run docs build") {
                     steps {
-                        checkout scm
-                        sh 'make -C build/ci ci-build-docs'
+                        sh 'git clone git@github.com:elastic/docs.git'
+                        sh 'git clone git@github.com:elastic/cloud-on-k8s.git'
+                        sh """
+                            $WORKSPACE/docs/build_docs \
+                            --doc $WORKSPACE/cloud-on-k8s/docs/index.asciidoc \
+                            --out $WORKSPACE/cloud-on-k8s/docs/html \
+                            --chunk 1
+                        """
+                        sh 'test -e $WORKSPACE/docs/html/index.html'
                     }
                 }
                 stage("Run smoke E2E tests") {
