@@ -22,6 +22,24 @@ Advanced settings
 - Pod disruption budget
 - Change budget (maxUnavailable, maxSurge)
 
+[id="{p}-jvm-heap-size"]
+=== JVM heap size
+
+By default, JVM heap used by Elasticsearch has minimum and maximum size set to 1 GB. You can change that by using `ES_JAVA_OPTS` environment variable as shown below. For more information on setting the heap size, see link:https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html[Setting the heap size].
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms2g -Xmx2g
+----
+
 [id="{p}-node-configuration"]
 === Node configuration
 
