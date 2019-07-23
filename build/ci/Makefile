@@ -11,7 +11,7 @@ VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
-VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
+VAULT_DOCKER_CREDENTIALS ?= secret/devops-ci/cloud-on-k8s/eckadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
@@ -48,7 +48,7 @@ vault-docker-creds:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) \
 	 	vault read \
 		-address=$(VAULT_ADDR) \
-		-field=password \
+		-field=value \
 		$(VAULT_DOCKER_CREDENTIALS) \
 		> $(DOCKER_CREDENTIALS_FILE)
 
