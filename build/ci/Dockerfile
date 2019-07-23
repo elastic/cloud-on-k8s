@@ -5,6 +5,7 @@ ENV KUBEBUILDER_VERSION=1.0.8
 ENV GCLOUD_VERSION=232.0.0
 ENV KUBECTL_VERSION=1.13.2
 ENV DOCKER_VERSION=18.03.1-ce
+ENV GOLANGCILINT_VERSION=1.17.1
 
 # Download kubebuilder release to get required tools (etcd, apiserver, etc.)
 ENV PATH=${PATH}:/usr/local/kubebuilder/bin
@@ -14,6 +15,10 @@ RUN curl -fsSLO https://github.com/kubernetes-sigs/kubebuilder/releases/download
 
 # Download required golang tools
 RUN go get github.com/golang/dep/cmd/dep golang.org/x/tools/cmd/goimports
+
+# Install golangci-lint
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh \
+    | sh -s -- -b $(go env GOPATH)/bin v${GOLANGCILINT_VERSION}
 
 # Download gcloud for provisioning gke clusters
 ENV PATH=${PATH}:/usr/local/google-cloud-sdk/bin

@@ -14,6 +14,8 @@ pipeline {
         VAULT_SECRET_ID = credentials('vault-secret-id')
         REGISTRY = "eu.gcr.io"
         GCLOUD_PROJECT = credentials('k8s-operators-gcloud-project')
+        OPERATOR_IMAGE = "${IMAGE}"
+        LATEST_RELEASED_IMG = "${IMAGE}"
     }
 
     stages {
@@ -26,7 +28,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e'
+                        sh 'make -C build/ci ci-e2e-rc'
                     }
                 }
                 stage("1.12") {
@@ -39,7 +41,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e'
+                        sh 'make -C build/ci ci-e2e-rc'
                     }
                 }
                 stage("1.13") {
@@ -52,7 +54,7 @@ pipeline {
                     }
                     steps {
                         checkout scm
-                        sh 'make -C build/ci ci-e2e'
+                        sh 'make -C build/ci ci-e2e-rc'
                     }
                 }
             }
@@ -74,10 +76,9 @@ pipeline {
             script {
                 clusters = ["${BUILD_TAG}-11", "${BUILD_TAG}-12", "${BUILD_TAG}-13"]
                 for (int i = 0; i < clusters.size(); i++) {
-                        sh """
-                            export GKE_CLUSTER_NAME=${clusters[i]}
-                            make -C build/ci ci-gke-cleanup
-                        """
+                        build job: 'cloud-on-k8s-e2e-cleanup',
+                              parameters: [string(name: 'GKE_CLUSTER', value: clusters[i])],
+                              wait: false
                 }
             }
             cleanWs()

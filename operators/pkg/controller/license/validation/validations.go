@@ -8,10 +8,7 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/license"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/validation"
 	corev1 "k8s.io/api/core/v1"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
-
-var log = logf.Log.WithName("license-validation")
 
 const EULAValidationMsg = `Please set the annotation elastic.co/eula to "accepted" to accept the EULA`
 
@@ -40,10 +37,6 @@ type Context struct {
 	Current *corev1.Secret
 	// Proposed is the EnterpriseLicense submitted for validation.
 	Proposed corev1.Secret
-}
-
-func (v Context) isCreate() bool {
-	return v.Current == nil
 }
 
 // Validate runs validation logic in contexts where we don't have current and proposed EnterpriseLicenses.

@@ -8,8 +8,10 @@
       artifactNumToKeep: 10
     name: cloud-on-k8s-versions-gke
     project-type: pipeline
-    triggers:
-      - timed: '0 0 * * 1-5'
+    parameters:
+      - string:
+          name: IMAGE
+          description: "Docker image with ECK"
     pipeline-scm:
       scm:
         - git:

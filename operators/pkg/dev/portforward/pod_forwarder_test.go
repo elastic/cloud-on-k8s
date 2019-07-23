@@ -33,7 +33,7 @@ func (d *capturingDialer) DialContext(ctx context.Context, network, address stri
 	return nil, nil
 }
 
-func NewPodForwarderWithTest(t *testing.T, network, addr string) *podForwarder {
+func NewPodForwarderWithTest(t *testing.T, network, addr string) *PodForwarder {
 	fwd, err := NewPodForwarder(network, addr, nil)
 	require.NoError(t, err)
 	return fwd
@@ -54,8 +54,8 @@ func Test_podForwarder_DialContext(t *testing.T) {
 	}
 	tests := []struct {
 		name         string
-		forwarder    *podForwarder
-		tweaks       func(t *testing.T, f *podForwarder)
+		forwarder    *PodForwarder
+		tweaks       func(t *testing.T, f *PodForwarder)
 		args         args
 		wantDialArgs []string
 		wantErr      bool
@@ -63,7 +63,7 @@ func Test_podForwarder_DialContext(t *testing.T) {
 		{
 			name:      "pod should be forwarded",
 			forwarder: NewPodForwarderWithTest(t, "tcp", "foo.bar.pod:9200"),
-			tweaks: func(t *testing.T, f *podForwarder) {
+			tweaks: func(t *testing.T, f *PodForwarder) {
 				f.ephemeralPortFinder = func() (string, error) {
 					return "12345", nil
 				}
@@ -144,9 +144,14 @@ func Test_parsePodAddr(t *testing.T) {
 			want: types.NamespacedName{Namespace: "bar", Name: "foo"},
 		},
 		{
+			name: "pod DNS with pod and namespace only",
+			args: args{addr: "foopod.barnamespace:1234"},
+			want: types.NamespacedName{Namespace: "barnamespace", Name: "foopod"},
+		},
+		{
 			name:    "invalid",
-			args:    args{addr: "example.com:1234"},
-			wantErr: errors.New("unsupported pod address format: example.com"),
+			args:    args{addr: "foobar:1234"},
+			wantErr: errors.New("unsupported pod address format: foobar"),
 		},
 	}
 	for _, tt := range tests {

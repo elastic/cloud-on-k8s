@@ -61,21 +61,12 @@ pipeline {
     }
 
     post {
-        success {
-            withEnv([
-                'REGISTRY=push.docker.elastic.co',
-                'REPOSITORY=eck-snapshots',
-                'IMG_SUFFIX=',
-                'SNAPSHOT_RELEASE=true',
-                'TAG_NAME=${ghprbPullId}'
-                ]) {
-                sh 'make -C build/ci ci-release'
-            }
-        }
         cleanup {
             script {
                 if (notOnlyDocs()) {
-                    sh 'make -C build/ci ci-gke-cleanup'
+                    build job: 'cloud-on-k8s-e2e-cleanup',
+                          parameters: [string(name: 'GKE_CLUSTER', value: "${GKE_CLUSTER_NAME}")],
+                          wait: false
                 }
             }
             cleanWs()

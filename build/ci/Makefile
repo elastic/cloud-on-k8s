@@ -11,7 +11,7 @@ VAULT_GKE_CREDS_SECRET ?= secret/cloud-team/cloud-ci/ci-gcp-k8s-operator
 GKE_CREDS_FILE ?= credentials.json
 VAULT_PUBLIC_KEY ?= secret/release/license
 PUBLIC_KEY_FILE ?= license.key
-VAULT_DOCKER_CREDENTIALS ?= secret/cloud-team/cloud-ci/cloudadmin
+VAULT_DOCKER_CREDENTIALS ?= secret/devops-ci/cloud-on-k8s/eckadmin
 DOCKER_CREDENTIALS_FILE ?= docker_credentials.file
 VAULT_AWS_CREDS ?= secret/cloud-team/cloud-ci/eck-release
 VAULT_AWS_ACCESS_KEY_FILE ?= aws_access_key.file
@@ -48,7 +48,7 @@ vault-docker-creds:
 	@ VAULT_TOKEN=$(VAULT_TOKEN) \
 	 	vault read \
 		-address=$(VAULT_ADDR) \
-		-field=password \
+		-field=value \
 		$(VAULT_DOCKER_CREDENTIALS) \
 		> $(DOCKER_CREDENTIALS_FILE)
 
@@ -71,7 +71,7 @@ vault-aws-creds:
 
 ci-pr: check-license-header
 	docker build -f Dockerfile -t cloud-on-k8s-ci-pr .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
@@ -86,7 +86,7 @@ ci-pr: check-license-header
 
 ci-release: vault-public-key vault-docker-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
-	docker run --rm -t \
+	@ docker run --rm -t \
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
@@ -105,7 +105,7 @@ ci-release: vault-public-key vault-docker-creds
 # Will be uploaded to https://download.elastic.co/downloads/eck/$TAG_NAME/all-in-one.yaml
 yaml-upload: vault-aws-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-release .
-	docker run --rm -t \
+	@ docker run --rm -t \
         -v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         -w $(GO_MOUNT_PATH) \
         -e "AWS_ACCESS_KEY_ID=$(shell cat $(VAULT_AWS_ACCESS_KEY_FILE))" \
@@ -119,7 +119,7 @@ yaml-upload: vault-aws-creds
 # Spawn a k8s cluster, and run e2e tests against it
 ci-e2e: vault-gke-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
@@ -137,7 +137,7 @@ ci-e2e: vault-gke-creds
 # Run e2e tests in GKE against provided ECK image
 ci-e2e-rc: vault-gke-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
 		-w $(GO_MOUNT_PATH) \
@@ -156,7 +156,7 @@ ci-e2e-rc: vault-gke-creds
 # Remove k8s cluster
 ci-e2e-delete-cluster: vault-gke-creds
 	docker build -f Dockerfile -t cloud-on-k8s-ci-e2e .
-	docker run --rm -t \
+	@ docker run --rm -t \
     	-v /var/run/docker.sock:/var/run/docker.sock \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
@@ -168,7 +168,7 @@ ci-e2e-delete-cluster: vault-gke-creds
 
 # Remove all unused resources in GKE
 ci-gke-cleanup: ci-e2e-delete-cluster
-	docker run --rm -t \
+	@ docker run --rm -t \
     	-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
     	-w $(GO_MOUNT_PATH) \
     	-e "GCLOUD_PROJECT=$(GCLOUD_PROJECT)" \
@@ -180,7 +180,7 @@ ci-gke-cleanup: ci-e2e-delete-cluster
 
 # Run docs build
 ci-build-docs:
-	docker run --rm -t \
+	@ docker run --rm -t \
 		-v $(ROOT_DIR):$(GO_MOUNT_PATH) \
         docker.elastic.co/docs/build:1 \
         bash -c "git clone https://github.com/elastic/docs.git && \

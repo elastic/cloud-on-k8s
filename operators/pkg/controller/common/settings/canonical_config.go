@@ -274,7 +274,7 @@ func asUntypedDict(l, r interface{}) (untypedDict, untypedDict, error) {
 	lhs, ok := l.(untypedDict)
 	rhs, ok2 := r.(untypedDict)
 	if !ok || !ok2 {
-		return nil, nil, fmt.Errorf("map assertation failed for l: %t r: %t", ok, ok2)
+		return nil, nil, fmt.Errorf("map assertion failed for l: %t r: %t", ok, ok2)
 	}
 	return lhs, rhs, nil
 }
@@ -283,7 +283,7 @@ func asUntypedSlice(l, r interface{}) ([]interface{}, []interface{}, error) {
 	lhs, ok := l.([]interface{})
 	rhs, ok2 := r.([]interface{})
 	if !ok || !ok2 {
-		return nil, nil, fmt.Errorf("slice assertation failed for l: %t r: %t", ok, ok2)
+		return nil, nil, fmt.Errorf("slice assertion failed for l: %t r: %t", ok, ok2)
 	}
 	return lhs, rhs, nil
 }

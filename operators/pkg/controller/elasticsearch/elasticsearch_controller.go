@@ -10,8 +10,10 @@ import (
 
 	elasticsearchv1alpha1 "github.com/elastic/cloud-on-k8s/operators/pkg/apis/elasticsearch/v1alpha1"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/annotation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/certificates/http"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/finalizer"
+	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/keystore"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/operator"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/reconciler"
 	commonversion "github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
@@ -21,11 +23,11 @@ import (
 	esname "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/name"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/observer"
 	esreconcile "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/reconcile"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/settings"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/validation"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -43,10 +45,7 @@ var log = logf.Log.WithName(name)
 // Add creates a new Elasticsearch Controller and adds it to the Manager with default RBAC. The Manager will set fields
 // on the Controller and Start it when the Manager is Started.
 func Add(mgr manager.Manager, params operator.Parameters) error {
-	reconciler, err := newReconciler(mgr, params)
-	if err != nil {
-		return err
-	}
+	reconciler := newReconciler(mgr, params)
 	c, err := add(mgr, reconciler)
 	if err != nil {
 		return err
@@ -55,21 +54,21 @@ func Add(mgr manager.Manager, params operator.Parameters) error {
 }
 
 // newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager, params operator.Parameters) (*ReconcileElasticsearch, error) {
+func newReconciler(mgr manager.Manager, params operator.Parameters) *ReconcileElasticsearch {
 	client := k8s.WrapClient(mgr.GetClient())
 	return &ReconcileElasticsearch{
 		Client:   client,
 		scheme:   mgr.GetScheme(),
 		recorder: mgr.GetRecorder(name),
 
-		esObservers: observer.NewManager(params.Dialer, client, observer.DefaultSettings),
+		esObservers: observer.NewManager(observer.DefaultSettings),
 
 		finalizers:       finalizer.NewHandler(client),
 		dynamicWatches:   watches.NewDynamicWatches(),
 		podsExpectations: reconciler.NewExpectations(),
 
 		Parameters: params,
-	}, nil
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -172,7 +171,7 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 	iterationStartTime := time.Now()
 	log.Info("Start reconcile iteration", "iteration", currentIteration, "namespace", request.Namespace, "es_name", request.Name)
 	defer func() {
-		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_ame", request.Name)
+		log.Info("End reconcile iteration", "iteration", currentIteration, "took", time.Since(iterationStartTime), "namespace", request.Namespace, "es_name", request.Name)
 	}()
 
 	// Fetch the Elasticsearch instance
@@ -193,8 +192,22 @@ func (r *ReconcileElasticsearch) Reconcile(request reconcile.Request) (reconcile
 		return common.PauseRequeue, nil
 	}
 
+	selector := labels.Set(map[string]string{label.ClusterNameLabelName: es.Name}).AsSelector()
+	compat, err := annotation.ReconcileCompatibility(r.Client, &es, selector, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if !compat {
+		// this resource is not able to be reconciled by this version of the controller, so we will skip it and not requeue
+		return reconcile.Result{}, nil
+	}
+
+	err = annotation.UpdateControllerVersion(r.Client, &es, r.OperatorInfo.BuildInfo.Version)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	state := esreconcile.NewState(es)
-	state.UpdateElasticsearchControllerVersion(r.OperatorInfo.BuildInfo.Version)
 	results := r.internalReconcile(es, state)
 	err = r.updateStatus(es, state)
 	if err != nil && apierrors.IsConflict(err) {
@@ -210,7 +223,7 @@ func (r *ReconcileElasticsearch) internalReconcile(
 ) *reconciler.Results {
 	results := &reconciler.Results{}
 
-	if err := r.finalizers.Handle(&es, r.finalizersFor(es, r.dynamicWatches)...); err != nil {
+	if err := r.finalizers.Handle(&es, r.finalizersFor(es)...); err != nil {
 		return results.WithError(err)
 	}
 
@@ -235,8 +248,9 @@ func (r *ReconcileElasticsearch) internalReconcile(
 	}
 
 	driver, err := driver.NewDriver(driver.Options{
-		Client: r.Client,
-		Scheme: r.scheme,
+		Client:   r.Client,
+		Scheme:   r.scheme,
+		Recorder: r.recorder,
 
 		Version: *ver,
 
@@ -271,13 +285,12 @@ func (r *ReconcileElasticsearch) updateStatus(
 // finalizersFor returns the list of finalizers applying to a given es cluster
 func (r *ReconcileElasticsearch) finalizersFor(
 	es elasticsearchv1alpha1.Elasticsearch,
-	watched watches.DynamicWatches,
 ) []finalizer.Finalizer {
 	clusterName := k8s.ExtractNamespacedName(&es)
 	return []finalizer.Finalizer{
 		reconciler.ExpectationsFinalizer(clusterName, r.podsExpectations),
 		r.esObservers.Finalizer(clusterName),
-		settings.SecureSettingsFinalizer(clusterName, watched),
+		keystore.Finalizer(k8s.ExtractNamespacedName(&es), r.dynamicWatches, "elasticsearch"),
 		http.DynamicWatchesFinalizer(r.dynamicWatches, es.Name, esname.ESNamer),
 	}
 }

@@ -218,10 +218,7 @@ func reconcileSecret(
 }
 
 // reconcileClusterLicense upserts a cluster license in the namespace of the given Elasticsearch cluster.
-func (r *ReconcileLicenses) reconcileClusterLicense(
-	cluster v1alpha1.Elasticsearch,
-	margin time.Duration,
-) (time.Time, error) {
+func (r *ReconcileLicenses) reconcileClusterLicense(cluster v1alpha1.Elasticsearch) (time.Time, error) {
 	var noResult time.Time
 	matchingSpec, parent, found, err := findLicense(r, r.checker)
 	if err != nil {
@@ -255,10 +252,9 @@ func (r *ReconcileLicenses) reconcileInternal(request reconcile.Request) (reconc
 		return reconcile.Result{}, nil
 	}
 
-	safetyMargin := defaultSafetyMargin
-	newExpiry, err := r.reconcileClusterLicense(cluster, safetyMargin)
+	newExpiry, err := r.reconcileClusterLicense(cluster)
 	if err != nil {
 		return reconcile.Result{Requeue: true}, err
 	}
-	return nextReconcile(newExpiry, safetyMargin), nil
+	return nextReconcile(newExpiry, defaultSafetyMargin), nil
 }

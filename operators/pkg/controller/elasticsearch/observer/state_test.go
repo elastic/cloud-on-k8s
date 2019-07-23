@@ -16,15 +16,8 @@ import (
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/common/version"
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
 	fixtures "github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client/test_fixtures"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/keystore"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/label"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/processmanager"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Client {
@@ -63,95 +56,56 @@ func fakeEsClient(healthRespErr, stateRespErr, licenseRespErr bool) client.Clien
 	})
 }
 
-func createMockPMClient(pod v1.Pod) processmanager.Client {
-	return processmanager.NewMockClient(processmanager.ProcessStatus{State: processmanager.Started}, nil)
-}
-
 func TestRetrieveState(t *testing.T) {
 	tests := []struct {
-		name                 string
-		wantHealth           bool
-		wantState            bool
-		wantLicense          bool
-		wantKeystoreStatuses bool
+		name        string
+		wantHealth  bool
+		wantState   bool
+		wantLicense bool
 	}{
 		{
-			name:                 "state, health, license and keystore ok",
-			wantHealth:           true,
-			wantState:            true,
-			wantLicense:          true,
-			wantKeystoreStatuses: true,
+			name:        "state, health, license and keystore ok",
+			wantHealth:  true,
+			wantState:   true,
+			wantLicense: true,
 		},
 		{
-			name:                 "state error",
-			wantHealth:           true,
-			wantState:            false,
-			wantLicense:          true,
-			wantKeystoreStatuses: true,
+			name:        "state error",
+			wantHealth:  true,
+			wantState:   false,
+			wantLicense: true,
 		},
 		{
-			name:                 "health error",
-			wantHealth:           false,
-			wantState:            true,
-			wantLicense:          true,
-			wantKeystoreStatuses: true,
+			name:        "health error",
+			wantHealth:  false,
+			wantState:   true,
+			wantLicense: true,
 		},
 		{
-			name:                 "license error",
-			wantHealth:           false,
-			wantState:            false,
-			wantLicense:          true,
-			wantKeystoreStatuses: true,
+			name:        "license error",
+			wantHealth:  false,
+			wantState:   false,
+			wantLicense: true,
 		},
 		{
-			name:                 "health and state error",
-			wantHealth:           false,
-			wantState:            false,
-			wantLicense:          true,
-			wantKeystoreStatuses: true,
+			name:        "health and state error",
+			wantHealth:  false,
+			wantState:   false,
+			wantLicense: true,
 		},
 		{
-			name:                 "keystore error",
-			wantHealth:           true,
-			wantState:            true,
-			wantLicense:          true,
-			wantKeystoreStatuses: false,
-		},
-	}
-
-	ns := "ns1"
-	clusterName := "es1"
-	pod1 := v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      clusterName + "-es-azertyuiop",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: clusterName,
-			},
-		},
-		Status: v1.PodStatus{
-			Conditions: []v1.PodCondition{
-				{Type: v1.PodReady, Status: v1.ConditionTrue},
-				{Type: v1.ContainersReady, Status: v1.ConditionTrue},
-			},
-		},
-	}
-	pod2 := v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: ns,
-			Name:      clusterName + "-es-qsdfghjklm",
-			Labels: map[string]string{
-				label.ClusterNameLabelName: clusterName,
-			},
+			name:        "keystore error",
+			wantHealth:  true,
+			wantState:   true,
+			wantLicense: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient := k8s.WrapClient(fake.NewFakeClient(&pod1, &pod2))
+			cluster := types.NamespacedName{Namespace: "ns1", Name: "es1"}
 			esClient := fakeEsClient(!tt.wantHealth, !tt.wantState, !tt.wantLicense)
-			cluster := types.NamespacedName{Namespace: ns, Name: clusterName}
-			state := RetrieveState(context.Background(), cluster, esClient, k8sClient, createMockPMClient)
+			state := RetrieveState(context.Background(), cluster, esClient)
 			if tt.wantHealth {
 				require.NotNil(t, state.ClusterHealth)
 				require.Equal(t, state.ClusterHealth.NumberOfNodes, 3)
@@ -163,12 +117,6 @@ func TestRetrieveState(t *testing.T) {
 			if tt.wantLicense {
 				require.NotNil(t, state.ClusterLicense)
 				require.Equal(t, state.ClusterLicense.UID, "893361dc-9749-4997-93cb-802e3d7fa4xx")
-			}
-			if tt.wantKeystoreStatuses {
-				require.NotNil(t, state.KeystoreStatuses)
-				require.Equal(t, 2, len(state.KeystoreStatuses))
-				require.Equal(t, keystore.RunningState, state.KeystoreStatuses[0].State)
-				require.Equal(t, keystore.WaitingState, state.KeystoreStatuses[1].State)
 			}
 		})
 	}

@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/elastic/cloud-on-k8s/operators/pkg/controller/elasticsearch/client"
-	"github.com/elastic/cloud-on-k8s/operators/pkg/utils/k8s"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestManager_List(t *testing.T) {
@@ -29,16 +27,15 @@ func TestManager_List(t *testing.T) {
 		{
 			name: "Non-empty list",
 			observers: map[types.NamespacedName]*Observer{
-				cluster("first"):  &Observer{},
-				cluster("second"): &Observer{},
+				cluster("first"):  {},
+				cluster("second"): {},
 			},
 			want: []types.NamespacedName{cluster("first"), cluster("second")},
 		},
 	}
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil, fakeK8sClient, DefaultSettings)
+			m := NewManager(DefaultSettings)
 			m.observers = tt.observers
 			require.ElementsMatch(t, tt.want, m.List())
 		})
@@ -47,15 +44,6 @@ func TestManager_List(t *testing.T) {
 
 func cluster(name string) types.NamespacedName {
 	return types.NamespacedName{Namespace: "ns", Name: name}
-}
-
-func newObserver() map[types.NamespacedName]*Observer {
-	c := cluster("cluster")
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
-	fakeEsClient := fakeEsClient200(client.UserAuth{})
-	observer := NewObserver(fakeK8sClient, nil, nil, c, fakeEsClient, DefaultSettings, nil)
-	return map[types.NamespacedName]*Observer{
-		c: observer}
 }
 
 func TestManager_Observe(t *testing.T) {
@@ -78,14 +66,14 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:                   "Observe a second cluster",
-			initiallyObserved:      newObserver(),
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster2"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster"), cluster("cluster2")},
 		},
 		{
 			name:                   "Observe twice the same cluster (idempotent)",
-			initiallyObserved:      newObserver(),
+			initiallyObserved:      map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:       cluster("cluster"),
 			clusterToObserveClient: fakeClient,
 			expectedObservers:      []types.NamespacedName{cluster("cluster")},
@@ -93,7 +81,7 @@ func TestManager_Observe(t *testing.T) {
 		},
 		{
 			name:              "Observe twice the same cluster with a different client",
-			initiallyObserved: newObserver(),
+			initiallyObserved: map[types.NamespacedName]*Observer{cluster("cluster"): NewObserver(cluster("cluster"), fakeClient, DefaultSettings, nil)},
 			clusterToObserve:  cluster("cluster"),
 			// more client comparison tests in client_test.go
 			clusterToObserveClient: fakeClientWithDifferentUser,
@@ -102,16 +90,15 @@ func TestManager_Observe(t *testing.T) {
 		},
 	}
 
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil, fakeK8sClient, DefaultSettings)
+			m := NewManager(DefaultSettings)
 			m.observers = tt.initiallyObserved
 			var initialCreationTime time.Time
 			if initial, exists := tt.initiallyObserved[tt.clusterToObserve]; exists {
 				initialCreationTime = initial.creationTime
 			}
-			observer := m.Observe(tt.clusterToObserve, nil, tt.clusterToObserveClient)
+			observer := m.Observe(tt.clusterToObserve, tt.clusterToObserveClient)
 			// returned observer should be the correct one
 			require.Equal(t, tt.clusterToObserve, observer.cluster)
 			// list of observers should have been updated
@@ -142,34 +129,33 @@ func TestManager_StopObserving(t *testing.T) {
 		},
 		{
 			name:                       "stop observing a non-existing cluster from 1 observer",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): {esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("another-cluster")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster")},
 		},
 		{
 			name:                       "stop observing the single cluster",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster"): {esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster")},
 			expectedAfterStopObserving: []types.NamespacedName{},
 		},
 		{
 			name:                       "stop observing one cluster",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): {esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): {esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster1")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster2")},
 		},
 		{
 			name:                       "stop observing the same cluster twice",
-			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): &Observer{esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): &Observer{esClient: esClient, stopChan: make(chan struct{})}},
+			observed:                   map[types.NamespacedName]*Observer{cluster("cluster1"): {esClient: esClient, stopChan: make(chan struct{})}, cluster("cluster2"): {esClient: esClient, stopChan: make(chan struct{})}},
 			stopObserving:              []types.NamespacedName{cluster("cluster1"), cluster("cluster1")},
 			expectedAfterStopObserving: []types.NamespacedName{cluster("cluster2")},
 		},
 	}
 
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := NewManager(nil, fakeK8sClient, DefaultSettings)
+			m := NewManager(DefaultSettings)
 			m.observers = tt.observed
 			for _, name := range tt.stopObserving {
 				m.StopObserving(name)
@@ -180,16 +166,15 @@ func TestManager_StopObserving(t *testing.T) {
 }
 
 func TestManager_AddObservationListener(t *testing.T) {
-	fakeK8sClient := k8s.WrapClient(fake.NewFakeClient())
-	m := NewManager(nil, fakeK8sClient, Settings{
+	m := NewManager(Settings{
 		ObservationInterval: 1 * time.Microsecond,
 		RequestTimeout:      1 * time.Second,
 	})
 
 	// observe 2 clusters
-	obs1 := m.Observe(cluster("cluster1"), nil, fakeEsClient200(client.UserAuth{}))
+	obs1 := m.Observe(cluster("cluster1"), fakeEsClient200(client.UserAuth{}))
 	defer obs1.Stop()
-	obs2 := m.Observe(cluster("cluster2"), nil, fakeEsClient200(client.UserAuth{}))
+	obs2 := m.Observe(cluster("cluster2"), fakeEsClient200(client.UserAuth{}))
 	defer obs2.Stop()
 
 	// add a listener that is only interested in cluster1
