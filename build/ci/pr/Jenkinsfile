@@ -61,17 +61,6 @@ pipeline {
     }
 
     post {
-        success {
-            withEnv([
-                'REGISTRY=push.docker.elastic.co',
-                'REPOSITORY=eck-snapshots',
-                'IMG_SUFFIX=',
-                'SNAPSHOT_RELEASE=true',
-                'TAG_NAME=${ghprbPullId}'
-                ]) {
-                sh 'make -C build/ci ci-release'
-            }
-        }
         cleanup {
             script {
                 if (notOnlyDocs()) {
