@@ -50,6 +50,45 @@ spec:
 
 For more information on Elasticsearch settings, see https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html[Configuring Elasticsearch].
 
+[id="{p}-volume-claim-templates"]
+=== Volume Claim Templates
+
+By default the operator creates a https://kubernetes.io/docs/concepts/storage/persistent-volumes/[`PersistentVolumeClaim`] with a capacity of 1Gi for every Pod in an Elasticsearch cluster. This is to ensure that there is no data loss if a Pod is deleted.
+
+You can customize the volume claim templates used by Elasticsearch to adjust the storage to your needs, the name in the template must be `elasticsearch-data`:
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: standard
+----
+
+For some reasons you may want to use an `emptyDir` volume, this can be done by specifying the `elasticsearch-data` volume in the `podTemplate`:
+
+[source,yaml]
+----
+spec:
+  nodes:
+  - config:
+    podTemplate:
+      spec:
+        volumes:
+        - name: elasticsearch-data
+          emptyDir: {}
+----
+
+Keep in mind that using `emptyDir` may result in data loss and is not recommended.
+
 [id="{p}-http-settings-tls-sans"]
 === HTTP settings & TLS SANs
 
@@ -340,3 +379,45 @@ In this situation, it would be preferable to first recreate the missing nodes in
 In order to do so, ECK must know about the logical grouping of nodes. Since this is an arbitrary setting (can represent availability zones, but also nodes roles, hot-warm topologies, etc.), it must be specified in the `updateStrategy.groups` section of the Elasticsearch specification.
 Nodes grouping is expressed through labels on the resources. In the example above, 3 pods are labeled with `group-a`, and the 3 other pods with `group-b`.
 
+[id="{p}-pod-disruption-budget"]
+=== Pod disruption budget
+
+A link:https://kubernetes.io/docs/tasks/run-application/configure-pdb/[Pod Disruption Budget] allows limiting disruptions on an existing set of pods while the Kubernetes cluster administrator manages cluster nodes.
+With Elasticsearch, we'd like to make sure some indices don't become unavailable.
+
+A default PDB of 1 `maxUnavailable` pod on the entire cluster is enforced by default.
+
+This default can be tweaked in the Elasticsearch specification:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.2.0
+  nodes:
+  - nodeCount: 3
+  podDisruptionBudget:
+    spec:
+      maxUnavailable: 2
+      selector:
+        matchLabels:
+          elasticsearch.k8s.elastic.co/cluster-name: quickstart
+----
+
+It can also be explicitly disabled:
+
+[source,yaml]
+----
+apiVersion: elasticsearch.k8s.elastic.co/v1alpha1
+kind: Elasticsearch
+metadata:
+  name: quickstart
+spec:
+  version: 7.2.0
+  nodes:
+  - nodeCount: 3
+  podDisruptionBudget: {}
+----

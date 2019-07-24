@@ -45,7 +45,7 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 	}
 
 	outputCfg := settings.NewCanonicalConfig()
-	if as.Spec.Output.Elasticsearch.IsConfigured() {
+	if as.Spec.Elasticsearch.IsConfigured() {
 		// Get username and password
 		username, password, err := association.ElasticsearchAuthSettings(c, &as)
 		if err != nil {
@@ -53,7 +53,7 @@ func NewConfigFromSpec(c k8s.Client, as v1alpha1.ApmServer) (*settings.Canonical
 		}
 		outputCfg = settings.MustCanonicalConfig(
 			map[string]interface{}{
-				"output.elasticsearch.hosts":                       as.Spec.Output.Elasticsearch.Hosts,
+				"output.elasticsearch.hosts":                       as.Spec.Elasticsearch.Hosts,
 				"output.elasticsearch.username":                    username,
 				"output.elasticsearch.password":                    password,
 				"output.elasticsearch.ssl.certificate_authorities": []string{filepath.Join(CertificatesDir, certificates.CertFileName)},

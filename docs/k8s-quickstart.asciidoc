@@ -28,7 +28,7 @@ NOTE: If you are using Amazon EKS, make sure the Kubernetes control plane is all
 +
 [source,sh]
 ----
-kubectl apply -f https://download.elastic.co/downloads/eck/0.8.0/all-in-one.yaml
+kubectl apply -f https://download.elastic.co/downloads/eck/0.9.0/all-in-one.yaml
 ----
 
 . Monitor the operator logs:
@@ -230,7 +230,7 @@ Use `kubectl port-forward` to access Kibana from your local workstation:
 kubectl port-forward service/quickstart-kb-http 5601
 ----
 +
-Open `http://localhost:5601` in your browser.
+Open `https://localhost:5601` in your browser. Your browser will show a warning because the self-signed certificate configured by default is not verified by a third party certificate authority and not trusted by your browser. You can either configure a link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[valid certificate] or acknowledge the warning for the purposes of this quick start.
 +
 Login with the `elastic` user. Retrieve its password with:
 +
@@ -267,11 +267,11 @@ EOF
 
 [float]
 [id="{p}-persistent-storage"]
-=== Use persistent storage
+=== Update persistent storage
 
-Now that you have completed the quickstart, you can try out more features like using persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
+Now that you have completed the quickstart, you can try out more features like tweaking persistent storage. The cluster that you deployed in this quickstart uses a default persistent volume claim of 1GiB, without a storage class set. This means that the default storage class defined in the Kubernetes cluster is the one that will be provisioned.
 
-You can request a `PersistentVolumeClaim` in the cluster specification, to target any `PersistentVolume` class available in your Kubernetes cluster:
+You can request a `PersistentVolumeClaim` with a larger size in the Elasticsearch specification or target any `PersistentVolume` class available in your Kubernetes cluster:
 
 [source,yaml]
 ----
