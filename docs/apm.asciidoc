@@ -1,15 +1,15 @@
 [id="{p}-apm-server"]
 == APM Server
 
-This section describes how to deploy, configure and access an APM server with ECK.
+This section describes how to deploy, configure and access an APM Server with ECK.
 
-NOTE: The current Docker image of the APM server needs to be run as `root` or with the user id 1000. This prevents to run the APM server on some environments like Openshift or on any Kubernetes cluster that would set a different user in the security context.
+NOTE: The current Docker image of the APM Server needs to be run as `root` or with the user id 1000. This prevents to run the APM Server on some environments like Openshift or on any Kubernetes cluster that would set a different user in the security context.
 
 === Use an Elasticsearch cluster managed by ECK
 
-When both the APM server and Elasticsearch are managed by ECK it allows a smooth and secured integration between the two. The output configuration of the APM server is setup automatically to establish a trust relationship with Elasticsearch.
+When both the APM Server and Elasticsearch are managed by ECK it allows a smooth and secured integration between the two. The output configuration of the APM Server is setup automatically to establish a trust relationship with Elasticsearch.
 
-. If you want to deploy an APM server and connect it to the cluster `quickstart` created in the quickstart then apply the following specification:
+. If you want to deploy an APM Server and connect it to the cluster `quickstart` created in the quickstart then apply the following specification:
 +
 [source,yaml]
 ----
@@ -27,11 +27,11 @@ spec:
 EOF
 ----
 +
-NOTE: Deploying the APM server and Elasticsearch in two different namespaces is not supported for the moment.
+NOTE: Deploying the APM Server and Elasticsearch in two different namespaces is not supported for the moment.
 +
-. Monitor APM server deployment
+. Monitor APM Server deployment
 +
-You can retrieve details about the APM server instance:
+You can retrieve details about the APM Server instance:
 +
 [source,sh]
 ----
@@ -58,9 +58,9 @@ apm-server-quickstart-apm-server-69b447ddc5-fflc6   1/1     Running   0         
 
 === Advanced configuration
 
-==== Customize the APM server configuration
+==== Customize the APM Server configuration
 
-You can customize the configuration of the APM server using a `config` element in the specification:
+You can customize the configuration of the APM Server using a `config` element in the specification:
 
 [source,yaml]
 ----
@@ -85,7 +85,7 @@ Note that the configuration items you provide always overrides the ones that are
 
 ==== APM Secrets keystore for secure settings
 
-The APM Server keystore can be used to store sensitive settings in the APM server configuration. ECK can automatically manage the APM Server keystore in the Pods.
+The APM Server keystore can be used to store sensitive settings in the APM Server configuration. ECK can automatically manage the APM Server keystore in the Pods.
 
 . First create a secret with the secret settings:
 +
@@ -94,7 +94,7 @@ The APM Server keystore can be used to store sensitive settings in the APM serve
 kubectl create secret generic apm-secret-settings --from-literal=ES_PASSWORD=asecretpassword
 ----
 
-. In the specification of the APM server add a reference to the previously created secret within a `spec.secureSettings` section. Then reference the key in the APM server configuration as it is described in the https://www.elastic.co/guide/en/apm/server/current/keystore.html[following documentation].
+. In the specification of the APM Server add a reference to the previously created secret within a `spec.secureSettings` section. Then reference the key in the APM Server configuration as it is described in the https://www.elastic.co/guide/en/apm/server/current/keystore.html[following documentation].
 +
 [source,yaml]
 ----
@@ -128,7 +128,7 @@ kubectl create secret generic es-ca --from-file=tls.crt=elasticsearch-ca.crt
 ----
 In the above command the file `elasticsearch-ca.crt` must contain the CA certificate of the Elasticsearch cluster you want to use.
 +
-. You can then mount this secret using the pod template and reference the file in the `config` of the APM server.
+. You can then mount this secret using the pod template and reference the file in the `config` of the APM Server.
 +
 Here is a complete example with a password stored in the Keystore as it is described in the previous section:
 +
@@ -172,13 +172,13 @@ spec:
 
 By default the operator manages a private CA and generates a self-signed certificate used to secure the communication between APM agents and the server.
 
-This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. You can refer to link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[this documentation] to understand how to use your own certificate to configure the TLS endpoint of the APM server.
+This behavior and the relevant configuration is identical to what is done for Elasticsearch and Kibana. You can refer to link:k8s-accessing-elastic-services.html#k8s-setting-up-your-own-certificate[this documentation] to understand how to use your own certificate to configure the TLS endpoint of the APM Server.
 
-=== Connecting to the APM server
+=== Connecting to the APM Server
 
 ==== APM Server service
 
-The APM server is exposed with a Service, you can refer to link:k8s-accessing-elastic-services.html[this documentation] to understand how to access it.
+The APM Server is exposed with a Service, you can refer to link:k8s-accessing-elastic-services.html[this documentation] to understand how to access it.
 
 You can retrieve the list of all the APM Services with following command:
 
@@ -195,7 +195,7 @@ apm-server-quickstart-apm-http   ClusterIP   10.0.1.252   <none>        8200/TCP
 
 ==== APM Server secret token
 
-The operator generates an authorization token that the agents must send to authenticate themselves to the APM server.
+The operator generates an authorization token that the agents must send to authenticate themselves to the APM Server.
 
 This token is stored in a secret and can be retrieved with the following command:
 
